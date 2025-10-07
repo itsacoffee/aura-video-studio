@@ -66,7 +66,7 @@ public class VideoOrchestrator
 
             // Stage 4: Build timeline (placeholder for music/assets)
             progress?.Report("Stage 4/5: Building timeline...");
-            var timeline = new Timeline(
+            var timeline = new Providers.Timeline(
                 Scenes: scenes,
                 SceneAssets: new Dictionary<int, IReadOnlyList<Asset>>(),
                 NarrationPath: narrationPath,
