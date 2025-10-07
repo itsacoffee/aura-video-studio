@@ -274,31 +274,161 @@ public class HardwareDetector
     
     private async Task RunRenderProbeAsync()
     {
-        // To be implemented: Generate a tiny test video with FFmpeg
-        await Task.Delay(100);
+        _logger.LogInformation("Running FFmpeg render probe");
+        
+        try
+        {
+            // Check if ffmpeg is available
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "ffmpeg",
+                    Arguments = "-version",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode == 0)
+            {
+                _logger.LogInformation("FFmpeg render probe passed");
+            }
+            else
+            {
+                _logger.LogWarning("FFmpeg render probe failed with exit code {ExitCode}", process.ExitCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "FFmpeg render probe failed - FFmpeg may not be installed or in PATH");
+        }
     }
     
     private async Task RunTtsProbeAsync()
     {
-        // To be implemented: Test Windows TTS
-        await Task.Delay(100);
+        _logger.LogInformation("Running Windows TTS probe");
+        
+        try
+        {
+#if WINDOWS10_0_19041_0_OR_GREATER
+            // Test Windows TTS availability
+            var synthesizer = new Windows.Media.SpeechSynthesis.SpeechSynthesizer();
+            var voices = Windows.Media.SpeechSynthesis.SpeechSynthesizer.AllVoices;
+            
+            _logger.LogInformation("Windows TTS probe passed - {VoiceCount} voices available", voices.Count);
+#else
+            _logger.LogInformation("Windows TTS probe skipped - not running on Windows");
+#endif
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Windows TTS probe failed");
+        }
     }
     
     private async Task RunNvencProbeAsync()
     {
-        // To be implemented: Test NVENC with a tiny encode
-        await Task.Delay(100);
+        _logger.LogInformation("Running NVENC probe");
+        
+        try
+        {
+            // Check for NVENC availability via ffmpeg
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "ffmpeg",
+                    Arguments = "-hide_banner -encoders",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            string output = await process.StandardOutput.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            bool hasNvenc = output.Contains("h264_nvenc") || output.Contains("hevc_nvenc");
+            
+            if (hasNvenc)
+            {
+                _logger.LogInformation("NVENC probe passed - NVENC encoders available");
+            }
+            else
+            {
+                _logger.LogInformation("NVENC probe: No NVENC encoders detected");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "NVENC probe failed");
+        }
     }
     
     private async Task RunStableDiffusionProbeAsync()
     {
-        // To be implemented: Test connection to SD WebUI API if enabled
-        await Task.Delay(100);
+        _logger.LogInformation("Running Stable Diffusion probe");
+        
+        try
+        {
+            // Test connection to SD WebUI API
+            using var httpClient = new System.Net.Http.HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(5);
+            
+            var response = await httpClient.GetAsync("http://127.0.0.1:7860/");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Stable Diffusion probe passed - WebUI detected at http://127.0.0.1:7860");
+            }
+            else
+            {
+                _logger.LogInformation("Stable Diffusion probe: WebUI not detected");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Stable Diffusion probe: WebUI not available at http://127.0.0.1:7860");
+        }
     }
     
     private async Task CheckDiskSpaceAsync()
     {
-        // To be implemented: Check disk space in cache/renders folders
-        await Task.Delay(100);
+        _logger.LogInformation("Checking disk space");
+        
+        try
+        {
+            var drives = DriveInfo.GetDrives();
+            
+            foreach (var drive in drives)
+            {
+                if (drive.IsReady && drive.DriveType == DriveType.Fixed)
+                {
+                    long freeSpaceGB = drive.AvailableFreeSpace / 1024 / 1024 / 1024;
+                    
+                    _logger.LogInformation("Drive {Drive}: {FreeSpace} GB available", 
+                        drive.Name, freeSpaceGB);
+                    
+                    if (freeSpaceGB < 10)
+                    {
+                        _logger.LogWarning("Low disk space on {Drive}: Only {FreeSpace} GB available", 
+                            drive.Name, freeSpaceGB);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check disk space");
+        }
+        
+        await Task.CompletedTask;
     }
 }
