@@ -13,10 +13,12 @@ This repository now contains a fully functional core implementation of Aura Vide
 - ✅ Audio processing with LUFS normalization
 - ✅ Subtitle generation (SRT/VTT)
 - ✅ E2E integration tests
+- ✅ GitHub Actions CI/CD workflow
+- ✅ Dependency manifest with SHA-256 verification
 
 **See [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md) for detailed documentation.**
 
-**Next Steps**: WinUI 3 UI implementation, CI/CD setup, MSIX packaging
+**Next Steps**: WinUI 3 UI implementation, MSIX packaging
 
 ---
 
@@ -534,6 +536,52 @@ Aura.sln
   /scripts/ffmpeg/ (ffmpeg.exe, ffprobe.exe)
   appsettings.json
 ```
+
+---
+
+## CI/CD
+
+### GitHub Actions Workflow
+
+The repository includes a comprehensive CI/CD workflow (`.github/workflows/ci.yml`) that runs on every push and pull request:
+
+**Build and Test Job** (runs on `windows-latest`):
+- Restores all NuGet dependencies
+- Builds core projects: Aura.Core, Aura.Providers, Aura.Tests, Aura.E2E
+- Runs all 84 unit tests with detailed reporting
+- Runs all 8 E2E integration tests
+- Uploads test results as artifacts
+
+**Build WinUI App Job** (runs after tests pass):
+- Builds the WinUI 3 desktop application (Aura.App)
+- Creates MSIX package for Windows deployment
+- Uploads MSIX artifact for distribution
+
+### Running Locally
+
+```bash
+# Build the solution
+dotnet build Aura.sln
+
+# Run unit tests (84 tests)
+dotnet test Aura.Tests/Aura.Tests.csproj
+
+# Run E2E tests (8 tests)
+dotnet test Aura.E2E/Aura.E2E.csproj
+
+# Build for release
+dotnet build Aura.sln --configuration Release
+```
+
+### Dependency Management
+
+The `manifest.json` file contains all downloadable dependencies with SHA-256 checksums:
+- **FFmpeg 6.0** (required) - Video processing binaries
+- **Ollama** (optional) - Local LLM runtime
+- **Stable Diffusion WebUI** (optional, NVIDIA-only) - Local image generation
+- **CC0 Asset Packs** (optional) - Free stock images and music
+
+All downloads are verified using SHA-256 checksums before installation.
 
 ---
 
