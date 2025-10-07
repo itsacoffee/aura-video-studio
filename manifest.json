@@ -1,0 +1,116 @@
+{
+  "components": [
+    {
+      "name": "FFmpeg",
+      "version": "6.0",
+      "isRequired": true,
+      "files": [
+        {
+          "filename": "ffmpeg.exe",
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-win64-gpl-6.0.zip",
+          "sha256": "e25bfb9fc6986e5e42b0bcff64c20433171125243c5ebde1bbee29a4637434a9",
+          "extractPath": "bin/ffmpeg.exe",
+          "sizeBytes": 83558400
+        },
+        {
+          "filename": "ffprobe.exe",
+          "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-win64-gpl-6.0.zip",
+          "sha256": "e25bfb9fc6986e5e42b0bcff64c20433171125243c5ebde1bbee29a4637434a9",
+          "extractPath": "bin/ffprobe.exe",
+          "sizeBytes": 83558400
+        }
+      ]
+    },
+    {
+      "name": "Ollama",
+      "version": "0.1.19",
+      "isRequired": false,
+      "files": [
+        {
+          "filename": "ollama-windows-amd64.zip",
+          "url": "https://github.com/ollama/ollama/releases/download/v0.1.19/ollama-windows-amd64.zip",
+          "sha256": "placeholder_sha256_for_ollama",
+          "extractPath": "",
+          "sizeBytes": 524288000
+        }
+      ]
+    },
+    {
+      "name": "OllamaModel",
+      "version": "llama3.1:8b-q4_k_m",
+      "isRequired": false,
+      "files": [
+        {
+          "filename": "llama3.1-8b-q4_k_m.gguf",
+          "url": "https://ollama.com/library/llama3.1:8b-q4_k_m",
+          "sha256": "placeholder_sha256_for_model",
+          "extractPath": "",
+          "sizeBytes": 4700000000
+        }
+      ]
+    },
+    {
+      "name": "StableDiffusion",
+      "version": "1.5.0",
+      "isRequired": false,
+      "files": [
+        {
+          "filename": "stable-diffusion-webui.zip",
+          "url": "https://github.com/AUTOMATIC1111/stable-diffusion-webui/archive/refs/heads/master.zip",
+          "sha256": "placeholder_sha256_for_sd_webui",
+          "extractPath": "",
+          "sizeBytes": 52428800
+        },
+        {
+          "filename": "sd-v1-5.safetensors",
+          "url": "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors",
+          "sha256": "placeholder_sha256_for_sd15_model",
+          "extractPath": "models/Stable-diffusion/",
+          "sizeBytes": 4265380512
+        }
+      ]
+    },
+    {
+      "name": "StableDiffusionXL",
+      "version": "1.0",
+      "isRequired": false,
+      "files": [
+        {
+          "filename": "sdxl-base-1.0.safetensors",
+          "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors",
+          "sha256": "placeholder_sha256_for_sdxl_model",
+          "extractPath": "models/Stable-diffusion/",
+          "sizeBytes": 6938078321
+        }
+      ]
+    },
+    {
+      "name": "CC0StockPack",
+      "version": "1.0",
+      "isRequired": false,
+      "files": [
+        {
+          "filename": "cc0-stock-images.zip",
+          "url": "https://example.com/cc0-stock-images.zip",
+          "sha256": "placeholder_sha256_for_stock_pack",
+          "extractPath": "Assets/Stock/",
+          "sizeBytes": 1073741824
+        }
+      ]
+    },
+    {
+      "name": "CC0MusicPack",
+      "version": "1.0",
+      "isRequired": false,
+      "files": [
+        {
+          "filename": "cc0-music-pack.zip",
+          "url": "https://example.com/cc0-music-pack.zip",
+          "sha256": "placeholder_sha256_for_music_pack",
+          "extractPath": "Assets/Music/",
+          "sizeBytes": 536870912
+        }
+      ]
+    }
+  ]
+}
