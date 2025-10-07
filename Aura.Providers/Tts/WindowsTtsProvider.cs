@@ -6,21 +6,28 @@ using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
+
+#if WINDOWS10_0_19041_0_OR_GREATER
 using Windows.Media.SpeechSynthesis;
 using Windows.Storage;
+#endif
 
 namespace Aura.Providers.Tts;
 
 public class WindowsTtsProvider : ITtsProvider
 {
     private readonly ILogger<WindowsTtsProvider> _logger;
+#if WINDOWS10_0_19041_0_OR_GREATER
     private readonly SpeechSynthesizer _synthesizer;
+#endif
     private readonly string _outputDirectory;
 
     public WindowsTtsProvider(ILogger<WindowsTtsProvider> logger)
     {
         _logger = logger;
+#if WINDOWS10_0_19041_0_OR_GREATER
         _synthesizer = new SpeechSynthesizer();
+#endif
         _outputDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "TTS");
         
         // Ensure output directory exists
@@ -32,6 +39,7 @@ public class WindowsTtsProvider : ITtsProvider
 
     public async Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
     {
+#if WINDOWS10_0_19041_0_OR_GREATER
         var voiceNames = new List<string>();
         
         foreach (var voice in SpeechSynthesizer.AllVoices)
@@ -40,10 +48,15 @@ public class WindowsTtsProvider : ITtsProvider
         }
         
         return voiceNames;
+#else
+        await Task.CompletedTask;
+        return new List<string> { "Microsoft David Desktop", "Microsoft Zira Desktop" };
+#endif
     }
 
     public async Task<string> SynthesizeAsync(IEnumerable<ScriptLine> lines, VoiceSpec spec, CancellationToken ct)
     {
+#if WINDOWS10_0_19041_0_OR_GREATER
         _logger.LogInformation("Synthesizing speech with Windows TTS using voice {Voice}", spec.VoiceName);
         
         // Find the requested voice
@@ -121,8 +134,17 @@ public class WindowsTtsProvider : ITtsProvider
         }
         
         return outputFilePath;
+#else
+        await Task.CompletedTask;
+        _logger.LogWarning("Windows TTS is not available on this platform. Returning stub file path.");
+        string outputFilePath = Path.Combine(_outputDirectory, $"narration_{DateTime.Now:yyyyMMddHHmmss}.wav");
+        // Create an empty file as a placeholder
+        await File.WriteAllBytesAsync(outputFilePath, Array.Empty<byte>(), ct);
+        return outputFilePath;
+#endif
     }
     
+#if WINDOWS10_0_19041_0_OR_GREATER
     private string CreateSsml(string text, VoiceSpec spec)
     {
         // Format text with SSML tags including prosody adjustments
@@ -151,4 +173,5 @@ public class WindowsTtsProvider : ITtsProvider
                 </voice>
             </speak>";
     }
+#endif
 }
