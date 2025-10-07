@@ -1,0 +1,209 @@
+<Page
+    x:Class="Aura.App.Views.SettingsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Aura.App.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer>
+        <StackPanel Padding="24" MaxWidth="900" Spacing="24">
+            
+            <!-- Header -->
+            <TextBlock 
+                Text="Settings" 
+                Style="{ThemeResource TitleTextBlockStyle}"
+                Margin="0,0,0,12"/>
+            
+            <!-- Provider Profile -->
+            <Expander Header="Provider Profile" IsExpanded="True">
+                <StackPanel Spacing="12" Padding="12">
+                    <ComboBox 
+                        Header="Active Profile"
+                        Width="400"
+                        HorizontalAlignment="Left"
+                        SelectedIndex="1">
+                        <ComboBoxItem Content="Free-Only (No API keys)" Tag="free"/>
+                        <ComboBoxItem Content="Balanced Mix (Prefer Pro, fallback to Free)" Tag="balanced"/>
+                        <ComboBoxItem Content="Pro-Max (Requires all Pro API keys)" Tag="pro"/>
+                    </ComboBox>
+                    
+                    <TextBlock 
+                        Text="Controls which providers are used at each stage (Script, TTS, Visuals, Upload)"
+                        TextWrapping="Wrap"
+                        Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Content="Save Profile"/>
+                        <Button Content="Import Profile"/>
+                        <Button Content="Export Profile"/>
+                    </StackPanel>
+                </StackPanel>
+            </Expander>
+            
+            <!-- API Keys -->
+            <Expander Header="API Keys (DPAPI-encrypted)" IsExpanded="False">
+                <StackPanel Spacing="16" Padding="12">
+                    
+                    <!-- LLM Providers -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="LLM Providers" FontWeight="SemiBold"/>
+                        
+                        <PasswordBox 
+                            Header="OpenAI API Key"
+                            PlaceholderText="sk-..."
+                            Width="400"
+                            HorizontalAlignment="Left"/>
+                        
+                        <PasswordBox 
+                            Header="Azure OpenAI API Key"
+                            PlaceholderText="..."
+                            Width="400"
+                            HorizontalAlignment="Left"/>
+                        
+                        <PasswordBox 
+                            Header="Google Gemini API Key"
+                            PlaceholderText="..."
+                            Width="400"
+                            HorizontalAlignment="Left"/>
+                    </StackPanel>
+                    
+                    <!-- TTS Providers -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="TTS Providers" FontWeight="SemiBold"/>
+                        
+                        <PasswordBox 
+                            Header="ElevenLabs API Key"
+                            PlaceholderText="..."
+                            Width="400"
+                            HorizontalAlignment="Left"/>
+                        
+                        <PasswordBox 
+                            Header="PlayHT API Key"
+                            PlaceholderText="..."
+                            Width="400"
+                            HorizontalAlignment="Left"/>
+                    </StackPanel>
+                    
+                    <!-- Stock/Visual Providers -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Stock Providers (Optional)" FontWeight="SemiBold"/>
+                        
+                        <PasswordBox 
+                            Header="Pixabay API Key"
+                            PlaceholderText="Optional"
+                            Width="400"
+                            HorizontalAlignment="Left"/>
+                        
+                        <PasswordBox 
+                            Header="Pexels API Key"
+                            PlaceholderText="Optional"
+                            Width="400"
+                            HorizontalAlignment="Left"/>
+                        
+                        <PasswordBox 
+                            Header="Unsplash API Key"
+                            PlaceholderText="Optional"
+                            Width="400"
+                            HorizontalAlignment="Left"/>
+                    </StackPanel>
+                    
+                    <Button Content="Save API Keys" Style="{ThemeResource AccentButtonStyle}"/>
+                </StackPanel>
+            </Expander>
+            
+            <!-- Brand Kit -->
+            <Expander Header="Brand Kit" IsExpanded="False">
+                <StackPanel Spacing="12" Padding="12">
+                    <ColorPicker 
+                        Header="Primary Color"
+                        Color="#6750A4"
+                        ColorSpectrumShape="Ring"
+                        IsAlphaEnabled="False"/>
+                    
+                    <ColorPicker 
+                        Header="Secondary Color"
+                        Color="#03DAC6"
+                        ColorSpectrumShape="Ring"
+                        IsAlphaEnabled="False"/>
+                    
+                    <ComboBox 
+                        Header="Font"
+                        Width="300"
+                        HorizontalAlignment="Left"
+                        SelectedIndex="0">
+                        <x:String>Segoe UI</x:String>
+                        <x:String>Arial</x:String>
+                        <x:String>Helvetica</x:String>
+                        <x:String>Open Sans</x:String>
+                    </ComboBox>
+                    
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Watermark/Logo"/>
+                        <Button Content="Upload Watermark"/>
+                    </StackPanel>
+                    
+                    <Button Content="Save Brand Kit"/>
+                </StackPanel>
+            </Expander>
+            
+            <!-- Paths and Locations -->
+            <Expander Header="Paths and Locations" IsExpanded="False">
+                <StackPanel Spacing="12" Padding="12">
+                    <TextBox 
+                        Header="Downloads Folder"
+                        Text="C:\Aura\Downloads"
+                        IsReadOnly="True"/>
+                    
+                    <TextBox 
+                        Header="Cache Folder"
+                        Text="C:\Aura\Cache"
+                        IsReadOnly="True"/>
+                    
+                    <TextBox 
+                        Header="Projects Folder"
+                        Text="C:\Aura\Projects"
+                        IsReadOnly="True"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Content="Open Downloads Folder"/>
+                        <Button Content="Clear Cache"/>
+                    </StackPanel>
+                </StackPanel>
+            </Expander>
+            
+            <!-- Appearance -->
+            <Expander Header="Appearance" IsExpanded="False">
+                <StackPanel Spacing="12" Padding="12">
+                    <ComboBox 
+                        Header="Theme"
+                        Width="300"
+                        HorizontalAlignment="Left"
+                        SelectedIndex="0">
+                        <ComboBoxItem Content="System default"/>
+                        <ComboBoxItem Content="Light"/>
+                        <ComboBoxItem Content="Dark"/>
+                        <ComboBoxItem Content="High contrast"/>
+                    </ComboBox>
+                    
+                    <CheckBox Content="Use Mica background effect" IsChecked="True"/>
+                    <CheckBox Content="Show status bar" IsChecked="True"/>
+                </StackPanel>
+            </Expander>
+            
+            <!-- Advanced -->
+            <Expander Header="Advanced" IsExpanded="False">
+                <StackPanel Spacing="12" Padding="12">
+                    <CheckBox Content="Offline mode (block network fetch)" IsChecked="False"/>
+                    <CheckBox Content="Enable telemetry" IsChecked="False"/>
+                    <CheckBox Content="Show advanced options by default" IsChecked="False"/>
+                    
+                    <HyperlinkButton Content="View Logs"/>
+                    <HyperlinkButton Content="Run Hardware Probes"/>
+                </StackPanel>
+            </Expander>
+            
+        </StackPanel>
+    </ScrollViewer>
+</Page>

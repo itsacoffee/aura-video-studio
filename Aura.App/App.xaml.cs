@@ -118,6 +118,14 @@ namespace Aura.App
                     services.AddTransient<ViewModels.SettingsViewModel>();
                     services.AddTransient<ViewModels.HardwareProfileViewModel>();
                     
+                    // Views
+                    services.AddTransient<Views.CreateView>();
+                    services.AddTransient<Views.StoryboardView>();
+                    services.AddTransient<Views.RenderView>();
+                    services.AddTransient<Views.PublishView>();
+                    services.AddTransient<Views.SettingsView>();
+                    services.AddTransient<Views.HardwareProfileView>();
+                    
                     // Main window
                     services.AddSingleton<MainWindow>();
                 })
