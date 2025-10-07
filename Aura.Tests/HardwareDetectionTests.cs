@@ -148,4 +148,158 @@ public class HardwareDetectionTests
         
         Assert.False(enableLocalDiffusion);
     }
+    
+    [Fact]
+    public void ManualOverrides_Should_ClampRAMToSpecRange()
+    {
+        // Spec: RAM (8-256 GB)
+        var detector = new HardwareDetector(_logger);
+        var detected = new SystemProfile
+        {
+            AutoDetect = true,
+            LogicalCores = 8,
+            PhysicalCores = 4,
+            RamGB = 16,
+            Gpu = null,
+            Tier = HardwareTier.D,
+            EnableNVENC = false,
+            EnableSD = false,
+            OfflineOnly = false
+        };
+        
+        // Test lower bound
+        var overridesLow = new HardwareOverrides { ManualRamGB = 4 };
+        var profileLow = detector.ApplyManualOverrides(detected, overridesLow);
+        Assert.Equal(8, profileLow.RamGB); // Should clamp to minimum 8 GB
+        
+        // Test upper bound
+        var overridesHigh = new HardwareOverrides { ManualRamGB = 512 };
+        var profileHigh = detector.ApplyManualOverrides(detected, overridesHigh);
+        Assert.Equal(256, profileHigh.RamGB); // Should clamp to maximum 256 GB
+        
+        // Test valid range
+        var overridesValid = new HardwareOverrides { ManualRamGB = 32 };
+        var profileValid = detector.ApplyManualOverrides(detected, overridesValid);
+        Assert.Equal(32, profileValid.RamGB);
+    }
+    
+    [Fact]
+    public void ManualOverrides_Should_ClampCoresToSpecRange()
+    {
+        // Spec: cores (2-32+ for physical, 2-64 for logical)
+        var detector = new HardwareDetector(_logger);
+        var detected = new SystemProfile
+        {
+            AutoDetect = true,
+            LogicalCores = 8,
+            PhysicalCores = 4,
+            RamGB = 16,
+            Gpu = null,
+            Tier = HardwareTier.D,
+            EnableNVENC = false,
+            EnableSD = false,
+            OfflineOnly = false
+        };
+        
+        // Test logical cores lower bound
+        var overridesLow = new HardwareOverrides { ManualLogicalCores = 1 };
+        var profileLow = detector.ApplyManualOverrides(detected, overridesLow);
+        Assert.Equal(2, profileLow.LogicalCores); // Should clamp to minimum 2
+        
+        // Test logical cores upper bound
+        var overridesHigh = new HardwareOverrides { ManualLogicalCores = 128 };
+        var profileHigh = detector.ApplyManualOverrides(detected, overridesHigh);
+        Assert.Equal(64, profileHigh.LogicalCores); // Should clamp to maximum 64
+        
+        // Test physical cores
+        var overridesPhysical = new HardwareOverrides { ManualPhysicalCores = 16 };
+        var profilePhysical = detector.ApplyManualOverrides(detected, overridesPhysical);
+        Assert.Equal(16, profilePhysical.PhysicalCores);
+    }
+    
+    [Theory]
+    [InlineData("NVIDIA RTX 4090", "NVIDIA", 24, "40")]
+    [InlineData("NVIDIA RTX 3080", "NVIDIA", 10, "30")]
+    [InlineData("AMD RX 7900", "AMD", 24, "7000")]
+    [InlineData("Intel Arc A770", "Intel", 16, "Arc")]
+    public void ManualOverrides_Should_ParseGpuPresets(string preset, string expectedVendor, int expectedVram, string expectedSeries)
+    {
+        // Spec GPU presets: NVIDIA 50/40/30/20/16/10 series, AMD RX 7000/6000/5000, Intel Arc
+        var detector = new HardwareDetector(_logger);
+        var detected = new SystemProfile
+        {
+            AutoDetect = true,
+            LogicalCores = 8,
+            PhysicalCores = 4,
+            RamGB = 16,
+            Gpu = null,
+            Tier = HardwareTier.D,
+            EnableNVENC = false,
+            EnableSD = false,
+            OfflineOnly = false
+        };
+        
+        var overrides = new HardwareOverrides { ManualGpuPreset = preset };
+        var profile = detector.ApplyManualOverrides(detected, overrides);
+        
+        Assert.NotNull(profile.Gpu);
+        Assert.Equal(expectedVendor, profile.Gpu.Vendor);
+        Assert.Equal(expectedVram, profile.Gpu.VramGB);
+        Assert.Equal(expectedSeries, profile.Gpu.Series);
+        Assert.False(profile.AutoDetect); // Should be marked as manually overridden
+    }
+    
+    [Fact]
+    public void ManualOverrides_Should_RespectOfflineMode()
+    {
+        // Spec: Offline toggle should force local assets/providers only
+        var detector = new HardwareDetector(_logger);
+        var detected = new SystemProfile
+        {
+            AutoDetect = true,
+            LogicalCores = 8,
+            PhysicalCores = 4,
+            RamGB = 16,
+            Gpu = null,
+            Tier = HardwareTier.D,
+            EnableNVENC = false,
+            EnableSD = false,
+            OfflineOnly = false
+        };
+        
+        var overrides = new HardwareOverrides { ForceOfflineMode = true };
+        var profile = detector.ApplyManualOverrides(detected, overrides);
+        
+        Assert.True(profile.OfflineOnly);
+    }
+    
+    [Fact]
+    public void ManualOverrides_Should_AllowForceEnableFeatures()
+    {
+        // Test forcing NVENC and SD even if detection says otherwise
+        var detector = new HardwareDetector(_logger);
+        var detected = new SystemProfile
+        {
+            AutoDetect = true,
+            LogicalCores = 8,
+            PhysicalCores = 4,
+            RamGB = 16,
+            Gpu = new GpuInfo("AMD", "RX 6800", 16, "6000"), // Non-NVIDIA GPU
+            Tier = HardwareTier.D,
+            EnableNVENC = false,
+            EnableSD = false,
+            OfflineOnly = false
+        };
+        
+        var overrides = new HardwareOverrides 
+        { 
+            ForceEnableNVENC = true,
+            ForceEnableSD = true 
+        };
+        var profile = detector.ApplyManualOverrides(detected, overrides);
+        
+        // User can force enable these features, but they should know what they're doing
+        Assert.True(profile.EnableNVENC);
+        Assert.True(profile.EnableSD);
+    }
 }

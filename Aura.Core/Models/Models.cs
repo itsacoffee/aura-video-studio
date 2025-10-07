@@ -32,6 +32,24 @@ public record SystemProfile
     public bool EnableNVENC { get; init; }
     public bool EnableSD { get; init; }
     public bool OfflineOnly { get; init; }
+    
+    // Manual overrides (per spec: RAM 8-256 GB, cores 2-32+, GPU presets)
+    public HardwareOverrides? Overrides { get; init; }
+}
+
+/// <summary>
+/// Manual hardware overrides for users who want to customize detection results
+/// Spec: RAM (8-256 GB), cores (2-32+), GPU presets (NVIDIA 50/40/30/20/16/10 series, AMD RX, Intel Arc)
+/// </summary>
+public record HardwareOverrides
+{
+    public int? ManualRamGB { get; init; }  // 8-256 GB
+    public int? ManualLogicalCores { get; init; }  // 2-32+
+    public int? ManualPhysicalCores { get; init; }  // 2-32+
+    public string? ManualGpuPreset { get; init; }  // e.g., "NVIDIA RTX 3080", "AMD RX 6800", "Intel Arc A770"
+    public bool? ForceEnableNVENC { get; init; }
+    public bool? ForceEnableSD { get; init; }
+    public bool? ForceOfflineMode { get; init; }
 }
 
 public record GpuInfo(string Vendor, string Model, int VramGB, string? Series);
