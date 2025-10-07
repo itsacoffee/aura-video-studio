@@ -5,6 +5,8 @@ using System;
 using System.Threading.Tasks;
 using Aura.Core.Hardware;
 using Microsoft.Extensions.Logging;
+using Aura.App.Views;
+using Aura.App.ViewModels;
 
 namespace Aura.App
 {
@@ -44,6 +46,54 @@ namespace Aura.App
             
             // Navigate to the create page by default
             NavView.SelectedItem = NavView.MenuItems[0];
+            NavigateToPage("create");
+        }
+        
+        private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+        {
+            if (args.IsSettingsSelected)
+            {
+                NavigateToPage("settings");
+            }
+            else if (args.SelectedItem is NavigationViewItem item)
+            {
+                string tag = item.Tag?.ToString() ?? "";
+                NavigateToPage(tag);
+            }
+        }
+        
+        private void NavigateToPage(string tag)
+        {
+            Type pageType = tag.ToLowerInvariant() switch
+            {
+                "create" => typeof(CreateView),
+                "storyboard" => typeof(StoryboardView),
+                "render" => typeof(RenderView),
+                "publish" => typeof(PublishView),
+                "library" => null, // To be implemented
+                "hardware" => typeof(HardwareProfileView),
+                "settings" => typeof(SettingsView),
+                _ => null
+            };
+            
+            if (pageType != null)
+            {
+                try
+                {
+                    // Create the page with DI
+                    var page = ActivatorUtilities.CreateInstance(_serviceProvider, pageType) as Page;
+                    if (page != null)
+                    {
+                        ContentFrame.Content = page;
+                        StatusText.Text = $"Navigated to {tag}";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to navigate to {Tag}", tag);
+                    StatusText.Text = $"Error navigating to {tag}";
+                }
+            }
         }
         
         private async Task CheckFirstRunAsync()
@@ -85,4 +135,9 @@ namespace Aura.App
             }
             catch (Exception ex)
             {
-                _logger.
+                _logger.LogError(ex, "Error during first-run hardware detection");
+                StatusText.Text = "Hardware detection failed";
+            }
+        }
+    }
+}

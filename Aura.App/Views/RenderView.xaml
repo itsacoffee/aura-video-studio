@@ -1,0 +1,237 @@
+<Page
+    x:Class="Aura.App.Views.RenderView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Aura.App.Views"
+    xmlns:viewmodels="using:Aura.App.ViewModels"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer>
+        <StackPanel Padding="24" MaxWidth="1200" Spacing="24">
+            
+            <!-- Header -->
+            <TextBlock 
+                Text="Render Video" 
+                Style="{ThemeResource TitleTextBlockStyle}"
+                Margin="0,0,0,12"/>
+            
+            <!-- Preset Selection -->
+            <StackPanel Spacing="12">
+                <ComboBox 
+                    Header="Render Preset"
+                    SelectedItem="{x:Bind ViewModel.SelectedPreset, Mode=TwoWay}"
+                    Width="400"
+                    HorizontalAlignment="Left">
+                    <x:String>YouTube 1080p</x:String>
+                    <x:String>YouTube 4K</x:String>
+                    <x:String>YouTube Shorts</x:String>
+                    <x:String>YouTube 1440p</x:String>
+                    <x:String>YouTube 720p</x:String>
+                    <x:String>Instagram Square</x:String>
+                    <x:String>Custom</x:String>
+                </ComboBox>
+                
+                <TextBlock 
+                    Text="Common presets optimized for various platforms"
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                    FontSize="12"/>
+            </StackPanel>
+            
+            <!-- Resolution and Quality -->
+            <Expander Header="Resolution and Quality" IsExpanded="True">
+                <StackPanel Spacing="12" Padding="12">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <NumberBox 
+                            Header="Width"
+                            Value="{x:Bind ViewModel.Resolution.Width, Mode=OneWay}"
+                            Minimum="640"
+                            Maximum="7680"
+                            SpinButtonPlacementMode="Inline"
+                            Width="150"/>
+                        
+                        <NumberBox 
+                            Header="Height"
+                            Value="{x:Bind ViewModel.Resolution.Height, Mode=OneWay}"
+                            Minimum="360"
+                            Maximum="4320"
+                            SpinButtonPlacementMode="Inline"
+                            Width="150"/>
+                    </StackPanel>
+                    
+                    <ComboBox 
+                        Header="Container"
+                        SelectedItem="{x:Bind ViewModel.Container, Mode=TwoWay}"
+                        Width="200"
+                        HorizontalAlignment="Left">
+                        <x:String>mp4</x:String>
+                        <x:String>mkv</x:String>
+                        <x:String>mov</x:String>
+                    </ComboBox>
+                    
+                    <NumberBox 
+                        Header="Video Bitrate (kbps)"
+                        Value="{x:Bind ViewModel.VideoBitrateK, Mode=TwoWay}"
+                        Minimum="1000"
+                        Maximum="100000"
+                        SpinButtonPlacementMode="Inline"
+                        Width="200"/>
+                    
+                    <NumberBox 
+                        Header="Audio Bitrate (kbps)"
+                        Value="{x:Bind ViewModel.AudioBitrateK, Mode=TwoWay}"
+                        Minimum="96"
+                        Maximum="512"
+                        SpinButtonPlacementMode="Inline"
+                        Width="200"/>
+                </StackPanel>
+            </Expander>
+            
+            <!-- Encoder Settings -->
+            <Expander Header="Encoder Settings" IsExpanded="False">
+                <StackPanel Spacing="12" Padding="12">
+                    <ComboBox 
+                        Header="Video Codec"
+                        Width="300"
+                        HorizontalAlignment="Left"
+                        SelectedIndex="0">
+                        <ComboBoxItem Content="H.264 (Best compatibility)" Tag="h264"/>
+                        <ComboBoxItem Content="HEVC/H.265 (Smaller files)" Tag="hevc"/>
+                        <ComboBoxItem Content="AV1 (Newest, RTX 40/50 only)" Tag="av1"/>
+                    </ComboBox>
+                    
+                    <ComboBox 
+                        Header="Encoder"
+                        Width="300"
+                        HorizontalAlignment="Left"
+                        SelectedIndex="0">
+                        <ComboBoxItem Content="Auto (Recommended)" Tag="auto"/>
+                        <ComboBoxItem Content="NVENC (NVIDIA)" Tag="nvenc"/>
+                        <ComboBoxItem Content="AMF (AMD)" Tag="amf"/>
+                        <ComboBoxItem Content="QuickSync (Intel)" Tag="qsv"/>
+                        <ComboBoxItem Content="x264 (Software)" Tag="x264"/>
+                    </ComboBox>
+                    
+                    <Slider 
+                        Header="Quality vs Speed (Higher = Better quality, slower)"
+                        Minimum="0" 
+                        Maximum="100" 
+                        Value="75"
+                        StepFrequency="5"
+                        TickFrequency="25"
+                        TickPlacement="BottomRight"/>
+                    
+                    <ComboBox 
+                        Header="Framerate (fps)"
+                        Width="200"
+                        HorizontalAlignment="Left"
+                        SelectedIndex="3">
+                        <ComboBoxItem Content="23.976" Tag="23.976"/>
+                        <ComboBoxItem Content="24" Tag="24"/>
+                        <ComboBoxItem Content="25" Tag="25"/>
+                        <ComboBoxItem Content="30" Tag="30"/>
+                        <ComboBoxItem Content="60" Tag="60"/>
+                    </ComboBox>
+                </StackPanel>
+            </Expander>
+            
+            <!-- Audio Settings -->
+            <Expander Header="Audio Settings" IsExpanded="False">
+                <StackPanel Spacing="12" Padding="12">
+                    <ComboBox 
+                        Header="Audio Codec"
+                        Width="300"
+                        HorizontalAlignment="Left"
+                        SelectedIndex="0">
+                        <ComboBoxItem Content="AAC (Recommended)" Tag="aac"/>
+                        <ComboBoxItem Content="Opus" Tag="opus"/>
+                    </ComboBox>
+                    
+                    <ComboBox 
+                        Header="Sample Rate"
+                        Width="200"
+                        HorizontalAlignment="Left"
+                        SelectedIndex="1">
+                        <ComboBoxItem Content="44.1 kHz" Tag="44100"/>
+                        <ComboBoxItem Content="48 kHz" Tag="48000"/>
+                    </ComboBox>
+                    
+                    <ComboBox 
+                        Header="Target Loudness"
+                        Width="300"
+                        HorizontalAlignment="Left"
+                        SelectedIndex="0">
+                        <ComboBoxItem Content="-14 LUFS (YouTube standard)" Tag="-14"/>
+                        <ComboBoxItem Content="-16 LUFS (Voice-only)" Tag="-16"/>
+                        <ComboBoxItem Content="-12 LUFS (Music-forward)" Tag="-12"/>
+                    </ComboBox>
+                    
+                    <CheckBox Content="Enable music ducking" IsChecked="True"/>
+                    <CheckBox Content="Apply de-esser" IsChecked="True"/>
+                    <CheckBox Content="Apply compressor" IsChecked="True"/>
+                </StackPanel>
+            </Expander>
+            
+            <!-- Captions -->
+            <Expander Header="Captions and Subtitles" IsExpanded="False">
+                <StackPanel Spacing="12" Padding="12">
+                    <CheckBox Content="Generate SRT subtitles" IsChecked="True"/>
+                    <CheckBox Content="Generate VTT subtitles" IsChecked="True"/>
+                    <CheckBox Content="Burn-in captions (embed in video)" IsChecked="False"/>
+                    
+                    <ComboBox 
+                        Header="Caption Style"
+                        Width="300"
+                        HorizontalAlignment="Left"
+                        SelectedIndex="0"
+                        IsEnabled="False">
+                        <ComboBoxItem Content="Standard (White text, black bg)" Tag="standard"/>
+                        <ComboBoxItem Content="YouTube style" Tag="youtube"/>
+                        <ComboBoxItem Content="Custom" Tag="custom"/>
+                    </ComboBox>
+                </StackPanel>
+            </Expander>
+            
+            <!-- Render Progress -->
+            <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.IsRendering, Mode=OneWay}">
+                <TextBlock Text="Rendering..." Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                
+                <ProgressBar 
+                    Value="{x:Bind ViewModel.RenderProgress, Mode=OneWay}"
+                    ShowError="False"
+                    ShowPaused="False"/>
+                
+                <TextBlock 
+                    Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                
+                <TextBlock 
+                    Text="{x:Bind ViewModel.EstimatedTimeRemaining, Mode=OneWay, Converter={StaticResource TimeSpanFormatConverter}}"
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+            </StackPanel>
+            
+            <!-- Actions -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Button 
+                    Content="Start Render" 
+                    IsEnabled="{x:Bind ViewModel.IsRendering, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
+                    Style="{ThemeResource AccentButtonStyle}"/>
+                
+                <Button 
+                    Content="Cancel" 
+                    IsEnabled="{x:Bind ViewModel.IsRendering, Mode=OneWay}"/>
+                
+                <Button Content="Save Preset"/>
+            </StackPanel>
+            
+            <!-- Info -->
+            <InfoBar
+                Title="Encoder Detected"
+                Message="NVENC hardware encoder available. Render will be fast with good quality."
+                IsOpen="True"
+                Severity="Success"
+                IsClosable="True"/>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
