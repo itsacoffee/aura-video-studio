@@ -105,8 +105,10 @@ dotnet publish "$rootDir\Aura.Api\Aura.Api.csproj" `
     --self-contained `
     -o "$portableBuildDir\Api"
 
-# Copy Web UI
-Copy-Item "$rootDir\Aura.Web\dist\*" -Destination "$portableBuildDir\Web" -Recurse -Force
+# Copy Web UI to wwwroot folder inside the published API
+$wwwrootDir = Join-Path "$portableBuildDir\Api" "wwwroot"
+New-Item -ItemType Directory -Force -Path $wwwrootDir | Out-Null
+Copy-Item "$rootDir\Aura.Web\dist\*" -Destination $wwwrootDir -Recurse -Force
 
 # Copy FFmpeg
 Copy-Item "$rootDir\scripts\ffmpeg\*.exe" -Destination "$portableBuildDir\ffmpeg" -Force -ErrorAction SilentlyContinue
