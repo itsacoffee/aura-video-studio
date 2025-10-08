@@ -1,24 +1,64 @@
 # aura-video-studio
 
-## 🚀 Implementation Status
+## 🚀 Implementation Status - NOW WITH WEB-BASED ARCHITECTURE
 
-**Core Infrastructure: ✅ COMPLETE**
+**Core Infrastructure: ✅ COMPLETE**  
+**New Web-Based Architecture: ✅ IMPLEMENTED**
 
-This repository now contains a fully functional core implementation of Aura Video Studio with:
+This repository now contains:
 - ✅ 92 tests passing (100% pass rate)
-- ✅ ~5,000 lines of production code
+- ✅ ~5,000+ lines of production code
+- ✅ **Aura.Api** - ASP.NET Core backend with RESTful endpoints
+- ✅ **Aura.Web** - React + Vite + TypeScript + Fluent UI frontend
 - ✅ Complete hardware detection with NVIDIA-only SD gating
 - ✅ Provider system with free/pro mixing and automatic fallback
 - ✅ FFmpeg render pipeline with multi-encoder support
 - ✅ Audio processing with LUFS normalization
 - ✅ Subtitle generation (SRT/VTT)
-- ✅ E2E integration tests
-- ✅ GitHub Actions CI/CD workflow
+- ✅ **Split CI workflows** - Linux (build/test) + Windows (package)
+- ✅ **Packaging scripts** - MSIX, EXE installer, Portable ZIP
 - ✅ Dependency manifest with SHA-256 verification
+- ✅ SBOM generation and license attributions
 
-**See [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md) for detailed documentation.**
+## 📐 Architecture
 
-**Next Steps**: WinUI 3 UI implementation, MSIX packaging
+The project now implements a **web-based UI architecture** as specified:
+- **Aura.Core** - Business logic (.NET 8)
+- **Aura.Providers** - Provider implementations
+- **Aura.Api** - ASP.NET Core backend API (runs on http://127.0.0.1:5005)
+- **Aura.Web** - React + Fluent UI frontend (dev on port 5173)
+- **Aura.App** - WinUI 3 standalone app (coexists as alternative)
+- **Aura.Host.Win** - Windows shells with WebView2 (planned)
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for complete details.
+
+## 🚦 Quick Start
+
+### Development (Linux/Windows)
+```bash
+# Start API backend
+cd Aura.Api && dotnet run
+
+# In another terminal, start web UI
+cd Aura.Web && npm install && npm run dev
+
+# Open http://localhost:5173
+```
+
+### Building (Windows)
+```powershell
+# Build all distributions
+.\scripts\packaging\build-all.ps1
+
+# Output: MSIX, Setup EXE, Portable ZIP in artifacts/windows/
+```
+
+**See detailed documentation:**
+- [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md) - Original implementation details
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Complete architecture overview
+- [Aura.Api/README.md](./Aura.Api/README.md) - Backend API documentation
+- [Aura.Web/README.md](./Aura.Web/README.md) - Frontend UI documentation
+- [scripts/packaging/README.md](./scripts/packaging/README.md) - Packaging guide
 
 ---
 
