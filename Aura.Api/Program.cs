@@ -6,6 +6,7 @@ using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.FileProviders;
 using Serilog;
 using System.Text.Json;
 
@@ -60,6 +61,21 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+
+// Serve static files from wwwroot (must be before routing)
+var wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+if (Directory.Exists(wwwrootPath))
+{
+    Log.Information("Serving static files from: {Path}", wwwrootPath);
+    
+    app.UseDefaultFiles(); // Serve index.html as default file
+    app.UseStaticFiles();
+}
+else
+{
+    Log.Warning("wwwroot directory not found at: {Path}", wwwrootPath);
+    Log.Warning("Static file serving is disabled. Web UI will not be available.");
+}
 
 // Health check endpoint
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
@@ -428,6 +444,12 @@ app.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
 })
 .WithName("ApplyProfile")
 .WithOpenApi();
+
+// Fallback to index.html for client-side routing (must be after all API routes)
+if (Directory.Exists(wwwrootPath))
+{
+    app.MapFallbackToFile("index.html");
+}
 
 app.Run();
 
