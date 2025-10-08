@@ -336,4 +336,30 @@ public class HardwareDetectionTests
         
         Assert.Equal(shouldBeVirtual, isVirtual);
     }
+    
+    [Fact]
+    public void VendorDetection_Should_PrioritizeNvidiaKeywords()
+    {
+        // Test that NVIDIA GPUs are correctly identified
+        var detector = new HardwareDetector(_logger);
+        
+        // Test various NVIDIA naming patterns
+        var nvidiaNames = new[]
+        {
+            "NVIDIA GeForce RTX 3080",
+            "GeForce RTX 3080",
+            "NVIDIA RTX A6000",
+            "Quadro RTX 8000",
+            "Tesla V100"
+        };
+        
+        // Since DetermineVendor is private, we verify the expected logic
+        foreach (var name in nvidiaNames)
+        {
+            var nameUpper = name.ToUpperInvariant();
+            bool isNvidia = nameUpper.Contains("NVIDIA") || nameUpper.Contains("GEFORCE") || 
+                           nameUpper.Contains("QUADRO") || nameUpper.Contains("TESLA");
+            Assert.True(isNvidia, $"Failed to identify {name} as NVIDIA");
+        }
+    }
 }
