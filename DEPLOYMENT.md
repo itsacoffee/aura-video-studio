@@ -28,8 +28,10 @@ This document summarizes the implementation of the web-based architecture for Au
 - Integration with Aura.Core and Aura.Providers
 - Swagger/OpenAPI documentation
 - Error handling with ProblemDetails
+- ✅ Static file serving from wwwroot directory
+- ✅ Fallback routing for client-side React Router
 
-**Testing**: Builds successfully on Linux and Windows
+**Testing**: Builds successfully on Linux and Windows, serves Web UI correctly
 
 ### 2. Aura.Web - Frontend User Interface ✅
 
@@ -209,10 +211,11 @@ Legend:
 
 ### Portable ZIP (No Install)
 - **File**: `AuraVideoStudio_Portable_x64.zip`
-- **Shell**: WPF (planned) or direct API launch
-- **Installation**: Extract and run
+- **Shell**: Direct API launch with browser
+- **Installation**: Extract and run `Launch.bat`
 - **Portable**: No registry or system changes
-- **Includes**: Self-contained API, Web UI, FFmpeg, launcher script
+- **Includes**: Self-contained API with embedded Web UI (wwwroot), FFmpeg, launcher script
+- **Status**: ✅ Working - API serves static Web UI files
 
 ### Support Files
 - `checksums.txt` - SHA-256 hashes for all distributions
