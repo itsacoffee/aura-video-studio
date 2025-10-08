@@ -315,6 +315,7 @@ public class HardwareDetectionTests
     [InlineData("Intel UHD Graphics 630", false)]
     [InlineData("VNC Mirror Driver", true)]
     [InlineData("Splashtop Display", true)]
+    [InlineData("Virtual Desktop Monitor", true)]
     public void VirtualAdapter_Should_BeIdentifiedCorrectly(string adapterName, bool shouldBeVirtual)
     {
         // This test verifies that virtual/remote display adapters are correctly identified
@@ -325,7 +326,7 @@ public class HardwareDetectionTests
         
         var virtualKeywords = new[]
         {
-            "PARSEC", "VIRTUAL DISPLAY", "VIRTUAL ADAPTER", "REMOTE DISPLAY",
+            "PARSEC", "VIRTUAL DISPLAY", "VIRTUAL ADAPTER", "VIRTUAL DESKTOP", "VIRTUAL MONITOR", "REMOTE DISPLAY",
             "CITRIX", "TEAMVIEWER", "ANYDESK", "RDP",
             "MICROSOFT REMOTE DISPLAY", "MICROSOFT BASIC DISPLAY", "MICROSOFT BASIC RENDER",
             "VNC", "SPACEDESK", "DUET DISPLAY", "SPLASHTOP"

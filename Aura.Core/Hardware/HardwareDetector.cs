@@ -360,6 +360,8 @@ public class HardwareDetector
             "PARSEC",
             "VIRTUAL DISPLAY",
             "VIRTUAL ADAPTER",
+            "VIRTUAL DESKTOP",
+            "VIRTUAL MONITOR",
             "REMOTE DISPLAY",
             "CITRIX",
             "TEAMVIEWER",
