@@ -14,9 +14,34 @@ import {
   TableBody,
   TableCell,
   Spinner,
+  Badge,
 } from '@fluentui/react-components';
-import { CloudArrowDown24Regular } from '@fluentui/react-icons';
-import type { DownloadItem } from '../types';
+import { 
+  CloudArrowDown24Regular, 
+  CheckmarkCircle24Filled,
+  ErrorCircle24Filled,
+} from '@fluentui/react-icons';
+
+interface DependencyComponent {
+  name: string;
+  version: string;
+  isRequired: boolean;
+  files: Array<{
+    filename: string;
+    url: string;
+    sha256: string;
+    extractPath: string;
+    sizeBytes: number;
+  }>;
+}
+
+interface ComponentStatus {
+  [key: string]: {
+    isInstalled: boolean;
+    isInstalling: boolean;
+    error?: string;
+  };
+}
 
 const useStyles = makeStyles({
   container: {
@@ -26,12 +51,33 @@ const useStyles = makeStyles({
   header: {
     marginBottom: tokens.spacingVerticalXXL,
   },
+  subtitle: {
+    color: tokens.colorNeutralForeground3,
+    marginTop: tokens.spacingVerticalS,
+  },
+  card: {
+    padding: tokens.spacingVerticalXL,
+  },
+  tableContainer: {
+    marginTop: tokens.spacingVerticalL,
+  },
+  statusCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+  },
+  nameCell: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXXS,
+  },
 });
 
 export function DownloadsPage() {
   const styles = useStyles();
-  const [_manifest, _setManifest] = useState<any>(null);
+  const [manifest, setManifest] = useState<DependencyComponent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [componentStatus, setComponentStatus] = useState<ComponentStatus>({});
 
   useEffect(() => {
     fetchManifest();
@@ -41,8 +87,15 @@ export function DownloadsPage() {
     try {
       const response = await fetch('/api/downloads/manifest');
       if (response.ok) {
-        await response.json();
-        // Manifest loaded successfully
+        const data = await response.json();
+        setManifest(data.components || []);
+        
+        // Check installation status for each component
+        if (data.components) {
+          for (const component of data.components) {
+            checkComponentStatus(component.name);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching manifest:', error);
@@ -51,73 +104,191 @@ export function DownloadsPage() {
     }
   };
 
-  const mockItems: DownloadItem[] = [
-    {
-      name: 'FFmpeg',
-      version: '6.1',
-      url: 'https://github.com/BtbN/FFmpeg-Builds/releases',
-      sha256: 'abc123...',
-      sizeBytes: 89000000,
-      installPath: 'C:\\Aura\\ffmpeg\\bin',
-      required: true,
-    },
-    {
-      name: 'Ollama',
-      version: '0.1.20',
-      url: 'https://ollama.ai/download',
-      sha256: 'def456...',
-      sizeBytes: 450000000,
-      installPath: 'C:\\Aura\\ollama',
-      required: false,
-    },
-  ];
+  const checkComponentStatus = async (componentName: string) => {
+    try {
+      const response = await fetch(`/api/downloads/${componentName}/status`);
+      if (response.ok) {
+        const data = await response.json();
+        setComponentStatus(prev => ({
+          ...prev,
+          [componentName]: {
+            isInstalled: data.isInstalled,
+            isInstalling: false,
+          },
+        }));
+      }
+    } catch (error) {
+      console.error(`Error checking status for ${componentName}:`, error);
+    }
+  };
+
+  const installComponent = async (componentName: string) => {
+    try {
+      // Update status to installing
+      setComponentStatus(prev => ({
+        ...prev,
+        [componentName]: {
+          isInstalled: false,
+          isInstalling: true,
+        },
+      }));
+
+      const response = await fetch(`/api/downloads/${componentName}/install`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        // Update status to installed
+        setComponentStatus(prev => ({
+          ...prev,
+          [componentName]: {
+            isInstalled: true,
+            isInstalling: false,
+          },
+        }));
+      } else {
+        const errorData = await response.json();
+        setComponentStatus(prev => ({
+          ...prev,
+          [componentName]: {
+            isInstalled: false,
+            isInstalling: false,
+            error: errorData.message || 'Installation failed',
+          },
+        }));
+      }
+    } catch (error) {
+      console.error(`Error installing ${componentName}:`, error);
+      setComponentStatus(prev => ({
+        ...prev,
+        [componentName]: {
+          isInstalled: false,
+          isInstalling: false,
+          error: 'Network error',
+        },
+      }));
+    }
+  };
+
+  const getStatusDisplay = (componentName: string) => {
+    const status = componentStatus[componentName];
+    
+    if (!status) {
+      return <Spinner size="tiny" />;
+    }
+    
+    if (status.isInstalling) {
+      return (
+        <div className={styles.statusCell}>
+          <Spinner size="tiny" />
+          <Text>Installing...</Text>
+        </div>
+      );
+    }
+    
+    if (status.error) {
+      return (
+        <div className={styles.statusCell}>
+          <ErrorCircle24Filled color={tokens.colorPaletteRedForeground1} />
+          <Text>{status.error}</Text>
+        </div>
+      );
+    }
+    
+    if (status.isInstalled) {
+      return (
+        <div className={styles.statusCell}>
+          <CheckmarkCircle24Filled color={tokens.colorPaletteGreenForeground1} />
+          <Badge color="success" appearance="filled">Installed</Badge>
+        </div>
+      );
+    }
+    
+    return (
+      <Badge color="warning" appearance="outline">Not installed</Badge>
+    );
+  };
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <Title1>Download Center</Title1>
-        <Text>Manage dependencies and resources</Text>
+        <Text className={styles.subtitle}>
+          Manage dependencies and external tools required for video production
+        </Text>
       </div>
 
       {loading ? (
-        <Spinner label="Loading manifest..." />
+        <Card className={styles.card}>
+          <Spinner label="Loading dependencies..." />
+        </Card>
       ) : (
-        <Card>
-          <Title2>Available Downloads</Title2>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Version</TableHeaderCell>
-                <TableHeaderCell>Size</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>Actions</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockItems.map((item) => (
-                <TableRow key={item.name}>
-                  <TableCell>
-                    <Text weight="semibold">{item.name}</Text>
-                    {item.required && <Text> (Required)</Text>}
-                  </TableCell>
-                  <TableCell>{item.version}</TableCell>
-                  <TableCell>{(item.sizeBytes / 1024 / 1024).toFixed(1)} MB</TableCell>
-                  <TableCell>
-                    <Text>Not installed</Text>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="small"
-                      icon={<CloudArrowDown24Regular />}
-                    >
-                      Install
-                    </Button>
-                  </TableCell>
+        <Card className={styles.card}>
+          <Title2>Available Components</Title2>
+          <div className={styles.tableContainer}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHeaderCell>Component</TableHeaderCell>
+                  <TableHeaderCell>Version</TableHeaderCell>
+                  <TableHeaderCell>Size</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>Actions</TableHeaderCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {manifest.map((component) => {
+                  const totalSize = component.files.reduce((sum, file) => sum + file.sizeBytes, 0);
+                  const status = componentStatus[component.name];
+                  
+                  return (
+                    <TableRow key={component.name}>
+                      <TableCell>
+                        <div className={styles.nameCell}>
+                          <Text weight="semibold">{component.name}</Text>
+                          {component.isRequired && (
+                            <Badge color="danger" appearance="outline" size="small">
+                              Required
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Text>{component.version}</Text>
+                      </TableCell>
+                      <TableCell>
+                        <Text>{(totalSize / 1024 / 1024).toFixed(1)} MB</Text>
+                      </TableCell>
+                      <TableCell>
+                        {getStatusDisplay(component.name)}
+                      </TableCell>
+                      <TableCell>
+                        {status?.isInstalled ? (
+                          <Button
+                            size="small"
+                            appearance="subtle"
+                            disabled
+                          >
+                            Installed
+                          </Button>
+                        ) : (
+                          <Button
+                            size="small"
+                            appearance="primary"
+                            icon={<CloudArrowDown24Regular />}
+                            onClick={() => installComponent(component.name)}
+                            disabled={status?.isInstalling}
+                          >
+                            {status?.isInstalling ? 'Installing...' : 'Install'}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </Card>
       )}
     </div>

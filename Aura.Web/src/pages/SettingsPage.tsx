@@ -57,10 +57,21 @@ export function SettingsPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [offlineMode, setOfflineMode] = useState(false);
   const [settings, setSettings] = useState<any>({});
+  
+  // API Keys state
+  const [apiKeys, setApiKeys] = useState({
+    openai: '',
+    elevenlabs: '',
+    pexels: '',
+    stabilityai: '',
+  });
+  const [keysModified, setKeysModified] = useState(false);
+  const [savingKeys, setSavingKeys] = useState(false);
 
   useEffect(() => {
     fetchSettings();
     fetchProfiles();
+    fetchApiKeys();
   }, []);
 
   const fetchSettings = async () => {
@@ -88,6 +99,23 @@ export function SettingsPage() {
     }
   };
 
+  const fetchApiKeys = async () => {
+    try {
+      const response = await fetch('/api/apikeys/load');
+      if (response.ok) {
+        const data = await response.json();
+        setApiKeys({
+          openai: data.openai || '',
+          elevenlabs: data.elevenlabs || '',
+          pexels: data.pexels || '',
+          stabilityai: data.stabilityai || '',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching API keys:', error);
+    }
+  };
+
   const saveSettings = async () => {
     try {
       const response = await fetch('/api/settings/save', {
@@ -104,6 +132,33 @@ export function SettingsPage() {
     }
   };
 
+  const saveApiKeys = async () => {
+    setSavingKeys(true);
+    try {
+      const response = await fetch('/api/apikeys/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          openAiKey: apiKeys.openai,
+          elevenLabsKey: apiKeys.elevenlabs,
+          pexelsKey: apiKeys.pexels,
+          stabilityAiKey: apiKeys.stabilityai,
+        }),
+      });
+      if (response.ok) {
+        alert('API keys saved successfully');
+        setKeysModified(false);
+      } else {
+        alert('Error saving API keys');
+      }
+    } catch (error) {
+      console.error('Error saving API keys:', error);
+      alert('Error saving API keys');
+    } finally {
+      setSavingKeys(false);
+    }
+  };
+
   const applyProfile = async (profileName: string) => {
     try {
       const response = await fetch('/api/profiles/apply', {
@@ -117,6 +172,11 @@ export function SettingsPage() {
     } catch (error) {
       console.error('Error applying profile:', error);
     }
+  };
+
+  const updateApiKey = (key: keyof typeof apiKeys, value: string) => {
+    setApiKeys(prev => ({ ...prev, [key]: value }));
+    setKeysModified(true);
   };
 
   return (
@@ -190,19 +250,54 @@ export function SettingsPage() {
       {activeTab === 'apikeys' && (
         <Card className={styles.section}>
           <Title2>API Keys</Title2>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+            Configure API keys for external services. Keys are stored securely.
+          </Text>
           <div className={styles.form}>
-            <Field label="OpenAI API Key">
-              <Input type="password" placeholder="sk-..." />
+            <Field label="OpenAI API Key" hint="Required for GPT-based script generation">
+              <Input 
+                type="password" 
+                placeholder="sk-..." 
+                value={apiKeys.openai}
+                onChange={(e) => updateApiKey('openai', e.target.value)}
+              />
             </Field>
-            <Field label="ElevenLabs API Key">
-              <Input type="password" placeholder="..." />
+            <Field label="ElevenLabs API Key" hint="Required for high-quality voice synthesis">
+              <Input 
+                type="password" 
+                placeholder="..." 
+                value={apiKeys.elevenlabs}
+                onChange={(e) => updateApiKey('elevenlabs', e.target.value)}
+              />
             </Field>
-            <Field label="Pexels API Key">
-              <Input type="password" placeholder="..." />
+            <Field label="Pexels API Key" hint="Required for stock video and images">
+              <Input 
+                type="password" 
+                placeholder="..." 
+                value={apiKeys.pexels}
+                onChange={(e) => updateApiKey('pexels', e.target.value)}
+              />
             </Field>
-            <Text size={200}>
-              API keys are stored securely using DPAPI on Windows
-            </Text>
+            <Field label="Stability AI API Key" hint="Optional - for AI image generation">
+              <Input 
+                type="password" 
+                placeholder="..." 
+                value={apiKeys.stabilityai}
+                onChange={(e) => updateApiKey('stabilityai', e.target.value)}
+              />
+            </Field>
+            {keysModified && (
+              <Text size={200} style={{ color: tokens.colorPaletteYellowForeground1 }}>
+                ⚠️ You have unsaved changes
+              </Text>
+            )}
+            <Button 
+              appearance="primary" 
+              onClick={saveApiKeys}
+              disabled={!keysModified || savingKeys}
+            >
+              {savingKeys ? 'Saving...' : 'Save API Keys'}
+            </Button>
           </div>
         </Card>
       )}
