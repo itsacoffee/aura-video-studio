@@ -12,6 +12,7 @@ import {
   Field,
   Tab,
   TabList,
+  Slider,
 } from '@fluentui/react-components';
 import { Save24Regular } from '@fluentui/react-icons';
 import type { Profile } from '../types';
@@ -64,6 +65,10 @@ export function SettingsPage() {
   const [offlineMode, setOfflineMode] = useState(false);
   const [settings, setSettings] = useState<any>({});
   
+  // UI Settings state
+  const [uiScale, setUiScale] = useState(100);
+  const [compactMode, setCompactMode] = useState(false);
+  
   // API Keys state
   const [apiKeys, setApiKeys] = useState({
     openai: '',
@@ -80,6 +85,13 @@ export function SettingsPage() {
     fetchApiKeys();
   }, []);
 
+  // Apply UI scale on load
+  useEffect(() => {
+    if (uiScale !== 100) {
+      document.documentElement.style.fontSize = `${uiScale}%`;
+    }
+  }, [uiScale]);
+
   const fetchSettings = async () => {
     try {
       const response = await fetch('/api/settings/load');
@@ -87,6 +99,8 @@ export function SettingsPage() {
         const data = await response.json();
         setSettings(data);
         setOfflineMode(data.offlineMode || false);
+        setUiScale(data.uiScale || 100);
+        setCompactMode(data.compactMode || false);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -127,10 +141,17 @@ export function SettingsPage() {
       const response = await fetch('/api/settings/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...settings, offlineMode }),
+        body: JSON.stringify({ 
+          ...settings, 
+          offlineMode,
+          uiScale,
+          compactMode
+        }),
       });
       if (response.ok) {
         alert('Settings saved successfully');
+        // Apply UI scale by updating document root font size
+        document.documentElement.style.fontSize = `${uiScale}%`;
       }
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -200,6 +221,7 @@ export function SettingsPage() {
         onTabSelect={(_, data) => setActiveTab(data.value as string)}
       >
         <Tab value="system">System</Tab>
+        <Tab value="ui">UI</Tab>
         <Tab value="providers">Providers</Tab>
         <Tab value="apikeys">API Keys</Tab>
         <Tab value="privacy">Privacy</Tab>
@@ -233,6 +255,38 @@ export function SettingsPage() {
             >
               Run Hardware Probes
             </Button>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'ui' && (
+        <Card className={styles.section}>
+          <Title2>UI Customization</Title2>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+            Customize the appearance and scale of the user interface
+          </Text>
+          <div className={styles.form}>
+            <Field label={`UI Scale: ${uiScale}%`} hint="Adjust the overall size of the interface">
+              <Slider
+                min={75}
+                max={150}
+                step={5}
+                value={uiScale}
+                onChange={(_, data) => setUiScale(data.value)}
+              />
+            </Field>
+            <Field label="Compact Mode">
+              <Switch
+                checked={compactMode}
+                onChange={(_, data) => setCompactMode(data.checked)}
+              />
+              <Text size={200}>
+                {compactMode ? 'Enabled' : 'Disabled'} - Reduces spacing and padding for a more compact layout
+              </Text>
+            </Field>
+            <Text size={200} style={{ fontStyle: 'italic', color: tokens.colorNeutralForeground3 }}>
+              Note: Changes take effect after saving and refreshing the page
+            </Text>
           </div>
         </Card>
       )}

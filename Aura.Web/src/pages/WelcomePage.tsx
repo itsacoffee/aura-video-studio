@@ -25,11 +25,13 @@ const useStyles = makeStyles({
     marginBottom: tokens.spacingVerticalXXXL,
   },
   title: {
-    marginBottom: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalM,
+    display: 'block',
   },
   subtitle: {
     color: tokens.colorNeutralForeground2,
     marginBottom: tokens.spacingVerticalXL,
+    display: 'block',
   },
   actions: {
     display: 'flex',
@@ -48,6 +50,11 @@ const useStyles = makeStyles({
   },
   statusBadge: {
     marginLeft: tokens.spacingHorizontalS,
+  },
+  cardContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
   },
 });
 
@@ -147,19 +154,14 @@ export function WelcomePage() {
               loading ? (
                 <Spinner size="small" label="Detecting..." />
               ) : capabilities ? (
-                <>
+                <div className={styles.cardContent}>
                   <Text>Tier: {capabilities.tier}</Text>
-                  <br />
                   <Text>CPU: {capabilities.cpu.threads} threads</Text>
-                  <br />
                   <Text>RAM: {capabilities.ram.gb} GB</Text>
                   {capabilities.gpu && (
-                    <>
-                      <br />
-                      <Text>GPU: {capabilities.gpu.model} ({capabilities.gpu.vramGB} GB)</Text>
-                    </>
+                    <Text>GPU: {capabilities.gpu.model} ({capabilities.gpu.vramGB} GB)</Text>
                   )}
-                </>
+                </div>
               ) : (
                 <Text>Hardware detection failed</Text>
               )
@@ -174,13 +176,11 @@ export function WelcomePage() {
               loading ? (
                 <Spinner size="small" />
               ) : capabilities ? (
-                <>
+                <div className={styles.cardContent}>
                   <Text>NVENC: {capabilities.enableNVENC ? '✓ Yes' : '✗ No'}</Text>
-                  <br />
                   <Text>Stable Diffusion: {capabilities.enableSD ? '✓ Yes' : '✗ No'}</Text>
-                  <br />
                   <Text>Offline Mode: {capabilities.offlineOnly ? '✓ Active' : '✗ Inactive'}</Text>
-                </>
+                </div>
               ) : (
                 <Text>No capability data</Text>
               )

@@ -197,6 +197,13 @@ public class HardwareDetector
             {
                 string model = obj["Caption"]?.ToString() ?? "Unknown GPU";
                 
+                // Skip virtual display adapters
+                if (IsVirtualAdapter(model))
+                {
+                    _logger.LogInformation("Skipping virtual adapter: {Model}", model);
+                    continue;
+                }
+                
                 // AdapterRAM is not reliable, but we'll get a starting value
                 ulong adapterRam = 0;
                 try { adapterRam = Convert.ToUInt64(obj["AdapterRAM"]); } catch { }
@@ -341,6 +348,33 @@ public class HardwareDetector
         }
 
         return null;
+    }
+
+    private bool IsVirtualAdapter(string gpuName)
+    {
+        gpuName = gpuName.ToUpperInvariant();
+        
+        // List of known virtual/remote display adapter keywords
+        var virtualKeywords = new[]
+        {
+            "PARSEC",
+            "VIRTUAL DISPLAY",
+            "VIRTUAL ADAPTER",
+            "REMOTE DISPLAY",
+            "CITRIX",
+            "TEAMVIEWER",
+            "ANYDESK",
+            "RDP",
+            "MICROSOFT REMOTE DISPLAY",
+            "MICROSOFT BASIC DISPLAY",
+            "MICROSOFT BASIC RENDER",
+            "VNC",
+            "SPACEDESK",
+            "DUET DISPLAY",
+            "SPLASHTOP"
+        };
+        
+        return virtualKeywords.Any(keyword => gpuName.Contains(keyword));
     }
 
     private string DetermineVendor(string gpuName)
