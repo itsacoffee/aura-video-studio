@@ -1,0 +1,87 @@
+name: CI - Linux
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '20.x'
+
+jobs:
+  build-and-test-linux:
+    name: Build and Test (Linux)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: Aura.Web/package-lock.json
+        
+    - name: Restore .NET dependencies
+      run: dotnet restore
+      
+    - name: Build Aura.Core
+      run: dotnet build Aura.Core/Aura.Core.csproj --configuration Release --no-restore
+      
+    - name: Build Aura.Providers
+      run: dotnet build Aura.Providers/Aura.Providers.csproj --configuration Release --no-restore
+    
+    - name: Build Aura.Api
+      run: dotnet build Aura.Api/Aura.Api.csproj --configuration Release --no-restore
+    
+    - name: Build Aura.Cli
+      run: dotnet build Aura.Cli/Aura.Cli.csproj --configuration Release --no-restore
+      
+    - name: Build Aura.Tests
+      run: dotnet build Aura.Tests/Aura.Tests.csproj --configuration Release --no-restore
+      
+    - name: Run Unit Tests
+      run: dotnet test Aura.Tests/Aura.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=unit-tests.trx"
+      
+    - name: Install Web dependencies
+      working-directory: Aura.Web
+      run: npm ci || npm install
+      
+    - name: Build Web UI
+      working-directory: Aura.Web
+      run: npm run build
+      
+    - name: Start Aura.Api in background
+      run: |
+        cd Aura.Api
+        dotnet run --configuration Release &
+        echo "Waiting for API to start..."
+        sleep 10
+        curl -f http://127.0.0.1:5005/healthz || echo "API not ready yet"
+      
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-linux
+        path: |
+          **/TestResults/*.trx
+          
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts-linux
+        path: |
+          Aura.Core/bin/Release/
+          Aura.Api/bin/Release/
+          Aura.Web/dist/
