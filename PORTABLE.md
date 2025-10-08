@@ -6,12 +6,26 @@ The portable version of Aura Video Studio is a self-contained distribution that 
 
 ## What's Included
 
-- **Aura.Api.exe** - Backend API server (self-contained, no .NET installation required)
-- **wwwroot/** - Web UI files (React application)
-- **ffmpeg/** - FFmpeg binaries for video processing
-- **Launch.bat** - Launcher script to start the application
-- **README.md** - This file
-- **LICENSE** - License information
+After extracting the ZIP, you'll have this structure:
+
+```
+AuraVideoStudio_Portable_x64/
+├── Api/
+│   ├── Aura.Api.exe            ← Main executable
+│   ├── wwwroot/                 ← Web UI files (MUST be here!)
+│   │   ├── index.html
+│   │   └── assets/
+│   └── (DLLs and dependencies)
+├── ffmpeg/
+│   ├── ffmpeg.exe
+│   └── ffprobe.exe
+├── Launch.bat                   ← Easy launcher
+├── README.md                    ← This file
+├── appsettings.json            ← Configuration
+└── LICENSE
+```
+
+**Important:** The `wwwroot` folder MUST be inside the `Api` folder for the web UI to work!
 
 ## System Requirements
 
@@ -68,10 +82,23 @@ If the API fails to start:
 
 If the web UI doesn't load:
 
-1. Make sure the `wwwroot` folder exists inside the `Api` folder
-2. Check that all files were extracted from the ZIP
-3. Try a different web browser
-4. Clear your browser cache
+1. **Check the API console output**
+   - Look for: `[INF] Serving static files from: C:\path\to\Api\wwwroot`
+   - If you see: `[WRN] wwwroot directory not found` - the structure is incorrect
+
+2. **Verify directory structure**
+   - Correct: `Api\wwwroot\index.html` ✅
+   - Wrong: `wwwroot\index.html` (at root level) ❌
+   - Wrong: `Web\index.html` (separate folder) ❌
+
+3. **Check that all files were extracted from the ZIP**
+   - Make sure to extract ALL files, not just the executable
+
+4. **Try a different web browser**
+   - Chrome, Edge, or Firefox work best
+
+5. **Clear your browser cache**
+   - Press Ctrl+Shift+Delete in your browser
 
 ## Logs
 
