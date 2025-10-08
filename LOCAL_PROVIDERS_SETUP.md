@@ -2,6 +2,21 @@
 
 This guide explains how to set up and configure local AI tools for use with Aura Video Studio. Local providers run on your own hardware and don't require API keys or cloud services.
 
+## Quick Start
+
+1. **Download FFmpeg** (Required)
+   - Open Aura → **Downloads** page
+   - Click **Install** next to FFmpeg
+   - Wait for download to complete
+
+2. **Configure Providers**
+   - Open Aura → **Settings** → **Local Providers** tab
+   - Click **Test** next to FFmpeg to verify installation
+   - (Optional) Configure Stable Diffusion or Ollama if installed
+
+3. **Start Creating**
+   - All set! Go to **Create** page to start generating videos
+
 ## Overview
 
 Aura Video Studio supports the following local AI providers:
