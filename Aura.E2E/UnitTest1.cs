@@ -34,7 +34,7 @@ public class VideoGenerationE2ETests
     }
 
     [Fact]
-    public void RuleBasedLlm_Should_GenerateScript()
+    public async Task RuleBasedLlm_Should_GenerateScript()
     {
         // Arrange
         var provider = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance);
@@ -54,7 +54,7 @@ public class VideoGenerationE2ETests
         );
 
         // Act
-        var script = provider.DraftScriptAsync(brief, spec, default).Result;
+        var script = await provider.DraftScriptAsync(brief, spec, default);
 
         // Assert
         Assert.NotNull(script);

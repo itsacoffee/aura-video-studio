@@ -118,7 +118,8 @@ namespace Aura.App
                         Content = "We've detected your hardware and configured the app accordingly. Would you like to review your hardware profile?",
                         PrimaryButtonText = "Review Profile",
                         SecondaryButtonText = "Later",
-                        DefaultButton = ContentDialogButton.Primary
+                        DefaultButton = ContentDialogButton.Primary,
+                        XamlRoot = this.Content.XamlRoot
                     };
                     
                     var result = await dialog.ShowAsync();
