@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Padding="24">
+    <Grid Padding="32">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -20,45 +20,97 @@
                 Text="Storyboard Editor" 
                 Style="{ThemeResource TitleTextBlockStyle}"/>
             <TextBlock 
-                Text="Timeline-based editing (Premiere-style interface)"
+                Text="Timeline-based editing with tracks, transitions, and effects"
+                Style="{ThemeResource BodyTextBlockStyle}"
                 Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
         </StackPanel>
         
         <!-- Timeline Area (Placeholder) -->
-        <Grid Grid.Row="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
-            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
-                <SymbolIcon Symbol="Edit" Width="48" Height="48"/>
-                <TextBlock Text="Timeline Editor" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+        <Grid Grid.Row="1" 
+              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+              BorderThickness="2" 
+              CornerRadius="8"
+              Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16" Margin="40">
+                <FontIcon Glyph="&#xE70F;" FontSize="64" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                 <TextBlock 
-                    Text="Advanced timeline editing with tracks, transitions, and effects"
+                    Text="Advanced Timeline Editor" 
+                    Style="{ThemeResource SubtitleTextBlockStyle}"
+                    HorizontalAlignment="Center"/>
+                <TextBlock 
+                    Text="Professional video editing with precision timeline controls"
                     Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
                     TextAlignment="Center"
-                    MaxWidth="400"
+                    MaxWidth="500"
                     TextWrapping="Wrap"/>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Features:" FontWeight="SemiBold"/>
-                    <TextBlock Text="V1/V2 video tracks, A1/A2 audio tracks, markers, transitions, effects"/>
+                <StackPanel Spacing="8" MaxWidth="500">
+                    <TextBlock Text="Features:" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <Grid ColumnSpacing="20" RowSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                            <FontIcon Glyph="&#xE8B7;" FontSize="12"/>
+                            <TextBlock Text="Multiple video tracks"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                            <FontIcon Glyph="&#xE8D6;" FontSize="12"/>
+                            <TextBlock Text="Audio mixing"/>
+                        </StackPanel>
+                        
+                        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                            <FontIcon Glyph="&#xE8B5;" FontSize="12"/>
+                            <TextBlock Text="Transitions"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                            <FontIcon Glyph="&#xE7C3;" FontSize="12"/>
+                            <TextBlock Text="Timeline markers"/>
+                        </StackPanel>
+                        
+                        <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                            <FontIcon Glyph="&#xE8EF;" FontSize="12"/>
+                            <TextBlock Text="Visual effects"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                            <FontIcon Glyph="&#xE8CB;" FontSize="12"/>
+                            <TextBlock Text="Keyframe animation"/>
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
+                <TextBlock 
+                    Text="Coming soon: Full implementation"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                    FontStyle="Italic"
+                    HorizontalAlignment="Center"
+                    Margin="0,8,0,0"/>
             </StackPanel>
         </Grid>
         
         <!-- Toolbar -->
-        <CommandBar Grid.Row="2" DefaultLabelPosition="Right" Margin="0,12,0,0">
-            <AppBarButton Icon="Play" Label="Play"/>
-            <AppBarButton Icon="Stop" Label="Stop"/>
+        <CommandBar Grid.Row="2" DefaultLabelPosition="Right" Margin="0,16,0,0">
+            <AppBarButton Icon="Play" Label="Play" ToolTipService.ToolTip="Play/Pause (Space)"/>
+            <AppBarButton Icon="Stop" Label="Stop" ToolTipService.ToolTip="Stop playback"/>
             <AppBarSeparator/>
-            <AppBarButton Icon="Cut" Label="Split"/>
-            <AppBarButton Icon="Trim" Label="Trim"/>
+            <AppBarButton Icon="Cut" Label="Split" ToolTipService.ToolTip="Split clip at playhead (S)"/>
+            <AppBarButton Icon="Trim" Label="Trim" ToolTipService.ToolTip="Trim clip ends"/>
             <AppBarSeparator/>
-            <AppBarButton Icon="Add" Label="Add Clip"/>
-            <AppBarButton Label="Transition">
+            <AppBarButton Icon="Add" Label="Add Clip" ToolTipService.ToolTip="Add media to timeline"/>
+            <AppBarButton Label="Transition" ToolTipService.ToolTip="Add transition between clips">
                 <AppBarButton.Icon>
                     <FontIcon Glyph="&#xE8B5;"/>
                 </AppBarButton.Icon>
             </AppBarButton>
             <AppBarSeparator/>
-            <AppBarButton Icon="ZoomIn" Label="Zoom In"/>
-            <AppBarButton Icon="ZoomOut" Label="Zoom Out"/>
+            <AppBarButton Icon="ZoomIn" Label="Zoom In" ToolTipService.ToolTip="Zoom timeline in (+)"/>
+            <AppBarButton Icon="ZoomOut" Label="Zoom Out" ToolTipService.ToolTip="Zoom timeline out (-)"/>
         </CommandBar>
     </Grid>
 </Page>
