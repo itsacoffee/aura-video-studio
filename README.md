@@ -16,7 +16,7 @@ This repository now contains:
 - ✅ Audio processing with LUFS normalization
 - ✅ Subtitle generation (SRT/VTT)
 - ✅ **Split CI workflows** - Linux (build/test) + Windows (package)
-- ✅ **Packaging scripts** - MSIX, EXE installer, Portable ZIP
+- ✅ **Packaging scripts** - **Portable ZIP** (primary distribution)
 - ✅ Dependency manifest with SHA-256 verification
 - ✅ SBOM generation and license attributions
 
@@ -45,15 +45,19 @@ cd Aura.Web && npm install && npm run dev
 # Open http://localhost:5173
 ```
 
-### Building (Windows)
+### Building Portable Distribution (Windows)
 ```powershell
-# Build all distributions
-.\scripts\packaging\build-all.ps1
+# Build portable ZIP (recommended)
+.\scripts\packaging\build-portable.ps1
 
-# Output: MSIX, Setup EXE, Portable ZIP in artifacts/windows/
+# Output: Portable ZIP in artifacts/portable/
 ```
 
+For detailed build instructions, see [INSTALL.md](./INSTALL.md)
+
 **See detailed documentation:**
+- [INSTALL.md](./INSTALL.md) - **Build and installation guide**
+- [PORTABLE.md](./PORTABLE.md) - **User guide for portable version**
 - [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md) - Original implementation details
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Complete architecture overview
 - [Aura.Api/README.md](./Aura.Api/README.md) - Backend API documentation

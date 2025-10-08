@@ -1,131 +1,166 @@
 # Packaging Scripts
 
-This directory contains scripts for building Windows distributions of Aura Video Studio.
+This directory contains scripts for building the portable distribution of Aura Video Studio.
 
 ## Overview
 
-Aura Video Studio is distributed in three formats:
-1. **MSIX Package** - Recommended for Windows 11 users (via Microsoft Store or sideloading)
-2. **Setup EXE** - Traditional installer built with Inno Setup
-3. **Portable ZIP** - No-install archive for advanced users
+Aura Video Studio is distributed as a **Portable ZIP** - a no-install archive that works out of the box. Simply extract and run!
+
+## Quick Start
+
+### Using the Simple Build Script (Recommended)
+
+```powershell
+.\scripts\packaging\build-portable.ps1
+```
+
+This script will:
+1. Build all .NET projects
+2. Build the React web UI
+3. Publish the API as self-contained
+4. Copy the web UI to wwwroot
+5. Create a portable ZIP with everything included
+
+### Using the Legacy Build Script
+
+```powershell
+.\scripts\packaging\build-all.ps1
+```
+
+This maintains compatibility with the previous build process but only builds the portable distribution.
 
 ## Prerequisites
 
-### Common Prerequisites (All Build Types)
+### Required
 - **.NET 8 SDK** - Required for building C# projects
+  - Download from: https://dotnet.microsoft.com/download/dotnet/8.0
 - **Node.js 20.x or later** - Required for building the web UI (Aura.Web)
   - Download from: https://nodejs.org/
   - Or install via chocolatey: `choco install nodejs-lts`
   - Verify installation: `npm --version`
+- **PowerShell** - Included with Windows
 
-### For MSIX Packaging
-- Windows 11 SDK
-- Windows App SDK 1.5+
-- MSBuild (Visual Studio 2022 or Build Tools)
-- Optional: Code signing certificate (PFX)
+### Optional
+- **FFmpeg binaries** - For video processing (can be downloaded separately)
 
-### For EXE Installer
-- Inno Setup 6.x (`choco install innosetup`)
-- MSBuild
-- Optional: Code signing certificate (PFX)
+## Building Portable Distribution
 
-### For Portable ZIP
-- 7-Zip or PowerShell Compress-Archive
-- MSBuild
+The portable distribution is a self-contained package that requires no installation.
 
-## Building MSIX Package
-
-The MSIX package is built using the WinUI 3 packaged app project (Aura.App).
+### Automated Build
 
 ```powershell
-# Build the packaged app
-msbuild Aura.App/Aura.App.csproj /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly
+# Using the simple script (recommended)
+.\scripts\packaging\build-portable.ps1
 
-# The MSIX will be in Aura.App/AppPackages/ or Aura.App/bin/x64/Release/
+# Output: artifacts/portable/AuraVideoStudio_Portable_x64.zip
 ```
 
-### Signing MSIX
+### Manual Build Steps
+
+If you need to build manually:
 
 ```powershell
-# If you have a PFX certificate
-$cert = "path\to\cert.pfx"
-$password = "cert-password"
+# 1. Build .NET projects
+dotnet build Aura.Core/Aura.Core.csproj -c Release
+dotnet build Aura.Providers/Aura.Providers.csproj -c Release
+dotnet build Aura.Api/Aura.Api.csproj -c Release
 
-# Import certificate
-$pfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($cert, $password)
+# 2. Build Web UI
+cd Aura.Web
+npm install
+npm run build
+cd ..
 
-# Sign the MSIX
-signtool sign /fd SHA256 /f $cert /p $password "AuraVideoStudio.msix"
-```
+# 3. Publish API as self-contained
+dotnet publish Aura.Api/Aura.Api.csproj `
+    -c Release `
+    -r win-x64 `
+    --self-contained `
+    -o artifacts/portable/build/Api
 
-## Building Setup EXE
+# 4. Copy Web UI to wwwroot (CRITICAL!)
+mkdir artifacts/portable/build/Api/wwwroot
+xcopy Aura.Web\dist artifacts\portable\build\Api\wwwroot /E /I /Y
 
-The Setup EXE is built using Inno Setup and installs the WPF portable variant.
+# 5. Copy additional files
+xcopy scripts\ffmpeg\*.exe artifacts\portable\build\ffmpeg\ /Y
+copy appsettings.json artifacts\portable\build\
+copy PORTABLE.md artifacts\portable\build\README.md
+copy LICENSE artifacts\portable\build\
 
-```powershell
-# First, build the WPF portable app (to be created)
-# dotnet publish Aura.Host.Win.Wpf/Aura.Host.Win.Wpf.csproj -c Release -r win-x64 --self-contained
+# 6. Create launcher script
+# (See build-portable.ps1 for the launcher script content)
 
-# Then compile the Inno Setup script
-iscc scripts/packaging/setup.iss
-
-# Output will be in artifacts/windows/exe/
-```
-
-## Building Portable ZIP
-
-The portable ZIP contains a self-contained WPF application with all dependencies.
-
-```powershell
-# Publish as self-contained
-dotnet publish Aura.Api/Aura.Api.csproj -c Release -r win-x64 --self-contained -o artifacts/portable/Aura.Api
-
-# Copy FFmpeg binaries
-Copy-Item scripts/ffmpeg/*.exe artifacts/portable/
-
-# Create ZIP
-Compress-Archive -Path artifacts/portable/* -DestinationPath artifacts/windows/portable/AuraVideoStudio_Portable_x64.zip
+# 7. Create ZIP
+Compress-Archive -Path artifacts/portable/build/* `
+    -DestinationPath artifacts/portable/AuraVideoStudio_Portable_x64.zip
 ```
 
 ## Generating SHA-256 Checksums
 
 ```powershell
-Get-ChildItem artifacts/windows -Recurse -Include *.msix,*.exe,*.zip | ForEach-Object {
-    $hash = Get-FileHash -Path $_.FullName -Algorithm SHA256
-    "$($hash.Hash)  $($_.Name)"
-} | Out-File artifacts/windows/checksums.txt
-```
-
-## Generating SBOM
-
-Use the CycloneDX or SPDX tools to generate a Software Bill of Materials:
-
-```powershell
-# Using CycloneDX for .NET
-dotnet tool install --global CycloneDX
-dotnet CycloneDX Aura.sln -o artifacts/windows/sbom.json
+# Checksum is automatically generated by build-portable.ps1
+# Or generate manually:
+Get-FileHash -Path artifacts/portable/AuraVideoStudio_Portable_x64.zip -Algorithm SHA256
 ```
 
 ## Directory Structure After Build
 
 ```
 artifacts/
-└── windows/
-    ├── msix/
-    │   └── AuraVideoStudio_x64.msix
-    ├── exe/
-    │   └── AuraVideoStudio_Setup.exe
-    ├── portable/
-    │   └── AuraVideoStudio_Portable_x64.zip
-    ├── checksums.txt
-    ├── sbom.json
-    └── attributions.txt
+└── portable/
+    ├── build/
+    │   ├── Api/
+    │   │   ├── Aura.Api.exe          (Main executable)
+    │   │   ├── wwwroot/               (Web UI files - CRITICAL!)
+    │   │   │   ├── index.html
+    │   │   │   └── assets/
+    │   │   └── (DLLs and dependencies)
+    │   ├── ffmpeg/
+    │   │   ├── ffmpeg.exe
+    │   │   └── ffprobe.exe
+    │   ├── Launch.bat                 (Launcher script)
+    │   ├── README.md
+    │   ├── appsettings.json
+    │   └── LICENSE
+    ├── AuraVideoStudio_Portable_x64.zip
+    └── checksum.txt
 ```
 
-## Notes
+## Important Notes
 
-- The MSIX package includes the WinUI 3 shell and WebView2 runtime
-- The EXE installer and Portable ZIP use the WPF shell
-- All variants include Aura.Api backend and Aura.Web frontend
-- FFmpeg binaries must be downloaded separately (see scripts/ffmpeg/README.md)
-- Signing certificates should be stored in GitHub Secrets for CI/CD
+### Critical: wwwroot Directory
+
+The `wwwroot` directory **must** be placed inside the `Api` folder for the web UI to work:
+- ✅ Correct: `Api/wwwroot/index.html`
+- ❌ Wrong: `wwwroot/index.html` (at root level)
+- ❌ Wrong: `Web/index.html` (separate folder)
+
+The API looks for static files in `Directory.GetCurrentDirectory() + "/wwwroot"`, which means it must be in the same directory as `Aura.Api.exe`.
+
+### FFmpeg Binaries
+
+FFmpeg binaries should be placed in `scripts/ffmpeg/` before building, or users can download them separately. The application will look for FFmpeg in:
+1. The `ffmpeg` subfolder
+2. System PATH
+3. The current directory
+
+### Testing the Build
+
+Before distributing, always test the portable build:
+
+```powershell
+# Extract the ZIP
+Expand-Archive artifacts/portable/AuraVideoStudio_Portable_x64.zip -DestinationPath test-extract
+
+# Run the application
+cd test-extract
+.\Launch.bat
+
+# Verify:
+# - API starts on http://127.0.0.1:5005
+# - Browser opens automatically
+# - Web UI loads correctly (no 404 errors)
+# - All features work as expected
+```
