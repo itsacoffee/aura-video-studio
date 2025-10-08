@@ -403,6 +403,15 @@ export function SettingsPage() {
           <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
             Configure paths and URLs for locally-installed AI tools. These tools run on your machine and don't require API keys.
           </Text>
+          
+          <Card style={{ marginBottom: tokens.spacingVerticalL, padding: tokens.spacingVerticalM, backgroundColor: tokens.colorNeutralBackground3 }}>
+            <Text weight="semibold" size={300}>📖 Need Help?</Text>
+            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
+              See the <strong>LOCAL_PROVIDERS_SETUP.md</strong> guide in the repository for detailed setup instructions for Stable Diffusion, Ollama, and FFmpeg.
+              Visit the <strong>Downloads</strong> page to install components automatically.
+            </Text>
+          </Card>
+
           <div className={styles.form}>
             <Field 
               label="Stable Diffusion WebUI URL" 

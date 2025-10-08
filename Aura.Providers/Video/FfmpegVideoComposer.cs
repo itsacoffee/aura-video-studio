@@ -16,17 +16,27 @@ public class FfmpegVideoComposer : IVideoComposer
     private readonly ILogger<FfmpegVideoComposer> _logger;
     private readonly string _ffmpegPath;
     private readonly string _workingDirectory;
+    private string _outputDirectory;
 
-    public FfmpegVideoComposer(ILogger<FfmpegVideoComposer> logger, string ffmpegPath)
+    public FfmpegVideoComposer(ILogger<FfmpegVideoComposer> logger, string ffmpegPath, string? outputDirectory = null)
     {
         _logger = logger;
         _ffmpegPath = ffmpegPath;
         _workingDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "Render");
+        _outputDirectory = outputDirectory ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
+            "AuraVideoStudio");
         
         // Ensure working directory exists
         if (!Directory.Exists(_workingDirectory))
         {
             Directory.CreateDirectory(_workingDirectory);
+        }
+        
+        // Ensure output directory exists
+        if (!Directory.Exists(_outputDirectory))
+        {
+            Directory.CreateDirectory(_outputDirectory);
         }
     }
 
@@ -34,9 +44,9 @@ public class FfmpegVideoComposer : IVideoComposer
     {
         _logger.LogInformation("Starting FFmpeg render at {Resolution}p", spec.Res.Height);
         
-        // Create output file path
+        // Create output file path using configured output directory
         string outputFilePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
+            _outputDirectory,
             $"AuraVideoStudio_{DateTime.Now:yyyyMMddHHmmss}.{spec.Container}");
         
         // Build the FFmpeg command

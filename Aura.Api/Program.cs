@@ -38,13 +38,16 @@ builder.Services.AddCors(options =>
 
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
+builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 builder.Services.AddSingleton<ITtsProvider, WindowsTtsProvider>();
 builder.Services.AddSingleton<IVideoComposer>(sp => 
 {
     var logger = sp.GetRequiredService<ILogger<FfmpegVideoComposer>>();
-    var ffmpegPath = "ffmpeg"; // Use system ffmpeg or specify path
-    return new FfmpegVideoComposer(logger, ffmpegPath);
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var ffmpegPath = providerSettings.GetFfmpegPath();
+    var outputDirectory = providerSettings.GetOutputDirectory();
+    return new FfmpegVideoComposer(logger, ffmpegPath, outputDirectory);
 });
 builder.Services.AddSingleton<VideoOrchestrator>();
 
