@@ -96,7 +96,7 @@ echo  Aura Video Studio - Portable Edition
 echo ========================================
 echo.
 echo Starting API server...
-start "" "Api\Aura.Api.exe"
+start "" /D "Api" "Aura.Api.exe"
 echo Waiting for server to start...
 timeout /t 3 /nobreak >nul
 echo.

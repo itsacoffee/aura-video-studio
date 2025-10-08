@@ -93,7 +93,7 @@ Copy-Item "$rootDir\LICENSE" -Destination $portableBuildDir -Force -ErrorAction 
 $launcherScript = @"
 @echo off
 echo Starting Aura Video Studio...
-start "" "Api\Aura.Api.exe"
+start "" /D "Api" "Aura.Api.exe"
 timeout /t 3 /nobreak >nul
 start "" "http://127.0.0.1:5005"
 "@
