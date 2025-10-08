@@ -20,10 +20,24 @@ const useStyles = makeStyles({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: tokens.spacingVerticalXXL,
+    flexWrap: 'wrap',
+    gap: tokens.spacingVerticalM,
+  },
+  headerContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  subtitle: {
+    color: tokens.colorNeutralForeground3,
   },
   emptyState: {
     textAlign: 'center',
     padding: tokens.spacingVerticalXXXL,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: tokens.spacingVerticalL,
   },
 });
 
@@ -34,11 +48,17 @@ export function DashboardPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Title1>Project Dashboard</Title1>
+        <div className={styles.headerContent}>
+          <Title1>Project Dashboard</Title1>
+          <Text className={styles.subtitle}>
+            Manage all your video projects in one place
+          </Text>
+        </div>
         <Button 
           appearance="primary"
           icon={<Add24Regular />}
           onClick={() => navigate('/create')}
+          size="large"
         >
           New Project
         </Button>
@@ -46,15 +66,14 @@ export function DashboardPage() {
 
       <Card className={styles.emptyState}>
         <Title2>No projects yet</Title2>
-        <Text>Create your first video project to get started</Text>
-        <div style={{ marginTop: tokens.spacingVerticalL }}>
-          <Button 
-            appearance="primary"
-            onClick={() => navigate('/create')}
-          >
-            Create Project
-          </Button>
-        </div>
+        <Text>Create your first video project to get started with Aura Studio</Text>
+        <Button 
+          appearance="primary"
+          onClick={() => navigate('/create')}
+          size="large"
+        >
+          Create Your First Project
+        </Button>
       </Card>
     </div>
   );

@@ -25,10 +25,19 @@ const useStyles = makeStyles({
   },
   header: {
     marginBottom: tokens.spacingVerticalXXL,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  subtitle: {
+    color: tokens.colorNeutralForeground3,
   },
   emptyState: {
     textAlign: 'center',
     padding: tokens.spacingVerticalXXXL,
+  },
+  table: {
+    marginTop: tokens.spacingVerticalL,
   },
 });
 
@@ -68,6 +77,9 @@ export function RenderPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <Title1>Render Queue</Title1>
+        <Text className={styles.subtitle}>
+          Monitor and manage your video rendering jobs
+        </Text>
       </div>
 
       {jobs.length === 0 ? (
@@ -77,42 +89,45 @@ export function RenderPage() {
         </Card>
       ) : (
         <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeaderCell>Job ID</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>Progress</TableHeaderCell>
-                <TableHeaderCell>Created</TableHeaderCell>
-                <TableHeaderCell>Actions</TableHeaderCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {jobs.map((job) => (
-                <TableRow key={job.id}>
-                  <TableCell>{job.id.substring(0, 8)}</TableCell>
-                  <TableCell>{job.status}</TableCell>
-                  <TableCell>
-                    <ProgressBar value={job.progress / 100} />
-                  </TableCell>
-                  <TableCell>
-                    {new Date(job.createdAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell>
-                    {job.status !== 'completed' && job.status !== 'cancelled' && (
-                      <Button
-                        size="small"
-                        icon={<Dismiss24Regular />}
-                        onClick={() => cancelJob(job.id)}
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                  </TableCell>
+          <Title2>Active Jobs</Title2>
+          <div className={styles.table}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHeaderCell>Job ID</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>Progress</TableHeaderCell>
+                  <TableHeaderCell>Created</TableHeaderCell>
+                  <TableHeaderCell>Actions</TableHeaderCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {jobs.map((job) => (
+                  <TableRow key={job.id}>
+                    <TableCell>{job.id.substring(0, 8)}</TableCell>
+                    <TableCell>{job.status}</TableCell>
+                    <TableCell>
+                      <ProgressBar value={job.progress / 100} />
+                    </TableCell>
+                    <TableCell>
+                      {new Date(job.createdAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      {job.status !== 'completed' && job.status !== 'cancelled' && (
+                        <Button
+                          size="small"
+                          icon={<Dismiss24Regular />}
+                          onClick={() => cancelJob(job.id)}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </Card>
       )}
     </div>

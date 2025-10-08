@@ -18,6 +18,12 @@ const useStyles = makeStyles({
   },
   header: {
     marginBottom: tokens.spacingVerticalXXL,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  subtitle: {
+    color: tokens.colorNeutralForeground3,
   },
   form: {
     display: 'flex',
@@ -25,7 +31,7 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalL,
   },
   section: {
-    padding: tokens.spacingVerticalL,
+    padding: tokens.spacingVerticalXL,
   },
   actions: {
     display: 'flex',
@@ -51,12 +57,14 @@ export function PublishPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <Title1>Publish to YouTube</Title1>
-        <Text>Add metadata and publish your video</Text>
+        <Text className={styles.subtitle}>
+          Add metadata and publish your rendered video to YouTube
+        </Text>
       </div>
 
       <Card className={styles.section}>
         <div className={styles.form}>
-          <Field label="Title" required>
+          <Field label="Title" required hint="Your video title (max 100 characters)">
             <Input
               value={metadata.title}
               onChange={(_, data) => setMetadata({ ...metadata, title: data.value })}
@@ -64,7 +72,7 @@ export function PublishPage() {
             />
           </Field>
 
-          <Field label="Description">
+          <Field label="Description" hint="Describe your video (max 5000 characters)">
             <Input
               value={metadata.description}
               onChange={(_, data) => setMetadata({ ...metadata, description: data.value })}
@@ -72,13 +80,17 @@ export function PublishPage() {
             />
           </Field>
 
-          <Field label="Tags">
+          <Field label="Tags" hint="Comma-separated tags to help viewers find your video">
             <Input
               value={metadata.tags}
               onChange={(_, data) => setMetadata({ ...metadata, tags: data.value })}
-              placeholder="Enter comma-separated tags"
+              placeholder="e.g. tutorial, howto, education"
             />
           </Field>
+
+          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+            Note: YouTube publishing requires OAuth authentication setup
+          </Text>
 
           <div className={styles.actions}>
             <Button appearance="primary" icon={<Share24Regular />} onClick={handlePublish}>

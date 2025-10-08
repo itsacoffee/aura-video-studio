@@ -48,6 +48,17 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
 });
 builder.Services.AddSingleton<VideoOrchestrator>();
 
+// Register DependencyManager
+builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
+builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.DependencyManager>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    var manifestPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "manifest.json");
+    var downloadDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "dependencies");
+    return new Aura.Core.Dependencies.DependencyManager(logger, httpClient, manifestPath, downloadDirectory);
+});
+
 // Configure Kestrel to listen on specific port
 builder.WebHost.UseUrls("http://127.0.0.1:5005");
 
@@ -201,18 +212,12 @@ apiGroup.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsP
 .WithOpenApi();
 
 // Downloads manifest endpoint
-apiGroup.MapGet("/downloads/manifest", () =>
+apiGroup.MapGet("/downloads/manifest", async (Aura.Core.Dependencies.DependencyManager depManager) =>
 {
     try
     {
-        var manifestPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "manifest.json");
-        if (File.Exists(manifestPath))
-        {
-            var json = File.ReadAllText(manifestPath);
-            var manifest = JsonSerializer.Deserialize<JsonDocument>(json);
-            return Results.Ok(manifest);
-        }
-        return Results.NotFound(new { error = "Manifest not found" });
+        var manifest = await depManager.LoadManifestAsync();
+        return Results.Ok(manifest);
     }
     catch (Exception ex)
     {
@@ -221,6 +226,47 @@ apiGroup.MapGet("/downloads/manifest", () =>
     }
 })
 .WithName("GetManifest")
+.WithOpenApi();
+
+// Check if component is installed
+apiGroup.MapGet("/downloads/{component}/status", async (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        var isInstalled = await depManager.IsComponentInstalledAsync(component);
+        return Results.Ok(new { component, isInstalled });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error checking component status");
+        return Results.Problem("Error checking component status", statusCode: 500);
+    }
+})
+.WithName("CheckComponentStatus")
+.WithOpenApi();
+
+// Download and install component
+apiGroup.MapPost("/downloads/{component}/install", async (string component, Aura.Core.Dependencies.DependencyManager depManager, CancellationToken ct) =>
+{
+    try
+    {
+        // Create progress handler
+        var progress = new Progress<Aura.Core.Dependencies.DownloadProgress>(p =>
+        {
+            Log.Information("Download progress: {Component} - {Percent}%", component, p.PercentComplete);
+        });
+
+        await depManager.DownloadComponentAsync(component, progress, ct);
+        
+        return Results.Ok(new { success = true, message = $"{component} installed successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error installing component");
+        return Results.Problem($"Error installing {component}", statusCode: 500);
+    }
+})
+.WithName("InstallComponent")
 .WithOpenApi();
 
 // Settings endpoints
@@ -448,6 +494,71 @@ apiGroup.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
 .WithName("ApplyProfile")
 .WithOpenApi();
 
+// API Key Management
+apiGroup.MapPost("/apikeys/save", ([FromBody] ApiKeysRequest request) =>
+{
+    try
+    {
+        var keysPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "apikeys.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(keysPath)!);
+        
+        // In production, these should be encrypted using DPAPI or similar
+        var keys = new Dictionary<string, string>
+        {
+            ["openai"] = request.OpenAiKey ?? "",
+            ["elevenlabs"] = request.ElevenLabsKey ?? "",
+            ["pexels"] = request.PexelsKey ?? "",
+            ["stabilityai"] = request.StabilityAiKey ?? ""
+        };
+        
+        File.WriteAllText(keysPath, JsonSerializer.Serialize(keys, new JsonSerializerOptions { WriteIndented = true }));
+        
+        return Results.Ok(new { success = true, message = "API keys saved successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error saving API keys");
+        return Results.Problem("Error saving API keys", statusCode: 500);
+    }
+})
+.WithName("SaveApiKeys")
+.WithOpenApi();
+
+apiGroup.MapGet("/apikeys/load", () =>
+{
+    try
+    {
+        var keysPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "apikeys.json");
+        if (File.Exists(keysPath))
+        {
+            var json = File.ReadAllText(keysPath);
+            var keys = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            
+            // Return masked keys (only show first 8 characters)
+            var maskedKeys = keys?.ToDictionary(
+                k => k.Key,
+                k => string.IsNullOrEmpty(k.Value) ? "" : k.Value.Substring(0, Math.Min(8, k.Value.Length)) + "..."
+            );
+            
+            return Results.Ok(maskedKeys);
+        }
+        return Results.Ok(new Dictionary<string, string>
+        {
+            ["openai"] = "",
+            ["elevenlabs"] = "",
+            ["pexels"] = "",
+            ["stabilityai"] = ""
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error loading API keys");
+        return Results.Problem("Error loading API keys", statusCode: 500);
+    }
+})
+.WithName("LoadApiKeys")
+.WithOpenApi();
+
 // Fallback to index.html for client-side routing (must be after all API routes)
 if (Directory.Exists(wwwrootPath))
 {
@@ -465,3 +576,4 @@ record ComposeRequest(string TimelineJson);
 record RenderRequest(string TimelineJson, string PresetName);
 record RenderJobDto(string Id, string Status, float Progress, string? OutputPath, DateTime CreatedAt);
 record ApplyProfileRequest(string ProfileName);
+record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKey, string? StabilityAiKey);

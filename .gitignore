@@ -100,3 +100,4 @@ scripts/ffmpeg/ffprobe.exe
 
 # macOS
 .DS_Store
+Aura.Api/wwwroot/

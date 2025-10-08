@@ -1,6 +1,8 @@
+import { useState, useEffect, createContext, useContext } from 'react';
 import { 
   FluentProvider, 
   webLightTheme,
+  webDarkTheme,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -23,28 +25,54 @@ const useStyles = makeStyles({
   },
 });
 
+interface ThemeContextType {
+  isDarkMode: boolean;
+  toggleTheme: () => void;
+}
+
+export const ThemeContext = createContext<ThemeContextType>({
+  isDarkMode: false,
+  toggleTheme: () => {},
+});
+
+export const useTheme = () => useContext(ThemeContext);
+
 function App() {
   const styles = useStyles();
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   return (
-    <FluentProvider theme={webLightTheme}>
-      <div className={styles.root}>
-        <BrowserRouter>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<WelcomePage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/create" element={<CreatePage />} />
-              <Route path="/render" element={<RenderPage />} />
-              <Route path="/publish" element={<PublishPage />} />
-              <Route path="/downloads" element={<DownloadsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Layout>
-        </BrowserRouter>
-      </div>
-    </FluentProvider>
+    <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+      <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+        <div className={styles.root}>
+          <BrowserRouter>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<WelcomePage />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/create" element={<CreatePage />} />
+                <Route path="/render" element={<RenderPage />} />
+                <Route path="/publish" element={<PublishPage />} />
+                <Route path="/downloads" element={<DownloadsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Layout>
+          </BrowserRouter>
+        </div>
+      </FluentProvider>
+    </ThemeContext.Provider>
   );
 }
 
