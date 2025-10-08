@@ -68,15 +68,14 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         
-    - name: Setup MSBuild
+    - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
       
-    - name: Restore dependencies
+    - name: Restore NuGet packages
       run: dotnet restore ${{ env.SOLUTION_FILE }}
       
     - name: Build WinUI 3 App (x64)
-      run: msbuild Aura.App/Aura.App.csproj /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /restore
-      continue-on-error: true
+      run: msbuild Aura.App/Aura.App.csproj /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /t:Build
       
     - name: Upload MSIX Package
       if: success()

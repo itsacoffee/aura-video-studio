@@ -8,67 +8,90 @@
     mc:Ignorable="d">
 
     <ScrollViewer>
-        <StackPanel Padding="24" MaxWidth="800" Spacing="24">
+        <StackPanel Padding="32" MaxWidth="800" Spacing="20">
             
             <!-- Header -->
-            <TextBlock 
-                Text="Publish Video" 
-                Style="{ThemeResource TitleTextBlockStyle}"
-                Margin="0,0,0,12"/>
+            <StackPanel Spacing="8" Margin="0,0,0,16">
+                <TextBlock 
+                    Text="Publish Video" 
+                    Style="{ThemeResource TitleTextBlockStyle}"/>
+                <TextBlock 
+                    Text="Add metadata and publish to platforms"
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+            </StackPanel>
             
             <!-- Video Metadata -->
             <Expander Header="Video Metadata" IsExpanded="True">
-                <StackPanel Spacing="12" Padding="12">
+                <StackPanel Spacing="16" Padding="16">
                     <TextBox 
                         Header="Title"
-                        PlaceholderText="Video title..."
-                        MaxLength="100"/>
+                        PlaceholderText="Enter an engaging, descriptive title..."
+                        MaxLength="100"
+                        ToolTipService.ToolTip="Keep under 70 characters for best display"/>
                     
                     <TextBox 
                         Header="Description"
-                        PlaceholderText="Video description..."
+                        PlaceholderText="Describe your video content, include links and timestamps..."
                         TextWrapping="Wrap"
                         AcceptsReturn="True"
-                        Height="120"/>
+                        Height="150"
+                        ToolTipService.ToolTip="First 2-3 lines are shown in search results"/>
                     
                     <TextBox 
                         Header="Tags (comma-separated)"
-                        PlaceholderText="tag1, tag2, tag3"/>
+                        PlaceholderText="tag1, tag2, tag3"
+                        ToolTipService.ToolTip="Help viewers discover your content"/>
                     
                     <ComboBox 
                         Header="Category"
                         Width="300"
                         HorizontalAlignment="Left"
-                        SelectedIndex="0">
+                        SelectedIndex="0"
+                        ToolTipService.ToolTip="Choose the most relevant category">
                         <ComboBoxItem Content="Education"/>
                         <ComboBoxItem Content="Entertainment"/>
                         <ComboBoxItem Content="How-to & Style"/>
                         <ComboBoxItem Content="Science & Technology"/>
                         <ComboBoxItem Content="Gaming"/>
+                        <ComboBoxItem Content="News & Politics"/>
+                        <ComboBoxItem Content="People & Blogs"/>
                     </ComboBox>
                 </StackPanel>
             </Expander>
             
             <!-- Thumbnail -->
             <Expander Header="Thumbnail" IsExpanded="True">
-                <StackPanel Spacing="12" Padding="12">
+                <StackPanel Spacing="16" Padding="16">
+                    <TextBlock 
+                        Text="Recommended: 1280×720 pixels (16:9 aspect ratio)"
+                        Style="{ThemeResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                    
                     <Border 
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
-                        BorderThickness="1" 
+                        BorderThickness="2" 
                         CornerRadius="8"
                         Width="320"
                         Height="180"
-                        HorizontalAlignment="Left">
-                        <TextBlock 
-                            Text="No thumbnail selected"
-                            VerticalAlignment="Center"
-                            HorizontalAlignment="Center"
-                            Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                        HorizontalAlignment="Left"
+                        Background="{ThemeResource LayerFillColorDefaultBrush}">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+                            <FontIcon Glyph="&#xEB9F;" FontSize="32" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                            <TextBlock 
+                                Text="No thumbnail selected"
+                                HorizontalAlignment="Center"
+                                Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                        </StackPanel>
                     </Border>
                     
                     <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Button Content="Upload Thumbnail"/>
-                        <Button Content="Generate Thumbnail"/>
+                        <Button 
+                            Content="Upload Thumbnail"
+                            ToolTipService.ToolTip="Choose an image from your computer"/>
+                        <Button 
+                            Content="Generate from Video"
+                            ToolTipService.ToolTip="Auto-generate from a video frame"/>
                     </StackPanel>
                 </StackPanel>
             </Expander>

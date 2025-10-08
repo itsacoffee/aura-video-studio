@@ -8,24 +8,25 @@
     mc:Ignorable="d">
 
     <ScrollViewer>
-        <StackPanel Padding="24" MaxWidth="900" Spacing="24">
+        <StackPanel Padding="32" MaxWidth="900" Spacing="20">
             
             <!-- Header -->
-            <StackPanel Spacing="8" Margin="0,0,0,12">
+            <StackPanel Spacing="8" Margin="0,0,0,16">
                 <TextBlock 
                     Text="Hardware Profile" 
                     Style="{ThemeResource TitleTextBlockStyle}"/>
                 <TextBlock 
                     Text="System capabilities and optimization settings"
+                    Style="{ThemeResource BodyTextBlockStyle}"
                     Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
             </StackPanel>
             
             <!-- System Overview -->
             <Expander Header="System Overview" IsExpanded="True">
-                <StackPanel Spacing="16" Padding="12">
+                <StackPanel Spacing="20" Padding="16">
                     
                     <!-- CPU -->
-                    <Grid>
+                    <Grid RowSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="200"/>
                             <ColumnDefinition Width="*"/>
@@ -35,10 +36,13 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="CPU" FontWeight="SemiBold"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="16 logical cores (8 physical)"/>
+                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE950;" FontSize="16"/>
+                            <TextBlock Text="CPU" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="16 logical cores (8 physical)" VerticalAlignment="Center"/>
                         
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Model" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Model" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" Margin="32,0,0,0"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="Intel Core i7-10700K" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                     </Grid>
                     
@@ -49,12 +53,15 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         
-                        <TextBlock Grid.Column="0" Text="RAM" FontWeight="SemiBold"/>
-                        <TextBlock Grid.Column="1" Text="32 GB"/>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE7F8;" FontSize="16"/>
+                            <TextBlock Text="RAM" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="32 GB" VerticalAlignment="Center"/>
                     </Grid>
                     
                     <!-- GPU -->
-                    <Grid>
+                    <Grid RowSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="200"/>
                             <ColumnDefinition Width="*"/>
@@ -66,21 +73,24 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="GPU" FontWeight="SemiBold"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="NVIDIA RTX 3080"/>
+                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE8EA;" FontSize="16"/>
+                            <TextBlock Text="GPU" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="NVIDIA RTX 3080" VerticalAlignment="Center"/>
                         
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="VRAM" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="VRAM" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" Margin="32,0,0,0"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="10 GB" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                         
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Series" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Series" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" Margin="32,0,0,0"/>
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="30-series (Ampere)" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                         
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Driver" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Driver" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" Margin="32,0,0,0"/>
                         <TextBlock Grid.Row="3" Grid.Column="1" Text="545.84 (up to date)" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                     </Grid>
                     
                     <!-- Tier -->
-                    <Grid>
+                    <Grid RowSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="200"/>
                             <ColumnDefinition Width="*"/>
@@ -90,14 +100,22 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Hardware Tier" FontWeight="SemiBold"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="B (8-12 GB VRAM)" Foreground="{StaticResource BrandPrimaryBrush}"/>
+                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE9F9;" FontSize="16"/>
+                            <TextBlock Text="Hardware Tier" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="B (8-12 GB VRAM)" Foreground="{StaticResource BrandPrimaryBrush}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Capabilities" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Capabilities" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" Margin="32,0,0,0"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="SDXL reduced, 1080/1440p, HEVC or H.264, NVENC encoding" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap"/>
                     </Grid>
                     
-                    <Button Content="Run Auto-Detection" Style="{ThemeResource AccentButtonStyle}"/>
+                    <Button 
+                        Content="Run Auto-Detection" 
+                        Style="{ThemeResource AccentButtonStyle}"
+                        Padding="24,8"
+                        Margin="0,8,0,0"
+                        ToolTipService.ToolTip="Detect and update system capabilities"/>
                 </StackPanel>
             </Expander>
             
