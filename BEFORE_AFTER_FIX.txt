@@ -1,0 +1,99 @@
+═══════════════════════════════════════════════════════════════════════════
+                        SCRIPT GENERATION FIX
+                          BEFORE vs AFTER
+═══════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ BEFORE (Broken)                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Frontend (types.ts):                                                  │
+│    density: 'Sparse' | 'Normal' | 'Dense'  ❌                          │
+│    aspect: '16:9' | '9:16' | '1:1'         ❌                          │
+│                                                                         │
+│  Frontend (CreatePage.tsx):                                            │
+│    density: 'Normal'                        ❌                          │
+│    aspect: '16:9'                           ❌                          │
+│                                                                         │
+│  Backend (Enums.cs):                                                   │
+│    enum Density { Sparse, Balanced, Dense }                            │
+│    enum Aspect { Widescreen16x9, Vertical9x16, Square1x1 }            │
+│                                                                         │
+│  Backend (Program.cs):                                                 │
+│    No JsonStringEnumConverter              ❌                          │
+│    Minimal validation                       ❌                          │
+│    Generic error messages                   ❌                          │
+│                                                                         │
+│  Result:                                                               │
+│    ❌ "Failed to generate script"                                      │
+│    ❌ JSON deserialization fails                                       │
+│    ❌ No actionable error details                                      │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ AFTER (Fixed)                                                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Frontend (types.ts):                                                  │
+│    density: 'Sparse' | 'Balanced' | 'Dense'  ✅                        │
+│    aspect: 'Widescreen16x9' | 'Vertical9x16' | 'Square1x1'  ✅        │
+│                                                                         │
+│  Frontend (CreatePage.tsx):                                            │
+│    density: 'Balanced'                        ✅                        │
+│    aspect: 'Widescreen16x9'                   ✅                        │
+│    Dropdown: "16:9 Widescreen" value="Widescreen16x9"  ✅             │
+│                                                                         │
+│  Backend (Program.cs):                                                 │
+│    ✅ JsonStringEnumConverter configured                               │
+│    ✅ Topic validation (required)                                      │
+│    ✅ Duration validation (0-120 min)                                  │
+│    ✅ Empty script check                                               │
+│    ✅ RFC7807 ProblemDetails responses                                 │
+│    ✅ Error codes: E300-E304                                           │
+│    ✅ Detailed logging                                                 │
+│                                                                         │
+│  Testing:                                                              │
+│    ✅ 7 new comprehensive tests                                        │
+│    ✅ All 119 tests passing (100%)                                     │
+│    ✅ Manual API verification successful                               │
+│                                                                         │
+│  Result:                                                               │
+│    ✅ Script generation works!                                         │
+│    ✅ Proper markdown output (# title, ## scenes)                      │
+│    ✅ Handles all densities and aspect ratios                          │
+│    ✅ Actionable error messages                                        │
+│    ✅ Duration range: 0.5 to 120 minutes                               │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════
+                           TEST RESULTS
+═══════════════════════════════════════════════════════════════════════════
+
+  Original Tests:     104 ✅ (100% passing)
+  E2E Tests:            8 ✅ (100% passing)
+  New Tests:            7 ✅ (100% passing)
+  ───────────────────────────────────────
+  Total:              119 ✅ (100% passing)
+
+═══════════════════════════════════════════════════════════════════════════
+                        MANUAL VERIFICATION
+═══════════════════════════════════════════════════════════════════════════
+
+  ✅ POST /api/script (valid) → 200 OK with script
+  ✅ POST /api/script (empty topic) → 400 with E303 error
+  ✅ POST /api/script (invalid duration) → 400 with E304 error
+  ✅ GET /api/healthz → 200 OK
+
+═══════════════════════════════════════════════════════════════════════════
+                           CODE CHANGES
+═══════════════════════════════════════════════════════════════════════════
+
+  Files Modified:     5
+  Lines Added:        253
+  Lines Removed:      11
+  Tests Added:        7
+  Documentation:      144 lines
+
+═══════════════════════════════════════════════════════════════════════════

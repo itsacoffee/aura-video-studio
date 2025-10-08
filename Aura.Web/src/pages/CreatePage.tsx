@@ -60,13 +60,13 @@ export function CreatePage() {
     goal: 'Inform',
     tone: 'Informative',
     language: 'en-US',
-    aspect: '16:9',
+    aspect: 'Widescreen16x9',
   });
 
   const [planSpec, setPlanSpec] = useState<Partial<PlanSpec>>({
     targetDurationMinutes: 3.0,
     pacing: 'Conversational',
-    density: 'Normal',
+    density: 'Balanced',
     style: 'Standard',
   });
 
@@ -158,11 +158,11 @@ export function CreatePage() {
               <Field label="Aspect Ratio" hint="Video dimensions">
                 <Dropdown
                   value={brief.aspect}
-                  onOptionSelect={(_, data) => setBrief({ ...brief, aspect: data.optionText as any })}
+                  onOptionSelect={(_, data) => setBrief({ ...brief, aspect: data.optionValue as any })}
                 >
-                  <Option>16:9</Option>
-                  <Option>9:16</Option>
-                  <Option>1:1</Option>
+                  <Option value="Widescreen16x9">16:9 Widescreen</Option>
+                  <Option value="Vertical9x16">9:16 Vertical</Option>
+                  <Option value="Square1x1">1:1 Square</Option>
                 </Dropdown>
               </Field>
             </div>
@@ -205,7 +205,7 @@ export function CreatePage() {
                   onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, density: data.optionText as any })}
                 >
                   <Option>Sparse</Option>
-                  <Option>Normal</Option>
+                  <Option>Balanced</Option>
                   <Option>Dense</Option>
                 </Dropdown>
               </Field>

@@ -48,13 +48,13 @@ export interface Brief {
   goal: string;
   tone: string;
   language: string;
-  aspect: '16:9' | '9:16' | '1:1';
+  aspect: 'Widescreen16x9' | 'Vertical9x16' | 'Square1x1';
 }
 
 export interface PlanSpec {
   targetDurationMinutes: number;
   pacing: 'Chill' | 'Conversational' | 'Fast';
-  density: 'Sparse' | 'Normal' | 'Dense';
+  density: 'Sparse' | 'Balanced' | 'Dense';
   style: string;
 }
 
