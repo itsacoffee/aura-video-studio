@@ -187,11 +187,31 @@ public class HardwareDetector
 
     private async Task<GpuInfo?> GetGpuInfoAsync()
     {
-        // First try with WMI
+        // Try nvidia-smi FIRST for most accurate NVIDIA detection
+        var nvidiaSmiInfo = await GetNvidiaSmiInfoAsync();
+        if (nvidiaSmiInfo != null)
+        {
+            string vendor = "NVIDIA";
+            string? series = DetermineSeries(nvidiaSmiInfo.Value.model, vendor);
+            
+            _logger.LogInformation("Detected NVIDIA GPU via nvidia-smi: {Model}, {VRAM} MB",
+                nvidiaSmiInfo.Value.model, nvidiaSmiInfo.Value.vramMB);
+            
+            return new GpuInfo(
+                vendor,
+                nvidiaSmiInfo.Value.model,
+                nvidiaSmiInfo.Value.vramMB / 1024, // Convert MB to GB
+                series);
+        }
+        
+        // Fallback to WMI, prioritizing NVIDIA cards
         try
         {
             using var searcher = new ManagementObjectSearcher(
                 "SELECT Caption, AdapterRAM FROM Win32_VideoController");
+
+            GpuInfo? nvidiaGpu = null;
+            GpuInfo? otherGpu = null;
 
             foreach (var obj in searcher.Get())
             {
@@ -212,27 +232,37 @@ public class HardwareDetector
                 string vendor = DetermineVendor(model);
                 string? series = DetermineSeries(model, vendor);
                 
-                _logger.LogInformation("Detected GPU (WMI): {Model}, {Vendor}, {VRAM} MB", 
+                _logger.LogInformation("Found GPU via WMI: {Model}, {Vendor}, {VRAM} MB", 
                     model, vendor, vramMB);
                 
-                // For NVIDIA, try to get more accurate info using nvidia-smi
+                var gpuInfo = new GpuInfo(vendor, model, Math.Max(1, vramMB / 1024), series);
+                
+                // Prioritize NVIDIA GPUs over integrated/other GPUs
                 if (vendor.Equals("NVIDIA", StringComparison.OrdinalIgnoreCase))
                 {
-                    var nvidiaSmiInfo = await GetNvidiaSmiInfoAsync();
-                    if (nvidiaSmiInfo != null)
+                    if (nvidiaGpu == null)
                     {
-                        _logger.LogInformation("Updated GPU info via nvidia-smi: {Model}, {VRAM} MB",
-                            nvidiaSmiInfo.Value.model, nvidiaSmiInfo.Value.vramMB);
-                        
-                        return new GpuInfo(
-                            vendor,
-                            nvidiaSmiInfo.Value.model,
-                            nvidiaSmiInfo.Value.vramMB / 1024, // Convert MB to GB
-                            series);
+                        nvidiaGpu = gpuInfo;
+                        _logger.LogInformation("Selected NVIDIA GPU: {Model}", model);
                     }
                 }
-                
-                return new GpuInfo(vendor, model, Math.Max(1, vramMB / 1024), series);
+                else if (otherGpu == null)
+                {
+                    otherGpu = gpuInfo;
+                }
+            }
+            
+            // Return NVIDIA GPU if found, otherwise return any other GPU
+            if (nvidiaGpu != null)
+            {
+                _logger.LogInformation("Using NVIDIA GPU: {Model}", nvidiaGpu.Model);
+                return nvidiaGpu;
+            }
+            
+            if (otherGpu != null)
+            {
+                _logger.LogInformation("Using non-NVIDIA GPU: {Model}", otherGpu.Model);
+                return otherGpu;
             }
         }
         catch (Exception ex)
@@ -549,12 +579,17 @@ public class HardwareDetector
             }
             else
             {
-                _logger.LogInformation("NVENC probe: No NVENC encoders detected");
+                _logger.LogWarning("NVENC probe: No NVENC encoders detected. " +
+                    "To enable NVENC hardware encoding: " +
+                    "1. Ensure you have an NVIDIA GPU installed " +
+                    "2. Install the latest NVIDIA drivers from https://www.nvidia.com/drivers " +
+                    "3. Install FFmpeg with NVENC support (included in the portable distribution)");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "NVENC probe failed");
+            _logger.LogWarning(ex, "NVENC probe failed - FFmpeg may not be installed. " +
+                "Download FFmpeg from https://ffmpeg.org/download.html or use the portable distribution.");
         }
     }
     
@@ -576,12 +611,22 @@ public class HardwareDetector
             }
             else
             {
-                _logger.LogInformation("Stable Diffusion probe: WebUI not detected");
+                _logger.LogInformation("Stable Diffusion probe: WebUI not detected. " +
+                    "To enable local Stable Diffusion image generation: " +
+                    "1. Ensure you have an NVIDIA GPU with at least 6GB VRAM " +
+                    "2. Install Stable Diffusion WebUI from https://github.com/AUTOMATIC1111/stable-diffusion-webui " +
+                    "3. Run the WebUI with --api flag to enable API access " +
+                    "4. For SDXL, 12GB+ VRAM is recommended");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Stable Diffusion probe: WebUI not available at http://127.0.0.1:7860");
+            _logger.LogDebug(ex, "Stable Diffusion probe: WebUI not available at http://127.0.0.1:7860. " +
+                "To install: " +
+                "1. Requirements: NVIDIA GPU with 6GB+ VRAM (NVIDIA only) " +
+                "2. Download from: https://github.com/AUTOMATIC1111/stable-diffusion-webui " +
+                "3. Run: webui.bat --api (Windows) or ./webui.sh --api (Linux) " +
+                "4. Default URL: http://127.0.0.1:7860");
         }
     }
     
