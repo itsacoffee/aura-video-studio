@@ -83,9 +83,12 @@
                         HorizontalAlignment="Left"
                         SelectedIndex="0"
                         ToolTipService.ToolTip="Video dimensions for your target platform">
-                        <ComboBoxItem Content="16:9 Widescreen (YouTube, Desktop)" Tag="Widescreen16x9"/>
-                        <ComboBoxItem Content="9:16 Vertical (Shorts, TikTok, Reels)" Tag="Vertical9x16"/>
-                        <ComboBoxItem Content="1:1 Square (Instagram Feed)" Tag="Square1x1"/>
+                        <ComboBoxItem Content="16:9 Widescreen" Tag="Widescreen16x9"
+                                       ToolTipService.ToolTip="Common for YouTube, Desktop"/>
+                        <ComboBoxItem Content="9:16 Vertical" Tag="Vertical9x16"
+                                       ToolTipService.ToolTip="Common for Shorts, TikTok, Reels"/>
+                        <ComboBoxItem Content="1:1 Square" Tag="Square1x1"
+                                       ToolTipService.ToolTip="Common for Instagram Feed"/>
                     </ComboBox>
                 </StackPanel>
             </Expander>
