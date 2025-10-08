@@ -78,11 +78,24 @@ export function SettingsPage() {
   });
   const [keysModified, setKeysModified] = useState(false);
   const [savingKeys, setSavingKeys] = useState(false);
+  
+  // Local Provider Paths state
+  const [providerPaths, setProviderPaths] = useState({
+    stableDiffusionUrl: 'http://127.0.0.1:7860',
+    ollamaUrl: 'http://127.0.0.1:11434',
+    ffmpegPath: '',
+    ffprobePath: '',
+    outputDirectory: '',
+  });
+  const [pathsModified, setPathsModified] = useState(false);
+  const [savingPaths, setSavingPaths] = useState(false);
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string } | null>>({});
 
   useEffect(() => {
     fetchSettings();
     fetchProfiles();
     fetchApiKeys();
+    fetchProviderPaths();
   }, []);
 
   // Apply UI scale on load
@@ -206,6 +219,78 @@ export function SettingsPage() {
     setKeysModified(true);
   };
 
+  const fetchProviderPaths = async () => {
+    try {
+      const response = await fetch('/api/providers/paths/load');
+      if (response.ok) {
+        const data = await response.json();
+        setProviderPaths({
+          stableDiffusionUrl: data.stableDiffusionUrl || 'http://127.0.0.1:7860',
+          ollamaUrl: data.ollamaUrl || 'http://127.0.0.1:11434',
+          ffmpegPath: data.ffmpegPath || '',
+          ffprobePath: data.ffprobePath || '',
+          outputDirectory: data.outputDirectory || '',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching provider paths:', error);
+    }
+  };
+
+  const saveProviderPaths = async () => {
+    setSavingPaths(true);
+    try {
+      const response = await fetch('/api/providers/paths/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(providerPaths),
+      });
+      if (response.ok) {
+        alert('Provider paths saved successfully');
+        setPathsModified(false);
+      } else {
+        alert('Error saving provider paths');
+      }
+    } catch (error) {
+      console.error('Error saving provider paths:', error);
+      alert('Error saving provider paths');
+    } finally {
+      setSavingPaths(false);
+    }
+  };
+
+  const updateProviderPath = (key: keyof typeof providerPaths, value: string) => {
+    setProviderPaths(prev => ({ ...prev, [key]: value }));
+    setPathsModified(true);
+    // Clear test result when path changes
+    setTestResults(prev => ({ ...prev, [key]: null }));
+  };
+
+  const testProvider = async (provider: string, url?: string, path?: string) => {
+    try {
+      const response = await fetch(`/api/providers/test/${provider}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, path }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTestResults(prev => ({ ...prev, [provider]: data }));
+      } else {
+        setTestResults(prev => ({ 
+          ...prev, 
+          [provider]: { success: false, message: 'Failed to test connection' } 
+        }));
+      }
+    } catch (error) {
+      console.error(`Error testing ${provider}:`, error);
+      setTestResults(prev => ({ 
+        ...prev, 
+        [provider]: { success: false, message: `Network error: ${error}` } 
+      }));
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -223,6 +308,7 @@ export function SettingsPage() {
         <Tab value="system">System</Tab>
         <Tab value="ui">UI</Tab>
         <Tab value="providers">Providers</Tab>
+        <Tab value="localproviders">Local Providers</Tab>
         <Tab value="apikeys">API Keys</Tab>
         <Tab value="privacy">Privacy</Tab>
       </TabList>
@@ -307,6 +393,150 @@ export function SettingsPage() {
                 <Text size={200}>{profile.description}</Text>
               </div>
             ))}
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'localproviders' && (
+        <Card className={styles.section}>
+          <Title2>Local AI Providers Configuration</Title2>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+            Configure paths and URLs for locally-installed AI tools. These tools run on your machine and don't require API keys.
+          </Text>
+          <div className={styles.form}>
+            <Field 
+              label="Stable Diffusion WebUI URL" 
+              hint="URL where Stable Diffusion WebUI is running (requires NVIDIA GPU with 6GB+ VRAM)"
+            >
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
+                <Input 
+                  style={{ flex: 1 }}
+                  placeholder="http://127.0.0.1:7860" 
+                  value={providerPaths.stableDiffusionUrl}
+                  onChange={(e) => updateProviderPath('stableDiffusionUrl', e.target.value)}
+                />
+                <Button 
+                  size="small"
+                  onClick={() => testProvider('stablediffusion', providerPaths.stableDiffusionUrl)}
+                >
+                  Test Connection
+                </Button>
+              </div>
+              {testResults.stablediffusion && (
+                <Text 
+                  size={200} 
+                  style={{ 
+                    marginTop: tokens.spacingVerticalXS,
+                    color: testResults.stablediffusion.success 
+                      ? tokens.colorPaletteGreenForeground1 
+                      : tokens.colorPaletteRedForeground1 
+                  }}
+                >
+                  {testResults.stablediffusion.success ? '✓' : '✗'} {testResults.stablediffusion.message}
+                </Text>
+              )}
+            </Field>
+            
+            <Field 
+              label="Ollama URL" 
+              hint="URL where Ollama is running for local LLM generation"
+            >
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
+                <Input 
+                  style={{ flex: 1 }}
+                  placeholder="http://127.0.0.1:11434" 
+                  value={providerPaths.ollamaUrl}
+                  onChange={(e) => updateProviderPath('ollamaUrl', e.target.value)}
+                />
+                <Button 
+                  size="small"
+                  onClick={() => testProvider('ollama', providerPaths.ollamaUrl)}
+                >
+                  Test Connection
+                </Button>
+              </div>
+              {testResults.ollama && (
+                <Text 
+                  size={200} 
+                  style={{ 
+                    marginTop: tokens.spacingVerticalXS,
+                    color: testResults.ollama.success 
+                      ? tokens.colorPaletteGreenForeground1 
+                      : tokens.colorPaletteRedForeground1 
+                  }}
+                >
+                  {testResults.ollama.success ? '✓' : '✗'} {testResults.ollama.message}
+                </Text>
+              )}
+            </Field>
+            
+            <Field 
+              label="FFmpeg Executable Path" 
+              hint="Path to ffmpeg.exe (leave empty to use system PATH or download from Downloads page)"
+            >
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
+                <Input 
+                  style={{ flex: 1 }}
+                  placeholder="C:\path\to\ffmpeg.exe or leave empty for system PATH" 
+                  value={providerPaths.ffmpegPath}
+                  onChange={(e) => updateProviderPath('ffmpegPath', e.target.value)}
+                />
+                <Button 
+                  size="small"
+                  onClick={() => testProvider('ffmpeg', undefined, providerPaths.ffmpegPath || 'ffmpeg')}
+                >
+                  Test
+                </Button>
+              </div>
+              {testResults.ffmpeg && (
+                <Text 
+                  size={200} 
+                  style={{ 
+                    marginTop: tokens.spacingVerticalXS,
+                    color: testResults.ffmpeg.success 
+                      ? tokens.colorPaletteGreenForeground1 
+                      : tokens.colorPaletteRedForeground1 
+                  }}
+                >
+                  {testResults.ffmpeg.success ? '✓' : '✗'} {testResults.ffmpeg.message}
+                </Text>
+              )}
+            </Field>
+            
+            <Field 
+              label="FFprobe Executable Path" 
+              hint="Path to ffprobe.exe (usually in the same folder as FFmpeg)"
+            >
+              <Input 
+                placeholder="C:\path\to\ffprobe.exe or leave empty for system PATH" 
+                value={providerPaths.ffprobePath}
+                onChange={(e) => updateProviderPath('ffprobePath', e.target.value)}
+              />
+            </Field>
+            
+            <Field 
+              label="Output Directory" 
+              hint="Default directory for rendered videos (leave empty for Documents\AuraVideoStudio)"
+            >
+              <Input 
+                placeholder="C:\Users\YourName\Videos\AuraOutput" 
+                value={providerPaths.outputDirectory}
+                onChange={(e) => updateProviderPath('outputDirectory', e.target.value)}
+              />
+            </Field>
+            
+            {pathsModified && (
+              <Text size={200} style={{ color: tokens.colorPaletteYellowForeground1 }}>
+                ⚠️ You have unsaved changes
+              </Text>
+            )}
+            <Button 
+              appearance="primary" 
+              onClick={saveProviderPaths}
+              disabled={!pathsModified || savingPaths}
+            >
+              {savingPaths ? 'Saving...' : 'Save Provider Paths'}
+            </Button>
           </div>
         </Card>
       )}
