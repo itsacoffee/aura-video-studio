@@ -77,13 +77,16 @@ else
     Log.Warning("Static file serving is disabled. Web UI will not be available.");
 }
 
+// API endpoints are grouped under /api prefix
+var apiGroup = app.MapGroup("/api");
+
 // Health check endpoint
-app.MapGet("/healthz", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+apiGroup.MapGet("/healthz", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
     .WithName("HealthCheck")
     .WithOpenApi();
 
 // Capabilities endpoint
-app.MapGet("/capabilities", async (HardwareDetector detector) =>
+apiGroup.MapGet("/capabilities", async (HardwareDetector detector) =>
 {
     try
     {
@@ -109,7 +112,7 @@ app.MapGet("/capabilities", async (HardwareDetector detector) =>
 .WithOpenApi();
 
 // Plan endpoint - create or update timeline plan
-app.MapPost("/plan", ([FromBody] PlanRequest request) =>
+apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
 {
     try
     {
@@ -132,7 +135,7 @@ app.MapPost("/plan", ([FromBody] PlanRequest request) =>
 .WithOpenApi();
 
 // Script generation endpoint
-app.MapPost("/script", async ([FromBody] ScriptRequest request, ILlmProvider llmProvider, CancellationToken ct) =>
+apiGroup.MapPost("/script", async ([FromBody] ScriptRequest request, ILlmProvider llmProvider, CancellationToken ct) =>
 {
     try
     {
@@ -166,7 +169,7 @@ app.MapPost("/script", async ([FromBody] ScriptRequest request, ILlmProvider llm
 .WithOpenApi();
 
 // TTS endpoint
-app.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsProvider, CancellationToken ct) =>
+apiGroup.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsProvider, CancellationToken ct) =>
 {
     try
     {
@@ -198,7 +201,7 @@ app.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsProvid
 .WithOpenApi();
 
 // Downloads manifest endpoint
-app.MapGet("/downloads/manifest", () =>
+apiGroup.MapGet("/downloads/manifest", () =>
 {
     try
     {
@@ -221,7 +224,7 @@ app.MapGet("/downloads/manifest", () =>
 .WithOpenApi();
 
 // Settings endpoints
-app.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settings) =>
+apiGroup.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settings) =>
 {
     try
     {
@@ -238,8 +241,8 @@ app.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settings) =
 })
 .WithName("SaveSettings")
 .WithOpenApi();
-
-app.MapGet("/settings/load", () =>
+
+apiGroup.MapGet("/settings/load", () =>
 {
     try
     {
@@ -264,7 +267,7 @@ app.MapGet("/settings/load", () =>
 // Compose/Render endpoints - stub implementations for UI development
 var renderJobs = new Dictionary<string, RenderJobDto>();
 
-app.MapPost("/compose", ([FromBody] ComposeRequest request) =>
+apiGroup.MapPost("/compose", ([FromBody] ComposeRequest request) =>
 {
     try
     {
@@ -287,8 +290,8 @@ app.MapPost("/compose", ([FromBody] ComposeRequest request) =>
 })
 .WithName("ComposeTimeline")
 .WithOpenApi();
-
-app.MapPost("/render", ([FromBody] RenderRequest request) =>
+
+apiGroup.MapPost("/render", ([FromBody] RenderRequest request) =>
 {
     try
     {
@@ -311,8 +314,8 @@ app.MapPost("/render", ([FromBody] RenderRequest request) =>
 })
 .WithName("StartRender")
 .WithOpenApi();
-
-app.MapGet("/render/{id}/progress", (string id) =>
+
+apiGroup.MapGet("/render/{id}/progress", (string id) =>
 {
     if (!renderJobs.ContainsKey(id))
     {
@@ -331,8 +334,8 @@ app.MapGet("/render/{id}/progress", (string id) =>
 })
 .WithName("GetRenderProgress")
 .WithOpenApi();
-
-app.MapPost("/render/{id}/cancel", (string id) =>
+
+apiGroup.MapPost("/render/{id}/cancel", (string id) =>
 {
     if (!renderJobs.ContainsKey(id))
     {
@@ -344,8 +347,8 @@ app.MapPost("/render/{id}/cancel", (string id) =>
 })
 .WithName("CancelRender")
 .WithOpenApi();
-
-app.MapGet("/queue", () =>
+
+apiGroup.MapGet("/queue", () =>
 {
     try
     {
@@ -360,8 +363,8 @@ app.MapGet("/queue", () =>
 })
 .WithName("GetRenderQueue")
 .WithOpenApi();
-
-app.MapGet("/logs/stream", async (HttpContext context) =>
+
+apiGroup.MapGet("/logs/stream", async (HttpContext context) =>
 {
     context.Response.Headers.Append("Content-Type", "text/event-stream");
     context.Response.Headers.Append("Cache-Control", "no-cache");
@@ -384,8 +387,8 @@ app.MapGet("/logs/stream", async (HttpContext context) =>
 })
 .WithName("StreamLogs")
 .WithOpenApi();
-
-app.MapPost("/probes/run", async (HardwareDetector detector) =>
+
+apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
 {
     try
     {
@@ -401,8 +404,8 @@ app.MapPost("/probes/run", async (HardwareDetector detector) =>
 })
 .WithName("RunProbes")
 .WithOpenApi();
-
-app.MapGet("/profiles/list", () =>
+
+apiGroup.MapGet("/profiles/list", () =>
 {
     try
     {
@@ -422,8 +425,8 @@ app.MapGet("/profiles/list", () =>
 })
 .WithName("ListProfiles")
 .WithOpenApi();
-
-app.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
+
+apiGroup.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
 {
     try
     {
