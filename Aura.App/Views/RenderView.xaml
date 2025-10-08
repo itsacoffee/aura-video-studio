@@ -327,7 +327,7 @@
             <InfoBar
                 Title="Hardware Encoder Available"
                 Message="NVENC hardware encoder detected. Rendering will be fast with excellent quality."
-                IsOpen="True"
+                IsOpen="{x:Bind ViewModel.IsNvencAvailable, Mode=OneWay}"
                 Severity="Success"
                 IsClosable="True"
                 Margin="0,8,0,0"/>
