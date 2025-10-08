@@ -153,6 +153,25 @@ apiGroup.MapPost("/script", async ([FromBody] ScriptRequest request, ILlmProvide
 {
     try
     {
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(request.Topic))
+        {
+            return Results.Problem(
+                detail: "Topic is required",
+                statusCode: 400,
+                title: "Invalid Brief",
+                type: "https://docs.aura.studio/errors/E303");
+        }
+        
+        if (request.TargetDurationMinutes <= 0 || request.TargetDurationMinutes > 120)
+        {
+            return Results.Problem(
+                detail: "Target duration must be between 0 and 120 minutes",
+                statusCode: 400,
+                title: "Invalid Plan",
+                type: "https://docs.aura.studio/errors/E304");
+        }
+        
         var brief = new Brief(
             Topic: request.Topic,
             Audience: request.Audience,
@@ -169,14 +188,49 @@ apiGroup.MapPost("/script", async ([FromBody] ScriptRequest request, ILlmProvide
             Style: request.Style
         );
         
+        Log.Information("Generating script for topic: {Topic}, duration: {Duration} min", request.Topic, request.TargetDurationMinutes);
         var script = await llmProvider.DraftScriptAsync(brief, planSpec, ct);
         
+        // Validate script is not empty
+        if (string.IsNullOrWhiteSpace(script))
+        {
+            Log.Error("Script generation returned empty result");
+            return Results.Problem(
+                detail: "Script generation returned empty result. Provider may have failed.",
+                statusCode: 500,
+                title: "Script Generation Failed",
+                type: "https://docs.aura.studio/errors/E302");
+        }
+        
+        Log.Information("Script generated successfully: {Length} characters", script.Length);
         return Results.Ok(new { success = true, script });
+    }
+    catch (ArgumentException ex)
+    {
+        Log.Error(ex, "Invalid argument for script generation");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 400,
+            title: "Invalid Request",
+            type: "https://docs.aura.studio/errors/E303");
+    }
+    catch (TaskCanceledException)
+    {
+        Log.Warning("Script generation was cancelled");
+        return Results.Problem(
+            detail: "Script generation was cancelled",
+            statusCode: 408,
+            title: "Request Timeout",
+            type: "https://docs.aura.studio/errors/E301");
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "Error generating script");
-        return Results.Problem("Error generating script", statusCode: 500);
+        Log.Error(ex, "Error generating script: {Message}", ex.Message);
+        return Results.Problem(
+            detail: $"Error generating script: {ex.Message}",
+            statusCode: 500,
+            title: "Script Provider Failed",
+            type: "https://docs.aura.studio/errors/E300");
     }
 })
 .WithName("GenerateScript")
