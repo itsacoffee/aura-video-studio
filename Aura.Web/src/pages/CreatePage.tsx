@@ -23,6 +23,12 @@ const useStyles = makeStyles({
   },
   header: {
     marginBottom: tokens.spacingVerticalXXL,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  subtitle: {
+    color: tokens.colorNeutralForeground3,
   },
   form: {
     display: 'flex',
@@ -30,13 +36,18 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalL,
   },
   section: {
-    padding: tokens.spacingVerticalL,
+    padding: tokens.spacingVerticalXL,
   },
   actions: {
     display: 'flex',
     gap: tokens.spacingHorizontalM,
     justifyContent: 'flex-end',
     marginTop: tokens.spacingVerticalXL,
+  },
+  fieldGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalL,
   },
 });
 
@@ -101,109 +112,132 @@ export function CreatePage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <Title1>Create Video</Title1>
-        <Text>Step {currentStep} of 3</Text>
+        <Text className={styles.subtitle}>Step {currentStep} of 3</Text>
       </div>
 
       <div className={styles.form}>
         {currentStep === 1 && (
           <Card className={styles.section}>
             <Title2>Brief</Title2>
-            <Field label="Topic" required>
-              <Input
-                value={brief.topic}
-                onChange={(_, data) => setBrief({ ...brief, topic: data.value })}
-                placeholder="Enter your video topic"
-              />
-            </Field>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              Define the core details of your video
+            </Text>
+            <div className={styles.fieldGroup}>
+              <Field label="Topic" required hint="What is your video about?">
+                <Input
+                  value={brief.topic}
+                  onChange={(_, data) => setBrief({ ...brief, topic: data.value })}
+                  placeholder="Enter your video topic"
+                />
+              </Field>
 
-            <Field label="Audience">
-              <Dropdown
-                value={brief.audience}
-                onOptionSelect={(_, data) => setBrief({ ...brief, audience: data.optionText })}
-              >
-                <Option>General</Option>
-                <Option>Beginners</Option>
-                <Option>Advanced</Option>
-                <Option>Professionals</Option>
-              </Dropdown>
-            </Field>
+              <Field label="Audience" hint="Who is this video for?">
+                <Dropdown
+                  value={brief.audience}
+                  onOptionSelect={(_, data) => setBrief({ ...brief, audience: data.optionText })}
+                >
+                  <Option>General</Option>
+                  <Option>Beginners</Option>
+                  <Option>Advanced</Option>
+                  <Option>Professionals</Option>
+                </Dropdown>
+              </Field>
 
-            <Field label="Tone">
-              <Dropdown
-                value={brief.tone}
-                onOptionSelect={(_, data) => setBrief({ ...brief, tone: data.optionText })}
-              >
-                <Option>Informative</Option>
-                <Option>Casual</Option>
-                <Option>Professional</Option>
-                <Option>Energetic</Option>
-              </Dropdown>
-            </Field>
+              <Field label="Tone" hint="What style should the video have?">
+                <Dropdown
+                  value={brief.tone}
+                  onOptionSelect={(_, data) => setBrief({ ...brief, tone: data.optionText })}
+                >
+                  <Option>Informative</Option>
+                  <Option>Casual</Option>
+                  <Option>Professional</Option>
+                  <Option>Energetic</Option>
+                </Dropdown>
+              </Field>
 
-            <Field label="Aspect Ratio">
-              <Dropdown
-                value={brief.aspect}
-                onOptionSelect={(_, data) => setBrief({ ...brief, aspect: data.optionText as any })}
-              >
-                <Option>16:9</Option>
-                <Option>9:16</Option>
-                <Option>1:1</Option>
-              </Dropdown>
-            </Field>
+              <Field label="Aspect Ratio" hint="Video dimensions">
+                <Dropdown
+                  value={brief.aspect}
+                  onOptionSelect={(_, data) => setBrief({ ...brief, aspect: data.optionText as any })}
+                >
+                  <Option>16:9</Option>
+                  <Option>9:16</Option>
+                  <Option>1:1</Option>
+                </Dropdown>
+              </Field>
+            </div>
           </Card>
         )}
 
         {currentStep === 2 && (
           <Card className={styles.section}>
             <Title2>Length and Pacing</Title2>
-            <Field label={`Duration: ${planSpec.targetDurationMinutes} minutes`}>
-              <Slider
-                min={0.5}
-                max={20}
-                step={0.5}
-                value={planSpec.targetDurationMinutes}
-                onChange={(_, data) =>
-                  setPlanSpec({ ...planSpec, targetDurationMinutes: data.value })
-                }
-              />
-            </Field>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              Configure the duration and pacing of your video
+            </Text>
+            <div className={styles.fieldGroup}>
+              <Field label={`Duration: ${planSpec.targetDurationMinutes} minutes`} hint="How long should the video be?">
+                <Slider
+                  min={0.5}
+                  max={20}
+                  step={0.5}
+                  value={planSpec.targetDurationMinutes}
+                  onChange={(_, data) =>
+                    setPlanSpec({ ...planSpec, targetDurationMinutes: data.value })
+                  }
+                />
+              </Field>
 
-            <Field label="Pacing">
-              <Dropdown
-                value={planSpec.pacing}
-                onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, pacing: data.optionText as any })}
-              >
-                <Option>Chill</Option>
-                <Option>Conversational</Option>
-                <Option>Fast</Option>
-              </Dropdown>
-            </Field>
+              <Field label="Pacing" hint="How fast should the narration be?">
+                <Dropdown
+                  value={planSpec.pacing}
+                  onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, pacing: data.optionText as any })}
+                >
+                  <Option>Chill</Option>
+                  <Option>Conversational</Option>
+                  <Option>Fast</Option>
+                </Dropdown>
+              </Field>
 
-            <Field label="Density">
-              <Dropdown
-                value={planSpec.density}
-                onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, density: data.optionText as any })}
-              >
-                <Option>Sparse</Option>
-                <Option>Normal</Option>
-                <Option>Dense</Option>
-              </Dropdown>
-            </Field>
+              <Field label="Density" hint="How much content per minute?">
+                <Dropdown
+                  value={planSpec.density}
+                  onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, density: data.optionText as any })}
+                >
+                  <Option>Sparse</Option>
+                  <Option>Normal</Option>
+                  <Option>Dense</Option>
+                </Dropdown>
+              </Field>
+            </div>
           </Card>
         )}
 
         {currentStep === 3 && (
           <Card className={styles.section}>
             <Title2>Confirm</Title2>
-            <Text>Review your settings and generate your video</Text>
-            <div style={{ marginTop: tokens.spacingVerticalL }}>
-              <Text weight="semibold">Topic:</Text> <Text>{brief.topic}</Text>
-              <br />
-              <Text weight="semibold">Duration:</Text> <Text>{planSpec.targetDurationMinutes} minutes</Text>
-              <br />
-              <Text weight="semibold">Pacing:</Text> <Text>{planSpec.pacing}</Text>
-              <br />
-              <Text weight="semibold">Aspect:</Text> <Text>{brief.aspect}</Text>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              Review your settings and generate your video
+            </Text>
+            <div style={{ marginTop: tokens.spacingVerticalL, display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+              <div>
+                <Text weight="semibold">Topic:</Text> <Text>{brief.topic}</Text>
+              </div>
+              <div>
+                <Text weight="semibold">Audience:</Text> <Text>{brief.audience}</Text>
+              </div>
+              <div>
+                <Text weight="semibold">Duration:</Text> <Text>{planSpec.targetDurationMinutes} minutes</Text>
+              </div>
+              <div>
+                <Text weight="semibold">Pacing:</Text> <Text>{planSpec.pacing}</Text>
+              </div>
+              <div>
+                <Text weight="semibold">Density:</Text> <Text>{planSpec.density}</Text>
+              </div>
+              <div>
+                <Text weight="semibold">Aspect:</Text> <Text>{brief.aspect}</Text>
+              </div>
             </div>
           </Card>
         )}

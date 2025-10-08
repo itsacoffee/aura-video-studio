@@ -18,17 +18,23 @@ import type { Profile } from '../types';
 
 const useStyles = makeStyles({
   container: {
-    maxWidth: '800px',
+    maxWidth: '900px',
     margin: '0 auto',
   },
   header: {
     marginBottom: tokens.spacingVerticalXXL,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  subtitle: {
+    color: tokens.colorNeutralForeground3,
   },
   tabs: {
     marginBottom: tokens.spacingVerticalL,
   },
   section: {
-    padding: tokens.spacingVerticalL,
+    padding: tokens.spacingVerticalXL,
   },
   form: {
     display: 'flex',
@@ -42,12 +48,12 @@ const useStyles = makeStyles({
     marginTop: tokens.spacingVerticalXL,
   },
   profileCard: {
-    padding: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalL,
     marginBottom: tokens.spacingVerticalM,
     cursor: 'pointer',
-    ':hover': {
-      backgroundColor: tokens.colorNeutralBackground1Hover,
-    },
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground2,
   },
 });
 
@@ -183,6 +189,9 @@ export function SettingsPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <Title1>Settings</Title1>
+        <Text className={styles.subtitle}>
+          Configure system preferences, providers, and API keys
+        </Text>
       </div>
 
       <TabList
@@ -204,9 +213,10 @@ export function SettingsPage() {
               <Switch
                 checked={offlineMode}
                 onChange={(_, data) => setOfflineMode(data.checked)}
-                label={offlineMode ? 'On' : 'Off'}
               />
-              <Text size={200}>Blocks all network providers. Only local and stock assets are used.</Text>
+              <Text size={200}>
+                {offlineMode ? 'Enabled' : 'Disabled'} - Blocks all network providers. Only local and stock assets are used.
+              </Text>
             </Field>
 
             <Button
@@ -307,12 +317,12 @@ export function SettingsPage() {
           <Title2>Privacy Settings</Title2>
           <div className={styles.form}>
             <Field label="Telemetry">
-              <Switch label="Off (default)" />
-              <Text size={200}>Send anonymous usage data to improve the app</Text>
+              <Switch />
+              <Text size={200}>Send anonymous usage data to improve the app (disabled by default)</Text>
             </Field>
             <Field label="Crash Reports">
-              <Switch label="Off (default)" />
-              <Text size={200}>Send crash reports to help diagnose issues</Text>
+              <Switch />
+              <Text size={200}>Send crash reports to help diagnose issues (disabled by default)</Text>
             </Field>
           </div>
         </Card>
