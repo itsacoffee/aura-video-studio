@@ -151,7 +151,22 @@ namespace Aura.App
 
     public class AppSettings
     {
-        // Settings properties go here
-        // These would be loaded from appsettings.json in a real implementation
+        // Provider settings
+        public string StableDiffusionUrl { get; set; } = "http://127.0.0.1:7860";
+        public string OllamaUrl { get; set; } = "http://127.0.0.1:11434";
+        public string FfmpegPath { get; set; } = "";
+        public string FfprobePath { get; set; } = "";
+        public string OutputDirectory { get; set; } = "";
+        
+        // API Keys (encrypted in production)
+        public string OpenAiKey { get; set; } = "";
+        public string ElevenLabsKey { get; set; } = "";
+        public string PexelsKey { get; set; } = "";
+        public string StabilityAiKey { get; set; } = "";
+        
+        // System settings
+        public bool OfflineMode { get; set; } = false;
+        public int UiScale { get; set; } = 100;
+        public bool CompactMode { get; set; } = false;
     }
 }

@@ -57,6 +57,7 @@ For detailed build instructions, see [INSTALL.md](./INSTALL.md)
 
 **See detailed documentation:**
 - [INSTALL.md](./INSTALL.md) - **Build and installation guide**
+- [LOCAL_PROVIDERS_SETUP.md](./LOCAL_PROVIDERS_SETUP.md) - **How to set up local AI providers (Stable Diffusion, Ollama, FFmpeg)**
 - [PORTABLE.md](./PORTABLE.md) - **User guide for portable version**
 - [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md) - Original implementation details
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Complete architecture overview

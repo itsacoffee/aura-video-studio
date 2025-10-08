@@ -218,6 +218,18 @@ export function DownloadsPage() {
         </Text>
       </div>
 
+      <Card className={styles.card} style={{ marginBottom: tokens.spacingVerticalL, backgroundColor: tokens.colorNeutralBackground3 }}>
+        <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'flex-start' }}>
+          <div style={{ flex: 1 }}>
+            <Title2>Need to configure local AI tools?</Title2>
+            <Text>
+              After downloading components here, configure their paths and URLs in <strong>Settings → Local Providers</strong>.
+              You can test connections and set custom paths for Stable Diffusion, Ollama, and FFmpeg.
+            </Text>
+          </div>
+        </div>
+      </Card>
+
       {loading ? (
         <Card className={styles.card}>
           <Spinner label="Loading dependencies..." />

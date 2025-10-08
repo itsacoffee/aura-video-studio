@@ -38,13 +38,16 @@ builder.Services.AddCors(options =>
 
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
+builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 builder.Services.AddSingleton<ITtsProvider, WindowsTtsProvider>();
 builder.Services.AddSingleton<IVideoComposer>(sp => 
 {
     var logger = sp.GetRequiredService<ILogger<FfmpegVideoComposer>>();
-    var ffmpegPath = "ffmpeg"; // Use system ffmpeg or specify path
-    return new FfmpegVideoComposer(logger, ffmpegPath);
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var ffmpegPath = providerSettings.GetFfmpegPath();
+    var outputDirectory = providerSettings.GetOutputDirectory();
+    return new FfmpegVideoComposer(logger, ffmpegPath, outputDirectory);
 });
 builder.Services.AddSingleton<VideoOrchestrator>();
 
@@ -559,6 +562,154 @@ apiGroup.MapGet("/apikeys/load", () =>
 .WithName("LoadApiKeys")
 .WithOpenApi();
 
+// Local Provider Paths Configuration
+apiGroup.MapPost("/providers/paths/save", ([FromBody] ProviderPathsRequest request) =>
+{
+    try
+    {
+        var pathsConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "provider-paths.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(pathsConfigPath)!);
+        
+        var paths = new Dictionary<string, object>
+        {
+            ["stableDiffusionUrl"] = request.StableDiffusionUrl ?? "http://127.0.0.1:7860",
+            ["ollamaUrl"] = request.OllamaUrl ?? "http://127.0.0.1:11434",
+            ["ffmpegPath"] = request.FfmpegPath ?? "",
+            ["ffprobePath"] = request.FfprobePath ?? "",
+            ["outputDirectory"] = request.OutputDirectory ?? ""
+        };
+        
+        File.WriteAllText(pathsConfigPath, JsonSerializer.Serialize(paths, new JsonSerializerOptions { WriteIndented = true }));
+        
+        return Results.Ok(new { success = true, message = "Provider paths saved successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error saving provider paths");
+        return Results.Problem("Error saving provider paths", statusCode: 500);
+    }
+})
+.WithName("SaveProviderPaths")
+.WithOpenApi();
+
+apiGroup.MapGet("/providers/paths/load", () =>
+{
+    try
+    {
+        var pathsConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "provider-paths.json");
+        if (File.Exists(pathsConfigPath))
+        {
+            var json = File.ReadAllText(pathsConfigPath);
+            var paths = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+            return Results.Ok(paths);
+        }
+        
+        // Return defaults
+        return Results.Ok(new Dictionary<string, object>
+        {
+            ["stableDiffusionUrl"] = "http://127.0.0.1:7860",
+            ["ollamaUrl"] = "http://127.0.0.1:11434",
+            ["ffmpegPath"] = "",
+            ["ffprobePath"] = "",
+            ["outputDirectory"] = ""
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error loading provider paths");
+        return Results.Problem("Error loading provider paths", statusCode: 500);
+    }
+})
+.WithName("LoadProviderPaths")
+.WithOpenApi();
+
+// Test provider connections
+apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody] ProviderTestRequest request) =>
+{
+    try
+    {
+        var httpClient = new HttpClient();
+        httpClient.Timeout = TimeSpan.FromSeconds(5);
+        
+        switch (provider.ToLower())
+        {
+            case "stablediffusion":
+                try
+                {
+                    var sdUrl = request.Url ?? "http://127.0.0.1:7860";
+                    var response = await httpClient.GetAsync($"{sdUrl}/sdapi/v1/sd-models");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return Results.Ok(new { success = true, message = "Successfully connected to Stable Diffusion WebUI" });
+                    }
+                    return Results.Ok(new { success = false, message = $"Stable Diffusion WebUI returned status: {response.StatusCode}" });
+                }
+                catch (Exception ex)
+                {
+                    return Results.Ok(new { success = false, message = $"Failed to connect: {ex.Message}" });
+                }
+                
+            case "ollama":
+                try
+                {
+                    var ollamaUrl = request.Url ?? "http://127.0.0.1:11434";
+                    var response = await httpClient.GetAsync($"{ollamaUrl}/api/tags");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return Results.Ok(new { success = true, message = "Successfully connected to Ollama" });
+                    }
+                    return Results.Ok(new { success = false, message = $"Ollama returned status: {response.StatusCode}" });
+                }
+                catch (Exception ex)
+                {
+                    return Results.Ok(new { success = false, message = $"Failed to connect: {ex.Message}" });
+                }
+                
+            case "ffmpeg":
+                try
+                {
+                    var ffmpegPath = request.Path ?? "ffmpeg";
+                    var processInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = ffmpegPath,
+                        Arguments = "-version",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    
+                    using var process = System.Diagnostics.Process.Start(processInfo);
+                    if (process != null)
+                    {
+                        await process.WaitForExitAsync();
+                        if (process.ExitCode == 0)
+                        {
+                            var output = await process.StandardOutput.ReadToEndAsync();
+                            var versionLine = output.Split('\n').FirstOrDefault(l => l.Contains("ffmpeg version"));
+                            return Results.Ok(new { success = true, message = versionLine ?? "FFmpeg found and working" });
+                        }
+                    }
+                    return Results.Ok(new { success = false, message = "FFmpeg returned non-zero exit code" });
+                }
+                catch (Exception ex)
+                {
+                    return Results.Ok(new { success = false, message = $"Failed to execute FFmpeg: {ex.Message}" });
+                }
+                
+            default:
+                return Results.BadRequest(new { success = false, message = $"Unknown provider: {provider}" });
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error testing provider connection");
+        return Results.Problem($"Error testing {provider}", statusCode: 500);
+    }
+})
+.WithName("TestProviderConnection")
+.WithOpenApi();
+
 // Fallback to index.html for client-side routing (must be after all API routes)
 if (Directory.Exists(wwwrootPath))
 {
@@ -577,3 +728,5 @@ record RenderRequest(string TimelineJson, string PresetName);
 record RenderJobDto(string Id, string Status, float Progress, string? OutputPath, DateTime CreatedAt);
 record ApplyProfileRequest(string ProfileName);
 record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKey, string? StabilityAiKey);
+record ProviderPathsRequest(string? StableDiffusionUrl, string? OllamaUrl, string? FfmpegPath, string? FfprobePath, string? OutputDirectory);
+record ProviderTestRequest(string? Url, string? Path);
