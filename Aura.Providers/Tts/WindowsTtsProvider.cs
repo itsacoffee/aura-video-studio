@@ -40,6 +40,7 @@ public class WindowsTtsProvider : ITtsProvider
     public async Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
     {
 #if WINDOWS10_0_19041_0_OR_GREATER
+        await Task.CompletedTask; // Ensure async behavior
         var voiceNames = new List<string>();
         
         foreach (var voice in SpeechSynthesizer.AllVoices)
