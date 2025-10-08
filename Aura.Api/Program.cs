@@ -240,6 +240,190 @@ app.MapGet("/settings/load", () =>
 .WithName("LoadSettings")
 .WithOpenApi();
 
+// Compose/Render endpoints - stub implementations for UI development
+var renderJobs = new Dictionary<string, RenderJobDto>();
+
+app.MapPost("/compose", ([FromBody] ComposeRequest request) =>
+{
+    try
+    {
+        var jobId = Guid.NewGuid().ToString();
+        renderJobs[jobId] = new RenderJobDto(
+            Id: jobId,
+            Status: "queued",
+            Progress: 0,
+            OutputPath: null,
+            CreatedAt: DateTime.UtcNow
+        );
+        
+        return Results.Ok(new { success = true, jobId });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error composing timeline");
+        return Results.Problem("Error composing timeline", statusCode: 500);
+    }
+})
+.WithName("ComposeTimeline")
+.WithOpenApi();
+
+app.MapPost("/render", ([FromBody] RenderRequest request) =>
+{
+    try
+    {
+        var jobId = Guid.NewGuid().ToString();
+        renderJobs[jobId] = new RenderJobDto(
+            Id: jobId,
+            Status: "queued",
+            Progress: 0,
+            OutputPath: null,
+            CreatedAt: DateTime.UtcNow
+        );
+        
+        return Results.Ok(new { success = true, jobId });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error starting render");
+        return Results.Problem("Error starting render", statusCode: 500);
+    }
+})
+.WithName("StartRender")
+.WithOpenApi();
+
+app.MapGet("/render/{id}/progress", (string id) =>
+{
+    if (!renderJobs.ContainsKey(id))
+    {
+        return Results.NotFound(new { error = "Render job not found" });
+    }
+    
+    var job = renderJobs[id];
+    return Results.Ok(new 
+    { 
+        id = job.Id,
+        status = job.Status,
+        progress = job.Progress,
+        outputPath = job.OutputPath,
+        createdAt = job.CreatedAt
+    });
+})
+.WithName("GetRenderProgress")
+.WithOpenApi();
+
+app.MapPost("/render/{id}/cancel", (string id) =>
+{
+    if (!renderJobs.ContainsKey(id))
+    {
+        return Results.NotFound(new { error = "Render job not found" });
+    }
+    
+    renderJobs[id] = renderJobs[id] with { Status = "cancelled" };
+    return Results.Ok(new { success = true });
+})
+.WithName("CancelRender")
+.WithOpenApi();
+
+app.MapGet("/queue", () =>
+{
+    try
+    {
+        var jobs = renderJobs.Values.OrderByDescending(j => j.CreatedAt).ToList();
+        return Results.Ok(new { jobs });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error retrieving queue");
+        return Results.Problem("Error retrieving queue", statusCode: 500);
+    }
+})
+.WithName("GetRenderQueue")
+.WithOpenApi();
+
+app.MapGet("/logs/stream", async (HttpContext context) =>
+{
+    context.Response.Headers.Append("Content-Type", "text/event-stream");
+    context.Response.Headers.Append("Cache-Control", "no-cache");
+    context.Response.Headers.Append("Connection", "keep-alive");
+    
+    try
+    {
+        // Simple log streaming - send a test message
+        var message = $"data: {{\"timestamp\":\"{DateTime.UtcNow:O}\",\"level\":\"INFO\",\"message\":\"Log stream connected\"}}\n\n";
+        await context.Response.WriteAsync(message);
+        await context.Response.Body.FlushAsync();
+        
+        // Keep connection alive
+        await Task.Delay(Timeout.Infinite, context.RequestAborted);
+    }
+    catch (OperationCanceledException)
+    {
+        // Client disconnected
+    }
+})
+.WithName("StreamLogs")
+.WithOpenApi();
+
+app.MapPost("/probes/run", async (HardwareDetector detector) =>
+{
+    try
+    {
+        await detector.RunHardwareProbeAsync();
+        var profile = await detector.DetectSystemAsync();
+        return Results.Ok(new { success = true, profile });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error running probes");
+        return Results.Problem("Error running hardware probes", statusCode: 500);
+    }
+})
+.WithName("RunProbes")
+.WithOpenApi();
+
+app.MapGet("/profiles/list", () =>
+{
+    try
+    {
+        var profiles = new[]
+        {
+            new { name = "Free-Only", description = "Uses only free providers (no API keys required)" },
+            new { name = "Balanced Mix", description = "Pro providers with free fallbacks" },
+            new { name = "Pro-Max", description = "All pro providers (requires API keys)" }
+        };
+        return Results.Ok(new { profiles });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error listing profiles");
+        return Results.Problem("Error listing profiles", statusCode: 500);
+    }
+})
+.WithName("ListProfiles")
+.WithOpenApi();
+
+app.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
+{
+    try
+    {
+        // Store profile selection in settings
+        var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
+        
+        var settings = new Dictionary<string, object> { ["profile"] = request.ProfileName };
+        File.WriteAllText(settingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+        
+        return Results.Ok(new { success = true });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error applying profile");
+        return Results.Problem("Error applying profile", statusCode: 500);
+    }
+})
+.WithName("ApplyProfile")
+.WithOpenApi();
+
 app.Run();
 
 // DTOs
@@ -247,3 +431,7 @@ record PlanRequest(double TargetDurationMinutes, Pacing Pacing, Density Density,
 record ScriptRequest(string Topic, string Audience, string Goal, string Tone, string Language, Aspect Aspect, double TargetDurationMinutes, Pacing Pacing, Density Density, string Style);
 record TtsRequest(List<LineDto> Lines, string VoiceName, double Rate, double Pitch, PauseStyle PauseStyle);
 record LineDto(int SceneIndex, string Text, double StartSeconds, double DurationSeconds);
+record ComposeRequest(string TimelineJson);
+record RenderRequest(string TimelineJson, string PresetName);
+record RenderJobDto(string Id, string Status, float Progress, string? OutputPath, DateTime CreatedAt);
+record ApplyProfileRequest(string ProfileName);
