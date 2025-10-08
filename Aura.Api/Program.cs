@@ -39,7 +39,12 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 builder.Services.AddSingleton<ITtsProvider, WindowsTtsProvider>();
-builder.Services.AddSingleton<IVideoComposer, FfmpegVideoComposer>();
+builder.Services.AddSingleton<IVideoComposer>(sp => 
+{
+    var logger = sp.GetRequiredService<ILogger<FfmpegVideoComposer>>();
+    var ffmpegPath = "ffmpeg"; // Use system ffmpeg or specify path
+    return new FfmpegVideoComposer(logger, ffmpegPath);
+});
 builder.Services.AddSingleton<VideoOrchestrator>();
 
 // Configure Kestrel to listen on specific port
