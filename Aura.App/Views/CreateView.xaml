@@ -9,190 +9,251 @@
     mc:Ignorable="d">
 
     <ScrollViewer>
-        <StackPanel Padding="24" MaxWidth="1200" Spacing="24">
+        <StackPanel Padding="32" MaxWidth="1200" Spacing="20">
             
             <!-- Header -->
-            <TextBlock 
-                Text="Create New Video" 
-                Style="{ThemeResource TitleTextBlockStyle}"
-                Margin="0,0,0,12"/>
+            <StackPanel Spacing="8" Margin="0,0,0,16">
+                <TextBlock 
+                    Text="Create New Video" 
+                    Style="{ThemeResource TitleTextBlockStyle}"/>
+                <TextBlock 
+                    Text="Configure your video content, style, and narration preferences"
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+            </StackPanel>
             
             <!-- Step 1: Brief -->
             <Expander Header="Step 1: Brief" IsExpanded="True">
-                <StackPanel Spacing="12" Padding="12">
+                <StackPanel Spacing="16" Padding="16">
                     <TextBox 
                         Header="Topic (Required)"
-                        PlaceholderText="Enter video topic..."
+                        PlaceholderText="e.g., 'Introduction to Machine Learning' or 'Best Hiking Trails in Colorado'"
                         Text="{x:Bind ViewModel.Topic, Mode=TwoWay}"
-                        MaxLength="200"/>
+                        MaxLength="200"
+                        ToolTipService.ToolTip="The main subject or title of your video"/>
                     
                     <TextBox 
                         Header="Audience (Optional)"
-                        PlaceholderText="Target audience..."
-                        Text="{x:Bind ViewModel.Audience, Mode=TwoWay}"/>
+                        PlaceholderText="e.g., 'Beginners', 'Professionals', 'Students'"
+                        Text="{x:Bind ViewModel.Audience, Mode=TwoWay}"
+                        ToolTipService.ToolTip="Who is this video intended for?"/>
                     
                     <TextBox 
                         Header="Goal (Optional)"
-                        PlaceholderText="What should viewers learn or do?"
-                        Text="{x:Bind ViewModel.Goal, Mode=TwoWay}"/>
+                        PlaceholderText="e.g., 'Learn the basics' or 'Discover new places'"
+                        Text="{x:Bind ViewModel.Goal, Mode=TwoWay}"
+                        ToolTipService.ToolTip="What should viewers achieve after watching?"/>
                     
-                    <ComboBox 
-                        Header="Tone"
-                        SelectedItem="{x:Bind ViewModel.Tone, Mode=TwoWay}"
-                        Width="300"
-                        HorizontalAlignment="Left">
-                        <x:String>Informative</x:String>
-                        <x:String>Casual</x:String>
-                        <x:String>Professional</x:String>
-                        <x:String>Entertaining</x:String>
-                        <x:String>Educational</x:String>
-                    </ComboBox>
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <ComboBox 
+                            Grid.Column="0"
+                            Header="Tone"
+                            SelectedItem="{x:Bind ViewModel.Tone, Mode=TwoWay}"
+                            HorizontalAlignment="Stretch"
+                            ToolTipService.ToolTip="The style and personality of your video">
+                            <x:String>Informative</x:String>
+                            <x:String>Casual</x:String>
+                            <x:String>Professional</x:String>
+                            <x:String>Entertaining</x:String>
+                            <x:String>Educational</x:String>
+                        </ComboBox>
+                        
+                        <ComboBox 
+                            Grid.Column="1"
+                            Header="Language"
+                            SelectedItem="{x:Bind ViewModel.Language, Mode=TwoWay}"
+                            HorizontalAlignment="Stretch"
+                            ToolTipService.ToolTip="Narration language">
+                            <x:String>en-US</x:String>
+                            <x:String>en-GB</x:String>
+                            <x:String>es-ES</x:String>
+                            <x:String>fr-FR</x:String>
+                            <x:String>de-DE</x:String>
+                        </ComboBox>
+                    </Grid>
                     
                     <ComboBox 
                         Header="Aspect Ratio"
                         Width="300"
                         HorizontalAlignment="Left"
-                        SelectedIndex="0">
-                        <ComboBoxItem Content="16:9 Widescreen" Tag="Widescreen16x9"/>
-                        <ComboBoxItem Content="9:16 Vertical (Shorts)" Tag="Vertical9x16"/>
-                        <ComboBoxItem Content="1:1 Square" Tag="Square1x1"/>
-                    </ComboBox>
-                    
-                    <ComboBox 
-                        Header="Language"
-                        SelectedItem="{x:Bind ViewModel.Language, Mode=TwoWay}"
-                        Width="300"
-                        HorizontalAlignment="Left">
-                        <x:String>en-US</x:String>
-                        <x:String>en-GB</x:String>
-                        <x:String>es-ES</x:String>
-                        <x:String>fr-FR</x:String>
-                        <x:String>de-DE</x:String>
+                        SelectedIndex="0"
+                        ToolTipService.ToolTip="Video dimensions for your target platform">
+                        <ComboBoxItem Content="16:9 Widescreen (YouTube, Desktop)" Tag="Widescreen16x9"/>
+                        <ComboBoxItem Content="9:16 Vertical (Shorts, TikTok, Reels)" Tag="Vertical9x16"/>
+                        <ComboBoxItem Content="1:1 Square (Instagram Feed)" Tag="Square1x1"/>
                     </ComboBox>
                 </StackPanel>
             </Expander>
             
             <!-- Step 2: Length and Pacing -->
             <Expander Header="Step 2: Length and Pacing" IsExpanded="True">
-                <StackPanel Spacing="12" Padding="12">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{x:Bind ViewModel.DurationMinutes, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Duration: {0} minutes'}"/>
+                <StackPanel Spacing="16" Padding="16">
+                    <StackPanel Spacing="8">
+                        <TextBlock 
+                            Text="{x:Bind ViewModel.DurationMinutes, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Duration: {0} minutes'}"
+                            Style="{ThemeResource SubtitleTextBlockStyle}"/>
                         <Slider 
                             Minimum="1" 
                             Maximum="20" 
                             Value="{x:Bind ViewModel.DurationMinutes, Mode=TwoWay}"
                             StepFrequency="1"
                             TickFrequency="1"
-                            TickPlacement="BottomRight"/>
+                            TickPlacement="BottomRight"
+                            ToolTipService.ToolTip="Target video length (actual duration may vary)"/>
+                        <TextBlock 
+                            Text="Adjust the target length for your video content"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                     </StackPanel>
                     
-                    <ComboBox 
-                        Header="Pacing"
-                        Width="300"
-                        HorizontalAlignment="Left"
-                        SelectedIndex="1">
-                        <ComboBoxItem Content="Chill" Tag="Chill"/>
-                        <ComboBoxItem Content="Conversational" Tag="Conversational"/>
-                        <ComboBoxItem Content="Fast" Tag="Fast"/>
-                    </ComboBox>
-                    
-                    <ComboBox 
-                        Header="Content Density"
-                        Width="300"
-                        HorizontalAlignment="Left"
-                        SelectedIndex="1">
-                        <ComboBoxItem Content="Minimal" Tag="Minimal"/>
-                        <ComboBoxItem Content="Balanced" Tag="Balanced"/>
-                        <ComboBoxItem Content="Dense" Tag="Dense"/>
-                    </ComboBox>
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <ComboBox 
+                            Grid.Column="0"
+                            Header="Pacing"
+                            HorizontalAlignment="Stretch"
+                            SelectedIndex="1"
+                            ToolTipService.ToolTip="Speaking speed: Chill ≈ 140 wpm, Conversational ≈ 160 wpm, Fast ≈ 190 wpm">
+                            <ComboBoxItem Content="Chill (Relaxed)" Tag="Chill"/>
+                            <ComboBoxItem Content="Conversational (Natural)" Tag="Conversational"/>
+                            <ComboBoxItem Content="Fast (Energetic)" Tag="Fast"/>
+                        </ComboBox>
+                        
+                        <ComboBox 
+                            Grid.Column="1"
+                            Header="Content Density"
+                            HorizontalAlignment="Stretch"
+                            SelectedIndex="1"
+                            ToolTipService.ToolTip="How much information to pack into the video">
+                            <ComboBoxItem Content="Minimal (Focused)" Tag="Minimal"/>
+                            <ComboBoxItem Content="Balanced (Recommended)" Tag="Balanced"/>
+                            <ComboBoxItem Content="Dense (Comprehensive)" Tag="Dense"/>
+                        </ComboBox>
+                    </Grid>
                     
                     <TextBox 
                         Header="Style"
                         Text="{x:Bind ViewModel.Style, Mode=TwoWay}"
-                        PlaceholderText="Educational, Tutorial, Review, etc."/>
+                        PlaceholderText="e.g., Educational, Tutorial, Review, Documentary"
+                        ToolTipService.ToolTip="Overall presentation style (optional)"/>
                 </StackPanel>
             </Expander>
             
             <!-- Step 3: Voice -->
             <Expander Header="Step 3: Voice and Narration" IsExpanded="True">
-                <StackPanel Spacing="12" Padding="12">
+                <StackPanel Spacing="16" Padding="16">
                     <ComboBox 
                         Header="Voice"
                         SelectedItem="{x:Bind ViewModel.VoiceName, Mode=TwoWay}"
-                        Width="400"
-                        HorizontalAlignment="Left">
+                        HorizontalAlignment="Stretch"
+                        MaxWidth="500"
+                        ToolTipService.ToolTip="Select from Windows built-in voices (free) or add API keys in Settings for premium voices">
                         <x:String>Microsoft David Desktop</x:String>
                         <x:String>Microsoft Zira Desktop</x:String>
                         <x:String>Microsoft Mark</x:String>
                     </ComboBox>
                     
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{x:Bind ViewModel.VoiceRate, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Speech Rate: {0:F1}x'}"/>
+                    <StackPanel Spacing="8">
+                        <TextBlock 
+                            Text="{x:Bind ViewModel.VoiceRate, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Speech Rate: {0:F1}x'}"
+                            Style="{ThemeResource SubtitleTextBlockStyle}"/>
                         <Slider 
                             Minimum="0.5" 
                             Maximum="2.0" 
                             Value="{x:Bind ViewModel.VoiceRate, Mode=TwoWay}"
                             StepFrequency="0.1"
                             TickFrequency="0.25"
-                            TickPlacement="BottomRight"/>
+                            TickPlacement="BottomRight"
+                            ToolTipService.ToolTip="1.0x is normal speed, 1.5x is faster, 0.75x is slower"/>
+                        <TextBlock 
+                            Text="0.5x (Slow) — 1.0x (Normal) — 2.0x (Fast)"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                            HorizontalAlignment="Center"/>
                     </StackPanel>
                     
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="{x:Bind ViewModel.VoicePitch, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Pitch: {0:F1}'}"/>
+                    <StackPanel Spacing="8">
+                        <TextBlock 
+                            Text="{x:Bind ViewModel.VoicePitch, Mode=OneWay, Converter={StaticResource StringFormatConverter}, ConverterParameter='Pitch: {0:F1}'}"
+                            Style="{ThemeResource SubtitleTextBlockStyle}"/>
                         <Slider 
                             Minimum="-10" 
                             Maximum="10" 
                             Value="{x:Bind ViewModel.VoicePitch, Mode=TwoWay}"
                             StepFrequency="1"
                             TickFrequency="5"
-                            TickPlacement="BottomRight"/>
+                            TickPlacement="BottomRight"
+                            ToolTipService.ToolTip="Adjust voice pitch: negative values for deeper, positive for higher"/>
+                        <TextBlock 
+                            Text="-10 (Deeper) — 0 (Normal) — +10 (Higher)"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                            HorizontalAlignment="Center"/>
                     </StackPanel>
                     
                     <ComboBox 
                         Header="Pause Style"
                         Width="300"
                         HorizontalAlignment="Left"
-                        SelectedIndex="1">
-                        <ComboBoxItem Content="Short" Tag="Short"/>
-                        <ComboBoxItem Content="Natural" Tag="Natural"/>
-                        <ComboBoxItem Content="Long" Tag="Long"/>
+                        SelectedIndex="1"
+                        ToolTipService.ToolTip="Duration of pauses between sentences">
+                        <ComboBoxItem Content="Short (Quick pace)" Tag="Short"/>
+                        <ComboBoxItem Content="Natural (Recommended)" Tag="Natural"/>
+                        <ComboBoxItem Content="Long (More breathing room)" Tag="Long"/>
                     </ComboBox>
                 </StackPanel>
             </Expander>
             
             <!-- Progress and Actions -->
-            <StackPanel Spacing="12">
+            <StackPanel Spacing="16" Margin="0,8,0,0">
                 <ProgressBar 
                     Value="{x:Bind ViewModel.ProgressPercentage, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.IsGenerating, Mode=OneWay}"
                     ShowError="False"
-                    ShowPaused="False"/>
+                    ShowPaused="False"
+                    Height="8"/>
                 
                 <TextBlock 
                     Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
-                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                    TextWrapping="Wrap"/>
                 
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <Button 
                         Content="Generate Video" 
                         Command="{x:Bind ViewModel.GenerateVideoCommand}"
                         IsEnabled="{x:Bind ViewModel.IsGenerating, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
-                        Style="{ThemeResource AccentButtonStyle}"/>
+                        Style="{ThemeResource AccentButtonStyle}"
+                        Padding="24,8"
+                        ToolTipService.ToolTip="Start creating your video with the configured settings"/>
                     
                     <Button 
                         Content="Reset Form" 
                         Command="{x:Bind ViewModel.ResetFormCommand}"
-                        IsEnabled="{x:Bind ViewModel.IsGenerating, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"/>
+                        IsEnabled="{x:Bind ViewModel.IsGenerating, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
+                        Padding="24,8"
+                        ToolTipService.ToolTip="Clear all fields and start fresh"/>
                 </StackPanel>
             </StackPanel>
             
             <!-- Info Card -->
             <InfoBar
                 Title="Free Mode Active"
-                Message="Using rule-based script generation and Windows TTS. Add API keys in Settings for Pro features."
+                Message="Using rule-based script generation and Windows TTS. Add API keys in Settings for Pro features like GPT-4, ElevenLabs voices, and more."
                 IsOpen="True"
                 Severity="Informational"
-                IsClosable="False"/>
+                IsClosable="False"
+                Margin="0,8,0,0"/>
         </StackPanel>
     </ScrollViewer>
 </Page>

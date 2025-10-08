@@ -9,46 +9,29 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        
-        <!-- App title bar -->
-        <TextBlock 
-            Grid.Row="0"
-            Grid.Column="0"
-            Grid.ColumnSpan="2"
-            Text="Aura Video Studio"
-            FontSize="18"
-            FontWeight="SemiBold"
-            Margin="12,8"
-            VerticalAlignment="Center" />
-        
         <!-- Navigation panel -->
         <NavigationView 
             x:Name="NavView"
-            Grid.Row="1"
-            Grid.Column="0"
-            Grid.ColumnSpan="2"
+            Grid.Row="0"
             IsSettingsVisible="True"
             IsBackButtonVisible="Collapsed"
             PaneDisplayMode="Left"
-            SelectionChanged="NavView_SelectionChanged">
+            SelectionChanged="NavView_SelectionChanged"
+            PaneTitle="Aura Video Studio"
+            IsPaneToggleButtonVisible="True">
             
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="Create" Tag="create" Icon="Add" />
-                <NavigationViewItem Content="Storyboard" Tag="storyboard" Icon="Edit" />
-                <NavigationViewItem Content="Render" Tag="render" Icon="Video" />
-                <NavigationViewItem Content="Publish" Tag="publish" Icon="Upload" />
-                <NavigationViewItem Content="Library" Tag="library" Icon="Library" />
+                <NavigationViewItem Content="Create" Tag="create" Icon="Add" ToolTipService.ToolTip="Create a new video project"/>
+                <NavigationViewItem Content="Storyboard" Tag="storyboard" Icon="Edit" ToolTipService.ToolTip="Edit video timeline and scenes"/>
+                <NavigationViewItem Content="Render" Tag="render" Icon="Video" ToolTipService.ToolTip="Export your video"/>
+                <NavigationViewItem Content="Publish" Tag="publish" Icon="Upload" ToolTipService.ToolTip="Publish to platforms"/>
+                <NavigationViewItem Content="Library" Tag="library" Icon="Library" ToolTipService.ToolTip="View past projects"/>
                 <NavigationViewItemSeparator />
-                <NavigationViewItem Content="Hardware Profile" Tag="hardware" Icon="DeviceLaptop" />
+                <NavigationViewItem Content="Hardware Profile" Tag="hardware" Icon="DeviceLaptop" ToolTipService.ToolTip="System information and capabilities"/>
             </NavigationView.MenuItems>
             
             <Frame x:Name="ContentFrame" />
@@ -56,11 +39,11 @@
         
         <!-- Status bar -->
         <Grid 
-            Grid.Row="2"
-            Grid.Column="0"
-            Grid.ColumnSpan="2"
+            Grid.Row="1"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            Height="28">
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0"
+            Height="32">
             
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -68,28 +51,51 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             
-            <TextBlock 
-                x:Name="StatusText"
+            <StackPanel 
                 Grid.Column="0"
-                Text="Ready" 
-                Margin="12,0"
-                VerticalAlignment="Center"/>
+                Orientation="Horizontal"
+                Spacing="4"
+                Margin="16,0">
+                <FontIcon 
+                    Glyph="&#xE9D9;" 
+                    FontSize="12"
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                <TextBlock 
+                    x:Name="StatusText"
+                    Text="Ready" 
+                    VerticalAlignment="Center"
+                    FontSize="12"/>
+            </StackPanel>
             
             <StackPanel 
                 Grid.Column="2"
                 Orientation="Horizontal"
-                Margin="12,0">
+                Spacing="20"
+                Margin="16,0">
                 
-                <TextBlock 
-                    x:Name="EncoderInfoText"
-                    Text="Encoder: Auto"
-                    Margin="0,0,12,0"
-                    VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon 
+                        Glyph="&#xEC4F;" 
+                        FontSize="12"
+                        Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                    <TextBlock 
+                        x:Name="EncoderInfoText"
+                        Text="Encoder: Auto"
+                        VerticalAlignment="Center"
+                        FontSize="12"/>
+                </StackPanel>
                 
-                <TextBlock 
-                    x:Name="CacheInfoText"
-                    Text="Cache: 0 MB"
-                    VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon 
+                        Glyph="&#xE946;" 
+                        FontSize="12"
+                        Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                    <TextBlock 
+                        x:Name="CacheInfoText"
+                        Text="Cache: 0 MB"
+                        VerticalAlignment="Center"
+                        FontSize="12"/>
+                </StackPanel>
             </StackPanel>
         </Grid>
     </Grid>

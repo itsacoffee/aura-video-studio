@@ -8,108 +8,154 @@
     mc:Ignorable="d">
 
     <ScrollViewer>
-        <StackPanel Padding="24" MaxWidth="900" Spacing="24">
+        <StackPanel Padding="32" MaxWidth="900" Spacing="20">
             
             <!-- Header -->
-            <TextBlock 
-                Text="Settings" 
-                Style="{ThemeResource TitleTextBlockStyle}"
-                Margin="0,0,0,12"/>
+            <StackPanel Spacing="8" Margin="0,0,0,16">
+                <TextBlock 
+                    Text="Settings" 
+                    Style="{ThemeResource TitleTextBlockStyle}"/>
+                <TextBlock 
+                    Text="Configure providers, API keys, and branding options"
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+            </StackPanel>
             
             <!-- Provider Profile -->
             <Expander Header="Provider Profile" IsExpanded="True">
-                <StackPanel Spacing="12" Padding="12">
+                <StackPanel Spacing="16" Padding="16">
                     <ComboBox 
                         Header="Active Profile"
-                        Width="400"
-                        HorizontalAlignment="Left"
-                        SelectedIndex="1">
-                        <ComboBoxItem Content="Free-Only (No API keys)" Tag="free"/>
+                        HorizontalAlignment="Stretch"
+                        MaxWidth="500"
+                        SelectedIndex="1"
+                        ToolTipService.ToolTip="Choose how to balance free and paid AI services">
+                        <ComboBoxItem Content="Free-Only (No API keys required)" Tag="free"/>
                         <ComboBoxItem Content="Balanced Mix (Prefer Pro, fallback to Free)" Tag="balanced"/>
                         <ComboBoxItem Content="Pro-Max (Requires all Pro API keys)" Tag="pro"/>
                     </ComboBox>
                     
                     <TextBlock 
-                        Text="Controls which providers are used at each stage (Script, TTS, Visuals, Upload)"
+                        Text="Controls which providers are used at each stage: Script generation, TTS, Visuals, and Upload"
                         TextWrapping="Wrap"
+                        Style="{ThemeResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                     
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Button Content="Save Profile"/>
-                        <Button Content="Import Profile"/>
-                        <Button Content="Export Profile"/>
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                        <Button 
+                            Content="Save Profile"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            ToolTipService.ToolTip="Save current configuration"/>
+                        <Button 
+                            Content="Import Profile"
+                            ToolTipService.ToolTip="Load profile from JSON file"/>
+                        <Button 
+                            Content="Export Profile"
+                            ToolTipService.ToolTip="Export profile as JSON file"/>
                     </StackPanel>
                 </StackPanel>
             </Expander>
             
             <!-- API Keys -->
             <Expander Header="API Keys (DPAPI-encrypted)" IsExpanded="False">
-                <StackPanel Spacing="16" Padding="12">
+                <StackPanel Spacing="20" Padding="16">
+                    
+                    <!-- Info -->
+                    <InfoBar
+                        Message="API keys are encrypted using Windows DPAPI and stored securely in your local app data."
+                        IsOpen="True"
+                        Severity="Informational"
+                        IsClosable="True"/>
                     
                     <!-- LLM Providers -->
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="LLM Providers" FontWeight="SemiBold"/>
+                    <StackPanel Spacing="12">
+                        <TextBlock 
+                            Text="LLM Providers (Script Generation)" 
+                            Style="{ThemeResource SubtitleTextBlockStyle}"
+                            FontWeight="SemiBold"/>
                         
                         <PasswordBox 
                             Header="OpenAI API Key"
                             PlaceholderText="sk-..."
-                            Width="400"
-                            HorizontalAlignment="Left"/>
+                            HorizontalAlignment="Stretch"
+                            MaxWidth="500"
+                            ToolTipService.ToolTip="Get from platform.openai.com"/>
                         
                         <PasswordBox 
                             Header="Azure OpenAI API Key"
-                            PlaceholderText="..."
-                            Width="400"
-                            HorizontalAlignment="Left"/>
+                            PlaceholderText="Your Azure key..."
+                            HorizontalAlignment="Stretch"
+                            MaxWidth="500"
+                            ToolTipService.ToolTip="Enterprise OpenAI through Azure"/>
                         
                         <PasswordBox 
                             Header="Google Gemini API Key"
-                            PlaceholderText="..."
-                            Width="400"
-                            HorizontalAlignment="Left"/>
+                            PlaceholderText="Your Gemini key..."
+                            HorizontalAlignment="Stretch"
+                            MaxWidth="500"
+                            ToolTipService.ToolTip="Get from makersuite.google.com"/>
                     </StackPanel>
                     
                     <!-- TTS Providers -->
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="TTS Providers" FontWeight="SemiBold"/>
+                    <StackPanel Spacing="12">
+                        <TextBlock 
+                            Text="TTS Providers (Voice Narration)" 
+                            Style="{ThemeResource SubtitleTextBlockStyle}"
+                            FontWeight="SemiBold"/>
                         
                         <PasswordBox 
                             Header="ElevenLabs API Key"
-                            PlaceholderText="..."
-                            Width="400"
-                            HorizontalAlignment="Left"/>
+                            PlaceholderText="Your ElevenLabs key..."
+                            HorizontalAlignment="Stretch"
+                            MaxWidth="500"
+                            ToolTipService.ToolTip="Premium realistic voices from elevenlabs.io"/>
                         
                         <PasswordBox 
                             Header="PlayHT API Key"
-                            PlaceholderText="..."
-                            Width="400"
-                            HorizontalAlignment="Left"/>
+                            PlaceholderText="Your PlayHT key..."
+                            HorizontalAlignment="Stretch"
+                            MaxWidth="500"
+                            ToolTipService.ToolTip="Alternative TTS provider from play.ht"/>
                     </StackPanel>
                     
                     <!-- Stock/Visual Providers -->
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Stock Providers (Optional)" FontWeight="SemiBold"/>
+                    <StackPanel Spacing="12">
+                        <TextBlock 
+                            Text="Stock Providers (Images & Video)" 
+                            Style="{ThemeResource SubtitleTextBlockStyle}"
+                            FontWeight="SemiBold"/>
+                        <TextBlock 
+                            Text="Optional: Enhance visuals with stock content"
+                            Style="{ThemeResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                         
                         <PasswordBox 
                             Header="Pixabay API Key"
                             PlaceholderText="Optional"
-                            Width="400"
-                            HorizontalAlignment="Left"/>
+                            HorizontalAlignment="Stretch"
+                            MaxWidth="500"
+                            ToolTipService.ToolTip="Free stock photos from pixabay.com"/>
                         
                         <PasswordBox 
                             Header="Pexels API Key"
                             PlaceholderText="Optional"
-                            Width="400"
-                            HorizontalAlignment="Left"/>
+                            HorizontalAlignment="Stretch"
+                            MaxWidth="500"
+                            ToolTipService.ToolTip="Free stock photos and videos from pexels.com"/>
                         
                         <PasswordBox 
                             Header="Unsplash API Key"
                             PlaceholderText="Optional"
-                            Width="400"
-                            HorizontalAlignment="Left"/>
+                            HorizontalAlignment="Stretch"
+                            MaxWidth="500"
+                            ToolTipService.ToolTip="High-quality stock photos from unsplash.com"/>
                     </StackPanel>
                     
-                    <Button Content="Save API Keys" Style="{ThemeResource AccentButtonStyle}"/>
+                    <Button 
+                        Content="Save API Keys" 
+                        Style="{ThemeResource AccentButtonStyle}"
+                        Padding="24,8"
+                        ToolTipService.ToolTip="Encrypt and save all API keys"/>
                 </StackPanel>
             </Expander>
             
