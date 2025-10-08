@@ -115,7 +115,7 @@ Copy-Item "$rootDir\scripts\ffmpeg\*.exe" -Destination "$portableBuildDir\ffmpeg
 
 # Copy config and docs
 Copy-Item "$rootDir\appsettings.json" -Destination $portableBuildDir -Force
-Copy-Item "$rootDir\README.md" -Destination $portableBuildDir -Force
+Copy-Item "$rootDir\PORTABLE.md" -Destination "$portableBuildDir\README.md" -Force
 Copy-Item "$rootDir\LICENSE" -Destination $portableBuildDir -Force -ErrorAction SilentlyContinue
 
 # Create launcher script
