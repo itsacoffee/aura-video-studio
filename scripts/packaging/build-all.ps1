@@ -15,6 +15,32 @@ Write-Host "Configuration: $Configuration"
 Write-Host "Platform: $Platform"
 Write-Host ""
 
+# Check prerequisites
+Write-Host "Checking prerequisites..." -ForegroundColor Yellow
+
+# Check for npm
+$npmPath = Get-Command npm -ErrorAction SilentlyContinue
+if (-not $npmPath) {
+    Write-Host ""
+    Write-Host "ERROR: npm is not installed or not in PATH" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Node.js and npm are required to build the web UI (Aura.Web)." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "To fix this:" -ForegroundColor Cyan
+    Write-Host "  1. Download and install Node.js from: https://nodejs.org/" -ForegroundColor White
+    Write-Host "  2. Recommended version: Node.js 20.x or later (LTS)" -ForegroundColor White
+    Write-Host "  3. After installation, restart your PowerShell session" -ForegroundColor White
+    Write-Host "  4. Verify installation by running: npm --version" -ForegroundColor White
+    Write-Host ""
+    Write-Host "Alternatively, install via chocolatey:" -ForegroundColor Cyan
+    Write-Host "  choco install nodejs-lts" -ForegroundColor White
+    Write-Host ""
+    exit 1
+}
+
+Write-Host "✓ npm found: $($npmPath.Source)" -ForegroundColor Green
+Write-Host ""
+
 # Set paths
 $rootDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $artifactsDir = Join-Path $rootDir "artifacts\windows"
