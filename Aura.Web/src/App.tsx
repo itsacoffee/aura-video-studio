@@ -1,56 +1,51 @@
-import { useState, useEffect } from 'react'
-import { FluentProvider, webLightTheme, Text, Title1, Card, CardHeader, Button } from '@fluentui/react-components'
-import './App.css'
+import { 
+  FluentProvider, 
+  webLightTheme,
+  makeStyles,
+  tokens,
+} from '@fluentui/react-components';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Layout } from './components/Layout';
+import { WelcomePage } from './pages/WelcomePage';
+import { DashboardPage } from './pages/DashboardPage';
+import { CreatePage } from './pages/CreatePage';
+import { RenderPage } from './pages/RenderPage';
+import { PublishPage } from './pages/PublishPage';
+import { DownloadsPage } from './pages/DownloadsPage';
+import { SettingsPage } from './pages/SettingsPage';
 
-interface HealthStatus {
-  status: string;
-  timestamp: string;
-}
+const useStyles = makeStyles({
+  root: {
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+});
 
 function App() {
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/healthz')
-      .then(res => res.json())
-      .then(data => {
-        setHealth(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Health check failed:', err);
-        setLoading(false);
-      });
-  }, []);
+  const styles = useStyles();
 
   return (
     <FluentProvider theme={webLightTheme}>
-      <div className="App">
-        <Title1>Aura Video Studio</Title1>
-        <Card>
-          <CardHeader
-            header={<Text weight="semibold">API Status</Text>}
-            description={
-              loading ? (
-                <Text>Checking...</Text>
-              ) : health ? (
-                <Text>✓ {health.status} - {new Date(health.timestamp).toLocaleString()}</Text>
-              ) : (
-                <Text>✗ API unavailable</Text>
-              )
-            }
-          />
-        </Card>
-        <div style={{ marginTop: '2rem' }}>
-          <Text>Welcome to Aura Video Studio - Your AI-powered video creation tool</Text>
-        </div>
-        <div style={{ marginTop: '1rem' }}>
-          <Button appearance="primary">Get Started</Button>
-        </div>
+      <div className={styles.root}>
+        <BrowserRouter>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<WelcomePage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/create" element={<CreatePage />} />
+              <Route path="/render" element={<RenderPage />} />
+              <Route path="/publish" element={<PublishPage />} />
+              <Route path="/downloads" element={<DownloadsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Layout>
+        </BrowserRouter>
       </div>
     </FluentProvider>
-  )
+  );
 }
 
-export default App
+export default App;

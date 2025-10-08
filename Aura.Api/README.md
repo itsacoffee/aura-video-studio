@@ -149,6 +149,201 @@ Synthesize audio from script lines.
 }
 ```
 
+#### `POST /compose`
+Compose a timeline for rendering.
+
+**Request**:
+```json
+{
+  "timelineJson": "{...}"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "jobId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+#### `POST /render`
+Start a render job.
+
+**Request**:
+```json
+{
+  "timelineJson": "{...}",
+  "presetName": "YouTube 1080p"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "jobId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+#### `GET /render/{id}/progress`
+Get render progress for a specific job.
+
+**Response**:
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "rendering",
+  "progress": 45.5,
+  "outputPath": null,
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+
+#### `POST /render/{id}/cancel`
+Cancel a render job.
+
+**Response**:
+```json
+{
+  "success": true
+}
+```
+
+#### `GET /queue`
+Get all render jobs.
+
+**Response**:
+```json
+{
+  "jobs": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "status": "completed",
+      "progress": 100,
+      "outputPath": "/path/to/output.mp4",
+      "createdAt": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+#### `GET /logs/stream`
+Server-Sent Events (SSE) endpoint for streaming logs.
+
+**Response** (text/event-stream):
+```
+data: {"timestamp":"2024-01-15T10:30:00Z","level":"INFO","message":"Log stream connected"}
+
+data: {"timestamp":"2024-01-15T10:30:01Z","level":"INFO","message":"Rendering started"}
+```
+
+#### `GET /downloads/manifest`
+Get download manifest for dependencies.
+
+**Response**:
+```json
+{
+  "items": [
+    {
+      "name": "FFmpeg",
+      "version": "6.1",
+      "url": "https://...",
+      "sha256": "abc123...",
+      "sizeBytes": 89000000,
+      "installPath": "C:\\Aura\\ffmpeg\\bin",
+      "required": true
+    }
+  ]
+}
+```
+
+#### `POST /settings/save`
+Save user settings.
+
+**Request**:
+```json
+{
+  "offlineMode": false,
+  "profile": "Balanced Mix",
+  "theme": "light"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true
+}
+```
+
+#### `GET /settings/load`
+Load user settings.
+
+**Response**:
+```json
+{
+  "offlineMode": false,
+  "profile": "Balanced Mix",
+  "theme": "light"
+}
+```
+
+#### `POST /probes/run`
+Run hardware probes.
+
+**Response**:
+```json
+{
+  "success": true,
+  "profile": {
+    "tier": "B",
+    "enableNVENC": true,
+    "enableSD": true
+  }
+}
+```
+
+#### `GET /profiles/list`
+List available provider profiles.
+
+**Response**:
+```json
+{
+  "profiles": [
+    {
+      "name": "Free-Only",
+      "description": "Uses only free providers (no API keys required)"
+    },
+    {
+      "name": "Balanced Mix",
+      "description": "Pro providers with free fallbacks"
+    },
+    {
+      "name": "Pro-Max",
+      "description": "All pro providers (requires API keys)"
+    }
+  ]
+}
+```
+
+#### `POST /profiles/apply`
+Apply a provider profile.
+
+**Request**:
+```json
+{
+  "profileName": "Balanced Mix"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true
+}
+```
+
 **Response**:
 ```json
 {
