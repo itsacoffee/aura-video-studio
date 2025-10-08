@@ -11,6 +11,13 @@ Aura Video Studio is distributed in three formats:
 
 ## Prerequisites
 
+### Common Prerequisites (All Build Types)
+- **.NET 8 SDK** - Required for building C# projects
+- **Node.js 20.x or later** - Required for building the web UI (Aura.Web)
+  - Download from: https://nodejs.org/
+  - Or install via chocolatey: `choco install nodejs-lts`
+  - Verify installation: `npm --version`
+
 ### For MSIX Packaging
 - Windows 11 SDK
 - Windows App SDK 1.5+
