@@ -43,6 +43,9 @@ jobs:
     
     - name: Build Aura.Api
       run: dotnet build Aura.Api/Aura.Api.csproj --configuration Release --no-restore
+    
+    - name: Build Aura.Cli
+      run: dotnet build Aura.Cli/Aura.Cli.csproj --configuration Release --no-restore
       
     - name: Build Aura.Tests
       run: dotnet build Aura.Tests/Aura.Tests.csproj --configuration Release --no-restore
