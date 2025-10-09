@@ -99,7 +99,7 @@ public class OllamaLlmProvider : ILlmProvider
                 _logger.LogWarning(ex, "Ollama request timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
                 if (attempt >= _maxRetries)
                 {
-                    throw new Exception($"Ollama request timed out after {_maxRetries + 1} attempts", ex);
+                    throw new Exception("Ollama request timed out.", ex);
                 }
             }
             catch (HttpRequestException ex)
