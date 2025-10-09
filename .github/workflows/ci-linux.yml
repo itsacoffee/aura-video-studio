@@ -85,3 +85,16 @@ jobs:
           Aura.Core/bin/Release/
           Aura.Api/bin/Release/
           Aura.Web/dist/
+  
+  portable-only-guard:
+    name: Portable-Only Policy Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run CI Guard
+      run: |
+        chmod +x scripts/cleanup/ci_guard.sh
+        ./scripts/cleanup/ci_guard.sh

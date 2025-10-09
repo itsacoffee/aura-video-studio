@@ -62,36 +62,37 @@ This document summarizes the implementation of the web-based architecture for Au
 - Uploads build artifacts
 
 **Windows CI** (`.github/workflows/ci-windows.yml`):
-- Builds all .NET projects including Aura.App
+- Builds all .NET projects
 - Runs unit tests
-- Builds WinUI 3 app with MSBuild
-- Packages MSIX
+- Builds Portable ZIP distribution
 - Generates SHA-256 checksums
-- Uploads MSIX packages and test results
-- Optional: Code signing if certificate provided
+- Uploads portable artifacts and test results
+- Includes CI guard to prevent MSIX/EXE packaging
 
 ### 4. Packaging Infrastructure ✅
 
 **Location**: `scripts/packaging/`
 
+**Distribution Policy**: Portable-only (MSIX/EXE packaging removed)
+
 **Scripts**:
-- `build-all.ps1` - Unified build script for all distributions
-  - Builds MSIX package (WinUI 3)
+- `build-all.ps1` - Unified build script for portable distribution
   - Creates Portable ZIP with API, Web, FFmpeg
-  - Compiles Setup EXE (Inno Setup)
   - Generates SHA-256 checksums
-  - Optional code signing
   
-- `setup.iss` - Inno Setup script for traditional installer
-  - Installs to Program Files
-  - Creates shortcuts
-  - Includes uninstaller
-  - Checks for .NET 8 runtime
-  
+- `build-portable.ps1` - User-friendly portable build script
+  - Progress indicators
+  - Automatic checksum generation
+  - Clear success/error messages
+
 - `generate-sbom.ps1` - SBOM generation
   - CycloneDX format JSON
   - License attributions (MIT, LGPL, Apache)
   - Component inventory
+
+**Cleanup Scripts** (`scripts/cleanup/`):
+- `portable_only_cleanup.ps1` / `.sh` - Removes any MSIX/EXE packaging files
+- `ci_guard.sh` - CI step that fails if MSIX/EXE patterns are detected
 
 **Documentation**:
 - Complete README with examples
@@ -195,27 +196,22 @@ Legend:
 
 ## Distribution Artifacts
 
-### MSIX Package (Recommended)
-- **File**: `AuraVideoStudio_x64.msix`
-- **Shell**: WinUI 3 with Mica window chrome
-- **Installation**: Microsoft Store or sideloading
-- **Updates**: Via Store or manual
-- **Includes**: WinUI 3 app, API, Web UI, FFmpeg
-
-### Setup EXE (Traditional Installer)
-- **File**: `AuraVideoStudio_Setup.exe`
-- **Shell**: WPF with classic window
-- **Installation**: Traditional installer (Inno Setup)
-- **Uninstall**: Add/Remove Programs
-- **Includes**: WPF app, API, Web UI, FFmpeg
-
-### Portable ZIP (No Install)
+### Portable ZIP (Only Supported Format)
 - **File**: `AuraVideoStudio_Portable_x64.zip`
 - **Shell**: Direct API launch with browser
 - **Installation**: Extract and run `Launch.bat`
 - **Portable**: No registry or system changes
 - **Includes**: Self-contained API with embedded Web UI (wwwroot), FFmpeg, launcher script
 - **Status**: ✅ Working - API serves static Web UI files
+
+### Distribution Policy
+
+**Aura Video Studio follows a portable-only distribution model:**
+- ✅ Portable ZIP - Only supported distribution format
+- ❌ MSIX/APPX packages - Not supported (removed)
+- ❌ Traditional installers (EXE) - Not supported (removed)
+
+This ensures maximum compatibility and flexibility without requiring system-level installation.
 
 ### Support Files
 - `checksums.txt` - SHA-256 hashes for all distributions
@@ -251,20 +247,19 @@ npm run dev
 # Browser: http://localhost:5173
 ```
 
-### Building MSIX (Windows Only)
+### Building Portable Distribution (Windows Only)
 ```powershell
-# Build WinUI 3 packaged app
-msbuild Aura.App/Aura.App.csproj /p:Configuration=Release /p:Platform=x64
-
-# Or use the unified script
+# Build portable ZIP distribution
+.\scripts\packaging\build-portable.ps1
+# or
 .\scripts\packaging\build-all.ps1
 ```
 
 ### CI/CD Pipeline
-1. **Pull Request**: Runs Linux CI (build + test)
-2. **Merge to Main**: Runs both Linux and Windows CI
-3. **Windows CI**: Builds MSIX, generates checksums, uploads artifacts
-4. **Release**: Attach artifacts from Windows CI to GitHub Release
+1. **Pull Request**: Runs Linux CI (build + test) + CI guard check
+2. **Merge to Main**: Runs both Linux and Windows CI + CI guard check
+3. **Windows CI**: Builds portable ZIP, generates checksums, uploads artifacts
+4. **Release**: Attach portable ZIP artifact from Windows CI to GitHub Release
 
 ## What's Still Needed
 

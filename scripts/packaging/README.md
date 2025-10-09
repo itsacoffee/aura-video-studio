@@ -2,6 +2,16 @@
 
 This directory contains scripts for building the portable distribution of Aura Video Studio.
 
+## Distribution Policy
+
+**Aura Video Studio follows a portable-only distribution model.**
+
+- ✅ **Portable ZIP** - Self-contained, no-install distribution (only supported format)
+- ❌ **MSIX/APPX packages** - Not supported (removed)
+- ❌ **Traditional installers (EXE/Inno Setup)** - Not supported (removed)
+
+This ensures maximum compatibility and flexibility for users without requiring system-level installation or administrator privileges.
+
 ## Overview
 
 Aura Video Studio is distributed as a **Portable ZIP** - a no-install archive that works out of the box. Simply extract and run!
