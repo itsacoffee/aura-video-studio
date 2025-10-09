@@ -48,7 +48,16 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
-builder.Services.AddSingleton<ITtsProvider, WindowsTtsProvider>();
+
+// Register TTS provider factory and default provider
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<Aura.Core.Providers.TtsProviderFactory>();
+builder.Services.AddSingleton<ITtsProvider>(sp =>
+{
+    var factory = sp.GetRequiredService<Aura.Core.Providers.TtsProviderFactory>();
+    return factory.GetDefaultProvider();
+});
+
 builder.Services.AddSingleton<IVideoComposer>(sp => 
 {
     var logger = sp.GetRequiredService<ILogger<FfmpegVideoComposer>>();
@@ -274,6 +283,45 @@ apiGroup.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsP
     }
 })
 .WithName("SynthesizeAudio")
+.WithOpenApi();
+
+// Captions endpoint
+apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request) =>
+{
+    try
+    {
+        var lines = request.Lines.Select(l => new ScriptLine(
+            SceneIndex: l.SceneIndex,
+            Text: l.Text,
+            Start: TimeSpan.FromSeconds(l.StartSeconds),
+            Duration: TimeSpan.FromSeconds(l.DurationSeconds)
+        )).ToList();
+        
+        var audioProcessor = new Aura.Core.Audio.AudioProcessor(
+            LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<Aura.Core.Audio.AudioProcessor>());
+        
+        string captions = request.Format.ToUpperInvariant() == "VTT"
+            ? audioProcessor.GenerateVttSubtitles(lines)
+            : audioProcessor.GenerateSrtSubtitles(lines);
+        
+        // Optionally save to file if path is provided
+        string? filePath = null;
+        if (!string.IsNullOrEmpty(request.OutputPath))
+        {
+            filePath = request.OutputPath;
+            await System.IO.File.WriteAllTextAsync(filePath, captions);
+            Log.Information("Captions saved to {Path}", filePath);
+        }
+        
+        return Results.Ok(new { success = true, captions, filePath });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error generating captions");
+        return Results.Problem("Error generating captions", statusCode: 500);
+    }
+})
+.WithName("GenerateCaptions")
 .WithOpenApi();
 
 // Downloads manifest endpoint
@@ -792,3 +840,4 @@ record ApplyProfileRequest(string ProfileName);
 record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKey, string? StabilityAiKey);
 record ProviderPathsRequest(string? StableDiffusionUrl, string? OllamaUrl, string? FfmpegPath, string? FfprobePath, string? OutputDirectory);
 record ProviderTestRequest(string? Url, string? Path);
+record CaptionsRequest(List<LineDto> Lines, string Format = "SRT", string? OutputPath = null);
