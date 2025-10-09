@@ -91,6 +91,10 @@ export function SettingsPage() {
   const [savingPaths, setSavingPaths] = useState(false);
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string } | null>>({});
 
+  // Provider validation state
+  const [validating, setValidating] = useState(false);
+  const [validationResults, setValidationResults] = useState<any>(null);
+
   useEffect(() => {
     fetchSettings();
     fetchProfiles();
@@ -156,7 +160,7 @@ export function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           ...settings, 
-          offlineMode,
+          offlineOnly: offlineMode,
           uiScale,
           compactMode
         }),
@@ -291,6 +295,45 @@ export function SettingsPage() {
     }
   };
 
+  const validateProviders = async () => {
+    setValidating(true);
+    setValidationResults(null);
+    try {
+      const response = await fetch('/api/providers/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ providers: [] }), // Empty array means validate all
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setValidationResults(data);
+      } else {
+        alert('Error validating providers');
+      }
+    } catch (error) {
+      console.error('Error validating providers:', error);
+      alert('Error validating providers');
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const copyValidationResults = () => {
+    if (!validationResults) return;
+    
+    let text = 'Provider Validation Results\n\n';
+    validationResults.results.forEach((result: any) => {
+      text += `${result.name}: ${result.ok ? 'OK' : 'Failed'} - ${result.details} (${result.elapsedMs}ms)\n`;
+    });
+    text += `\nOverall: ${validationResults.ok ? 'All providers validated successfully' : 'Some providers failed'}`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Results copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -323,24 +366,29 @@ export function SettingsPage() {
                 onChange={(_, data) => setOfflineMode(data.checked)}
               />
               <Text size={200}>
-                {offlineMode ? 'Enabled' : 'Disabled'} - Blocks all network providers. Only local and stock assets are used.
+                {offlineMode ? 'Enabled' : 'Disabled'} - Blocks all cloud providers. Only local and stock assets are used.
               </Text>
             </Field>
 
-            <Button
-              onClick={async () => {
-                try {
-                  const response = await fetch('/api/probes/run', { method: 'POST' });
-                  if (response.ok) {
-                    alert('Hardware probes completed successfully');
+            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+              <Button appearance="primary" onClick={saveSettings}>
+                Save Settings
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/probes/run', { method: 'POST' });
+                    if (response.ok) {
+                      alert('Hardware probes completed successfully');
+                    }
+                  } catch (error) {
+                    console.error('Error running probes:', error);
                   }
-                } catch (error) {
-                  console.error('Error running probes:', error);
-                }
-              }}
-            >
-              Run Hardware Probes
-            </Button>
+                }}
+              >
+                Run Hardware Probes
+              </Button>
+            </div>
           </div>
         </Card>
       )}
@@ -378,23 +426,98 @@ export function SettingsPage() {
       )}
 
       {activeTab === 'providers' && (
-        <Card className={styles.section}>
-          <Title2>Provider Profiles</Title2>
-          <Text>Select a provider profile to configure which services are used</Text>
-          <div style={{ marginTop: tokens.spacingVerticalL }}>
-            {profiles.map((profile) => (
-              <div
-                key={profile.name}
-                className={styles.profileCard}
-                onClick={() => applyProfile(profile.name)}
-              >
-                <Text weight="semibold">{profile.name}</Text>
-                <br />
-                <Text size={200}>{profile.description}</Text>
+        <>
+          <Card className={styles.section}>
+            <Title2>Provider Profiles</Title2>
+            <Text>Select a provider profile to configure which services are used</Text>
+            <div style={{ marginTop: tokens.spacingVerticalL }}>
+              {profiles.map((profile) => (
+                <div
+                  key={profile.name}
+                  className={styles.profileCard}
+                  onClick={() => applyProfile(profile.name)}
+                >
+                  <Text weight="semibold">{profile.name}</Text>
+                  <br />
+                  <Text size={200}>{profile.description}</Text>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
+            <Title2>Provider Validation</Title2>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              Test connectivity and API keys for all configured providers
+            </Text>
+            <div className={styles.form}>
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}>
+                <Button 
+                  appearance="primary" 
+                  onClick={validateProviders}
+                  disabled={validating}
+                >
+                  {validating ? 'Validating...' : 'Validate Providers'}
+                </Button>
+                {validationResults && (
+                  <Button 
+                    appearance="subtle" 
+                    onClick={copyValidationResults}
+                  >
+                    Copy to Clipboard
+                  </Button>
+                )}
               </div>
-            ))}
-          </div>
-        </Card>
+
+              {validationResults && (
+                <div style={{ marginTop: tokens.spacingVerticalL }}>
+                  <Text weight="semibold" style={{ marginBottom: tokens.spacingVerticalS, display: 'block' }}>
+                    Validation Results:
+                  </Text>
+                  <div style={{ 
+                    border: `1px solid ${tokens.colorNeutralStroke1}`,
+                    borderRadius: tokens.borderRadiusMedium,
+                    overflow: 'hidden'
+                  }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ backgroundColor: tokens.colorNeutralBackground2 }}>
+                        <tr>
+                          <th style={{ padding: tokens.spacingVerticalS, textAlign: 'left', borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>Provider</th>
+                          <th style={{ padding: tokens.spacingVerticalS, textAlign: 'left', borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>Status</th>
+                          <th style={{ padding: tokens.spacingVerticalS, textAlign: 'left', borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>Details</th>
+                          <th style={{ padding: tokens.spacingVerticalS, textAlign: 'right', borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>Time (ms)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {validationResults.results.map((result: any) => (
+                          <tr key={result.name}>
+                            <td style={{ padding: tokens.spacingVerticalS, borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                              <Text weight="semibold">{result.name}</Text>
+                            </td>
+                            <td style={{ padding: tokens.spacingVerticalS, borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                              <Text style={{ color: result.ok ? tokens.colorPaletteGreenForeground1 : tokens.colorPaletteRedForeground1 }}>
+                                {result.ok ? '✓ OK' : '✗ Failed'}
+                              </Text>
+                            </td>
+                            <td style={{ padding: tokens.spacingVerticalS, borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                              <Text size={200}>{result.details}</Text>
+                            </td>
+                            <td style={{ padding: tokens.spacingVerticalS, textAlign: 'right', borderBottom: `1px solid ${tokens.colorNeutralStroke1}` }}>
+                              <Text size={200}>{result.elapsedMs}</Text>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Text size={200} style={{ marginTop: tokens.spacingVerticalS, display: 'block', fontStyle: 'italic' }}>
+                    Overall: {validationResults.ok ? '✓ All providers validated successfully' : '✗ Some providers failed validation'}
+                  </Text>
+                </div>
+              )}
+            </div>
+          </Card>
+        </>
       )}
 
       {activeTab === 'localproviders' && (

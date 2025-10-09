@@ -98,6 +98,49 @@ public class ProviderSettings
         return path;
     }
 
+    /// <summary>
+    /// Get ElevenLabs API key
+    /// </summary>
+    public string? GetElevenLabsApiKey()
+    {
+        LoadSettings();
+        return GetStringSetting("elevenLabsApiKey", "");
+    }
+
+    /// <summary>
+    /// Get PlayHT API key
+    /// </summary>
+    public string? GetPlayHTApiKey()
+    {
+        LoadSettings();
+        return GetStringSetting("playHTApiKey", "");
+    }
+
+    /// <summary>
+    /// Get PlayHT User ID
+    /// </summary>
+    public string? GetPlayHTUserId()
+    {
+        LoadSettings();
+        return GetStringSetting("playHTUserId", "");
+    }
+
+    /// <summary>
+    /// Check if offline-only mode is enabled
+    /// </summary>
+    public bool IsOfflineOnly()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("offlineOnly", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void LoadSettings()
     {
         if (_settings != null)

@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Providers;
+using Aura.Providers.Audio;
 using Microsoft.Extensions.Logging;
 
 #if WINDOWS10_0_19041_0_OR_GREATER
@@ -109,13 +111,21 @@ public class WindowsTtsProvider : ITtsProvider
                 line.Text.Length > 30 ? line.Text.Substring(0, 30) + "..." : line.Text);
         }
         
-        // Combine all audio files into one (would use NAudio in a real implementation)
+        // Combine all audio files into one using WAV merger
         _logger.LogInformation("Synthesized {Count} lines, combining into final output", lineOutputs.Count);
         
-        // Here we'd use NAudio to combine the WAV files, but for this example we'll just use the first file
         if (lineOutputs.Count > 0)
         {
-            File.Copy(lineOutputs[0], outputFilePath, true);
+            var linesList = lines.ToList();
+            var segments = linesList.Select((line, index) => 
+                new WavSegment(
+                    FilePath: lineOutputs[index],
+                    StartTime: line.Start,
+                    Duration: line.Duration
+                )).ToList();
+
+            // Merge WAV files with proper timing
+            WavMerger.MergeWavFiles(segments, outputFilePath);
         }
         
         // Clean up temp files

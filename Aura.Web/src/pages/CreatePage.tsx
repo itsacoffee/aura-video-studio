@@ -18,6 +18,9 @@ import {
 } from '@fluentui/react-components';
 import { Play24Regular, Lightbulb24Regular, Checkmark24Regular } from '@fluentui/react-icons';
 import type { Brief, PlanSpec, PlannerRecommendations } from '../types';
+import { Play24Regular } from '@fluentui/react-icons';
+import type { Brief, PlanSpec } from '../types';
+import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormalizer';
 
 const useStyles = makeStyles({
   container: {
@@ -123,21 +126,27 @@ export function CreatePage() {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
+      // Validate and warn about legacy enum values
+      validateAndWarnEnums(brief, planSpec);
+      
+      // Normalize enums to canonical values before sending to API
+      const { brief: normalizedBrief, planSpec: normalizedPlanSpec } = normalizeEnumsForApi(brief, planSpec);
+      
       // Call API to generate video
       const response = await fetch('/api/script', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          topic: brief.topic,
-          audience: brief.audience,
-          goal: brief.goal,
-          tone: brief.tone,
-          language: brief.language,
-          aspect: brief.aspect,
-          targetDurationMinutes: planSpec.targetDurationMinutes,
-          pacing: planSpec.pacing,
-          density: planSpec.density,
-          style: planSpec.style,
+          topic: normalizedBrief.topic,
+          audience: normalizedBrief.audience,
+          goal: normalizedBrief.goal,
+          tone: normalizedBrief.tone,
+          language: normalizedBrief.language,
+          aspect: normalizedBrief.aspect,
+          targetDurationMinutes: normalizedPlanSpec.targetDurationMinutes,
+          pacing: normalizedPlanSpec.pacing,
+          density: normalizedPlanSpec.density,
+          style: normalizedPlanSpec.style,
         }),
       });
 
