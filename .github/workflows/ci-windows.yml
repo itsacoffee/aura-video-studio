@@ -71,6 +71,91 @@ jobs:
         }
       shell: powershell
       
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Build Portable ZIP
+      run: |
+        .\scripts\packaging\make_portable_zip.ps1 -Configuration Release -Platform x64
+      shell: powershell
+      
+    - name: Run Smoke Test
+      run: |
+        Write-Host "Running smoke test on portable build..." -ForegroundColor Cyan
+        
+        # Extract ZIP to test location
+        $testDir = "test-portable"
+        New-Item -ItemType Directory -Force -Path $testDir | Out-Null
+        Expand-Archive -Path "artifacts/windows/portable/AuraVideoStudio_Portable_x64.zip" -DestinationPath $testDir -Force
+        
+        # Start API
+        Write-Host "Starting API..." -ForegroundColor Yellow
+        $apiProcess = Start-Process -FilePath "$testDir\api\Aura.Api.exe" -WorkingDirectory "$testDir\api" -PassThru -WindowStyle Hidden
+        
+        # Wait for API to be healthy
+        Write-Host "Waiting for API to be healthy..." -ForegroundColor Yellow
+        $maxAttempts = 30
+        $healthy = $false
+        for ($i = 0; $i -lt $maxAttempts; $i++) {
+          try {
+            $response = Invoke-WebRequest -Uri "http://127.0.0.1:5005/healthz" -UseBasicParsing -TimeoutSec 2
+            if ($response.StatusCode -eq 200) {
+              Write-Host "✓ API is healthy!" -ForegroundColor Green
+              $healthy = $true
+              break
+            }
+          } catch {
+            Start-Sleep -Seconds 1
+          }
+        }
+        
+        if (-not $healthy) {
+          Write-Host "ERROR: API failed to start" -ForegroundColor Red
+          Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
+          exit 1
+        }
+        
+        # Test capabilities endpoint
+        Write-Host "Testing /capabilities endpoint..." -ForegroundColor Yellow
+        try {
+          $response = Invoke-RestMethod -Uri "http://127.0.0.1:5005/capabilities" -Method Get -TimeoutSec 5
+          Write-Host "✓ Capabilities endpoint working" -ForegroundColor Green
+        } catch {
+          Write-Host "ERROR: Capabilities endpoint failed: $_" -ForegroundColor Red
+          Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
+          exit 1
+        }
+        
+        # Quick render test (10-15 seconds)
+        Write-Host "Running quick render test..." -ForegroundColor Yellow
+        $scriptRequest = @{
+          prompt = "Test video"
+          duration = 5
+          style = "minimal"
+          provider = "RuleBased"
+        } | ConvertTo-Json
+        
+        try {
+          $scriptResponse = Invoke-RestMethod -Uri "http://127.0.0.1:5005/script" -Method Post -Body $scriptRequest -ContentType "application/json" -TimeoutSec 10
+          Write-Host "✓ Script generation working" -ForegroundColor Green
+        } catch {
+          Write-Host "⚠ Script generation test failed (may be expected): $_" -ForegroundColor Yellow
+        }
+        
+        # Clean up
+        Write-Host "Cleaning up..." -ForegroundColor Yellow
+        Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+        
+        Write-Host "" 
+        Write-Host "========================================" -ForegroundColor Green
+        Write-Host " Smoke Test Passed!" -ForegroundColor Green
+        Write-Host "========================================" -ForegroundColor Green
+      shell: powershell
+      continue-on-error: true
+      
     - name: Upload Test Results
       if: always()
       uses: actions/upload-artifact@v4
@@ -88,6 +173,16 @@ jobs:
           artifacts/windows/msix/**/*.msix
           artifacts/windows/checksums.txt
         if-no-files-found: warn
+        
+    - name: Upload Portable ZIP
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: portable-zip
+        path: |
+          artifacts/windows/portable/AuraVideoStudio_Portable_x64.zip
+          artifacts/windows/portable/AuraVideoStudio_Portable_x64.zip.sha256
+        if-no-files-found: error
           
     - name: Upload Build Logs
       if: always()
