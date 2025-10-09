@@ -160,7 +160,7 @@ export function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           ...settings, 
-          offlineMode,
+          offlineOnly: offlineMode,
           uiScale,
           compactMode
         }),
@@ -366,24 +366,29 @@ export function SettingsPage() {
                 onChange={(_, data) => setOfflineMode(data.checked)}
               />
               <Text size={200}>
-                {offlineMode ? 'Enabled' : 'Disabled'} - Blocks all network providers. Only local and stock assets are used.
+                {offlineMode ? 'Enabled' : 'Disabled'} - Blocks all cloud providers. Only local and stock assets are used.
               </Text>
             </Field>
 
-            <Button
-              onClick={async () => {
-                try {
-                  const response = await fetch('/api/probes/run', { method: 'POST' });
-                  if (response.ok) {
-                    alert('Hardware probes completed successfully');
+            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+              <Button appearance="primary" onClick={saveSettings}>
+                Save Settings
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/probes/run', { method: 'POST' });
+                    if (response.ok) {
+                      alert('Hardware probes completed successfully');
+                    }
+                  } catch (error) {
+                    console.error('Error running probes:', error);
                   }
-                } catch (error) {
-                  console.error('Error running probes:', error);
-                }
-              }}
-            >
-              Run Hardware Probes
-            </Button>
+                }}
+              >
+                Run Hardware Probes
+              </Button>
+            </div>
           </div>
         </Card>
       )}
