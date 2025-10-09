@@ -18,7 +18,24 @@ Aura Video Studio is distributed as a **Portable ZIP** - a no-install archive th
 
 ## Quick Start
 
-### Using the Simple Build Script (Recommended)
+### Using the Make Portable ZIP Script (Recommended)
+
+```powershell
+.\scripts\packaging\make_portable_zip.ps1
+```
+
+This is the official packaging script that creates a complete portable ZIP distribution with:
+- Self-contained API with embedded Web UI
+- FFmpeg binaries (if available)
+- Configuration files and documentation
+- Health check launcher script (start_portable.cmd)
+- SHA-256 checksums
+- Software Bill of Materials (SBOM)
+- Third-party license attributions
+
+Output: `artifacts/windows/portable/AuraVideoStudio_Portable_x64.zip`
+
+### Using the Simple Build Script
 
 ```powershell
 .\scripts\packaging\build-portable.ps1
@@ -60,7 +77,12 @@ The portable distribution is a self-contained package that requires no installat
 ### Automated Build
 
 ```powershell
-# Using the simple script (recommended)
+# Using the official packaging script (recommended)
+.\scripts\packaging\make_portable_zip.ps1
+
+# Output: artifacts/windows/portable/AuraVideoStudio_Portable_x64.zip
+
+# Using the simple script
 .\scripts\packaging\build-portable.ps1
 
 # Output: artifacts/portable/AuraVideoStudio_Portable_x64.zip
@@ -117,6 +139,39 @@ Get-FileHash -Path artifacts/portable/AuraVideoStudio_Portable_x64.zip -Algorith
 
 ## Directory Structure After Build
 
+### make_portable_zip.ps1 Output Structure
+
+```
+artifacts/windows/portable/
+├── AuraVideoStudio_Portable_x64.zip
+├── AuraVideoStudio_Portable_x64.zip.sha256
+└── build/
+    ├── api/
+    │   ├── Aura.Api.exe          (Main executable)
+    │   ├── wwwroot/               (Web UI files - CRITICAL!)
+    │   │   ├── index.html
+    │   │   └── assets/
+    │   └── (DLLs and dependencies)
+    ├── web/                       (Reference copy)
+    │   ├── index.html
+    │   └── assets/
+    ├── ffmpeg/
+    │   ├── ffmpeg.exe
+    │   └── ffprobe.exe
+    ├── config/
+    │   └── appsettings.json
+    ├── assets/                    (If available)
+    │   └── (CC0 packs, LUTs, fonts)
+    ├── start_portable.cmd         (Launcher with /healthz check)
+    ├── checksums.txt              (SHA-256 for all files)
+    ├── sbom.json                  (Software Bill of Materials)
+    ├── attributions.txt           (Third-party licenses)
+    ├── README.md                  (User documentation)
+    └── LICENSE
+```
+
+### build-portable.ps1 Output Structure
+
 ```
 artifacts/
 └── portable/
@@ -162,11 +217,17 @@ Before distributing, always test the portable build:
 
 ```powershell
 # Extract the ZIP
-Expand-Archive artifacts/portable/AuraVideoStudio_Portable_x64.zip -DestinationPath test-extract
+Expand-Archive artifacts/windows/portable/AuraVideoStudio_Portable_x64.zip -DestinationPath test-extract
 
 # Run the application
 cd test-extract
-.\Launch.bat
+.\start_portable.cmd
+
+# The launcher will:
+# - Start the API
+# - Wait for /healthz to return healthy
+# - Open your browser to http://127.0.0.1:5005
+# - Display status messages
 
 # Verify:
 # - API starts on http://127.0.0.1:5005

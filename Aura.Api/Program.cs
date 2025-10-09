@@ -1,10 +1,14 @@
+using Aura.Api.Serialization;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
+using Aura.Core.Planner;
 using Aura.Core.Providers;
+using Aura.Providers.Images;
 using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
+using Aura.Providers.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 using Serilog;
@@ -16,6 +20,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure JSON options to handle string enum conversion
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
+    // Add tolerant converters for enums that accept aliases
+    options.SerializerOptions.Converters.Add(new TolerantDensityConverter());
+    options.SerializerOptions.Converters.Add(new TolerantAspectConverter());
+    // Use standard converter for other enums
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
@@ -47,8 +55,51 @@ builder.Services.AddCors(options =>
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
+builder.Services.AddHttpClient(); // For LLM providers
+builder.Services.AddSingleton<Aura.Core.Orchestrator.LlmProviderFactory>();
+
+// Provider mixing configuration
+builder.Services.AddSingleton(sp =>
+{
+    var config = new ProviderMixingConfig
+    {
+        ActiveProfile = "Free-Only", // Default to free-only
+        AutoFallback = true,
+        LogProviderSelection = true
+    };
+    return config;
+});
+
+// Provider mixer
+builder.Services.AddSingleton<Aura.Core.Orchestrator.ProviderMixer>();
+
+// Script orchestrator with dynamic provider creation
+builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Orchestrator.ScriptOrchestrator>>();
+    var mixer = sp.GetRequiredService<Aura.Core.Orchestrator.ProviderMixer>();
+    var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    
+    // Create available providers
+    var providers = factory.CreateAvailableProviders(loggerFactory);
+    
+    return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, mixer, providers);
+});
+
+// Keep backward compatibility - single ILlmProvider for simple use cases
+builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
-builder.Services.AddSingleton<ITtsProvider, WindowsTtsProvider>();
+
+// Register TTS provider factory and default provider
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<Aura.Core.Providers.TtsProviderFactory>();
+builder.Services.AddSingleton<ITtsProvider>(sp =>
+{
+    var factory = sp.GetRequiredService<Aura.Core.Providers.TtsProviderFactory>();
+    return factory.GetDefaultProvider();
+});
+
 builder.Services.AddSingleton<IVideoComposer>(sp => 
 {
     var logger = sp.GetRequiredService<ILogger<FfmpegVideoComposer>>();
@@ -58,6 +109,8 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     return new FfmpegVideoComposer(logger, ffmpegPath, outputDirectory);
 });
 builder.Services.AddSingleton<VideoOrchestrator>();
+builder.Services.AddSingleton<IRecommendationService, HeuristicRecommendationService>();
+builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
 
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
@@ -147,6 +200,15 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
         
         return Results.Ok(new { success = true, plan });
     }
+    catch (JsonException ex)
+    {
+        Log.Error(ex, "Invalid enum value in plan request");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 400,
+            title: "Invalid Enum Value",
+            type: "https://docs.aura.studio/errors/E303");
+    }
     catch (Exception ex)
     {
         Log.Error(ex, "Error creating plan");
@@ -154,6 +216,100 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
     }
 })
 .WithName("CreatePlan")
+.WithOpenApi();
+
+// Script generation endpoint with routing
+apiGroup.MapPost("/script", async (
+    [FromBody] ScriptRequest request, 
+    Aura.Core.Orchestrator.ScriptOrchestrator orchestrator,
+    HardwareDetector hardwareDetector,
+    CancellationToken ct) =>
+// Planner recommendations endpoint
+apiGroup.MapPost("/planner/recommendations", async (
+    [FromBody] RecommendationsRequestDto request, 
+    IRecommendationService recommendationService,
+    CancellationToken ct) =>
+{
+    try
+    {
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(request.Topic))
+        {
+            return Results.Problem(
+                detail: "Topic is required",
+                statusCode: 400,
+                title: "Invalid Brief",
+                type: "https://docs.aura.studio/errors/E303");
+        }
+        
+        if (request.TargetDurationMinutes <= 0 || request.TargetDurationMinutes > 120)
+        {
+            return Results.Problem(
+                detail: "Target duration must be between 0 and 120 minutes",
+                statusCode: 400,
+                title: "Invalid Plan",
+                type: "https://docs.aura.studio/errors/E304");
+        }
+
+        var brief = new Brief(
+            Topic: request.Topic,
+            Audience: request.Audience ?? "General",
+            Goal: request.Goal ?? "Inform",
+            Tone: request.Tone ?? "Informative",
+            Language: request.Language ?? "en-US",
+            Aspect: request.Aspect ?? Aspect.Widescreen16x9
+        );
+        
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromMinutes(request.TargetDurationMinutes),
+            Pacing: request.Pacing ?? Pacing.Conversational,
+            Density: request.Density ?? Density.Balanced,
+            Style: request.Style ?? "Standard"
+        );
+
+        var constraints = request.Constraints != null 
+            ? new RecommendationConstraints(
+                MaxSceneCount: request.Constraints.MaxSceneCount,
+                MinSceneCount: request.Constraints.MinSceneCount,
+                MaxBRollPercentage: request.Constraints.MaxBRollPercentage,
+                MaxReadingLevel: request.Constraints.MaxReadingLevel)
+            : null;
+
+        var recommendationRequest = new RecommendationRequest(
+            Brief: brief,
+            PlanSpec: planSpec,
+            AudiencePersona: request.AudiencePersona,
+            Constraints: constraints
+        );
+
+        Log.Information("Generating recommendations for topic: {Topic}, duration: {Duration} min", 
+            request.Topic, request.TargetDurationMinutes);
+        
+        var recommendations = await recommendationService.GenerateRecommendationsAsync(recommendationRequest, ct);
+        
+        Log.Information("Recommendations generated successfully");
+        return Results.Ok(new { success = true, recommendations });
+    }
+    catch (TaskCanceledException)
+    {
+        Log.Warning("Recommendation generation was cancelled");
+        return Results.Problem(
+            detail: "Recommendation generation was cancelled",
+            statusCode: 408,
+            title: "Request Timeout",
+            type: "https://docs.aura.studio/errors/E301");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error generating recommendations: {Message}", ex.Message);
+        return Results.Problem(
+            detail: $"Error generating recommendations: {ex.Message}",
+            statusCode: 500,
+            title: "Recommendation Service Failed",
+            type: "https://docs.aura.studio/errors/E305");
+    }
+})
+.WithName("GetPlannerRecommendations")
 .WithOpenApi();
 
 // Script generation endpoint
@@ -196,22 +352,58 @@ apiGroup.MapPost("/script", async ([FromBody] ScriptRequest request, ILlmProvide
             Style: request.Style
         );
         
-        Log.Information("Generating script for topic: {Topic}, duration: {Duration} min", request.Topic, request.TargetDurationMinutes);
-        var script = await llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        // Determine provider tier from request or use default
+        string preferredTier = request.ProviderTier ?? "Free";
         
-        // Validate script is not empty
-        if (string.IsNullOrWhiteSpace(script))
+        // Get system offline status
+        var profile = await hardwareDetector.DetectSystemAsync();
+        bool offlineOnly = profile.OfflineOnly;
+        
+        Log.Information("Generating script for topic: {Topic}, duration: {Duration} min, tier: {Tier}, offline: {Offline}", 
+            request.Topic, request.TargetDurationMinutes, preferredTier, offlineOnly);
+        
+        var result = await orchestrator.GenerateScriptAsync(brief, planSpec, preferredTier, offlineOnly, ct);
+        
+        if (!result.Success)
         {
-            Log.Error("Script generation returned empty result");
+            Log.Error("Script generation failed: {ErrorCode} - {ErrorMessage}", result.ErrorCode, result.ErrorMessage);
+            
+            // Handle specific error codes
+            if (result.ErrorCode == "E307")
+            {
+                return Results.Problem(
+                    detail: result.ErrorMessage,
+                    statusCode: 403,
+                    title: "Offline Mode Restriction",
+                    type: "https://docs.aura.studio/errors/E307");
+            }
+            
             return Results.Problem(
-                detail: "Script generation returned empty result. Provider may have failed.",
+                detail: result.ErrorMessage,
                 statusCode: 500,
                 title: "Script Generation Failed",
-                type: "https://docs.aura.studio/errors/E302");
+                type: $"https://docs.aura.studio/errors/{result.ErrorCode}");
         }
         
-        Log.Information("Script generated successfully: {Length} characters", script.Length);
-        return Results.Ok(new { success = true, script });
+        Log.Information("Script generated successfully with {Provider}: {Length} characters (fallback: {IsFallback})", 
+            result.ProviderUsed, result.Script?.Length ?? 0, result.IsFallback);
+        
+        return Results.Ok(new 
+        { 
+            success = true, 
+            script = result.Script,
+            provider = result.ProviderUsed,
+            isFallback = result.IsFallback
+        });
+    }
+    catch (JsonException ex)
+    {
+        Log.Error(ex, "Invalid enum value in script request");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 400,
+            title: "Invalid Enum Value",
+            type: "https://docs.aura.studio/errors/E303");
     }
     catch (ArgumentException ex)
     {
@@ -276,6 +468,45 @@ apiGroup.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsP
 .WithName("SynthesizeAudio")
 .WithOpenApi();
 
+// Captions endpoint
+apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request) =>
+{
+    try
+    {
+        var lines = request.Lines.Select(l => new ScriptLine(
+            SceneIndex: l.SceneIndex,
+            Text: l.Text,
+            Start: TimeSpan.FromSeconds(l.StartSeconds),
+            Duration: TimeSpan.FromSeconds(l.DurationSeconds)
+        )).ToList();
+        
+        var audioProcessor = new Aura.Core.Audio.AudioProcessor(
+            LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<Aura.Core.Audio.AudioProcessor>());
+        
+        string captions = request.Format.ToUpperInvariant() == "VTT"
+            ? audioProcessor.GenerateVttSubtitles(lines)
+            : audioProcessor.GenerateSrtSubtitles(lines);
+        
+        // Optionally save to file if path is provided
+        string? filePath = null;
+        if (!string.IsNullOrEmpty(request.OutputPath))
+        {
+            filePath = request.OutputPath;
+            await System.IO.File.WriteAllTextAsync(filePath, captions);
+            Log.Information("Captions saved to {Path}", filePath);
+        }
+        
+        return Results.Ok(new { success = true, captions, filePath });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error generating captions");
+        return Results.Problem("Error generating captions", statusCode: 500);
+    }
+})
+.WithName("GenerateCaptions")
+.WithOpenApi();
+
 // Downloads manifest endpoint
 apiGroup.MapGet("/downloads/manifest", async (Aura.Core.Dependencies.DependencyManager depManager) =>
 {
@@ -334,6 +565,97 @@ apiGroup.MapPost("/downloads/{component}/install", async (string component, Aura
 .WithName("InstallComponent")
 .WithOpenApi();
 
+// Verify component integrity
+apiGroup.MapGet("/downloads/{component}/verify", async (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        var result = await depManager.VerifyComponentAsync(component);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error verifying component");
+        return Results.Problem($"Error verifying {component}", statusCode: 500);
+    }
+})
+.WithName("VerifyComponent")
+.WithOpenApi();
+
+// Repair component
+apiGroup.MapPost("/downloads/{component}/repair", async (string component, Aura.Core.Dependencies.DependencyManager depManager, CancellationToken ct) =>
+{
+    try
+    {
+        var progress = new Progress<Aura.Core.Dependencies.DownloadProgress>(p =>
+        {
+            Log.Information("Repair progress: {Component} - {Percent}%", component, p.PercentComplete);
+        });
+
+        await depManager.RepairComponentAsync(component, progress, ct);
+        
+        return Results.Ok(new { success = true, message = $"{component} repaired successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error repairing component");
+        return Results.Problem($"Error repairing {component}", statusCode: 500);
+    }
+})
+.WithName("RepairComponent")
+.WithOpenApi();
+
+// Remove component
+apiGroup.MapDelete("/downloads/{component}", async (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        await depManager.RemoveComponentAsync(component);
+        return Results.Ok(new { success = true, message = $"{component} removed successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error removing component");
+        return Results.Problem($"Error removing {component}", statusCode: 500);
+    }
+})
+.WithName("RemoveComponent")
+.WithOpenApi();
+
+// Get component directory path
+apiGroup.MapGet("/downloads/{component}/folder", (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        var path = depManager.GetComponentDirectory(component);
+        return Results.Ok(new { path });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting component folder");
+        return Results.Problem($"Error getting folder for {component}", statusCode: 500);
+    }
+})
+.WithName("GetComponentFolder")
+.WithOpenApi();
+
+// Get manual install instructions (for offline mode)
+apiGroup.MapGet("/downloads/{component}/manual", (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        var instructions = depManager.GetManualInstallInstructions(component);
+        return Results.Ok(instructions);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting manual instructions");
+        return Results.Problem($"Error getting manual instructions for {component}", statusCode: 500);
+    }
+})
+.WithName("GetManualInstructions")
+.WithOpenApi();
+
 // Settings endpoints
 apiGroup.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settings) =>
 {
@@ -352,7 +674,8 @@ apiGroup.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settin
 })
 .WithName("SaveSettings")
 .WithOpenApi();
-
+
+
 apiGroup.MapGet("/settings/load", () =>
 {
     try
@@ -401,7 +724,8 @@ apiGroup.MapPost("/compose", ([FromBody] ComposeRequest request) =>
 })
 .WithName("ComposeTimeline")
 .WithOpenApi();
-
+
+
 apiGroup.MapPost("/render", ([FromBody] RenderRequest request) =>
 {
     try
@@ -425,7 +749,8 @@ apiGroup.MapPost("/render", ([FromBody] RenderRequest request) =>
 })
 .WithName("StartRender")
 .WithOpenApi();
-
+
+
 apiGroup.MapGet("/render/{id}/progress", (string id) =>
 {
     if (!renderJobs.ContainsKey(id))
@@ -445,7 +770,8 @@ apiGroup.MapGet("/render/{id}/progress", (string id) =>
 })
 .WithName("GetRenderProgress")
 .WithOpenApi();
-
+
+
 apiGroup.MapPost("/render/{id}/cancel", (string id) =>
 {
     if (!renderJobs.ContainsKey(id))
@@ -458,7 +784,8 @@ apiGroup.MapPost("/render/{id}/cancel", (string id) =>
 })
 .WithName("CancelRender")
 .WithOpenApi();
-
+
+
 apiGroup.MapGet("/queue", () =>
 {
     try
@@ -474,7 +801,8 @@ apiGroup.MapGet("/queue", () =>
 })
 .WithName("GetRenderQueue")
 .WithOpenApi();
-
+
+
 apiGroup.MapGet("/logs/stream", async (HttpContext context) =>
 {
     context.Response.Headers.Append("Content-Type", "text/event-stream");
@@ -498,7 +826,8 @@ apiGroup.MapGet("/logs/stream", async (HttpContext context) =>
 })
 .WithName("StreamLogs")
 .WithOpenApi();
-
+
+
 apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
 {
     try
@@ -515,7 +844,8 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
 })
 .WithName("RunProbes")
 .WithOpenApi();
-
+
+
 apiGroup.MapGet("/profiles/list", () =>
 {
     try
@@ -536,7 +866,8 @@ apiGroup.MapGet("/profiles/list", () =>
 })
 .WithName("ListProfiles")
 .WithOpenApi();
-
+
+
 apiGroup.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
 {
     try
@@ -685,6 +1016,221 @@ apiGroup.MapGet("/providers/paths/load", () =>
 .WithName("LoadProviderPaths")
 .WithOpenApi();
 
+// Assets search endpoint - search stock providers
+apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request, HardwareDetector detector, IHttpClientFactory httpClientFactory, CancellationToken ct) =>
+{
+    try
+    {
+        var profile = await detector.DetectSystemAsync();
+        
+        // Check if offline only mode
+        if (profile.OfflineOnly && request.Provider != "local")
+        {
+            return Results.Ok(new 
+            { 
+                success = false, 
+                gated = true,
+                reason = "Offline mode enabled - only local assets are available",
+                assets = Array.Empty<object>()
+            });
+        }
+
+        var httpClient = httpClientFactory.CreateClient();
+        var assets = new List<object>();
+
+        switch (request.Provider.ToLowerInvariant())
+        {
+            case "pexels":
+                if (string.IsNullOrEmpty(request.ApiKey))
+                {
+                    return Results.Ok(new 
+                    { 
+                        success = false, 
+                        gated = true,
+                        reason = "Pexels API key required",
+                        assets = Array.Empty<object>()
+                    });
+                }
+                var pexelsProvider = new Aura.Providers.Images.PexelsStockProvider(
+                    LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.PexelsStockProvider>(),
+                    httpClient,
+                    request.ApiKey);
+                var pexelsAssets = await pexelsProvider.SearchAsync(request.Query, request.Count, ct);
+                assets.AddRange(pexelsAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
+                break;
+
+            case "pixabay":
+                if (string.IsNullOrEmpty(request.ApiKey))
+                {
+                    return Results.Ok(new 
+                    { 
+                        success = false, 
+                        gated = true,
+                        reason = "Pixabay API key required",
+                        assets = Array.Empty<object>()
+                    });
+                }
+                var pixabayProvider = new Aura.Providers.Images.PixabayStockProvider(
+                    LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.PixabayStockProvider>(),
+                    httpClient,
+                    request.ApiKey);
+                var pixabayAssets = await pixabayProvider.SearchAsync(request.Query, request.Count, ct);
+                assets.AddRange(pixabayAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
+                break;
+
+            case "unsplash":
+                if (string.IsNullOrEmpty(request.ApiKey))
+                {
+                    return Results.Ok(new 
+                    { 
+                        success = false, 
+                        gated = true,
+                        reason = "Unsplash API key required",
+                        assets = Array.Empty<object>()
+                    });
+                }
+                var unsplashProvider = new Aura.Providers.Images.UnsplashStockProvider(
+                    LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.UnsplashStockProvider>(),
+                    httpClient,
+                    request.ApiKey);
+                var unsplashAssets = await unsplashProvider.SearchAsync(request.Query, request.Count, ct);
+                assets.AddRange(unsplashAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
+                break;
+
+            case "local":
+                var localDirectory = request.LocalDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Assets");
+                var localProvider = new Aura.Providers.Images.LocalStockProvider(
+                    LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.LocalStockProvider>(),
+                    localDirectory);
+                var localAssets = await localProvider.SearchAsync(request.Query, request.Count, ct);
+                assets.AddRange(localAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
+                break;
+
+            default:
+                return Results.BadRequest(new { success = false, message = $"Unknown provider: {request.Provider}" });
+        }
+
+        return Results.Ok(new { success = true, gated = false, assets });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error searching assets");
+        return Results.Problem("Error searching assets", statusCode: 500);
+    }
+})
+.WithName("SearchAssets")
+.WithOpenApi();
+
+// Assets generate endpoint - generate with Stable Diffusion
+apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest request, HardwareDetector detector, IHttpClientFactory httpClientFactory, CancellationToken ct) =>
+{
+    try
+    {
+        var profile = await detector.DetectSystemAsync();
+        
+        // NVIDIA GPU gate
+        if (profile.Gpu == null || profile.Gpu.Vendor.ToLowerInvariant() != "nvidia")
+        {
+            return Results.Ok(new 
+            { 
+                success = false, 
+                gated = true,
+                reason = "Stable Diffusion requires an NVIDIA GPU. Use stock visuals or Pro cloud instead.",
+                assets = Array.Empty<object>()
+            });
+        }
+
+        // VRAM gate
+        if (profile.Gpu.VramGB < 6)
+        {
+            return Results.Ok(new 
+            { 
+                success = false, 
+                gated = true,
+                reason = $"Insufficient VRAM ({profile.Gpu.VramGB}GB). Stable Diffusion requires minimum 6GB VRAM.",
+                assets = Array.Empty<object>()
+            });
+        }
+
+        // Offline mode gate
+        if (profile.OfflineOnly)
+        {
+            return Results.Ok(new 
+            { 
+                success = false, 
+                gated = true,
+                reason = "Offline mode enabled - Stable Diffusion WebUI requires network access",
+                assets = Array.Empty<object>()
+            });
+        }
+
+        var httpClient = httpClientFactory.CreateClient();
+        var sdUrl = request.StableDiffusionUrl ?? "http://127.0.0.1:7860";
+        
+        var sdParams = new Aura.Providers.Images.SDGenerationParams
+        {
+            Model = request.Model,
+            Steps = request.Steps,
+            CfgScale = request.CfgScale ?? 7.0,
+            Seed = request.Seed ?? -1,
+            Width = request.Width,
+            Height = request.Height,
+            Style = request.Style ?? "high quality, detailed, professional",
+            SamplerName = request.SamplerName ?? "DPM++ 2M Karras"
+        };
+
+        var sdProvider = new Aura.Providers.Images.StableDiffusionWebUiProvider(
+            LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.StableDiffusionWebUiProvider>(),
+            httpClient,
+            sdUrl,
+            true, // isNvidiaGpu
+            profile.Gpu.VramGB,
+            sdParams);
+
+        // Create a dummy scene for generation
+        var scene = new Scene(
+            Index: request.SceneIndex ?? 0,
+            Heading: request.Prompt,
+            Script: "",
+            Start: TimeSpan.Zero,
+            Duration: TimeSpan.FromSeconds(5));
+
+        var spec = new VisualSpec(
+            Style: request.Style ?? "",
+            Aspect: request.Aspect ?? Aspect.Widescreen16x9,
+            Keywords: request.Keywords ?? Array.Empty<string>());
+
+        var assets = await sdProvider.FetchOrGenerateAsync(scene, spec, sdParams, ct);
+
+        return Results.Ok(new 
+        { 
+            success = true, 
+            gated = false,
+            model = profile.Gpu.VramGB >= 12 ? "SDXL" : "SD 1.5",
+            vramGB = profile.Gpu.VramGB,
+            assets = assets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution })
+        });
+    }
+    catch (HttpRequestException ex)
+    {
+        Log.Warning(ex, "Failed to connect to Stable Diffusion WebUI");
+        return Results.Ok(new 
+        { 
+            success = false, 
+            gated = true,
+            reason = "Failed to connect to Stable Diffusion WebUI. Is it running?",
+            assets = Array.Empty<object>()
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error generating assets with Stable Diffusion");
+        return Results.Problem("Error generating assets", statusCode: 500);
+    }
+})
+.WithName("GenerateAssets")
+.WithOpenApi();
+
 // Test provider connections
 apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody] ProviderTestRequest request) =>
 {
@@ -772,6 +1318,36 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
 .WithName("TestProviderConnection")
 .WithOpenApi();
 
+// Validate providers
+apiGroup.MapPost("/providers/validate", async (
+    [FromBody] ValidateProvidersRequest? request,
+    ProviderValidationService validationService,
+    CancellationToken ct) =>
+{
+    try
+    {
+        var providers = request?.Providers?.Length > 0 ? request.Providers : null;
+        
+        Log.Information("Validating providers: {Providers}", 
+            providers != null ? string.Join(", ", providers) : "all");
+
+        var result = await validationService.ValidateProvidersAsync(providers, ct);
+
+        return Results.Ok(new
+        {
+            results = result.Results,
+            ok = result.Ok
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error validating providers");
+        return Results.Problem("Error validating providers", statusCode: 500);
+    }
+})
+.WithName("ValidateProviders")
+.WithOpenApi();
+
 // Fallback to index.html for client-side routing (must be after all API routes)
 if (Directory.Exists(wwwrootPath))
 {
@@ -782,7 +1358,7 @@ app.Run();
 
 // DTOs
 record PlanRequest(double TargetDurationMinutes, Pacing Pacing, Density Density, string Style);
-record ScriptRequest(string Topic, string Audience, string Goal, string Tone, string Language, Aspect Aspect, double TargetDurationMinutes, Pacing Pacing, Density Density, string Style);
+record ScriptRequest(string Topic, string Audience, string Goal, string Tone, string Language, Aspect Aspect, double TargetDurationMinutes, Pacing Pacing, Density Density, string Style, string? ProviderTier);
 record TtsRequest(List<LineDto> Lines, string VoiceName, double Rate, double Pitch, PauseStyle PauseStyle);
 record LineDto(int SceneIndex, string Text, double StartSeconds, double DurationSeconds);
 record ComposeRequest(string TimelineJson);
@@ -792,3 +1368,41 @@ record ApplyProfileRequest(string ProfileName);
 record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKey, string? StabilityAiKey);
 record ProviderPathsRequest(string? StableDiffusionUrl, string? OllamaUrl, string? FfmpegPath, string? FfprobePath, string? OutputDirectory);
 record ProviderTestRequest(string? Url, string? Path);
+record RecommendationsRequestDto(
+    string Topic,
+    string? Audience,
+    string? Goal,
+    string? Tone,
+    string? Language,
+    Aspect? Aspect,
+    double TargetDurationMinutes,
+    Pacing? Pacing,
+    Density? Density,
+    string? Style,
+    string? AudiencePersona,
+    ConstraintsDto? Constraints);
+record ConstraintsDto(
+    int? MaxSceneCount,
+    int? MinSceneCount,
+    double? MaxBRollPercentage,
+    int? MaxReadingLevel);
+
+// Make Program accessible for integration tests
+public partial class Program { }
+record AssetSearchRequest(string Provider, string Query, int Count, string? ApiKey = null, string? LocalDirectory = null);
+record AssetGenerateRequest(
+    string Prompt, 
+    int? SceneIndex = null,
+    string? Model = null, 
+    int? Steps = null, 
+    double? CfgScale = null, 
+    int? Seed = null, 
+    int? Width = null, 
+    int? Height = null, 
+    string? Style = null, 
+    string? SamplerName = null, 
+    Aspect? Aspect = null,
+    string[]? Keywords = null,
+    string? StableDiffusionUrl = null);
+record CaptionsRequest(List<LineDto> Lines, string Format = "SRT", string? OutputPath = null);
+record ValidateProvidersRequest(string[]? Providers);
