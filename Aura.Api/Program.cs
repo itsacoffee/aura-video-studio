@@ -218,12 +218,6 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
 .WithName("CreatePlan")
 .WithOpenApi();
 
-// Script generation endpoint with routing
-apiGroup.MapPost("/script", async (
-    [FromBody] ScriptRequest request, 
-    Aura.Core.Orchestrator.ScriptOrchestrator orchestrator,
-    HardwareDetector hardwareDetector,
-    CancellationToken ct) =>
 // Planner recommendations endpoint
 apiGroup.MapPost("/planner/recommendations", async (
     [FromBody] RecommendationsRequestDto request, 
@@ -313,7 +307,11 @@ apiGroup.MapPost("/planner/recommendations", async (
 .WithOpenApi();
 
 // Script generation endpoint
-apiGroup.MapPost("/script", async ([FromBody] ScriptRequest request, ILlmProvider llmProvider, CancellationToken ct) =>
+apiGroup.MapPost("/script", async (
+    [FromBody] ScriptRequest request, 
+    Aura.Core.Orchestrator.ScriptOrchestrator orchestrator,
+    HardwareDetector hardwareDetector,
+    CancellationToken ct) =>
 {
     try
     {

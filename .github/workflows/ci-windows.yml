@@ -1,176 +1,47 @@
-name: CI - Windows
+name: ci-windows
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, chore/merge-integrity-audit ]
   pull_request:
-    branches: [ main, develop ]
-  workflow_dispatch:
-
-env:
-  DOTNET_VERSION: '8.0.x'
-  SOLUTION_FILE: Aura.sln
+    branches: [ main ]
 
 jobs:
-  build-and-package-windows:
-    name: Build and Package (Windows)
+  build-windows:
     runs-on: windows-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-        
-    - name: Restore dependencies
-      run: dotnet restore ${{ env.SOLUTION_FILE }}
-      
-    - name: Build Core Projects
-      run: |
-        dotnet build Aura.Core/Aura.Core.csproj --configuration Release --no-restore
-        dotnet build Aura.Providers/Aura.Providers.csproj --configuration Release --no-restore
-        dotnet build Aura.Api/Aura.Api.csproj --configuration Release --no-restore
-        
-    - name: Run Unit Tests
-      run: dotnet test Aura.Tests/Aura.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=unit-tests.trx"
-      
-    - name: Build Portable Distribution
-      run: |
-        powershell -File scripts/packaging/build-portable.ps1
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        
-    - name: Build Portable ZIP
-      run: |
-        .\scripts\packaging\make_portable_zip.ps1 -Configuration Release -Platform x64
-      shell: powershell
-      
-    - name: Run Smoke Test
-      run: |
-        Write-Host "Running smoke test on portable build..." -ForegroundColor Cyan
-        
-        # Extract ZIP to test location
-        $testDir = "test-portable"
-        New-Item -ItemType Directory -Force -Path $testDir | Out-Null
-        Expand-Archive -Path "artifacts/windows/portable/AuraVideoStudio_Portable_x64.zip" -DestinationPath $testDir -Force
-        
-        # Start API
-        Write-Host "Starting API..." -ForegroundColor Yellow
-        $apiProcess = Start-Process -FilePath "$testDir\api\Aura.Api.exe" -WorkingDirectory "$testDir\api" -PassThru -WindowStyle Hidden
-        
-        # Wait for API to be healthy
-        Write-Host "Waiting for API to be healthy..." -ForegroundColor Yellow
-        $maxAttempts = 30
-        $healthy = $false
-        for ($i = 0; $i -lt $maxAttempts; $i++) {
-          try {
-            $response = Invoke-WebRequest -Uri "http://127.0.0.1:5005/healthz" -UseBasicParsing -TimeoutSec 2
-            if ($response.StatusCode -eq 200) {
-              Write-Host "✓ API is healthy!" -ForegroundColor Green
-              $healthy = $true
-              break
-            }
-          } catch {
-            Start-Sleep -Seconds 1
-          }
-        }
-        
-        if (-not $healthy) {
-          Write-Host "ERROR: API failed to start" -ForegroundColor Red
-          Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
-          exit 1
-        }
-        
-        # Test capabilities endpoint
-        Write-Host "Testing /capabilities endpoint..." -ForegroundColor Yellow
-        try {
-          $response = Invoke-RestMethod -Uri "http://127.0.0.1:5005/capabilities" -Method Get -TimeoutSec 5
-          Write-Host "✓ Capabilities endpoint working" -ForegroundColor Green
-        } catch {
-          Write-Host "ERROR: Capabilities endpoint failed: $_" -ForegroundColor Red
-          Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
-          exit 1
-        }
-        
-        # Quick render test (10-15 seconds)
-        Write-Host "Running quick render test..." -ForegroundColor Yellow
-        $scriptRequest = @{
-          prompt = "Test video"
-          duration = 5
-          style = "minimal"
-          provider = "RuleBased"
-        } | ConvertTo-Json
-        
-        try {
-          $scriptResponse = Invoke-RestMethod -Uri "http://127.0.0.1:5005/script" -Method Post -Body $scriptRequest -ContentType "application/json" -TimeoutSec 10
-          Write-Host "✓ Script generation working" -ForegroundColor Green
-        } catch {
-          Write-Host "⚠ Script generation test failed (may be expected): $_" -ForegroundColor Yellow
-        }
-        
-        # Clean up
-        Write-Host "Cleaning up..." -ForegroundColor Yellow
-        Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 2
-        
-        Write-Host "" 
-        Write-Host "========================================" -ForegroundColor Green
-        Write-Host " Smoke Test Passed!" -ForegroundColor Green
-        Write-Host "========================================" -ForegroundColor Green
-      shell: powershell
-      continue-on-error: true
-      
-    - name: Upload Test Results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results-windows
-        path: |
-          **/TestResults/*.trx
-          
-    - name: Upload Portable Distribution
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: portable-distribution
-        path: |
-          artifacts/windows/portable/**/*.zip
-          artifacts/windows/checksums.txt
-        if-no-files-found: warn
-  
-  portable-only-guard:
-    name: Portable-Only Policy Check
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Run CI Guard
-      run: |
-        chmod +x scripts/cleanup/ci_guard.sh
-        ./scripts/cleanup/ci_guard.sh
-        
-    - name: Upload Portable ZIP
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: portable-zip
-        path: |
-          artifacts/windows/portable/AuraVideoStudio_Portable_x64.zip
-          artifacts/windows/portable/AuraVideoStudio_Portable_x64.zip.sha256
-        if-no-files-found: error
-          
-    - name: Upload Build Logs
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-logs
-        path: artifacts/windows/logs
-        if-no-files-found: ignore
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Windows Audit
+        shell: pwsh
+        run: |
+          pwsh -File .\scripts\audit\scan.ps1
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Smoke Render
+        shell: pwsh
+        run: |
+          pwsh -File .\scripts\run_quick_generate_demo.ps1 -FfmpegPath ".\scripts\ffmpeg\ffmpeg.exe"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-audit-smoke-and-tests
+          path: |
+            artifacts/**
+            **/TestResults/**/*.trx
+

@@ -34,12 +34,12 @@ Add-Report ""
 $hardFail = $false
 
 Add-Report "### Conflict Markers"
-$conflicts = Get-TextFiles | Select-String -Pattern '^(<<<<<<<|=======|>>>>>>>)' -SimpleMatch
+$conflicts = Get-TextFiles | Where-Object { $_.FullName -notlike "*\scripts\audit\*" } | Select-String -Pattern '^(<<<<<<<|=======|>>>>>>>)' -SimpleMatch
 if ($conflicts) { $hardFail = $true; Add-Report "**FOUND conflict markers:**"; $conflicts | ForEach-Object { Add-Report ("- {0}:{1}" -f $_.Path, $_.LineNumber) } } else { Add-Report "No conflict markers found." }
 Add-Report ""
 
 Add-Report "### Duplicate Files (by normalized name)"
-$files = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue
+$files = Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '[\\/](bin|obj|node_modules)[\\/]' }
 $norm = @{}; foreach ($f in $files) { $key = (([string]$f.BaseName).ToLowerInvariant()); if (-not $norm.ContainsKey($key)) { $norm[$key] = @() }; $norm[$key] += $f.FullName }
 $dupes = $norm.GetEnumerator() | Where-Object { $_.Value.Count -gt 1 }
 if ($dupes) { $hardFail = $true; Add-Report "**FOUND potential duplicate file basenames:**"; foreach ($d in $dupes) { Add-Report ("- {0}" -f $d.Key); $d.Value | ForEach-Object { Add-Report ("  - {0}" -f $_) } } } else { Add-Report "No duplicate basenames detected." }
