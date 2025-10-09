@@ -55,6 +55,39 @@ builder.Services.AddCors(options =>
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
+builder.Services.AddHttpClient(); // For LLM providers
+builder.Services.AddSingleton<Aura.Core.Orchestrator.LlmProviderFactory>();
+
+// Provider mixing configuration
+builder.Services.AddSingleton(sp =>
+{
+    var config = new ProviderMixingConfig
+    {
+        ActiveProfile = "Free-Only", // Default to free-only
+        AutoFallback = true,
+        LogProviderSelection = true
+    };
+    return config;
+});
+
+// Provider mixer
+builder.Services.AddSingleton<Aura.Core.Orchestrator.ProviderMixer>();
+
+// Script orchestrator with dynamic provider creation
+builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Orchestrator.ScriptOrchestrator>>();
+    var mixer = sp.GetRequiredService<Aura.Core.Orchestrator.ProviderMixer>();
+    var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    
+    // Create available providers
+    var providers = factory.CreateAvailableProviders(loggerFactory);
+    
+    return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, mixer, providers);
+});
+
+// Keep backward compatibility - single ILlmProvider for simple use cases
 builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 
@@ -185,6 +218,12 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
 .WithName("CreatePlan")
 .WithOpenApi();
 
+// Script generation endpoint with routing
+apiGroup.MapPost("/script", async (
+    [FromBody] ScriptRequest request, 
+    Aura.Core.Orchestrator.ScriptOrchestrator orchestrator,
+    HardwareDetector hardwareDetector,
+    CancellationToken ct) =>
 // Planner recommendations endpoint
 apiGroup.MapPost("/planner/recommendations", async (
     [FromBody] RecommendationsRequestDto request, 
@@ -313,22 +352,49 @@ apiGroup.MapPost("/script", async ([FromBody] ScriptRequest request, ILlmProvide
             Style: request.Style
         );
         
-        Log.Information("Generating script for topic: {Topic}, duration: {Duration} min", request.Topic, request.TargetDurationMinutes);
-        var script = await llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        // Determine provider tier from request or use default
+        string preferredTier = request.ProviderTier ?? "Free";
         
-        // Validate script is not empty
-        if (string.IsNullOrWhiteSpace(script))
+        // Get system offline status
+        var profile = await hardwareDetector.DetectSystemAsync();
+        bool offlineOnly = profile.OfflineOnly;
+        
+        Log.Information("Generating script for topic: {Topic}, duration: {Duration} min, tier: {Tier}, offline: {Offline}", 
+            request.Topic, request.TargetDurationMinutes, preferredTier, offlineOnly);
+        
+        var result = await orchestrator.GenerateScriptAsync(brief, planSpec, preferredTier, offlineOnly, ct);
+        
+        if (!result.Success)
         {
-            Log.Error("Script generation returned empty result");
+            Log.Error("Script generation failed: {ErrorCode} - {ErrorMessage}", result.ErrorCode, result.ErrorMessage);
+            
+            // Handle specific error codes
+            if (result.ErrorCode == "E307")
+            {
+                return Results.Problem(
+                    detail: result.ErrorMessage,
+                    statusCode: 403,
+                    title: "Offline Mode Restriction",
+                    type: "https://docs.aura.studio/errors/E307");
+            }
+            
             return Results.Problem(
-                detail: "Script generation returned empty result. Provider may have failed.",
+                detail: result.ErrorMessage,
                 statusCode: 500,
                 title: "Script Generation Failed",
-                type: "https://docs.aura.studio/errors/E302");
+                type: $"https://docs.aura.studio/errors/{result.ErrorCode}");
         }
         
-        Log.Information("Script generated successfully: {Length} characters", script.Length);
-        return Results.Ok(new { success = true, script });
+        Log.Information("Script generated successfully with {Provider}: {Length} characters (fallback: {IsFallback})", 
+            result.ProviderUsed, result.Script?.Length ?? 0, result.IsFallback);
+        
+        return Results.Ok(new 
+        { 
+            success = true, 
+            script = result.Script,
+            provider = result.ProviderUsed,
+            isFallback = result.IsFallback
+        });
     }
     catch (JsonException ex)
     {
@@ -1292,7 +1358,7 @@ app.Run();
 
 // DTOs
 record PlanRequest(double TargetDurationMinutes, Pacing Pacing, Density Density, string Style);
-record ScriptRequest(string Topic, string Audience, string Goal, string Tone, string Language, Aspect Aspect, double TargetDurationMinutes, Pacing Pacing, Density Density, string Style);
+record ScriptRequest(string Topic, string Audience, string Goal, string Tone, string Language, Aspect Aspect, double TargetDurationMinutes, Pacing Pacing, Density Density, string Style, string? ProviderTier);
 record TtsRequest(List<LineDto> Lines, string VoiceName, double Rate, double Pitch, PauseStyle PauseStyle);
 record LineDto(int SceneIndex, string Text, double StartSeconds, double DurationSeconds);
 record ComposeRequest(string TimelineJson);

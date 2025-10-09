@@ -19,71 +19,112 @@ public class OllamaLlmProvider : ILlmProvider
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl;
     private readonly string _model;
+    private readonly int _maxRetries;
+    private readonly TimeSpan _timeout;
 
     public OllamaLlmProvider(
         ILogger<OllamaLlmProvider> logger,
         HttpClient httpClient,
-        string baseUrl = "http://localhost:11434",
-        string model = "llama3.1:8b-q4_k_m")
+        string baseUrl = "http://127.0.0.1:11434",
+        string model = "llama3.1:8b-q4_k_m",
+        int maxRetries = 2,
+        int timeoutSeconds = 120)
     {
         _logger = logger;
         _httpClient = httpClient;
         _baseUrl = baseUrl;
         _model = model;
+        _maxRetries = maxRetries;
+        _timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        
+        // Configure HttpClient timeout
+        _httpClient.Timeout = _timeout;
     }
 
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
-        _logger.LogInformation("Generating script with Ollama (model: {Model}) for topic: {Topic}", _model, brief.Topic);
+        _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}", _model, _baseUrl, brief.Topic);
 
-        try
+        Exception? lastException = null;
+        
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
         {
-            // Build the prompt
-            string prompt = BuildPrompt(brief, spec);
-
-            // Call Ollama API
-            var requestBody = new
+            try
             {
-                model = _model,
-                prompt = prompt,
-                stream = false,
-                options = new
+                if (attempt > 0)
                 {
-                    temperature = 0.7,
-                    top_p = 0.9,
-                    num_predict = 2048
+                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} for Ollama", attempt, _maxRetries);
+                    await Task.Delay(TimeSpan.FromSeconds(2 * attempt), ct); // Exponential backoff
                 }
-            };
 
-            var json = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+                // Build the prompt
+                string prompt = BuildPrompt(brief, spec);
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, ct);
-            response.EnsureSuccessStatusCode();
+                // Call Ollama API
+                var requestBody = new
+                {
+                    model = _model,
+                    prompt = prompt,
+                    stream = false,
+                    options = new
+                    {
+                        temperature = 0.7,
+                        top_p = 0.9,
+                        num_predict = 2048
+                    }
+                };
 
-            var responseJson = await response.Content.ReadAsStringAsync(ct);
-            var responseDoc = JsonDocument.Parse(responseJson);
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
-            {
-                string script = responseText.GetString() ?? string.Empty;
-                _logger.LogInformation("Script generated successfully ({Length} characters)", script.Length);
-                return script;
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, ct);
+                response.EnsureSuccessStatusCode();
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
+                {
+                    string script = responseText.GetString() ?? string.Empty;
+                    _logger.LogInformation("Script generated successfully with Ollama ({Length} characters)", script.Length);
+                    return script;
+                }
+
+                _logger.LogWarning("Ollama response did not contain expected 'response' field");
+                throw new Exception("Invalid response from Ollama");
             }
+            catch (TaskCanceledException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Ollama request timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    throw new Exception("Ollama request timed out.", ex);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Failed to connect to Ollama at {BaseUrl} (attempt {Attempt}/{MaxRetries})", _baseUrl, attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    throw new Exception($"Failed to connect to Ollama at {_baseUrl} after {_maxRetries + 1} attempts. Ensure Ollama is running and the model '{_model}' is available.", ex);
+                }
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Error generating script with Ollama (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating script with Ollama after all retries");
+                throw;
+            }
+        }
 
-            _logger.LogWarning("Ollama response did not contain expected 'response' field");
-            throw new Exception("Invalid response from Ollama");
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Failed to connect to Ollama at {BaseUrl}. Ensure Ollama is running.", _baseUrl);
-            throw new Exception($"Failed to connect to Ollama at {_baseUrl}. Ensure Ollama is running and the model '{_model}' is available.", ex);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating script with Ollama");
-            throw;
-        }
+        // Should not reach here, but just in case
+        throw new Exception($"Failed to generate script with Ollama after {_maxRetries + 1} attempts", lastException);
     }
 
     private string BuildPrompt(Brief brief, PlanSpec spec)
