@@ -53,12 +53,19 @@ PACKAGING_PATTERNS=(
 echo "Step 1: Searching for artifact files..."
 FILES_TO_DELETE=()
 
+# Use associative array to track unique files
+declare -A SEEN_FILES
+
 # Search for artifact files in the entire repository
 for pattern in "${PATTERNS[@]}"; do
     while IFS= read -r -d '' file; do
         # Skip node_modules and .git directories
         if [[ ! "$file" =~ /node_modules/ ]] && [[ ! "$file" =~ /\.git/ ]]; then
-            FILES_TO_DELETE+=("$file")
+            # Only add if not seen before
+            if [[ -z "${SEEN_FILES[$file]}" ]]; then
+                FILES_TO_DELETE+=("$file")
+                SEEN_FILES[$file]=1
+            fi
         fi
     done < <(find "$ROOT_DIR" -name "$pattern" -type f -print0 2>/dev/null)
 done
@@ -81,7 +88,11 @@ PACKAGING_DIR="$ROOT_DIR/scripts/packaging"
 if [ -d "$PACKAGING_DIR" ]; then
     for pattern in "${PACKAGING_PATTERNS[@]}"; do
         while IFS= read -r -d '' item; do
-            PACKAGING_FILES_TO_DELETE+=("$item")
+            # Only add if not already in the list
+            if [[ -z "${SEEN_FILES[$item]}" ]]; then
+                PACKAGING_FILES_TO_DELETE+=("$item")
+                SEEN_FILES[$item]=1
+            fi
         done < <(find "$PACKAGING_DIR" -name "$pattern" -print0 2>/dev/null)
     done
 fi
@@ -124,10 +135,10 @@ for item in "${ALL_ITEMS_TO_DELETE[@]}"; do
     relative_path="${item#$ROOT_DIR/}"
     if rm -rf "$item" 2>/dev/null; then
         echo "  ✓ Deleted: $relative_path"
-        ((DELETED_COUNT++))
+        DELETED_COUNT=$((DELETED_COUNT + 1))
     else
         echo "  ✗ Failed to delete: $relative_path"
-        ((FAILED_COUNT++))
+        FAILED_COUNT=$((FAILED_COUNT + 1))
     fi
 done
 
