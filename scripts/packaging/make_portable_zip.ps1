@@ -16,6 +16,8 @@ Write-Host ""
 Write-Host "Configuration: $Configuration" -ForegroundColor White
 Write-Host "Platform:      $Platform" -ForegroundColor White
 Write-Host ""
+Write-Host "NOTE: WPF shell not yet implemented. Using API-only approach." -ForegroundColor Gray
+Write-Host ""
 
 # Set paths
 $scriptDir = $PSScriptRoot
@@ -102,6 +104,18 @@ Copy-Item "$rootDir\PORTABLE.md" -Destination "$buildDir\README.md" -Force
 if (Test-Path "$rootDir\LICENSE") {
     Copy-Item "$rootDir\LICENSE" -Destination $buildDir -Force
 }
+
+# Copy assets if they exist
+$assetsSourceDir = Join-Path $rootDir "assets"
+if (Test-Path $assetsSourceDir) {
+    $assetsDestDir = Join-Path $buildDir "assets"
+    New-Item -ItemType Directory -Force -Path $assetsDestDir | Out-Null
+    Copy-Item "$assetsSourceDir\*" -Destination $assetsDestDir -Recurse -Force
+    Write-Host "      ✓ Assets copied" -ForegroundColor Green
+} else {
+    Write-Host "      ℹ No assets directory found (skipping)" -ForegroundColor Gray
+}
+
 Write-Host "      ✓ Config and docs copied" -ForegroundColor Green
 
 # Create start_portable.cmd launcher script
