@@ -24,7 +24,7 @@ public class HardwareDetector
         
         var cpuInfo = GetCpuInfo();
         var ramInfo = GetRamInfo();
-        var gpuInfo = await GetGpuInfoAsync();
+        var gpuInfo = await GetGpuInfoAsync().ConfigureAwait(false);
         
         var tier = DetermineTier(gpuInfo);
         var enableNVENC = gpuInfo?.Vendor?.ToUpperInvariant() == "NVIDIA";

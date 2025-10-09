@@ -74,7 +74,7 @@ public class ScriptOrchestrator
             spec, 
             selection.SelectedProvider, 
             selection.IsFallback,
-            ct);
+            ct).ConfigureAwait(false);
 
         if (result.Success)
         {
@@ -89,7 +89,7 @@ public class ScriptOrchestrator
             if (selection.SelectedProvider != "Ollama" && _providers.ContainsKey("Ollama"))
             {
                 _logger.LogInformation("Falling back to Ollama");
-                result = await TryGenerateWithProviderAsync(brief, spec, "Ollama", true, ct);
+                result = await TryGenerateWithProviderAsync(brief, spec, "Ollama", true, ct).ConfigureAwait(false);
                 if (result.Success)
                 {
                     return result;
@@ -100,7 +100,7 @@ public class ScriptOrchestrator
             if (selection.SelectedProvider != "RuleBased" && _providers.ContainsKey("RuleBased"))
             {
                 _logger.LogInformation("Falling back to RuleBased provider (final fallback)");
-                result = await TryGenerateWithProviderAsync(brief, spec, "RuleBased", true, ct);
+                result = await TryGenerateWithProviderAsync(brief, spec, "RuleBased", true, ct).ConfigureAwait(false);
                 if (result.Success)
                 {
                     return result;
@@ -144,7 +144,7 @@ public class ScriptOrchestrator
         try
         {
             _logger.LogInformation("Attempting script generation with {Provider}", providerName);
-            var script = await provider.DraftScriptAsync(brief, spec, ct);
+            var script = await provider.DraftScriptAsync(brief, spec, ct).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(script))
             {

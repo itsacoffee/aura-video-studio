@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using Aura.Core.Models;
 
@@ -51,8 +52,8 @@ public class FFmpegPlanBuilder
         var args = new StringBuilder();
 
         // Input files
-        args.Append($"-i \"{inputVideo}\" ");
-        args.Append($"-i \"{inputAudio}\" ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-i \"{0}\" ", inputVideo);
+        args.AppendFormat(CultureInfo.InvariantCulture, "-i \"{0}\" ", inputAudio);
 
         // Video encoding
         AppendVideoEncoderArgs(args, spec, quality, encoder);
@@ -61,11 +62,11 @@ public class FFmpegPlanBuilder
         AppendAudioEncoderArgs(args, spec);
 
         // Frame rate (CFR - Constant Frame Rate)
-        args.Append($"-r {quality.Fps} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-r {0} ", quality.Fps);
 
         // GOP (Group of Pictures) - 2x fps for standard keyframe interval
         int gopSize = quality.Fps * 2;
-        args.Append($"-g {gopSize} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-g {0} ", gopSize);
 
         // Scene-cut keyframes
         if (quality.EnableSceneCut)
@@ -83,7 +84,7 @@ public class FFmpegPlanBuilder
         args.Append("-y ");
 
         // Output file
-        args.Append($"\"{outputPath}\"");
+        args.AppendFormat(CultureInfo.InvariantCulture, "\"{0}\"", outputPath);
 
         return args.ToString();
     }
@@ -149,7 +150,7 @@ public class FFmpegPlanBuilder
         }
 
         // Video bitrate
-        args.Append($"-b:v {spec.VideoBitrateK}k ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-b:v {0}k ", spec.VideoBitrateK);
     }
 
     private void AppendX264Args(StringBuilder args, RenderSpec spec, QualitySettings quality)
@@ -159,7 +160,7 @@ public class FFmpegPlanBuilder
         // CRF: 28 (fast/lower) -> 14 (slow/higher)
         int crf = 28 - (int)(quality.QualityLevel * 0.14);
         crf = Math.Clamp(crf, 14, 28);
-        args.Append($"-crf {crf} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-crf {0} ", crf);
 
         // Preset: veryfast -> slow
         string preset = quality.QualityLevel switch
@@ -170,7 +171,7 @@ public class FFmpegPlanBuilder
             >= 25 => "faster",
             _ => "veryfast"
         };
-        args.Append($"-preset {preset} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-preset {0} ", preset);
 
         // Tune for film
         args.Append("-tune film ");
@@ -182,7 +183,7 @@ public class FFmpegPlanBuilder
     private void AppendNvencArgs(StringBuilder args, RenderSpec spec, QualitySettings quality, EncoderType encoder)
     {
         string codec = encoder == EncoderType.NVENC_H264 ? "h264_nvenc" : "hevc_nvenc";
-        args.Append($"-c:v {codec} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-c:v {0} ", codec);
 
         // Rate control: Constant Quality (CQ)
         args.Append("-rc cq ");
@@ -190,11 +191,11 @@ public class FFmpegPlanBuilder
         // CQ value: 33 (fast/lower) -> 18 (slow/higher)
         int cq = 33 - (int)(quality.QualityLevel * 0.15);
         cq = Math.Clamp(cq, 18, 33);
-        args.Append($"-cq {cq} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-cq {0} ", cq);
 
         // Preset: p5 (fast) -> p7 (slow)
         int preset = quality.QualityLevel >= 75 ? 7 : (quality.QualityLevel >= 50 ? 6 : 5);
-        args.Append($"-preset p{preset} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-preset p{0} ", preset);
 
         // Advanced options
         args.Append("-rc-lookahead 16 ");
@@ -213,42 +214,42 @@ public class FFmpegPlanBuilder
         // CQ value: 38 (fast/lower) -> 22 (slow/higher)
         int cq = 38 - (int)(quality.QualityLevel * 0.16);
         cq = Math.Clamp(cq, 22, 38);
-        args.Append($"-cq {cq} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-cq {0} ", cq);
 
         // Preset: p5 (fast) -> p7 (slow)
         int preset = quality.QualityLevel >= 75 ? 7 : (quality.QualityLevel >= 50 ? 6 : 5);
-        args.Append($"-preset p{preset} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-preset p{0} ", preset);
     }
 
     private void AppendAmfArgs(StringBuilder args, RenderSpec spec, QualitySettings quality, EncoderType encoder)
     {
         string codec = encoder == EncoderType.AMF_H264 ? "h264_amf" : "hevc_amf";
-        args.Append($"-c:v {codec} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-c:v {0} ", codec);
 
         // Quality preset
         string preset = quality.QualityLevel >= 75 ? "quality" : "balanced";
-        args.Append($"-quality {preset} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-quality {0} ", preset);
 
         // Rate control
         args.Append("-rc cqp ");
         int qp = 28 - (int)(quality.QualityLevel * 0.14);
         qp = Math.Clamp(qp, 14, 28);
-        args.Append($"-qp_i {qp} -qp_p {qp} -qp_b {qp} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-qp_i {0} -qp_p {0} -qp_b {0} ", qp);
     }
 
     private void AppendQsvArgs(StringBuilder args, RenderSpec spec, QualitySettings quality, EncoderType encoder)
     {
         string codec = encoder == EncoderType.QSV_H264 ? "h264_qsv" : "hevc_qsv";
-        args.Append($"-c:v {codec} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-c:v {0} ", codec);
 
         // Quality preset
         string preset = quality.QualityLevel >= 75 ? "veryslow" : (quality.QualityLevel >= 50 ? "medium" : "fast");
-        args.Append($"-preset {preset} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-preset {0} ", preset);
 
         // Global quality (lower is better)
         int globalQuality = 28 - (int)(quality.QualityLevel * 0.14);
         globalQuality = Math.Clamp(globalQuality, 14, 28);
-        args.Append($"-global_quality {globalQuality} ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-global_quality {0} ", globalQuality);
     }
 
     private void AppendAudioEncoderArgs(StringBuilder args, RenderSpec spec)
@@ -257,7 +258,7 @@ public class FFmpegPlanBuilder
         args.Append("-c:a aac ");
 
         // Audio bitrate
-        args.Append($"-b:a {spec.AudioBitrateK}k ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "-b:a {0}k ", spec.AudioBitrateK);
 
         // Sample rate (48kHz standard for video)
         args.Append("-ar 48000 ");

@@ -50,7 +50,7 @@ public class VideoOrchestrator
             // Stage 1: Script generation
             progress?.Report("Stage 1/5: Generating script...");
             _logger.LogInformation("Generating script for topic: {Topic}", brief.Topic);
-            string script = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            string script = await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
             _logger.LogInformation("Script generated: {Length} characters", script.Length);
 
             // Stage 2: Parse script into scenes
@@ -61,7 +61,7 @@ public class VideoOrchestrator
             // Stage 3: Generate narration
             progress?.Report("Stage 3/5: Generating narration...");
             var scriptLines = ConvertScenesToScriptLines(scenes);
-            string narrationPath = await _ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, ct);
+            string narrationPath = await _ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, ct).ConfigureAwait(false);
             _logger.LogInformation("Narration generated at: {Path}", narrationPath);
 
             // Stage 4: Build timeline (placeholder for music/assets)
@@ -81,7 +81,7 @@ public class VideoOrchestrator
                 progress?.Report($"Rendering: {p.Percentage:F1}% - {p.CurrentStage}");
             });
 
-            string outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct);
+            string outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
             _logger.LogInformation("Video rendered to: {Path}", outputPath);
 
             progress?.Report("Video generation complete!");

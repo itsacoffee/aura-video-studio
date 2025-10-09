@@ -16,8 +16,6 @@ csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
 csharp_style_var_elsewhere = true:suggestion
 csharp_style_expression_bodied_methods = when_possible:suggestion
-dotnet_diagnostic.CA2007.severity = warning
-dotnet_analyzer_diagnostic.severity = warning
 dotnet_style_null_propagation = true:suggestion
 dotnet_style_coalesce_expression = true:suggestion
 dotnet_style_collection_initializer = true:suggestion
@@ -27,6 +25,19 @@ dotnet_style_prefer_pattern_matching = true:suggestion
 csharp_prefer_static_local_function = true:suggestion
 csharp_prefer_simple_using_statement = true:suggestion
 dotnet_enable_roslyn_analyzers = true
+
+# Analyzer severity overrides per build-sweep requirements
+dotnet_analyzer_diagnostic.severity = warning
+dotnet_diagnostic.CA1848.severity = suggestion
+dotnet_diagnostic.CA1305.severity = warning
+dotnet_diagnostic.CA2007.severity = warning
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA1822.severity = suggestion
+dotnet_diagnostic.CA1861.severity = suggestion
+dotnet_diagnostic.CA1862.severity = suggestion
+dotnet_diagnostic.CA1866.severity = suggestion
+dotnet_diagnostic.CA2201.severity = warning
+dotnet_diagnostic.CA1720.severity = suggestion
 
 [*.{ts,tsx,js,jsx,json}]
 indent_style = space

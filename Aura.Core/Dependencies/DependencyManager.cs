@@ -41,7 +41,7 @@ public class DependencyManager
         {
             try
             {
-                string json = await File.ReadAllTextAsync(_manifestPath);
+                string json = await File.ReadAllTextAsync(_manifestPath).ConfigureAwait(false);
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
@@ -110,7 +110,7 @@ public class DependencyManager
         };
         
         // Save the new manifest
-        await SaveManifestAsync(newManifest);
+        await SaveManifestAsync(newManifest).ConfigureAwait(false);
         
         return newManifest;
     }
@@ -127,7 +127,7 @@ public class DependencyManager
     
     public async Task<bool> IsComponentInstalledAsync(string componentName)
     {
-        var manifest = await LoadManifestAsync();
+        var manifest = await LoadManifestAsync().ConfigureAwait(false);
         var component = manifest.Components.Find(c => c.Name == componentName);
         
         if (component == null)
@@ -154,7 +154,7 @@ public class DependencyManager
         IProgress<DownloadProgress> progress, 
         CancellationToken ct)
     {
-        var manifest = await LoadManifestAsync();
+        var manifest = await LoadManifestAsync().ConfigureAwait(false);
         var component = manifest.Components.Find(c => c.Name == componentName);
         
         if (component == null)
@@ -170,21 +170,21 @@ public class DependencyManager
             string filePath = Path.Combine(_downloadDirectory, file.Filename);
             
             // Check if file exists and has correct checksum
-            if (File.Exists(filePath) && await VerifyChecksumAsync(filePath, file.Sha256))
+            if (File.Exists(filePath) && await VerifyChecksumAsync(filePath, file.Sha256).ConfigureAwait(false))
             {
                 _logger.LogInformation("File already exists with correct checksum: {File}", file.Filename);
                 continue;
             }
             
             // Download the file
-            await DownloadFileAsync(file.Url, filePath, file.SizeBytes, progress, ct);
+            await DownloadFileAsync(file.Url, filePath, file.SizeBytes, progress, ct).ConfigureAwait(false);
             
             // Verify checksum
-            if (!await VerifyChecksumAsync(filePath, file.Sha256))
+            if (!await VerifyChecksumAsync(filePath, file.Sha256).ConfigureAwait(false))
             {
                 _logger.LogError("Checksum verification failed for {File}", file.Filename);
                 File.Delete(filePath);
-                throw new Exception($"Checksum verification failed for {file.Filename}");
+                throw new InvalidOperationException($"Checksum verification failed for {file.Filename}");
             }
             
             // Extract if needed
@@ -226,7 +226,7 @@ public class DependencyManager
             request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(existingBytes, null);
         }
         
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
         
         // If server doesn't support range requests, start from beginning
         if (response.StatusCode == System.Net.HttpStatusCode.RequestedRangeNotSatisfiable || 
@@ -236,12 +236,12 @@ public class DependencyManager
             existingBytes = 0;
             request = new HttpRequestMessage(HttpMethod.Get, url);
             response.Dispose();
-            var newResponse = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            var newResponse = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             newResponse.EnsureSuccessStatusCode();
             
-            using var contentStream = await newResponse.Content.ReadAsStreamAsync(ct);
+            using var contentStream = await newResponse.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-            await DownloadStreamAsync(contentStream, fileStream, 0, response.Content.Headers.ContentLength ?? expectedSize, progress, url);
+            await DownloadStreamAsync(contentStream, fileStream, 0, response.Content.Headers.ContentLength ?? expectedSize, progress, url).ConfigureAwait(false);
         }
         else
         {
@@ -249,9 +249,9 @@ public class DependencyManager
             
             long totalBytes = existingBytes + (response.Content.Headers.ContentLength ?? expectedSize);
             
-            using var contentStream = await response.Content.ReadAsStreamAsync(ct);
+            using var contentStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             using var fileStream = new FileStream(filePath, FileMode.Append, FileAccess.Write, FileShare.None, 8192, true);
-            await DownloadStreamAsync(contentStream, fileStream, existingBytes, totalBytes, progress, url);
+            await DownloadStreamAsync(contentStream, fileStream, existingBytes, totalBytes, progress, url).ConfigureAwait(false);
         }
         
         _logger.LogInformation("Download completed: {FilePath}", filePath);
@@ -271,10 +271,10 @@ public class DependencyManager
         
         while (true)
         {
-            int read = await contentStream.ReadAsync(buffer, 0, buffer.Length);
+            int read = await contentStream.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
             if (read == 0) break;
             
-            await fileStream.WriteAsync(buffer, 0, read);
+            await fileStream.WriteAsync(buffer, 0, read).ConfigureAwait(false);
             
             bytesRead += read;
             
@@ -317,7 +317,7 @@ public class DependencyManager
         using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         using var sha256 = SHA256.Create();
         
-        byte[] hashBytes = await sha256.ComputeHashAsync(fs);
+        byte[] hashBytes = await sha256.ComputeHashAsync(fs).ConfigureAwait(false);
         string computedHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
         
         bool isValid = computedHash.Equals(expectedSha256.ToLowerInvariant());
@@ -333,7 +333,7 @@ public class DependencyManager
     
     public async Task<ComponentVerificationResult> VerifyComponentAsync(string componentName)
     {
-        var manifest = await LoadManifestAsync();
+        var manifest = await LoadManifestAsync().ConfigureAwait(false);
         var component = manifest.Components.Find(c => c.Name == componentName);
         
         if (component == null)
@@ -359,7 +359,7 @@ public class DependencyManager
                 continue;
             }
             
-            if (!await VerifyChecksumAsync(filePath, file.Sha256))
+            if (!await VerifyChecksumAsync(filePath, file.Sha256).ConfigureAwait(false))
             {
                 corruptedFiles.Add(file.Filename);
             }
@@ -373,7 +373,7 @@ public class DependencyManager
         string? probeResult = null;
         if (isValid && !string.IsNullOrEmpty(component.PostInstallProbe))
         {
-            probeResult = await RunPostInstallProbeAsync(component);
+            probeResult = await RunPostInstallProbeAsync(component).ConfigureAwait(false);
         }
         
         return new ComponentVerificationResult
@@ -394,7 +394,7 @@ public class DependencyManager
     {
         _logger.LogInformation("Repairing component: {Component}", componentName);
         
-        var verificationResult = await VerifyComponentAsync(componentName);
+        var verificationResult = await VerifyComponentAsync(componentName).ConfigureAwait(false);
         
         if (verificationResult.IsValid)
         {
@@ -403,7 +403,7 @@ public class DependencyManager
         }
         
         // Re-download missing or corrupted files
-        var manifest = await LoadManifestAsync();
+        var manifest = await LoadManifestAsync().ConfigureAwait(false);
         var component = manifest.Components.Find(c => c.Name == componentName);
         
         if (component == null)
@@ -426,10 +426,10 @@ public class DependencyManager
                 
                 // Re-download
                 _logger.LogInformation("Re-downloading {File}", file.Filename);
-                await DownloadFileAsync(file.Url, filePath, file.SizeBytes, progress, ct);
+                await DownloadFileAsync(file.Url, filePath, file.SizeBytes, progress, ct).ConfigureAwait(false);
                 
                 // Verify checksum
-                if (!await VerifyChecksumAsync(filePath, file.Sha256))
+                if (!await VerifyChecksumAsync(filePath, file.Sha256).ConfigureAwait(false))
                 {
                     _logger.LogError("Checksum verification failed for {File} after repair", file.Filename);
                     File.Delete(filePath);
@@ -443,7 +443,7 @@ public class DependencyManager
     
     public async Task RemoveComponentAsync(string componentName)
     {
-        var manifest = await LoadManifestAsync();
+        var manifest = await LoadManifestAsync().ConfigureAwait(false);
         var component = manifest.Components.Find(c => c.Name == componentName);
         
         if (component == null)
@@ -479,12 +479,12 @@ public class DependencyManager
             switch (component.PostInstallProbe?.ToLower())
             {
                 case "ffmpeg":
-                    return await ProbeFFmpegAsync();
+                    return await ProbeFFmpegAsync().ConfigureAwait(false);
                 case "ollama":
-                    return await ProbeOllamaAsync();
+                    return await ProbeOllamaAsync().ConfigureAwait(false);
                 case "stablediffusion":
                 case "sdwebui":
-                    return await ProbeStableDiffusionAsync();
+                    return await ProbeStableDiffusionAsync().ConfigureAwait(false);
                 default:
                     return "No probe configured";
             }
@@ -519,10 +519,10 @@ public class DependencyManager
             using var process = System.Diagnostics.Process.Start(processInfo);
             if (process != null)
             {
-                await process.WaitForExitAsync();
+                await process.WaitForExitAsync().ConfigureAwait(false);
                 if (process.ExitCode == 0)
                 {
-                    var output = await process.StandardOutput.ReadToEndAsync();
+                    var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
                     var versionLine = output.Split('\n').FirstOrDefault(l => l.Contains("ffmpeg version"));
                     return versionLine ?? "FFmpeg found and working";
                 }
@@ -539,7 +539,7 @@ public class DependencyManager
     {
         try
         {
-            var response = await _httpClient.GetAsync("http://127.0.0.1:11434/api/tags");
+            var response = await _httpClient.GetAsync("http://127.0.0.1:11434/api/tags").ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 return "Ollama endpoint is reachable";
@@ -556,7 +556,7 @@ public class DependencyManager
     {
         try
         {
-            var response = await _httpClient.GetAsync("http://127.0.0.1:7860/sdapi/v1/sd-models");
+            var response = await _httpClient.GetAsync("http://127.0.0.1:7860/sdapi/v1/sd-models").ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
                 return "Stable Diffusion WebUI is reachable";

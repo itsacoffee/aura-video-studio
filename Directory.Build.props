@@ -6,9 +6,10 @@
     <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- Rely on SDK-provided analyzers (version 9.0.0+) instead of explicit package -->
+  <!-- <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="8.0.0" PrivateAssets="all" />
-  </ItemGroup>
+  </ItemGroup> -->
 
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Aura.App'">
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
