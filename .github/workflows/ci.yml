@@ -53,36 +53,16 @@ jobs:
         name: test-results
         path: |
           **/TestResults/*.trx
-          
-  build-winui-app:
-    name: Build WinUI 3 App
-    runs-on: windows-latest
-    needs: build-and-test
+  
+  portable-only-guard:
+    name: Portable-Only Policy Check
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-        
-    - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v2
-      
-    - name: Restore NuGet packages
-      run: dotnet restore ${{ env.SOLUTION_FILE }}
-      
-    - name: Build WinUI 3 App (x64)
-      run: msbuild Aura.App/Aura.App.csproj /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /restore
-      
-    - name: Upload MSIX Package
-      if: success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: msix-package
-        path: |
-          Aura.App/AppPackages/**/*.msix
-          Aura.App/bin/x64/Release/**/*.msix
-        if-no-files-found: warn
+    - name: Run CI Guard
+      run: |
+        chmod +x scripts/cleanup/ci_guard.sh
+        ./scripts/cleanup/ci_guard.sh

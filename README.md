@@ -16,7 +16,8 @@ This repository now contains:
 - ✅ Audio processing with LUFS normalization
 - ✅ Subtitle generation (SRT/VTT)
 - ✅ **Split CI workflows** - Linux (build/test) + Windows (package)
-- ✅ **Packaging scripts** - **Portable ZIP** (primary distribution)
+- ✅ **Packaging scripts** - **Portable ZIP** (only distribution format)
+- ✅ **CI guard** - Prevents MSIX/EXE packaging from returning
 - ✅ Dependency manifest with SHA-256 verification
 - ✅ SBOM generation and license attributions
 
@@ -28,9 +29,20 @@ The project now implements a **web-based UI architecture** as specified:
 - **Aura.Api** - ASP.NET Core backend API (runs on http://127.0.0.1:5005)
 - **Aura.Web** - React + Fluent UI frontend (dev on port 5173)
 - **Aura.App** - WinUI 3 standalone app (coexists as alternative)
-- **Aura.Host.Win** - Windows shells with WebView2 (planned)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for complete details.
+
+## 📦 Distribution Policy
+
+**Aura Video Studio follows a portable-only distribution model.**
+
+- ✅ **Portable ZIP** - Self-contained, no-install distribution (primary and only release format)
+- ❌ **MSIX/APPX packages** - Not supported
+- ❌ **Traditional installers (EXE)** - Not supported
+
+This policy ensures maximum flexibility and compatibility. Users can extract and run the application anywhere without system-level installation or administrator privileges.
+
+For more information, see [PORTABLE.md](./PORTABLE.md)
 
 ## 🚦 Quick Start
 
@@ -88,7 +100,7 @@ For detailed build instructions, see [INSTALL.md](./INSTALL.md)
 * **Graphics/Compositing:** `SkiaSharp` for thumbnail/text overlays/waveforms.
 * **JSON/HTTP:** `System.Text.Json`, `HttpClientFactory`.
 * **DI & MVVM:** `CommunityToolkit.Mvvm`, `Microsoft.Extensions.Hosting`.
-* **Packaging:** MSIX with desktop‑bridge and signed installer.
+* **Packaging:** Portable ZIP distribution (no MSIX/installers).
 * **Unit Tests:** xUnit + FluentAssertions; 90%+ coverage on core services.
 * **E2E Smoke:** Minimal UI test via WinAppDriver (smoke render, one full free‑path render).
 

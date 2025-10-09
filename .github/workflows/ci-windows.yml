@@ -25,9 +25,6 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
-      
     - name: Restore dependencies
       run: dotnet restore ${{ env.SOLUTION_FILE }}
       
@@ -40,36 +37,9 @@ jobs:
     - name: Run Unit Tests
       run: dotnet test Aura.Tests/Aura.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=unit-tests.trx"
       
-    - name: Build WinUI 3 App (x64)
-      run: msbuild Aura.App/Aura.App.csproj /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Never /p:UapAppxPackageBuildMode=SideloadOnly /restore
-      
-    - name: Create artifacts directory
+    - name: Build Portable Distribution
       run: |
-        New-Item -ItemType Directory -Force -Path artifacts/windows/msix
-        New-Item -ItemType Directory -Force -Path artifacts/windows/portable
-        New-Item -ItemType Directory -Force -Path artifacts/windows/logs
-      shell: powershell
-      
-    - name: Copy MSIX packages
-      if: success()
-      run: |
-        if (Test-Path "Aura.App/AppPackages") {
-          Copy-Item -Path Aura.App/AppPackages/**/*.msix -Destination artifacts/windows/msix/ -Recurse -ErrorAction SilentlyContinue
-        }
-        if (Test-Path "Aura.App/bin/x64/Release") {
-          Copy-Item -Path Aura.App/bin/x64/Release/**/*.msix -Destination artifacts/windows/msix/ -Recurse -ErrorAction SilentlyContinue
-        }
-      shell: powershell
-      
-    - name: Generate checksums
-      run: |
-        if (Test-Path "artifacts/windows/msix") {
-          Get-ChildItem -Path artifacts/windows/msix -Recurse -File | ForEach-Object {
-            $hash = Get-FileHash -Path $_.FullName -Algorithm SHA256
-            "$($hash.Hash)  $($_.Name)" | Out-File -Append artifacts/windows/checksums.txt
-          }
-        }
-      shell: powershell
+        powershell -File scripts/packaging/build-portable.ps1
       
     - name: Upload Test Results
       if: always()
@@ -79,20 +49,25 @@ jobs:
         path: |
           **/TestResults/*.trx
           
-    - name: Upload MSIX Packages
+    - name: Upload Portable Distribution
       if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: msix-packages
+        name: portable-distribution
         path: |
-          artifacts/windows/msix/**/*.msix
+          artifacts/windows/portable/**/*.zip
           artifacts/windows/checksums.txt
         if-no-files-found: warn
-          
-    - name: Upload Build Logs
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-logs
-        path: artifacts/windows/logs
-        if-no-files-found: ignore
+  
+  portable-only-guard:
+    name: Portable-Only Policy Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run CI Guard
+      run: |
+        chmod +x scripts/cleanup/ci_guard.sh
+        ./scripts/cleanup/ci_guard.sh
