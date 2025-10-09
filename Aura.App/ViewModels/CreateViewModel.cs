@@ -59,6 +59,65 @@ public partial class CreateViewModel : ObservableObject
     [ObservableProperty]
     private PauseStyle _pauseStyle = PauseStyle.Natural;
 
+    // Visual/Assets settings
+    [ObservableProperty]
+    private string _visualMode = "StockOrLocal"; // Free, StockOrLocal, Pro
+
+    [ObservableProperty]
+    private bool _enablePexels = true;
+
+    [ObservableProperty]
+    private bool _enablePixabay = true;
+
+    [ObservableProperty]
+    private bool _enableUnsplash = true;
+
+    [ObservableProperty]
+    private bool _enableLocalAssets = true;
+
+    [ObservableProperty]
+    private bool _enableStableDiffusion = false;
+
+    [ObservableProperty]
+    private string? _pexelsApiKey;
+
+    [ObservableProperty]
+    private string? _pixabayApiKey;
+
+    [ObservableProperty]
+    private string? _unsplashApiKey;
+
+    [ObservableProperty]
+    private string? _localAssetsDirectory;
+
+    [ObservableProperty]
+    private string? _stableDiffusionUrl = "http://127.0.0.1:7860";
+
+    // Stable Diffusion parameters
+    [ObservableProperty]
+    private string? _sdModel; // null = auto-detect
+
+    [ObservableProperty]
+    private int _sdSteps = 20;
+
+    [ObservableProperty]
+    private double _sdCfgScale = 7.0;
+
+    [ObservableProperty]
+    private int _sdSeed = -1;
+
+    [ObservableProperty]
+    private int _sdWidth = 1024;
+
+    [ObservableProperty]
+    private int _sdHeight = 576;
+
+    [ObservableProperty]
+    private string _sdStyle = "high quality, detailed, professional";
+
+    [ObservableProperty]
+    private string _sdSamplerName = "DPM++ 2M Karras";
+
     [ObservableProperty]
     private bool _isGenerating;
 
