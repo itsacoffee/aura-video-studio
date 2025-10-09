@@ -334,6 +334,97 @@ apiGroup.MapPost("/downloads/{component}/install", async (string component, Aura
 .WithName("InstallComponent")
 .WithOpenApi();
 
+// Verify component integrity
+apiGroup.MapGet("/downloads/{component}/verify", async (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        var result = await depManager.VerifyComponentAsync(component);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error verifying component");
+        return Results.Problem($"Error verifying {component}", statusCode: 500);
+    }
+})
+.WithName("VerifyComponent")
+.WithOpenApi();
+
+// Repair component
+apiGroup.MapPost("/downloads/{component}/repair", async (string component, Aura.Core.Dependencies.DependencyManager depManager, CancellationToken ct) =>
+{
+    try
+    {
+        var progress = new Progress<Aura.Core.Dependencies.DownloadProgress>(p =>
+        {
+            Log.Information("Repair progress: {Component} - {Percent}%", component, p.PercentComplete);
+        });
+
+        await depManager.RepairComponentAsync(component, progress, ct);
+        
+        return Results.Ok(new { success = true, message = $"{component} repaired successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error repairing component");
+        return Results.Problem($"Error repairing {component}", statusCode: 500);
+    }
+})
+.WithName("RepairComponent")
+.WithOpenApi();
+
+// Remove component
+apiGroup.MapDelete("/downloads/{component}", async (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        await depManager.RemoveComponentAsync(component);
+        return Results.Ok(new { success = true, message = $"{component} removed successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error removing component");
+        return Results.Problem($"Error removing {component}", statusCode: 500);
+    }
+})
+.WithName("RemoveComponent")
+.WithOpenApi();
+
+// Get component directory path
+apiGroup.MapGet("/downloads/{component}/folder", (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        var path = depManager.GetComponentDirectory(component);
+        return Results.Ok(new { path });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting component folder");
+        return Results.Problem($"Error getting folder for {component}", statusCode: 500);
+    }
+})
+.WithName("GetComponentFolder")
+.WithOpenApi();
+
+// Get manual install instructions (for offline mode)
+apiGroup.MapGet("/downloads/{component}/manual", (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        var instructions = depManager.GetManualInstallInstructions(component);
+        return Results.Ok(instructions);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting manual instructions");
+        return Results.Problem($"Error getting manual instructions for {component}", statusCode: 500);
+    }
+})
+.WithName("GetManualInstructions")
+.WithOpenApi();
+
 // Settings endpoints
 apiGroup.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settings) =>
 {
