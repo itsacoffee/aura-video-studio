@@ -3,6 +3,7 @@ using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
+using Aura.Providers.Images;
 using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
@@ -859,6 +860,221 @@ apiGroup.MapGet("/providers/paths/load", () =>
 .WithName("LoadProviderPaths")
 .WithOpenApi();
 
+// Assets search endpoint - search stock providers
+apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request, HardwareDetector detector, IHttpClientFactory httpClientFactory, CancellationToken ct) =>
+{
+    try
+    {
+        var profile = await detector.DetectSystemAsync();
+        
+        // Check if offline only mode
+        if (profile.OfflineOnly && request.Provider != "local")
+        {
+            return Results.Ok(new 
+            { 
+                success = false, 
+                gated = true,
+                reason = "Offline mode enabled - only local assets are available",
+                assets = Array.Empty<object>()
+            });
+        }
+
+        var httpClient = httpClientFactory.CreateClient();
+        var assets = new List<object>();
+
+        switch (request.Provider.ToLowerInvariant())
+        {
+            case "pexels":
+                if (string.IsNullOrEmpty(request.ApiKey))
+                {
+                    return Results.Ok(new 
+                    { 
+                        success = false, 
+                        gated = true,
+                        reason = "Pexels API key required",
+                        assets = Array.Empty<object>()
+                    });
+                }
+                var pexelsProvider = new Aura.Providers.Images.PexelsStockProvider(
+                    LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.PexelsStockProvider>(),
+                    httpClient,
+                    request.ApiKey);
+                var pexelsAssets = await pexelsProvider.SearchAsync(request.Query, request.Count, ct);
+                assets.AddRange(pexelsAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
+                break;
+
+            case "pixabay":
+                if (string.IsNullOrEmpty(request.ApiKey))
+                {
+                    return Results.Ok(new 
+                    { 
+                        success = false, 
+                        gated = true,
+                        reason = "Pixabay API key required",
+                        assets = Array.Empty<object>()
+                    });
+                }
+                var pixabayProvider = new Aura.Providers.Images.PixabayStockProvider(
+                    LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.PixabayStockProvider>(),
+                    httpClient,
+                    request.ApiKey);
+                var pixabayAssets = await pixabayProvider.SearchAsync(request.Query, request.Count, ct);
+                assets.AddRange(pixabayAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
+                break;
+
+            case "unsplash":
+                if (string.IsNullOrEmpty(request.ApiKey))
+                {
+                    return Results.Ok(new 
+                    { 
+                        success = false, 
+                        gated = true,
+                        reason = "Unsplash API key required",
+                        assets = Array.Empty<object>()
+                    });
+                }
+                var unsplashProvider = new Aura.Providers.Images.UnsplashStockProvider(
+                    LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.UnsplashStockProvider>(),
+                    httpClient,
+                    request.ApiKey);
+                var unsplashAssets = await unsplashProvider.SearchAsync(request.Query, request.Count, ct);
+                assets.AddRange(unsplashAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
+                break;
+
+            case "local":
+                var localDirectory = request.LocalDirectory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Assets");
+                var localProvider = new Aura.Providers.Images.LocalStockProvider(
+                    LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.LocalStockProvider>(),
+                    localDirectory);
+                var localAssets = await localProvider.SearchAsync(request.Query, request.Count, ct);
+                assets.AddRange(localAssets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution }));
+                break;
+
+            default:
+                return Results.BadRequest(new { success = false, message = $"Unknown provider: {request.Provider}" });
+        }
+
+        return Results.Ok(new { success = true, gated = false, assets });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error searching assets");
+        return Results.Problem("Error searching assets", statusCode: 500);
+    }
+})
+.WithName("SearchAssets")
+.WithOpenApi();
+
+// Assets generate endpoint - generate with Stable Diffusion
+apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest request, HardwareDetector detector, IHttpClientFactory httpClientFactory, CancellationToken ct) =>
+{
+    try
+    {
+        var profile = await detector.DetectSystemAsync();
+        
+        // NVIDIA GPU gate
+        if (profile.Gpu == null || profile.Gpu.Vendor.ToLowerInvariant() != "nvidia")
+        {
+            return Results.Ok(new 
+            { 
+                success = false, 
+                gated = true,
+                reason = "Stable Diffusion requires an NVIDIA GPU. Use stock visuals or Pro cloud instead.",
+                assets = Array.Empty<object>()
+            });
+        }
+
+        // VRAM gate
+        if (profile.Gpu.VramGB < 6)
+        {
+            return Results.Ok(new 
+            { 
+                success = false, 
+                gated = true,
+                reason = $"Insufficient VRAM ({profile.Gpu.VramGB}GB). Stable Diffusion requires minimum 6GB VRAM.",
+                assets = Array.Empty<object>()
+            });
+        }
+
+        // Offline mode gate
+        if (profile.OfflineOnly)
+        {
+            return Results.Ok(new 
+            { 
+                success = false, 
+                gated = true,
+                reason = "Offline mode enabled - Stable Diffusion WebUI requires network access",
+                assets = Array.Empty<object>()
+            });
+        }
+
+        var httpClient = httpClientFactory.CreateClient();
+        var sdUrl = request.StableDiffusionUrl ?? "http://127.0.0.1:7860";
+        
+        var sdParams = new Aura.Providers.Images.SDGenerationParams
+        {
+            Model = request.Model,
+            Steps = request.Steps,
+            CfgScale = request.CfgScale ?? 7.0,
+            Seed = request.Seed ?? -1,
+            Width = request.Width,
+            Height = request.Height,
+            Style = request.Style ?? "high quality, detailed, professional",
+            SamplerName = request.SamplerName ?? "DPM++ 2M Karras"
+        };
+
+        var sdProvider = new Aura.Providers.Images.StableDiffusionWebUiProvider(
+            LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.StableDiffusionWebUiProvider>(),
+            httpClient,
+            sdUrl,
+            true, // isNvidiaGpu
+            profile.Gpu.VramGB,
+            sdParams);
+
+        // Create a dummy scene for generation
+        var scene = new Scene(
+            Index: request.SceneIndex ?? 0,
+            Heading: request.Prompt,
+            Script: "",
+            Start: TimeSpan.Zero,
+            Duration: TimeSpan.FromSeconds(5));
+
+        var spec = new VisualSpec(
+            Style: request.Style ?? "",
+            Aspect: request.Aspect ?? Aspect.Widescreen16x9,
+            Keywords: request.Keywords ?? Array.Empty<string>());
+
+        var assets = await sdProvider.FetchOrGenerateAsync(scene, spec, sdParams, ct);
+
+        return Results.Ok(new 
+        { 
+            success = true, 
+            gated = false,
+            model = profile.Gpu.VramGB >= 12 ? "SDXL" : "SD 1.5",
+            vramGB = profile.Gpu.VramGB,
+            assets = assets.Select(a => new { a.Kind, a.PathOrUrl, a.License, a.Attribution })
+        });
+    }
+    catch (HttpRequestException ex)
+    {
+        Log.Warning(ex, "Failed to connect to Stable Diffusion WebUI");
+        return Results.Ok(new 
+        { 
+            success = false, 
+            gated = true,
+            reason = "Failed to connect to Stable Diffusion WebUI. Is it running?",
+            assets = Array.Empty<object>()
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error generating assets with Stable Diffusion");
+        return Results.Problem("Error generating assets", statusCode: 500);
+    }
+})
+.WithName("GenerateAssets")
+.WithOpenApi();
+
 // Test provider connections
 apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody] ProviderTestRequest request) =>
 {
@@ -996,5 +1212,20 @@ record ApplyProfileRequest(string ProfileName);
 record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKey, string? StabilityAiKey);
 record ProviderPathsRequest(string? StableDiffusionUrl, string? OllamaUrl, string? FfmpegPath, string? FfprobePath, string? OutputDirectory);
 record ProviderTestRequest(string? Url, string? Path);
+record AssetSearchRequest(string Provider, string Query, int Count, string? ApiKey = null, string? LocalDirectory = null);
+record AssetGenerateRequest(
+    string Prompt, 
+    int? SceneIndex = null,
+    string? Model = null, 
+    int? Steps = null, 
+    double? CfgScale = null, 
+    int? Seed = null, 
+    int? Width = null, 
+    int? Height = null, 
+    string? Style = null, 
+    string? SamplerName = null, 
+    Aspect? Aspect = null,
+    string[]? Keywords = null,
+    string? StableDiffusionUrl = null);
 record CaptionsRequest(List<LineDto> Lines, string Format = "SRT", string? OutputPath = null);
 record ValidateProvidersRequest(string[]? Providers);
