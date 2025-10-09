@@ -26,6 +26,8 @@ interface DependencyComponent {
   name: string;
   version: string;
   isRequired: boolean;
+  installPath: string;
+  postInstallProbe?: string;
   files: Array<{
     filename: string;
     url: string;
@@ -39,8 +41,27 @@ interface ComponentStatus {
   [key: string]: {
     isInstalled: boolean;
     isInstalling: boolean;
+    isRepairing: boolean;
+    needsRepair: boolean;
     error?: string;
+    verificationResult?: VerificationResult;
   };
+}
+
+interface VerificationResult {
+  componentName: string;
+  isValid: boolean;
+  status: string;
+  missingFiles: string[];
+  corruptedFiles: string[];
+  probeResult?: string;
+}
+
+interface ManualInstructions {
+  componentName: string;
+  version: string;
+  installPath: string;
+  steps: string[];
 }
 
 const useStyles = makeStyles({
@@ -106,14 +127,36 @@ export function DownloadsPage() {
 
   const checkComponentStatus = async (componentName: string) => {
     try {
-      const response = await fetch(`/api/downloads/${componentName}/status`);
-      if (response.ok) {
-        const data = await response.json();
+      const statusResponse = await fetch(`/api/downloads/${componentName}/status`);
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        
+        // If installed, verify integrity
+        if (statusData.isInstalled) {
+          const verifyResponse = await fetch(`/api/downloads/${componentName}/verify`);
+          if (verifyResponse.ok) {
+            const verifyData = await verifyResponse.json();
+            setComponentStatus(prev => ({
+              ...prev,
+              [componentName]: {
+                isInstalled: statusData.isInstalled,
+                isInstalling: false,
+                isRepairing: false,
+                needsRepair: !verifyData.isValid,
+                verificationResult: verifyData,
+              },
+            }));
+            return;
+          }
+        }
+        
         setComponentStatus(prev => ({
           ...prev,
           [componentName]: {
-            isInstalled: data.isInstalled,
+            isInstalled: statusData.isInstalled,
             isInstalling: false,
+            isRepairing: false,
+            needsRepair: false,
           },
         }));
       }
@@ -130,6 +173,8 @@ export function DownloadsPage() {
         [componentName]: {
           isInstalled: false,
           isInstalling: true,
+          isRepairing: false,
+          needsRepair: false,
         },
       }));
 
@@ -138,14 +183,8 @@ export function DownloadsPage() {
       });
 
       if (response.ok) {
-        // Update status to installed
-        setComponentStatus(prev => ({
-          ...prev,
-          [componentName]: {
-            isInstalled: true,
-            isInstalling: false,
-          },
-        }));
+        // Check status again after install
+        await checkComponentStatus(componentName);
       } else {
         const errorData = await response.json();
         setComponentStatus(prev => ({
@@ -153,6 +192,8 @@ export function DownloadsPage() {
           [componentName]: {
             isInstalled: false,
             isInstalling: false,
+            isRepairing: false,
+            needsRepair: false,
             error: errorData.message || 'Installation failed',
           },
         }));
@@ -164,9 +205,104 @@ export function DownloadsPage() {
         [componentName]: {
           isInstalled: false,
           isInstalling: false,
+          isRepairing: false,
+          needsRepair: false,
           error: 'Network error',
         },
       }));
+    }
+  };
+
+  const repairComponent = async (componentName: string) => {
+    try {
+      setComponentStatus(prev => ({
+        ...prev,
+        [componentName]: {
+          ...prev[componentName],
+          isRepairing: true,
+          error: undefined,
+        },
+      }));
+
+      const response = await fetch(`/api/downloads/${componentName}/repair`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        await checkComponentStatus(componentName);
+      } else {
+        const errorData = await response.json();
+        setComponentStatus(prev => ({
+          ...prev,
+          [componentName]: {
+            ...prev[componentName],
+            isRepairing: false,
+            error: errorData.message || 'Repair failed',
+          },
+        }));
+      }
+    } catch (error) {
+      console.error(`Error repairing ${componentName}:`, error);
+      setComponentStatus(prev => ({
+        ...prev,
+        [componentName]: {
+          ...prev[componentName],
+          isRepairing: false,
+          error: 'Network error during repair',
+        },
+      }));
+    }
+  };
+
+  const removeComponent = async (componentName: string) => {
+    if (!confirm(`Are you sure you want to remove ${componentName}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/downloads/${componentName}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        await checkComponentStatus(componentName);
+      } else {
+        alert('Failed to remove component');
+      }
+    } catch (error) {
+      console.error(`Error removing ${componentName}:`, error);
+      alert('Network error during removal');
+    }
+  };
+
+  const openComponentFolder = async (componentName: string) => {
+    try {
+      const response = await fetch(`/api/downloads/${componentName}/folder`);
+      if (response.ok) {
+        const data = await response.json();
+        alert(`Component folder: ${data.path}\n\nNote: Opening folders is not yet implemented in the web UI. Please navigate to this path manually.`);
+      }
+    } catch (error) {
+      console.error(`Error getting folder for ${componentName}:`, error);
+    }
+  };
+
+  const showManualInstructions = async (componentName: string) => {
+    try {
+      const response = await fetch(`/api/downloads/${componentName}/manual`);
+      if (response.ok) {
+        const data: ManualInstructions = await response.json();
+        const instructionsText = [
+          `Manual Installation Instructions for ${data.componentName} v${data.version}`,
+          '',
+          `Install Path: ${data.installPath}`,
+          '',
+          ...data.steps
+        ].join('\n');
+        alert(instructionsText);
+      }
+    } catch (error) {
+      console.error(`Error getting manual instructions for ${componentName}:`, error);
     }
   };
 
@@ -186,6 +322,15 @@ export function DownloadsPage() {
       );
     }
     
+    if (status.isRepairing) {
+      return (
+        <div className={styles.statusCell}>
+          <Spinner size="tiny" />
+          <Text>Repairing...</Text>
+        </div>
+      );
+    }
+    
     if (status.error) {
       return (
         <div className={styles.statusCell}>
@@ -195,11 +340,25 @@ export function DownloadsPage() {
       );
     }
     
+    if (status.needsRepair) {
+      return (
+        <div className={styles.statusCell}>
+          <ErrorCircle24Filled color={tokens.colorPaletteYellowForeground1} />
+          <Badge color="warning" appearance="filled">Needs Repair</Badge>
+        </div>
+      );
+    }
+    
     if (status.isInstalled) {
       return (
         <div className={styles.statusCell}>
           <CheckmarkCircle24Filled color={tokens.colorPaletteGreenForeground1} />
           <Badge color="success" appearance="filled">Installed</Badge>
+          {status.verificationResult?.probeResult && (
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+              ({status.verificationResult.probeResult})
+            </Text>
+          )}
         </div>
       );
     }
@@ -221,11 +380,21 @@ export function DownloadsPage() {
       <Card className={styles.card} style={{ marginBottom: tokens.spacingVerticalL, backgroundColor: tokens.colorNeutralBackground3 }}>
         <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
-            <Title2>Need to configure local AI tools?</Title2>
-            <Text>
-              After downloading components here, configure their paths and URLs in <strong>Settings → Local Providers</strong>.
-              You can test connections and set custom paths for Stable Diffusion, Ollama, and FFmpeg.
+            <Title2>Download & Manage Dependencies</Title2>
+            <Text style={{ marginTop: tokens.spacingVerticalS }}>
+              This page helps you download and manage all required components for video production.
+              After downloading, configure their paths in <strong>Settings → Local Providers</strong>.
             </Text>
+            <Text style={{ marginTop: tokens.spacingVerticalS }}>
+              <strong>Features:</strong>
+            </Text>
+            <ul style={{ marginTop: tokens.spacingVerticalXS, marginLeft: tokens.spacingHorizontalL }}>
+              <li>✓ SHA-256 checksum verification for all downloads</li>
+              <li>✓ Automatic resume support for interrupted downloads</li>
+              <li>✓ Repair corrupted or incomplete installations</li>
+              <li>✓ Post-install validation checks</li>
+              <li>✓ Offline mode: Click "Manual" for manual installation instructions</li>
+            </ul>
           </div>
         </div>
       </Card>
@@ -275,25 +444,55 @@ export function DownloadsPage() {
                         {getStatusDisplay(component.name)}
                       </TableCell>
                       <TableCell>
-                        {status?.isInstalled ? (
-                          <Button
-                            size="small"
-                            appearance="subtle"
-                            disabled
-                          >
-                            Installed
-                          </Button>
-                        ) : (
-                          <Button
-                            size="small"
-                            appearance="primary"
-                            icon={<CloudArrowDown24Regular />}
-                            onClick={() => installComponent(component.name)}
-                            disabled={status?.isInstalling}
-                          >
-                            {status?.isInstalling ? 'Installing...' : 'Install'}
-                          </Button>
-                        )}
+                        <div style={{ display: 'flex', gap: tokens.spacingHorizontalXS, flexWrap: 'wrap' }}>
+                          {!status?.isInstalled ? (
+                            <>
+                              <Button
+                                size="small"
+                                appearance="primary"
+                                icon={<CloudArrowDown24Regular />}
+                                onClick={() => installComponent(component.name)}
+                                disabled={status?.isInstalling || status?.isRepairing}
+                              >
+                                {status?.isInstalling ? 'Installing...' : 'Install'}
+                              </Button>
+                              <Button
+                                size="small"
+                                appearance="subtle"
+                                onClick={() => showManualInstructions(component.name)}
+                              >
+                                Manual
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              {status?.needsRepair && (
+                                <Button
+                                  size="small"
+                                  appearance="primary"
+                                  onClick={() => repairComponent(component.name)}
+                                  disabled={status?.isRepairing}
+                                >
+                                  {status?.isRepairing ? 'Repairing...' : 'Repair'}
+                                </Button>
+                              )}
+                              <Button
+                                size="small"
+                                appearance="subtle"
+                                onClick={() => openComponentFolder(component.name)}
+                              >
+                                Open Folder
+                              </Button>
+                              <Button
+                                size="small"
+                                appearance="subtle"
+                                onClick={() => removeComponent(component.name)}
+                              >
+                                Remove
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
