@@ -5,6 +5,7 @@ using Aura.Core.Providers;
 using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
+using Aura.Providers.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 using Serilog;
@@ -47,6 +48,7 @@ builder.Services.AddCors(options =>
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
+builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 builder.Services.AddSingleton<ITtsProvider, WindowsTtsProvider>();
 builder.Services.AddSingleton<IVideoComposer>(sp => 
@@ -58,6 +60,7 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     return new FfmpegVideoComposer(logger, ffmpegPath, outputDirectory);
 });
 builder.Services.AddSingleton<VideoOrchestrator>();
+builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
 
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
@@ -772,6 +775,36 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
 .WithName("TestProviderConnection")
 .WithOpenApi();
 
+// Validate providers
+apiGroup.MapPost("/providers/validate", async (
+    [FromBody] ValidateProvidersRequest? request,
+    ProviderValidationService validationService,
+    CancellationToken ct) =>
+{
+    try
+    {
+        var providers = request?.Providers?.Length > 0 ? request.Providers : null;
+        
+        Log.Information("Validating providers: {Providers}", 
+            providers != null ? string.Join(", ", providers) : "all");
+
+        var result = await validationService.ValidateProvidersAsync(providers, ct);
+
+        return Results.Ok(new
+        {
+            results = result.Results,
+            ok = result.Ok
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error validating providers");
+        return Results.Problem("Error validating providers", statusCode: 500);
+    }
+})
+.WithName("ValidateProviders")
+.WithOpenApi();
+
 // Fallback to index.html for client-side routing (must be after all API routes)
 if (Directory.Exists(wwwrootPath))
 {
@@ -792,3 +825,4 @@ record ApplyProfileRequest(string ProfileName);
 record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKey, string? StabilityAiKey);
 record ProviderPathsRequest(string? StableDiffusionUrl, string? OllamaUrl, string? FfmpegPath, string? FfprobePath, string? OutputDirectory);
 record ProviderTestRequest(string? Url, string? Path);
+record ValidateProvidersRequest(string[]? Providers);
