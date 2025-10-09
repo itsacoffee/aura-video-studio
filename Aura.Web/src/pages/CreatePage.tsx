@@ -18,8 +18,6 @@ import {
 } from '@fluentui/react-components';
 import { Play24Regular, Lightbulb24Regular, Checkmark24Regular } from '@fluentui/react-icons';
 import type { Brief, PlanSpec, PlannerRecommendations } from '../types';
-import { Play24Regular } from '@fluentui/react-icons';
-import type { Brief, PlanSpec } from '../types';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormalizer';
 
 const useStyles = makeStyles({
