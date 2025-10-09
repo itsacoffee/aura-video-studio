@@ -105,3 +105,6 @@ Aura.Api/wwwroot/
 # Node.js
 node_modules/
 Aura.Web/dist/
+
+# Test artifacts
+test-portable/
