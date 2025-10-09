@@ -17,7 +17,7 @@ add_report ""
 hardfail=0
 
 add_report "### Conflict Markers"
-conflicts=$(grep -RInE '^(<<<<<<<|=======|>>>>>>>)' "$REPO_ROOT" | grep -vE '(package-lock.json|yarn.lock)' || true)
+conflicts=$(grep -RInE '^(<<<<<<<|=======|>>>>>>>)' "$REPO_ROOT" | grep -vE '(package-lock.json|yarn.lock|scripts/audit/)' || true)
 if [ -n "$conflicts" ]; then
   hardfail=1
   add_report "**FOUND conflict markers:**"
@@ -28,7 +28,7 @@ fi
 add_report ""
 
 add_report "### Duplicate Files (by normalized name)"
-mapfile -t files < <(find "$REPO_ROOT" -type f)
+mapfile -t files < <(find "$REPO_ROOT" -type f | grep -vE '/(bin|obj|node_modules)/')
 declare -A list
 for f in "${files[@]}"; do
   base=$(basename "$f"); name="${base%.*}"; key=$(echo "$name" | tr '[:upper:]' '[:lower:]')

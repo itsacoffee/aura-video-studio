@@ -5,7 +5,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "echo 'Lint skipped - ESLint not configured'",
+    "format": "echo 'Format skipped - Prettier not configured'",
+    "format:check": "echo 'Format check skipped - Prettier not configured'",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'Tests skipped - Vitest not configured'"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.47.0",

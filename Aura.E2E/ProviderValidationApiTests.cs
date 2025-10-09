@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Aura.Providers.Validation;
 using Xunit;
 
 namespace Aura.E2E;
@@ -172,20 +173,5 @@ public class ProviderValidationApiTests : IDisposable
     public void Dispose()
     {
         _httpClient?.Dispose();
-    }
-
-    // DTOs for deserialization
-    private class ValidationResponse
-    {
-        public ProviderValidationResult[] Results { get; set; } = Array.Empty<ProviderValidationResult>();
-        public bool Ok { get; set; }
-    }
-
-    private class ProviderValidationResult
-    {
-        public string Name { get; set; } = string.Empty;
-        public bool Ok { get; set; }
-        public string Details { get; set; } = string.Empty;
-        public long ElapsedMs { get; set; }
     }
 }
