@@ -48,7 +48,16 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
-builder.Services.AddSingleton<ITtsProvider, WindowsTtsProvider>();
+
+// Register TTS provider factory and default provider
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<Aura.Core.Providers.TtsProviderFactory>();
+builder.Services.AddSingleton<ITtsProvider>(sp =>
+{
+    var factory = sp.GetRequiredService<Aura.Core.Providers.TtsProviderFactory>();
+    return factory.GetDefaultProvider();
+});
+
 builder.Services.AddSingleton<IVideoComposer>(sp => 
 {
     var logger = sp.GetRequiredService<ILogger<FfmpegVideoComposer>>();
