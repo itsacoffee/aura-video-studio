@@ -141,39 +141,18 @@ Developer runs:
 3. Opens browser to http://localhost:5173
 ```
 
-### Production - MSIX Package (Recommended)
-```
-User installs:
-- AuraVideoStudio_x64.msix (via sideload or Store)
-
-User launches:
-1. WinUI 3 shell starts
-2. Shell starts Aura.Api child process
-3. Shell waits for API /healthz
-4. WebView2 navigates to API URL
-5. Aura.Web served from API static files
-```
-
-### Production - Setup EXE
-```
-User installs:
-- AuraVideoStudio_Setup.exe (Inno Setup installer)
-- Installs to C:\Program Files\AuraVideoStudio
-
-User launches:
-1. WPF shell starts (AuraVideoStudio.exe)
-2. Rest same as MSIX
-```
-
-### Production - Portable ZIP
+### Production - Portable ZIP (Only Supported Format)
 ```
 User extracts:
 - AuraVideoStudio_Portable_x64.zip to any folder
 
 User runs:
-- Launch.bat or AuraVideoStudio.exe directly
+- Launch.bat to start the API and open browser
 - Self-contained, no installation needed
+- No system changes or registry modifications
 ```
+
+**Distribution Policy**: Aura Video Studio follows a portable-only distribution model. MSIX/APPX packages and traditional installers are not supported.
 
 ## Platform Strategy
 
@@ -241,22 +220,18 @@ aura-video-studio/
 ├── Aura.Providers/         # Provider implementations (.NET 8)
 ├── Aura.Api/               # Backend API (ASP.NET Core 8)
 ├── Aura.Web/               # Frontend UI (React + Vite)
-├── Aura.Host.Win/          # Windows shells (WinUI 3 + WPF) [Planned]
-│   ├── Packaged/           # WinUI 3 for MSIX
-│   └── Portable/           # WPF for EXE/ZIP
 ├── Aura.App/               # Original WinUI 3 app
 ├── Aura.Tests/             # Unit tests
 ├── Aura.E2E/               # Integration tests
 ├── scripts/
 │   ├── ffmpeg/             # FFmpeg binaries
-│   └── packaging/          # Build scripts (MSIX, EXE, ZIP)
+│   ├── packaging/          # Build scripts (Portable ZIP)
+│   └── cleanup/            # Cleanup scripts and CI guard
 ├── .github/workflows/
 │   ├── ci-linux.yml        # Linux CI
 │   └── ci-windows.yml      # Windows CI + packaging
 └── artifacts/              # Build outputs (created during build)
     └── windows/
-        ├── msix/
-        ├── exe/
         ├── portable/
         ├── checksums.txt
         ├── sbom.json
@@ -273,10 +248,7 @@ aura-video-studio/
 | Aura.Web | React 18 + TypeScript | Frontend UI |
 | UI Framework | Fluent UI React | Windows 11 design system |
 | Build Tool | Vite | Fast bundling |
-| Windows Shell (MSIX) | WinUI 3 + WebView2 | Native MSIX app |
-| Windows Shell (Portable) | WPF + WebView2 | Self-contained EXE |
-| Packaging (MSIX) | Windows App SDK | Store-ready package |
-| Packaging (EXE) | Inno Setup | Traditional installer |
+| Packaging | Portable ZIP | No-install distribution |
 | Video | FFmpeg | Rendering engine |
 | Audio | NAudio | DSP and mixing |
 | Logging | Serilog | Structured logging |
