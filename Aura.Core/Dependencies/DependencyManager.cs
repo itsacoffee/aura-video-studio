@@ -42,7 +42,11 @@ public class DependencyManager
             try
             {
                 string json = await File.ReadAllTextAsync(_manifestPath);
-                var manifest = JsonSerializer.Deserialize<DependencyManifest>(json);
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                var manifest = JsonSerializer.Deserialize<DependencyManifest>(json, options);
                 return manifest ?? new DependencyManifest();
             }
             catch (Exception ex)
