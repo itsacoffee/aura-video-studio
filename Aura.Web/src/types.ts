@@ -64,3 +64,33 @@ export interface VoiceSpec {
   pitch: number;
   pauseStyle: 'Auto' | 'None' | 'Breathier';
 }
+
+export interface PlannerRecommendations {
+  outline: string;
+  sceneCount: number;
+  shotsPerScene: number;
+  bRollPercentage: number;
+  overlayDensity: number;
+  readingLevel: number;
+  voice: {
+    rate: number;
+    pitch: number;
+    style: string;
+  };
+  music: {
+    tempo: string;
+    intensityCurve: string;
+    genre: string;
+  };
+  captions: {
+    position: string;
+    fontSize: string;
+    highlightKeywords: boolean;
+  };
+  thumbnailPrompt: string;
+  seo: {
+    title: string;
+    description: string;
+    tags: string[];
+  };
+}
