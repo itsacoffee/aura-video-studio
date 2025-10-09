@@ -7,6 +7,24 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$buildStartTime = Get-Date
+$buildSuccess = $true
+$buildErrors = @()
+$buildWarnings = @()
+
+# Function to log and capture errors
+function Write-BuildError {
+    param([string]$message)
+    $buildErrors += $message
+    Write-Host "      ✗ ERROR: $message" -ForegroundColor Red
+}
+
+# Function to log warnings
+function Write-BuildWarning {
+    param([string]$message)
+    $buildWarnings += $message
+    Write-Host "      ⚠ WARNING: $message" -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
@@ -23,61 +41,77 @@ $rootDir = Split-Path -Parent (Split-Path -Parent $scriptDir)
 $artifactsDir = Join-Path $rootDir "artifacts"
 $portableDir = Join-Path $artifactsDir "portable"
 $portableBuildDir = Join-Path $portableDir "build"
+$packagingDir = Join-Path $artifactsDir "packaging"
 
 Write-Host "Root Directory:     $rootDir" -ForegroundColor Gray
 Write-Host "Artifacts Directory: $artifactsDir" -ForegroundColor Gray
 Write-Host ""
 
-# Create directories
-Write-Host "[1/6] Creating build directories..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Force -Path $portableBuildDir | Out-Null
-Write-Host "      ✓ Directories created" -ForegroundColor Green
+try {
+    # Create directories
+    Write-Host "[1/6] Creating build directories..." -ForegroundColor Yellow
+    New-Item -ItemType Directory -Force -Path $portableBuildDir | Out-Null
+    New-Item -ItemType Directory -Force -Path $packagingDir | Out-Null
+    Write-Host "      ✓ Directories created" -ForegroundColor Green
 
-# Build core projects
-Write-Host "[2/6] Building .NET projects..." -ForegroundColor Yellow
-dotnet build "$rootDir\Aura.Core\Aura.Core.csproj" -c $Configuration --nologo -v minimal
-dotnet build "$rootDir\Aura.Providers\Aura.Providers.csproj" -c $Configuration --nologo -v minimal
-dotnet build "$rootDir\Aura.Api\Aura.Api.csproj" -c $Configuration --nologo -v minimal
-Write-Host "      ✓ .NET projects built" -ForegroundColor Green
+    # Build core projects
+    Write-Host "[2/6] Building .NET projects..." -ForegroundColor Yellow
+    $buildOutput = dotnet build "$rootDir\Aura.Core\Aura.Core.csproj" -c $Configuration --nologo 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Aura.Core build failed" }
+    
+    $buildOutput = dotnet build "$rootDir\Aura.Providers\Aura.Providers.csproj" -c $Configuration --nologo 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Aura.Providers build failed" }
+    
+    $buildOutput = dotnet build "$rootDir\Aura.Api\Aura.Api.csproj" -c $Configuration --nologo 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Aura.Api build failed" }
+    
+    Write-Host "      ✓ .NET projects built" -ForegroundColor Green
 
-# Build Web UI
-Write-Host "[3/6] Building web UI..." -ForegroundColor Yellow
-Push-Location "$rootDir\Aura.Web"
-if (-not (Test-Path "node_modules")) {
-    Write-Host "      Installing npm dependencies..." -ForegroundColor Gray
-    npm install --silent 2>&1 | Out-Null
-}
-npm run build --silent 2>&1 | Out-Null
-Pop-Location
-Write-Host "      ✓ Web UI built" -ForegroundColor Green
+    # Build Web UI
+    Write-Host "[3/6] Building web UI..." -ForegroundColor Yellow
+    Push-Location "$rootDir\Aura.Web"
+    try {
+        if (-not (Test-Path "node_modules")) {
+            Write-Host "      Installing npm dependencies..." -ForegroundColor Gray
+            npm install --silent 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
+        }
+        npm run build --silent 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "npm build failed" }
+    }
+    finally {
+        Pop-Location
+    }
+    Write-Host "      ✓ Web UI built" -ForegroundColor Green
 
-# Publish API as self-contained
-Write-Host "[4/6] Publishing API (self-contained)..." -ForegroundColor Yellow
-dotnet publish "$rootDir\Aura.Api\Aura.Api.csproj" `
-    -c $Configuration `
-    -r win-$($Platform.ToLower()) `
-    --self-contained `
-    -o "$portableBuildDir\Api" `
-    --nologo -v minimal
-Write-Host "      ✓ API published" -ForegroundColor Green
+    # Publish API as self-contained
+    Write-Host "[4/6] Publishing API (self-contained)..." -ForegroundColor Yellow
+    dotnet publish "$rootDir\Aura.Api\Aura.Api.csproj" `
+        -c $Configuration `
+        -r win-$($Platform.ToLower()) `
+        --self-contained `
+        -o "$portableBuildDir\Api" `
+        --nologo -v minimal
+    if ($LASTEXITCODE -ne 0) { throw "API publish failed" }
+    Write-Host "      ✓ API published" -ForegroundColor Green
 
-# Copy Web UI to wwwroot folder inside the published API
-Write-Host "[5/6] Copying web UI to wwwroot..." -ForegroundColor Yellow
-$wwwrootDir = Join-Path "$portableBuildDir\Api" "wwwroot"
-New-Item -ItemType Directory -Force -Path $wwwrootDir | Out-Null
-Copy-Item "$rootDir\Aura.Web\dist\*" -Destination $wwwrootDir -Recurse -Force
-Write-Host "      ✓ Web UI copied to wwwroot" -ForegroundColor Green
+    # Copy Web UI to wwwroot folder inside the published API
+    Write-Host "[5/6] Copying web UI to wwwroot..." -ForegroundColor Yellow
+    $wwwrootDir = Join-Path "$portableBuildDir\Api" "wwwroot"
+    New-Item -ItemType Directory -Force -Path $wwwrootDir | Out-Null
+    Copy-Item "$rootDir\Aura.Web\dist\*" -Destination $wwwrootDir -Recurse -Force
+    Write-Host "      ✓ Web UI copied to wwwroot" -ForegroundColor Green
 
-# Copy additional files
-Write-Host "[6/6] Copying additional files..." -ForegroundColor Yellow
-
-# Copy FFmpeg (if available)
-$ffmpegDir = Join-Path $portableBuildDir "ffmpeg"
-New-Item -ItemType Directory -Force -Path $ffmpegDir | Out-Null
-if (Test-Path "$rootDir\scripts\ffmpeg\ffmpeg.exe") {
-    Copy-Item "$rootDir\scripts\ffmpeg\*.exe" -Destination $ffmpegDir -Force
-    Write-Host "      ✓ FFmpeg binaries copied" -ForegroundColor Green
-} else {
+    # Copy additional files
+    Write-Host "[6/6] Copying additional files..." -ForegroundColor Yellow
+    
+    # Copy FFmpeg (if available)
+    $ffmpegDir = Join-Path $portableBuildDir "ffmpeg"
+    New-Item -ItemType Directory -Force -Path $ffmpegDir | Out-Null
+    if (Test-Path "$rootDir\scripts\ffmpeg\ffmpeg.exe") {
+        Copy-Item "$rootDir\scripts\ffmpeg\*.exe" -Destination $ffmpegDir -Force
+        Write-Host "      ✓ FFmpeg binaries copied" -ForegroundColor Green
+    } else {
     Write-Host "      ⚠ FFmpeg binaries not found (users will need to install separately)" -ForegroundColor Yellow
 }
 
@@ -138,3 +172,88 @@ Write-Host "  1. Extract the ZIP to a folder" -ForegroundColor White
 Write-Host "  2. Run Launch.bat" -ForegroundColor White
 Write-Host "  3. Open http://127.0.0.1:5005 in your browser" -ForegroundColor White
 Write-Host ""
+
+    # Generate build report
+    $buildEndTime = Get-Date
+    $buildDuration = $buildEndTime - $buildStartTime
+    $reportPath = Join-Path $packagingDir "build_report.md"
+    $reportContent = @"
+# Aura Video Studio - Portable Build Report
+
+## Build Summary
+- **Status**: ✅ SUCCESS
+- **Configuration**: $Configuration
+- **Platform**: $Platform  
+- **Build Time**: $($buildDuration.TotalSeconds.ToString("F2")) seconds
+- **Timestamp**: $buildEndTime
+
+## Artifacts
+- **Portable ZIP**: $(Split-Path $zipPath -Leaf)
+- **Size**: $([math]::Round((Get-Item $zipPath).Length / 1MB, 2)) MB
+- **SHA-256**: $($hash.Hash)
+- **Location**: $portableDir
+
+## Build Steps Completed
+1. ✅ Created build directories
+2. ✅ Built .NET projects (Core, Providers, API)
+3. ✅ Built Web UI
+4. ✅ Published API (self-contained for Windows $Platform)
+5. ✅ Copied Web UI to wwwroot
+6. ✅ Copied additional files
+7. ✅ Created launcher script
+8. ✅ Generated portable ZIP
+9. ✅ Generated SHA-256 checksum
+
+## Warnings
+$( if ($buildWarnings.Count -gt 0) { $buildWarnings -join "`n- " } else { "None" })
+
+---
+*Build completed successfully at $buildEndTime*
+"@
+    Set-Content -Path $reportPath -Value $reportContent -Encoding UTF8
+    Write-Host "Build Report:  $reportPath" -ForegroundColor White
+    
+    exit 0
+}
+catch {
+    $buildSuccess = $false
+    $buildErrors += $_.Exception.Message
+    
+    $buildEndTime = Get-Date
+    $buildDuration = $buildEndTime - $buildStartTime
+    
+    # Generate failure report
+    New-Item -ItemType Directory -Force -Path $packagingDir | Out-Null
+    $reportPath = Join-Path $packagingDir "build_report.md"
+    $reportContent = @"
+# Aura Video Studio - Portable Build Report
+
+## Build Summary
+- **Status**: ❌ FAILED
+- **Configuration**: $Configuration
+- **Platform**: $Platform
+- **Build Time**: $($buildDuration.TotalSeconds.ToString("F2")) seconds
+- **Timestamp**: $buildEndTime
+
+## Errors
+- $($buildErrors -join "`n- ")
+
+## Warnings
+$( if ($buildWarnings.Count -gt 0) { "- " + ($buildWarnings -join "`n- ") } else { "None" })
+
+---
+*Build failed at $buildEndTime*
+"@
+    Set-Content -Path $reportPath -Value $reportContent -Encoding UTF8
+    
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host " Build Failed!" -ForegroundColor Red
+    Write-Host "========================================" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Build Report: $reportPath" -ForegroundColor White
+    Write-Host ""
+    
+    exit 1
+}
