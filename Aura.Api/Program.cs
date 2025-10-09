@@ -2,6 +2,7 @@ using Aura.Api.Serialization;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
+using Aura.Core.Planner;
 using Aura.Core.Providers;
 using Aura.Providers.Images;
 using Aura.Providers.Llm;
@@ -75,6 +76,7 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     return new FfmpegVideoComposer(logger, ffmpegPath, outputDirectory);
 });
 builder.Services.AddSingleton<VideoOrchestrator>();
+builder.Services.AddSingleton<IRecommendationService, HeuristicRecommendationService>();
 builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
 
 // Register DependencyManager
@@ -181,6 +183,94 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
     }
 })
 .WithName("CreatePlan")
+.WithOpenApi();
+
+// Planner recommendations endpoint
+apiGroup.MapPost("/planner/recommendations", async (
+    [FromBody] RecommendationsRequestDto request, 
+    IRecommendationService recommendationService,
+    CancellationToken ct) =>
+{
+    try
+    {
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(request.Topic))
+        {
+            return Results.Problem(
+                detail: "Topic is required",
+                statusCode: 400,
+                title: "Invalid Brief",
+                type: "https://docs.aura.studio/errors/E303");
+        }
+        
+        if (request.TargetDurationMinutes <= 0 || request.TargetDurationMinutes > 120)
+        {
+            return Results.Problem(
+                detail: "Target duration must be between 0 and 120 minutes",
+                statusCode: 400,
+                title: "Invalid Plan",
+                type: "https://docs.aura.studio/errors/E304");
+        }
+
+        var brief = new Brief(
+            Topic: request.Topic,
+            Audience: request.Audience ?? "General",
+            Goal: request.Goal ?? "Inform",
+            Tone: request.Tone ?? "Informative",
+            Language: request.Language ?? "en-US",
+            Aspect: request.Aspect ?? Aspect.Widescreen16x9
+        );
+        
+        var planSpec = new PlanSpec(
+            TargetDuration: TimeSpan.FromMinutes(request.TargetDurationMinutes),
+            Pacing: request.Pacing ?? Pacing.Conversational,
+            Density: request.Density ?? Density.Balanced,
+            Style: request.Style ?? "Standard"
+        );
+
+        var constraints = request.Constraints != null 
+            ? new RecommendationConstraints(
+                MaxSceneCount: request.Constraints.MaxSceneCount,
+                MinSceneCount: request.Constraints.MinSceneCount,
+                MaxBRollPercentage: request.Constraints.MaxBRollPercentage,
+                MaxReadingLevel: request.Constraints.MaxReadingLevel)
+            : null;
+
+        var recommendationRequest = new RecommendationRequest(
+            Brief: brief,
+            PlanSpec: planSpec,
+            AudiencePersona: request.AudiencePersona,
+            Constraints: constraints
+        );
+
+        Log.Information("Generating recommendations for topic: {Topic}, duration: {Duration} min", 
+            request.Topic, request.TargetDurationMinutes);
+        
+        var recommendations = await recommendationService.GenerateRecommendationsAsync(recommendationRequest, ct);
+        
+        Log.Information("Recommendations generated successfully");
+        return Results.Ok(new { success = true, recommendations });
+    }
+    catch (TaskCanceledException)
+    {
+        Log.Warning("Recommendation generation was cancelled");
+        return Results.Problem(
+            detail: "Recommendation generation was cancelled",
+            statusCode: 408,
+            title: "Request Timeout",
+            type: "https://docs.aura.studio/errors/E301");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error generating recommendations: {Message}", ex.Message);
+        return Results.Problem(
+            detail: $"Error generating recommendations: {ex.Message}",
+            statusCode: 500,
+            title: "Recommendation Service Failed",
+            type: "https://docs.aura.studio/errors/E305");
+    }
+})
+.WithName("GetPlannerRecommendations")
 .WithOpenApi();
 
 // Script generation endpoint
@@ -1212,6 +1302,27 @@ record ApplyProfileRequest(string ProfileName);
 record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKey, string? StabilityAiKey);
 record ProviderPathsRequest(string? StableDiffusionUrl, string? OllamaUrl, string? FfmpegPath, string? FfprobePath, string? OutputDirectory);
 record ProviderTestRequest(string? Url, string? Path);
+record RecommendationsRequestDto(
+    string Topic,
+    string? Audience,
+    string? Goal,
+    string? Tone,
+    string? Language,
+    Aspect? Aspect,
+    double TargetDurationMinutes,
+    Pacing? Pacing,
+    Density? Density,
+    string? Style,
+    string? AudiencePersona,
+    ConstraintsDto? Constraints);
+record ConstraintsDto(
+    int? MaxSceneCount,
+    int? MinSceneCount,
+    double? MaxBRollPercentage,
+    int? MaxReadingLevel);
+
+// Make Program accessible for integration tests
+public partial class Program { }
 record AssetSearchRequest(string Provider, string Query, int Count, string? ApiKey = null, string? LocalDirectory = null);
 record AssetGenerateRequest(
     string Prompt, 

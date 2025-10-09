@@ -53,3 +53,69 @@ public record HardwareOverrides
 }
 
 public record GpuInfo(string Vendor, string Model, int VramGB, string? Series);
+
+/// <summary>
+/// Request for planner recommendations
+/// </summary>
+public record RecommendationRequest(
+    Brief Brief,
+    PlanSpec PlanSpec,
+    string? AudiencePersona,
+    RecommendationConstraints? Constraints);
+
+/// <summary>
+/// Constraints for recommendations
+/// </summary>
+public record RecommendationConstraints(
+    int? MaxSceneCount,
+    int? MinSceneCount,
+    double? MaxBRollPercentage,
+    int? MaxReadingLevel);
+
+/// <summary>
+/// Comprehensive recommendations for video production
+/// </summary>
+public record PlannerRecommendations(
+    string Outline,
+    int SceneCount,
+    int ShotsPerScene,
+    double BRollPercentage,
+    int OverlayDensity,
+    int ReadingLevel,
+    VoiceRecommendations Voice,
+    MusicRecommendations Music,
+    CaptionStyle Captions,
+    string ThumbnailPrompt,
+    SeoRecommendations Seo);
+
+/// <summary>
+/// Voice recommendations
+/// </summary>
+public record VoiceRecommendations(
+    double Rate,
+    double Pitch,
+    string Style);
+
+/// <summary>
+/// Music recommendations
+/// </summary>
+public record MusicRecommendations(
+    string Tempo,
+    string IntensityCurve,
+    string Genre);
+
+/// <summary>
+/// Caption style recommendations
+/// </summary>
+public record CaptionStyle(
+    string Position,
+    string FontSize,
+    bool HighlightKeywords);
+
+/// <summary>
+/// SEO recommendations
+/// </summary>
+public record SeoRecommendations(
+    string Title,
+    string Description,
+    string[] Tags);

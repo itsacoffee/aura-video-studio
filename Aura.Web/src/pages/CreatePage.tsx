@@ -4,6 +4,7 @@ import {
   tokens,
   Title1,
   Title2,
+  Title3,
   Text,
   Button,
   Input,
@@ -12,7 +13,11 @@ import {
   Slider,
   Card,
   Field,
+  Spinner,
+  Badge,
 } from '@fluentui/react-components';
+import { Play24Regular, Lightbulb24Regular, Checkmark24Regular } from '@fluentui/react-icons';
+import type { Brief, PlanSpec, PlannerRecommendations } from '../types';
 import { Play24Regular } from '@fluentui/react-icons';
 import type { Brief, PlanSpec } from '../types';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormalizer';
@@ -72,6 +77,51 @@ export function CreatePage() {
   });
 
   const [generating, setGenerating] = useState(false);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [recommendations, setRecommendations] = useState<PlannerRecommendations | null>(null);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+
+  const handleGetRecommendations = async () => {
+    setLoadingRecommendations(true);
+    try {
+      const response = await fetch('/api/planner/recommendations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: brief.topic,
+          audience: brief.audience,
+          goal: brief.goal,
+          tone: brief.tone,
+          language: brief.language,
+          aspect: brief.aspect,
+          targetDurationMinutes: planSpec.targetDurationMinutes,
+          pacing: planSpec.pacing,
+          density: planSpec.density,
+          style: planSpec.style,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRecommendations(data.recommendations);
+        setShowRecommendations(true);
+      } else {
+        alert('Failed to get recommendations');
+      }
+    } catch (error) {
+      console.error('Error getting recommendations:', error);
+      alert('Error getting recommendations');
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  };
+
+  const applyAllRecommendations = () => {
+    if (!recommendations) return;
+    // Apply recommendations that map to planSpec
+    // For now, we can extend this to apply all fields
+    alert('Recommendations applied! (Extended fields not yet in planSpec)');
+  };
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -177,47 +227,158 @@ export function CreatePage() {
         )}
 
         {currentStep === 2 && (
-          <Card className={styles.section}>
-            <Title2>Length and Pacing</Title2>
-            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-              Configure the duration and pacing of your video
-            </Text>
-            <div className={styles.fieldGroup}>
-              <Field label={`Duration: ${planSpec.targetDurationMinutes} minutes`} hint="How long should the video be?">
-                <Slider
-                  min={0.5}
-                  max={20}
-                  step={0.5}
-                  value={planSpec.targetDurationMinutes}
-                  onChange={(_, data) =>
-                    setPlanSpec({ ...planSpec, targetDurationMinutes: data.value })
-                  }
-                />
-              </Field>
+          <>
+            <Card className={styles.section}>
+              <Title2>Length and Pacing</Title2>
+              <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+                Configure the duration and pacing of your video
+              </Text>
+              <div className={styles.fieldGroup}>
+                <Field label={`Duration: ${planSpec.targetDurationMinutes} minutes`} hint="How long should the video be?">
+                  <Slider
+                    min={0.5}
+                    max={20}
+                    step={0.5}
+                    value={planSpec.targetDurationMinutes}
+                    onChange={(_, data) =>
+                      setPlanSpec({ ...planSpec, targetDurationMinutes: data.value })
+                    }
+                  />
+                </Field>
 
-              <Field label="Pacing" hint="How fast should the narration be?">
-                <Dropdown
-                  value={planSpec.pacing}
-                  onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, pacing: data.optionText as any })}
-                >
-                  <Option>Chill</Option>
-                  <Option>Conversational</Option>
-                  <Option>Fast</Option>
-                </Dropdown>
-              </Field>
+                <Field label="Pacing" hint="How fast should the narration be?">
+                  <Dropdown
+                    value={planSpec.pacing}
+                    onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, pacing: data.optionText as any })}
+                  >
+                    <Option>Chill</Option>
+                    <Option>Conversational</Option>
+                    <Option>Fast</Option>
+                  </Dropdown>
+                </Field>
 
-              <Field label="Density" hint="How much content per minute?">
-                <Dropdown
-                  value={planSpec.density}
-                  onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, density: data.optionText as any })}
-                >
-                  <Option>Sparse</Option>
-                  <Option>Balanced</Option>
-                  <Option>Dense</Option>
-                </Dropdown>
-              </Field>
-            </div>
-          </Card>
+                <Field label="Density" hint="How much content per minute?">
+                  <Dropdown
+                    value={planSpec.density}
+                    onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, density: data.optionText as any })}
+                  >
+                    <Option>Sparse</Option>
+                    <Option>Balanced</Option>
+                    <Option>Dense</Option>
+                  </Dropdown>
+                </Field>
+
+                <div style={{ marginTop: tokens.spacingVerticalL }}>
+                  <Button
+                    appearance="secondary"
+                    icon={<Lightbulb24Regular />}
+                    onClick={handleGetRecommendations}
+                    disabled={loadingRecommendations || !brief.topic}
+                  >
+                    {loadingRecommendations ? (
+                      <>
+                        <Spinner size="tiny" /> Getting Recommendations...
+                      </>
+                    ) : (
+                      'Get Recommendations'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
+            {showRecommendations && recommendations && (
+              <Card className={styles.section} style={{ backgroundColor: tokens.colorNeutralBackground2 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalM }}>
+                  <Title3>AI Recommendations</Title3>
+                  <Button
+                    appearance="primary"
+                    icon={<Checkmark24Regular />}
+                    onClick={applyAllRecommendations}
+                  >
+                    Apply All
+                  </Button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
+                  <div>
+                    <Text weight="semibold">Scene Count:</Text>{' '}
+                    <Badge appearance="tint" color="informative">{recommendations.sceneCount} scenes</Badge>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">Shots per Scene:</Text>{' '}
+                    <Badge appearance="tint" color="informative">{recommendations.shotsPerScene} shots</Badge>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">B-Roll:</Text>{' '}
+                    <Badge appearance="tint" color="informative">{recommendations.bRollPercentage}%</Badge>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">Overlay Density:</Text>{' '}
+                    <Badge appearance="tint" color="informative">{recommendations.overlayDensity} overlays/scene</Badge>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">Reading Level:</Text>{' '}
+                    <Badge appearance="tint" color="informative">Grade {recommendations.readingLevel}</Badge>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">Voice:</Text>{' '}
+                    <Text>Rate: {recommendations.voice.rate}x, Pitch: {recommendations.voice.pitch}x, Style: {recommendations.voice.style}</Text>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">Music:</Text>{' '}
+                    <Text>{recommendations.music.genre} - {recommendations.music.tempo}</Text>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">Captions:</Text>{' '}
+                    <Text>{recommendations.captions.position}, {recommendations.captions.fontSize}</Text>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">SEO Title:</Text>{' '}
+                    <Text>{recommendations.seo.title}</Text>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">Tags:</Text>{' '}
+                    <Text>{recommendations.seo.tags.join(', ')}</Text>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">Thumbnail Prompt:</Text>
+                    <div style={{ 
+                      marginTop: tokens.spacingVerticalXS, 
+                      padding: tokens.spacingVerticalM,
+                      backgroundColor: tokens.colorNeutralBackground1,
+                      borderRadius: tokens.borderRadiusMedium
+                    }}>
+                      <Text size={200}>{recommendations.thumbnailPrompt}</Text>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Text weight="semibold">Outline:</Text>
+                    <div style={{ 
+                      marginTop: tokens.spacingVerticalXS, 
+                      padding: tokens.spacingVerticalM,
+                      backgroundColor: tokens.colorNeutralBackground1,
+                      borderRadius: tokens.borderRadiusMedium,
+                      whiteSpace: 'pre-wrap'
+                    }}>
+                      <Text size={200} style={{ fontFamily: 'monospace' }}>{recommendations.outline}</Text>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+          </>
         )}
 
         {currentStep === 3 && (
