@@ -1,3 +1,4 @@
+using Aura.Api.Serialization;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
@@ -16,6 +17,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure JSON options to handle string enum conversion
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
+    // Add tolerant converters for enums that accept aliases
+    options.SerializerOptions.Converters.Add(new TolerantDensityConverter());
+    options.SerializerOptions.Converters.Add(new TolerantAspectConverter());
+    // Use standard converter for other enums
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
@@ -147,6 +152,15 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
         
         return Results.Ok(new { success = true, plan });
     }
+    catch (JsonException ex)
+    {
+        Log.Error(ex, "Invalid enum value in plan request");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 400,
+            title: "Invalid Enum Value",
+            type: "https://docs.aura.studio/errors/E303");
+    }
     catch (Exception ex)
     {
         Log.Error(ex, "Error creating plan");
@@ -212,6 +226,15 @@ apiGroup.MapPost("/script", async ([FromBody] ScriptRequest request, ILlmProvide
         
         Log.Information("Script generated successfully: {Length} characters", script.Length);
         return Results.Ok(new { success = true, script });
+    }
+    catch (JsonException ex)
+    {
+        Log.Error(ex, "Invalid enum value in script request");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 400,
+            title: "Invalid Enum Value",
+            type: "https://docs.aura.studio/errors/E303");
     }
     catch (ArgumentException ex)
     {
