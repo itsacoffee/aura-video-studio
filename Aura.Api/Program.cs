@@ -1,3 +1,4 @@
+using Aura.Api.Serialization;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
@@ -5,6 +6,7 @@ using Aura.Core.Providers;
 using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
+using Aura.Providers.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.FileProviders;
 using Serilog;
@@ -16,6 +18,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure JSON options to handle string enum conversion
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
+    // Add tolerant converters for enums that accept aliases
+    options.SerializerOptions.Converters.Add(new TolerantDensityConverter());
+    options.SerializerOptions.Converters.Add(new TolerantAspectConverter());
+    // Use standard converter for other enums
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
 });
@@ -47,6 +53,7 @@ builder.Services.AddCors(options =>
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
+builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 
 // Register TTS provider factory and default provider
@@ -67,6 +74,7 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     return new FfmpegVideoComposer(logger, ffmpegPath, outputDirectory);
 });
 builder.Services.AddSingleton<VideoOrchestrator>();
+builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
 
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
@@ -156,6 +164,15 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
         
         return Results.Ok(new { success = true, plan });
     }
+    catch (JsonException ex)
+    {
+        Log.Error(ex, "Invalid enum value in plan request");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 400,
+            title: "Invalid Enum Value",
+            type: "https://docs.aura.studio/errors/E303");
+    }
     catch (Exception ex)
     {
         Log.Error(ex, "Error creating plan");
@@ -221,6 +238,15 @@ apiGroup.MapPost("/script", async ([FromBody] ScriptRequest request, ILlmProvide
         
         Log.Information("Script generated successfully: {Length} characters", script.Length);
         return Results.Ok(new { success = true, script });
+    }
+    catch (JsonException ex)
+    {
+        Log.Error(ex, "Invalid enum value in script request");
+        return Results.Problem(
+            detail: ex.Message,
+            statusCode: 400,
+            title: "Invalid Enum Value",
+            type: "https://docs.aura.studio/errors/E303");
     }
     catch (ArgumentException ex)
     {
@@ -382,6 +408,97 @@ apiGroup.MapPost("/downloads/{component}/install", async (string component, Aura
 .WithName("InstallComponent")
 .WithOpenApi();
 
+// Verify component integrity
+apiGroup.MapGet("/downloads/{component}/verify", async (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        var result = await depManager.VerifyComponentAsync(component);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error verifying component");
+        return Results.Problem($"Error verifying {component}", statusCode: 500);
+    }
+})
+.WithName("VerifyComponent")
+.WithOpenApi();
+
+// Repair component
+apiGroup.MapPost("/downloads/{component}/repair", async (string component, Aura.Core.Dependencies.DependencyManager depManager, CancellationToken ct) =>
+{
+    try
+    {
+        var progress = new Progress<Aura.Core.Dependencies.DownloadProgress>(p =>
+        {
+            Log.Information("Repair progress: {Component} - {Percent}%", component, p.PercentComplete);
+        });
+
+        await depManager.RepairComponentAsync(component, progress, ct);
+        
+        return Results.Ok(new { success = true, message = $"{component} repaired successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error repairing component");
+        return Results.Problem($"Error repairing {component}", statusCode: 500);
+    }
+})
+.WithName("RepairComponent")
+.WithOpenApi();
+
+// Remove component
+apiGroup.MapDelete("/downloads/{component}", async (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        await depManager.RemoveComponentAsync(component);
+        return Results.Ok(new { success = true, message = $"{component} removed successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error removing component");
+        return Results.Problem($"Error removing {component}", statusCode: 500);
+    }
+})
+.WithName("RemoveComponent")
+.WithOpenApi();
+
+// Get component directory path
+apiGroup.MapGet("/downloads/{component}/folder", (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        var path = depManager.GetComponentDirectory(component);
+        return Results.Ok(new { path });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting component folder");
+        return Results.Problem($"Error getting folder for {component}", statusCode: 500);
+    }
+})
+.WithName("GetComponentFolder")
+.WithOpenApi();
+
+// Get manual install instructions (for offline mode)
+apiGroup.MapGet("/downloads/{component}/manual", (string component, Aura.Core.Dependencies.DependencyManager depManager) =>
+{
+    try
+    {
+        var instructions = depManager.GetManualInstallInstructions(component);
+        return Results.Ok(instructions);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting manual instructions");
+        return Results.Problem($"Error getting manual instructions for {component}", statusCode: 500);
+    }
+})
+.WithName("GetManualInstructions")
+.WithOpenApi();
+
 // Settings endpoints
 apiGroup.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settings) =>
 {
@@ -400,7 +517,8 @@ apiGroup.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settin
 })
 .WithName("SaveSettings")
 .WithOpenApi();
-
+
+
 apiGroup.MapGet("/settings/load", () =>
 {
     try
@@ -449,7 +567,8 @@ apiGroup.MapPost("/compose", ([FromBody] ComposeRequest request) =>
 })
 .WithName("ComposeTimeline")
 .WithOpenApi();
-
+
+
 apiGroup.MapPost("/render", ([FromBody] RenderRequest request) =>
 {
     try
@@ -473,7 +592,8 @@ apiGroup.MapPost("/render", ([FromBody] RenderRequest request) =>
 })
 .WithName("StartRender")
 .WithOpenApi();
-
+
+
 apiGroup.MapGet("/render/{id}/progress", (string id) =>
 {
     if (!renderJobs.ContainsKey(id))
@@ -493,7 +613,8 @@ apiGroup.MapGet("/render/{id}/progress", (string id) =>
 })
 .WithName("GetRenderProgress")
 .WithOpenApi();
-
+
+
 apiGroup.MapPost("/render/{id}/cancel", (string id) =>
 {
     if (!renderJobs.ContainsKey(id))
@@ -506,7 +627,8 @@ apiGroup.MapPost("/render/{id}/cancel", (string id) =>
 })
 .WithName("CancelRender")
 .WithOpenApi();
-
+
+
 apiGroup.MapGet("/queue", () =>
 {
     try
@@ -522,7 +644,8 @@ apiGroup.MapGet("/queue", () =>
 })
 .WithName("GetRenderQueue")
 .WithOpenApi();
-
+
+
 apiGroup.MapGet("/logs/stream", async (HttpContext context) =>
 {
     context.Response.Headers.Append("Content-Type", "text/event-stream");
@@ -546,7 +669,8 @@ apiGroup.MapGet("/logs/stream", async (HttpContext context) =>
 })
 .WithName("StreamLogs")
 .WithOpenApi();
-
+
+
 apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
 {
     try
@@ -563,7 +687,8 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
 })
 .WithName("RunProbes")
 .WithOpenApi();
-
+
+
 apiGroup.MapGet("/profiles/list", () =>
 {
     try
@@ -584,7 +709,8 @@ apiGroup.MapGet("/profiles/list", () =>
 })
 .WithName("ListProfiles")
 .WithOpenApi();
-
+
+
 apiGroup.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
 {
     try
@@ -820,6 +946,36 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
 .WithName("TestProviderConnection")
 .WithOpenApi();
 
+// Validate providers
+apiGroup.MapPost("/providers/validate", async (
+    [FromBody] ValidateProvidersRequest? request,
+    ProviderValidationService validationService,
+    CancellationToken ct) =>
+{
+    try
+    {
+        var providers = request?.Providers?.Length > 0 ? request.Providers : null;
+        
+        Log.Information("Validating providers: {Providers}", 
+            providers != null ? string.Join(", ", providers) : "all");
+
+        var result = await validationService.ValidateProvidersAsync(providers, ct);
+
+        return Results.Ok(new
+        {
+            results = result.Results,
+            ok = result.Ok
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error validating providers");
+        return Results.Problem("Error validating providers", statusCode: 500);
+    }
+})
+.WithName("ValidateProviders")
+.WithOpenApi();
+
 // Fallback to index.html for client-side routing (must be after all API routes)
 if (Directory.Exists(wwwrootPath))
 {
@@ -841,3 +997,4 @@ record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKe
 record ProviderPathsRequest(string? StableDiffusionUrl, string? OllamaUrl, string? FfmpegPath, string? FfprobePath, string? OutputDirectory);
 record ProviderTestRequest(string? Url, string? Path);
 record CaptionsRequest(List<LineDto> Lines, string Format = "SRT", string? OutputPath = null);
+record ValidateProvidersRequest(string[]? Providers);

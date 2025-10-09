@@ -4,6 +4,8 @@
       "name": "FFmpeg",
       "version": "6.0",
       "isRequired": true,
+      "installPath": "dependencies/ffmpeg",
+      "postInstallProbe": "ffmpeg",
       "files": [
         {
           "filename": "ffmpeg.exe",
@@ -25,6 +27,8 @@
       "name": "Ollama",
       "version": "0.1.19",
       "isRequired": false,
+      "installPath": "dependencies/ollama",
+      "postInstallProbe": "ollama",
       "files": [
         {
           "filename": "ollama-windows-amd64.zip",
@@ -39,6 +43,8 @@
       "name": "OllamaModel",
       "version": "llama3.1:8b-q4_k_m",
       "isRequired": false,
+      "installPath": "dependencies/ollama/models",
+      "postInstallProbe": null,
       "files": [
         {
           "filename": "llama3.1-8b-q4_k_m.gguf",
@@ -53,6 +59,8 @@
       "name": "StableDiffusion",
       "version": "1.5.0",
       "isRequired": false,
+      "installPath": "dependencies/stable-diffusion",
+      "postInstallProbe": "stablediffusion",
       "files": [
         {
           "filename": "stable-diffusion-webui.zip",
@@ -74,6 +82,8 @@
       "name": "StableDiffusionXL",
       "version": "1.0",
       "isRequired": false,
+      "installPath": "dependencies/stable-diffusion",
+      "postInstallProbe": "stablediffusion",
       "files": [
         {
           "filename": "sdxl-base-1.0.safetensors",
@@ -88,6 +98,8 @@
       "name": "CC0StockPack",
       "version": "1.0",
       "isRequired": false,
+      "installPath": "dependencies/assets/stock",
+      "postInstallProbe": null,
       "files": [
         {
           "filename": "cc0-stock-images.zip",
@@ -102,6 +114,8 @@
       "name": "CC0MusicPack",
       "version": "1.0",
       "isRequired": false,
+      "installPath": "dependencies/assets/music",
+      "postInstallProbe": null,
       "files": [
         {
           "filename": "cc0-music-pack.zip",
