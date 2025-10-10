@@ -289,4 +289,147 @@ public class FFmpegPlanBuilderTests
         Assert.Contains("-ar 48000", command); // 48kHz sample rate
         Assert.Contains("-ac 2", command);     // Stereo
     }
+
+    [Fact]
+    public void BuildFilterGraph_Should_IncludeKenBurnsEffect()
+    {
+        // Arrange
+        var builder = new FFmpegPlanBuilder();
+        var resolution = new Resolution(1920, 1080);
+
+        // Act
+        string filterGraph = builder.BuildFilterGraph(
+            resolution,
+            addSubtitles: false,
+            subtitlePath: null,
+            brandKit: null,
+            enableKenBurns: true);
+
+        // Assert
+        Assert.Contains("zoompan", filterGraph);
+        Assert.Contains("min(zoom+0.0015,1.1)", filterGraph); // Subtle zoom to 1.1x
+    }
+
+    [Fact]
+    public void BuildFilterGraph_Should_IncludeWatermark()
+    {
+        // Arrange
+        var builder = new FFmpegPlanBuilder();
+        var resolution = new Resolution(1920, 1080);
+        var brandKit = new BrandKit(
+            WatermarkPath: "logo.png",
+            WatermarkPosition: "bottom-right",
+            WatermarkOpacity: 0.8f,
+            BrandColor: null,
+            AccentColor: null);
+
+        // Act
+        string filterGraph = builder.BuildFilterGraph(
+            resolution,
+            addSubtitles: false,
+            subtitlePath: null,
+            brandKit: brandKit,
+            enableKenBurns: false);
+
+        // Assert
+        Assert.Contains("movie='logo.png'", filterGraph);
+        Assert.Contains("overlay=", filterGraph);
+        Assert.Contains("x=W-w-10:y=H-h-10", filterGraph); // Bottom-right position
+        Assert.Contains("alpha=0.80", filterGraph);
+    }
+
+    [Fact]
+    public void BuildFilterGraph_Should_IncludeBrandColorOverlay()
+    {
+        // Arrange
+        var builder = new FFmpegPlanBuilder();
+        var resolution = new Resolution(1920, 1080);
+        var brandKit = new BrandKit(
+            WatermarkPath: null,
+            WatermarkPosition: null,
+            WatermarkOpacity: 0.7f,
+            BrandColor: "#FF6B35",
+            AccentColor: null);
+
+        // Act
+        string filterGraph = builder.BuildFilterGraph(
+            resolution,
+            addSubtitles: false,
+            subtitlePath: null,
+            brandKit: brandKit,
+            enableKenBurns: false);
+
+        // Assert
+        Assert.Contains("drawbox", filterGraph);
+        Assert.Contains("FF6B35", filterGraph); // Brand color without #
+        Assert.Contains("@0.05", filterGraph);  // 5% opacity overlay
+    }
+
+    [Fact]
+    public void BuildFilterGraph_Should_SupportDifferentWatermarkPositions()
+    {
+        // Arrange
+        var builder = new FFmpegPlanBuilder();
+        var resolution = new Resolution(1920, 1080);
+
+        // Test all positions
+        var positions = new[]
+        {
+            ("top-left", "x=10:y=10"),
+            ("top-right", "x=W-w-10:y=10"),
+            ("bottom-left", "x=10:y=H-h-10"),
+            ("bottom-right", "x=W-w-10:y=H-h-10"),
+            ("center", "x=(W-w)/2:y=(H-h)/2")
+        };
+
+        foreach (var (position, expectedOverlay) in positions)
+        {
+            var brandKit = new BrandKit(
+                WatermarkPath: "logo.png",
+                WatermarkPosition: position,
+                WatermarkOpacity: 0.7f,
+                BrandColor: null,
+                AccentColor: null);
+
+            // Act
+            string filterGraph = builder.BuildFilterGraph(
+                resolution,
+                addSubtitles: false,
+                subtitlePath: null,
+                brandKit: brandKit,
+                enableKenBurns: false);
+
+            // Assert
+            Assert.Contains(expectedOverlay, filterGraph);
+        }
+    }
+
+    [Fact]
+    public void BuildFilterGraph_Should_CombineAllFeatures()
+    {
+        // Arrange
+        var builder = new FFmpegPlanBuilder();
+        var resolution = new Resolution(1920, 1080);
+        var brandKit = new BrandKit(
+            WatermarkPath: "logo.png",
+            WatermarkPosition: "bottom-right",
+            WatermarkOpacity: 0.8f,
+            BrandColor: "#FF6B35",
+            AccentColor: "#00D9FF");
+
+        // Act
+        string filterGraph = builder.BuildFilterGraph(
+            resolution,
+            addSubtitles: true,
+            subtitlePath: "subs.srt",
+            brandKit: brandKit,
+            enableKenBurns: true);
+
+        // Assert
+        Assert.Contains("scale=1920:1080", filterGraph);
+        Assert.Contains("zoompan", filterGraph);           // Ken Burns
+        Assert.Contains("drawbox", filterGraph);           // Brand color
+        Assert.Contains("movie='logo.png'", filterGraph);  // Watermark
+        Assert.Contains("subtitles", filterGraph);         // Subtitles
+    }
 }
