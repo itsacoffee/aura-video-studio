@@ -297,4 +297,61 @@ public class ImageProviderTests
         // Assert
         Assert.False(result); // Should fail probe with insufficient VRAM
     }
+
+    [Fact]
+    public async Task StableDiffusion_ProbeAsync_Should_HandleTimeout()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new TaskCanceledException("Timeout"));
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var provider = new StableDiffusionWebUiProvider(
+            NullLogger<StableDiffusionWebUiProvider>.Instance,
+            httpClient,
+            "http://127.0.0.1:7860",
+            isNvidiaGpu: true,
+            vramGB: 8);
+
+        // Act
+        var result = await provider.ProbeAsync();
+
+        // Assert
+        Assert.False(result); // Should handle timeout gracefully
+    }
+
+    [Fact]
+    public async Task StableDiffusion_FetchOrGenerateAsync_Should_HandleTimeout()
+    {
+        // Arrange
+        var mockHandler = new Mock<HttpMessageHandler>();
+        mockHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new TaskCanceledException("Timeout"));
+
+        var httpClient = new HttpClient(mockHandler.Object);
+        var provider = new StableDiffusionWebUiProvider(
+            NullLogger<StableDiffusionWebUiProvider>.Instance,
+            httpClient,
+            "http://127.0.0.1:7860",
+            isNvidiaGpu: true,
+            vramGB: 8);
+
+        var scene = new Scene(0, "Test", "Test script", TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        var spec = new VisualSpec("modern", Aspect.Widescreen16x9, new[] { "technology" });
+
+        // Act
+        var result = await provider.FetchOrGenerateAsync(scene, spec, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(result); // Should handle timeout gracefully and return empty
+    }
 }

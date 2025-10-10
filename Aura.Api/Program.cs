@@ -1230,12 +1230,13 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
 .WithOpenApi();
 
 // Test provider connections
-apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody] ProviderTestRequest request) =>
+apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody] ProviderTestRequest request, IHttpClientFactory httpClientFactory) =>
 {
     try
     {
-        var httpClient = new HttpClient();
-        httpClient.Timeout = TimeSpan.FromSeconds(5);
+        var httpClient = httpClientFactory.CreateClient();
+        
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         
         switch (provider.ToLower())
         {
@@ -1243,7 +1244,7 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
                 try
                 {
                     var sdUrl = request.Url ?? "http://127.0.0.1:7860";
-                    var response = await httpClient.GetAsync($"{sdUrl}/sdapi/v1/sd-models");
+                    var response = await httpClient.GetAsync($"{sdUrl}/sdapi/v1/sd-models", cts.Token);
                     if (response.IsSuccessStatusCode)
                     {
                         return Results.Ok(new { success = true, message = "Successfully connected to Stable Diffusion WebUI" });
@@ -1259,7 +1260,7 @@ apiGroup.MapPost("/providers/test/{provider}", async (string provider, [FromBody
                 try
                 {
                     var ollamaUrl = request.Url ?? "http://127.0.0.1:11434";
-                    var response = await httpClient.GetAsync($"{ollamaUrl}/api/tags");
+                    var response = await httpClient.GetAsync($"{ollamaUrl}/api/tags", cts.Token);
                     if (response.IsSuccessStatusCode)
                     {
                         return Results.Ok(new { success = true, message = "Successfully connected to Ollama" });
