@@ -41,6 +41,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container
+builder.Services.AddControllers(); // Add controller support
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
@@ -112,6 +113,7 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
 builder.Services.AddSingleton<VideoOrchestrator>();
 builder.Services.AddSingleton<IRecommendationService, HeuristicRecommendationService>();
 builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
+builder.Services.AddSingleton<Aura.Api.Services.PreflightService>();
 
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
@@ -123,6 +125,14 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
     var downloadDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "dependencies");
     return new Aura.Core.Dependencies.DependencyManager(logger, httpClient, manifestPath, downloadDirectory);
 });
+
+// Register DownloadService
+builder.Services.AddSingleton<Aura.Api.Services.DownloadService>();
+
+// Register Audio/Caption services
+builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
+builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();
+builder.Services.AddSingleton<Aura.Core.Captions.CaptionBuilder>();
 
 // Configure Kestrel to listen on specific port
 builder.WebHost.UseUrls("http://127.0.0.1:5005");
@@ -137,6 +147,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+
+// Add controller routing
+app.MapControllers();
 
 // Serve static files from wwwroot (must be before routing)
 var wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
@@ -434,7 +447,8 @@ apiGroup.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsP
 .WithOpenApi();
 
 // Captions endpoint
-apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request) =>
+apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request, 
+    [FromServices] Aura.Core.Captions.CaptionBuilder captionBuilder) =>
 {
     try
     {
@@ -445,12 +459,9 @@ apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request
             Duration: TimeSpan.FromSeconds(l.DurationSeconds)
         )).ToList();
         
-        var audioProcessor = new Aura.Core.Audio.AudioProcessor(
-            LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<Aura.Core.Audio.AudioProcessor>());
-        
         string captions = request.Format.ToUpperInvariant() == "VTT"
-            ? audioProcessor.GenerateVttSubtitles(lines)
-            : audioProcessor.GenerateSrtSubtitles(lines);
+            ? captionBuilder.GenerateVtt(lines)
+            : captionBuilder.GenerateSrt(lines);
         
         // Optionally save to file if path is provided
         string? filePath = null;
@@ -1333,8 +1344,9 @@ record ScriptRequest(string Topic, string Audience, string Goal, string Tone, st
 record TtsRequest(List<LineDto> Lines, string VoiceName, double Rate, double Pitch, PauseStyle PauseStyle);
 record LineDto(int SceneIndex, string Text, double StartSeconds, double DurationSeconds);
 record ComposeRequest(string TimelineJson);
-record RenderRequest(string TimelineJson, string PresetName);
-record RenderJobDto(string Id, string Status, float Progress, string? OutputPath, DateTime CreatedAt);
+record RenderRequest(string TimelineJson, string? PresetName, RenderSettingsDto? Settings);
+record RenderSettingsDto(int Width, int Height, int Fps, string Codec, string Container, int QualityLevel, int VideoBitrateK, int AudioBitrateK, bool EnableSceneCut);
+record RenderJobDto(string Id, string Status, float Progress, string? OutputPath, DateTime CreatedAt, int? EstimatedTimeRemaining = null, string? Error = null);
 record ApplyProfileRequest(string ProfileName);
 record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKey, string? StabilityAiKey);
 record ProviderPathsRequest(string? StableDiffusionUrl, string? OllamaUrl, string? FfmpegPath, string? FfprobePath, string? OutputDirectory);

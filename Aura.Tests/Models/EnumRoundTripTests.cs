@@ -19,9 +19,7 @@ public class EnumRoundTripTests
             Converters = 
             { 
                 new TolerantPacingConverter(),
-                new TolerantDensityConverterV1(), 
-                new TolerantAspectConverterV1(),
-                new TolerantPauseStyleConverter()
+                new TolerantDensityConverterV1()
             }
         };
     }

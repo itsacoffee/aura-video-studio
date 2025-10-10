@@ -142,4 +142,75 @@ public class TimelineBuilderTests
         Assert.Single(updatedTimeline.SceneAssets[0]);
         Assert.Equal("/path/to/image.jpg", updatedTimeline.SceneAssets[0][0].PathOrUrl);
     }
+
+    [Fact]
+    public void VisualComposition_IntegrationTest_WithStillsAndBrandKit()
+    {
+        // Arrange - Create a simple storyboard with scenes
+        var builder = new TimelineBuilder();
+        var scenes = new List<Scene>
+        {
+            new Scene(0, "Opening", "Welcome to our presentation.", TimeSpan.Zero, TimeSpan.FromSeconds(5)),
+            new Scene(1, "Main Content", "Here is the main content.", TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10)),
+            new Scene(2, "Closing", "Thank you for watching.", TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(5))
+        };
+
+        // Create timeline with narration
+        var timeline = builder.BuildTimeline(scenes, "/tmp/narration.wav", musicPath: "/tmp/music.mp3");
+
+        // Add stock assets to each scene (simulating stock provider results)
+        var sceneAssets = new List<Asset>
+        {
+            new Asset("image", "/tmp/stock1.jpg", "Pexels License", "Pexels"),
+            new Asset("image", "/tmp/stock2.jpg", "Pixabay License", "Pixabay"),
+            new Asset("image", "/tmp/stock3.jpg", "Unsplash License", "Unsplash")
+        };
+
+        // Add assets to each scene
+        timeline = builder.AddSceneAssets(timeline, 0, new[] { sceneAssets[0] });
+        timeline = builder.AddSceneAssets(timeline, 1, new[] { sceneAssets[1] });
+        timeline = builder.AddSceneAssets(timeline, 2, new[] { sceneAssets[2] });
+
+        // Create FFmpeg plan with brand kit and Ken Burns
+        var ffmpegBuilder = new Aura.Core.Rendering.FFmpegPlanBuilder();
+        var brandKit = new BrandKit(
+            WatermarkPath: "/tmp/logo.png",
+            WatermarkPosition: "bottom-right",
+            WatermarkOpacity: 0.8f,
+            BrandColor: "#FF6B35",
+            AccentColor: "#00D9FF");
+
+        var resolution = new Resolution(1920, 1080);
+        var filterGraph = ffmpegBuilder.BuildFilterGraph(
+            resolution,
+            addSubtitles: true,
+            subtitlePath: "/tmp/subtitles.srt",
+            brandKit: brandKit,
+            enableKenBurns: true);
+
+        // Act & Assert - Verify timeline was composed correctly
+        Assert.NotNull(timeline);
+        Assert.Equal(3, timeline.Scenes.Count);
+        Assert.Equal(3, timeline.SceneAssets.Count);
+        Assert.Single(timeline.SceneAssets[0]);
+        Assert.Single(timeline.SceneAssets[1]);
+        Assert.Single(timeline.SceneAssets[2]);
+
+        // Verify each scene has appropriate asset
+        Assert.Equal("Pexels", timeline.SceneAssets[0][0].Attribution);
+        Assert.Equal("Pixabay", timeline.SceneAssets[1][0].Attribution);
+        Assert.Equal("Unsplash", timeline.SceneAssets[2][0].Attribution);
+
+        // Verify filter graph includes all features
+        Assert.Contains("scale=1920:1080", filterGraph);
+        Assert.Contains("zoompan", filterGraph); // Ken Burns
+        Assert.Contains("drawbox", filterGraph); // Brand color
+        Assert.Contains("movie='/tmp/logo.png'", filterGraph); // Watermark
+        Assert.Contains("overlay=", filterGraph); // Watermark position
+        Assert.Contains("subtitles", filterGraph); // Subtitles
+
+        // Verify narration and music paths
+        Assert.Equal("/tmp/narration.wav", timeline.NarrationPath);
+        Assert.Equal("/tmp/music.mp3", timeline.MusicPath);
+    }
 }

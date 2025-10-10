@@ -17,7 +17,15 @@ public record Asset(string Kind, string PathOrUrl, string? License, string? Attr
 
 public record Resolution(int Width, int Height);
 
-public record RenderSpec(Resolution Res, string Container, int VideoBitrateK, int AudioBitrateK);
+public record RenderSpec(
+    Resolution Res, 
+    string Container, 
+    int VideoBitrateK, 
+    int AudioBitrateK,
+    int Fps = 30,
+    string Codec = "H264",
+    int QualityLevel = 75,
+    bool EnableSceneCut = true);
 
 public record RenderProgress(float Percentage, TimeSpan Elapsed, TimeSpan Remaining, string CurrentStage);
 
@@ -119,3 +127,13 @@ public record SeoRecommendations(
     string Title,
     string Description,
     string[] Tags);
+
+/// <summary>
+/// Brand kit settings for visual customization (watermark, colors, etc.)
+/// </summary>
+public record BrandKit(
+    string? WatermarkPath,
+    string? WatermarkPosition,
+    float WatermarkOpacity,
+    string? BrandColor,
+    string? AccentColor);

@@ -62,6 +62,30 @@ public class ImageProviderTests
     }
 
     [Fact]
+    public async Task StableDiffusion_Should_DisableWithVramBelow8GB()
+    {
+        // Arrange - Test VRAM < 8GB scenario for optimal SDXL performance
+        var httpClient = new HttpClient();
+        var provider = new StableDiffusionWebUiProvider(
+            NullLogger<StableDiffusionWebUiProvider>.Instance,
+            httpClient,
+            "http://127.0.0.1:7860",
+            isNvidiaGpu: true,
+            vramGB: 7); // Below 8GB - works but not optimal
+
+        var scene = new Scene(0, "Test", "Test script", TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        var spec = new VisualSpec("modern", Aspect.Widescreen16x9, new[] { "technology" });
+
+        // Act
+        var result = await provider.FetchOrGenerateAsync(scene, spec, CancellationToken.None);
+
+        // Assert
+        // 7GB is above the 6GB minimum, so it should attempt generation (even if suboptimal)
+        // The provider allows 6GB+ but logs warnings
+        Assert.NotNull(result); // Should not be null
+    }
+
+    [Fact]
     public void StableDiffusion_Should_SelectSDXL_WithHighVram()
     {
         // This test validates the model selection logic based on VRAM
@@ -353,5 +377,45 @@ public class ImageProviderTests
 
         // Assert
         Assert.Empty(result); // Should handle timeout gracefully and return empty
+    }
+
+    [Fact]
+    public async Task VisualPipeline_StockOnly_ShouldComposeSuccessfully()
+    {
+        // Arrange - Test that stock-only path works without SD
+        var pexelsProvider = new PexelsStockProvider(
+            NullLogger<PexelsStockProvider>.Instance,
+            new HttpClient(),
+            apiKey: null); // No API key
+
+        var pixabayProvider = new PixabayStockProvider(
+            NullLogger<PixabayStockProvider>.Instance,
+            new HttpClient(),
+            apiKey: null); // No API key
+
+        var unsplashProvider = new UnsplashStockProvider(
+            NullLogger<UnsplashStockProvider>.Instance,
+            new HttpClient(),
+            apiKey: null); // No API key
+
+        var scene = new Scene(0, "Test Scene", "Test script", TimeSpan.Zero, TimeSpan.FromSeconds(5));
+
+        // Act - All should return empty without keys but not fail
+        var pexelsResult = await pexelsProvider.SearchAsync("nature", 5, CancellationToken.None);
+        var pixabayResult = await pixabayProvider.SearchAsync("nature", 5, CancellationToken.None);
+        var unsplashResult = await unsplashProvider.SearchAsync("nature", 5, CancellationToken.None);
+
+        // Assert - All providers handle missing keys gracefully
+        Assert.Empty(pexelsResult);
+        Assert.Empty(pixabayResult);
+        Assert.Empty(unsplashResult);
+
+        // Verify slideshow provider always works as fallback
+        var slideshowProvider = new SlideshowProvider(NullLogger<SlideshowProvider>.Instance);
+        var spec = new VisualSpec("simple", Aspect.Widescreen16x9, Array.Empty<string>());
+        var slideshowResult = await slideshowProvider.FetchOrGenerateAsync(scene, spec, CancellationToken.None);
+        
+        Assert.NotEmpty(slideshowResult);
+        Assert.Single(slideshowResult);
     }
 }

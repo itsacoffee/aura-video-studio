@@ -139,4 +139,44 @@ public class RenderPresetsTests
         // Assert
         Assert.False(requires);
     }
+
+    [Fact]
+    public void YouTube1080p_Should_IncludeFpsAndCodec()
+    {
+        // Arrange & Act
+        var preset = RenderPresets.YouTube1080p;
+
+        // Assert
+        Assert.Equal(30, preset.Fps);
+        Assert.Equal("H264", preset.Codec);
+        Assert.Equal(75, preset.QualityLevel);
+        Assert.True(preset.EnableSceneCut);
+    }
+
+    [Fact]
+    public void YouTubeShorts_Should_BeVerticalWithCorrectSettings()
+    {
+        // Arrange & Act
+        var preset = RenderPresets.YouTubeShorts;
+
+        // Assert
+        Assert.Equal(1080, preset.Res.Width);
+        Assert.Equal(1920, preset.Res.Height);
+        Assert.Equal(30, preset.Fps);
+        Assert.Equal("H264", preset.Codec);
+    }
+
+    [Fact]
+    public void YouTube4K_Should_HaveHigherBitrateAndCorrectSettings()
+    {
+        // Arrange & Act
+        var preset = RenderPresets.YouTube4K;
+
+        // Assert
+        Assert.Equal(3840, preset.Res.Width);
+        Assert.Equal(2160, preset.Res.Height);
+        Assert.Equal(45000, preset.VideoBitrateK);
+        Assert.Equal(30, preset.Fps);
+        Assert.Equal("H264", preset.Codec);
+    }
 }

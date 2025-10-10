@@ -90,20 +90,71 @@ public class FFmpegPlanBuilder
     }
 
     /// <summary>
+    /// Builds FFmpeg command arguments using RenderSpec directly (new simplified API)
+    /// </summary>
+    public string BuildRenderCommand(
+        RenderSpec spec,
+        EncoderType encoder,
+        string inputVideo,
+        string inputAudio,
+        string outputPath)
+    {
+        var quality = new QualitySettings
+        {
+            QualityLevel = spec.QualityLevel,
+            Fps = spec.Fps,
+            EnableSceneCut = spec.EnableSceneCut,
+            Codec = spec.Codec
+        };
+        return BuildRenderCommand(spec, quality, encoder, inputVideo, inputAudio, outputPath);
+    }
+
+    /// <summary>
     /// Builds a filtergraph for compositing video with overlays, text, and transitions
     /// </summary>
     public string BuildFilterGraph(
         Resolution resolution,
         bool addSubtitles = false,
-        string? subtitlePath = null)
+        string? subtitlePath = null,
+        BrandKit? brandKit = null,
+        bool enableKenBurns = false)
     {
         var filters = new List<string>();
 
         // Scale to target resolution with high-quality scaler
         filters.Add($"scale={resolution.Width}:{resolution.Height}:flags=lanczos");
 
-        // Add subtle motion (Ken Burns effect) - optional
-        // filters.Add("zoompan=z='min(zoom+0.0015,1.5)':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080");
+        // Add Ken Burns effect for still images (slow zoom and pan)
+        if (enableKenBurns)
+        {
+            // Subtle zoom from 1.0 to 1.1x over the duration with slight pan
+            filters.Add($"zoompan=z='min(zoom+0.0015,1.1)':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={resolution.Width}x{resolution.Height}");
+        }
+
+        // Add brand color overlay if specified
+        if (brandKit?.BrandColor != null)
+        {
+            // Add a subtle color overlay using drawbox with alpha
+            string color = brandKit.BrandColor.TrimStart('#');
+            filters.Add($"drawbox=x=0:y=0:w=iw:h=ih:color={color}@0.05:t=fill");
+        }
+
+        // Add watermark if specified
+        if (brandKit?.WatermarkPath != null && !string.IsNullOrEmpty(brandKit.WatermarkPath))
+        {
+            string escapedWatermark = brandKit.WatermarkPath.Replace("\\", "\\\\").Replace(":", "\\:");
+            string position = brandKit.WatermarkPosition?.ToLowerInvariant() switch
+            {
+                "top-left" => "x=10:y=10",
+                "top-right" => "x=W-w-10:y=10",
+                "bottom-left" => "x=10:y=H-h-10",
+                "bottom-right" => "x=W-w-10:y=H-h-10",
+                "center" => "x=(W-w)/2:y=(H-h)/2",
+                _ => "x=W-w-10:y=H-h-10" // Default to bottom-right
+            };
+            float opacity = brandKit.WatermarkOpacity > 0 ? brandKit.WatermarkOpacity : 0.7f;
+            filters.Add($"movie='{escapedWatermark}',scale=-1:80[wm];[in][wm]overlay={position}:format=auto:alpha={opacity:F2}");
+        }
 
         // Add subtitles if requested
         if (addSubtitles && !string.IsNullOrEmpty(subtitlePath))
