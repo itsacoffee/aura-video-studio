@@ -129,6 +129,11 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
 // Register DownloadService
 builder.Services.AddSingleton<Aura.Api.Services.DownloadService>();
 
+// Register Audio/Caption services
+builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
+builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();
+builder.Services.AddSingleton<Aura.Core.Captions.CaptionBuilder>();
+
 // Configure Kestrel to listen on specific port
 builder.WebHost.UseUrls("http://127.0.0.1:5005");
 
@@ -442,7 +447,8 @@ apiGroup.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsP
 .WithOpenApi();
 
 // Captions endpoint
-apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request) =>
+apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request, 
+    [FromServices] Aura.Core.Captions.CaptionBuilder captionBuilder) =>
 {
     try
     {
@@ -453,12 +459,9 @@ apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request
             Duration: TimeSpan.FromSeconds(l.DurationSeconds)
         )).ToList();
         
-        var audioProcessor = new Aura.Core.Audio.AudioProcessor(
-            LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger<Aura.Core.Audio.AudioProcessor>());
-        
         string captions = request.Format.ToUpperInvariant() == "VTT"
-            ? audioProcessor.GenerateVttSubtitles(lines)
-            : audioProcessor.GenerateSrtSubtitles(lines);
+            ? captionBuilder.GenerateVtt(lines)
+            : captionBuilder.GenerateSrt(lines);
         
         // Optionally save to file if path is provided
         string? filePath = null;
