@@ -13,23 +13,18 @@ using Aura.Core.Orchestrator;
 using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
+using Aura.Cli.Commands;
 
 namespace Aura.Cli
 {
     /// <summary>
     /// Command-line interface for Aura Video Studio
-    /// Demonstrates backend functionality on non-Windows platforms
+    /// Supports both interactive demo and headless command execution
     /// </summary>
     class Program
     {
-        static async Task Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
-            Console.WriteLine("╔══════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║           AURA VIDEO STUDIO - CLI Demo                  ║");
-            Console.WriteLine("║   Free-Path Video Generation (No API Keys Required)     ║");
-            Console.WriteLine("╚══════════════════════════════════════════════════════════╝");
-            Console.WriteLine();
-
             // Build host with DI
             var host = CreateHostBuilder(args).Build();
 
@@ -38,21 +33,94 @@ namespace Aura.Cli
 
             try
             {
-                // Run the demo
-                var demo = services.GetRequiredService<CliDemo>();
-                await demo.RunAsync();
+                // Check if a command was specified
+                if (args.Length > 0 && !args[0].StartsWith("-"))
+                {
+                    var commandName = args[0].ToLowerInvariant();
+                    var commandArgs = args.Skip(1).ToArray();
+
+                    return commandName switch
+                    {
+                        "preflight" => await services.GetRequiredService<PreflightCommand>().ExecuteAsync(commandArgs),
+                        "script" => await services.GetRequiredService<ScriptCommand>().ExecuteAsync(commandArgs),
+                        "quick" => await services.GetRequiredService<QuickCommand>().ExecuteAsync(commandArgs),
+                        "help" or "--help" or "-h" => ShowHelp(),
+                        _ => ShowUnknownCommand(commandName)
+                    };
+                }
+
+                // No command specified - show help or run demo based on --demo flag
+                if (args.Any(a => a == "--demo"))
+                {
+                    Console.WriteLine("╔══════════════════════════════════════════════════════════╗");
+                    Console.WriteLine("║           AURA VIDEO STUDIO - CLI Demo                  ║");
+                    Console.WriteLine("║   Free-Path Video Generation (No API Keys Required)     ║");
+                    Console.WriteLine("╚══════════════════════════════════════════════════════════╝");
+                    Console.WriteLine();
+
+                    var demo = services.GetRequiredService<CliDemo>();
+                    await demo.RunAsync();
+                    
+                    Console.WriteLine();
+                    Console.WriteLine("✅ Demo completed successfully!");
+                    return 0;
+                }
+                else
+                {
+                    return ShowHelp();
+                }
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"❌ Error: {ex.Message}");
                 Console.ResetColor();
-                Console.WriteLine(ex.StackTrace);
-                return;
+                
+                if (args.Any(a => a == "--verbose" || a == "-v"))
+                {
+                    Console.WriteLine(ex.StackTrace);
+                }
+                
+                return 1;
             }
+        }
 
+        static int ShowHelp()
+        {
+            Console.WriteLine("Aura CLI - Headless video generation and automation");
             Console.WriteLine();
-            Console.WriteLine("✅ Demo completed successfully!");
+            Console.WriteLine("Usage: aura-cli <command> [options]");
+            Console.WriteLine();
+            Console.WriteLine("Commands:");
+            Console.WriteLine("  preflight       Check system requirements and dependencies");
+            Console.WriteLine("  script          Generate script from brief and plan JSON files");
+            Console.WriteLine("  quick           Quick end-to-end generation with defaults");
+            Console.WriteLine("  help            Show this help message");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
+            Console.WriteLine("  --demo          Run the interactive demo (legacy mode)");
+            Console.WriteLine("  -h, --help      Show help for a specific command");
+            Console.WriteLine("  -v, --verbose   Enable verbose output");
+            Console.WriteLine("  --dry-run       Validate without executing");
+            Console.WriteLine();
+            Console.WriteLine("Examples:");
+            Console.WriteLine("  aura-cli preflight -v");
+            Console.WriteLine("  aura-cli quick -t \"Machine Learning\" -d 3");
+            Console.WriteLine("  aura-cli script -b brief.json -p plan.json -o script.txt");
+            Console.WriteLine("  aura-cli --demo");
+            Console.WriteLine();
+            Console.WriteLine("For command-specific help:");
+            Console.WriteLine("  aura-cli <command> --help");
+            
+            return 0;
+        }
+
+        static int ShowUnknownCommand(string command)
+        {
+            Console.WriteLine($"Unknown command: {command}");
+            Console.WriteLine();
+            Console.WriteLine("Run 'aura-cli help' for usage information");
+            return 1;
         }
 
         static IHostBuilder CreateHostBuilder(string[] args) =>
@@ -83,7 +151,12 @@ namespace Aura.Cli
                     });
                     services.AddTransient<IVideoComposer>(sp => sp.GetRequiredService<FfmpegVideoComposer>());
                     
-                    // Demo service
+                    // Commands
+                    services.AddTransient<PreflightCommand>();
+                    services.AddTransient<ScriptCommand>();
+                    services.AddTransient<QuickCommand>();
+                    
+                    // Demo service (legacy)
                     services.AddTransient<CliDemo>();
                 });
     }

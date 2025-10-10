@@ -1,45 +1,103 @@
+using System;
+using System.Text.Json;
 using System.Text.Json.Serialization;
-using Aura.Core.Models;
+using ApiV1 = Aura.Api.Models.ApiModels.V1;
 
-namespace Aura.Api.Serialization;
-
-/// <summary>
-/// Aggregator file that re-exports all tolerant enum converters for convenient registration.
-/// This ensures consistent enum handling across the API with support for both canonical names and legacy aliases.
-/// 
-/// Supported conversions:
-/// - Aspect: Widescreen16x9 (or 16:9), Vertical9x16 (or 9:16), Square1x1 (or 1:1)
-/// - Density: Sparse, Balanced (or Normal), Dense
-/// - Pacing: Uses standard JsonStringEnumConverter (case-insensitive)
-/// 
-/// Error codes for enum validation failures:
-/// - E303: Invalid enum value provided
-/// </summary>
-public static class EnumJsonConverters
+namespace Aura.Api.Serialization
 {
     /// <summary>
-    /// Gets all custom enum converters that should be registered in the JSON serialization options.
+    /// Consolidated JSON converters for API V1 enums with tolerant parsing.
+    /// Accepts both canonical names and legacy aliases for backward compatibility.
+    ///
+    /// Supported conversions:
+    /// - Aspect: Widescreen16x9 (or 16:9), Vertical9x16 (or 9:16), Square1x1 (or 1:1)
+    /// - Density: Sparse, Balanced (or Normal), Dense
+    /// - Pacing: Chill, Conversational, Fast
+    /// - PauseStyle: Natural, Short, Long, Dramatic
+    ///
+    /// Error codes for enum validation failures:
+    /// - E303: Invalid enum value provided
     /// </summary>
-    public static JsonConverter[] GetConverters()
+    public static class EnumJsonConverters
     {
-        return new JsonConverter[]
+        /// <summary>
+        /// Gets all custom enum converters that should be registered in the JSON serialization options.
+        /// </summary>
+        public static JsonConverter[] GetConverters()
         {
-            new TolerantDensityConverter(),
-            new TolerantAspectConverter(),
-            // Pacing uses standard JsonStringEnumConverter for case-insensitive parsing
-            new JsonStringEnumConverter()
-        };
+            return new JsonConverter[]
+            {
+                // Specific tolerant converters for ApiModels.V1
+                new TolerantPacingConverter(),
+                new TolerantDensityConverterV1(),
+                new TolerantAspectConverterV1(),
+                new TolerantPauseStyleConverter(),
+
+                // Fallback case-insensitive converter for remaining enums
+                new JsonStringEnumConverter()
+            };
+        }
+
+        /// <summary>
+        /// Adds all tolerant enum converters to the provided options.
+        /// </summary>
+        public static void AddToOptions(JsonSerializerOptions options)
+        {
+            foreach (var converter in GetConverters())
+            {
+                options.Converters.Add(converter);
+            }
+            options.PropertyNameCaseInsensitive = true;
+        }
     }
 
     /// <summary>
-    /// Adds all tolerant enum converters to the provided options.
+    /// JSON converter for Pacing enum
+    /// Canonical: "Chill", "Conversational", "Fast"
     /// </summary>
-    public static void AddToOptions(System.Text.Json.JsonSerializerOptions options)
+    public class TolerantPacingConverter : JsonConverter<ApiV1.Pacing>
     {
-        foreach (var converter in GetConverters())
+        public override ApiV1.Pacing Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            options.Converters.Add(converter);
+            if (reader.TokenType != JsonTokenType.String)
+                throw new JsonException($"Expected string value for Pacing, got {reader.TokenType}");
+
+            var value = reader.GetString();
+            if (string.IsNullOrWhiteSpace(value))
+                throw new JsonException("Pacing value cannot be empty");
+
+            if (Enum.TryParse<ApiV1.Pacing>(value, ignoreCase: true, out var result))
+                return result;
+
+            throw new JsonException($"Unknown Pacing value: '{value}'. Valid values are: Chill, Conversational, Fast");
         }
-        options.PropertyNameCaseInsensitive = true;
+
+        public override void Write(Utf8JsonWriter writer, ApiV1.Pacing value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
     }
-}
+
+    /// <summary>
+    /// JSON converter for Density enum
+    /// Canonical: "Sparse", "Balanced", "Dense"
+    /// Alias: "Normal" -> "Balanced"
+    /// </summary>
+    public class TolerantDensityConverterV1 : JsonConverter<ApiV1.Density>
+    {
+        public override ApiV1.Density Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType != JsonTokenType.String)
+                throw new JsonException($"Expected string value for Density, got {reader.TokenType}");
+
+            var value = reader.GetString();
+            if (string.IsNullOrWhiteSpace(value))
+                throw new JsonException("Density value cannot be empty");
+
+            if (Enum.TryParse<ApiV1.Density>(value, ignoreCase: true, out var result))
+                return result;
+
+            return value.Trim().ToLowerInvariant() switch
+            {
+                "normal" => ApiV1.Density.Balanced,
+                _ => throw new Json
