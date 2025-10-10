@@ -43,8 +43,7 @@ public class LlmProviderFactory
         // Always available: RuleBased provider
         try
         {
-            var ruleBasedLogger = loggerFactory.CreateLogger("RuleBasedLlmProvider");
-            providers["RuleBased"] = CreateRuleBasedProvider(ruleBasedLogger);
+            providers["RuleBased"] = CreateRuleBasedProvider(loggerFactory);
             _logger.LogInformation("RuleBased provider registered");
         }
         catch (Exception ex)
@@ -135,7 +134,7 @@ public class LlmProviderFactory
         return providers;
     }
 
-    private ILlmProvider CreateRuleBasedProvider(ILogger logger)
+    private ILlmProvider CreateRuleBasedProvider(ILoggerFactory loggerFactory)
     {
         // Use reflection to create RuleBasedLlmProvider
         var type = Type.GetType("Aura.Providers.Llm.RuleBasedLlmProvider, Aura.Providers");
@@ -144,7 +143,17 @@ public class LlmProviderFactory
             throw new Exception("RuleBasedLlmProvider type not found");
         }
 
-        return (ILlmProvider)Activator.CreateInstance(type, logger)!;
+        // Create a typed logger ILogger<RuleBasedLlmProvider>
+        var loggerType = typeof(ILogger<>).MakeGenericType(type);
+        var createLoggerMethod = typeof(ILoggerFactory).GetMethod("CreateLogger", Array.Empty<Type>());
+        if (createLoggerMethod == null)
+        {
+            throw new Exception("CreateLogger method not found on ILoggerFactory");
+        }
+        var genericCreateLogger = createLoggerMethod.MakeGenericMethod(type);
+        var typedLogger = genericCreateLogger.Invoke(loggerFactory, null);
+        
+        return (ILlmProvider)Activator.CreateInstance(type, typedLogger)!;
     }
 
     private ILlmProvider? CreateOllamaProvider(ILogger logger)
