@@ -13,7 +13,7 @@ import {
 } from '@fluentui/react-components';
 import {
   Subtitles24Regular,
-  Download24Regular,
+  ArrowDownload24Regular,
   Eye24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
@@ -279,7 +279,7 @@ export function CaptionsPanel({ scriptLines = [], onGenerate, onExport }: Captio
             </Button>
             <Button
               appearance="secondary"
-              icon={<Download24Regular />}
+              icon={<ArrowDownload24Regular />}
               onClick={handleExport}
               disabled={preview === ''}
             >

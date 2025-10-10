@@ -21,7 +21,7 @@ import {
   Checkmark24Regular,
   ErrorCircle24Regular,
 } from '@fluentui/react-icons';
-import { useRenderStore, type RenderSettings } from '../state/render';
+import { useRenderStore } from '../state/render';
 
 const useStyles = makeStyles({
   panel: {
@@ -126,7 +126,7 @@ export function RenderPanel() {
       case 'cancelled':
         return <Dismiss24Regular className={styles.statusIcon} style={{ color: tokens.colorNeutralForeground3 }} />;
       default:
-        return <Play24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteBlueForeground1 }} />;
+        return <Play24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteBlueForeground2 }} />;
     }
   };
 
@@ -203,7 +203,7 @@ export function RenderPanel() {
                 style={{ width: '100%' }}
               >
                 {FPS_OPTIONS.map((fps) => (
-                  <Option key={fps} value={fps.toString()}>
+                  <Option key={fps} value={fps.toString()} text={fps.toString()}>
                     {fps}
                   </Option>
                 ))}

@@ -1344,8 +1344,9 @@ record ScriptRequest(string Topic, string Audience, string Goal, string Tone, st
 record TtsRequest(List<LineDto> Lines, string VoiceName, double Rate, double Pitch, PauseStyle PauseStyle);
 record LineDto(int SceneIndex, string Text, double StartSeconds, double DurationSeconds);
 record ComposeRequest(string TimelineJson);
-record RenderRequest(string TimelineJson, string PresetName);
-record RenderJobDto(string Id, string Status, float Progress, string? OutputPath, DateTime CreatedAt);
+record RenderRequest(string TimelineJson, string? PresetName, RenderSettingsDto? Settings);
+record RenderSettingsDto(int Width, int Height, int Fps, string Codec, string Container, int QualityLevel, int VideoBitrateK, int AudioBitrateK, bool EnableSceneCut);
+record RenderJobDto(string Id, string Status, float Progress, string? OutputPath, DateTime CreatedAt, int? EstimatedTimeRemaining = null, string? Error = null);
 record ApplyProfileRequest(string ProfileName);
 record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKey, string? StabilityAiKey);
 record ProviderPathsRequest(string? StableDiffusionUrl, string? OllamaUrl, string? FfmpegPath, string? FfprobePath, string? OutputDirectory);
