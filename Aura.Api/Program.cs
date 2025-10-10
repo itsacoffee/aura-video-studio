@@ -111,7 +111,25 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     return new FfmpegVideoComposer(logger, ffmpegPath, outputDirectory);
 });
 builder.Services.AddSingleton<VideoOrchestrator>();
-builder.Services.AddSingleton<IRecommendationService, HeuristicRecommendationService>();
+
+// Register planner provider factory and PlannerService with LLM routing
+builder.Services.AddSingleton<Aura.Providers.Planner.PlannerProviderFactory>();
+builder.Services.AddSingleton<IRecommendationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Planner.PlannerService>>();
+    var factory = sp.GetRequiredService<Aura.Providers.Planner.PlannerProviderFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    
+    // Create available planner providers
+    var providers = factory.CreateAvailableProviders(loggerFactory);
+    
+    // Use ProIfAvailable by default - will use Pro providers if API keys exist, else fall back to free
+    return new Aura.Core.Planner.PlannerService(logger, providers, "ProIfAvailable");
+});
+
+// Keep HeuristicRecommendationService available for direct use if needed
+builder.Services.AddSingleton<Aura.Core.Planner.HeuristicRecommendationService>();
+
 builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
 builder.Services.AddSingleton<Aura.Api.Services.PreflightService>();
 
