@@ -1,3 +1,4 @@
+using Aura.Api.Helpers;
 using Aura.Api.Serialization;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
@@ -318,20 +319,12 @@ apiGroup.MapPost("/script", async (
         // Validate required fields
         if (string.IsNullOrWhiteSpace(request.Topic))
         {
-            return Results.Problem(
-                detail: "Topic is required",
-                statusCode: 400,
-                title: "Invalid Brief",
-                type: "https://docs.aura.studio/errors/E303");
+            return ProblemDetailsHelper.CreateInvalidBrief("Topic is required");
         }
         
         if (request.TargetDurationMinutes <= 0 || request.TargetDurationMinutes > 120)
         {
-            return Results.Problem(
-                detail: "Target duration must be between 0 and 120 minutes",
-                statusCode: 400,
-                title: "Invalid Plan",
-                type: "https://docs.aura.studio/errors/E304");
+            return ProblemDetailsHelper.CreateInvalidPlan("Target duration must be between 0 and 120 minutes");
         }
         
         var brief = new Brief(
@@ -366,21 +359,11 @@ apiGroup.MapPost("/script", async (
         {
             Log.Error("Script generation failed: {ErrorCode} - {ErrorMessage}", result.ErrorCode, result.ErrorMessage);
             
-            // Handle specific error codes
-            if (result.ErrorCode == "E307")
-            {
-                return Results.Problem(
-                    detail: result.ErrorMessage,
-                    statusCode: 403,
-                    title: "Offline Mode Restriction",
-                    type: "https://docs.aura.studio/errors/E307");
-            }
-            
-            return Results.Problem(
-                detail: result.ErrorMessage,
-                statusCode: 500,
-                title: "Script Generation Failed",
-                type: $"https://docs.aura.studio/errors/{result.ErrorCode}");
+            // Use ProblemDetailsHelper for consistent error responses
+            return ProblemDetailsHelper.CreateScriptError(
+                result.ErrorCode ?? "E300", 
+                result.ErrorMessage ?? "Script generation failed"
+            );
         }
         
         Log.Information("Script generated successfully with {Provider}: {Length} characters (fallback: {IsFallback})", 
@@ -397,38 +380,22 @@ apiGroup.MapPost("/script", async (
     catch (JsonException ex)
     {
         Log.Error(ex, "Invalid enum value in script request");
-        return Results.Problem(
-            detail: ex.Message,
-            statusCode: 400,
-            title: "Invalid Enum Value",
-            type: "https://docs.aura.studio/errors/E303");
+        return ProblemDetailsHelper.CreateScriptError("E303", ex.Message);
     }
     catch (ArgumentException ex)
     {
         Log.Error(ex, "Invalid argument for script generation");
-        return Results.Problem(
-            detail: ex.Message,
-            statusCode: 400,
-            title: "Invalid Request",
-            type: "https://docs.aura.studio/errors/E303");
+        return ProblemDetailsHelper.CreateScriptError("E303", ex.Message);
     }
     catch (TaskCanceledException)
     {
         Log.Warning("Script generation was cancelled");
-        return Results.Problem(
-            detail: "Script generation was cancelled",
-            statusCode: 408,
-            title: "Request Timeout",
-            type: "https://docs.aura.studio/errors/E301");
+        return ProblemDetailsHelper.CreateScriptError("E301", "Script generation was cancelled");
     }
     catch (Exception ex)
     {
         Log.Error(ex, "Error generating script: {Message}", ex.Message);
-        return Results.Problem(
-            detail: $"Error generating script: {ex.Message}",
-            statusCode: 500,
-            title: "Script Provider Failed",
-            type: "https://docs.aura.studio/errors/E300");
+        return ProblemDetailsHelper.CreateScriptError("E300", $"Error generating script: {ex.Message}");
     }
 })
 .WithName("GenerateScript")
