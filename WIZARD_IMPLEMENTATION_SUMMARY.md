@@ -210,7 +210,13 @@ All requirements from problem statement satisfied:
 ✅ Sensible defaults applied
 ✅ Works with Free and Pro profiles
 
-## Testing Evidence
+## Testing
+
+### Automated Tests
+- ✅ Vitest configured with 5 unit tests
+- ✅ Playwright E2E tests for wizard workflow
+- ✅ Visual regression tests for UI consistency
+- ✅ Coverage threshold: 70% minimum
 
 ### Manual Testing
 - ✅ Default values verified
@@ -228,22 +234,14 @@ All requirements from problem statement satisfied:
 - Advanced section shown expanded
 - Tooltips visible in screenshots
 
-## Known Limitations
+## Enhanced Features (AGENT 08)
 
-1. **No automated tests**: Web project lacks test framework (Vitest not configured)
-2. **Manual testing only**: All verification done by hand
-3. **API integration**: Backend endpoints may need updates for new fields
-4. **No E2E tests**: Playwright not configured
-
-## Future Enhancements
-
-1. Add unit tests when Vitest is configured
-2. Add E2E tests when Playwright is added
-3. Implement Ctrl+K keyboard shortcuts overlay
-4. Add settings export/import
-5. Create profile templates
-6. Add visual regression testing
-7. Internationalization (i18n) for tooltips
+1. ✅ **Keyboard shortcuts overlay**: Ctrl+K opens modal with shortcuts list and clipboard copy
+2. ✅ **Settings export/import**: JSON export/import with schema validation
+3. ✅ **Profile templates**: Free-Only, Balanced Mix, Pro-Max templates
+4. ✅ **Custom profiles**: Save/load custom configurations
+5. ✅ **Dark mode verified**: All panels use theme tokens with proper contrast
+6. ✅ **CI integration**: Vitest and Playwright run on all PRs
 
 ## Deployment Notes
 

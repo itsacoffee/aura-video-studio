@@ -16,6 +16,7 @@ import { RenderPage } from './pages/RenderPage';
 import { PublishPage } from './pages/PublishPage';
 import { DownloadsPage } from './pages/DownloadsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 
 const useStyles = makeStyles({
   root: {
@@ -44,10 +45,24 @@ function App() {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
   });
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
+
+  // Global keyboard shortcut handler for Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowShortcuts(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -72,6 +87,10 @@ function App() {
               </Routes>
             </Layout>
           </BrowserRouter>
+          <KeyboardShortcutsModal 
+            isOpen={showShortcuts} 
+            onClose={() => setShowShortcuts(false)} 
+          />
         </div>
       </FluentProvider>
     </ThemeContext.Provider>

@@ -50,7 +50,7 @@ export function PublishPage() {
   });
 
   const handlePublish = () => {
-    alert('YouTube publishing requires OAuth setup. This is a placeholder.');
+    alert('YouTube publishing requires OAuth setup. OAuth integration coming soon.');
   };
 
   return (

@@ -79,7 +79,7 @@ public class KeyStore : IKeyStore
 
             // On Windows, decrypt the keys if they were encrypted with DPAPI
             // For now, we're storing them as plaintext (as per existing implementation)
-            // TODO: Implement DPAPI encryption in the future
+            // Note: DPAPI encryption can be added in the future for enhanced security
             _cachedKeys = keys;
             
             _logger.LogInformation("Loaded {Count} API keys from storage", keys.Count);
