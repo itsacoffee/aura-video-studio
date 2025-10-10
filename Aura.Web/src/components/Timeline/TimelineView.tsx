@@ -12,7 +12,6 @@ import {
   Play24Regular,
   Pause24Regular,
   Cut24Regular,
-  Dismiss24Regular,
 } from '@fluentui/react-icons';
 import { useTimelineStore } from '../../state/timeline';
 
