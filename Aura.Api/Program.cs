@@ -1,4 +1,5 @@
 using Aura.Api.Helpers;
+using Aura.Api.Middleware;
 using Aura.Api.Serialization;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
@@ -32,10 +33,12 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
-    .WriteTo.Console()
+    .Enrich.FromLogContext() // Enable correlation ID enrichment
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .WriteTo.File("logs/aura-api-.log", 
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 7)
+        retainedFileCountLimit: 7,
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{CorrelationId}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .CreateLogger();
 
 builder.Host.UseSerilog();
@@ -157,6 +160,9 @@ builder.WebHost.UseUrls("http://127.0.0.1:5005");
 
 var app = builder.Build();
 
+// Add correlation ID middleware early in the pipeline
+app.UseCorrelationId();
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -191,6 +197,101 @@ var apiGroup = app.MapGroup("/api");
 apiGroup.MapGet("/healthz", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
     .WithName("HealthCheck")
     .WithOpenApi();
+
+// Log viewer endpoint - retrieve logs with optional filtering
+apiGroup.MapGet("/logs", (HttpContext httpContext, string? level = null, string? correlationId = null, int lines = 500) =>
+{
+    // Local helper method for parsing log lines
+    static object? ParseLogLine(string line)
+    {
+        try
+        {
+            // Expected format: [timestamp] [LEVEL] [CorrelationId] message
+            // Example: [2025-10-10 22:39:40.123 +00:00] [INF] [abc123] Application started
+            
+            if (!line.StartsWith("[")) return null;
+
+            var parts = line.Split(new[] { '[', ']' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 3) return null;
+
+            var timestamp = parts[0].Trim();
+            var level = parts[1].Trim();
+            var correlationId = parts.Length > 2 ? parts[2].Trim() : "";
+            var message = parts.Length > 3 ? string.Join(" ", parts.Skip(3)) : "";
+
+            return new
+            {
+                timestamp,
+                level,
+                correlationId,
+                message,
+                rawLine = line
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    try
+    {
+        var logsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+        if (!Directory.Exists(logsDirectory))
+        {
+            return Results.Ok(new { logs = Array.Empty<object>(), message = "No logs directory found" });
+        }
+
+        // Get the most recent log file
+        var logFiles = Directory.GetFiles(logsDirectory, "aura-api-*.log")
+            .OrderByDescending(f => File.GetLastWriteTime(f))
+            .ToList();
+
+        if (logFiles.Count == 0)
+        {
+            return Results.Ok(new { logs = Array.Empty<object>(), message = "No log files found" });
+        }
+
+        var latestLogFile = logFiles[0];
+        var allLines = File.ReadAllLines(latestLogFile);
+        var logEntries = new List<object>();
+
+        // Parse log lines (take last N lines for performance)
+        var linesToRead = Math.Min(lines, allLines.Length);
+        var startIndex = Math.Max(0, allLines.Length - linesToRead);
+
+        for (int i = startIndex; i < allLines.Length; i++)
+        {
+            var line = allLines[i];
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            // Parse log line: [timestamp] [LEVEL] [CorrelationId] message
+            var parsed = ParseLogLine(line);
+            if (parsed == null) continue;
+
+            // Apply filters
+            var parsedLevel = (parsed.GetType().GetProperty("level")?.GetValue(parsed) as string) ?? "";
+            var parsedCorrelationId = (parsed.GetType().GetProperty("correlationId")?.GetValue(parsed) as string) ?? "";
+
+            if (!string.IsNullOrEmpty(level) && !parsedLevel.Equals(level, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!string.IsNullOrEmpty(correlationId) && !parsedCorrelationId.Equals(correlationId, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            logEntries.Add(parsed);
+        }
+
+        return Results.Ok(new { logs = logEntries, file = Path.GetFileName(latestLogFile), totalLines = allLines.Length });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error reading logs");
+        return Results.Problem("Error reading log files", statusCode: 500);
+    }
+})
+.WithName("GetLogs")
+.WithOpenApi();
 
 // Capabilities endpoint
 apiGroup.MapGet("/capabilities", async (HardwareDetector detector) =>

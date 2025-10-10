@@ -48,16 +48,17 @@ public static class ProblemDetailsHelper
     /// <summary>
     /// Creates a ProblemDetails result for script generation errors
     /// </summary>
-    public static IResult CreateScriptError(string errorCode, string detail)
+    public static IResult CreateScriptError(string errorCode, string detail, HttpContext? httpContext = null)
     {
         if (!ErrorDefinitions.TryGetValue(errorCode, out var errorDef))
         {
             // Unknown error code - use generic error
-            return Results.Problem(
+            return CreateProblemWithCorrelationId(
                 detail: detail,
                 statusCode: 500,
                 title: "Script Generation Failed",
-                type: $"https://docs.aura.studio/errors/{errorCode}"
+                type: $"https://docs.aura.studio/errors/{errorCode}",
+                httpContext: httpContext
             );
         }
 
@@ -70,11 +71,39 @@ public static class ProblemDetailsHelper
             fullDetail = $"{detail}\n\nAction: {guidance}";
         }
 
-        return Results.Problem(
+        return CreateProblemWithCorrelationId(
             detail: fullDetail,
             statusCode: statusCode,
             title: title,
-            type: $"https://docs.aura.studio/errors/{errorCode}"
+            type: $"https://docs.aura.studio/errors/{errorCode}",
+            httpContext: httpContext
+        );
+    }
+
+    /// <summary>
+    /// Helper method to create a ProblemDetails result with correlation ID
+    /// </summary>
+    private static IResult CreateProblemWithCorrelationId(
+        string detail,
+        int statusCode,
+        string title,
+        string type,
+        HttpContext? httpContext = null)
+    {
+        var extensions = new Dictionary<string, object?>();
+        
+        // Add correlation ID if available
+        if (httpContext?.Items.TryGetValue("CorrelationId", out var correlationId) == true)
+        {
+            extensions["correlationId"] = correlationId;
+        }
+
+        return Results.Problem(
+            detail: detail,
+            statusCode: statusCode,
+            title: title,
+            type: type,
+            extensions: extensions
         );
     }
 
