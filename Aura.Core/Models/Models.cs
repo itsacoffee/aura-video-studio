@@ -94,7 +94,10 @@ public record PlannerRecommendations(
     MusicRecommendations Music,
     CaptionStyle Captions,
     string ThumbnailPrompt,
-    SeoRecommendations Seo);
+    SeoRecommendations Seo,
+    double QualityScore = 0.75,
+    string? ProviderUsed = null,
+    string? ExplainabilityNotes = null);
 
 /// <summary>
 /// Voice recommendations

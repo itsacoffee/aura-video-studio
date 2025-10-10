@@ -11,7 +11,7 @@ namespace Aura.Core.Planner;
 /// Deterministic heuristic-based recommendation service
 /// Used as fallback when LLM is unavailable or in offline mode
 /// </summary>
-public class HeuristicRecommendationService : IRecommendationService
+public class HeuristicRecommendationService : IRecommendationService, ILlmPlannerProvider
 {
     private readonly ILogger<HeuristicRecommendationService> _logger;
 
@@ -49,10 +49,13 @@ public class HeuristicRecommendationService : IRecommendationService
             Music: music,
             Captions: captions,
             ThumbnailPrompt: thumbnailPrompt,
-            Seo: seo);
+            Seo: seo,
+            QualityScore: 0.70, // Rule-based has lower quality than LLM
+            ProviderUsed: "RuleBased",
+            ExplainabilityNotes: "Generated using deterministic heuristics based on duration, pacing, and density. No LLM provider available.");
 
-        _logger.LogInformation("Generated recommendations: {SceneCount} scenes, {ShotsPerScene} shots/scene",
-            sceneCount, shotsPerScene);
+        _logger.LogInformation("Generated recommendations: {SceneCount} scenes, {ShotsPerScene} shots/scene, Quality: {Quality}",
+            sceneCount, shotsPerScene, 0.70);
 
         return Task.FromResult(recommendations);
     }
