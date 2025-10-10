@@ -126,6 +126,9 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
     return new Aura.Core.Dependencies.DependencyManager(logger, httpClient, manifestPath, downloadDirectory);
 });
 
+// Register DownloadService
+builder.Services.AddSingleton<Aura.Api.Services.DownloadService>();
+
 // Configure Kestrel to listen on specific port
 builder.WebHost.UseUrls("http://127.0.0.1:5005");
 
