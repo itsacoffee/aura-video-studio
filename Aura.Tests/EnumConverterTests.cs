@@ -242,4 +242,5 @@ record ScriptRequestDto(
     double TargetDurationMinutes, 
     Pacing Pacing, 
     Density Density, 
-    string Style);
+    string Style,
+    string? ProviderTier = null);

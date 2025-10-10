@@ -191,6 +191,15 @@ public class ScriptOrchestrator
 
 /// <summary>
 /// Result of script generation attempt
+/// 
+/// Error Codes:
+/// - E300: General script provider failure
+/// - E301: Request timeout or cancellation
+/// - E302: Provider returned empty/invalid script
+/// - E303: Invalid enum value or input validation failure
+/// - E304: Invalid plan parameters (duration, etc.)
+/// - E305: Provider not available/not registered
+/// - E307: Offline mode restriction (Pro providers blocked)
 /// </summary>
 public record ScriptResult
 {
