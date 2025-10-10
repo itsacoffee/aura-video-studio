@@ -38,6 +38,7 @@ public class StableDiffusionWebUiProvider : IImageProvider
     private readonly bool _isNvidiaGpu;
     private readonly int _vramGB;
     private readonly SDGenerationParams _defaultParams;
+    private readonly bool _bypassHardwareChecks;
 
     public StableDiffusionWebUiProvider(
         ILogger<StableDiffusionWebUiProvider> logger,
@@ -45,7 +46,8 @@ public class StableDiffusionWebUiProvider : IImageProvider
         string baseUrl = "http://127.0.0.1:7860",
         bool isNvidiaGpu = false,
         int vramGB = 0,
-        SDGenerationParams? defaultParams = null)
+        SDGenerationParams? defaultParams = null,
+        bool bypassHardwareChecks = false)
     {
         _logger = logger;
         _httpClient = httpClient;
@@ -53,11 +55,12 @@ public class StableDiffusionWebUiProvider : IImageProvider
         _isNvidiaGpu = isNvidiaGpu;
         _vramGB = vramGB;
         _defaultParams = defaultParams ?? new SDGenerationParams();
+        _bypassHardwareChecks = bypassHardwareChecks;
 
-        // Enforce NVIDIA-only policy
-        if (!_isNvidiaGpu)
+        // Warn about non-NVIDIA GPUs but don't strictly enforce if bypassed
+        if (!_isNvidiaGpu && !_bypassHardwareChecks)
         {
-            _logger.LogWarning("Stable Diffusion WebUI provider requires an NVIDIA GPU. Local diffusion is disabled.");
+            _logger.LogWarning("Stable Diffusion WebUI provider typically requires an NVIDIA GPU. Local diffusion may not work correctly.");
         }
         else if (_vramGB < 6)
         {
@@ -130,16 +133,16 @@ public class StableDiffusionWebUiProvider : IImageProvider
         SDGenerationParams? overrideParams,
         CancellationToken ct)
     {
-        // NVIDIA-ONLY GATE
-        if (!_isNvidiaGpu)
+        // NVIDIA-ONLY GATE - can be bypassed
+        if (!_bypassHardwareChecks && !_isNvidiaGpu)
         {
-            _logger.LogWarning("Local diffusion requires an NVIDIA GPU. Use stock visuals or Pro cloud instead.");
+            _logger.LogWarning("Local diffusion typically requires an NVIDIA GPU. Use stock visuals or Pro cloud instead.");
             return Array.Empty<Asset>();
         }
 
-        if (_vramGB < 6)
+        if (!_bypassHardwareChecks && _vramGB < 6)
         {
-            _logger.LogWarning("Insufficient VRAM ({VRAM}GB) for Stable Diffusion. Minimum 6GB required.", _vramGB);
+            _logger.LogWarning("Insufficient VRAM ({VRAM}GB) for Stable Diffusion. Minimum 6GB typically required.", _vramGB);
             return Array.Empty<Asset>();
         }
 

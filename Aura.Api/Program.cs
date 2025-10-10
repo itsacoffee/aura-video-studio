@@ -1126,26 +1126,26 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
     {
         var profile = await detector.DetectSystemAsync();
         
-        // NVIDIA GPU gate
-        if (profile.Gpu == null || profile.Gpu.Vendor.ToLowerInvariant() != "nvidia")
+        // NVIDIA GPU gate - can be bypassed
+        if (!request.BypassHardwareChecks && (profile.Gpu == null || profile.Gpu.Vendor.ToLowerInvariant() != "nvidia"))
         {
             return Results.Ok(new 
             { 
                 success = false, 
                 gated = true,
-                reason = "Stable Diffusion requires an NVIDIA GPU. Use stock visuals or Pro cloud instead.",
+                reason = "Stable Diffusion typically requires an NVIDIA GPU. Use stock visuals, Pro cloud, or set BypassHardwareChecks=true to override.",
                 assets = Array.Empty<object>()
             });
         }
 
-        // VRAM gate
-        if (profile.Gpu.VramGB < 6)
+        // VRAM gate - can be bypassed
+        if (!request.BypassHardwareChecks && profile.Gpu != null && profile.Gpu.VramGB < 6)
         {
             return Results.Ok(new 
             { 
                 success = false, 
                 gated = true,
-                reason = $"Insufficient VRAM ({profile.Gpu.VramGB}GB). Stable Diffusion requires minimum 6GB VRAM.",
+                reason = $"Insufficient VRAM ({profile.Gpu.VramGB}GB). Stable Diffusion typically requires minimum 6GB VRAM. Set BypassHardwareChecks=true to override.",
                 assets = Array.Empty<object>()
             });
         }
@@ -1177,13 +1177,18 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
             SamplerName = request.SamplerName ?? "DPM++ 2M Karras"
         };
 
+        // Determine if we're using NVIDIA GPU or bypassing checks
+        bool isNvidiaGpu = profile.Gpu != null && profile.Gpu.Vendor.ToLowerInvariant() == "nvidia";
+        int vramGB = profile.Gpu?.VramGB ?? 0;
+
         var sdProvider = new Aura.Providers.Images.StableDiffusionWebUiProvider(
             LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.StableDiffusionWebUiProvider>(),
             httpClient,
             sdUrl,
-            true, // isNvidiaGpu
-            profile.Gpu.VramGB,
-            sdParams);
+            isNvidiaGpu,
+            vramGB,
+            sdParams,
+            request.BypassHardwareChecks);
 
         // Create a dummy scene for generation
         var scene = new Scene(
@@ -1402,6 +1407,7 @@ record AssetGenerateRequest(
     string? SamplerName = null, 
     Aspect? Aspect = null,
     string[]? Keywords = null,
-    string? StableDiffusionUrl = null);
+    string? StableDiffusionUrl = null,
+    bool BypassHardwareChecks = false); // Allow users to bypass GPU/VRAM restrictions
 record CaptionsRequest(List<LineDto> Lines, string Format = "SRT", string? OutputPath = null);
 record ValidateProvidersRequest(string[]? Providers);
