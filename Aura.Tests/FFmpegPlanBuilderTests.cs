@@ -432,4 +432,85 @@ public class FFmpegPlanBuilderTests
         Assert.Contains("movie='logo.png'", filterGraph);  // Watermark
         Assert.Contains("subtitles", filterGraph);         // Subtitles
     }
+
+    [Fact]
+    public void BuildRenderCommand_WithRenderSpec_Should_UseSpecSettings()
+    {
+        // Arrange
+        var builder = new FFmpegPlanBuilder();
+        var spec = new RenderSpec(
+            Res: new Resolution(1920, 1080),
+            Container: "mp4",
+            VideoBitrateK: 12000,
+            AudioBitrateK: 256,
+            Fps: 60,
+            Codec: "H264",
+            QualityLevel: 90,
+            EnableSceneCut: false
+        );
+
+        // Act
+        string command = builder.BuildRenderCommand(
+            spec,
+            FFmpegPlanBuilder.EncoderType.X264,
+            "input.mp4",
+            "audio.wav",
+            "output.mp4"
+        );
+
+        // Assert
+        Assert.Contains("-r 60", command);
+        Assert.Contains("-g 120", command); // GOP = 2x FPS
+        Assert.DoesNotContain("-sc_threshold", command); // Scene-cut disabled
+        Assert.Contains("-crf", command);
+    }
+
+    [Theory]
+    [InlineData("YouTube 1080p", 1920, 1080, 30)]
+    [InlineData("YouTube 4K", 3840, 2160, 30)]
+    [InlineData("YouTube Shorts", 1080, 1920, 30)]
+    public void Presets_Should_MapCorrectly(string presetName, int width, int height, int fps)
+    {
+        // Arrange
+        var builder = new FFmpegPlanBuilder();
+        var preset = RenderPresets.GetPresetByName(presetName);
+
+        // Act
+        Assert.NotNull(preset);
+        string command = builder.BuildRenderCommand(
+            preset!,
+            FFmpegPlanBuilder.EncoderType.X264,
+            "input.mp4",
+            "audio.wav",
+            "output.mp4"
+        );
+
+        // Assert
+        Assert.Equal(width, preset.Res.Width);
+        Assert.Equal(height, preset.Res.Height);
+        Assert.Equal(fps, preset.Fps);
+        Assert.Contains($"-r {fps}", command);
+    }
+
+    [Fact]
+    public void BuildRenderCommand_Should_IncludeGopAndSceneCut()
+    {
+        // Arrange
+        var builder = new FFmpegPlanBuilder();
+        var spec = RenderPresets.YouTube1080p;
+
+        // Act
+        string command = builder.BuildRenderCommand(
+            spec,
+            FFmpegPlanBuilder.EncoderType.X264,
+            "input.mp4",
+            "audio.wav",
+            "output.mp4"
+        );
+
+        // Assert
+        Assert.Contains("-g 60", command); // GOP = 2x FPS (30 * 2)
+        Assert.Contains("-sc_threshold 40", command); // Scene-cut enabled
+        Assert.Contains("-pix_fmt yuv420p", command); // CFR
+    }
 }

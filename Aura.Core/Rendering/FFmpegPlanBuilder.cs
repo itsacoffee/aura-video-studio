@@ -90,6 +90,26 @@ public class FFmpegPlanBuilder
     }
 
     /// <summary>
+    /// Builds FFmpeg command arguments using RenderSpec directly (new simplified API)
+    /// </summary>
+    public string BuildRenderCommand(
+        RenderSpec spec,
+        EncoderType encoder,
+        string inputVideo,
+        string inputAudio,
+        string outputPath)
+    {
+        var quality = new QualitySettings
+        {
+            QualityLevel = spec.QualityLevel,
+            Fps = spec.Fps,
+            EnableSceneCut = spec.EnableSceneCut,
+            Codec = spec.Codec
+        };
+        return BuildRenderCommand(spec, quality, encoder, inputVideo, inputAudio, outputPath);
+    }
+
+    /// <summary>
     /// Builds a filtergraph for compositing video with overlays, text, and transitions
     /// </summary>
     public string BuildFilterGraph(
