@@ -133,4 +133,7 @@ export interface PlannerRecommendations {
     description: string;
     tags: string[];
   };
+  qualityScore?: number;
+  providerUsed?: string;
+  explainabilityNotes?: string;
 }
