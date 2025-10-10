@@ -119,3 +119,13 @@ public record SeoRecommendations(
     string Title,
     string Description,
     string[] Tags);
+
+/// <summary>
+/// Brand kit settings for visual customization (watermark, colors, etc.)
+/// </summary>
+public record BrandKit(
+    string? WatermarkPath,
+    string? WatermarkPosition,
+    float WatermarkOpacity,
+    string? BrandColor,
+    string? AccentColor);
