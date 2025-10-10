@@ -41,6 +41,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container
+builder.Services.AddControllers(); // Add controller support
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
@@ -112,6 +113,7 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
 builder.Services.AddSingleton<VideoOrchestrator>();
 builder.Services.AddSingleton<IRecommendationService, HeuristicRecommendationService>();
 builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
+builder.Services.AddSingleton<Aura.Api.Services.PreflightService>();
 
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
@@ -137,6 +139,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+
+// Add controller routing
+app.MapControllers();
 
 // Serve static files from wwwroot (must be before routing)
 var wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");

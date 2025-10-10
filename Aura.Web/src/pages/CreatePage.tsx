@@ -15,10 +15,14 @@ import {
   Field,
   Spinner,
   Badge,
+  Checkbox,
+  Tooltip,
 } from '@fluentui/react-components';
 import { Play24Regular, Lightbulb24Regular, Checkmark24Regular } from '@fluentui/react-icons';
 import type { Brief, PlanSpec, PlannerRecommendations } from '../types';
+import type { PreflightReport } from '../state/providers';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormalizer';
+import { PreflightPanel } from '../components/PreflightPanel';
 
 const useStyles = makeStyles({
   container: {
@@ -79,6 +83,12 @@ export function CreatePage() {
   const [recommendations, setRecommendations] = useState<PlannerRecommendations | null>(null);
   const [showRecommendations, setShowRecommendations] = useState(false);
 
+  // Preflight state
+  const [selectedProfile, setSelectedProfile] = useState('Free-Only');
+  const [preflightReport, setPreflightReport] = useState<PreflightReport | null>(null);
+  const [isRunningPreflight, setIsRunningPreflight] = useState(false);
+  const [overridePreflightGate, setOverridePreflightGate] = useState(false);
+
   const handleGetRecommendations = async () => {
     setLoadingRecommendations(true);
     try {
@@ -119,6 +129,25 @@ export function CreatePage() {
     // Apply recommendations that map to planSpec
     // For now, we can extend this to apply all fields
     alert('Recommendations applied! (Extended fields not yet in planSpec)');
+  };
+
+  const handleRunPreflight = async () => {
+    setIsRunningPreflight(true);
+    try {
+      const response = await fetch(`/api/preflight?profile=${encodeURIComponent(selectedProfile)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPreflightReport(data);
+      } else {
+        alert('Failed to run preflight check');
+      }
+    } catch (error) {
+      console.error('Error running preflight check:', error);
+      alert('Error running preflight check');
+    } finally {
+      setIsRunningPreflight(false);
+    }
   };
 
   const handleGenerate = async () => {
@@ -380,32 +409,73 @@ export function CreatePage() {
         )}
 
         {currentStep === 3 && (
-          <Card className={styles.section}>
-            <Title2>Confirm</Title2>
-            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-              Review your settings and generate your video
-            </Text>
-            <div style={{ marginTop: tokens.spacingVerticalL, display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
-              <div>
-                <Text weight="semibold">Topic:</Text> <Text>{brief.topic}</Text>
+          <>
+            <Card className={styles.section}>
+              <Title2>Review Settings</Title2>
+              <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+                Review your settings before generating your video
+              </Text>
+              <div style={{ marginTop: tokens.spacingVerticalL, display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+                <div>
+                  <Text weight="semibold">Topic:</Text> <Text>{brief.topic}</Text>
+                </div>
+                <div>
+                  <Text weight="semibold">Audience:</Text> <Text>{brief.audience}</Text>
+                </div>
+                <div>
+                  <Text weight="semibold">Duration:</Text> <Text>{planSpec.targetDurationMinutes} minutes</Text>
+                </div>
+                <div>
+                  <Text weight="semibold">Pacing:</Text> <Text>{planSpec.pacing}</Text>
+                </div>
+                <div>
+                  <Text weight="semibold">Density:</Text> <Text>{planSpec.density}</Text>
+                </div>
+                <div>
+                  <Text weight="semibold">Aspect:</Text> <Text>{brief.aspect}</Text>
+                </div>
               </div>
-              <div>
-                <Text weight="semibold">Audience:</Text> <Text>{brief.audience}</Text>
+            </Card>
+
+            <Card className={styles.section}>
+              <div style={{ marginBottom: tokens.spacingVerticalL }}>
+                <Field label="Profile">
+                  <Dropdown
+                    value={selectedProfile}
+                    onOptionSelect={(_, data) => {
+                      setSelectedProfile(data.optionValue as string);
+                      setPreflightReport(null); // Clear report when profile changes
+                    }}
+                  >
+                    <Option value="Free-Only">Free-Only (Ollama + Windows TTS + Stock)</Option>
+                    <Option value="Balanced Mix">Balanced Mix (Pro with fallbacks)</Option>
+                    <Option value="Pro-Max">Pro-Max (OpenAI + ElevenLabs + Cloud)</Option>
+                  </Dropdown>
+                </Field>
               </div>
-              <div>
-                <Text weight="semibold">Duration:</Text> <Text>{planSpec.targetDurationMinutes} minutes</Text>
-              </div>
-              <div>
-                <Text weight="semibold">Pacing:</Text> <Text>{planSpec.pacing}</Text>
-              </div>
-              <div>
-                <Text weight="semibold">Density:</Text> <Text>{planSpec.density}</Text>
-              </div>
-              <div>
-                <Text weight="semibold">Aspect:</Text> <Text>{brief.aspect}</Text>
-              </div>
-            </div>
-          </Card>
+
+              <PreflightPanel
+                profile={selectedProfile}
+                report={preflightReport}
+                isRunning={isRunningPreflight}
+                onRunPreflight={handleRunPreflight}
+              />
+
+              {preflightReport && !preflightReport.ok && (
+                <div style={{ marginTop: tokens.spacingVerticalL }}>
+                  <Checkbox
+                    checked={overridePreflightGate}
+                    onChange={(_, data) => setOverridePreflightGate(data.checked === true)}
+                    label={
+                      <Tooltip content="Some preflight checks failed, but you can still proceed at your own risk" relationship="label">
+                        <Text>Override and proceed anyway</Text>
+                      </Tooltip>
+                    }
+                  />
+                </div>
+              )}
+            </Card>
+          </>
         )}
 
         <div className={styles.actions}>
@@ -423,14 +493,25 @@ export function CreatePage() {
               Next
             </Button>
           ) : (
-            <Button
-              appearance="primary"
-              icon={<Play24Regular />}
-              onClick={handleGenerate}
-              disabled={generating}
+            <Tooltip
+              content={
+                !preflightReport
+                  ? 'Run preflight check before generating'
+                  : !preflightReport.ok && !overridePreflightGate
+                  ? 'Preflight checks failed. Enable override to proceed anyway.'
+                  : ''
+              }
+              relationship="label"
             >
-              {generating ? 'Generating...' : 'Generate Video'}
-            </Button>
+              <Button
+                appearance="primary"
+                icon={<Play24Regular />}
+                onClick={handleGenerate}
+                disabled={generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate)}
+              >
+                {generating ? 'Generating...' : 'Generate Video'}
+              </Button>
+            </Tooltip>
           )}
         </div>
       </div>

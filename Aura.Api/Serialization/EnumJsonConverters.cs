@@ -30,8 +30,6 @@ namespace Aura.Api.Serialization
                 // Specific tolerant converters for ApiModels.V1
                 new TolerantPacingConverter(),
                 new TolerantDensityConverterV1(),
-                new TolerantAspectConverterV1(),
-                new TolerantPauseStyleConverter(),
 
                 // Fallback case-insensitive converter for remaining enums
                 new JsonStringEnumConverter()
@@ -100,4 +98,13 @@ namespace Aura.Api.Serialization
             return value.Trim().ToLowerInvariant() switch
             {
                 "normal" => ApiV1.Density.Balanced,
-                _ => throw new Json
+                _ => throw new JsonException($"Unknown Density value: '{value}'. Valid values are: Sparse, Balanced, Dense (alias: Normal)")
+            };
+        }
+
+        public override void Write(Utf8JsonWriter writer, ApiV1.Density value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
+    }
+}
