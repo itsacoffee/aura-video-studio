@@ -68,12 +68,16 @@ public class ScriptOrchestrator
         var selection = _providerMixer.SelectLlmProvider(_providers, preferredTier);
         _providerMixer.LogSelection(selection);
 
+        var requestedProvider = selection.SelectedProvider;
+
         // Try primary provider
         var result = await TryGenerateWithProviderAsync(
             brief, 
             spec, 
             selection.SelectedProvider, 
             selection.IsFallback,
+            requestedProvider,
+            null,
             ct).ConfigureAwait(false);
 
         if (result.Success)
@@ -83,15 +87,22 @@ public class ScriptOrchestrator
 
         // If primary provider failed, try fallback chain (always enabled for now)
         {
-            _logger.LogWarning("Primary provider {Provider} failed, attempting fallback", selection.SelectedProvider);
+            var primaryFailureReason = result.ErrorMessage ?? "Provider failed";
+            _logger.LogWarning("Primary provider {Provider} failed, attempting fallback: {Reason}", 
+                selection.SelectedProvider, primaryFailureReason);
             
             // Try Ollama if not already tried
             if (selection.SelectedProvider != "Ollama" && _providers.ContainsKey("Ollama"))
             {
                 _logger.LogInformation("Falling back to Ollama");
-                result = await TryGenerateWithProviderAsync(brief, spec, "Ollama", true, ct).ConfigureAwait(false);
+                result = await TryGenerateWithProviderAsync(
+                    brief, spec, "Ollama", true, requestedProvider, 
+                    $"Primary provider {requestedProvider} failed: {primaryFailureReason}", 
+                    ct).ConfigureAwait(false);
                 if (result.Success)
                 {
+                    _logger.LogWarning("Successfully downgraded from {Requested} to {Actual}", 
+                        requestedProvider, result.ProviderUsed);
                     return result;
                 }
             }
@@ -100,9 +111,14 @@ public class ScriptOrchestrator
             if (selection.SelectedProvider != "RuleBased" && _providers.ContainsKey("RuleBased"))
             {
                 _logger.LogInformation("Falling back to RuleBased provider (final fallback)");
-                result = await TryGenerateWithProviderAsync(brief, spec, "RuleBased", true, ct).ConfigureAwait(false);
+                result = await TryGenerateWithProviderAsync(
+                    brief, spec, "RuleBased", true, requestedProvider,
+                    $"All higher-tier providers failed, final fallback to RuleBased",
+                    ct).ConfigureAwait(false);
                 if (result.Success)
                 {
+                    _logger.LogWarning("Successfully downgraded from {Requested} to {Actual} (final fallback)", 
+                        requestedProvider, result.ProviderUsed);
                     return result;
                 }
             }
@@ -125,6 +141,8 @@ public class ScriptOrchestrator
         PlanSpec spec,
         string providerName,
         bool isFallback,
+        string? requestedProvider,
+        string? downgradeReason,
         CancellationToken ct)
     {
         if (!_providers.TryGetValue(providerName, out var provider))
@@ -137,7 +155,9 @@ public class ScriptOrchestrator
                 ErrorMessage = $"Provider {providerName} not available",
                 Script = null,
                 ProviderUsed = providerName,
-                IsFallback = isFallback
+                IsFallback = isFallback,
+                RequestedProvider = requestedProvider,
+                DowngradeReason = downgradeReason
             };
         }
 
@@ -156,7 +176,9 @@ public class ScriptOrchestrator
                     ErrorMessage = $"Provider {providerName} returned empty script",
                     Script = null,
                     ProviderUsed = providerName,
-                    IsFallback = isFallback
+                    IsFallback = isFallback,
+                    RequestedProvider = requestedProvider,
+                    DowngradeReason = downgradeReason
                 };
             }
 
@@ -170,7 +192,9 @@ public class ScriptOrchestrator
                 ErrorMessage = null,
                 Script = script,
                 ProviderUsed = providerName,
-                IsFallback = isFallback
+                IsFallback = isFallback,
+                RequestedProvider = requestedProvider,
+                DowngradeReason = downgradeReason
             };
         }
         catch (Exception ex)
@@ -183,7 +207,9 @@ public class ScriptOrchestrator
                 ErrorMessage = $"Provider {providerName} failed: {ex.Message}",
                 Script = null,
                 ProviderUsed = providerName,
-                IsFallback = isFallback
+                IsFallback = isFallback,
+                RequestedProvider = requestedProvider,
+                DowngradeReason = downgradeReason
             };
         }
     }
@@ -209,4 +235,14 @@ public record ScriptResult
     public string? Script { get; init; }
     public string? ProviderUsed { get; init; }
     public bool IsFallback { get; init; }
+    
+    /// <summary>
+    /// The provider that was originally requested (if different from ProviderUsed due to fallback)
+    /// </summary>
+    public string? RequestedProvider { get; init; }
+    
+    /// <summary>
+    /// Reason for downgrade/fallback if one occurred
+    /// </summary>
+    public string? DowngradeReason { get; init; }
 }
