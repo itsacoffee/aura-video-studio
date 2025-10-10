@@ -17,7 +17,11 @@ public static class RenderPresets
         Res: new Resolution(1920, 1080),
         Container: "mp4",
         VideoBitrateK: 12000,
-        AudioBitrateK: 256
+        AudioBitrateK: 256,
+        Fps: 30,
+        Codec: "H264",
+        QualityLevel: 75,
+        EnableSceneCut: true
     );
 
     /// <summary>
@@ -27,7 +31,11 @@ public static class RenderPresets
         Res: new Resolution(1080, 1920),
         Container: "mp4",
         VideoBitrateK: 10000,
-        AudioBitrateK: 256
+        AudioBitrateK: 256,
+        Fps: 30,
+        Codec: "H264",
+        QualityLevel: 75,
+        EnableSceneCut: true
     );
 
     /// <summary>
@@ -37,7 +45,11 @@ public static class RenderPresets
         Res: new Resolution(3840, 2160),
         Container: "mp4",
         VideoBitrateK: 45000,
-        AudioBitrateK: 320
+        AudioBitrateK: 320,
+        Fps: 30,
+        Codec: "H264",
+        QualityLevel: 75,
+        EnableSceneCut: true
     );
 
     /// <summary>
@@ -47,7 +59,11 @@ public static class RenderPresets
         Res: new Resolution(2560, 1440),
         Container: "mp4",
         VideoBitrateK: 24000,
-        AudioBitrateK: 256
+        AudioBitrateK: 256,
+        Fps: 30,
+        Codec: "H264",
+        QualityLevel: 75,
+        EnableSceneCut: true
     );
 
     /// <summary>
@@ -57,7 +73,11 @@ public static class RenderPresets
         Res: new Resolution(1280, 720),
         Container: "mp4",
         VideoBitrateK: 8000,
-        AudioBitrateK: 192
+        AudioBitrateK: 192,
+        Fps: 30,
+        Codec: "H264",
+        QualityLevel: 75,
+        EnableSceneCut: true
     );
 
     /// <summary>
@@ -67,7 +87,11 @@ public static class RenderPresets
         Res: new Resolution(1080, 1080),
         Container: "mp4",
         VideoBitrateK: 8000,
-        AudioBitrateK: 192
+        AudioBitrateK: 192,
+        Fps: 30,
+        Codec: "H264",
+        QualityLevel: 75,
+        EnableSceneCut: true
     );
 
     /// <summary>

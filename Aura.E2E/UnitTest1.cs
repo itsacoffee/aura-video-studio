@@ -246,4 +246,105 @@ public class VideoGenerationE2ETests
         Assert.NotEmpty(renderCommand);
         Assert.Contains("libx264", renderCommand);
     }
+
+    [Theory]
+    [InlineData("YouTube 1080p", 1920, 1080, 30, "H264")]
+    [InlineData("YouTube Shorts", 1080, 1920, 30, "H264")]
+    [InlineData("YouTube 4K", 3840, 2160, 30, "H264")]
+    public void RenderPresets_Should_MapCorrectlyToFFmpegCommand(
+        string presetName,
+        int expectedWidth,
+        int expectedHeight,
+        int expectedFps,
+        string expectedCodec)
+    {
+        // Arrange
+        var preset = RenderPresets.GetPresetByName(presetName);
+        Assert.NotNull(preset);
+
+        var builder = new FFmpegPlanBuilder();
+
+        // Act
+        string command = builder.BuildRenderCommand(
+            preset!,
+            FFmpegPlanBuilder.EncoderType.X264,
+            "input.mp4",
+            "audio.wav",
+            "output.mp4"
+        );
+
+        // Assert
+        Assert.Equal(expectedWidth, preset.Res.Width);
+        Assert.Equal(expectedHeight, preset.Res.Height);
+        Assert.Equal(expectedFps, preset.Fps);
+        Assert.Equal(expectedCodec, preset.Codec);
+        
+        // Verify command includes correct settings
+        Assert.Contains($"-r {expectedFps}", command);
+        Assert.Contains("-g ", command); // GOP setting
+        Assert.Contains("-sc_threshold", command); // Scene-cut keyframes
+        Assert.Contains("-pix_fmt yuv420p", command); // CFR default
+    }
+
+    [Fact]
+    public void RenderSpec_WithCustomSettings_Should_BuildCorrectCommand()
+    {
+        // Arrange
+        var customSpec = new RenderSpec(
+            Res: new Resolution(2560, 1440),
+            Container: "mkv",
+            VideoBitrateK: 20000,
+            AudioBitrateK: 320,
+            Fps: 60,
+            Codec: "H264",
+            QualityLevel: 90,
+            EnableSceneCut: false
+        );
+
+        var builder = new FFmpegPlanBuilder();
+
+        // Act
+        string command = builder.BuildRenderCommand(
+            customSpec,
+            FFmpegPlanBuilder.EncoderType.X264,
+            "input.mp4",
+            "audio.wav",
+            "output.mkv"
+        );
+
+        // Assert
+        Assert.Contains("-r 60", command);
+        Assert.Contains("-g 120", command); // GOP = 2x FPS
+        Assert.DoesNotContain("-sc_threshold", command); // Scene-cut disabled
+        Assert.Contains("-b:v 20000k", command);
+        Assert.Contains("-b:a 320k", command);
+        Assert.Contains("output.mkv", command);
+    }
+
+    [Theory]
+    [InlineData(FFmpegPlanBuilder.EncoderType.X264, "-c:v libx264", "-crf")]
+    [InlineData(FFmpegPlanBuilder.EncoderType.NVENC_H264, "-c:v h264_nvenc", "-cq")]
+    [InlineData(FFmpegPlanBuilder.EncoderType.NVENC_AV1, "-c:v av1_nvenc", "-cq")]
+    public void RenderCommand_Should_UseCorrectEncoderSettings(
+        FFmpegPlanBuilder.EncoderType encoder,
+        string expectedCodecArg,
+        string expectedQualityArg)
+    {
+        // Arrange
+        var builder = new FFmpegPlanBuilder();
+        var spec = RenderPresets.YouTube1080p;
+
+        // Act
+        string command = builder.BuildRenderCommand(
+            spec,
+            encoder,
+            "input.mp4",
+            "audio.wav",
+            "output.mp4"
+        );
+
+        // Assert
+        Assert.Contains(expectedCodecArg, command);
+        Assert.Contains(expectedQualityArg, command);
+    }
 }
