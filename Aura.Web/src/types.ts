@@ -65,6 +65,46 @@ export interface VoiceSpec {
   pauseStyle: 'Auto' | 'None' | 'Breathier';
 }
 
+export interface BrandKitConfig {
+  watermarkPath?: string;
+  watermarkPosition?: string;
+  watermarkOpacity: number;
+  brandColor?: string;
+  accentColor?: string;
+}
+
+export interface CaptionsConfig {
+  enabled: boolean;
+  format: 'srt' | 'vtt';
+  burnIn: boolean;
+  fontName: string;
+  fontSize: number;
+  primaryColor: string;
+  outlineColor: string;
+  outlineWidth: number;
+  position: string;
+}
+
+export interface StockSourcesConfig {
+  enablePexels: boolean;
+  enablePixabay: boolean;
+  enableUnsplash: boolean;
+  enableLocalAssets: boolean;
+  enableStableDiffusion: boolean;
+  localAssetsDirectory?: string;
+  stableDiffusionUrl?: string;
+}
+
+export interface WizardSettings {
+  brief: Brief;
+  planSpec: PlanSpec;
+  brandKit: BrandKitConfig;
+  captions: CaptionsConfig;
+  stockSources: StockSourcesConfig;
+  offlineMode: boolean;
+  voiceSpec?: VoiceSpec;
+}
+
 export interface PlannerRecommendations {
   outline: string;
   sceneCount: number;
