@@ -11,6 +11,7 @@ import { Layout } from './components/Layout';
 import { WelcomePage } from './pages/WelcomePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CreatePage } from './pages/CreatePage';
+import { CreateWizard } from './pages/Wizard/CreateWizard';
 import { RenderPage } from './pages/RenderPage';
 import { PublishPage } from './pages/PublishPage';
 import { DownloadsPage } from './pages/DownloadsPage';
@@ -61,7 +62,8 @@ function App() {
               <Routes>
                 <Route path="/" element={<WelcomePage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/create" element={<CreatePage />} />
+                <Route path="/create" element={<CreateWizard />} />
+                <Route path="/create/legacy" element={<CreatePage />} />
                 <Route path="/render" element={<RenderPage />} />
                 <Route path="/publish" element={<PublishPage />} />
                 <Route path="/downloads" element={<DownloadsPage />} />
