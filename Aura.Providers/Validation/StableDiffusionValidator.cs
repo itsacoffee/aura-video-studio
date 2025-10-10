@@ -33,21 +33,42 @@ public class StableDiffusionValidator : IProviderValidator
 
         try
         {
-            // Step 1: Check if SD WebUI is running by listing models
+            // Step 1: Check if SD WebUI is running by testing the root endpoint first
+            // This is more reliable as it doesn't require --api flag for basic connectivity
             using var cts1 = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts1.CancelAfter(TimeSpan.FromSeconds(5));
 
-            var listResponse = await _httpClient.GetAsync($"{baseUrl}/sdapi/v1/sd-models", cts1.Token);
-
-            if (!listResponse.IsSuccessStatusCode)
+            // Try the root endpoint first to see if SD WebUI is running at all
+            var rootResponse = await _httpClient.GetAsync(baseUrl, cts1.Token);
+            
+            if (!rootResponse.IsSuccessStatusCode)
             {
                 sw.Stop();
-                _logger.LogWarning("SD WebUI validation failed: GET /sdapi/v1/sd-models returned {StatusCode}", listResponse.StatusCode);
+                _logger.LogWarning("SD WebUI validation failed: Base URL {BaseUrl} returned {StatusCode}", baseUrl, rootResponse.StatusCode);
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
                     Ok = false,
-                    Details = $"SD WebUI not responding (HTTP {listResponse.StatusCode})",
+                    Details = $"SD WebUI not responding at {baseUrl} (HTTP {rootResponse.StatusCode})",
+                    ElapsedMs = sw.ElapsedMilliseconds
+                };
+            }
+            
+            // Step 2: Try to list models to verify API is enabled
+            using var cts2 = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts2.CancelAfter(TimeSpan.FromSeconds(5));
+            
+            var listResponse = await _httpClient.GetAsync($"{baseUrl}/sdapi/v1/sd-models", cts2.Token);
+
+            if (!listResponse.IsSuccessStatusCode)
+            {
+                sw.Stop();
+                _logger.LogWarning("SD WebUI validation: API endpoint not available. Make sure to run with --api flag");
+                return new ProviderValidationResult
+                {
+                    Name = ProviderName,
+                    Ok = false,
+                    Details = "SD WebUI is running but API is not enabled. Please start with --api flag",
                     ElapsedMs = sw.ElapsedMilliseconds
                 };
             }
@@ -68,7 +89,7 @@ public class StableDiffusionValidator : IProviderValidator
                 };
             }
 
-            // Step 2: Test with minimal 256x256 8-step generation
+            // Step 3: Test with minimal 256x256 8-step generation
             var requestBody = new
             {
                 prompt = "test",
@@ -84,10 +105,10 @@ public class StableDiffusionValidator : IProviderValidator
             var json = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            using var cts2 = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts2.CancelAfter(TimeSpan.FromSeconds(30)); // SD generation can take time even for small images
+            using var cts3 = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts3.CancelAfter(TimeSpan.FromSeconds(30)); // SD generation can take time even for small images
 
-            var generateResponse = await _httpClient.PostAsync($"{baseUrl}/sdapi/v1/txt2img", content, cts2.Token);
+            var generateResponse = await _httpClient.PostAsync($"{baseUrl}/sdapi/v1/txt2img", content, cts3.Token);
 
             sw.Stop();
 
@@ -135,7 +156,7 @@ public class StableDiffusionValidator : IProviderValidator
             {
                 Name = ProviderName,
                 Ok = false,
-                Details = $"Cannot connect to SD WebUI at {baseUrl}",
+                Details = $"Cannot connect to SD WebUI at {baseUrl}. Make sure SD WebUI is running with --api flag",
                 ElapsedMs = sw.ElapsedMilliseconds
             };
         }

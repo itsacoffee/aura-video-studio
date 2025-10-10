@@ -599,7 +599,7 @@ public class HardwareDetector
         
         try
         {
-            // Test connection to SD WebUI API
+            // Test connection to SD WebUI API - try root endpoint first
             using var httpClient = new System.Net.Http.HttpClient();
             using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
             
@@ -607,7 +607,27 @@ public class HardwareDetector
             
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("Stable Diffusion probe passed - WebUI detected at http://127.0.0.1:7860");
+                // SD WebUI is running, now check if API is enabled
+                try
+                {
+                    using var cts2 = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
+                    var apiResponse = await httpClient.GetAsync("http://127.0.0.1:7860/sdapi/v1/sd-models", cts2.Token);
+                    
+                    if (apiResponse.IsSuccessStatusCode)
+                    {
+                        _logger.LogInformation("Stable Diffusion probe passed - WebUI detected at http://127.0.0.1:7860 with API enabled");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Stable Diffusion WebUI detected but API not enabled. " +
+                            "To enable API access, restart SD WebUI with --api flag");
+                    }
+                }
+                catch
+                {
+                    _logger.LogInformation("Stable Diffusion WebUI detected but API status could not be verified. " +
+                        "Make sure to run with --api flag for full functionality");
+                }
             }
             else
             {
