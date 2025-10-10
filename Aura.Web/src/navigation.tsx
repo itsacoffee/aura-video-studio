@@ -6,7 +6,8 @@ import {
   Document24Regular,
   CloudArrowDown24Regular,
   Share24Regular,
-  Timeline24Regular
+  Timeline24Regular,
+  DocumentBulletList24Regular
 } from '@fluentui/react-icons';
 
 export interface NavItem {
@@ -24,5 +25,6 @@ export const navItems: NavItem[] = [
   { key: 'render', name: 'Render', icon: Play24Regular, path: '/render' },
   { key: 'publish', name: 'Publish', icon: Share24Regular, path: '/publish' },
   { key: 'downloads', name: 'Downloads', icon: CloudArrowDown24Regular, path: '/downloads' },
+  { key: 'logs', name: 'Logs', icon: DocumentBulletList24Regular, path: '/logs' },
   { key: 'settings', name: 'Settings', icon: Settings24Regular, path: '/settings' },
 ];
