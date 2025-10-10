@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using Aura.Core.Models;
+using Aura.Core.Timeline.Overlays;
 
 namespace Aura.Core.Rendering;
 
@@ -137,6 +139,73 @@ public class FFmpegPlanBuilder
             // Add a subtle color overlay using drawbox with alpha
             string color = brandKit.BrandColor.TrimStart('#');
             filters.Add($"drawbox=x=0:y=0:w=iw:h=ih:color={color}@0.05:t=fill");
+        }
+
+        // Add watermark if specified
+        if (brandKit?.WatermarkPath != null && !string.IsNullOrEmpty(brandKit.WatermarkPath))
+        {
+            string escapedWatermark = brandKit.WatermarkPath.Replace("\\", "\\\\").Replace(":", "\\:");
+            string position = brandKit.WatermarkPosition?.ToLowerInvariant() switch
+            {
+                "top-left" => "x=10:y=10",
+                "top-right" => "x=W-w-10:y=10",
+                "bottom-left" => "x=10:y=H-h-10",
+                "bottom-right" => "x=W-w-10:y=H-h-10",
+                "center" => "x=(W-w)/2:y=(H-h)/2",
+                _ => "x=W-w-10:y=H-h-10" // Default to bottom-right
+            };
+            float opacity = brandKit.WatermarkOpacity > 0 ? brandKit.WatermarkOpacity : 0.7f;
+            filters.Add($"movie='{escapedWatermark}',scale=-1:80[wm];[in][wm]overlay={position}:format=auto:alpha={opacity:F2}");
+        }
+
+        // Add subtitles if requested
+        if (addSubtitles && !string.IsNullOrEmpty(subtitlePath))
+        {
+            // Escape path for FFmpeg
+            string escapedPath = subtitlePath.Replace("\\", "\\\\").Replace(":", "\\:");
+            filters.Add($"subtitles='{escapedPath}':force_style='FontSize=24,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=3'");
+        }
+
+        return string.Join(",", filters);
+    }
+
+    /// <summary>
+    /// Builds a filtergraph with text overlays from timeline (deterministic, culture-invariant)
+    /// </summary>
+    public string BuildFilterGraphWithOverlays(
+        Resolution resolution,
+        IEnumerable<OverlayModel> overlays,
+        bool addSubtitles = false,
+        string? subtitlePath = null,
+        BrandKit? brandKit = null,
+        bool enableKenBurns = false)
+    {
+        var filters = new List<string>();
+
+        // Scale to target resolution with high-quality scaler
+        filters.Add($"scale={resolution.Width}:{resolution.Height}:flags=lanczos");
+
+        // Add Ken Burns effect for still images (slow zoom and pan)
+        if (enableKenBurns)
+        {
+            // Subtle zoom from 1.0 to 1.1x over the duration with slight pan
+            filters.Add($"zoompan=z='min(zoom+0.0015,1.1)':d=125:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={resolution.Width}x{resolution.Height}");
+        }
+
+        // Add brand color overlay if specified
+        if (brandKit?.BrandColor != null)
+        {
+            // Add a subtle color overlay using drawbox with alpha
+            string color = brandKit.BrandColor.TrimStart('#');
+            filters.Add($"drawbox=x=0:y=0:w=iw:h=ih:color={color}@0.05:t=fill");
+        }
+
+        // Add text overlays (deterministic order by InTime)
+        var sortedOverlays = overlays.OrderBy(o => o.InTime).ThenBy(o => o.Id).ToList();
+        foreach (var overlay in sortedOverlays)
+        {
+            var drawtextFilter = overlay.ToDrawTextFilter(resolution.Width, resolution.Height);
+            filters.Add(drawtextFilter);
         }
 
         // Add watermark if specified

@@ -34,7 +34,7 @@ public class CaptionsIntegrationTests
         var subtitlesPath = "/path/to/subtitles.srt";
 
         // Act
-        var timeline = new Timeline(scenes, sceneAssets, narrationPath, musicPath, subtitlesPath);
+        var timeline = new Aura.Core.Providers.Timeline(scenes, sceneAssets, narrationPath, musicPath, subtitlesPath);
 
         // Assert
         Assert.Equal(subtitlesPath, timeline.SubtitlesPath);
