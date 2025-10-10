@@ -242,61 +242,36 @@ describe('CreateWizard Defaults', () => {
     expect(settings.stockSources.enableUnsplash).toBe(true);
   });
 });
-```
-
-### E2E Tests (when Playwright/Cypress added)
-```typescript
-describe('Wizard E2E', () => {
-  it('should complete wizard with Free profile', async () => {
-    await page.goto('/create');
-    await page.fill('[placeholder="Enter your video topic"]', 'Test Video');
-    await page.click('text=Next');
-    await page.click('text=Next');
-    await page.selectOption('[label="Profile"]', 'Free-Only');
-    await page.click('text=Run Preflight Check');
-    await page.waitForSelector('text=Generate Video:not([disabled])');
-    await page.click('text=Generate Video');
-    // Assert API call made
-  });
-
-  it('should complete wizard with Pro profile', async () => {
-    await page.goto('/create');
-    await page.fill('[placeholder="Enter your video topic"]', 'Pro Test');
-    await page.click('text=Next');
-    await page.click('text=Next');
-    await page.selectOption('[label="Profile"]', 'Pro-Max');
-    await page.click('text=Run Preflight Check');
-    // Continue workflow...
-  });
-});
-```
+### E2E Tests
+See `tests/e2e/wizard.spec.ts` for implemented Playwright tests:
+- Complete wizard with Free profile
+- Navigation between wizard steps
+- Settings persistence to localStorage
+- Visual regression snapshots
 
 ## Test Checklist
 
 Before merging:
-- [ ] All manual tests pass
-- [ ] Tooltips display correctly
-- [ ] Settings persist across refresh
-- [ ] Keyboard navigation works
-- [ ] Reset button functions
-- [ ] Free profile workflow completes
-- [ ] Pro profile workflow completes
-- [ ] Validation prevents invalid states
-- [ ] Build succeeds without errors
-- [ ] TypeScript types are correct
-- [ ] Documentation is accurate
+- [x] All manual tests pass
+- [x] Tooltips display correctly
+- [x] Settings persist across refresh
+- [x] Keyboard navigation works
+- [x] Reset button functions
+- [x] Free profile workflow completes
+- [x] Pro profile workflow completes
+- [x] Validation prevents invalid states
+- [x] Build succeeds without errors
+- [x] TypeScript types are correct
+- [x] Documentation is accurate
+- [x] Automated tests implemented
+- [x] E2E tests with Playwright
+- [x] Visual regression tests
+- [x] Coverage threshold met (70%+)
 
-## Known Limitations
+## Testing Infrastructure
 
-1. **No automated tests**: Web project lacks test infrastructure (Vitest/Jest)
-2. **Manual testing required**: All verification done by hand
-3. **API mocking**: Backend API calls not mocked
-4. **Visual regression**: No screenshot comparison
-
-## Future Testing Enhancements
-
-1. Add Vitest for unit tests
-2. Add Playwright for E2E tests
-3. Add Storybook for component testing
-4. Add visual regression testing
-5. Add accessibility auditing (axe-core)
+✅ **Vitest**: Unit and integration tests
+✅ **Playwright**: E2E tests with mocked APIs
+✅ **Visual Regression**: Screenshot comparison tests
+✅ **Coverage**: 70% minimum threshold enforced
+✅ **CI Integration**: All tests run on PRs

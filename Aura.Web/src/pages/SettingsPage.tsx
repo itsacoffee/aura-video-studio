@@ -95,6 +95,10 @@ export function SettingsPage() {
   const [validating, setValidating] = useState(false);
   const [validationResults, setValidationResults] = useState<any>(null);
 
+  // Profile templates state
+  const [customProfileName, setCustomProfileName] = useState('');
+  const [savedProfiles, setSavedProfiles] = useState<any[]>([]);
+
   useEffect(() => {
     fetchSettings();
     fetchProfiles();
@@ -334,6 +338,163 @@ export function SettingsPage() {
     });
   };
 
+  const exportSettings = () => {
+    const settingsData = {
+      version: '1.0.0',
+      exported: new Date().toISOString(),
+      settings: {
+        offlineMode,
+        uiScale,
+        compactMode,
+      },
+      apiKeys,
+      providerPaths,
+      profiles,
+    };
+
+    const blob = new Blob([JSON.stringify(settingsData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aura-settings-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importSettings = async (file: File) => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      // Validate schema
+      if (!data.version || !data.settings) {
+        alert('Invalid settings file format');
+        return;
+      }
+
+      // Apply settings
+      if (data.settings) {
+        setOfflineMode(data.settings.offlineMode ?? false);
+        setUiScale(data.settings.uiScale ?? 100);
+        setCompactMode(data.settings.compactMode ?? false);
+      }
+
+      if (data.apiKeys) {
+        setApiKeys(data.apiKeys);
+        setKeysModified(true);
+      }
+
+      if (data.providerPaths) {
+        setProviderPaths(data.providerPaths);
+        setPathsModified(true);
+      }
+
+      alert('Settings imported successfully! Remember to save.');
+    } catch (error) {
+      console.error('Error importing settings:', error);
+      alert('Error importing settings: Invalid JSON file');
+    }
+  };
+
+  const applyProfileTemplate = (template: string) => {
+    const confirm = window.confirm(`Apply "${template}" template? This will update your provider preferences but not overwrite API keys.`);
+    if (!confirm) return;
+
+    switch (template) {
+      case 'free-only':
+        setSettings((prev: any) => ({
+          ...prev,
+          preferredScriptProvider: 'Template',
+          preferredTtsProvider: 'WindowsTTS',
+          preferredVisualsProvider: 'LocalStock',
+        }));
+        setOfflineMode(true);
+        break;
+      case 'balanced-mix':
+        setSettings((prev: any) => ({
+          ...prev,
+          preferredScriptProvider: 'GPT4',
+          preferredTtsProvider: 'ElevenLabs',
+          preferredVisualsProvider: 'LocalStock',
+        }));
+        setOfflineMode(false);
+        break;
+      case 'pro-max':
+        setSettings((prev: any) => ({
+          ...prev,
+          preferredScriptProvider: 'GPT4',
+          preferredTtsProvider: 'ElevenLabs',
+          preferredVisualsProvider: 'StabilityAI',
+        }));
+        setOfflineMode(false);
+        break;
+    }
+
+    alert(`"${template}" template applied! Remember to save settings.`);
+  };
+
+  const saveCustomProfile = () => {
+    if (!customProfileName.trim()) return;
+
+    const profile = {
+      name: customProfileName,
+      settings: {
+        offlineMode,
+        uiScale,
+        compactMode,
+      },
+      providerPaths,
+      timestamp: new Date().toISOString(),
+    };
+
+    const existing = savedProfiles.filter(p => p.name !== customProfileName);
+    const updated = [...existing, profile];
+    setSavedProfiles(updated);
+    localStorage.setItem('aura-custom-profiles', JSON.stringify(updated));
+    
+    alert(`Profile "${customProfileName}" saved!`);
+    setCustomProfileName('');
+  };
+
+  const loadCustomProfiles = () => {
+    try {
+      const stored = localStorage.getItem('aura-custom-profiles');
+      if (stored) {
+        setSavedProfiles(JSON.parse(stored));
+      } else {
+        alert('No saved profiles found');
+      }
+    } catch (error) {
+      console.error('Error loading profiles:', error);
+      alert('Error loading profiles');
+    }
+  };
+
+  const loadCustomProfile = (profile: any) => {
+    if (profile.settings) {
+      setOfflineMode(profile.settings.offlineMode ?? false);
+      setUiScale(profile.settings.uiScale ?? 100);
+      setCompactMode(profile.settings.compactMode ?? false);
+    }
+
+    if (profile.providerPaths) {
+      setProviderPaths(profile.providerPaths);
+      setPathsModified(true);
+    }
+
+    alert(`Profile "${profile.name}" loaded! Remember to save settings.`);
+  };
+
+  const deleteCustomProfile = (name: string) => {
+    const confirm = window.confirm(`Delete profile "${name}"?`);
+    if (!confirm) return;
+
+    const updated = savedProfiles.filter(p => p.name !== name);
+    setSavedProfiles(updated);
+    localStorage.setItem('aura-custom-profiles', JSON.stringify(updated));
+    alert(`Profile "${name}" deleted`);
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -353,6 +514,7 @@ export function SettingsPage() {
         <Tab value="providers">Providers</Tab>
         <Tab value="localproviders">Local Providers</Tab>
         <Tab value="apikeys">API Keys</Tab>
+        <Tab value="templates">Templates</Tab>
         <Tab value="privacy">Privacy</Tab>
       </TabList>
 
@@ -726,6 +888,155 @@ export function SettingsPage() {
             </Button>
           </div>
         </Card>
+      )}
+
+      {activeTab === 'templates' && (
+        <>
+          <Card className={styles.section}>
+            <Title2>Settings Export/Import</Title2>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              Export all your settings to a JSON file, or import settings from a previously saved file
+            </Text>
+            <div className={styles.form}>
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
+                <Button 
+                  appearance="primary" 
+                  onClick={exportSettings}
+                >
+                  Export Settings to JSON
+                </Button>
+                <Button 
+                  appearance="secondary" 
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.json';
+                    input.onchange = (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        importSettings(file);
+                      }
+                    };
+                    input.click();
+                  }}
+                >
+                  Import Settings from JSON
+                </Button>
+              </div>
+              <Text size={200} style={{ fontStyle: 'italic', color: tokens.colorNeutralForeground3 }}>
+                Exported settings include API keys, provider paths, UI preferences, and more.
+                Keep your exported files secure as they may contain sensitive information.
+              </Text>
+            </div>
+          </Card>
+
+          <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
+            <Title2>Profile Templates</Title2>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              Quick-start templates with pre-configured provider settings for common use cases
+            </Text>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+              <div className={styles.profileCard} onClick={() => applyProfileTemplate('free-only')}>
+                <Text weight="semibold">Free-Only</Text>
+                <br />
+                <Text size={200}>
+                  No API keys required. Uses template-based script generation, Windows TTS, 
+                  and free stock sources (Pexels, Pixabay, Unsplash).
+                </Text>
+              </div>
+              <div className={styles.profileCard} onClick={() => applyProfileTemplate('balanced-mix')}>
+                <Text weight="semibold">Balanced Mix</Text>
+                <br />
+                <Text size={200}>
+                  Combines free and paid services. Uses GPT-4 for scripts (requires OpenAI key), 
+                  ElevenLabs for voice (requires key), and free stock sources.
+                </Text>
+              </div>
+              <div className={styles.profileCard} onClick={() => applyProfileTemplate('pro-max')}>
+                <Text weight="semibold">Pro-Max</Text>
+                <br />
+                <Text size={200}>
+                  Maximum quality with all premium providers. Uses GPT-4, ElevenLabs, 
+                  Stability AI for images, and premium stock sources. Requires all API keys.
+                </Text>
+              </div>
+            </div>
+            <Text size={200} style={{ marginTop: tokens.spacingVerticalM, fontStyle: 'italic', color: tokens.colorNeutralForeground3 }}>
+              Applying a template will update your provider selections but won't overwrite your API keys.
+            </Text>
+          </Card>
+
+          <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
+            <Title2>Custom Profile Management</Title2>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              Save your current configuration as a custom profile or load a previously saved profile
+            </Text>
+            <div className={styles.form}>
+              <Field label="Profile Name">
+                <Input 
+                  placeholder="Enter profile name (e.g., My YouTube Setup)"
+                  value={customProfileName}
+                  onChange={(e) => setCustomProfileName(e.target.value)}
+                />
+              </Field>
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+                <Button 
+                  appearance="primary" 
+                  onClick={saveCustomProfile}
+                  disabled={!customProfileName.trim()}
+                >
+                  Save Current Settings as Profile
+                </Button>
+                <Button 
+                  appearance="secondary" 
+                  onClick={loadCustomProfiles}
+                >
+                  Load Saved Profiles
+                </Button>
+              </div>
+              {savedProfiles.length > 0 && (
+                <div style={{ marginTop: tokens.spacingVerticalM }}>
+                  <Text weight="semibold" style={{ marginBottom: tokens.spacingVerticalS, display: 'block' }}>
+                    Saved Profiles:
+                  </Text>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}>
+                    {savedProfiles.map((profile: any, index: number) => (
+                      <div 
+                        key={index}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: tokens.spacingVerticalS,
+                          backgroundColor: tokens.colorNeutralBackground2,
+                          borderRadius: tokens.borderRadiusMedium,
+                        }}
+                      >
+                        <Text>{profile.name}</Text>
+                        <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
+                          <Button 
+                            size="small"
+                            appearance="subtle"
+                            onClick={() => loadCustomProfile(profile)}
+                          >
+                            Load
+                          </Button>
+                          <Button 
+                            size="small"
+                            appearance="subtle"
+                            onClick={() => deleteCustomProfile(profile.name)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        </>
       )}
 
       {activeTab === 'privacy' && (
