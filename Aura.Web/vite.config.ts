@@ -25,9 +25,14 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**'],
-      // Note: Coverage thresholds can be enabled once sufficient tests are written
-      // Current tests focus on wizard defaults and core functionality
-      all: false, // Only report coverage for files that are imported in tests
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        branches: 70,
+        statements: 70,
+        perFile: true
+      },
+      all: false,
     }
   }
 })
