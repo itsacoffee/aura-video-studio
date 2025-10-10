@@ -32,9 +32,9 @@ public class ProviderValidationService
         _providerSettings = providerSettings;
         _httpClientFactory = httpClientFactory;
 
-        // Initialize validators
+        // Initialize validators with a shared HTTP client
+        // Each validator handles its own timeout via CancellationTokenSource
         var httpClient = _httpClientFactory.CreateClient();
-        httpClient.Timeout = TimeSpan.FromSeconds(60); // Global timeout for validators
 
         _validators = new Dictionary<string, IProviderValidator>
         {

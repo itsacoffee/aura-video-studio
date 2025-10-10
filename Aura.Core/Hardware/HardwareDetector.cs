@@ -601,9 +601,9 @@ public class HardwareDetector
         {
             // Test connection to SD WebUI API
             using var httpClient = new System.Net.Http.HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(5);
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
             
-            var response = await httpClient.GetAsync("http://127.0.0.1:7860/");
+            var response = await httpClient.GetAsync("http://127.0.0.1:7860/", cts.Token);
             
             if (response.IsSuccessStatusCode)
             {

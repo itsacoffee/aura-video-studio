@@ -96,8 +96,9 @@ public class StableDiffusionWebUiProvider : IImageProvider
             var json = JsonSerializer.Serialize(probeBody);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            _httpClient.Timeout = TimeSpan.FromSeconds(30);
-            var response = await _httpClient.PostAsync($"{_baseUrl}/sdapi/v1/txt2img", content, ct);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+            var response = await _httpClient.PostAsync($"{_baseUrl}/sdapi/v1/txt2img", content, cts.Token);
             
             if (response.IsSuccessStatusCode)
             {
@@ -184,9 +185,10 @@ public class StableDiffusionWebUiProvider : IImageProvider
             var json = JsonSerializer.Serialize(requestBody);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            _httpClient.Timeout = TimeSpan.FromMinutes(5); // SD generation can take time
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromMinutes(5)); // SD generation can take time
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/sdapi/v1/txt2img", content, ct);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/sdapi/v1/txt2img", content, cts.Token);
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync(ct);

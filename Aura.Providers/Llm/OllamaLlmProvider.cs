@@ -36,9 +36,6 @@ public class OllamaLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
-        
-        // Configure HttpClient timeout
-        _httpClient.Timeout = _timeout;
     }
 
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
@@ -77,7 +74,10 @@ public class OllamaLlmProvider : ILlmProvider
                 var json = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, ct);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_timeout);
+
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
                 response.EnsureSuccessStatusCode();
 
                 var responseJson = await response.Content.ReadAsStringAsync(ct);
