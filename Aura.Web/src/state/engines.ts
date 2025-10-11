@@ -48,7 +48,24 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
       if (!response.ok) {
         throw new Error(`Failed to fetch status: ${response.statusText}`);
       }
-      const status: EngineStatus = await response.json();
+      const data = await response.json();
+      
+      // Transform API response to match EngineStatus interface
+      const status: EngineStatus = {
+        engineId: data.engineId,
+        name: data.name,
+        status: data.status,
+        installedVersion: data.installedVersion,
+        isInstalled: data.status !== 'not_installed',
+        isRunning: data.isRunning,
+        isHealthy: data.health === 'healthy',
+        port: data.port,
+        health: data.health,
+        processId: data.processId,
+        logsPath: data.logsPath,
+        messages: data.messages || [],
+      };
+      
       const newStatuses = new Map(get().engineStatuses);
       newStatuses.set(engineId, status);
       set({ engineStatuses: newStatuses });

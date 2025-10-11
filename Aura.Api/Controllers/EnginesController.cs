@@ -420,8 +420,71 @@ public class EnginesController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Save engine preferences (port, auto-start, etc.)
+    /// </summary>
+    [HttpPost("preferences")]
+    public async Task<IActionResult> SavePreferences([FromBody] Dictionary<string, EnginePreferences> preferences)
+    {
+        try
+        {
+            foreach (var (engineId, prefs) in preferences)
+            {
+                var engineConfig = _registry.GetEngine(engineId);
+                if (engineConfig != null)
+                {
+                    var updatedConfig = engineConfig with
+                    {
+                        Port = prefs.Port ?? engineConfig.Port,
+                        StartOnAppLaunch = prefs.AutoStart
+                    };
+                    await _registry.RegisterEngineAsync(updatedConfig);
+                }
+            }
+
+            return Ok(new { success = true, message = "Preferences saved successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save engine preferences");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get engine preferences
+    /// </summary>
+    [HttpGet("preferences")]
+    public IActionResult GetPreferences()
+    {
+        try
+        {
+            var engines = _registry.GetAllEngines();
+            var preferences = engines.ToDictionary(
+                e => e.Id,
+                e => new EnginePreferences
+                {
+                    Port = e.Port,
+                    AutoStart = e.StartOnAppLaunch
+                }
+            );
+
+            return Ok(preferences);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get engine preferences");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }
 
 public record InstallRequest(string EngineId, string? Version = null, int? Port = null);
 public record EngineActionRequest(string EngineId);
 public record StartRequest(string EngineId, int? Port = null, string? Args = null);
+public record EnginePreferences
+{
+    public int? Port { get; set; }
+    public bool AutoStart { get; set; }
+}

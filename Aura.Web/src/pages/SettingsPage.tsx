@@ -16,6 +16,7 @@ import {
 } from '@fluentui/react-components';
 import { Save24Regular } from '@fluentui/react-icons';
 import type { Profile } from '../types';
+import { LocalEngines } from '../components/Settings/LocalEngines';
 
 const useStyles = makeStyles({
   container: {
@@ -519,6 +520,7 @@ export function SettingsPage() {
         <Tab value="ui">UI</Tab>
         <Tab value="providers">Providers</Tab>
         <Tab value="localproviders">Local Providers</Tab>
+        <Tab value="localengines">Local Engines</Tab>
         <Tab value="apikeys">API Keys</Tab>
         <Tab value="templates">Templates</Tab>
         <Tab value="privacy">Privacy</Tab>
@@ -838,6 +840,16 @@ export function SettingsPage() {
               {savingPaths ? 'Saving...' : 'Save Provider Paths'}
             </Button>
           </div>
+        </Card>
+      )}
+
+      {activeTab === 'localengines' && (
+        <Card className={styles.section}>
+          <Title2>Local Engines</Title2>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+            Manage local AI engines (Stable Diffusion, ComfyUI, Piper, Mimic3) with automatic installation and configuration.
+          </Text>
+          <LocalEngines />
         </Card>
       )}
 

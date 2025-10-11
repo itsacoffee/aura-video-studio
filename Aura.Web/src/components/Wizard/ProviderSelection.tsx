@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -8,8 +9,11 @@ import {
   Field,
   Tooltip,
   Card,
+  Button,
+  Spinner,
+  Badge,
 } from '@fluentui/react-components';
-import { Info24Regular } from '@fluentui/react-icons';
+import { Info24Regular, CheckmarkCircle20Filled, Warning20Filled, ArrowDownload20Regular } from '@fluentui/react-icons';
 import type { PerStageProviderSelection } from '../../state/providers';
 import {
   ScriptProviders,
@@ -17,6 +21,7 @@ import {
   VisualsProviders,
   UploadProviders,
 } from '../../state/providers';
+import { useEnginesStore } from '../../state/engines';
 
 const useStyles = makeStyles({
   section: {
@@ -33,6 +38,18 @@ const useStyles = makeStyles({
     color: tokens.colorBrandForeground1,
     cursor: 'help',
   },
+  engineStatus: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    marginTop: tokens.spacingVerticalXS,
+    padding: tokens.spacingVerticalXS,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusSmall,
+  },
+  installButton: {
+    marginTop: tokens.spacingVerticalXS,
+  },
 });
 
 interface ProviderSelectionProps {
@@ -42,12 +59,114 @@ interface ProviderSelectionProps {
 
 export function ProviderSelection({ selection, onSelectionChange }: ProviderSelectionProps) {
   const styles = useStyles();
+  const { engines, engineStatuses, fetchEngines, fetchEngineStatus, installEngine, isLoading } = useEnginesStore();
+  const [installing, setInstalling] = useState<string | null>(null);
+
+  // Fetch engines on mount
+  useEffect(() => {
+    fetchEngines();
+  }, [fetchEngines]);
+
+  // Map provider values to engine IDs
+  const providerToEngineMap: Record<string, string> = {
+    'LocalSD': 'stable-diffusion',
+    'ComfyUI': 'comfyui',
+    'Piper': 'piper',
+    'Mimic3': 'mimic3',
+  };
 
   const updateSelection = (stage: keyof PerStageProviderSelection, value: string) => {
     onSelectionChange({
       ...selection,
       [stage]: value,
     });
+  };
+
+  const getEngineStatus = (providerValue: string) => {
+    const engineId = providerToEngineMap[providerValue];
+    if (!engineId) return null;
+    
+    return engineStatuses.get(engineId);
+  };
+
+  const isEngineInstalled = (providerValue: string): boolean => {
+    const engineId = providerToEngineMap[providerValue];
+    if (!engineId) return true; // Non-engine providers are always "available"
+    
+    const status = engineStatuses.get(engineId);
+    return status?.isInstalled ?? false;
+  };
+
+  const handleInstallEngine = async (providerValue: string) => {
+    const engineId = providerToEngineMap[providerValue];
+    if (!engineId) return;
+
+    setInstalling(engineId);
+    try {
+      await installEngine(engineId);
+      await fetchEngineStatus(engineId);
+      // Optionally trigger preflight revalidation here
+    } catch (error) {
+      console.error(`Failed to install ${engineId}:`, error);
+      alert(`Failed to install ${providerValue}. Check console for details.`);
+    } finally {
+      setInstalling(null);
+    }
+  };
+
+  const renderEngineStatus = (providerValue: string, label: string) => {
+    const engineId = providerToEngineMap[providerValue];
+    if (!engineId) return null;
+
+    const status = getEngineStatus(providerValue);
+    const installed = isEngineInstalled(providerValue);
+    const isInstalling = installing === engineId;
+
+    if (isInstalling) {
+      return (
+        <div className={styles.engineStatus}>
+          <Spinner size="tiny" />
+          <Text size={200}>Installing {label}...</Text>
+        </div>
+      );
+    }
+
+    if (!installed) {
+      return (
+        <>
+          <div className={styles.engineStatus}>
+            <Warning20Filled color={tokens.colorPaletteYellowForeground1} />
+            <Text size={200}>Not installed</Text>
+          </div>
+          <Button
+            className={styles.installButton}
+            size="small"
+            appearance="primary"
+            icon={<ArrowDownload20Regular />}
+            onClick={() => handleInstallEngine(providerValue)}
+            disabled={isLoading}
+          >
+            Install & Validate
+          </Button>
+        </>
+      );
+    }
+
+    if (status?.isRunning) {
+      return (
+        <div className={styles.engineStatus}>
+          <CheckmarkCircle20Filled color={tokens.colorPaletteGreenForeground1} />
+          <Text size={200}>Running {status.isHealthy ? '(Healthy)' : '(Starting...)'}</Text>
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.engineStatus}>
+        <Badge appearance="tint" color="success">Installed</Badge>
+        <Text size={200}>Ready to use</Text>
+      </div>
+    );
   };
 
   return (
@@ -107,6 +226,8 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
               </Option>
             ))}
           </Dropdown>
+          {(selection.tts === 'Piper' || selection.tts === 'Mimic3') && 
+            renderEngineStatus(selection.tts, selection.tts)}
         </Field>
 
         <Field
@@ -130,6 +251,8 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
               </Option>
             ))}
           </Dropdown>
+          {(selection.visuals === 'LocalSD' || selection.visuals === 'ComfyUI') && 
+            renderEngineStatus(selection.visuals, selection.visuals)}
         </Field>
 
         <Field
