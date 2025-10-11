@@ -498,6 +498,13 @@ apiGroup.MapPost("/script", async (
         // Determine provider tier from request or use default
         string preferredTier = request.ProviderTier ?? "Free";
         
+        // Use per-stage script provider selection if provided
+        if (request.ProviderSelection?.Script != null && request.ProviderSelection.Script != "Auto")
+        {
+            preferredTier = request.ProviderSelection.Script;
+            Log.Information("Using per-stage script provider selection: {Provider}", preferredTier);
+        }
+        
         // Get system offline status
         var profile = await hardwareDetector.DetectSystemAsync();
         bool offlineOnly = profile.OfflineOnly;

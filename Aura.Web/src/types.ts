@@ -103,6 +103,14 @@ export interface WizardSettings {
   stockSources: StockSourcesConfig;
   offlineMode: boolean;
   voiceSpec?: VoiceSpec;
+  providerSelection?: PerStageProviderSelection;
+}
+
+export interface PerStageProviderSelection {
+  script?: string;
+  tts?: string;
+  visuals?: string;
+  upload?: string;
 }
 
 export interface PlannerRecommendations {

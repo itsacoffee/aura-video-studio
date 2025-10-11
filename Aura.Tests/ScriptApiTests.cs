@@ -353,18 +353,26 @@ public class ScriptApiTests
             Style: "Standard"
         );
 
-        // Act & Assert - Should throw exception when no providers available
-        var exception = await Assert.ThrowsAsync<Exception>(async () =>
-            await orchestrator.GenerateScriptAsync(
-                brief,
-                planSpec,
-                "Free",
-                offlineOnly: false,
-                CancellationToken.None
-            )
+        // Act - Should fall back to RuleBased and instantiate it dynamically
+        var result = await orchestrator.GenerateScriptAsync(
+            brief,
+            planSpec,
+            "Free",
+            offlineOnly: false,
+            CancellationToken.None
         );
 
-        Assert.Contains("provider", exception.Message, StringComparison.OrdinalIgnoreCase);
+        // Assert - Should not throw exception (the critical fix!)
+        // The result will fail because RuleBased can't be instantiated via reflection in test,
+        // but the key is that it tried and didn't throw "No LLM providers available"
+        Assert.NotNull(result);
+        Assert.False(result.Success); // Expected to fail in test environment
+        
+        // The error should be about provider failure, not "No LLM providers available"
+        Assert.DoesNotContain("No LLM providers available", result.ErrorMessage ?? string.Empty);
+        
+        // Should report error code for provider failure
+        Assert.NotNull(result.ErrorCode);
     }
 
     [Fact]

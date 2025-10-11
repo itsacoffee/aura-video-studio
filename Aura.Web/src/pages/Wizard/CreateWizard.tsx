@@ -40,10 +40,11 @@ import type {
   CaptionsConfig,
   StockSourcesConfig,
 } from '../../types';
-import type { PreflightReport } from '../../state/providers';
+import type { PreflightReport, PerStageProviderSelection } from '../../state/providers';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../../utils/enumNormalizer';
 import { PreflightPanel } from '../../components/PreflightPanel';
 import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
+import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
 
 const useStyles = makeStyles({
   container: {
@@ -177,6 +178,15 @@ export function CreateWizard() {
   const [preflightReport, setPreflightReport] = useState<PreflightReport | null>(null);
   const [isRunningPreflight, setIsRunningPreflight] = useState(false);
   const [overridePreflightGate, setOverridePreflightGate] = useState(false);
+  const [perStageSelection, setPerStageSelection] = useState<PerStageProviderSelection>({});
+
+  // Update provider selection
+  const updateProviderSelection = (selection: PerStageProviderSelection) => {
+    setPerStageSelection(selection);
+    setSettings({ ...settings, providerSelection: selection });
+    // Reset preflight when selection changes
+    setPreflightReport(null);
+  };
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
@@ -306,6 +316,8 @@ export function CreateWizard() {
           brandKit: settings.brandKit,
           captions: settings.captions,
           stockSources: settings.stockSources,
+          // Include per-stage provider selection
+          providerSelection: settings.providerSelection || perStageSelection,
         }),
       });
 
@@ -994,7 +1006,15 @@ export function CreateWizard() {
                   </Dropdown>
                 </Field>
               </div>
+            </Card>
 
+            {/* Per-Stage Provider Selection */}
+            <ProviderSelection
+              selection={perStageSelection}
+              onSelectionChange={updateProviderSelection}
+            />
+
+            <Card className={styles.section}>
               <PreflightPanel
                 profile={selectedProfile}
                 report={preflightReport}

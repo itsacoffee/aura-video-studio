@@ -210,4 +210,72 @@ public class ProviderMixerTests
         Assert.Equal("Pro", proMax.Stages["TTS"]);
         Assert.Equal("Pro", proMax.Stages["Visuals"]);
     }
+
+    [Fact]
+    public void SelectLlmProvider_Should_NeverThrowException_EmptyProviders()
+    {
+        // Arrange - This is the critical fix for "No LLM providers available" error
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var emptyProviders = new Dictionary<string, ILlmProvider>(); // NO providers at all
+
+        // Act - Should NOT throw, should return RuleBased as guaranteed fallback
+        var selection = mixer.SelectLlmProvider(emptyProviders, "Pro");
+
+        // Assert
+        Assert.NotNull(selection);
+        Assert.Equal("RuleBased", selection.SelectedProvider);
+        Assert.True(selection.IsFallback);
+        Assert.Contains("guaranteed", selection.Reason, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SelectTtsProvider_Should_NeverThrowException_EmptyProviders()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var emptyProviders = new Dictionary<string, ITtsProvider>(); // NO providers at all
+
+        // Act - Should NOT throw, should return Windows as guaranteed fallback
+        var selection = mixer.SelectTtsProvider(emptyProviders, "Pro");
+
+        // Assert
+        Assert.NotNull(selection);
+        Assert.Equal("Windows", selection.SelectedProvider);
+        Assert.True(selection.IsFallback);
+        Assert.Contains("guaranteed", selection.Reason, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SelectLlmProvider_Should_UseSpecificProviderWhenRequested()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["OpenAI"] = Mock.Of<ILlmProvider>(),
+            ["Ollama"] = Mock.Of<ILlmProvider>(),
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act - Request specific provider by name
+        var selection1 = mixer.SelectLlmProvider(providers, "Ollama");
+        var selection2 = mixer.SelectLlmProvider(providers, "OpenAI");
+        var selection3 = mixer.SelectLlmProvider(providers, "RuleBased");
+
+        // Assert
+        Assert.Equal("Ollama", selection1.SelectedProvider);
+        Assert.False(selection1.IsFallback);
+
+        Assert.Equal("OpenAI", selection2.SelectedProvider);
+        Assert.False(selection2.IsFallback);
+
+        Assert.Equal("RuleBased", selection3.SelectedProvider);
+        Assert.False(selection3.IsFallback);
+    }
 }

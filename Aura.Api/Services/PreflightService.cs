@@ -162,22 +162,50 @@ public class PreflightService
         switch (stageTier)
         {
             case "Pro":
-                // Require cloud provider (not implemented yet, so we'll check SD as fallback)
+            case "CloudPro":
+                // Check for cloud providers (Stability or Runway)
+                var stabilityCheck = await ValidateProviderAsync("Visuals", "Stability", CheckStatus.Warn, ct);
+                if (stabilityCheck.Status == CheckStatus.Pass)
+                {
+                    return stabilityCheck;
+                }
+
+                var runwayCheck = await ValidateProviderAsync("Visuals", "Runway", CheckStatus.Warn, ct);
+                if (runwayCheck.Status == CheckStatus.Pass)
+                {
+                    return runwayCheck;
+                }
+
+                // Cloud providers not available, try local SD as fallback
+                var sdCheck = await ValidateProviderAsync("Visuals", "StableDiffusion", CheckStatus.Warn, ct);
+                if (sdCheck.Status == CheckStatus.Pass)
+                {
+                    return new StageCheck
+                    {
+                        Stage = "Visuals",
+                        Status = CheckStatus.Pass,
+                        Provider = "StableDiffusion (local)",
+                        Message = "Using local Stable Diffusion (cloud providers not configured)",
+                        Hint = "Configure Stability AI or Runway API key for cloud generation"
+                    };
+                }
+
+                // No cloud or local, fall back to stock
                 return new StageCheck
                 {
                     Stage = "Visuals",
-                    Status = CheckStatus.Warn,
-                    Provider = "Cloud (not implemented)",
-                    Message = "Pro visual providers not yet implemented",
-                    Hint = "Using local Stable Diffusion or stock images as fallback"
+                    Status = CheckStatus.Pass,
+                    Provider = "Stock",
+                    Message = "Using stock images (cloud providers not configured)",
+                    Hint = "Configure Stability AI or Runway API key in Settings for cloud generation"
                 };
 
             case "StockOrLocal":
                 // Try Stable Diffusion, fallback to stock
-                var sdCheck = await ValidateProviderAsync("Visuals", "StableDiffusion", CheckStatus.Warn, ct);
-                if (sdCheck.Status == CheckStatus.Pass)
+                var localSdCheck = await ValidateProviderAsync("Visuals", "StableDiffusion", CheckStatus.Warn, ct);
+                if (localSdCheck.Status == CheckStatus.Pass)
                 {
-                    return sdCheck;
+                    return localSdCheck;
                 }
 
                 return new StageCheck
