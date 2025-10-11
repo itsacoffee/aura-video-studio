@@ -49,6 +49,15 @@ public class EnginesController : ControllerBase
         try
         {
             var manifest = await _manifestLoader.LoadManifestAsync();
+            
+            // Detect GPU for gating info
+            var hardwareDetector = new Aura.Core.Hardware.HardwareDetector(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Hardware.HardwareDetector>.Instance);
+            var systemProfile = await hardwareDetector.DetectSystemAsync();
+            var gpuInfo = systemProfile.Gpu;
+            bool hasNvidia = gpuInfo?.Vendor?.ToUpperInvariant() == "NVIDIA";
+            bool hasEnoughVram = hasNvidia && (gpuInfo?.VramGB ?? 0) >= 6;
+            
             var engines = manifest.Engines.Select(e => new
             {
                 e.Id,
@@ -60,10 +69,19 @@ public class EnginesController : ControllerBase
                 e.LicenseUrl,
                 e.RequiredVRAMGB,
                 IsInstalled = _installer.IsInstalled(e.Id),
-                InstallPath = _installer.GetInstallPath(e.Id)
+                InstallPath = _installer.GetInstallPath(e.Id),
+                // Gating information
+                IsGated = e.RequiredVRAMGB > 0,
+                CanInstall = e.RequiredVRAMGB == 0 || hasEnoughVram,
+                GatingReason = e.RequiredVRAMGB > 0 && !hasNvidia 
+                    ? "Requires NVIDIA GPU" 
+                    : e.RequiredVRAMGB > 0 && !hasEnoughVram 
+                        ? $"Requires {e.RequiredVRAMGB}GB VRAM (detected: {gpuInfo?.VramGB ?? 0}GB)"
+                        : null,
+                VramTooltip = e.VramTooltip
             }).ToList();
 
-            return Ok(new { engines });
+            return Ok(new { engines, hardwareInfo = new { hasNvidia, vramGB = gpuInfo?.VramGB ?? 0 } });
         }
         catch (Exception ex)
         {
