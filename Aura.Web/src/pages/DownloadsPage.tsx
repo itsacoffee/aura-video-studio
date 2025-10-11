@@ -15,12 +15,17 @@ import {
   TableCell,
   Spinner,
   Badge,
+  TabList,
+  Tab,
+  SelectTabEvent,
+  SelectTabData,
 } from '@fluentui/react-components';
 import { 
   CloudArrowDown24Regular, 
   CheckmarkCircle24Filled,
   ErrorCircle24Filled,
 } from '@fluentui/react-icons';
+import { EnginesTab } from '../components/Engines/EnginesTab';
 
 interface DependencyComponent {
   name: string;
@@ -99,10 +104,15 @@ export function DownloadsPage() {
   const [manifest, setManifest] = useState<DependencyComponent[]>([]);
   const [loading, setLoading] = useState(true);
   const [componentStatus, setComponentStatus] = useState<ComponentStatus>({});
+  const [selectedTab, setSelectedTab] = useState<string>('dependencies');
 
   useEffect(() => {
     fetchManifest();
   }, []);
+
+  const onTabSelect = (_: SelectTabEvent, data: SelectTabData) => {
+    setSelectedTab(data.value as string);
+  };
 
   const fetchManifest = async () => {
     try {
@@ -373,31 +383,38 @@ export function DownloadsPage() {
       <div className={styles.header}>
         <Title1>Download Center</Title1>
         <Text className={styles.subtitle}>
-          Manage dependencies and external tools required for video production
+          Manage dependencies, engines, and external tools required for video production
         </Text>
       </div>
 
-      <Card className={styles.card} style={{ marginBottom: tokens.spacingVerticalL, backgroundColor: tokens.colorNeutralBackground3 }}>
-        <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}>
-            <Title2>Download & Manage Dependencies</Title2>
-            <Text style={{ marginTop: tokens.spacingVerticalS }}>
-              This page helps you download and manage all required components for video production.
-              After downloading, configure their paths in <strong>Settings → Local Providers</strong>.
-            </Text>
-            <Text style={{ marginTop: tokens.spacingVerticalS }}>
-              <strong>Features:</strong>
-            </Text>
-            <ul style={{ marginTop: tokens.spacingVerticalXS, marginLeft: tokens.spacingHorizontalL }}>
-              <li>✓ SHA-256 checksum verification for all downloads</li>
-              <li>✓ Automatic resume support for interrupted downloads</li>
-              <li>✓ Repair corrupted or incomplete installations</li>
-              <li>✓ Post-install validation checks</li>
-              <li>✓ Offline mode: Click "Manual" for manual installation instructions</li>
-            </ul>
-          </div>
-        </div>
-      </Card>
+      <TabList selectedValue={selectedTab} onTabSelect={onTabSelect} style={{ marginBottom: tokens.spacingVerticalL }}>
+        <Tab value="dependencies">Dependencies</Tab>
+        <Tab value="engines">Engines</Tab>
+      </TabList>
+
+      {selectedTab === 'dependencies' && (
+        <>
+          <Card className={styles.card} style={{ marginBottom: tokens.spacingVerticalL, backgroundColor: tokens.colorNeutralBackground3 }}>
+            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <Title2>Download & Manage Dependencies</Title2>
+                <Text style={{ marginTop: tokens.spacingVerticalS }}>
+                  This page helps you download and manage all required components for video production.
+                  After downloading, configure their paths in <strong>Settings → Local Providers</strong>.
+                </Text>
+                <Text style={{ marginTop: tokens.spacingVerticalS }}>
+                  <strong>Features:</strong>
+                </Text>
+                <ul style={{ marginTop: tokens.spacingVerticalXS, marginLeft: tokens.spacingHorizontalL }}>
+                  <li>✓ SHA-256 checksum verification for all downloads</li>
+                  <li>✓ Automatic resume support for interrupted downloads</li>
+                  <li>✓ Repair corrupted or incomplete installations</li>
+                  <li>✓ Post-install validation checks</li>
+                  <li>✓ Offline mode: Click "Manual" for manual installation instructions</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
 
       {loading ? (
         <Card className={styles.card}>
@@ -501,6 +518,12 @@ export function DownloadsPage() {
             </Table>
           </div>
         </Card>
+      )}
+        </>
+      )}
+
+      {selectedTab === 'engines' && (
+        <EnginesTab />
       )}
     </div>
   );
