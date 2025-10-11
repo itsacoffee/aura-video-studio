@@ -109,7 +109,7 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
     // Create available providers
     var providers = factory.CreateAvailableProviders(loggerFactory);
     
-    return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, mixer, providers);
+    return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, loggerFactory, mixer, providers);
 });
 
 // Keep backward compatibility - single ILlmProvider for simple use cases
@@ -1026,6 +1026,8 @@ apiGroup.MapPost("/apikeys/save", ([FromBody] ApiKeysRequest request) =>
             ["openai"] = request.OpenAiKey ?? "",
             ["elevenlabs"] = request.ElevenLabsKey ?? "",
             ["pexels"] = request.PexelsKey ?? "",
+            ["pixabay"] = request.PixabayKey ?? "",
+            ["unsplash"] = request.UnsplashKey ?? "",
             ["stabilityai"] = request.StabilityAiKey ?? ""
         };
         
@@ -1065,6 +1067,8 @@ apiGroup.MapGet("/apikeys/load", () =>
             ["openai"] = "",
             ["elevenlabs"] = "",
             ["pexels"] = "",
+            ["pixabay"] = "",
+            ["unsplash"] = "",
             ["stabilityai"] = ""
         });
     }

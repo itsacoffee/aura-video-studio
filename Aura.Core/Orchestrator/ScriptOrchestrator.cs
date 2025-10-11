@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,15 +16,18 @@ namespace Aura.Core.Orchestrator;
 public class ScriptOrchestrator
 {
     private readonly ILogger<ScriptOrchestrator> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ProviderMixer _providerMixer;
     private readonly Dictionary<string, ILlmProvider> _providers;
 
     public ScriptOrchestrator(
         ILogger<ScriptOrchestrator> logger,
+        ILoggerFactory loggerFactory,
         ProviderMixer providerMixer,
         Dictionary<string, ILlmProvider> providers)
     {
         _logger = logger;
+        _loggerFactory = loggerFactory;
         _providerMixer = providerMixer;
         _providers = providers;
     }
@@ -153,12 +157,26 @@ public class ScriptOrchestrator
                 _logger.LogWarning("RuleBased provider not in registry, instantiating as guaranteed fallback");
                 try
                 {
-                    // Instantiate RuleBased provider dynamically
+                    // Instantiate RuleBased provider dynamically with correct logger type
                     var type = Type.GetType("Aura.Providers.Llm.RuleBasedLlmProvider, Aura.Providers");
                     if (type != null)
                     {
-                        provider = (ILlmProvider)Activator.CreateInstance(type, _logger)!;
-                        _providers[providerName] = provider; // Cache it for future use
+                        // Create a typed logger using reflection
+                        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+                            .GetMethods()
+                            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
+                        
+                        if (createLoggerMethod != null)
+                        {
+                            var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+                            var logger = genericMethod.Invoke(null, new object[] { _loggerFactory });
+                            provider = (ILlmProvider)Activator.CreateInstance(type, logger)!;
+                            _providers[providerName] = provider; // Cache it for future use
+                        }
+                        else
+                        {
+                            _logger.LogError("CreateLogger<T> method not found");
+                        }
                     }
                     else
                     {

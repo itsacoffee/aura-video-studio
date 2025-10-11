@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using Aura.Core.Configuration;
@@ -54,8 +55,7 @@ public class LlmProviderFactory
         // Try to create Ollama provider (local)
         try
         {
-            var ollamaLogger = loggerFactory.CreateLogger("OllamaLlmProvider");
-            var ollamaProvider = CreateOllamaProvider(ollamaLogger);
+            var ollamaProvider = CreateOllamaProvider(loggerFactory);
             if (ollamaProvider != null)
             {
                 providers["Ollama"] = ollamaProvider;
@@ -75,8 +75,7 @@ public class LlmProviderFactory
         {
             if (apiKeys.TryGetValue("openai", out var openAiKey) && !string.IsNullOrWhiteSpace(openAiKey))
             {
-                var openAiLogger = loggerFactory.CreateLogger("OpenAiLlmProvider");
-                var openAiProvider = CreateOpenAiProvider(openAiLogger, openAiKey);
+                var openAiProvider = CreateOpenAiProvider(loggerFactory, openAiKey);
                 if (openAiProvider != null)
                 {
                     providers["OpenAI"] = openAiProvider;
@@ -96,8 +95,7 @@ public class LlmProviderFactory
                 !string.IsNullOrWhiteSpace(azureKey) && 
                 !string.IsNullOrWhiteSpace(azureEndpoint))
             {
-                var azureLogger = loggerFactory.CreateLogger("AzureOpenAiLlmProvider");
-                var azureProvider = CreateAzureOpenAiProvider(azureLogger, azureKey, azureEndpoint);
+                var azureProvider = CreateAzureOpenAiProvider(loggerFactory, azureKey, azureEndpoint);
                 if (azureProvider != null)
                 {
                     providers["Azure"] = azureProvider;
@@ -114,8 +112,7 @@ public class LlmProviderFactory
         {
             if (apiKeys.TryGetValue("gemini", out var geminiKey) && !string.IsNullOrWhiteSpace(geminiKey))
             {
-                var geminiLogger = loggerFactory.CreateLogger("GeminiLlmProvider");
-                var geminiProvider = CreateGeminiProvider(geminiLogger, geminiKey);
+                var geminiProvider = CreateGeminiProvider(loggerFactory, geminiKey);
                 if (geminiProvider != null)
                 {
                     providers["Gemini"] = geminiProvider;
@@ -143,20 +140,23 @@ public class LlmProviderFactory
             throw new Exception("RuleBasedLlmProvider type not found");
         }
 
-        // Create a typed logger ILogger<RuleBasedLlmProvider>
-        var loggerType = typeof(ILogger<>).MakeGenericType(type);
-        var createLoggerMethod = typeof(ILoggerFactory).GetMethod("CreateLogger", Array.Empty<Type>());
+        // Create a typed logger using reflection
+        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+            .GetMethods()
+            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
+        
         if (createLoggerMethod == null)
         {
-            throw new Exception("CreateLogger method not found on ILoggerFactory");
+            throw new Exception("CreateLogger<T> method not found on LoggerFactoryExtensions");
         }
-        var genericCreateLogger = createLoggerMethod.MakeGenericMethod(type);
-        var typedLogger = genericCreateLogger.Invoke(loggerFactory, null);
         
-        return (ILlmProvider)Activator.CreateInstance(type, typedLogger)!;
+        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
+        
+        return (ILlmProvider)Activator.CreateInstance(type, logger)!;
     }
 
-    private ILlmProvider? CreateOllamaProvider(ILogger logger)
+    private ILlmProvider? CreateOllamaProvider(ILoggerFactory loggerFactory)
     {
         var ollamaUrl = _providerSettings.GetOllamaUrl();
         var httpClient = _httpClientFactory.CreateClient();
@@ -169,6 +169,20 @@ public class LlmProviderFactory
             return null;
         }
 
+        // Create a typed logger using reflection
+        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+            .GetMethods()
+            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
+        
+        if (createLoggerMethod == null)
+        {
+            _logger.LogWarning("CreateLogger<T> method not found");
+            return null;
+        }
+        
+        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
+
         return (ILlmProvider)Activator.CreateInstance(
             type, 
             logger, 
@@ -180,7 +194,7 @@ public class LlmProviderFactory
         )!;
     }
 
-    private ILlmProvider? CreateOpenAiProvider(ILogger logger, string apiKey)
+    private ILlmProvider? CreateOpenAiProvider(ILoggerFactory loggerFactory, string apiKey)
     {
         var httpClient = _httpClientFactory.CreateClient();
         
@@ -192,6 +206,20 @@ public class LlmProviderFactory
             return null;
         }
 
+        // Create a typed logger using reflection
+        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+            .GetMethods()
+            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
+        
+        if (createLoggerMethod == null)
+        {
+            _logger.LogWarning("CreateLogger<T> method not found");
+            return null;
+        }
+        
+        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
+
         return (ILlmProvider)Activator.CreateInstance(
             type,
             logger,
@@ -201,7 +229,7 @@ public class LlmProviderFactory
         )!;
     }
 
-    private ILlmProvider? CreateAzureOpenAiProvider(ILogger logger, string apiKey, string endpoint)
+    private ILlmProvider? CreateAzureOpenAiProvider(ILoggerFactory loggerFactory, string apiKey, string endpoint)
     {
         var httpClient = _httpClientFactory.CreateClient();
         
@@ -213,6 +241,20 @@ public class LlmProviderFactory
             return null;
         }
 
+        // Create a typed logger using reflection
+        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+            .GetMethods()
+            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
+        
+        if (createLoggerMethod == null)
+        {
+            _logger.LogWarning("CreateLogger<T> method not found");
+            return null;
+        }
+        
+        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
+
         return (ILlmProvider)Activator.CreateInstance(
             type,
             logger,
@@ -223,7 +265,7 @@ public class LlmProviderFactory
         )!;
     }
 
-    private ILlmProvider? CreateGeminiProvider(ILogger logger, string apiKey)
+    private ILlmProvider? CreateGeminiProvider(ILoggerFactory loggerFactory, string apiKey)
     {
         var httpClient = _httpClientFactory.CreateClient();
         
@@ -234,6 +276,20 @@ public class LlmProviderFactory
             _logger.LogWarning("GeminiLlmProvider type not found");
             return null;
         }
+
+        // Create a typed logger using reflection
+        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+            .GetMethods()
+            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
+        
+        if (createLoggerMethod == null)
+        {
+            _logger.LogWarning("CreateLogger<T> method not found");
+            return null;
+        }
+        
+        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
 
         return (ILlmProvider)Activator.CreateInstance(
             type,

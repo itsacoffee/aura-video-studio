@@ -217,11 +217,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Introduction to Python Programming",
@@ -278,11 +274,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false, AutoFallback = true };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Machine Learning Basics",
@@ -331,11 +323,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Test Topic",
@@ -388,11 +376,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Cloud Services",
@@ -441,11 +425,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var planSpec = new PlanSpec(
             TargetDuration: TimeSpan.FromMinutes(2),
@@ -495,11 +475,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Test Topic",
@@ -556,11 +532,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Test Topic",
