@@ -196,15 +196,42 @@ public class ProviderMixer
                 };
             }
 
-            // If ProIfAvailable and no Pro providers, fall back to free
+            // If ProIfAvailable and no Pro providers, fall back to local/free
             if (preferredTier == "ProIfAvailable")
             {
-                _logger.LogInformation("No Pro TTS providers available, falling back to Windows TTS");
+                _logger.LogInformation("No Pro TTS providers available, falling back to local/free TTS");
             }
             else
             {
                 _logger.LogWarning("Pro TTS provider requested but none available");
             }
+        }
+
+        // Try local TTS providers (offline, high quality)
+        if (availableProviders.ContainsKey("Mimic3"))
+        {
+            bool isFallback = preferredTier == "Pro";
+            return new ProviderSelection
+            {
+                Stage = stage,
+                SelectedProvider = "Mimic3",
+                Reason = "Local Mimic3 TTS available (offline)",
+                IsFallback = isFallback,
+                FallbackFrom = isFallback ? "Pro TTS" : null
+            };
+        }
+
+        if (availableProviders.ContainsKey("Piper"))
+        {
+            bool isFallback = preferredTier == "Pro";
+            return new ProviderSelection
+            {
+                Stage = stage,
+                SelectedProvider = "Piper",
+                Reason = "Local Piper TTS available (offline, fast)",
+                IsFallback = isFallback,
+                FallbackFrom = isFallback ? "Pro TTS" : null
+            };
         }
 
         // Fall back to Windows TTS (always available)
@@ -215,8 +242,8 @@ public class ProviderMixer
                 Stage = stage,
                 SelectedProvider = "Windows",
                 Reason = "Windows TTS - free and always available",
-                IsFallback = preferredTier == "Pro",
-                FallbackFrom = preferredTier == "Pro" ? "Pro TTS" : null
+                IsFallback = preferredTier == "Pro" || preferredTier == "ProIfAvailable",
+                FallbackFrom = (preferredTier == "Pro" || preferredTier == "ProIfAvailable") ? "Pro/Local TTS" : null
             };
         }
 
@@ -384,6 +411,8 @@ public class ProviderMixer
             "Windows" or "windows" or "Windows SAPI" or "WindowsSAPI" or "SAPI" => "Windows",
             "ElevenLabs" or "elevenlabs" or "Eleven" or "eleven" => "ElevenLabs",
             "PlayHT" or "playht" or "Play.ht" or "PlayHt" => "PlayHT",
+            "Piper" or "piper" => "Piper",
+            "Mimic3" or "mimic3" or "Mimic" or "mimic" => "Mimic3",
             
             // Visual providers
             "Stock" or "stock" => "Stock",

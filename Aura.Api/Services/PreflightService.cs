@@ -141,6 +141,74 @@ public class PreflightService
                 // Require ElevenLabs to be configured and reachable
                 return await ValidateProviderAsync("TTS", "ElevenLabs", CheckStatus.Fail, ct);
 
+            case "ProIfAvailable":
+                // Try ElevenLabs first
+                var elevenLabsCheck = await ValidateProviderAsync("TTS", "ElevenLabs", CheckStatus.Warn, ct);
+                if (elevenLabsCheck.Status == CheckStatus.Pass)
+                {
+                    return elevenLabsCheck;
+                }
+
+                // Fall back to PlayHT
+                var playHtCheck = await ValidateProviderAsync("TTS", "PlayHT", CheckStatus.Warn, ct);
+                if (playHtCheck.Status == CheckStatus.Pass)
+                {
+                    return new StageCheck
+                    {
+                        Stage = "TTS",
+                        Status = CheckStatus.Pass,
+                        Provider = "PlayHT",
+                        Message = "Using PlayHT (ElevenLabs not available)",
+                        Hint = "Configure ElevenLabs key for best quality"
+                    };
+                }
+
+                // Fall back to Mimic3 (local)
+                var mimic3Check = await ValidateProviderAsync("TTS", "Mimic3", CheckStatus.Warn, ct);
+                if (mimic3Check.Status == CheckStatus.Pass)
+                {
+                    return new StageCheck
+                    {
+                        Stage = "TTS",
+                        Status = CheckStatus.Pass,
+                        Provider = "Mimic3 (local)",
+                        Message = "Using local Mimic3 (Pro TTS not available)",
+                        Hint = "Configure ElevenLabs or PlayHT for cloud TTS"
+                    };
+                }
+
+                // Fall back to Piper (local)
+                var piperCheck = await ValidateProviderAsync("TTS", "Piper", CheckStatus.Warn, ct);
+                if (piperCheck.Status == CheckStatus.Pass)
+                {
+                    return new StageCheck
+                    {
+                        Stage = "TTS",
+                        Status = CheckStatus.Pass,
+                        Provider = "Piper (local)",
+                        Message = "Using local Piper (Pro TTS not available)",
+                        Hint = "Configure ElevenLabs or PlayHT for cloud TTS"
+                    };
+                }
+
+                // Fall back to Windows TTS
+                return new StageCheck
+                {
+                    Stage = "TTS",
+                    Status = CheckStatus.Pass,
+                    Provider = "Windows TTS",
+                    Message = "Using Windows Speech Synthesis (Pro/local TTS not available)",
+                    Hint = "Configure ElevenLabs/PlayHT or install Piper/Mimic3 for better quality"
+                };
+
+            case "Mimic3":
+                // Use Mimic3 (local)
+                return await ValidateProviderAsync("TTS", "Mimic3", CheckStatus.Warn, ct);
+
+            case "Piper":
+                // Use Piper (local)
+                return await ValidateProviderAsync("TTS", "Piper", CheckStatus.Warn, ct);
+
             case "Windows":
             default:
                 // Windows TTS is always available (no check needed)
