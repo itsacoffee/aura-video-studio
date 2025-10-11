@@ -366,9 +366,11 @@ public class PreflightService
             "ElevenLabs" when details.Contains("API key") => "Configure your ElevenLabs API key in Settings",
             "ElevenLabs" => "Check ElevenLabs service status and API key",
             "Ollama" => "Start Ollama service: ollama serve",
-            "StableDiffusion" when details.Contains("--api") => "Start SD WebUI with --api flag",
-            "StableDiffusion" when details.Contains("not running") => "Start SD WebUI at http://127.0.0.1:7860",
-            "StableDiffusion" => "Ensure SD WebUI is running with --api flag",
+            "StableDiffusion" when details.Contains("--api") => "Start SD WebUI with --api flag. Requires NVIDIA GPU with 6GB+ VRAM",
+            "StableDiffusion" when details.Contains("not running") => "Start SD WebUI at http://127.0.0.1:7860. Install from Downloads page if needed",
+            "StableDiffusion" => "Ensure SD WebUI is running with --api flag. Requires NVIDIA GPU with 6GB+ VRAM",
+            "Piper" => "Install Piper TTS from Downloads page or configure path in Settings",
+            "Mimic3" => "Start Mimic3 server from Downloads page or ensure it's running on port 59125",
             _ => null
         };
     }
