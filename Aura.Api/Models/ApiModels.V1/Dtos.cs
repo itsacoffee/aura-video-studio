@@ -23,7 +23,8 @@ public record ScriptRequest(
     ApiV1.Pacing Pacing, 
     ApiV1.Density Density, 
     string Style, 
-    string? ProviderTier);
+    string? ProviderTier,
+    ProviderSelectionDto? ProviderSelection);
 
 public record TtsRequest(
     List<LineDto> Lines, 

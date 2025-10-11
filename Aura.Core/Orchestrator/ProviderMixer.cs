@@ -32,6 +32,28 @@ public class ProviderMixer
         var stage = "Script";
         _logger.LogInformation("Selecting LLM provider for {Stage} stage (preferred: {Tier})", stage, preferredTier);
 
+        // If specific provider is requested (not a tier), try to use it directly
+        if (!string.IsNullOrWhiteSpace(preferredTier) && 
+            preferredTier != "Pro" && 
+            preferredTier != "ProIfAvailable" && 
+            preferredTier != "Free")
+        {
+            // Normalize provider name
+            var normalizedName = NormalizeProviderName(preferredTier);
+            if (availableProviders.ContainsKey(normalizedName))
+            {
+                return new ProviderSelection
+                {
+                    Stage = stage,
+                    SelectedProvider = normalizedName,
+                    Reason = $"User-selected provider: {normalizedName}",
+                    IsFallback = false
+                };
+            }
+            
+            _logger.LogWarning("Requested provider {Provider} not available, falling back to tier logic", preferredTier);
+        }
+
         // Try Pro providers first if requested
         if (preferredTier == "Pro" || preferredTier == "ProIfAvailable")
         {
@@ -106,7 +128,16 @@ public class ProviderMixer
             };
         }
 
-        throw new Exception("No LLM providers available");
+        // RuleBased provider is ALWAYS available as last resort - never throw
+        _logger.LogWarning("No LLM providers in registry, returning RuleBased as guaranteed fallback");
+        return new ProviderSelection
+        {
+            Stage = stage,
+            SelectedProvider = "RuleBased",
+            Reason = "RuleBased fallback - guaranteed always-available provider",
+            IsFallback = true,
+            FallbackFrom = "All providers"
+        };
     }
 
     /// <summary>
@@ -118,6 +149,27 @@ public class ProviderMixer
     {
         var stage = "TTS";
         _logger.LogInformation("Selecting TTS provider for {Stage} stage (preferred: {Tier})", stage, preferredTier);
+
+        // If specific provider is requested (not a tier), try to use it directly
+        if (!string.IsNullOrWhiteSpace(preferredTier) && 
+            preferredTier != "Pro" && 
+            preferredTier != "ProIfAvailable" && 
+            preferredTier != "Free")
+        {
+            var normalizedName = NormalizeProviderName(preferredTier);
+            if (availableProviders.ContainsKey(normalizedName))
+            {
+                return new ProviderSelection
+                {
+                    Stage = stage,
+                    SelectedProvider = normalizedName,
+                    Reason = $"User-selected provider: {normalizedName}",
+                    IsFallback = false
+                };
+            }
+            
+            _logger.LogWarning("Requested TTS provider {Provider} not available, falling back to tier logic", preferredTier);
+        }
 
         // Try Pro providers first if requested
         if (preferredTier == "Pro" || preferredTier == "ProIfAvailable")
@@ -168,7 +220,16 @@ public class ProviderMixer
             };
         }
 
-        throw new Exception("No TTS providers available");
+        // Windows TTS is ALWAYS available as last resort - never throw
+        _logger.LogWarning("No TTS providers in registry, returning Windows as guaranteed fallback");
+        return new ProviderSelection
+        {
+            Stage = stage,
+            SelectedProvider = "Windows",
+            Reason = "Windows TTS fallback - guaranteed always-available provider",
+            IsFallback = true,
+            FallbackFrom = "All TTS providers"
+        };
     }
 
     /// <summary>
@@ -183,8 +244,30 @@ public class ProviderMixer
         var stage = "Visuals";
         _logger.LogInformation("Selecting visual provider for {Stage} stage (preferred: {Tier})", stage, preferredTier);
 
+        // If specific provider is requested (not a tier), try to use it directly
+        if (!string.IsNullOrWhiteSpace(preferredTier) && 
+            preferredTier != "Pro" && 
+            preferredTier != "ProIfAvailable" && 
+            preferredTier != "Free" &&
+            preferredTier != "StockOrLocal")
+        {
+            var normalizedName = NormalizeProviderName(preferredTier);
+            if (availableProviders.ContainsKey(normalizedName))
+            {
+                return new ProviderSelection
+                {
+                    Stage = stage,
+                    SelectedProvider = normalizedName,
+                    Reason = $"User-selected provider: {normalizedName}",
+                    IsFallback = false
+                };
+            }
+            
+            _logger.LogWarning("Requested visual provider {Provider} not available, falling back to tier logic", preferredTier);
+        }
+
         // Try Pro providers first if requested
-        if (preferredTier == "Pro" || preferredTier == "ProIfAvailable")
+        if (preferredTier == "Pro" || preferredTier == "ProIfAvailable" || preferredTier == "CloudPro")
         {
             if (availableProviders.ContainsKey("Stability"))
             {
@@ -281,5 +364,37 @@ public class ProviderMixer
                 selection.Reason
             );
         }
+    }
+
+    /// <summary>
+    /// Normalizes provider names to match DI registration keys
+    /// </summary>
+    private static string NormalizeProviderName(string name)
+    {
+        return name switch
+        {
+            // LLM providers
+            "RuleBased" or "rulebased" or "Rule-Based" or "rule-based" => "RuleBased",
+            "Ollama" or "ollama" => "Ollama",
+            "OpenAI" or "openai" or "OpenAi" => "OpenAI",
+            "AzureOpenAI" or "Azure" or "azure" or "AzureOpenAi" or "azureopenai" => "Azure",
+            "Gemini" or "gemini" => "Gemini",
+            
+            // TTS providers
+            "Windows" or "windows" or "Windows SAPI" or "WindowsSAPI" or "SAPI" => "Windows",
+            "ElevenLabs" or "elevenlabs" or "Eleven" or "eleven" => "ElevenLabs",
+            "PlayHT" or "playht" or "Play.ht" or "PlayHt" => "PlayHT",
+            
+            // Visual providers
+            "Stock" or "stock" => "Stock",
+            "LocalSD" or "localsd" or "StableDiffusion" or "stablediffusion" or "SD" => "StableDiffusion",
+            "CloudPro" or "cloudpro" or "Cloud" or "cloud" => "CloudPro",
+            "Stability" or "stability" or "StabilityAI" or "StabilityAi" => "Stability",
+            "Runway" or "runway" or "RunwayML" or "RunwayMl" => "Runway",
+            "Slideshow" or "slideshow" => "Slideshow",
+            
+            // Default: return as-is
+            _ => name
+        };
     }
 }
