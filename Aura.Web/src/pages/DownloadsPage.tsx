@@ -290,7 +290,7 @@ export function DownloadsPage() {
       const response = await fetch(`/api/downloads/${componentName}/folder`);
       if (response.ok) {
         const data = await response.json();
-        alert(`Component folder: ${data.path}\n\nNote: Opening folders is not yet implemented in the web UI. Please navigate to this path manually.`);
+        alert(`Component folder: ${data.path}\n\nPlease navigate to this path manually in your file explorer.`);
       }
     } catch (error) {
       console.error(`Error getting folder for ${componentName}:`, error);

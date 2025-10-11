@@ -53,6 +53,15 @@ jobs:
         name: test-results
         path: |
           **/TestResults/*.trx
+    
+    - name: Upload E2E Smoke Test Artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-smoke-artifacts
+        path: |
+          ${{ runner.temp }}/aura-e2e-artifacts/
+        retention-days: 30
   
   portable-only-guard:
     name: Portable-Only Policy Check
