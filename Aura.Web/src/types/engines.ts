@@ -16,7 +16,9 @@ export interface EngineStatus {
   name: string;
   status: 'not_installed' | 'installed' | 'running';
   installedVersion?: string;
+  isInstalled: boolean;
   isRunning: boolean;
+  isHealthy: boolean;
   port?: number;
   health?: 'healthy' | 'unreachable' | null;
   processId?: number;

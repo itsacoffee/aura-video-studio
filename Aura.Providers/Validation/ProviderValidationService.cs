@@ -49,6 +49,12 @@ public class ProviderValidationService
                 httpClient),
             ["StableDiffusion"] = new StableDiffusionValidator(
                 loggerFactory.CreateLogger<StableDiffusionValidator>(),
+                httpClient),
+            ["Piper"] = new PiperValidator(
+                loggerFactory.CreateLogger<PiperValidator>(),
+                httpClient),
+            ["Mimic3"] = new Mimic3Validator(
+                loggerFactory.CreateLogger<Mimic3Validator>(),
                 httpClient)
         };
     }

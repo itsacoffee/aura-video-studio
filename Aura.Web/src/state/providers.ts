@@ -49,13 +49,16 @@ export const ScriptProviders = [
 
 export const TtsProviders = [
   { value: 'Windows', label: 'Windows SAPI (Free)', description: 'Built-in Windows text-to-speech, always available' },
+  { value: 'Piper', label: 'Piper (Local)', description: 'Fast local TTS, works offline, requires installation' },
+  { value: 'Mimic3', label: 'Mimic3 (Local)', description: 'Neural TTS, works offline, requires installation' },
   { value: 'ElevenLabs', label: 'ElevenLabs (Pro)', description: 'Premium voice synthesis, requires API key' },
   { value: 'PlayHT', label: 'Play.ht (Pro)', description: 'Cloud voice synthesis, requires API key' },
 ] as const;
 
 export const VisualsProviders = [
   { value: 'Stock', label: 'Stock Images (Free)', description: 'Curated stock photos from Pexels/Pixabay/Unsplash' },
-  { value: 'LocalSD', label: 'Local SD (NVIDIA only)', description: 'Stable Diffusion WebUI, requires NVIDIA GPU with 6GB+ VRAM' },
+  { value: 'LocalSD', label: 'Local SD (Managed)', description: 'Stable Diffusion WebUI, requires NVIDIA GPU with 6GB+ VRAM, auto-managed' },
+  { value: 'ComfyUI', label: 'ComfyUI', description: 'Advanced node-based Stable Diffusion, requires NVIDIA GPU with 8GB+ VRAM' },
   { value: 'CloudPro', label: 'Cloud Pro (Stability/Runway)', description: 'Cloud AI image generation, requires API key' },
 ] as const;
 
