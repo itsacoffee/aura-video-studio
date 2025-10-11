@@ -18,6 +18,7 @@ import { PublishPage } from './pages/PublishPage';
 import { DownloadsPage } from './pages/DownloadsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LogViewerPage } from './pages/LogViewerPage';
+import { ProjectsPage } from './pages/Projects/ProjectsPage';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 
 const useStyles = makeStyles({
@@ -84,6 +85,7 @@ function App() {
                 <Route path="/timeline" element={<TimelinePage />} />
                 <Route path="/render" element={<RenderPage />} />
                 <Route path="/publish" element={<PublishPage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/downloads" element={<DownloadsPage />} />
                 <Route path="/logs" element={<LogViewerPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
