@@ -2,12 +2,23 @@
 
 export type CheckStatus = 'pass' | 'warn' | 'fail';
 
+export type FixActionType = 'Install' | 'Start' | 'OpenSettings' | 'SwitchToFree' | 'Help';
+
+export interface FixAction {
+  type: FixActionType;
+  label: string;
+  parameter?: string | null;
+  description: string;
+}
+
 export interface StageCheck {
   stage: string;
   status: CheckStatus;
   provider: string;
   message: string;
   hint?: string | null;
+  suggestions?: string[] | null;
+  fixActions?: FixAction[] | null;
 }
 
 export interface PreflightReport {

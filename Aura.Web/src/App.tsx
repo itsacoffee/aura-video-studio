@@ -19,6 +19,7 @@ import { DownloadsPage } from './pages/DownloadsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LogViewerPage } from './pages/LogViewerPage';
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
+import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 
 const useStyles = makeStyles({
@@ -79,6 +80,7 @@ function App() {
             <Layout>
               <Routes>
                 <Route path="/" element={<WelcomePage />} />
+                <Route path="/onboarding" element={<FirstRunWizard />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/create" element={<CreateWizard />} />
                 <Route path="/create/legacy" element={<CreatePage />} />

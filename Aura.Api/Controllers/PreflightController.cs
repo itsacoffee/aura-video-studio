@@ -43,4 +43,26 @@ public class PreflightController : ControllerBase
             return StatusCode(500, new { error = "Error running preflight checks", details = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Get safe defaults profile configuration
+    /// </summary>
+    /// <returns>Safe defaults profile</returns>
+    [HttpGet("safe-defaults")]
+    public IActionResult GetSafeDefaults()
+    {
+        try
+        {
+            Log.Information("Safe defaults profile requested");
+            
+            var profile = _preflightService.GetSafeDefaultsProfile();
+            
+            return Ok(profile);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting safe defaults");
+            return StatusCode(500, new { error = "Error getting safe defaults", details = ex.Message });
+        }
+    }
 }
