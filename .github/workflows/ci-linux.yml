@@ -17,39 +17,106 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+          cache: true
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20.x"
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Placeholder scan
+        run: |
+          if grep -nEI '(^|\s)(TODO|FIXME|FUTURE IMPLEMENTATION|FUTURE|NEXT STEPS|OPTIONAL ENHANCEMENTS)(:|$)' $(git ls-files) ; then
+            echo "::error::Found placeholder text (TODO/FIXME/FUTURE/NEXT STEPS/OPTIONAL). Remove or implement before merge."
+            exit 1
+          else
+            echo "✅ No placeholder markers found."
+          fi
 
       - name: Linux Audit
         run: |
           chmod +x ./scripts/audit/scan.sh || true
           ./scripts/audit/scan.sh .
 
-      - name: Restore
+      - name: Restore .NET packages
         run: dotnet restore
 
-      - name: Build
+      - name: Build .NET solution
         run: dotnet build --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+      - name: Test .NET with coverage
+        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
 
-      - name: Frontend checks (if package.json exists at repo root)
-        if: ${{ hashFiles('package.json') != '' }}
+      - name: Install Node dependencies
+        working-directory: Aura.Web
+        run: npm ci
+
+      - name: Run Vitest tests
+        working-directory: Aura.Web
+        run: npm test
+
+      - name: Run Vitest with coverage
+        working-directory: Aura.Web
+        run: npm run test:coverage
+
+      - name: Install Playwright
+        working-directory: Aura.Web
+        run: npm run playwright:install
+
+      - name: Run Playwright E2E tests
+        working-directory: Aura.Web
+        run: npm run playwright
+
+      - name: Smoke Render
         run: |
-          npm ci
-          npm run typecheck --if-present
-          npm run lint --if-present
-          npm test --if-present
+          chmod +x ./scripts/run_quick_generate_demo.sh
+          ./scripts/run_quick_generate_demo.sh
 
-      - name: Upload audit artifacts
+      - name: Upload smoke artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: linux-audit-and-tests
+          name: linux-smoke-artifacts
           path: |
-            artifacts/audit/**
+            artifacts/smoke/*.mp4
+            artifacts/smoke/*.srt
+            artifacts/smoke/*.vtt
+            artifacts/smoke/*.zip
+          retention-days: 30
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-test-results
+          path: |
             **/TestResults/**/*.trx
+            **/TestResults/**/*.xml
+            **/TestResults/**/coverage.cobertura.xml
+          retention-days: 30
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-playwright-report
+          path: Aura.Web/playwright-report/
+          retention-days: 30
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-coverage-reports
+          path: |
+            Aura.Web/coverage/
+            **/TestResults/**/coverage.cobertura.xml
+          retention-days: 30
 

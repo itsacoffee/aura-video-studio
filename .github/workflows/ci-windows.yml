@@ -17,31 +17,109 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Placeholder scan
+        shell: pwsh
+        run: |
+          $found = Select-String -Pattern "(^|\s)(TODO|FIXME|FUTURE IMPLEMENTATION|FUTURE|NEXT STEPS|OPTIONAL ENHANCEMENTS)(:|$)" -Path (git ls-files) -CaseSensitive
+          if ($found) {
+            Write-Host "::error::Found placeholder text (TODO/FIXME/FUTURE/NEXT STEPS/OPTIONAL). Remove or implement before merge."
+            $found | ForEach-Object { Write-Host $_ }
+            exit 1
+          } else {
+            Write-Host "✅ No placeholder markers found."
+          }
 
       - name: Windows Audit
         shell: pwsh
         run: |
           pwsh -File .\scripts\audit\scan.ps1
 
-      - name: Restore
+      - name: Restore .NET packages
         run: dotnet restore
 
-      - name: Build
+      - name: Build .NET solution
         run: dotnet build --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+      - name: Test .NET with coverage
+        run: dotnet test --configuration Release --no-build --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+
+      - name: Install Node dependencies
+        working-directory: Aura.Web
+        run: npm ci
+
+      - name: Run Vitest tests
+        working-directory: Aura.Web
+        run: npm test
+
+      - name: Run Vitest with coverage
+        working-directory: Aura.Web
+        run: npm run test:coverage
+
+      - name: Install Playwright
+        working-directory: Aura.Web
+        run: npm run playwright:install
+
+      - name: Run Playwright E2E tests
+        working-directory: Aura.Web
+        run: npm run playwright
 
       - name: Smoke Render
         shell: pwsh
         run: |
           pwsh -File .\scripts\run_quick_generate_demo.ps1 -FfmpegPath ".\scripts\ffmpeg\ffmpeg.exe"
 
-      - name: Upload artifacts
+      - name: Upload smoke artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: windows-audit-smoke-and-tests
+          name: windows-smoke-artifacts
           path: |
-            artifacts/**
+            artifacts/smoke/*.mp4
+            artifacts/smoke/*.srt
+            artifacts/smoke/*.vtt
+            artifacts/smoke/*.zip
+          retention-days: 30
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-test-results
+          path: |
             **/TestResults/**/*.trx
+            **/TestResults/**/*.xml
+            **/TestResults/**/coverage.cobertura.xml
+          retention-days: 30
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-playwright-report
+          path: Aura.Web/playwright-report/
+          retention-days: 30
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-coverage-reports
+          path: |
+            Aura.Web/coverage/
+            **/TestResults/**/coverage.cobertura.xml
+          retention-days: 30
 

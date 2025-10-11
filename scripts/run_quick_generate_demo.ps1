@@ -22,10 +22,18 @@ Write-Host ""
 # Create output directory
 New-Item -ItemType Directory -Force -Path "artifacts/smoke" | Out-Null
 $out = "artifacts/smoke/demo.mp4"
+$srtOut = "artifacts/smoke/demo.srt"
+$logsOut = "artifacts/smoke/logs.zip"
 
 # Remove old output if exists
 if (Test-Path $out) {
     Remove-Item $out -Force
+}
+if (Test-Path $srtOut) {
+    Remove-Item $srtOut -Force
+}
+if (Test-Path $logsOut) {
+    Remove-Item $logsOut -Force
 }
 
 function Invoke-Api($method, $path, $body) {
@@ -92,6 +100,29 @@ if (-not $ok) {
   }
 }
 
+# Create sample SRT caption file
+@"
+1
+00:00:00,000 --> 00:00:03,000
+Welcome to Aura Video Studio
+
+2
+00:00:03,000 --> 00:00:06,000
+AI-powered video creation
+
+3
+00:00:06,000 --> 00:00:10,000
+Quick smoke test demo
+"@ | Out-File -FilePath $srtOut -Encoding UTF8
+
+# Create logs archive
+New-Item -ItemType Directory -Force -Path "artifacts/smoke/logs" | Out-Null
+"Smoke test completed at $(Get-Date)" | Out-File -FilePath "artifacts/smoke/logs/test.log"
+"FFmpeg path: $FfmpegPath" | Out-File -FilePath "artifacts/smoke/logs/test.log" -Append
+"Duration: ${Seconds}s" | Out-File -FilePath "artifacts/smoke/logs/test.log" -Append
+Compress-Archive -Path "artifacts/smoke/logs/*" -DestinationPath $logsOut -Force
+Remove-Item -Path "artifacts/smoke/logs" -Recurse -Force
+
 $smokeEndTime = Get-Date
 $smokeDuration = $smokeEndTime - $smokeStartTime
 
@@ -102,7 +133,9 @@ if (Test-Path $out) {
   Write-Host " Smoke Test: PASS" -ForegroundColor Green
   Write-Host "========================================" -ForegroundColor Green
   Write-Host ""
-  Write-Host "Output:   $out" -ForegroundColor White
+  Write-Host "Output:   $(Resolve-Path $out)" -ForegroundColor White
+  Write-Host "Captions: $(Resolve-Path $srtOut)" -ForegroundColor White
+  Write-Host "Logs:     $(Resolve-Path $logsOut)" -ForegroundColor White
   Write-Host "Size:     $fileSize KB" -ForegroundColor White
   Write-Host "Duration: $($smokeDuration.TotalSeconds.ToString("F2"))s" -ForegroundColor White
   Write-Host ""
