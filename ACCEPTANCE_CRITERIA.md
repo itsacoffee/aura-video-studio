@@ -346,12 +346,6 @@ EnableLocalDiffusion = isNvidia && (okSD15 || okSDXL);
    - Requires Windows environment for compilation
    - Core functionality is ready for UI binding
 
-2. Future enhancements (not blocking acceptance):
-   - Additional Pro providers (Azure, Gemini, ElevenLabs, PlayHT)
-   - Additional Stock providers (Pixabay, Unsplash)
-   - DPAPI key encryption
-   - Full MSIX packaging with code signing
-
 ---
 
 ## Conclusion

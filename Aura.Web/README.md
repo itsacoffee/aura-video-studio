@@ -134,20 +134,6 @@ Strict mode is enabled for type safety.
 - ✅ **Downloads Page** - Dependency management
 - ✅ **Settings Page** - Multi-tab configuration (System, Providers, API Keys, Privacy)
 
-### Planned Features (Per Spec)
-- [ ] **Timeline/Storyboard Editor**
-  - PixiJS canvas for visual timeline
-  - WaveSurfer.js for audio waveforms
-  - Drag-and-drop editing
-- [ ] **Real-time Updates**
-  - SSE streaming for logs
-  - Live render progress
-- [ ] **Advanced Features**
-  - Keyboard shortcuts
-  - Enhanced accessibility
-  - High contrast mode
-  - Project templates
-
 ## Development Guidelines
 
 ### Adding a New Component

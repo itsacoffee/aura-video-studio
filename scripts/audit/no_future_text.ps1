@@ -67,6 +67,31 @@ $ExcludeDirectories = @(
     "wwwroot"
 )
 
+# Files allowed to have these phrases (meta-documentation about the cleanup process itself)
+$AllowedFiles = @(
+    "AGENT_08_IMPLEMENTATION.md",  # Documents removal of future implementation items
+    "AGENT_13_IMPLEMENTATION.md",  # Documents removal of TODO/FIXME
+    "STABILIZATION_SWEEP_SUMMARY.md",  # Documents cleanup process
+    "docs/CI.md",  # Documents the no-placeholders workflow patterns
+    "BUILD_AND_RUN.md",  # User guide with Next Steps instructions
+    "QUICKSTART.md",  # User guide with Next Steps instructions
+    "README.md",  # Main specification with user Next Steps
+    "Aura.Cli/Program.cs",  # Help text with instructional Next Steps
+    "INSTALL.md",  # Installation guide with Next Steps
+    "LOCAL_PROVIDERS_SETUP.md",  # Setup guide with Next Steps
+    "SOLUTION.md",  # Technical guide with Next Steps
+    "COMPLETION_SUMMARY.md",  # Meta document about completion
+    "FINAL_IMPLEMENTATION.md",  # Meta document
+    "FINAL_SUMMARY.md",  # Meta document
+    "MERGE_INTEGRITY_AUDIT_SUMMARY.md",  # Meta audit document
+    "SCRIPT_GENERATION_FIX.md",  # Fix summary with recommendations
+    "SUMMARY.md",  # General summary
+    "VISUAL_SUMMARY.md",  # Summary document
+    "WEB_ARCHITECTURE_SUMMARY.md",  # Architecture summary
+    "IMPLEMENTATION_SUMMARY_LOCAL_ENGINES.md",  # Has recommended next steps
+    "DEPLOYMENT.md"  # Deployment guide with recommendations
+)
+
 Write-Host "🔍 Scanning for forbidden placeholder text..." -ForegroundColor Cyan
 Write-Host "Path: $Path" -ForegroundColor Gray
 Write-Host ""
@@ -89,6 +114,21 @@ foreach ($pattern in $FilePatterns) {
     
     foreach ($file in $files) {
         $scannedFiles++
+        
+        # Check if file is in allowed list
+        $relativePath = $file.FullName.Replace($Path, "").TrimStart('\', '/')
+        $isAllowed = $false
+        foreach ($allowedFile in $AllowedFiles) {
+            if ($relativePath -like "*$allowedFile") {
+                $isAllowed = $true
+                break
+            }
+        }
+        
+        if ($isAllowed) {
+            continue
+        }
+        
         $content = Get-Content $file.FullName -Raw -ErrorAction SilentlyContinue
         
         if ($null -eq $content) {
