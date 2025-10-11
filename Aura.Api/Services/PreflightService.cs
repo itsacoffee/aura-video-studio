@@ -83,6 +83,143 @@ public class PreflightService
         };
     }
 
+    /// <summary>
+    /// Get full health matrix for all configured engines/providers
+    /// Returns detailed status for all available providers across all categories
+    /// </summary>
+    public async Task<HealthMatrix> GetHealthMatrixAsync(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Generating full health matrix for all providers");
+
+        var llmProviders = new List<ProviderHealth>();
+        var ttsProviders = new List<ProviderHealth>();
+        var visualProviders = new List<ProviderHealth>();
+
+        // Check all LLM providers
+        foreach (var providerName in new[] { "OpenAI", "Ollama", "RuleBased" })
+        {
+            var health = await GetProviderHealthAsync(providerName, "Script", ct);
+            llmProviders.Add(health);
+        }
+
+        // Check all TTS providers
+        foreach (var providerName in new[] { "ElevenLabs", "PlayHT", "Mimic3", "Piper", "Windows" })
+        {
+            var health = await GetProviderHealthAsync(providerName, "TTS", ct);
+            ttsProviders.Add(health);
+        }
+
+        // Check all Visual providers
+        foreach (var providerName in new[] { "Stability", "Runway", "StableDiffusion", "Stock" })
+        {
+            var health = await GetProviderHealthAsync(providerName, "Visuals", ct);
+            visualProviders.Add(health);
+        }
+
+        return new HealthMatrix
+        {
+            LlmProviders = llmProviders.ToArray(),
+            TtsProviders = ttsProviders.ToArray(),
+            VisualProviders = visualProviders.ToArray(),
+            Timestamp = DateTimeOffset.UtcNow
+        };
+    }
+
+    private async Task<ProviderHealth> GetProviderHealthAsync(string providerName, string category, CancellationToken ct)
+    {
+        // Special handling for always-available providers
+        if (providerName == "RuleBased")
+        {
+            return new ProviderHealth
+            {
+                Name = providerName,
+                Category = category,
+                Status = ProviderStatus.Available,
+                IsLocal = true,
+                Message = "Rule-based provider - always available offline",
+                LastChecked = DateTimeOffset.UtcNow
+            };
+        }
+
+        if (providerName == "Windows")
+        {
+            return new ProviderHealth
+            {
+                Name = providerName,
+                Category = category,
+                Status = ProviderStatus.Available,
+                IsLocal = true,
+                Message = "Windows Speech Synthesis - always available",
+                LastChecked = DateTimeOffset.UtcNow
+            };
+        }
+
+        if (providerName == "Stock")
+        {
+            return new ProviderHealth
+            {
+                Name = providerName,
+                Category = category,
+                Status = ProviderStatus.Available,
+                IsLocal = true,
+                Message = "Stock images - always available",
+                LastChecked = DateTimeOffset.UtcNow
+            };
+        }
+
+        // For other providers, validate using the validation service
+        try
+        {
+            var result = await _validationService.ValidateProvidersAsync(new[] { providerName }, ct);
+            var providerResult = result.Results.FirstOrDefault();
+
+            if (providerResult == null || !providerResult.Ok)
+            {
+                return new ProviderHealth
+                {
+                    Name = providerName,
+                    Category = category,
+                    Status = ProviderStatus.Unavailable,
+                    IsLocal = IsLocalProvider(providerName),
+                    Message = providerResult?.Details ?? "Validation failed",
+                    LastChecked = DateTimeOffset.UtcNow
+                };
+            }
+
+            return new ProviderHealth
+            {
+                Name = providerName,
+                Category = category,
+                Status = ProviderStatus.Available,
+                IsLocal = IsLocalProvider(providerName),
+                Message = providerResult.Details,
+                LastChecked = DateTimeOffset.UtcNow
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error checking health for provider {Provider}", providerName);
+            return new ProviderHealth
+            {
+                Name = providerName,
+                Category = category,
+                Status = ProviderStatus.Error,
+                IsLocal = IsLocalProvider(providerName),
+                Message = $"Health check error: {ex.Message}",
+                LastChecked = DateTimeOffset.UtcNow
+            };
+        }
+    }
+
+    private static bool IsLocalProvider(string providerName)
+    {
+        return providerName switch
+        {
+            "Ollama" or "RuleBased" or "StableDiffusion" or "Mimic3" or "Piper" or "Windows" or "Stock" => true,
+            _ => false
+        };
+    }
+
     private async Task<StageCheck> CheckScriptStageAsync(ProviderProfile profile, CancellationToken ct)
     {
         var stageTier = profile.Stages.GetValueOrDefault("Script", "Free");
@@ -432,3 +569,64 @@ public record PreflightReport
     /// <summary>Individual stage checks</summary>
     public StageCheck[] Stages { get; init; } = Array.Empty<StageCheck>();
 }
+
+/// <summary>
+/// Full health matrix for all providers
+/// </summary>
+public record HealthMatrix
+{
+    /// <summary>LLM/Script provider health</summary>
+    public ProviderHealth[] LlmProviders { get; init; } = Array.Empty<ProviderHealth>();
+    
+    /// <summary>TTS provider health</summary>
+    public ProviderHealth[] TtsProviders { get; init; } = Array.Empty<ProviderHealth>();
+    
+    /// <summary>Visual provider health</summary>
+    public ProviderHealth[] VisualProviders { get; init; } = Array.Empty<ProviderHealth>();
+    
+    /// <summary>Timestamp when matrix was generated</summary>
+    public DateTimeOffset Timestamp { get; init; }
+}
+
+/// <summary>
+/// Health status of a single provider
+/// </summary>
+public record ProviderHealth
+{
+    /// <summary>Provider name</summary>
+    public string Name { get; init; } = string.Empty;
+    
+    /// <summary>Provider category (Script, TTS, Visuals)</summary>
+    public string Category { get; init; } = string.Empty;
+    
+    /// <summary>Current status</summary>
+    public ProviderStatus Status { get; init; }
+    
+    /// <summary>Whether this is a local/offline provider</summary>
+    public bool IsLocal { get; init; }
+    
+    /// <summary>Status message/details</summary>
+    public string Message { get; init; } = string.Empty;
+    
+    /// <summary>Last time health was checked</summary>
+    public DateTimeOffset LastChecked { get; init; }
+}
+
+/// <summary>
+/// Provider status enum
+/// </summary>
+public enum ProviderStatus
+{
+    /// <summary>Provider is available and ready</summary>
+    Available,
+    
+    /// <summary>Provider is not available (not running, not configured)</summary>
+    Unavailable,
+    
+    /// <summary>Provider is installed but not running</summary>
+    Installed,
+    
+    /// <summary>Error checking provider status</summary>
+    Error
+}
+
