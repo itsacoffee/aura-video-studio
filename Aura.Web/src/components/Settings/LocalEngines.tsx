@@ -13,6 +13,13 @@ import {
   Spinner,
   Badge,
   Tooltip,
+  Dialog,
+  DialogTrigger,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogContent,
+  DialogActions,
 } from '@fluentui/react-components';
 import {
   Play20Regular,
@@ -23,6 +30,8 @@ import {
   CheckmarkCircle20Filled,
   Warning20Filled,
   ErrorCircle20Filled,
+  DocumentText20Regular,
+  Warning20Regular,
 } from '@fluentui/react-icons';
 import { useEnginesStore } from '../../state/engines';
 
@@ -68,6 +77,21 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalM,
     backgroundColor: tokens.colorNeutralBackground3,
     borderRadius: tokens.borderRadiusMedium,
+  },
+  logViewer: {
+    fontFamily: 'monospace',
+    fontSize: '12px',
+    backgroundColor: tokens.colorNeutralBackground1,
+    padding: tokens.spacingVerticalM,
+    borderRadius: tokens.borderRadiusMedium,
+    maxHeight: '400px',
+    overflowY: 'auto',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-all',
+  },
+  diagnosticsCard: {
+    padding: tokens.spacingVerticalM,
+    marginTop: tokens.spacingVerticalL,
   },
 });
 
@@ -126,6 +150,11 @@ export function LocalEngines() {
 
   const [engineConfigs, setEngineConfigs] = useState<Record<string, { port?: number; autoStart: boolean }>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<any>(null);
+  const [logs, setLogs] = useState<string>('');
+  const [selectedEngineForLogs, setSelectedEngineForLogs] = useState<string | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
 
   useEffect(() => {
     fetchEngines();
@@ -207,6 +236,39 @@ export function LocalEngines() {
     }
   };
 
+  const handleRunDiagnostics = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:5005/api/engines/diagnostics');
+      if (response.ok) {
+        const data = await response.json();
+        setDiagnostics(data);
+        setShowDiagnostics(true);
+      } else {
+        alert('Failed to fetch diagnostics');
+      }
+    } catch (error) {
+      console.error('Failed to fetch diagnostics:', error);
+      alert('Failed to fetch diagnostics');
+    }
+  };
+
+  const handleViewLogs = async (engineId: string) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:5005/api/engines/logs?engineId=${engineId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setLogs(data.logs || 'No logs available');
+        setSelectedEngineForLogs(engineId);
+        setShowLogs(true);
+      } else {
+        alert('Failed to fetch logs');
+      }
+    } catch (error) {
+      console.error('Failed to fetch logs:', error);
+      alert('Failed to fetch logs');
+    }
+  };
+
   const renderEngineStatus = (engineId: string) => {
     const status = engineStatuses.get(engineId);
 
@@ -256,6 +318,17 @@ export function LocalEngines() {
 
   return (
     <div className={styles.container}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalM }}>
+        <Title2>Local Engines</Title2>
+        <Button 
+          appearance="primary" 
+          icon={<Warning20Regular />}
+          onClick={handleRunDiagnostics}
+        >
+          Run Diagnostics
+        </Button>
+      </div>
+
       <Card className={styles.infoCard}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: tokens.spacingHorizontalS }}>
           <Info20Regular color={tokens.colorBrandForeground1} />
@@ -346,6 +419,15 @@ export function LocalEngines() {
                 >
                   Validate
                 </Button>
+                {status?.isRunning && (
+                  <Button
+                    appearance="subtle"
+                    icon={<DocumentText20Regular />}
+                    onClick={() => handleViewLogs(engineConfig.id)}
+                  >
+                    View Logs
+                  </Button>
+                )}
                 <Button
                   appearance="subtle"
                   icon={<Folder20Regular />}
@@ -369,6 +451,52 @@ export function LocalEngines() {
           </div>
         </Card>
       )}
+
+      {/* Diagnostics Dialog */}
+      <Dialog open={showDiagnostics} onOpenChange={(_, data) => setShowDiagnostics(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>System Diagnostics</DialogTitle>
+            <DialogContent>
+              {diagnostics && (
+                <div>
+                  <Text>Generated: {new Date(diagnostics.generatedAt).toLocaleString()}</Text>
+                  <br />
+                  <Text>Total Engines: {diagnostics.totalEngines}</Text>
+                  <br />
+                  <Text>Running: {diagnostics.runningEngines}</Text>
+                  <br />
+                  <Text>Healthy: {diagnostics.healthyEngines}</Text>
+                  <br /><br />
+                  <div className={styles.logViewer}>
+                    {JSON.stringify(diagnostics.engines, null, 2)}
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowDiagnostics(false)}>Close</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Logs Dialog */}
+      <Dialog open={showLogs} onOpenChange={(_, data) => setShowLogs(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Engine Logs - {selectedEngineForLogs}</DialogTitle>
+            <DialogContent>
+              <div className={styles.logViewer}>
+                {logs}
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowLogs(false)}>Close</Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }

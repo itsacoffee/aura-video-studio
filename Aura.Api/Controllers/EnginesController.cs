@@ -501,6 +501,29 @@ public class EnginesController : ControllerBase
     }
 
     /// <summary>
+    /// Get logs for a specific engine
+    /// </summary>
+    [HttpGet("logs")]
+    public async Task<IActionResult> GetLogs([FromQuery] string engineId, [FromQuery] int tailLines = 500)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return BadRequest(new { error = "engineId is required" });
+            }
+
+            var logs = await _registry.GetEngineLogsAsync(engineId, tailLines);
+            return Ok(new { logs });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get logs for engine {EngineId}", engineId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Get recent notifications
     /// </summary>
     [HttpGet("notifications")]
