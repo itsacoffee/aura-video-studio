@@ -24,6 +24,12 @@ public class ProviderMixer
 
     /// <summary>
     /// Selects the best available LLM provider based on profile and availability
+    /// 
+    /// Fallback chain:
+    /// - Pro tier: OpenAI → Azure → Gemini → Ollama → RuleBased (guaranteed)
+    /// - ProIfAvailable: OpenAI → Azure → Gemini → Ollama → RuleBased (guaranteed)
+    /// - Free tier: Ollama → RuleBased (guaranteed)
+    /// - Empty providers: RuleBased (guaranteed - never throws)
     /// </summary>
     public ProviderSelection SelectLlmProvider(
         Dictionary<string, ILlmProvider> availableProviders,
@@ -142,6 +148,12 @@ public class ProviderMixer
 
     /// <summary>
     /// Selects the best available TTS provider based on profile and availability
+    /// 
+    /// Fallback chain:
+    /// - Pro tier: ElevenLabs → PlayHT → Mimic3 → Piper → Windows (guaranteed)
+    /// - ProIfAvailable: ElevenLabs → PlayHT → Mimic3 → Piper → Windows (guaranteed)
+    /// - Free tier: Mimic3 → Piper → Windows (guaranteed)
+    /// - Empty providers: Windows (guaranteed - never throws)
     /// </summary>
     public ProviderSelection SelectTtsProvider(
         Dictionary<string, ITtsProvider> availableProviders,
@@ -261,6 +273,13 @@ public class ProviderMixer
 
     /// <summary>
     /// Selects the best available image/visual provider based on profile and availability
+    /// 
+    /// Fallback chain:
+    /// - Pro tier: Stability → Runway → StableDiffusion (if NVIDIA 6GB+) → Stock → Slideshow (guaranteed)
+    /// - ProIfAvailable: Stability → Runway → StableDiffusion (if NVIDIA 6GB+) → Stock → Slideshow (guaranteed)
+    /// - StockOrLocal: StableDiffusion (if NVIDIA 6GB+) → Stock → Slideshow (guaranteed)
+    /// - Free tier: Stock → Slideshow (guaranteed)
+    /// - Empty providers: Slideshow (guaranteed - never throws)
     /// </summary>
     public ProviderSelection SelectVisualProvider(
         Dictionary<string, object> availableProviders,
