@@ -45,17 +45,20 @@ namespace Aura.Api.Serialization
         /// </summary>
         public static void AddToOptions(JsonSerializerOptions options)
         {
-            // Add V1 API contract converters
-            foreach (var converter in GetConverters())
-            {
-                options.Converters.Add(converter);
-            }
+            // Add specific tolerant converters for ApiModels.V1
+            options.Converters.Add(new TolerantAspectConverterV1());
+            options.Converters.Add(new TolerantDensityConverterV1());
+            options.Converters.Add(new TolerantPacingConverter());
+            options.Converters.Add(new TolerantPauseStyleConverter());
             
             // Add legacy Core.Models converters for backward compatibility with tests
             options.Converters.Add(new TolerantAspectConverter());
             options.Converters.Add(new TolerantDensityConverter());
             options.Converters.Add(new TolerantPacingConverterLegacy());
             options.Converters.Add(new TolerantPauseStyleConverterLegacy());
+            
+            // Add fallback case-insensitive converter for remaining enums (MUST BE LAST)
+            options.Converters.Add(new JsonStringEnumConverter());
             
             options.PropertyNameCaseInsensitive = true;
         }
