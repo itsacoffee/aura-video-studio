@@ -29,7 +29,8 @@ namespace Aura.App.Converters
 
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
-            throw new NotImplementedException();
+            // ConvertBack not supported for string formatting - this is a one-way converter
+            return value;
         }
     }
 }
