@@ -37,7 +37,6 @@ public class EngineInstaller
 {
     private readonly ILogger<EngineInstaller> _logger;
     private readonly HttpClient _httpClient;
-    private readonly HttpDownloader _downloader;
     private readonly string _installRoot;
 
     public EngineInstaller(
@@ -48,19 +47,6 @@ public class EngineInstaller
         _logger = logger;
         _httpClient = httpClient;
         _installRoot = installRoot;
-
-        // Create HttpDownloader for robust downloads
-        var downloaderLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<HttpDownloader>.Instance;
-        if (logger is ILogger<HttpDownloader> typedLogger)
-        {
-            _downloader = new HttpDownloader(typedLogger, httpClient);
-        }
-        else
-        {
-            var loggerFactory = Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
-            var downloaderLoggerTyped = loggerFactory.CreateLogger<HttpDownloader>();
-            _downloader = new HttpDownloader(downloaderLoggerTyped, httpClient);
-        }
 
         if (!Directory.Exists(_installRoot))
         {
@@ -184,19 +170,45 @@ public class EngineInstaller
         {
             progress?.Report(new EngineInstallProgress(engine.Id, "downloading", 0, engine.SizeBytes, 0, "Downloading..."));
             
-            // Use HttpDownloader with SHA256 verification
-            var downloadProgress = new Progress<HttpDownloadProgress>(p =>
+            // Download file
+            using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
             {
-                var phase = p.Message?.Contains("Verifying") == true ? "verifying" : "downloading";
-                progress?.Report(new EngineInstallProgress(engine.Id, phase, p.BytesDownloaded, p.TotalBytes, p.PercentComplete, p.Message));
-            });
+                response.EnsureSuccessStatusCode();
+                
+                var totalBytes = response.Content.Headers.ContentLength ?? engine.SizeBytes;
+                using (var contentStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false))
+                using (var fileStream = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                {
+                    var buffer = new byte[8192];
+                    long totalRead = 0;
+                    int bytesRead;
+                    
+                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
+                    {
+                        await fileStream.WriteAsync(buffer, 0, bytesRead, ct).ConfigureAwait(false);
+                        totalRead += bytesRead;
+                        
+                        var percent = totalBytes > 0 ? (float)(totalRead * 100.0 / totalBytes) : 0;
+                        progress?.Report(new EngineInstallProgress(engine.Id, "downloading", totalRead, totalBytes, percent, "Downloading..."));
+                    }
+                }
+            }
 
-            var success = await _downloader.DownloadFileAsync(url, archiveFile, engine.Sha256, downloadProgress, ct)
-                .ConfigureAwait(false);
-
-            if (!success)
+            // Verify checksum if provided
+            if (!string.IsNullOrEmpty(engine.Sha256))
             {
-                throw new InvalidOperationException("Download or checksum verification failed");
+                progress?.Report(new EngineInstallProgress(engine.Id, "verifying", 0, 0, 0, "Verifying checksum..."));
+                using (var sha256 = SHA256.Create())
+                using (var stream = File.OpenRead(archiveFile))
+                {
+                    var hash = await Task.Run(() => sha256.ComputeHash(stream), ct).ConfigureAwait(false);
+                    var hashString = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                    
+                    if (!hashString.Equals(engine.Sha256, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException($"Checksum verification failed. Expected: {engine.Sha256}, Got: {hashString}");
+                    }
+                }
             }
 
             // Extract archive
@@ -219,18 +231,27 @@ public class EngineInstaller
         Action<(long BytesProcessed, long TotalBytes, float PercentComplete)>? progress,
         CancellationToken ct)
     {
-        // Use HttpDownloader for robust downloading with resume support
-        var downloadProgress = new Progress<HttpDownloadProgress>(p =>
+        using (var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
         {
-            progress?.Invoke((p.BytesDownloaded, p.TotalBytes, p.PercentComplete));
-        });
-
-        var success = await _downloader.DownloadFileAsync(url, filePath, null, downloadProgress, ct)
-            .ConfigureAwait(false);
-
-        if (!success)
-        {
-            throw new InvalidOperationException($"Failed to download file from {url}");
+            response.EnsureSuccessStatusCode();
+            
+            var totalBytes = response.Content.Headers.ContentLength ?? expectedSize;
+            using (var contentStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false))
+            using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+            {
+                var buffer = new byte[8192];
+                long totalRead = 0;
+                int bytesRead;
+                
+                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer, 0, bytesRead, ct).ConfigureAwait(false);
+                    totalRead += bytesRead;
+                    
+                    var percent = totalBytes > 0 ? (float)(totalRead * 100.0 / totalBytes) : 0;
+                    progress?.Invoke((totalRead, totalBytes, percent));
+                }
+            }
         }
     }
 
