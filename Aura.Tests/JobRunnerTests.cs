@@ -86,4 +86,38 @@ public class JobRunnerTests
         Assert.Equal(testPath, artifact.Path);
         Assert.Equal("video/mp4", artifact.Type);
     }
+
+    [Fact]
+    public void ArtifactManager_Should_UseStandardPath()
+    {
+        // Arrange
+        var manager = new ArtifactManager(NullLogger<ArtifactManager>.Instance);
+        var jobId = Guid.NewGuid().ToString();
+
+        // Act
+        var jobDir = manager.GetJobDirectory(jobId);
+
+        // Assert
+        Assert.NotNull(jobDir);
+        Assert.Contains("Aura", jobDir);
+        Assert.Contains("jobs", jobDir);
+        Assert.Contains(jobId, jobDir);
+        Assert.True(System.IO.Directory.Exists(jobDir), "Job directory should be created");
+    }
+
+    [Fact]
+    public void ArtifactManager_Should_CreateDirectoryIfMissing()
+    {
+        // Arrange
+        var manager = new ArtifactManager(NullLogger<ArtifactManager>.Instance);
+        var jobId = Guid.NewGuid().ToString();
+
+        // Act
+        var jobDir1 = manager.GetJobDirectory(jobId);
+        var jobDir2 = manager.GetJobDirectory(jobId);
+
+        // Assert
+        Assert.Equal(jobDir1, jobDir2);
+        Assert.True(System.IO.Directory.Exists(jobDir1));
+    }
 }

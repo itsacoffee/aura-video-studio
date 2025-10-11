@@ -10,6 +10,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { WeatherMoon24Regular, WeatherSunny24Regular } from '@fluentui/react-icons';
 import { navItems } from '../navigation';
 import { useTheme } from '../App';
+import { ResultsTray } from './ResultsTray';
 
 const useStyles = makeStyles({
   container: {
@@ -45,6 +46,21 @@ const useStyles = makeStyles({
     width: '100%',
     paddingTop: tokens.spacingVerticalM,
     paddingBottom: tokens.spacingVerticalM,
+  },
+  mainContainer: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  topBar: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    padding: tokens.spacingVerticalM,
+    paddingRight: tokens.spacingHorizontalL,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground1,
   },
   content: {
     flex: 1,
@@ -113,7 +129,12 @@ export function Layout({ children }: LayoutProps) {
           </Tooltip>
         </div>
       </nav>
-      <main className={styles.content}>{children}</main>
+      <div className={styles.mainContainer}>
+        <div className={styles.topBar}>
+          <ResultsTray />
+        </div>
+        <main className={styles.content}>{children}</main>
+      </div>
     </div>
   );
 }

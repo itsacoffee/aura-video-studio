@@ -13,11 +13,18 @@ import {
   TableBody,
   TableCell,
   Spinner,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
 } from '@fluentui/react-components';
 import {
   FolderOpen24Regular,
   Video24Regular,
   ArrowClockwise24Regular,
+  MoreVertical24Regular,
+  Eye24Regular,
 } from '@fluentui/react-icons';
 import { useJobsStore } from '../../state/jobs';
 
@@ -86,6 +93,23 @@ export function ProjectsPage() {
     const minutes = Math.floor(diffMs / 60000);
     const seconds = Math.floor((diffMs % 60000) / 1000);
     return `${minutes}m ${seconds}s`;
+  };
+
+  const openFolder = (artifactPath: string) => {
+    // Extract directory from artifact path
+    const dirPath = artifactPath.substring(0, artifactPath.lastIndexOf('/'));
+    window.open(`file:///${dirPath.replace(/\\/g, '/')}`);
+  };
+
+  const revealInExplorer = (artifactPath: string) => {
+    // For web apps, we can only open the folder
+    // In a desktop app, this would call the OS's "reveal in explorer" API
+    const dirPath = artifactPath.substring(0, artifactPath.lastIndexOf('/'));
+    window.open(`file:///${dirPath.replace(/\\/g, '/')}`);
+  };
+
+  const openArtifact = (artifactPath: string) => {
+    window.open(`file:///${artifactPath.replace(/\\/g, '/')}`);
   };
 
   return (
@@ -158,19 +182,56 @@ export function ProjectsPage() {
                   <TableCell>
                     <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
                       {job.artifacts.length > 0 && (
-                        <Button
-                          size="small"
-                          appearance="secondary"
-                          icon={<FolderOpen24Regular />}
-                          onClick={() => {
-                            const firstArtifact = job.artifacts[0];
-                            if (firstArtifact) {
-                              window.open(`file:///${firstArtifact.path.replace(/\\/g, '/')}`);
-                            }
-                          }}
-                        >
-                          Open
-                        </Button>
+                        <>
+                          <Button
+                            size="small"
+                            appearance="primary"
+                            icon={<Eye24Regular />}
+                            onClick={() => {
+                              const firstArtifact = job.artifacts[0];
+                              if (firstArtifact) {
+                                openArtifact(firstArtifact.path);
+                              }
+                            }}
+                          >
+                            Open
+                          </Button>
+                          <Menu>
+                            <MenuTrigger>
+                              <Button
+                                size="small"
+                                appearance="subtle"
+                                icon={<MoreVertical24Regular />}
+                              />
+                            </MenuTrigger>
+                            <MenuPopover>
+                              <MenuList>
+                                <MenuItem
+                                  icon={<FolderOpen24Regular />}
+                                  onClick={() => {
+                                    const firstArtifact = job.artifacts[0];
+                                    if (firstArtifact) {
+                                      openFolder(firstArtifact.path);
+                                    }
+                                  }}
+                                >
+                                  Open outputs folder
+                                </MenuItem>
+                                <MenuItem
+                                  icon={<FolderOpen24Regular />}
+                                  onClick={() => {
+                                    const firstArtifact = job.artifacts[0];
+                                    if (firstArtifact) {
+                                      revealInExplorer(firstArtifact.path);
+                                    }
+                                  }}
+                                >
+                                  Reveal in Explorer
+                                </MenuItem>
+                              </MenuList>
+                            </MenuPopover>
+                          </Menu>
+                        </>
                       )}
                     </div>
                   </TableCell>

@@ -126,6 +126,38 @@ public class JobsController : ControllerBase
             return StatusCode(500, new { error = "Error listing jobs", details = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Get latest artifacts from recent jobs
+    /// </summary>
+    [HttpGet("recent-artifacts")]
+    public IActionResult GetRecentArtifacts([FromQuery] int limit = 5)
+    {
+        try
+        {
+            var jobs = _jobRunner.ListJobs(50); // Get more jobs to find ones with artifacts
+            var artifacts = jobs
+                .Where(j => j.Status == JobStatus.Done && j.Artifacts.Count > 0)
+                .OrderByDescending(j => j.FinishedAt ?? j.StartedAt)
+                .Take(limit)
+                .Select(j => new
+                {
+                    jobId = j.Id,
+                    correlationId = j.CorrelationId,
+                    stage = j.Stage,
+                    finishedAt = j.FinishedAt,
+                    artifacts = j.Artifacts
+                })
+                .ToList();
+
+            return Ok(new { artifacts = artifacts, count = artifacts.Count });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting recent artifacts");
+            return StatusCode(500, new { error = "Error getting recent artifacts", details = ex.Message });
+        }
+    }
 }
 
 /// <summary>

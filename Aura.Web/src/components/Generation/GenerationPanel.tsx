@@ -15,8 +15,11 @@ import {
   Checkmark24Regular,
   ErrorCircle24Regular,
   ArrowRight24Regular,
+  Folder24Regular,
 } from '@fluentui/react-icons';
 import { useJobsStore } from '../../state/jobs';
+import { useNotifications } from '../Notifications/Toasts';
+import { useNavigate } from 'react-router-dom';
 
 const useStyles = makeStyles({
   panel: {
@@ -107,11 +110,65 @@ const STAGES = ['Script', 'Voice', 'Visuals', 'Compose', 'Render', 'Complete'];
 export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
   const styles = useStyles();
   const { activeJob, getJob } = useJobsStore();
+  const { showSuccessToast, showFailureToast } = useNotifications();
+  const navigate = useNavigate();
   const [showLogs, setShowLogs] = useState(false);
+  const [notificationShown, setNotificationShown] = useState(false);
 
   useEffect(() => {
     getJob(jobId);
   }, [jobId, getJob]);
+
+  // Show notification when job completes or fails
+  useEffect(() => {
+    if (!activeJob || notificationShown) return;
+
+    if (activeJob.status === 'Done') {
+      const duration = activeJob.finishedAt && activeJob.startedAt
+        ? formatDuration(activeJob.startedAt, activeJob.finishedAt)
+        : '';
+      
+      const firstArtifact = activeJob.artifacts[0];
+      
+      showSuccessToast({
+        title: 'Render complete',
+        message: `Your video has been generated successfully!`,
+        duration,
+        onViewResults: () => {
+          navigate('/projects');
+          onClose();
+        },
+        onOpenFolder: firstArtifact ? () => {
+          openFolder(firstArtifact.path);
+        } : undefined,
+      });
+      setNotificationShown(true);
+    } else if (activeJob.status === 'Failed') {
+      showFailureToast({
+        title: 'Generation failed',
+        message: activeJob.errorMessage || 'An error occurred during generation',
+        onViewLogs: () => {
+          setShowLogs(true);
+        },
+      });
+      setNotificationShown(true);
+    }
+  }, [activeJob, notificationShown, showSuccessToast, showFailureToast, navigate, onClose]);
+
+  const formatDuration = (startedAt: string, finishedAt: string) => {
+    const start = new Date(startedAt);
+    const end = new Date(finishedAt);
+    const diffMs = end.getTime() - start.getTime();
+    const minutes = Math.floor(diffMs / 60000);
+    const seconds = Math.floor((diffMs % 60000) / 1000);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const openFolder = (artifactPath: string) => {
+    // Extract directory from artifact path
+    const dirPath = artifactPath.substring(0, artifactPath.lastIndexOf('/'));
+    window.open(`file:///${dirPath.replace(/\\/g, '/')}`);
+  };
 
   if (!activeJob) {
     return (
@@ -250,12 +307,12 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
                   </div>
                   <Button
                     appearance="secondary"
+                    icon={<Folder24Regular />}
                     onClick={() => {
-                      // Open file location
-                      window.open(`file:///${artifact.path.replace(/\\/g, '/')}`);
+                      openFolder(artifact.path);
                     }}
                   >
-                    Open
+                    Open folder
                   </Button>
                 </div>
               ))}
