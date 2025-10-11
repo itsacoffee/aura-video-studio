@@ -97,6 +97,8 @@ scripts/ffmpeg/ffprobe.exe
 **/Cache/
 **/Renders/
 **/Downloads/
+# But keep engine manifest
+!Aura.Core/Downloads/engine_manifest.json
 
 # macOS
 .DS_Store

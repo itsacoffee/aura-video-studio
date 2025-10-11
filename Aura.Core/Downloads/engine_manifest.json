@@ -1,0 +1,93 @@
+{
+  "version": "1.0",
+  "engines": [
+    {
+      "id": "stable-diffusion-webui",
+      "name": "Stable Diffusion WebUI",
+      "version": "1.9.0",
+      "description": "AUTOMATIC1111's Stable Diffusion WebUI for local image generation",
+      "sizeBytes": 2500000000,
+      "sha256": "",
+      "archiveType": "git",
+      "urls": {
+        "windows": "https://github.com/AUTOMATIC1111/stable-diffusion-webui.git",
+        "linux": "https://github.com/AUTOMATIC1111/stable-diffusion-webui.git"
+      },
+      "entrypoint": "webui-user.bat",
+      "defaultPort": 7860,
+      "argsTemplate": "--api --listen",
+      "healthCheck": {
+        "url": "/sdapi/v1/sd-models",
+        "timeoutSeconds": 120
+      },
+      "licenseUrl": "https://github.com/AUTOMATIC1111/stable-diffusion-webui/blob/master/LICENSE.txt",
+      "requiredVRAMGB": 4
+    },
+    {
+      "id": "comfyui",
+      "name": "ComfyUI",
+      "version": "latest",
+      "description": "ComfyUI - A powerful and modular stable diffusion GUI with node-based workflow",
+      "sizeBytes": 1500000000,
+      "sha256": "",
+      "archiveType": "git",
+      "urls": {
+        "windows": "https://github.com/comfyanonymous/ComfyUI.git",
+        "linux": "https://github.com/comfyanonymous/ComfyUI.git"
+      },
+      "entrypoint": "main.py",
+      "defaultPort": 8188,
+      "argsTemplate": "--listen 0.0.0.0 --port 8188",
+      "healthCheck": {
+        "url": "/system_stats",
+        "timeoutSeconds": 60
+      },
+      "licenseUrl": "https://github.com/comfyanonymous/ComfyUI/blob/master/LICENSE",
+      "requiredVRAMGB": 4
+    },
+    {
+      "id": "piper",
+      "name": "Piper TTS",
+      "version": "1.2.0",
+      "description": "Fast, local neural text-to-speech system with high-quality voices",
+      "sizeBytes": 50000000,
+      "sha256": "",
+      "archiveType": "zip",
+      "urls": {
+        "windows": "https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_windows_amd64.zip",
+        "linux": "https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_linux_x86_64.tar.gz"
+      },
+      "extractDir": "piper",
+      "entrypoint": "piper.exe",
+      "licenseUrl": "https://github.com/rhasspy/piper/blob/master/LICENSE.md",
+      "models": [
+        {
+          "id": "en_US-lessac-medium",
+          "name": "English US (Lessac Medium)",
+          "url": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx",
+          "sizeBytes": 63201308
+        }
+      ]
+    },
+    {
+      "id": "mimic3",
+      "name": "Mimic3 TTS",
+      "version": "latest",
+      "description": "Privacy-focused local text-to-speech by Mycroft AI with multiple voice options",
+      "sizeBytes": 100000000,
+      "sha256": "",
+      "archiveType": "git",
+      "urls": {
+        "windows": "https://github.com/MycroftAI/mimic3.git",
+        "linux": "https://github.com/MycroftAI/mimic3.git"
+      },
+      "entrypoint": "mimic3-server",
+      "defaultPort": 59125,
+      "healthCheck": {
+        "url": "/api/voices",
+        "timeoutSeconds": 30
+      },
+      "licenseUrl": "https://github.com/MycroftAI/mimic3/blob/master/LICENSE"
+    }
+  ]
+}
