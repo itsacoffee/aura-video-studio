@@ -16,18 +16,33 @@ using Microsoft.Extensions.FileProviders;
 using Serilog;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ApiV1 = Aura.Api.Models.ApiModels.V1;
+using PlanRequest = Aura.Api.Models.ApiModels.V1.PlanRequest;
+using ScriptRequest = Aura.Api.Models.ApiModels.V1.ScriptRequest;
+using TtsRequest = Aura.Api.Models.ApiModels.V1.TtsRequest;
+using LineDto = Aura.Api.Models.ApiModels.V1.LineDto;
+using ComposeRequest = Aura.Api.Models.ApiModels.V1.ComposeRequest;
+using RenderRequest = Aura.Api.Models.ApiModels.V1.RenderRequest;
+using RenderSettingsDto = Aura.Api.Models.ApiModels.V1.RenderSettingsDto;
+using RenderJobDto = Aura.Api.Models.ApiModels.V1.RenderJobDto;
+using ApplyProfileRequest = Aura.Api.Models.ApiModels.V1.ApplyProfileRequest;
+using ApiKeysRequest = Aura.Api.Models.ApiModels.V1.ApiKeysRequest;
+using ProviderPathsRequest = Aura.Api.Models.ApiModels.V1.ProviderPathsRequest;
+using ProviderTestRequest = Aura.Api.Models.ApiModels.V1.ProviderTestRequest;
+using RecommendationsRequestDto = Aura.Api.Models.ApiModels.V1.RecommendationsRequestDto;
+using ConstraintsDto = Aura.Api.Models.ApiModels.V1.ConstraintsDto;
+using AssetSearchRequest = Aura.Api.Models.ApiModels.V1.AssetSearchRequest;
+using AssetGenerateRequest = Aura.Api.Models.ApiModels.V1.AssetGenerateRequest;
+using CaptionsRequest = Aura.Api.Models.ApiModels.V1.CaptionsRequest;
+using ValidateProvidersRequest = Aura.Api.Models.ApiModels.V1.ValidateProvidersRequest;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure JSON options to handle string enum conversion
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    // Add tolerant converters for enums that accept aliases
-    options.SerializerOptions.Converters.Add(new TolerantDensityConverter());
-    options.SerializerOptions.Converters.Add(new TolerantAspectConverter());
-    // Use standard converter for other enums
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    options.SerializerOptions.PropertyNameCaseInsensitive = true;
+    // Add all tolerant enum converters from ApiModels.V1 contract
+    EnumJsonConverters.AddToOptions(options.SerializerOptions);
 });
 
 // Configure Serilog
@@ -326,8 +341,8 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
     {
         var plan = new PlanSpec(
             TargetDuration: TimeSpan.FromMinutes(request.TargetDurationMinutes),
-            Pacing: request.Pacing,
-            Density: request.Density,
+            Pacing: ApiV1.EnumMappings.ToCore(request.Pacing),
+            Density: ApiV1.EnumMappings.ToCore(request.Density),
             Style: request.Style
         );
         
@@ -384,13 +399,13 @@ apiGroup.MapPost("/planner/recommendations", async (
             Goal: request.Goal ?? "Inform",
             Tone: request.Tone ?? "Informative",
             Language: request.Language ?? "en-US",
-            Aspect: request.Aspect ?? Aspect.Widescreen16x9
+            Aspect: ApiV1.EnumMappings.ToCore(request.Aspect ?? ApiV1.Aspect.Widescreen16x9)
         );
         
         var planSpec = new PlanSpec(
             TargetDuration: TimeSpan.FromMinutes(request.TargetDurationMinutes),
-            Pacing: request.Pacing ?? Pacing.Conversational,
-            Density: request.Density ?? Density.Balanced,
+            Pacing: ApiV1.EnumMappings.ToCore(request.Pacing ?? ApiV1.Pacing.Conversational),
+            Density: ApiV1.EnumMappings.ToCore(request.Density ?? ApiV1.Density.Balanced),
             Style: request.Style ?? "Standard"
         );
 
@@ -465,13 +480,13 @@ apiGroup.MapPost("/script", async (
             Goal: request.Goal,
             Tone: request.Tone,
             Language: request.Language,
-            Aspect: request.Aspect
+            Aspect: ApiV1.EnumMappings.ToCore(request.Aspect)
         );
         
         var planSpec = new PlanSpec(
             TargetDuration: TimeSpan.FromMinutes(request.TargetDurationMinutes),
-            Pacing: request.Pacing,
-            Density: request.Density,
+            Pacing: ApiV1.EnumMappings.ToCore(request.Pacing),
+            Density: ApiV1.EnumMappings.ToCore(request.Density),
             Style: request.Style
         );
         
@@ -549,7 +564,7 @@ apiGroup.MapPost("/tts", async ([FromBody] TtsRequest request, ITtsProvider ttsP
             VoiceName: request.VoiceName,
             Rate: request.Rate,
             Pitch: request.Pitch,
-            Pause: request.PauseStyle
+            Pause: ApiV1.EnumMappings.ToCore(request.PauseStyle)
         );
         
         var result = await ttsProvider.SynthesizeAsync(lines, voiceSpec, ct);
@@ -1297,7 +1312,7 @@ apiGroup.MapPost("/assets/generate", async ([FromBody] AssetGenerateRequest requ
 
         var spec = new VisualSpec(
             Style: request.Style ?? "",
-            Aspect: request.Aspect ?? Aspect.Widescreen16x9,
+            Aspect: request.Aspect != null ? ApiV1.EnumMappings.ToCore(request.Aspect.Value) : Aspect.Widescreen16x9,
             Keywords: request.Keywords ?? Array.Empty<string>());
 
         var assets = await sdProvider.FetchOrGenerateAsync(scene, spec, sdParams, ct);
@@ -1457,55 +1472,8 @@ if (Directory.Exists(wwwrootPath))
 
 app.Run();
 
-// DTOs
-record PlanRequest(double TargetDurationMinutes, Pacing Pacing, Density Density, string Style);
-record ScriptRequest(string Topic, string Audience, string Goal, string Tone, string Language, Aspect Aspect, double TargetDurationMinutes, Pacing Pacing, Density Density, string Style, string? ProviderTier);
-record TtsRequest(List<LineDto> Lines, string VoiceName, double Rate, double Pitch, PauseStyle PauseStyle);
-record LineDto(int SceneIndex, string Text, double StartSeconds, double DurationSeconds);
-record ComposeRequest(string TimelineJson);
-record RenderRequest(string TimelineJson, string? PresetName, RenderSettingsDto? Settings);
-record RenderSettingsDto(int Width, int Height, int Fps, string Codec, string Container, int QualityLevel, int VideoBitrateK, int AudioBitrateK, bool EnableSceneCut);
-record RenderJobDto(string Id, string Status, float Progress, string? OutputPath, DateTime CreatedAt, int? EstimatedTimeRemaining = null, string? Error = null);
-record ApplyProfileRequest(string ProfileName);
-record ApiKeysRequest(string? OpenAiKey, string? ElevenLabsKey, string? PexelsKey, string? StabilityAiKey);
-record ProviderPathsRequest(string? StableDiffusionUrl, string? OllamaUrl, string? FfmpegPath, string? FfprobePath, string? OutputDirectory);
-record ProviderTestRequest(string? Url, string? Path);
-record RecommendationsRequestDto(
-    string Topic,
-    string? Audience,
-    string? Goal,
-    string? Tone,
-    string? Language,
-    Aspect? Aspect,
-    double TargetDurationMinutes,
-    Pacing? Pacing,
-    Density? Density,
-    string? Style,
-    string? AudiencePersona,
-    ConstraintsDto? Constraints);
-record ConstraintsDto(
-    int? MaxSceneCount,
-    int? MinSceneCount,
-    double? MaxBRollPercentage,
-    int? MaxReadingLevel);
+// Make Program accessible for integration tests
+public partial class Program { }
 
 // Make Program accessible for integration tests
 public partial class Program { }
-record AssetSearchRequest(string Provider, string Query, int Count, string? ApiKey = null, string? LocalDirectory = null);
-record AssetGenerateRequest(
-    string Prompt, 
-    int? SceneIndex = null,
-    string? Model = null, 
-    int? Steps = null, 
-    double? CfgScale = null, 
-    int? Seed = null, 
-    int? Width = null, 
-    int? Height = null, 
-    string? Style = null, 
-    string? SamplerName = null, 
-    Aspect? Aspect = null,
-    string[]? Keywords = null,
-    string? StableDiffusionUrl = null,
-    bool BypassHardwareChecks = false); // Allow users to bypass GPU/VRAM restrictions
-record CaptionsRequest(List<LineDto> Lines, string Format = "SRT", string? OutputPath = null);
-record ValidateProvidersRequest(string[]? Providers);

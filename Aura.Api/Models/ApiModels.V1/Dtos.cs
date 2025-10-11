@@ -40,14 +40,27 @@ public record LineDto(
 
 public record ComposeRequest(string TimelineJson);
 
-public record RenderRequest(string TimelineJson, string PresetName);
+public record RenderRequest(string TimelineJson, string PresetName, RenderSettingsDto? Settings);
+
+public record RenderSettingsDto(
+    int Width, 
+    int Height, 
+    int Fps, 
+    string Codec, 
+    string Container, 
+    int QualityLevel, 
+    int VideoBitrateK, 
+    int AudioBitrateK, 
+    bool EnableSceneCut);
 
 public record RenderJobDto(
     string Id, 
     string Status, 
     float Progress, 
     string? OutputPath, 
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    int? EstimatedTimeRemaining = null,
+    string? Error = null);
 
 public record ApplyProfileRequest(string ProfileName);
 
@@ -65,6 +78,13 @@ public record ProviderPathsRequest(
     string? OutputDirectory);
 
 public record ProviderTestRequest(string? Url, string? Path);
+
+public record CaptionsRequest(
+    List<LineDto> Lines, 
+    string Format = "SRT", 
+    string? OutputPath = null);
+
+public record ValidateProvidersRequest(string[]? Providers);
 
 public record RecommendationsRequestDto(
     string Topic,
@@ -95,5 +115,16 @@ public record AssetSearchRequest(
 
 public record AssetGenerateRequest(
     string Prompt, 
+    int? SceneIndex = null,
+    string? Model = null, 
+    int? Steps = null, 
+    double? CfgScale = null, 
+    int? Seed = null, 
+    int? Width = null, 
+    int? Height = null, 
     string? Style = null, 
-    ApiV1.Aspect? Aspect = null);
+    string? SamplerName = null, 
+    ApiV1.Aspect? Aspect = null,
+    string[]? Keywords = null,
+    string? StableDiffusionUrl = null,
+    bool BypassHardwareChecks = false);

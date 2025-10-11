@@ -2,6 +2,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ApiV1 = Aura.Api.Models.ApiModels.V1;
+using CoreModels = Aura.Core.Models;
 
 namespace Aura.Api.Serialization
 {
@@ -28,8 +29,10 @@ namespace Aura.Api.Serialization
             return new JsonConverter[]
             {
                 // Specific tolerant converters for ApiModels.V1
-                new TolerantPacingConverter(),
+                new TolerantAspectConverterV1(),
                 new TolerantDensityConverterV1(),
+                new TolerantPacingConverter(),
+                new TolerantPauseStyleConverter(),
 
                 // Fallback case-insensitive converter for remaining enums
                 new JsonStringEnumConverter()
@@ -38,13 +41,25 @@ namespace Aura.Api.Serialization
 
         /// <summary>
         /// Adds all tolerant enum converters to the provided options.
+        /// Also adds converters for legacy Aura.Core.Models enums for backward compatibility.
         /// </summary>
         public static void AddToOptions(JsonSerializerOptions options)
         {
-            foreach (var converter in GetConverters())
-            {
-                options.Converters.Add(converter);
-            }
+            // Add specific tolerant converters for ApiModels.V1
+            options.Converters.Add(new TolerantAspectConverterV1());
+            options.Converters.Add(new TolerantDensityConverterV1());
+            options.Converters.Add(new TolerantPacingConverter());
+            options.Converters.Add(new TolerantPauseStyleConverter());
+            
+            // Add legacy Core.Models converters for backward compatibility with tests
+            options.Converters.Add(new TolerantAspectConverter());
+            options.Converters.Add(new TolerantDensityConverter());
+            options.Converters.Add(new TolerantPacingConverterLegacy());
+            options.Converters.Add(new TolerantPauseStyleConverterLegacy());
+            
+            // Add fallback case-insensitive converter for remaining enums (MUST BE LAST)
+            options.Converters.Add(new JsonStringEnumConverter());
+            
             options.PropertyNameCaseInsensitive = true;
         }
     }
@@ -103,6 +118,119 @@ namespace Aura.Api.Serialization
         }
 
         public override void Write(Utf8JsonWriter writer, ApiV1.Density value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
+    }
+
+    /// <summary>
+    /// JSON converter for Aspect enum
+    /// Canonical: "Widescreen16x9", "Vertical9x16", "Square1x1"
+    /// Aliases: "16:9" -> "Widescreen16x9", "9:16" -> "Vertical9x16", "1:1" -> "Square1x1"
+    /// </summary>
+    public class TolerantAspectConverterV1 : JsonConverter<ApiV1.Aspect>
+    {
+        public override ApiV1.Aspect Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType != JsonTokenType.String)
+                throw new JsonException($"Expected string value for Aspect, got {reader.TokenType}");
+
+            var value = reader.GetString();
+            if (string.IsNullOrWhiteSpace(value))
+                throw new JsonException("Aspect value cannot be empty");
+
+            if (Enum.TryParse<ApiV1.Aspect>(value, ignoreCase: true, out var result))
+                return result;
+
+            return value.Trim() switch
+            {
+                "16:9" => ApiV1.Aspect.Widescreen16x9,
+                "9:16" => ApiV1.Aspect.Vertical9x16,
+                "1:1" => ApiV1.Aspect.Square1x1,
+                _ => throw new JsonException($"Unknown Aspect value: '{value}'. Valid values are: Widescreen16x9 (or 16:9), Vertical9x16 (or 9:16), Square1x1 (or 1:1)")
+            };
+        }
+
+        public override void Write(Utf8JsonWriter writer, ApiV1.Aspect value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
+    }
+
+    /// <summary>
+    /// JSON converter for PauseStyle enum
+    /// Canonical: "Natural", "Short", "Long", "Dramatic"
+    /// </summary>
+    public class TolerantPauseStyleConverter : JsonConverter<ApiV1.PauseStyle>
+    {
+        public override ApiV1.PauseStyle Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType != JsonTokenType.String)
+                throw new JsonException($"Expected string value for PauseStyle, got {reader.TokenType}");
+
+            var value = reader.GetString();
+            if (string.IsNullOrWhiteSpace(value))
+                throw new JsonException("PauseStyle value cannot be empty");
+
+            if (Enum.TryParse<ApiV1.PauseStyle>(value, ignoreCase: true, out var result))
+                return result;
+
+            throw new JsonException($"Unknown PauseStyle value: '{value}'. Valid values are: Natural, Short, Long, Dramatic");
+        }
+
+        public override void Write(Utf8JsonWriter writer, ApiV1.PauseStyle value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
+    }
+
+    /// <summary>
+    /// JSON converter for legacy Core.Models.Pacing enum (for backward compatibility)
+    /// </summary>
+    public class TolerantPacingConverterLegacy : JsonConverter<CoreModels.Pacing>
+    {
+        public override CoreModels.Pacing Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType != JsonTokenType.String)
+                throw new JsonException($"Expected string value for Pacing, got {reader.TokenType}");
+
+            var value = reader.GetString();
+            if (string.IsNullOrWhiteSpace(value))
+                throw new JsonException("Pacing value cannot be empty");
+
+            if (Enum.TryParse<CoreModels.Pacing>(value, ignoreCase: true, out var result))
+                return result;
+
+            throw new JsonException($"Unknown Pacing value: '{value}'. Valid values are: Chill, Conversational, Fast");
+        }
+
+        public override void Write(Utf8JsonWriter writer, CoreModels.Pacing value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
+    }
+
+    /// <summary>
+    /// JSON converter for legacy Core.Models.PauseStyle enum (for backward compatibility)
+    /// </summary>
+    public class TolerantPauseStyleConverterLegacy : JsonConverter<CoreModels.PauseStyle>
+    {
+        public override CoreModels.PauseStyle Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType != JsonTokenType.String)
+                throw new JsonException($"Expected string value for PauseStyle, got {reader.TokenType}");
+
+            var value = reader.GetString();
+            if (string.IsNullOrWhiteSpace(value))
+                throw new JsonException("PauseStyle value cannot be empty");
+
+            if (Enum.TryParse<CoreModels.PauseStyle>(value, ignoreCase: true, out var result))
+                return result;
+
+            throw new JsonException($"Unknown PauseStyle value: '{value}'. Valid values are: Natural, Short, Long, Dramatic");
+        }
+
+        public override void Write(Utf8JsonWriter writer, CoreModels.PauseStyle value, JsonSerializerOptions options)
         {
             writer.WriteStringValue(value.ToString());
         }
