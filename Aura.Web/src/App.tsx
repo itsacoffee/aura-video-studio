@@ -21,6 +21,7 @@ import { LogViewerPage } from './pages/LogViewerPage';
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
+import { NotificationsToaster, useNotifications } from './components/Notifications/Toasts';
 
 const useStyles = makeStyles({
   root: {
@@ -50,6 +51,7 @@ function App() {
     return saved ? JSON.parse(saved) : false;
   });
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const { toasterId } = useNotifications();
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
@@ -99,6 +101,7 @@ function App() {
             isOpen={showShortcuts} 
             onClose={() => setShowShortcuts(false)} 
           />
+          <NotificationsToaster toasterId={toasterId} />
         </div>
       </FluentProvider>
     </ThemeContext.Provider>
