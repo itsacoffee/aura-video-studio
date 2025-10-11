@@ -14,14 +14,8 @@ public class EnumRoundTripTests
 
     public EnumRoundTripTests()
     {
-        _options = new JsonSerializerOptions
-        {
-            Converters = 
-            { 
-                new TolerantPacingConverter(),
-                new TolerantDensityConverterV1()
-            }
-        };
+        _options = new JsonSerializerOptions();
+        EnumJsonConverters.AddToOptions(_options);
     }
 
     #region Pacing Round-Trip Tests
