@@ -32,13 +32,9 @@ jobs:
           version: 8
 
       - name: Placeholder scan
+        shell: pwsh
         run: |
-          if grep -nEI '(^|\s)(TODO|FIXME|FUTURE IMPLEMENTATION|FUTURE|NEXT STEPS|OPTIONAL ENHANCEMENTS)(:|$)' $(git ls-files) ; then
-            echo "::error::Found placeholder text (TODO/FIXME/FUTURE/NEXT STEPS/OPTIONAL). Remove or implement before merge."
-            exit 1
-          else
-            echo "✅ No placeholder markers found."
-          fi
+          pwsh -File ./scripts/audit/no_future_text.ps1
 
       - name: Linux Audit
         run: |

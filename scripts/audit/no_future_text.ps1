@@ -72,6 +72,8 @@ $AllowedFiles = @(
     "AGENT_08_IMPLEMENTATION.md",  # Documents removal of future implementation items
     "AGENT_13_IMPLEMENTATION.md",  # Documents removal of TODO/FIXME
     "STABILIZATION_SWEEP_SUMMARY.md",  # Documents cleanup process
+    "FUTURE_ENHANCEMENTS_REMOVAL.md",  # Documents removal of future enhancements
+    "CONTRIBUTING.md",  # Contributing guide documenting the no-placeholder policy
     "docs/CI.md",  # Documents the no-placeholders workflow patterns
     "BUILD_AND_RUN.md",  # User guide with Next Steps instructions
     "QUICKSTART.md",  # User guide with Next Steps instructions
