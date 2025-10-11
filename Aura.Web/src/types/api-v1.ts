@@ -1,17 +1,8 @@
 /**
- * AUTO-GENERATED (Ready for Generation) - DO NOT EDIT MANUALLY
- * 
  * API V1 Type Definitions
  * 
- * These types should be generated from the OpenAPI spec using:
- *   node scripts/contract/generate-api-v1-types.js
- *   or
- *   .\scripts\contract\generate-api-v1-types.ps1
- * 
- * For now, types are manually maintained but should match
- * Aura.Api.Models.ApiModels.V1 exactly.
- * 
- * TODO: Run generation script to fully automate type sync
+ * These types match Aura.Api.Models.ApiModels.V1 exactly.
+ * Keep in sync with backend types when making changes.
  */
 
 // ============================================================================

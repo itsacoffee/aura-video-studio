@@ -38,7 +38,7 @@ using ValidateProvidersRequest = Aura.Api.Models.ApiModels.V1.ValidateProvidersR
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure JSON options to handle string enum conversion
+// Configure JSON options to handle string enum conversion for minimal APIs
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     // Add all tolerant enum converters from ApiModels.V1 contract
@@ -59,7 +59,12 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container
-builder.Services.AddControllers(); // Add controller support
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Add all tolerant enum converters for controller endpoints
+        EnumJsonConverters.AddToOptions(options.JsonSerializerOptions);
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
