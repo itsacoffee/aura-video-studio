@@ -215,15 +215,6 @@ File.WriteAllText("captions.srt", srtCaptions);
 5. **Accessibility**: Comprehensive caption support (SRT/VTT)
 6. **Timing**: Scene-aware synthesis with proper gaps and merging
 
-## Future Enhancements
-
-- Add more TTS providers (Azure, Google Cloud TTS)
-- Support for voice cloning providers
-- Advanced SSML features (emotions, emphasis)
-- Multi-language caption support
-- Real-time caption generation
-- Caption styling customization in API
-
 ## Definition of Done - Verification
 
 ✅ **Narration works in Free path**: WindowsTtsProvider with WAV merging

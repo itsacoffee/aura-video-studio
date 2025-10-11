@@ -231,18 +231,6 @@ curl http://localhost:5005/api/downloads/FFmpeg/manual
 curl -X POST http://localhost:5005/api/downloads/FFmpeg/repair
 ```
 
-## Future Enhancements (Not in Scope)
-
-The following were mentioned in documentation but are not required for this implementation:
-
-1. Real-time progress via WebSockets
-2. Automatic extraction of ZIP/7z archives
-3. Update management and version comparison
-4. Download queue management
-5. Bandwidth throttling
-6. Mirror URL support
-7. Parallel downloads
-
 ## Conclusion
 
 All requirements from Agent 04 problem statement have been successfully implemented:

@@ -228,15 +228,6 @@ Artifacts are available in the GitHub Actions run under the name `portable-zip`.
 3. **FFmpeg Binaries**: Excluded from git; users may need to download separately
 4. **Smoke Test**: Marked as non-blocking to prevent CI failures from environment issues
 
-## Future Enhancements
-
-1. **WPF Shell**: When implemented, add to ZIP as `/AuraVideoStudio.exe`
-2. **Assets**: Add default CC0 packs, LUTs, and fonts
-3. **Code Signing**: Add certificate signing for executables
-4. **Installer**: Create setup.exe wrapper for portable ZIP
-5. **Auto-Updates**: Add update check mechanism
-6. **FFmpeg Bundling**: Consider bundling FFmpeg or auto-download logic
-
 ## Testing Checklist
 
 - [x] Script builds without errors

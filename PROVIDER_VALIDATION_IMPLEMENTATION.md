@@ -251,16 +251,6 @@ curl -X POST http://127.0.0.1:5005/api/providers/validate \
 - [x] Proper error handling and timeouts
 - [x] Security: key masking in logs
 
-## Future Enhancements
-
-1. **DPAPI Encryption**: Implement actual encryption/decryption for API keys on Windows
-2. **Additional Validators**: Azure, Gemini, PlayHT (structure is ready, just add new validator classes)
-3. **Retry Logic**: Add configurable retry with exponential backoff
-4. **Progress Indicators**: Show per-provider progress during validation
-5. **Validation History**: Store and display past validation results
-6. **Scheduled Validation**: Auto-validate on startup or periodically
-7. **Provider Health Dashboard**: Dedicated page showing provider status over time
-
 ## Notes
 
 - All existing functionality preserved (104 existing tests still passing)

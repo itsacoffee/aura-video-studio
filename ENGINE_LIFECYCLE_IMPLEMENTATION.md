@@ -271,18 +271,6 @@ foreach (var engine in report.Engines)
 - Logs are captured in real-time with rolling files
 - Notifications are kept to last 1000 entries to prevent memory issues
 
-## Future Enhancements
-
-Potential improvements for future versions:
-
-1. Configurable restart limits per engine
-2. Email/Slack notifications for critical events
-3. Metrics collection (uptime, restart frequency)
-4. Web-based log streaming (WebSockets)
-5. Engine dependency management (start order)
-6. Resource usage monitoring (CPU/memory)
-7. Scheduled restarts (e.g., daily at 3 AM)
-
 ## Troubleshooting
 
 ### Engine Won't Auto-Start

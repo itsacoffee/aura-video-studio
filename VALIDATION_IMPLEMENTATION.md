@@ -310,14 +310,6 @@ POST /api/v1/generation/validate
 - **Script Generation (RuleBased):** 50-200ms
 - **Script Generation (OpenAI):** 1-5s
 
-## Future Enhancements
-
-1. **Health Matrix Caching** - Cache results with TTL to reduce overhead
-2. **Provider Priority** - Allow user-defined fallback order
-3. **Partial Degradation** - Continue with warnings instead of blocking
-4. **Recovery Suggestions** - Automated fix recommendations
-5. **Metrics Dashboard** - Real-time provider health visualization
-
 ## Files Changed
 
 ### New Files

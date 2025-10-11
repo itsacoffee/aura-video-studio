@@ -133,8 +133,6 @@ curl -X POST http://127.0.0.1:5005/api/planner/recommendations \
 ✅ Integration tests verify fallback when LLM unavailable  
 ✅ All tests pass (137/137)  
 
-## Future Enhancements
-
 ## Files Modified/Created
 
 **Created:**

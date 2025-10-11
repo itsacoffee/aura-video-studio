@@ -176,14 +176,6 @@ When `ProviderSelection.Script` is provided and not "Auto", the API uses that sp
 - Profile dropdown still functional (sets all stages at once)
 - Per-stage selection is optional (null/Auto = use profile default)
 
-## Future Enhancements (Not Included)
-
-These were marked optional in requirements:
-- ProviderRegistry for centralized provider discovery
-- Explicit DI registration logging for all providers
-- Detailed preflight tests for cloud providers
-- Playwright E2E tests for provider selection
-
 ## Known Limitations
 
 1. **RuleBased Reflection** - Uses reflection to instantiate RuleBased, which may not work in AOT scenarios

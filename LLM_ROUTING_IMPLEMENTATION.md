@@ -232,15 +232,6 @@ All provider selection decisions are logged with structured logging:
 [Script] Provider: RuleBased (FALLBACK from Pro LLM) - Free fallback - always available
 ```
 
-## Future Enhancements
-
-1. **DPAPI Encryption**: Encrypt API keys before saving
-2. **Provider Health Checks**: Periodic connectivity tests
-3. **Rate Limiting**: Respect API rate limits
-4. **Caching**: Cache scripts for identical requests
-5. **Custom Prompts**: User-defined prompt templates
-6. **Streaming**: Support streaming responses from providers
-
 ## Usage Examples
 
 ### Basic Free Tier
