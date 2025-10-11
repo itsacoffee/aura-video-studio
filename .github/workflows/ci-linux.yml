@@ -79,6 +79,14 @@ jobs:
           chmod +x ./scripts/run_quick_generate_demo.sh
           ./scripts/run_quick_generate_demo.sh
 
+      - name: CLI Quick Command Smoke Test
+        run: |
+          # Test CLI quick command
+          dotnet run --project Aura.Cli --configuration Release -- quick -t "CI Test Video" -d 0.5 -o ./artifacts/cli --dry-run -v
+          
+          # Test preflight command
+          dotnet run --project Aura.Cli --configuration Release -- preflight -v
+
       - name: Upload smoke artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -89,6 +97,7 @@ jobs:
             artifacts/smoke/*.srt
             artifacts/smoke/*.vtt
             artifacts/smoke/*.zip
+            artifacts/cli/**
           retention-days: 30
 
       - name: Upload test results

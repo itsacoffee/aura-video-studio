@@ -38,6 +38,8 @@ public class CliCommandTests : IDisposable
                 services.AddTransient<ILlmProvider>(sp => sp.GetRequiredService<RuleBasedLlmProvider>());
                 services.AddTransient<PreflightCommand>();
                 services.AddTransient<ScriptCommand>();
+                services.AddTransient<ComposeCommand>();
+                services.AddTransient<RenderCommand>();
                 services.AddTransient<QuickCommand>();
             })
             .Build();
@@ -144,5 +146,115 @@ public class CliCommandTests : IDisposable
 
         // Assert - should fail without required arguments
         Assert.Equal(1, exitCode);
+    }
+
+    [Fact]
+    public async Task ComposeCommand_Should_Fail_Without_Input()
+    {
+        // Arrange
+        var command = _services.GetRequiredService<ComposeCommand>();
+        var args = Array.Empty<string>();
+
+        // Act
+        var exitCode = await command.ExecuteAsync(args);
+
+        // Assert
+        Assert.Equal(Aura.Cli.ExitCodes.InvalidArguments, exitCode);
+    }
+
+    [Fact]
+    public async Task ComposeCommand_Should_Process_Valid_Input()
+    {
+        // Arrange
+        var command = _services.GetRequiredService<ComposeCommand>();
+        var inputFile = Path.Combine(_tempDir, "timeline.json");
+        var outputFile = Path.Combine(_tempDir, "compose-plan.json");
+        
+        // Create a sample timeline JSON
+        await File.WriteAllTextAsync(inputFile, "{\"timeline\": \"sample\"}");
+        
+        var args = new[] { "-i", inputFile, "-o", outputFile };
+
+        // Act
+        var exitCode = await command.ExecuteAsync(args);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(outputFile));
+    }
+
+    [Fact]
+    public async Task RenderCommand_Should_Fail_Without_RenderSpec()
+    {
+        // Arrange
+        var command = _services.GetRequiredService<RenderCommand>();
+        var args = Array.Empty<string>();
+
+        // Act
+        var exitCode = await command.ExecuteAsync(args);
+
+        // Assert
+        Assert.Equal(Aura.Cli.ExitCodes.InvalidArguments, exitCode);
+    }
+
+    [Fact]
+    public async Task RenderCommand_DryRun_Should_Complete()
+    {
+        // Arrange
+        var command = _services.GetRequiredService<RenderCommand>();
+        var specFile = Path.Combine(_tempDir, "spec.json");
+        
+        // Create a sample render spec
+        await File.WriteAllTextAsync(specFile, "{\"spec\": \"sample\"}");
+        
+        var args = new[] { "-r", specFile, "--dry-run" };
+
+        // Act
+        var exitCode = await command.ExecuteAsync(args);
+
+        // Assert - dry run should succeed even without FFmpeg
+        Assert.Equal(0, exitCode);
+    }
+
+    [Fact]
+    public async Task QuickCommand_With_Profile_Should_Complete()
+    {
+        // Arrange
+        var command = _services.GetRequiredService<QuickCommand>();
+        var outputDir = Path.Combine(_tempDir, "profile-output");
+        var args = new[] 
+        { 
+            "-t", "Test Topic",
+            "-o", outputDir,
+            "--profile", "Free-Only",
+            "--dry-run"
+        };
+
+        // Act
+        var exitCode = await command.ExecuteAsync(args);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+    }
+
+    [Fact]
+    public async Task QuickCommand_Offline_Mode_Should_Complete()
+    {
+        // Arrange
+        var command = _services.GetRequiredService<QuickCommand>();
+        var outputDir = Path.Combine(_tempDir, "offline-output");
+        var args = new[] 
+        { 
+            "-t", "Offline Test",
+            "-o", outputDir,
+            "--offline",
+            "--dry-run"
+        };
+
+        // Act
+        var exitCode = await command.ExecuteAsync(args);
+
+        // Assert
+        Assert.Equal(0, exitCode);
     }
 }
