@@ -1,6 +1,18 @@
-# Playwright Visual Regression Testing
+# Playwright E2E Tests
 
-This directory contains visual regression tests for Aura.Web. Snapshots are stored per-branch to avoid conflicts during development.
+This directory contains end-to-end tests for Aura.Web, including functional tests and visual regression tests.
+
+## Test Files
+
+### Functional Tests
+
+- **`wizard.spec.ts`** - Tests the complete video creation wizard workflow
+- **`logviewer.spec.ts`** - Tests the log viewer functionality
+- **`local-engines.spec.ts`** - Tests local AI engine management and integration
+
+### Visual Regression Tests
+
+- **`visual.spec.ts`** - UI snapshot tests for key pages
 
 ## Directory Structure
 
