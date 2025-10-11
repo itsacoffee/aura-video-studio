@@ -34,14 +34,7 @@ jobs:
       - name: Placeholder scan
         shell: pwsh
         run: |
-          $found = Select-String -Pattern "(^|\s)(TODO|FIXME|FUTURE IMPLEMENTATION|FUTURE|NEXT STEPS|OPTIONAL ENHANCEMENTS)(:|$)" -Path (git ls-files) -CaseSensitive
-          if ($found) {
-            Write-Host "::error::Found placeholder text (TODO/FIXME/FUTURE/NEXT STEPS/OPTIONAL). Remove or implement before merge."
-            $found | ForEach-Object { Write-Host $_ }
-            exit 1
-          } else {
-            Write-Host "✅ No placeholder markers found."
-          }
+          pwsh -File .\scripts\audit\no_future_text.ps1
 
       - name: Windows Audit
         shell: pwsh
