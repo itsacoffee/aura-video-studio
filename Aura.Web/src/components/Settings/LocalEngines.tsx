@@ -176,7 +176,6 @@ export function LocalEngines() {
   };
 
   const saveEnginePreferences = async () => {
-    // TODO: Call API endpoint to save preferences
     try {
       const response = await fetch('http://127.0.0.1:5005/api/engines/preferences', {
         method: 'POST',
