@@ -205,6 +205,15 @@ builder.Services.AddSingleton<Aura.Core.Runtime.LocalEnginesRegistry>(sp =>
     return new Aura.Core.Runtime.LocalEnginesRegistry(logger, processManager, configPath);
 });
 
+// Register Engine Lifecycle Manager
+builder.Services.AddSingleton<Aura.Core.Runtime.EngineLifecycleManager>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Runtime.EngineLifecycleManager>>();
+    var registry = sp.GetRequiredService<Aura.Core.Runtime.LocalEnginesRegistry>();
+    var processManager = sp.GetRequiredService<Aura.Core.Runtime.ExternalProcessManager>();
+    return new Aura.Core.Runtime.EngineLifecycleManager(logger, registry, processManager, maxRestartAttempts: 3);
+});
+
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
 builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();
@@ -1520,6 +1529,40 @@ if (Directory.Exists(wwwrootPath))
 {
     app.MapFallbackToFile("index.html");
 }
+
+// Start Engine Lifecycle Manager
+var lifecycleManager = app.Services.GetRequiredService<Aura.Core.Runtime.EngineLifecycleManager>();
+var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+
+lifetime.ApplicationStarted.Register(() =>
+{
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            await lifecycleManager.StartAsync();
+            Log.Information("Engine Lifecycle Manager started successfully");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to start Engine Lifecycle Manager");
+        }
+    });
+});
+
+lifetime.ApplicationStopping.Register(() =>
+{
+    Log.Information("Application stopping - shutting down engines...");
+    try
+    {
+        lifecycleManager.StopAsync().GetAwaiter().GetResult();
+        Log.Information("Engine Lifecycle Manager stopped successfully");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error stopping Engine Lifecycle Manager");
+    }
+});
 
 app.Run();
 
