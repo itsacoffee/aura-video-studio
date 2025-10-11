@@ -59,7 +59,7 @@ interface ProviderSelectionProps {
 
 export function ProviderSelection({ selection, onSelectionChange }: ProviderSelectionProps) {
   const styles = useStyles();
-  const { engines, engineStatuses, fetchEngines, fetchEngineStatus, installEngine, isLoading } = useEnginesStore();
+  const { engineStatuses, fetchEngines, fetchEngineStatus, installEngine, isLoading } = useEnginesStore();
   const [installing, setInstalling] = useState<string | null>(null);
 
   // Fetch engines on mount

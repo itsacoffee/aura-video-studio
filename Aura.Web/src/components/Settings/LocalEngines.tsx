@@ -12,9 +12,7 @@ import {
   Field,
   Spinner,
   Badge,
-  Tooltip,
   Dialog,
-  DialogTrigger,
   DialogSurface,
   DialogTitle,
   DialogBody,
@@ -29,7 +27,6 @@ import {
   Info20Regular,
   CheckmarkCircle20Filled,
   Warning20Filled,
-  ErrorCircle20Filled,
   DocumentText20Regular,
   Warning20Regular,
 } from '@fluentui/react-icons';
@@ -139,7 +136,6 @@ const LOCAL_ENGINES: LocalEngineConfig[] = [
 export function LocalEngines() {
   const styles = useStyles();
   const {
-    engines,
     engineStatuses,
     fetchEngines,
     fetchEngineStatus,
@@ -372,8 +368,15 @@ export function LocalEngines() {
                 >
                   <Input
                     type="number"
-                    value={config.port?.toString() || engineConfig.defaultPort.toString()}
-                    onChange={(e) => updateEngineConfig(engineConfig.id, 'port', parseInt(e.target.value) || engineConfig.defaultPort)}
+                    value={config.port?.toString() || engineConfig.defaultPort?.toString() || ''}
+                    onChange={(e) => {
+                      const parsedValue = parseInt(e.target.value);
+                      if (!isNaN(parsedValue)) {
+                        updateEngineConfig(engineConfig.id, 'port', parsedValue);
+                      } else if (engineConfig.defaultPort !== undefined) {
+                        updateEngineConfig(engineConfig.id, 'port', engineConfig.defaultPort);
+                      }
+                    }}
                     disabled={status?.isRunning}
                   />
                 </Field>

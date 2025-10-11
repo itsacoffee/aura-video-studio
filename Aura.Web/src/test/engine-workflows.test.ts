@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 describe('Engine Installation Workflows', () => {
   it('should validate Piper installation path', () => {
