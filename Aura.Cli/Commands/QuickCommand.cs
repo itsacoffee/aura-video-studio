@@ -208,7 +208,8 @@ public class QuickCommand : ICommand
             }
             else
             {
-                Console.WriteLine("Next steps:");
+                Console.WriteLine("Script generation successful.");
+                Console.WriteLine("To continue:");
                 Console.WriteLine("  - Use Aura.Api to generate TTS audio");
                 Console.WriteLine("  - Use Aura.Api to compose timeline");
                 Console.WriteLine("  - Use Aura.Api to render final video");

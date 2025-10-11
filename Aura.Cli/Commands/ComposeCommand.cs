@@ -101,7 +101,7 @@ public class ComposeCommand : ICommand
             Console.WriteLine("═══════════════════════════════════════════════════════════");
             Console.WriteLine("✓ Composition plan ready!");
             Console.WriteLine();
-            Console.WriteLine("Next steps:");
+            Console.WriteLine("To complete rendering:");
             Console.WriteLine("  - Review the composition plan");
             Console.WriteLine("  - Run 'aura-cli render' to produce the final video");
             Console.WriteLine();

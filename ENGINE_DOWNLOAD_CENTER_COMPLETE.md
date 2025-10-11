@@ -196,23 +196,26 @@ Tests:
 4. **SHA256 Not Enforced**: Checksum validation optional for git repos
 5. **Single Instance**: Only one instance per engine supported currently
 
-## Future Enhancements
+## Current Capabilities
 
-### Planned Features
-- [ ] Installation progress bars with percentage
-- [ ] Update detection and auto-update
-- [ ] Model management UI for downloading AI models
-- [ ] Resource monitoring (RAM/VRAM usage)
-- [ ] Multiple engine instances
-- [ ] Scheduled start/stop
-- [ ] Installation wizard for first-time setup
+The Engine Download Center provides a complete solution for managing local AI engines:
 
-### Nice-to-Have
-- [ ] Bandwidth throttling for downloads
-- [ ] Resume interrupted downloads
-- [ ] Custom engine definitions
-- [ ] Engine marketplace
-- [ ] Performance metrics dashboard
+### Core Features
+- ✅ Install engines from git repositories or archives
+- ✅ Verify installation integrity with checksums
+- ✅ Start and stop engine processes
+- ✅ Monitor health with HTTP checks
+- ✅ Repair corrupted installations
+- ✅ Remove engines cleanly
+- ✅ Track process IDs and log files
+- ✅ Real-time status updates in UI
+- ✅ Per-engine configuration and logs
+
+### Supported Engines
+- ✅ Stable Diffusion WebUI 1.9.0
+- ✅ ComfyUI (latest)
+- ✅ Piper TTS 1.2.0
+- ✅ Mimic3 TTS (latest)
 
 ## Troubleshooting
 

@@ -360,18 +360,6 @@ After installing components, configure their paths in **Settings → Local Provi
 4. Place in specified directories
 5. Use provided checksums to verify
 
-## Future Enhancements
-
-- [ ] Real-time progress bars with speed/ETA
-- [ ] Parallel downloads for multi-file components
-- [ ] Automatic extraction of ZIP/archives
-- [ ] Download queue management
-- [ ] Bandwidth throttling options
-- [ ] Proxy support
-- [ ] Update notifications
-- [ ] Component version management
-- [ ] Dependency resolution
-
 ## Security Considerations
 
 1. **Checksum Verification**: All files are verified with SHA-256

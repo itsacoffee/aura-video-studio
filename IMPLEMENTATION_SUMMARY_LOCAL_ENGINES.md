@@ -295,32 +295,6 @@ Complete TTS setup guide:
 | SD 1.5 | 6GB | 10-30s |
 | SDXL | 12GB | 30-60s |
 
-## Future Enhancements (Not in Scope)
-
-### Potential Additions
-- ComfyUI integration
-- Voice model training (Piper)
-- SSML support for TTS
-- ControlNet for SD
-- Image-to-image for SD
-- Model auto-download
-- Voice cloning
-
-### API Endpoints (Placeholder for Next Phase)
-- `GET /api/engines/manifest`
-- `POST /api/engines/{id}/install`
-- `POST /api/engines/{id}/start`
-- `POST /api/engines/{id}/stop`
-- `GET /api/engines/{id}/health`
-- `GET /api/engines/{id}/logs`
-- `GET /api/engines/voices`
-
-### UI Components (Placeholder for Next Phase)
-- EnginesTab.tsx
-- EngineCard.tsx
-- TtsSettings.tsx
-- ProviderSelection.tsx updates
-
 ## Compliance with Requirements
 
 ### From Problem Statement

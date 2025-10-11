@@ -135,14 +135,6 @@ curl -X POST http://127.0.0.1:5005/api/planner/recommendations \
 
 ## Future Enhancements
 
-1. **LLM Integration**: Add OpenAI/Ollama provider for recommendations when API keys available
-2. **Per-Field Apply**: Individual apply buttons for each recommendation group
-3. **Recommendation History**: Save and compare multiple recommendation sets
-4. **A/B Testing**: Compare performance of different recommendation sets
-5. **Learning**: Improve heuristics based on user feedback and video performance
-6. **Advanced Constraints**: More granular control over recommendations
-7. **Export/Import**: Save recommendation profiles for reuse
-
 ## Files Modified/Created
 
 **Created:**

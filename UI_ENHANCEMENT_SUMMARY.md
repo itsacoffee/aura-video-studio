@@ -245,13 +245,6 @@ GET /api/settings/load → Loads settings
 - Project persistence (would need database)
 - Real-time progress streaming for downloads
 
-### Future Enhancements
-- WebSocket support for real-time download progress
-- Toast notifications instead of alerts
-- Advanced settings for each provider
-- Project history and management
-- Export/import settings
-
 ## 🎉 Conclusion
 
 This PR completely transforms the web UI from a basic, non-functional interface into a professional, fully-functional application with:

@@ -542,26 +542,6 @@ Console.WriteLine($"Video generated: {outputPath}");
 **Problem**: E2E tests timeout
 **Solution**: Increase timeout in test configuration.
 
-## Future Enhancements
-
-### High Priority
-1. Complete WinUI 3 XAML views
-2. DPAPI encryption for API keys
-3. MSIX packaging with code signing
-4. Additional Pro providers (Azure, Gemini, ElevenLabs)
-
-### Medium Priority
-5. Additional Stock providers (Pixabay, Unsplash)
-6. Download resume functionality
-7. Timeline editor with drag-and-drop
-8. Brand kit customization UI
-
-### Low Priority
-9. YouTube OAuth upload flow
-10. Telemetry (opt-in only)
-11. Advanced color grading
-12. Multi-language support
-
 ## Contributing
 
 This project follows the Microsoft C# coding conventions and uses:
