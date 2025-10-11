@@ -267,9 +267,8 @@ public class EngineInstaller
             }
             else if (archiveType == "tar.gz")
             {
-                // For tar.gz, we'd need a library like SharpZipLib or call tar command
-                // For now, just support zip
-                throw new NotSupportedException($"Archive type {archiveType} not yet supported");
+                // For tar.gz support, install SharpZipLib or use system tar command
+                throw new NotSupportedException($"Archive type {archiveType} is not supported. Please extract manually or use a zip archive.");
             }
         }).ConfigureAwait(false);
     }

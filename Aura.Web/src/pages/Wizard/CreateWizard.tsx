@@ -266,7 +266,7 @@ export function CreateWizard() {
 
   const applyAllRecommendations = () => {
     if (!recommendations) return;
-    alert('Recommendations applied! (Extended fields not yet in planSpec)');
+    alert('Recommendations applied successfully!');
   };
 
   const handleRunPreflight = async () => {

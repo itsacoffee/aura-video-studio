@@ -477,7 +477,8 @@ public class PreflightService
                 Status = failureStatus,
                 Provider = providerName,
                 Message = providerResult.Details,
-                Hint = GetHintForProvider(providerName, providerResult.Details)
+                Hint = GetHintForProvider(providerName, providerResult.Details),
+                Suggestions = GetSuggestionsForProvider(providerName, providerResult.Details)
             };
         }
         catch (Exception ex)
@@ -508,6 +509,69 @@ public class PreflightService
             "StableDiffusion" => "Ensure SD WebUI is running with --api flag. Requires NVIDIA GPU with 6GB+ VRAM",
             "Piper" => "Install Piper TTS from Downloads page or configure path in Settings",
             "Mimic3" => "Start Mimic3 server from Downloads page or ensure it's running on port 59125",
+            _ => null
+        };
+    }
+
+    private string[]? GetSuggestionsForProvider(string providerName, string details)
+    {
+        return providerName switch
+        {
+            "OpenAI" when details.Contains("API key") => new[] 
+            { 
+                "Get API key from https://platform.openai.com/api-keys",
+                "Add key in Settings → API Keys → OpenAI"
+            },
+            "ElevenLabs" when details.Contains("API key") => new[] 
+            { 
+                "Get API key from https://elevenlabs.io",
+                "Add key in Settings → API Keys → ElevenLabs"
+            },
+            "Ollama" when details.Contains("not running") => new[] 
+            { 
+                "Install Ollama from https://ollama.ai",
+                "Run 'ollama serve' in terminal",
+                "Ensure Ollama is listening on http://127.0.0.1:11434"
+            },
+            "Ollama" => new[] 
+            { 
+                "Run 'ollama pull llama2' to download a model",
+                "Check if Ollama service is running: curl http://127.0.0.1:11434"
+            },
+            "StableDiffusion" when details.Contains("VRAM") => new[] 
+            { 
+                "GPU detected has insufficient VRAM (need 6GB+)",
+                "Consider using SD 1.5 models which require less VRAM",
+                "Or use cloud providers like Stability AI or Runway"
+            },
+            "StableDiffusion" when details.Contains("not running") => new[] 
+            { 
+                "Download SD WebUI from https://github.com/AUTOMATIC1111/stable-diffusion-webui",
+                "Launch with: webui.bat --api (Windows) or ./webui.sh --api (Linux)",
+                "Default URL: http://127.0.0.1:7860"
+            },
+            "StableDiffusion" => new[] 
+            { 
+                "Ensure SD WebUI is started with --api flag",
+                "Check if accessible: curl http://127.0.0.1:7860/sdapi/v1/sd-models"
+            },
+            "Piper" => new[] 
+            { 
+                "Download Piper from https://github.com/rhasspy/piper",
+                "Extract to a folder and configure path in Settings",
+                "Download a voice model (e.g., en_US-lessac-medium)"
+            },
+            "Mimic3" => new[] 
+            { 
+                "Install Mimic3 from Downloads page",
+                "Start server: mimic3-server",
+                "Default port: 59125"
+            },
+            "Stability" or "Runway" when details.Contains("API key") => new[] 
+            { 
+                $"Sign up for {providerName} API at their website",
+                $"Add API key in Settings → API Keys → {providerName}"
+            },
             _ => null
         };
     }
@@ -556,6 +620,9 @@ public record StageCheck
     
     /// <summary>Hint for fixing issues (null if no issues)</summary>
     public string? Hint { get; init; }
+    
+    /// <summary>Actionable suggestions for improving setup (null if none)</summary>
+    public string[]? Suggestions { get; init; }
 }
 
 /// <summary>
@@ -625,6 +692,15 @@ public enum ProviderStatus
     
     /// <summary>Provider is installed but not running</summary>
     Installed,
+    
+    /// <summary>Provider update is available</summary>
+    UpdateAvailable,
+    
+    /// <summary>Provider is unreachable (network/timeout issue)</summary>
+    Unreachable,
+    
+    /// <summary>Provider is not supported on this platform/hardware</summary>
+    Unsupported,
     
     /// <summary>Error checking provider status</summary>
     Error

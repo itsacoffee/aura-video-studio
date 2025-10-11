@@ -151,4 +151,45 @@ public class PreflightServiceTests
         // Should be either StableDiffusion or Stock depending on availability
         Assert.True(visualsStage.Provider == "StableDiffusion" || visualsStage.Provider == "Stock");
     }
+
+    [Fact]
+    public async Task RunPreflight_FailedCheck_ShouldIncludeSuggestions()
+    {
+        // Arrange
+        var preflightService = CreatePreflightService();
+
+        // Act - Pro-Max will fail since no API keys configured
+        var result = await preflightService.RunPreflightAsync("Pro-Max", CancellationToken.None);
+
+        // Assert
+        Assert.False(result.Ok); // Should fail
+        
+        var scriptStage = result.Stages[0];
+        Assert.Equal(CheckStatus.Fail, scriptStage.Status);
+        Assert.NotNull(scriptStage.Hint); // Should have a hint
+        Assert.NotNull(scriptStage.Suggestions); // Should have suggestions
+        Assert.NotEmpty(scriptStage.Suggestions);
+    }
+
+    [Fact]
+    public async Task RunPreflight_OllamaNotRunning_ShouldProvideSuggestions()
+    {
+        // Arrange
+        var preflightService = CreatePreflightService();
+
+        // Act - Free-Only will check Ollama
+        var result = await preflightService.RunPreflightAsync("Free-Only", CancellationToken.None);
+
+        // Assert
+        var scriptStage = result.Stages[0];
+        Assert.Equal("Ollama", scriptStage.Provider);
+        
+        // If Ollama is not running, should have suggestions
+        if (scriptStage.Status != CheckStatus.Pass)
+        {
+            Assert.NotNull(scriptStage.Hint);
+            Assert.NotNull(scriptStage.Suggestions);
+            Assert.Contains(scriptStage.Suggestions, s => s.Contains("ollama", StringComparison.OrdinalIgnoreCase));
+        }
+    }
 }
