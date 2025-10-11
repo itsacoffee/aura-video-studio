@@ -45,6 +45,7 @@ import { normalizeEnumsForApi, validateAndWarnEnums } from '../../utils/enumNorm
 import { PreflightPanel } from '../../components/PreflightPanel';
 import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
 import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
+import { GenerationPanel } from '../../components/Generation/GenerationPanel';
 
 const useStyles = makeStyles({
   container: {
@@ -179,6 +180,10 @@ export function CreateWizard() {
   const [isRunningPreflight, setIsRunningPreflight] = useState(false);
   const [overridePreflightGate, setOverridePreflightGate] = useState(false);
   const [perStageSelection, setPerStageSelection] = useState<PerStageProviderSelection>({});
+  
+  // Generation panel state
+  const [showGenerationPanel, setShowGenerationPanel] = useState(false);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
   // Update provider selection
   const updateProviderSelection = (selection: PerStageProviderSelection) => {
@@ -297,40 +302,62 @@ export function CreateWizard() {
         settings.planSpec
       );
 
-      const response = await fetch('/api/script', {
+      // Create job with full specs
+      const brief = {
+        topic: normalizedBrief.topic,
+        audience: normalizedBrief.audience,
+        goal: normalizedBrief.goal,
+        tone: normalizedBrief.tone,
+        language: normalizedBrief.language,
+        aspect: normalizedBrief.aspect,
+      };
+
+      const planSpec = {
+        targetDuration: `PT${normalizedPlanSpec.targetDurationMinutes}M`,
+        pacing: normalizedPlanSpec.pacing,
+        density: normalizedPlanSpec.density,
+        style: normalizedPlanSpec.style,
+      };
+
+      const voiceSpec = {
+        voiceName: 'en-US-Standard-A',
+        rate: 1.0,
+        pitch: 0.0,
+        pause: 'Short',
+      };
+
+      const renderSpec = {
+        res: { width: 1920, height: 1080 },
+        container: 'mp4',
+        videoBitrateK: 5000,
+        audioBitrateK: 192,
+        fps: 30,
+        codec: 'H264',
+        qualityLevel: 75,
+        enableSceneCut: true,
+      };
+
+      const response = await fetch('/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          topic: normalizedBrief.topic,
-          audience: normalizedBrief.audience,
-          goal: normalizedBrief.goal,
-          tone: normalizedBrief.tone,
-          language: normalizedBrief.language,
-          aspect: normalizedBrief.aspect,
-          targetDurationMinutes: normalizedPlanSpec.targetDurationMinutes,
-          pacing: normalizedPlanSpec.pacing,
-          density: normalizedPlanSpec.density,
-          style: normalizedPlanSpec.style,
-          // Include additional settings
-          offlineMode: settings.offlineMode,
-          brandKit: settings.brandKit,
-          captions: settings.captions,
-          stockSources: settings.stockSources,
-          // Include per-stage provider selection
-          providerSelection: settings.providerSelection || perStageSelection,
+          brief,
+          planSpec,
+          voiceSpec,
+          renderSpec,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Script generated:', data);
-        alert('Script generated successfully! Check console for details.');
+        setActiveJobId(data.jobId);
+        setShowGenerationPanel(true);
       } else {
-        alert('Failed to generate script');
+        alert('Failed to start video generation');
       }
     } catch (error) {
-      console.error('Error generating script:', error);
-      alert('Error generating script');
+      console.error('Error starting generation:', error);
+      alert('Error starting video generation');
     } finally {
       setGenerating(false);
     }
@@ -1077,6 +1104,17 @@ export function CreateWizard() {
           )}
         </div>
       </div>
+      
+      {/* Generation Panel */}
+      {showGenerationPanel && activeJobId && (
+        <GenerationPanel
+          jobId={activeJobId}
+          onClose={() => {
+            setShowGenerationPanel(false);
+            setActiveJobId(null);
+          }}
+        />
+      )}
     </div>
   );
 }
