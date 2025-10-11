@@ -37,6 +37,7 @@ public class EngineInstaller
 {
     private readonly ILogger<EngineInstaller> _logger;
     private readonly HttpClient _httpClient;
+    private readonly HttpDownloader _downloader;
     private readonly string _installRoot;
 
     public EngineInstaller(
@@ -47,6 +48,19 @@ public class EngineInstaller
         _logger = logger;
         _httpClient = httpClient;
         _installRoot = installRoot;
+
+        // Create HttpDownloader for robust downloads
+        var downloaderLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<HttpDownloader>.Instance;
+        if (logger is ILogger<HttpDownloader> typedLogger)
+        {
+            _downloader = new HttpDownloader(typedLogger, httpClient);
+        }
+        else
+        {
+            var loggerFactory = Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance;
+            var downloaderLoggerTyped = loggerFactory.CreateLogger<HttpDownloader>();
+            _downloader = new HttpDownloader(downloaderLoggerTyped, httpClient);
+        }
 
         if (!Directory.Exists(_installRoot))
         {
@@ -163,27 +177,26 @@ public class EngineInstaller
         IProgress<EngineInstallProgress>? progress,
         CancellationToken ct)
     {
-        // Download archive
+        // Download archive with built-in checksum verification
         string archiveFile = Path.Combine(Path.GetTempPath(), $"{engine.Id}-{Guid.NewGuid()}.tmp");
         
         try
         {
             progress?.Report(new EngineInstallProgress(engine.Id, "downloading", 0, engine.SizeBytes, 0, "Downloading..."));
             
-            await DownloadFileAsync(url, archiveFile, engine.SizeBytes, 
-                p => progress?.Report(new EngineInstallProgress(engine.Id, "downloading", p.BytesProcessed, p.TotalBytes, p.PercentComplete, "Downloading...")),
-                ct).ConfigureAwait(false);
-
-            // Verify checksum if provided
-            if (!string.IsNullOrEmpty(engine.Sha256))
+            // Use HttpDownloader with SHA256 verification
+            var downloadProgress = new Progress<HttpDownloadProgress>(p =>
             {
-                progress?.Report(new EngineInstallProgress(engine.Id, "verifying", 0, engine.SizeBytes, 0, "Verifying checksum..."));
-                bool checksumValid = await VerifyChecksumAsync(archiveFile, engine.Sha256,
-                    p => progress?.Report(new EngineInstallProgress(engine.Id, "verifying", p.BytesProcessed, p.TotalBytes, p.PercentComplete, "Verifying checksum..."))).ConfigureAwait(false);
-                if (!checksumValid)
-                {
-                    throw new InvalidOperationException("Checksum verification failed");
-                }
+                var phase = p.Message?.Contains("Verifying") == true ? "verifying" : "downloading";
+                progress?.Report(new EngineInstallProgress(engine.Id, phase, p.BytesDownloaded, p.TotalBytes, p.PercentComplete, p.Message));
+            });
+
+            var success = await _downloader.DownloadFileAsync(url, archiveFile, engine.Sha256, downloadProgress, ct)
+                .ConfigureAwait(false);
+
+            if (!success)
+            {
+                throw new InvalidOperationException("Download or checksum verification failed");
             }
 
             // Extract archive
@@ -206,26 +219,18 @@ public class EngineInstaller
         Action<(long BytesProcessed, long TotalBytes, float PercentComplete)>? progress,
         CancellationToken ct)
     {
-        using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        long totalBytes = response.Content.Headers.ContentLength ?? expectedSize;
-        using var contentStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-        using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-
-        var buffer = new byte[8192];
-        long bytesRead = 0;
-
-        while (true)
+        // Use HttpDownloader for robust downloading with resume support
+        var downloadProgress = new Progress<HttpDownloadProgress>(p =>
         {
-            int read = await contentStream.ReadAsync(buffer, ct).ConfigureAwait(false);
-            if (read == 0) break;
+            progress?.Invoke((p.BytesDownloaded, p.TotalBytes, p.PercentComplete));
+        });
 
-            await fileStream.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
-            bytesRead += read;
+        var success = await _downloader.DownloadFileAsync(url, filePath, null, downloadProgress, ct)
+            .ConfigureAwait(false);
 
-            float percent = totalBytes > 0 ? (float)bytesRead / totalBytes * 100 : 0;
-            progress?.Invoke((bytesRead, totalBytes, percent));
+        if (!success)
+        {
+            throw new InvalidOperationException($"Failed to download file from {url}");
         }
     }
 

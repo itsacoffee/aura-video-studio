@@ -9,6 +9,11 @@ export interface EngineManifestEntry {
   requiredVRAMGB?: number;
   isInstalled: boolean;
   installPath: string;
+  // Gating information
+  isGated?: boolean;
+  canInstall?: boolean;
+  gatingReason?: string;
+  vramTooltip?: string;
 }
 
 export interface EngineStatus {

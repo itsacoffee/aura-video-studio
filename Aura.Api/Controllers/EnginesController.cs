@@ -20,6 +20,7 @@ public class EnginesController : ControllerBase
     private readonly LocalEnginesRegistry _registry;
     private readonly ExternalProcessManager _processManager;
     private readonly EngineLifecycleManager _lifecycleManager;
+    private readonly EngineDetector? _engineDetector;
 
     public EnginesController(
         ILogger<EnginesController> logger,
@@ -27,7 +28,8 @@ public class EnginesController : ControllerBase
         EngineInstaller installer,
         LocalEnginesRegistry registry,
         ExternalProcessManager processManager,
-        EngineLifecycleManager lifecycleManager)
+        EngineLifecycleManager lifecycleManager,
+        EngineDetector? engineDetector = null)
     {
         _logger = logger;
         _manifestLoader = manifestLoader;
@@ -35,6 +37,7 @@ public class EnginesController : ControllerBase
         _registry = registry;
         _processManager = processManager;
         _lifecycleManager = lifecycleManager;
+        _engineDetector = engineDetector;
     }
 
     /// <summary>
@@ -46,6 +49,15 @@ public class EnginesController : ControllerBase
         try
         {
             var manifest = await _manifestLoader.LoadManifestAsync();
+            
+            // Detect GPU for gating info
+            var hardwareDetector = new Aura.Core.Hardware.HardwareDetector(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Hardware.HardwareDetector>.Instance);
+            var systemProfile = await hardwareDetector.DetectSystemAsync();
+            var gpuInfo = systemProfile.Gpu;
+            bool hasNvidia = gpuInfo?.Vendor?.ToUpperInvariant() == "NVIDIA";
+            bool hasEnoughVram = hasNvidia && (gpuInfo?.VramGB ?? 0) >= 6;
+            
             var engines = manifest.Engines.Select(e => new
             {
                 e.Id,
@@ -57,10 +69,19 @@ public class EnginesController : ControllerBase
                 e.LicenseUrl,
                 e.RequiredVRAMGB,
                 IsInstalled = _installer.IsInstalled(e.Id),
-                InstallPath = _installer.GetInstallPath(e.Id)
+                InstallPath = _installer.GetInstallPath(e.Id),
+                // Gating information
+                IsGated = e.RequiredVRAMGB > 0,
+                CanInstall = e.RequiredVRAMGB == 0 || hasEnoughVram,
+                GatingReason = e.RequiredVRAMGB > 0 && !hasNvidia 
+                    ? "Requires NVIDIA GPU" 
+                    : e.RequiredVRAMGB > 0 && !hasEnoughVram 
+                        ? $"Requires {e.RequiredVRAMGB}GB VRAM (detected: {gpuInfo?.VramGB ?? 0}GB)"
+                        : null,
+                VramTooltip = e.VramTooltip
             }).ToList();
 
-            return Ok(new { engines });
+            return Ok(new { engines, hardwareInfo = new { hasNvidia, vramGB = gpuInfo?.VramGB ?? 0 } });
         }
         catch (Exception ex)
         {
@@ -568,6 +589,76 @@ public class EnginesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to restart engine");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Detect all engines (installed, running, or available)
+    /// </summary>
+    [HttpGet("detect")]
+    public async Task<IActionResult> DetectEngines(CancellationToken ct)
+    {
+        try
+        {
+            if (_engineDetector == null)
+            {
+                return StatusCode(500, new { error = "Engine detection not available" });
+            }
+
+            var detectionResults = await _engineDetector.DetectAllEnginesAsync(null, null, ct);
+            
+            return Ok(new { engines = detectionResults });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to detect engines");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Detect FFmpeg specifically
+    /// </summary>
+    [HttpGet("detect/ffmpeg")]
+    public async Task<IActionResult> DetectFFmpeg([FromQuery] string? configuredPath = null)
+    {
+        try
+        {
+            if (_engineDetector == null)
+            {
+                return StatusCode(500, new { error = "Engine detection not available" });
+            }
+
+            var result = await _engineDetector.DetectFFmpegAsync(configuredPath);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to detect FFmpeg");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Detect Ollama specifically
+    /// </summary>
+    [HttpGet("detect/ollama")]
+    public async Task<IActionResult> DetectOllama([FromQuery] string? url = null, CancellationToken ct = default)
+    {
+        try
+        {
+            if (_engineDetector == null)
+            {
+                return StatusCode(500, new { error = "Engine detection not available" });
+            }
+
+            var result = await _engineDetector.DetectOllamaAsync(url, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to detect Ollama");
             return StatusCode(500, new { error = ex.Message });
         }
     }

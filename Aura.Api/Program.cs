@@ -215,6 +215,15 @@ builder.Services.AddSingleton<Aura.Core.Runtime.EngineLifecycleManager>(sp =>
     return new Aura.Core.Runtime.EngineLifecycleManager(logger, registry, processManager, maxRestartAttempts: 3);
 });
 
+// Register Engine Detector
+builder.Services.AddSingleton<Aura.Core.Runtime.EngineDetector>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Runtime.EngineDetector>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    var toolsRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    return new Aura.Core.Runtime.EngineDetector(logger, httpClient, toolsRoot);
+});
+
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
 builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();
