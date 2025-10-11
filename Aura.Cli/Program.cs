@@ -43,6 +43,8 @@ namespace Aura.Cli
                     {
                         "preflight" => await services.GetRequiredService<PreflightCommand>().ExecuteAsync(commandArgs),
                         "script" => await services.GetRequiredService<ScriptCommand>().ExecuteAsync(commandArgs),
+                        "compose" => await services.GetRequiredService<ComposeCommand>().ExecuteAsync(commandArgs),
+                        "render" => await services.GetRequiredService<RenderCommand>().ExecuteAsync(commandArgs),
                         "quick" => await services.GetRequiredService<QuickCommand>().ExecuteAsync(commandArgs),
                         "help" or "--help" or "-h" => ShowHelp(),
                         _ => ShowUnknownCommand(commandName)
@@ -94,6 +96,8 @@ namespace Aura.Cli
             Console.WriteLine("Commands:");
             Console.WriteLine("  preflight       Check system requirements and dependencies");
             Console.WriteLine("  script          Generate script from brief and plan JSON files");
+            Console.WriteLine("  compose         Create composition plan from timeline and assets");
+            Console.WriteLine("  render          Execute FFmpeg rendering to produce final video");
             Console.WriteLine("  quick           Quick end-to-end generation with defaults");
             Console.WriteLine("  help            Show this help message");
             Console.WriteLine();
@@ -107,6 +111,8 @@ namespace Aura.Cli
             Console.WriteLine("  aura-cli preflight -v");
             Console.WriteLine("  aura-cli quick -t \"Machine Learning\" -d 3");
             Console.WriteLine("  aura-cli script -b brief.json -p plan.json -o script.txt");
+            Console.WriteLine("  aura-cli compose -i timeline.json -o plan.json");
+            Console.WriteLine("  aura-cli render -r plan.json -o output.mp4");
             Console.WriteLine("  aura-cli --demo");
             Console.WriteLine();
             Console.WriteLine("For command-specific help:");
@@ -154,6 +160,8 @@ namespace Aura.Cli
                     // Commands
                     services.AddTransient<PreflightCommand>();
                     services.AddTransient<ScriptCommand>();
+                    services.AddTransient<ComposeCommand>();
+                    services.AddTransient<RenderCommand>();
                     services.AddTransient<QuickCommand>();
                     
                     // Demo service (legacy)
