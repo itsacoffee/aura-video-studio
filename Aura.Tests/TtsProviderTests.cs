@@ -76,21 +76,29 @@ public class TtsProviderTests
         using var stream = File.OpenRead(result);
         using var reader = new BinaryReader(stream);
         
-        // Skip to fmt chunk
-        reader.BaseStream.Seek(8, SeekOrigin.Begin);
-        var wave = new string(reader.ReadChars(4));
-        var fmt = new string(reader.ReadChars(4));
+        // Read RIFF header
+        reader.BaseStream.Seek(0, SeekOrigin.Begin);
+        var riff = new string(reader.ReadChars(4)); // "RIFF"
+        reader.ReadInt32(); // File size
+        var wave = new string(reader.ReadChars(4)); // "WAVE"
         
+        // Read fmt chunk
+        var fmt = new string(reader.ReadChars(4)); // "fmt "
         int fmtSize = reader.ReadInt32();
         reader.ReadInt16(); // Audio format
-        reader.ReadInt16(); // Num channels
+        short numChannels = reader.ReadInt16(); // Num channels
         int sampleRate = reader.ReadInt32();
+        reader.ReadInt32(); // Byte rate
+        reader.ReadInt16(); // Block align
+        short bitsPerSample = reader.ReadInt16();
         
-        // Skip to data chunk
-        reader.BaseStream.Seek(44, SeekOrigin.Begin);
+        // Read data chunk header
+        var data = new string(reader.ReadChars(4)); // "data"
+        int dataSize = reader.ReadInt32();
         
-        int dataSize = (int)(reader.BaseStream.Length - 44);
-        double durationSeconds = (double)dataSize / (sampleRate * 2); // 2 bytes per sample (16-bit)
+        // Calculate duration from data size, sample rate, channels, and bits per sample
+        int bytesPerSample = numChannels * (bitsPerSample / 8);
+        double durationSeconds = (double)dataSize / (sampleRate * bytesPerSample);
         
         // Expected duration is 6 seconds (last line ends at 5 + 1)
         Assert.InRange(durationSeconds, 5.5, 6.5);

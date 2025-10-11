@@ -92,28 +92,68 @@ Aura.sln
 - **HardwareProfileViewModel**: Hardware detection and profiling
 
 #### Testing
-- **27 Unit Tests**: All passing
+- **465 .NET Unit Tests**: All passing (Aura.Tests)
   - Models validation
-  - RuleBasedLlmProvider script generation
+  - Provider implementations and fallback chains
   - RenderPresets configuration
   - TimelineBuilder timing and subtitles
+  - API contract and serialization
+  - Orchestrator workflows
+  - Hardware detection and probes
+- **51 Web Tests**: All passing (Vitest + React Testing Library)
+  - Wizard workflows
+  - Provider selection UI
+  - Timeline state management
+  - Engine management
+- **E2E Integration Tests**: Complete (Aura.E2E)
+  - Smoke tests for Free and Local modes
+  - Complete workflow validation
+  - Provider selection and fallback
+  - Dependency management
+- **CI/CD Workflows**: Active on GitHub Actions
+  - Linux build and test workflow
+  - Windows build and package workflow
+  - Placeholder detection workflow
 
-### 🚧 To Be Implemented
+### ✅ Provider Implementations (All Complete)
 
-#### UI Components
-- Views (XAML): CreateView, StoryboardView, RenderView, PublishView, SettingsView
-- Controls (XAML): LengthSlider, PacingSlider, Timeline, SceneCard, VoiceControl
-- Assets: Icons, placeholders
+#### LLM Providers
+- **RuleBasedLlmProvider**: Template-based script generation (always available, no API required)
+- **OllamaLlmProvider**: Local LLM support via Ollama API
+- **OpenAiLlmProvider**: GPT-4/GPT-3.5 via OpenAI API
+- **AzureOpenAiLlmProvider**: Azure OpenAI service integration
+- **GeminiLlmProvider**: Google Gemini API integration
 
-#### Additional Providers
-- OllamaLlmProvider (local LLM support)
-- Stock providers (Pixabay, Pexels, Unsplash)
-- StableDiffusionWebUiProvider (local image generation)
-- ElevenLabs/PlayHT TTS providers
+#### TTS Providers
+- **WindowsTtsProvider**: Windows SAPI voice synthesis (conditional compilation for Windows)
+- **MockTtsProvider**: CI/Linux testing provider
+- **PiperTtsProvider**: Local TTS via Piper CLI
+- **Mimic3TtsProvider**: Local TTS via Mimic3 HTTP server
+- **ElevenLabsTtsProvider**: ElevenLabs cloud TTS
+- **PlayHTTtsProvider**: PlayHT cloud TTS
 
-#### Testing
-- E2E tests
-- CI/CD workflow (GitHub Actions)
+#### Image Providers
+- **LocalStockProvider**: User folder images
+- **PixabayStockProvider**: Free stock images via Pixabay API
+- **PexelsStockProvider**: Free stock images via Pexels API
+- **UnsplashStockProvider**: Free stock images via Unsplash API
+- **StableDiffusionWebUiProvider**: Local image generation via SD WebUI (NVIDIA-only with VRAM gating)
+
+#### Video Composer
+- **FfmpegVideoComposer**: Complete video rendering pipeline with multi-encoder support
+
+### ✅ UI Architecture (Web-Based)
+
+The application now uses a **React + Vite + TypeScript + Fluent UI** web frontend:
+- **Aura.Api**: ASP.NET Core backend with RESTful endpoints
+- **Aura.Web**: Modern React SPA with:
+  - Wizard workflow for video creation
+  - Settings pages for API keys and providers
+  - Download Center for engine management
+  - Timeline editor with state management
+  - Provider selection UI with validation
+  - Preflight checks and health monitoring
+- **Aura.App**: WinUI 3 desktop app (coexists as alternative UI)
 
 ## Building the Solution
 
