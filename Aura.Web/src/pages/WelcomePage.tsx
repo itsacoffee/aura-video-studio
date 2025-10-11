@@ -71,6 +71,14 @@ export function WelcomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if this is the first run
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+    if (!hasSeenOnboarding || hasSeenOnboarding !== 'true') {
+      // Redirect to onboarding
+      navigate('/onboarding');
+      return;
+    }
+
     Promise.all([
       fetch('/api/healthz').then(res => res.json()),
       fetch('/api/capabilities').then(res => res.json()),
@@ -84,7 +92,7 @@ export function WelcomePage() {
         console.error('Failed to fetch system info:', err);
         setLoading(false);
       });
-  }, []);
+  }, [navigate]);
 
   return (
     <div className={styles.container}>
@@ -109,6 +117,12 @@ export function WelcomePage() {
             onClick={() => navigate('/settings')}
           >
             Settings
+          </Button>
+          <Button 
+            size="large"
+            onClick={() => navigate('/onboarding')}
+          >
+            Run Onboarding
           </Button>
         </div>
       </div>

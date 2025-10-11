@@ -13,8 +13,13 @@ import {
   Warning24Regular,
   Dismiss24Regular,
   Play24Regular,
+  Settings24Regular,
+  ArrowDownload24Regular,
+  ArrowSwap24Regular,
+  Open24Regular,
 } from '@fluentui/react-icons';
-import type { PreflightReport, StageCheck, CheckStatus } from '../state/providers';
+import type { PreflightReport, StageCheck, CheckStatus, FixAction } from '../state/providers';
+import { useNavigate } from 'react-router-dom';
 
 const useStyles = makeStyles({
   container: {
@@ -61,6 +66,12 @@ const useStyles = makeStyles({
   summary: {
     marginTop: tokens.spacingVerticalM,
   },
+  fixActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    marginTop: tokens.spacingVerticalS,
+    flexWrap: 'wrap',
+  },
 });
 
 interface PreflightPanelProps {
@@ -68,10 +79,12 @@ interface PreflightPanelProps {
   report: PreflightReport | null;
   isRunning: boolean;
   onRunPreflight: () => void;
+  onApplySafeDefaults?: () => void;
 }
 
-export function PreflightPanel({ profile, report, isRunning, onRunPreflight }: PreflightPanelProps) {
+export function PreflightPanel({ profile, report, isRunning, onRunPreflight, onApplySafeDefaults }: PreflightPanelProps) {
   const styles = useStyles();
+  const navigate = useNavigate();
 
   const getStatusIcon = (status: CheckStatus) => {
     switch (status) {
@@ -95,6 +108,73 @@ export function PreflightPanel({ profile, report, isRunning, onRunPreflight }: P
     }
   };
 
+  const getFixActionIcon = (actionType: string) => {
+    switch (actionType) {
+      case 'Install':
+        return <ArrowDownload24Regular />;
+      case 'Start':
+        return <Play24Regular />;
+      case 'OpenSettings':
+        return <Settings24Regular />;
+      case 'SwitchToFree':
+        return <ArrowSwap24Regular />;
+      case 'Help':
+        return <Open24Regular />;
+      default:
+        return null;
+    }
+  };
+
+  const handleFixAction = (action: FixAction) => {
+    switch (action.type) {
+      case 'Install':
+        // Navigate to downloads page
+        navigate('/downloads');
+        break;
+      case 'OpenSettings':
+        // Navigate to settings with the specific tab
+        navigate(`/settings${action.parameter ? `?tab=${action.parameter}` : ''}`);
+        break;
+      case 'Help':
+        // Open external URL
+        if (action.parameter) {
+          window.open(action.parameter, '_blank');
+        }
+        break;
+      case 'SwitchToFree':
+        // Apply safe defaults if handler provided
+        if (onApplySafeDefaults) {
+          onApplySafeDefaults();
+        }
+        break;
+      case 'Start':
+        // For now, just show a message - actual start requires backend support
+        alert(`Please start ${action.parameter} manually. Check the Downloads page for instructions.`);
+        break;
+    }
+  };
+
+  const renderFixActions = (fixActions: FixAction[] | null | undefined) => {
+    if (!fixActions || fixActions.length === 0) return null;
+
+    return (
+      <div className={styles.fixActions}>
+        {fixActions.map((action, index) => (
+          <Button
+            key={index}
+            size="small"
+            appearance="primary"
+            icon={getFixActionIcon(action.type)}
+            onClick={() => handleFixAction(action)}
+            title={action.description}
+          >
+            {action.label}
+          </Button>
+        ))}
+      </div>
+    );
+  };
+
   const renderStageCheck = (stage: StageCheck) => (
     <Card key={stage.stage} className={styles.stageItem}>
       <div className={styles.stageIcon}>
@@ -110,10 +190,13 @@ export function PreflightPanel({ profile, report, isRunning, onRunPreflight }: P
         {stage.hint && (
           <Text className={styles.hint}>💡 {stage.hint}</Text>
         )}
+        {renderFixActions(stage.fixActions)}
       </div>
       {getStatusBadge(stage.status)}
     </Card>
   );
+
+  const hasFailures = report && !report.ok;
 
   return (
     <div className={styles.container}>
@@ -141,9 +224,20 @@ export function PreflightPanel({ profile, report, isRunning, onRunPreflight }: P
                 ✓ All systems ready
               </Badge>
             ) : (
-              <Badge appearance="filled" color="warning" size="large">
-                ⚠ Some checks failed - review above
-              </Badge>
+              <>
+                <Badge appearance="filled" color="warning" size="large">
+                  ⚠ Some checks failed - review above
+                </Badge>
+                {onApplySafeDefaults && hasFailures && (
+                  <Button
+                    appearance="secondary"
+                    onClick={onApplySafeDefaults}
+                    style={{ marginLeft: tokens.spacingHorizontalM }}
+                  >
+                    Use Safe Defaults (Free-Only)
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </>

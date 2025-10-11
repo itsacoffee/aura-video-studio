@@ -478,7 +478,8 @@ public class PreflightService
                 Provider = providerName,
                 Message = providerResult.Details,
                 Hint = GetHintForProvider(providerName, providerResult.Details),
-                Suggestions = GetSuggestionsForProvider(providerName, providerResult.Details)
+                Suggestions = GetSuggestionsForProvider(providerName, providerResult.Details),
+                FixActions = GetFixActionsForProvider(providerName, providerResult.Details)
             };
         }
         catch (Exception ex)
@@ -576,6 +577,145 @@ public class PreflightService
         };
     }
 
+    private FixAction[]? GetFixActionsForProvider(string providerName, string details)
+    {
+        var actions = new List<FixAction>();
+        
+        switch (providerName)
+        {
+            case "OpenAI" when details.Contains("API key"):
+            case "ElevenLabs" when details.Contains("API key"):
+            case "PlayHT" when details.Contains("API key"):
+            case "Stability" when details.Contains("API key"):
+            case "Runway" when details.Contains("API key"):
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.OpenSettings,
+                    Label = "Add API Key",
+                    Parameter = "api-keys",
+                    Description = $"Open Settings to configure {providerName} API key"
+                });
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.Help,
+                    Label = "Get API Key",
+                    Parameter = GetProviderSignupUrl(providerName),
+                    Description = $"Open {providerName} website to sign up and get API key"
+                });
+                break;
+                
+            case "Ollama" when details.Contains("not running"):
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.Install,
+                    Label = "Install Ollama",
+                    Parameter = "ollama",
+                    Description = "Download and install Ollama from Downloads page"
+                });
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.Help,
+                    Label = "Learn More",
+                    Parameter = "https://ollama.ai",
+                    Description = "Visit Ollama website for installation instructions"
+                });
+                break;
+                
+            case "Ollama":
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.Start,
+                    Label = "Start Ollama",
+                    Parameter = "ollama",
+                    Description = "Start Ollama service (requires manual start)"
+                });
+                break;
+                
+            case "StableDiffusion" when details.Contains("not running"):
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.Install,
+                    Label = "Download SD WebUI",
+                    Parameter = "stable-diffusion",
+                    Description = "Download Stable Diffusion WebUI from Downloads page"
+                });
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.SwitchToFree,
+                    Label = "Use Stock Images",
+                    Parameter = "Stock",
+                    Description = "Switch to free stock images instead"
+                });
+                break;
+                
+            case "StableDiffusion":
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.Start,
+                    Label = "Start SD WebUI",
+                    Parameter = "stable-diffusion",
+                    Description = "Start Stable Diffusion WebUI (requires manual start with --api flag)"
+                });
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.OpenSettings,
+                    Label = "Configure Path",
+                    Parameter = "local-engines",
+                    Description = "Open Settings to configure SD WebUI path"
+                });
+                break;
+                
+            case "Piper":
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.Install,
+                    Label = "Install Piper",
+                    Parameter = "piper",
+                    Description = "Download Piper TTS from Downloads page"
+                });
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.SwitchToFree,
+                    Label = "Use Windows TTS",
+                    Parameter = "Windows",
+                    Description = "Switch to built-in Windows TTS instead"
+                });
+                break;
+                
+            case "Mimic3":
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.Install,
+                    Label = "Install Mimic3",
+                    Parameter = "mimic3",
+                    Description = "Download Mimic3 from Downloads page"
+                });
+                actions.Add(new FixAction
+                {
+                    Type = FixActionType.SwitchToFree,
+                    Label = "Use Windows TTS",
+                    Parameter = "Windows",
+                    Description = "Switch to built-in Windows TTS instead"
+                });
+                break;
+        }
+        
+        return actions.Count > 0 ? actions.ToArray() : null;
+    }
+
+    private string? GetProviderSignupUrl(string providerName)
+    {
+        return providerName switch
+        {
+            "OpenAI" => "https://platform.openai.com/api-keys",
+            "ElevenLabs" => "https://elevenlabs.io",
+            "PlayHT" => "https://play.ht",
+            "Stability" => "https://platform.stability.ai",
+            "Runway" => "https://runwayml.com",
+            _ => null
+        };
+    }
+
     private ProviderProfile? GetProfileByName(string name)
     {
         return name switch
@@ -584,6 +724,23 @@ public class PreflightService
             "Balanced Mix" => ProviderProfile.BalancedMix,
             "Pro-Max" => ProviderProfile.ProMax,
             _ => null
+        };
+    }
+
+    /// <summary>
+    /// Get safe defaults profile that uses only free/always-available providers
+    /// </summary>
+    public ProviderProfile GetSafeDefaultsProfile()
+    {
+        return new ProviderProfile
+        {
+            Name = "Safe Defaults",
+            Stages = new Dictionary<string, string>
+            {
+                { "Script", "Free" },      // RuleBased
+                { "TTS", "Windows" },      // Windows TTS
+                { "Visuals", "Stock" }     // Stock images
+            }
         };
     }
 }
@@ -623,6 +780,9 @@ public record StageCheck
     
     /// <summary>Actionable suggestions for improving setup (null if none)</summary>
     public string[]? Suggestions { get; init; }
+    
+    /// <summary>Fix actions that can be performed (null if none)</summary>
+    public FixAction[]? FixActions { get; init; }
 }
 
 /// <summary>
@@ -704,5 +864,44 @@ public enum ProviderStatus
     
     /// <summary>Error checking provider status</summary>
     Error
+}
+
+/// <summary>
+/// Type of fix action that can be performed
+/// </summary>
+public enum FixActionType
+{
+    /// <summary>Download and install from Download Center</summary>
+    Install,
+    
+    /// <summary>Start an installed engine</summary>
+    Start,
+    
+    /// <summary>Open Settings to configure API keys</summary>
+    OpenSettings,
+    
+    /// <summary>Switch to a free alternative provider</summary>
+    SwitchToFree,
+    
+    /// <summary>Open help documentation</summary>
+    Help
+}
+
+/// <summary>
+/// Actionable fix for a failed preflight check
+/// </summary>
+public record FixAction
+{
+    /// <summary>Type of fix action</summary>
+    public FixActionType Type { get; init; }
+    
+    /// <summary>Display label for the action button</summary>
+    public string Label { get; init; } = string.Empty;
+    
+    /// <summary>Parameter for the action (e.g., provider name, settings tab, URL)</summary>
+    public string? Parameter { get; init; }
+    
+    /// <summary>Description of what this action will do</summary>
+    public string Description { get; init; } = string.Empty;
 }
 
