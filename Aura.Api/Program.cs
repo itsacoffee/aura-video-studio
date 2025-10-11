@@ -79,6 +79,7 @@ builder.Services.AddCors(options =>
 
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
+builder.Services.AddSingleton<Aura.Core.Hardware.DiagnosticsHelper>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
 builder.Services.AddHttpClient(); // For LLM providers
 builder.Services.AddSingleton<Aura.Core.Orchestrator.LlmProviderFactory>();
@@ -1009,6 +1010,39 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
     }
 })
 .WithName("RunProbes")
+.WithOpenApi();
+
+// Diagnostics endpoints
+apiGroup.MapGet("/diagnostics", async (Aura.Core.Hardware.DiagnosticsHelper diagnosticsHelper) =>
+{
+    try
+    {
+        var report = await diagnosticsHelper.GenerateDiagnosticsReportAsync();
+        return Results.Ok(new { success = true, report });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error generating diagnostics");
+        return Results.Problem("Error generating diagnostics", statusCode: 500);
+    }
+})
+.WithName("GetDiagnostics")
+.WithOpenApi();
+
+apiGroup.MapGet("/diagnostics/json", async (Aura.Core.Hardware.DiagnosticsHelper diagnosticsHelper) =>
+{
+    try
+    {
+        var diagnostics = await diagnosticsHelper.GenerateDiagnosticsJsonAsync();
+        return Results.Ok(diagnostics);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error generating diagnostics JSON");
+        return Results.Problem("Error generating diagnostics JSON", statusCode: 500);
+    }
+})
+.WithName("GetDiagnosticsJson")
 .WithOpenApi();
 
 
