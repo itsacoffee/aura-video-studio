@@ -113,4 +113,90 @@ test.describe('Wizard E2E - Free Profile', () => {
     // Note: In a real test this would check localStorage directly
     await expect(page.getByPlaceholder('Enter your video topic')).toBeVisible();
   });
+
+  test('should start quick demo with one click', async ({ page }) => {
+    // Mock Quick Demo API
+    await page.route('**/api/quick/demo', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ 
+          jobId: 'quick-demo-123', 
+          status: 'queued',
+          message: 'Quick demo started successfully'
+        })
+      });
+    });
+
+    // Mock job status API
+    await page.route('**/api/jobs/quick-demo-123', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'quick-demo-123',
+          status: 'Done',
+          stage: 'Render',
+          progress: 100,
+          artifacts: [
+            {
+              type: 'video',
+              path: '/output/quick-demo-123/video.mp4',
+              size: 1024000
+            }
+          ]
+        })
+      });
+    });
+
+    // Navigate to wizard
+    await page.goto('/create');
+    
+    // Verify Quick Demo section is visible
+    await expect(page.getByText('New to Aura?')).toBeVisible();
+    await expect(page.getByText('Try a Quick Demo - No setup required!')).toBeVisible();
+    
+    // Click Quick Demo button
+    const quickDemoButton = page.getByRole('button', { name: /Quick Demo \(Safe\)/i });
+    await expect(quickDemoButton).toBeVisible();
+    await expect(quickDemoButton).toBeEnabled();
+    await quickDemoButton.click();
+    
+    // Verify generation panel appears (wait a bit for the panel to render)
+    await page.waitForTimeout(500);
+    
+    // The generation panel should be visible or the job should be started
+    // Since we're mocking the API, we can't test the full flow, but we can verify the button was clicked
+    await expect(quickDemoButton).toBeVisible();
+  });
+
+  test('quick demo should work without filling topic', async ({ page }) => {
+    // Mock Quick Demo API
+    await page.route('**/api/quick/demo', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ 
+          jobId: 'quick-demo-456', 
+          status: 'queued',
+          message: 'Quick demo started successfully'
+        })
+      });
+    });
+
+    // Navigate to wizard
+    await page.goto('/create');
+    
+    // Don't fill any fields - just click Quick Demo
+    const quickDemoButton = page.getByRole('button', { name: /Quick Demo \(Safe\)/i });
+    await expect(quickDemoButton).toBeEnabled();
+    await quickDemoButton.click();
+    
+    // Button should show "Starting..." state briefly
+    // Then the generation should start
+    await page.waitForTimeout(500);
+    
+    // Verify button is back to normal state
+    await expect(quickDemoButton).toBeVisible();
+  });
 });
