@@ -170,6 +170,41 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
 // Register DownloadService
 builder.Services.AddSingleton<Aura.Api.Services.DownloadService>();
 
+// Register Engine services
+builder.Services.AddHttpClient<Aura.Core.Downloads.EngineManifestLoader>();
+builder.Services.AddSingleton<Aura.Core.Downloads.EngineManifestLoader>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Downloads.EngineManifestLoader>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    var manifestPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "engines-manifest.json");
+    return new Aura.Core.Downloads.EngineManifestLoader(logger, httpClient, manifestPath);
+});
+
+builder.Services.AddHttpClient<Aura.Core.Downloads.EngineInstaller>();
+builder.Services.AddSingleton<Aura.Core.Downloads.EngineInstaller>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Downloads.EngineInstaller>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    var installRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    return new Aura.Core.Downloads.EngineInstaller(logger, httpClient, installRoot);
+});
+
+builder.Services.AddSingleton<Aura.Core.Runtime.ExternalProcessManager>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Runtime.ExternalProcessManager>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    var logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "logs", "tools");
+    return new Aura.Core.Runtime.ExternalProcessManager(logger, httpClient, logDirectory);
+});
+
+builder.Services.AddSingleton<Aura.Core.Runtime.LocalEnginesRegistry>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Runtime.LocalEnginesRegistry>>();
+    var processManager = sp.GetRequiredService<Aura.Core.Runtime.ExternalProcessManager>();
+    var configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "engines-config.json");
+    return new Aura.Core.Runtime.LocalEnginesRegistry(logger, processManager, configPath);
+});
+
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
 builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();
