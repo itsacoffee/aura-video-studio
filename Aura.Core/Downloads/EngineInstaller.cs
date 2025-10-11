@@ -30,6 +30,18 @@ public record EngineVerificationResult(
     List<string> Issues
 );
 
+public record EngineDiagnosticsResult(
+    string EngineId,
+    string InstallPath,
+    bool IsInstalled,
+    bool PathExists,
+    bool PathWritable,
+    long AvailableDiskSpaceBytes,
+    string? LastError,
+    string? ChecksumStatus,
+    List<string> Issues
+);
+
 /// <summary>
 /// Handles installation, verification, repair, and removal of engines
 /// </summary>
@@ -349,6 +361,101 @@ public class EngineInstaller
         // Remove and reinstall
         await RemoveAsync(engine).ConfigureAwait(false);
         await InstallAsync(engine, progress, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Get diagnostics for an engine installation
+    /// </summary>
+    public async Task<EngineDiagnosticsResult> GetDiagnosticsAsync(EngineManifestEntry engine)
+    {
+        _logger.LogInformation("Getting diagnostics for engine: {EngineId}", engine.Id);
+
+        string installPath = Path.Combine(_installRoot, engine.Id);
+        var issues = new List<string>();
+        bool isInstalled = IsInstalled(engine.Id);
+        bool pathExists = Directory.Exists(installPath);
+        bool pathWritable = false;
+        long availableDiskSpace = 0;
+        string? checksumStatus = null;
+
+        // Check disk space
+        try
+        {
+            DriveInfo drive = new DriveInfo(Path.GetPathRoot(installPath) ?? "C:\\");
+            availableDiskSpace = drive.AvailableFreeSpace;
+            
+            if (availableDiskSpace < engine.SizeBytes * 2) // Need 2x size for extraction
+            {
+                issues.Add($"Insufficient disk space. Need {FormatBytes(engine.SizeBytes * 2)}, available: {FormatBytes(availableDiskSpace)}");
+            }
+        }
+        catch (Exception ex)
+        {
+            issues.Add($"Could not check disk space: {ex.Message}");
+        }
+
+        // Check path writability
+        try
+        {
+            if (!pathExists)
+            {
+                Directory.CreateDirectory(installPath);
+                pathExists = true;
+            }
+            
+            string testFile = Path.Combine(installPath, $".test_{Guid.NewGuid()}.tmp");
+            File.WriteAllText(testFile, "test");
+            File.Delete(testFile);
+            pathWritable = true;
+        }
+        catch (Exception ex)
+        {
+            issues.Add($"Path is not writable: {ex.Message}");
+        }
+
+        // Check if partial download exists
+        string tempPath = Path.GetTempPath();
+        var partialFiles = Directory.GetFiles(tempPath, $"{engine.Id}-*.tmp");
+        if (partialFiles.Length > 0)
+        {
+            issues.Add($"Found {partialFiles.Length} partial download(s) in temp folder. Repair will clean these up.");
+        }
+
+        // If installed, verify checksum
+        if (isInstalled)
+        {
+            var verifyResult = await VerifyAsync(engine).ConfigureAwait(false);
+            checksumStatus = verifyResult.IsValid ? "Valid" : "Invalid";
+            if (!verifyResult.IsValid)
+            {
+                issues.AddRange(verifyResult.Issues);
+            }
+        }
+
+        return await Task.FromResult(new EngineDiagnosticsResult(
+            engine.Id,
+            installPath,
+            isInstalled,
+            pathExists,
+            pathWritable,
+            availableDiskSpace,
+            null, // LastError would come from process manager
+            checksumStatus,
+            issues
+        ));
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        int order = 0;
+        double size = bytes;
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        return $"{size:0.##} {sizes[order]}";
     }
 
     /// <summary>

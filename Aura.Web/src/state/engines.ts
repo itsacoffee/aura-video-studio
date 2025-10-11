@@ -17,6 +17,7 @@ interface EnginesState {
   startEngine: (engineId: string, port?: number, args?: string) => Promise<void>;
   stopEngine: (engineId: string) => Promise<void>;
   refreshStatus: (engineId: string) => Promise<void>;
+  getDiagnostics: (engineId: string) => Promise<any>;
 }
 
 export const useEnginesStore = create<EnginesState>((set, get) => ({
@@ -226,5 +227,22 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
 
   refreshStatus: async (engineId: string) => {
     await get().fetchEngineStatus(engineId);
+  },
+
+  getDiagnostics: async (engineId: string) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:5005/api/engines/diagnostics/engine?engineId=${engineId}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get diagnostics');
+      }
+      
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error(`Failed to get diagnostics for ${engineId}:`, error);
+      throw error;
+    }
   },
 }));

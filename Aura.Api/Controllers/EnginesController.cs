@@ -519,6 +519,53 @@ public class EnginesController : ControllerBase
     }
 
     /// <summary>
+    /// Get diagnostics for a specific engine
+    /// </summary>
+    [HttpGet("diagnostics/engine")]
+    public async Task<IActionResult> GetEngineDiagnostics([FromQuery] string engineId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return BadRequest(new { error = "engineId is required" });
+            }
+
+            var manifest = await _manifestLoader.LoadManifestAsync();
+            var engine = manifest.Engines.FirstOrDefault(e => e.Id == engineId);
+            
+            if (engine == null)
+            {
+                return NotFound(new { error = $"Engine {engineId} not found in manifest" });
+            }
+
+            var diagnostics = await _installer.GetDiagnosticsAsync(engine);
+            
+            // Get last error from process manager if available
+            var status = _processManager.GetStatus(engineId);
+            var result = new
+            {
+                diagnostics.EngineId,
+                diagnostics.InstallPath,
+                diagnostics.IsInstalled,
+                diagnostics.PathExists,
+                diagnostics.PathWritable,
+                diagnostics.AvailableDiskSpaceBytes,
+                LastError = status.LastError ?? diagnostics.LastError,
+                diagnostics.ChecksumStatus,
+                diagnostics.Issues
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get diagnostics for engine {EngineId}", engineId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Get system diagnostics report
     /// </summary>
     [HttpGet("diagnostics")]
