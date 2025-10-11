@@ -464,6 +464,54 @@ Local engines only bind to `127.0.0.1` (localhost) by default:
 
 ## Advanced Configuration
 
+### Engine Manifest Format
+
+Aura uses a JSON manifest to define available engines and their properties. The manifest includes:
+
+**Core Properties:**
+- `id`: Unique identifier for the engine
+- `name`: Display name
+- `version`: Version string
+- `description`: Brief description
+- `sizeBytes`: Download size in bytes
+- `sha256`: Checksum for verification (optional)
+- `archiveType`: `zip`, `tar.gz`, or `git`
+- `urls`: Platform-specific download URLs
+- `entrypoint`: Executable or script to run
+
+**GPU and Hardware:**
+- `requiredVRAMGB`: Minimum VRAM in GB
+- `vramTooltip`: User-friendly tooltip explaining VRAM requirements
+- `icon`: Emoji or icon for UI display
+- `tags`: Array of tags for filtering (`["nvidia-only", "gpu-intensive", "cpu", "fast"]`)
+
+**Runtime:**
+- `defaultPort`: Default network port
+- `argsTemplate`: Command-line arguments template
+- `healthCheck`: URL path and timeout for health checks
+- `licenseUrl`: Link to license information
+
+**Example Entry:**
+```json
+{
+  "id": "stable-diffusion-webui",
+  "name": "Stable Diffusion WebUI",
+  "version": "1.9.0",
+  "requiredVRAMGB": 6,
+  "vramTooltip": "Minimum 6GB VRAM for SD 1.5, 12GB+ recommended for SDXL",
+  "icon": "🎨",
+  "tags": ["image-generation", "ai", "nvidia-only", "gpu-intensive"],
+  "healthCheck": {
+    "url": "/sdapi/v1/sd-models",
+    "timeoutSeconds": 120
+  }
+}
+```
+
+**Manifest Location:**
+- Bundled: `Aura.Core/Downloads/engine_manifest.json`
+- Runtime: `%LOCALAPPDATA%\Aura\engines-manifest.json`
+
 ### Custom Model Paths
 Edit `appsettings.json`:
 ```json
