@@ -15,6 +15,12 @@ import {
   MenuList,
   MenuItem,
   Link,
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@fluentui/react-components';
 import {
   Play24Regular,
@@ -26,6 +32,7 @@ import {
   Delete24Regular,
   Folder24Regular,
   MoreHorizontal24Regular,
+  Info24Regular,
 } from '@fluentui/react-icons';
 import type { EngineManifestEntry, EngineStatus } from '../../types/engines';
 import { useEnginesStore } from '../../state/engines';
@@ -79,6 +86,29 @@ const useStyles = makeStyles({
     color: tokens.colorPaletteRedForeground1,
     fontSize: tokens.fontSizeBase200,
   },
+  diagnosticsDialog: {
+    minWidth: '500px',
+  },
+  diagnosticsContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  diagnosticsItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    paddingBottom: tokens.spacingVerticalXS,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  diagnosticsLabel: {
+    fontWeight: 600,
+  },
+  diagnosticsIssues: {
+    padding: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorPaletteRedBackground1,
+    borderRadius: tokens.borderRadiusMedium,
+    marginTop: tokens.spacingVerticalS,
+  },
 });
 
 interface EngineCardProps {
@@ -89,6 +119,9 @@ export function EngineCard({ engine }: EngineCardProps) {
   const styles = useStyles();
   const [status, setStatus] = useState<EngineStatus | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [diagnosticsData, setDiagnosticsData] = useState<any>(null);
+  const [isLoadingDiagnostics, setIsLoadingDiagnostics] = useState(false);
   
   const {
     installEngine,
@@ -98,6 +131,7 @@ export function EngineCard({ engine }: EngineCardProps) {
     startEngine,
     stopEngine,
     fetchEngineStatus,
+    getDiagnostics,
   } = useEnginesStore();
 
   useEffect(() => {
@@ -204,6 +238,50 @@ export function EngineCard({ engine }: EngineCardProps) {
     }
   };
 
+  const handleShowDiagnostics = async () => {
+    setIsLoadingDiagnostics(true);
+    setShowDiagnostics(true);
+    try {
+      const data = await getDiagnostics(engine.id);
+      setDiagnosticsData(data);
+    } catch (error) {
+      console.error('Failed to load diagnostics:', error);
+      setDiagnosticsData({ error: 'Failed to load diagnostics' });
+    } finally {
+      setIsLoadingDiagnostics(false);
+    }
+  };
+
+  const handleRepairWithRetry = async () => {
+    if (!confirm(`Repair ${engine.name}? This will clean up partial downloads, re-verify checksums, and reinstall if needed.`)) {
+      return;
+    }
+    setIsProcessing(true);
+    setShowDiagnostics(false);
+    try {
+      await repairEngine(engine.id);
+      await loadStatus();
+      alert('Repair completed successfully!');
+    } catch (error) {
+      console.error('Repair failed:', error);
+      alert(`Repair failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (!bytes) return 'Unknown';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = bytes;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    return `${size.toFixed(2)} ${units[unitIndex]}`;
+  };
+
   const getStatusBadge = () => {
     if (!status) {
       return <Badge appearance="outline">Unknown</Badge>;
@@ -223,11 +301,6 @@ export function EngineCard({ engine }: EngineCardProps) {
       default:
         return <Badge appearance="outline">Unknown</Badge>;
     }
-  };
-
-  const formatBytes = (bytes: number) => {
-    const gb = bytes / (1024 ** 3);
-    return gb >= 1 ? `${gb.toFixed(2)} GB` : `${(bytes / (1024 ** 2)).toFixed(2)} MB`;
   };
 
   const isInstalled = engine.isInstalled || status?.status !== 'not_installed';
@@ -350,6 +423,9 @@ export function EngineCard({ engine }: EngineCardProps) {
                 <Warning24Regular /> {msg}
               </Text>
             ))}
+            <Link onClick={handleShowDiagnostics} style={{ cursor: 'pointer' }}>
+              <Info24Regular /> Why did this fail? Show diagnostics
+            </Link>
           </div>
         )}
 
@@ -360,6 +436,103 @@ export function EngineCard({ engine }: EngineCardProps) {
           </Text>
         )}
       </CardPreview>
+
+      {/* Diagnostics Dialog */}
+      <Dialog open={showDiagnostics} onOpenChange={(_, data) => setShowDiagnostics(data.open)}>
+        <DialogSurface className={styles.diagnosticsDialog}>
+          <DialogBody>
+            <DialogTitle>Engine Diagnostics - {engine.name}</DialogTitle>
+            <DialogContent>
+              {isLoadingDiagnostics ? (
+                <Spinner label="Loading diagnostics..." />
+              ) : diagnosticsData?.error ? (
+                <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
+                  {diagnosticsData.error}
+                </Text>
+              ) : diagnosticsData ? (
+                <div className={styles.diagnosticsContent}>
+                  <div className={styles.diagnosticsItem}>
+                    <Text className={styles.diagnosticsLabel}>Install Path:</Text>
+                    <Text>{diagnosticsData.installPath}</Text>
+                  </div>
+                  
+                  <div className={styles.diagnosticsItem}>
+                    <Text className={styles.diagnosticsLabel}>Is Installed:</Text>
+                    <Badge appearance="filled" color={diagnosticsData.isInstalled ? 'success' : 'warning'}>
+                      {diagnosticsData.isInstalled ? 'Yes' : 'No'}
+                    </Badge>
+                  </div>
+                  
+                  <div className={styles.diagnosticsItem}>
+                    <Text className={styles.diagnosticsLabel}>Path Exists:</Text>
+                    <Badge appearance="filled" color={diagnosticsData.pathExists ? 'success' : 'danger'}>
+                      {diagnosticsData.pathExists ? 'Yes' : 'No'}
+                    </Badge>
+                  </div>
+                  
+                  <div className={styles.diagnosticsItem}>
+                    <Text className={styles.diagnosticsLabel}>Path Writable:</Text>
+                    <Badge appearance="filled" color={diagnosticsData.pathWritable ? 'success' : 'danger'}>
+                      {diagnosticsData.pathWritable ? 'Yes' : 'No'}
+                    </Badge>
+                  </div>
+                  
+                  <div className={styles.diagnosticsItem}>
+                    <Text className={styles.diagnosticsLabel}>Available Disk Space:</Text>
+                    <Text>{formatBytes(diagnosticsData.availableDiskSpaceBytes)}</Text>
+                  </div>
+                  
+                  {diagnosticsData.checksumStatus && (
+                    <div className={styles.diagnosticsItem}>
+                      <Text className={styles.diagnosticsLabel}>Checksum Status:</Text>
+                      <Badge appearance="filled" color={diagnosticsData.checksumStatus === 'Valid' ? 'success' : 'danger'}>
+                        {diagnosticsData.checksumStatus}
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  {diagnosticsData.lastError && (
+                    <div className={styles.diagnosticsItem}>
+                      <Text className={styles.diagnosticsLabel}>Last Error:</Text>
+                      <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
+                        {diagnosticsData.lastError}
+                      </Text>
+                    </div>
+                  )}
+                  
+                  {diagnosticsData.issues && diagnosticsData.issues.length > 0 && (
+                    <div className={styles.diagnosticsIssues}>
+                      <Text weight="semibold" block style={{ marginBottom: tokens.spacingVerticalXS }}>
+                        Issues Found:
+                      </Text>
+                      {diagnosticsData.issues.map((issue: string, idx: number) => (
+                        <Text key={idx} block style={{ marginTop: tokens.spacingVerticalXXS }}>
+                          • {issue}
+                        </Text>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </DialogContent>
+            <DialogActions>
+              {diagnosticsData && !diagnosticsData.error && diagnosticsData.issues && diagnosticsData.issues.length > 0 && (
+                <Button 
+                  appearance="primary" 
+                  icon={<Wrench24Regular />}
+                  onClick={handleRepairWithRetry}
+                  disabled={isProcessing}
+                >
+                  Retry with Repair
+                </Button>
+              )}
+              <Button appearance="secondary" onClick={() => setShowDiagnostics(false)}>
+                Close
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </Card>
   );
 }
