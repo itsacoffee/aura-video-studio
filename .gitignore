@@ -109,3 +109,10 @@ Aura.Web/dist/
 # Test artifacts
 test-portable/
 output/
+
+# Engine installations and logs
+**/Tools/
+**/engines/
+**/logs/tools/
+engines-manifest.json
+engines-config.json
