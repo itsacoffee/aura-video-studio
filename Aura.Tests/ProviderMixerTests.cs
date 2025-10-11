@@ -143,7 +143,7 @@ public class ProviderMixerTests
         // Assert
         Assert.Equal("Windows", selection.SelectedProvider);
         Assert.True(selection.IsFallback);
-        Assert.Equal("Pro TTS", selection.FallbackFrom);
+        Assert.Equal("Pro/Local TTS", selection.FallbackFrom);
     }
 
     [Fact]
