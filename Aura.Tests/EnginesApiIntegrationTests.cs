@@ -80,12 +80,18 @@ public class EnginesApiIntegrationTests : IDisposable
             processManager,
             _configPath);
         
+        var lifecycleManager = new EngineLifecycleManager(
+            NullLogger<EngineLifecycleManager>.Instance,
+            registry,
+            processManager);
+        
         var controller = new EnginesController(
             NullLogger<EnginesController>.Instance,
             manifestLoader,
             installer,
             registry,
-            processManager);
+            processManager,
+            lifecycleManager);
 
         // Act
         var result = await controller.GetList();
@@ -124,12 +130,18 @@ public class EnginesApiIntegrationTests : IDisposable
             processManager,
             _configPath);
         
+        var lifecycleManager = new EngineLifecycleManager(
+            NullLogger<EngineLifecycleManager>.Instance,
+            registry,
+            processManager);
+        
         var controller = new EnginesController(
             NullLogger<EnginesController>.Instance,
             manifestLoader,
             installer,
             registry,
-            processManager);
+            processManager,
+            lifecycleManager);
 
         // Act
         var result = await controller.GetStatus("nonexistent-engine");
@@ -162,12 +174,18 @@ public class EnginesApiIntegrationTests : IDisposable
             processManager,
             _configPath);
         
+        var lifecycleManager = new EngineLifecycleManager(
+            NullLogger<EngineLifecycleManager>.Instance,
+            registry,
+            processManager);
+        
         var controller = new EnginesController(
             NullLogger<EnginesController>.Instance,
             manifestLoader,
             installer,
             registry,
-            processManager);
+            processManager,
+            lifecycleManager);
 
         // Act - use a known engine ID from the default manifest
         var result = await controller.GetStatus("stable-diffusion-webui");
@@ -201,12 +219,18 @@ public class EnginesApiIntegrationTests : IDisposable
             processManager,
             _configPath);
         
+        var lifecycleManager = new EngineLifecycleManager(
+            NullLogger<EngineLifecycleManager>.Instance,
+            registry,
+            processManager);
+        
         var controller = new EnginesController(
             NullLogger<EnginesController>.Instance,
             manifestLoader,
             installer,
             registry,
-            processManager);
+            processManager,
+            lifecycleManager);
 
         // Act
         var result = await controller.Verify(new EngineActionRequest("nonexistent-engine"));

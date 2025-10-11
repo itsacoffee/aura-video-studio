@@ -19,19 +19,22 @@ public class EnginesController : ControllerBase
     private readonly EngineInstaller _installer;
     private readonly LocalEnginesRegistry _registry;
     private readonly ExternalProcessManager _processManager;
+    private readonly EngineLifecycleManager _lifecycleManager;
 
     public EnginesController(
         ILogger<EnginesController> logger,
         EngineManifestLoader manifestLoader,
         EngineInstaller installer,
         LocalEnginesRegistry registry,
-        ExternalProcessManager processManager)
+        ExternalProcessManager processManager,
+        EngineLifecycleManager lifecycleManager)
     {
         _logger = logger;
         _manifestLoader = manifestLoader;
         _installer = installer;
         _registry = registry;
         _processManager = processManager;
+        _lifecycleManager = lifecycleManager;
     }
 
     /// <summary>
@@ -475,6 +478,73 @@ public class EnginesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get engine preferences");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get system diagnostics report
+    /// </summary>
+    [HttpGet("diagnostics")]
+    public async Task<IActionResult> GetDiagnostics()
+    {
+        try
+        {
+            var report = await _lifecycleManager.GenerateDiagnosticsAsync();
+            return Ok(report);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate diagnostics report");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get recent notifications
+    /// </summary>
+    [HttpGet("notifications")]
+    public IActionResult GetNotifications([FromQuery] int count = 100)
+    {
+        try
+        {
+            var notifications = _lifecycleManager.GetRecentNotifications(count);
+            return Ok(new { notifications });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get notifications");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Restart a specific engine
+    /// </summary>
+    [HttpPost("restart")]
+    public async Task<IActionResult> RestartEngine([FromBody] EngineActionRequest request, CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request?.EngineId))
+            {
+                return BadRequest(new { error = "engineId is required" });
+            }
+
+            var success = await _lifecycleManager.RestartEngineAsync(request.EngineId, ct);
+            
+            if (success)
+            {
+                return Ok(new { message = $"Engine {request.EngineId} restarted successfully" });
+            }
+            else
+            {
+                return StatusCode(500, new { error = $"Failed to restart engine {request.EngineId}" });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to restart engine");
             return StatusCode(500, new { error = ex.Message });
         }
     }
