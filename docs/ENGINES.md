@@ -34,16 +34,47 @@ Local engines are installed to:
 - **Windows**: `%LOCALAPPDATA%\Aura\Tools\`
 - **Linux**: `~/.local/share/aura/tools/`
 
-No administrator privileges required.
+No administrator privileges required. All engines and their data are stored in your user directory.
 
-### Using the Download Center
+### Using the Download Center (Recommended)
 
-1. Open Aura Video Studio
-2. Navigate to **Settings → Download Center → Engines**
-3. Select the engine you want to install
-4. Click **Install**
-5. Wait for download and extraction to complete
-6. Click **Start** to launch the engine
+The Download Center provides a graphical interface for managing engines:
+
+1. **Open Aura Video Studio**
+2. **Navigate to Download Center**
+   - Click on "Downloads" in the navigation menu, or
+   - Go to **Settings → Download Center**
+3. **Switch to Engines Tab**
+   - Click on the "Engines" tab at the top of the page
+4. **Install an Engine**
+   - Find the engine you want (Stable Diffusion, ComfyUI, Piper, Mimic3)
+   - Click the **Install** button
+   - Wait for the download and installation to complete
+   - You'll see progress updates and status changes
+5. **Start the Engine**
+   - Once installed, click the **Start** button
+   - The engine will launch in the background
+   - Status will change to "Running" with a health check indicator
+6. **Monitor and Manage**
+   - View real-time status (Not Installed / Installed / Running)
+   - Check health status (Healthy / Unreachable)
+   - View process ID and log file location
+   - Access additional actions via the menu (⋯):
+     - **Verify**: Check installation integrity
+     - **Repair**: Fix corrupted installations
+     - **Open Folder**: Open the installation directory
+     - **Remove**: Uninstall the engine
+
+### Engine Status Indicators
+
+The Download Center shows detailed status for each engine:
+
+- **Not Installed**: Engine is available but not yet installed
+- **Installed**: Engine files are present and verified
+- **Running**: Engine is actively running
+- **Health Status**:
+  - **Healthy**: Engine is running and responding to API calls
+  - **Unreachable**: Engine is running but not responding (may still be starting up)
 
 ### Manual Installation
 
@@ -57,13 +88,28 @@ For advanced users or offline scenarios, see:
 
 Engines can be managed in two ways:
 
-#### From Download Center
-- Navigate to **Settings → Download Center → Engines**
-- Use **Start** / **Stop** buttons for each engine
-- View logs and health status in real-time
+#### From Download Center (Recommended)
+
+The Download Center provides a complete UI for engine management:
+
+1. **Navigate to Download Center → Engines tab**
+2. **Starting Engines**:
+   - Click **Start** button on any installed engine
+   - Monitor status change from "Installed" to "Running"
+   - Health indicator shows "Healthy" when ready
+   - View process ID and log file location
+3. **Stopping Engines**:
+   - Click **Stop** button on running engines
+   - Engine will shut down gracefully
+4. **Real-time Monitoring**:
+   - Status updates every 5 seconds
+   - Health checks for API availability
+   - Error messages displayed inline
+   - Log file paths shown for debugging
 
 #### From Command Line
-Use PowerShell scripts in `scripts/engines/`:
+
+For automation or advanced users, use PowerShell scripts in `scripts/engines/`:
 ```powershell
 # Windows
 .\scripts\engines\launch_sd.ps1
@@ -73,22 +119,64 @@ Use PowerShell scripts in `scripts/engines/`:
 
 ### Health Checks
 
-Aura automatically monitors engine health:
-- **Stable Diffusion**: Checks `/sdapi/v1/sd-models` endpoint
-- **Mimic3**: Checks `/api/voices` endpoint
-- **Piper**: Validates binary exists and can be executed
+Aura automatically monitors engine health through HTTP endpoints:
+
+- **Stable Diffusion WebUI**: Checks `/sdapi/v1/sd-models`
+  - Polls every 2 seconds during startup (up to 120s timeout)
+  - Verifies API is accessible and models are loaded
+  
+- **ComfyUI**: Checks `/system_stats`
+  - Polls every 2 seconds during startup (up to 60s timeout)
+  - Verifies node system is ready
+  
+- **Mimic3**: Checks `/api/voices`
+  - Polls every 2 seconds during startup (up to 30s timeout)
+  - Verifies voice models are available
+  
+- **Piper**: Binary validation
+  - Checks executable exists and has correct permissions
+
+**Health Status Indicators:**
+- **Healthy (✓)**: Engine is running and API is responding
+- **Unreachable**: Engine process is running but not responding to health checks (may still be starting up)
+- **Not Running**: Engine is stopped
 
 If an engine becomes unhealthy, Aura will:
-1. Log the issue
-2. Attempt to restart (if auto-restart is enabled)
-3. Fall back to alternative providers if available
+1. Log the issue to engine-specific log files
+2. Display error messages in the UI
+3. Attempt to restart (if auto-restart is enabled)
+4. Fall back to alternative providers if available
 
 ### Auto-Launch on Startup
 
-Configure engines to start when Aura launches:
-1. Go to **Settings → Engines**
-2. Toggle **Start on app launch** for each engine
-3. Save settings
+Configure engines to start automatically when Aura launches:
+
+1. Install and configure the engine through Download Center
+2. Use the registry configuration file to enable auto-start
+3. Engine will launch in the background on app startup
+4. Check status in Download Center → Engines tab
+
+*Note: UI for auto-launch configuration coming in a future update*
+
+### Maintenance Operations
+
+The Download Center provides maintenance tools:
+
+- **Verify**: Check installation integrity
+  - Validates all required files are present
+  - Checks executable permissions
+  - Reports missing or corrupted files
+  
+- **Repair**: Fix corrupted installations
+  - Removes existing installation
+  - Re-downloads and reinstalls the engine
+  - Preserves configuration settings
+  
+- **Remove**: Clean uninstallation
+  - Stops the engine if running
+  - Removes all engine files
+  - Cleans up registry entries
+  - Preserves logs for troubleshooting
 
 ## Provider Selection and Fallback
 
@@ -149,9 +237,134 @@ When offline mode is enabled, Aura will:
 
 ### Port conflicts
 If default ports are in use:
-1. Go to **Settings → Engines**
-2. Change the port number
-3. Restart the engine
+1. Go to **Download Center → Engines**
+2. Click **Start** with custom port
+3. Or configure via API (see API Reference below)
+
+## API Reference
+
+Aura provides REST API endpoints for programmatic engine management:
+
+### List Engines
+```http
+GET /api/engines/list
+```
+Returns all available engines with installation status.
+
+**Response:**
+```json
+{
+  "engines": [
+    {
+      "id": "stable-diffusion-webui",
+      "name": "Stable Diffusion WebUI",
+      "version": "1.7.0",
+      "description": "AUTOMATIC1111's Stable Diffusion WebUI",
+      "sizeBytes": 2500000000,
+      "defaultPort": 7860,
+      "isInstalled": true,
+      "installPath": "%LOCALAPPDATA%\\Aura\\Tools\\stable-diffusion-webui"
+    }
+  ]
+}
+```
+
+### Get Engine Status
+```http
+GET /api/engines/status?engineId={engineId}
+```
+Returns detailed status for a specific engine.
+
+**Response:**
+```json
+{
+  "engineId": "stable-diffusion-webui",
+  "name": "Stable Diffusion WebUI",
+  "status": "running",
+  "installedVersion": "1.7.0",
+  "isRunning": true,
+  "port": 7860,
+  "health": "healthy",
+  "processId": 12345,
+  "logsPath": "%LOCALAPPDATA%\\Aura\\logs\\tools\\stable-diffusion-webui.log",
+  "messages": []
+}
+```
+
+### Install Engine
+```http
+POST /api/engines/install
+Content-Type: application/json
+
+{
+  "engineId": "stable-diffusion-webui",
+  "version": "1.7.0",  // optional
+  "port": 7860          // optional
+}
+```
+
+### Start Engine
+```http
+POST /api/engines/start
+Content-Type: application/json
+
+{
+  "engineId": "stable-diffusion-webui",
+  "port": 7860,         // optional
+  "args": "--api"       // optional
+}
+```
+
+### Stop Engine
+```http
+POST /api/engines/stop
+Content-Type: application/json
+
+{
+  "engineId": "stable-diffusion-webui"
+}
+```
+
+### Verify Engine
+```http
+POST /api/engines/verify
+Content-Type: application/json
+
+{
+  "engineId": "stable-diffusion-webui"
+}
+```
+
+**Response:**
+```json
+{
+  "engineId": "stable-diffusion-webui",
+  "isValid": true,
+  "status": "Valid",
+  "missingFiles": [],
+  "issues": []
+}
+```
+
+### Repair Engine
+```http
+POST /api/engines/repair
+Content-Type: application/json
+
+{
+  "engineId": "stable-diffusion-webui"
+}
+```
+
+### Remove Engine
+```http
+POST /api/engines/remove
+Content-Type: application/json
+
+{
+  "engineId": "stable-diffusion-webui"
+}
+```
 
 ## Security and Privacy
 
