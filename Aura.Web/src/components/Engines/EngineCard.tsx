@@ -254,6 +254,12 @@ export function EngineCard({ engine }: EngineCardProps) {
             {engine.description && (
               <Text className={styles.metadata} block>{engine.description}</Text>
             )}
+            {engine.gatingReason && (
+              <Text className={styles.metadata} block style={{ color: tokens.colorPaletteYellowForeground1 }}>
+                ⚠️ {engine.gatingReason}
+                {engine.vramTooltip && ` • ${engine.vramTooltip}`}
+              </Text>
+            )}
           </div>
         }
       />
@@ -265,7 +271,8 @@ export function EngineCard({ engine }: EngineCardProps) {
                 appearance="primary"
                 icon={<ArrowDownload24Regular />}
                 onClick={handleInstall}
-                disabled={isProcessing}
+                disabled={isProcessing || (engine.isGated && !engine.canInstall)}
+                title={engine.gatingReason || undefined}
               >
                 {isProcessing ? <Spinner size="tiny" /> : 'Install'}
               </Button>
