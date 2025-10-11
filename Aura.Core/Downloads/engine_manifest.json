@@ -2,6 +2,49 @@
   "version": "1.0",
   "engines": [
     {
+      "id": "ffmpeg",
+      "name": "FFmpeg",
+      "version": "6.0",
+      "description": "Essential video and audio processing toolkit for all media operations",
+      "sizeBytes": 83558400,
+      "sha256": "",
+      "archiveType": "zip",
+      "urls": {
+        "windows": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-win64-gpl-6.0.zip",
+        "linux": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+      },
+      "extractDir": "ffmpeg",
+      "entrypoint": "ffmpeg.exe",
+      "licenseUrl": "https://www.ffmpeg.org/legal.html",
+      "vramTooltip": "CPU-based tool, no GPU required. Works on all systems.",
+      "icon": "🎬",
+      "tags": ["video", "audio", "cpu", "essential"]
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama",
+      "version": "0.1.19",
+      "description": "Local LLM engine for script generation and AI narration without cloud APIs",
+      "sizeBytes": 524288000,
+      "sha256": "",
+      "archiveType": "zip",
+      "urls": {
+        "windows": "https://github.com/ollama/ollama/releases/download/v0.1.19/ollama-windows-amd64.zip",
+        "linux": "https://github.com/ollama/ollama/releases/download/v0.1.19/ollama-linux-amd64.tar.gz"
+      },
+      "extractDir": "ollama",
+      "entrypoint": "ollama.exe",
+      "defaultPort": 11434,
+      "healthCheck": {
+        "url": "/api/tags",
+        "timeoutSeconds": 30
+      },
+      "licenseUrl": "https://github.com/ollama/ollama/blob/main/LICENSE",
+      "vramTooltip": "CPU-based, but benefits from GPU acceleration if available. Works on all systems.",
+      "icon": "🤖",
+      "tags": ["llm", "ai", "script-generation", "cpu"]
+    },
+    {
       "id": "stable-diffusion-webui",
       "name": "Stable Diffusion WebUI",
       "version": "1.9.0",

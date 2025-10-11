@@ -132,6 +132,54 @@ public class EngineManifestLoader
             {
                 new EngineManifestEntry
                 {
+                    Id = "ffmpeg",
+                    Name = "FFmpeg",
+                    Version = "6.0",
+                    Description = "Essential video and audio processing toolkit for all media operations",
+                    SizeBytes = 83558400, // ~80MB
+                    Sha256 = "",
+                    ArchiveType = "zip",
+                    Urls = new Dictionary<string, string>
+                    {
+                        { "windows", "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-win64-gpl-6.0.zip" },
+                        { "linux", "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" }
+                    },
+                    ExtractDir = "ffmpeg",
+                    Entrypoint = platform == "windows" ? "ffmpeg.exe" : "ffmpeg",
+                    LicenseUrl = "https://www.ffmpeg.org/legal.html",
+                    VramTooltip = "CPU-based tool, no GPU required. Works on all systems.",
+                    Icon = "🎬",
+                    Tags = new List<string> { "video", "audio", "cpu", "essential" }
+                },
+                new EngineManifestEntry
+                {
+                    Id = "ollama",
+                    Name = "Ollama",
+                    Version = "0.1.19",
+                    Description = "Local LLM engine for script generation and AI narration without cloud APIs",
+                    SizeBytes = 524288000, // ~500MB
+                    Sha256 = "",
+                    ArchiveType = "zip",
+                    Urls = new Dictionary<string, string>
+                    {
+                        { "windows", "https://github.com/ollama/ollama/releases/download/v0.1.19/ollama-windows-amd64.zip" },
+                        { "linux", "https://github.com/ollama/ollama/releases/download/v0.1.19/ollama-linux-amd64.tar.gz" }
+                    },
+                    ExtractDir = "ollama",
+                    Entrypoint = platform == "windows" ? "ollama.exe" : "ollama",
+                    DefaultPort = 11434,
+                    HealthCheck = new HealthCheckConfig
+                    {
+                        Url = "/api/tags",
+                        TimeoutSeconds = 30
+                    },
+                    LicenseUrl = "https://github.com/ollama/ollama/blob/main/LICENSE",
+                    VramTooltip = "CPU-based, but benefits from GPU acceleration if available. Works on all systems.",
+                    Icon = "🤖",
+                    Tags = new List<string> { "llm", "ai", "script-generation", "cpu" }
+                },
+                new EngineManifestEntry
+                {
                     Id = "stable-diffusion-webui",
                     Name = "Stable Diffusion WebUI",
                     Version = "1.7.0",
@@ -153,7 +201,10 @@ public class EngineManifestLoader
                         TimeoutSeconds = 120
                     },
                     LicenseUrl = "https://github.com/AUTOMATIC1111/stable-diffusion-webui/blob/master/LICENSE.txt",
-                    RequiredVRAMGB = 4
+                    RequiredVRAMGB = 6,
+                    VramTooltip = "Minimum 6GB VRAM for SD 1.5, 12GB+ recommended for SDXL. NVIDIA GPU required.",
+                    Icon = "🎨",
+                    Tags = new List<string> { "image-generation", "ai", "nvidia-only", "gpu-intensive" }
                 },
                 new EngineManifestEntry
                 {
@@ -178,7 +229,10 @@ public class EngineManifestLoader
                         TimeoutSeconds = 60
                     },
                     LicenseUrl = "https://github.com/comfyanonymous/ComfyUI/blob/master/LICENSE",
-                    RequiredVRAMGB = 4
+                    RequiredVRAMGB = 6,
+                    VramTooltip = "Minimum 6GB VRAM for basic workflows. More VRAM for complex node graphs. NVIDIA GPU required.",
+                    Icon = "🔗",
+                    Tags = new List<string> { "image-generation", "ai", "node-based", "nvidia-only", "gpu-intensive" }
                 },
                 new EngineManifestEntry
                 {
@@ -197,6 +251,9 @@ public class EngineManifestLoader
                     ExtractDir = "piper",
                     Entrypoint = platform == "windows" ? "piper.exe" : "piper",
                     LicenseUrl = "https://github.com/rhasspy/piper/blob/master/LICENSE.md",
+                    VramTooltip = "CPU-based TTS, no GPU required. Very fast and lightweight.",
+                    Icon = "🎙️",
+                    Tags = new List<string> { "tts", "cpu", "fast", "offline" },
                     Models = new List<ModelEntry>
                     {
                         new ModelEntry
@@ -229,7 +286,10 @@ public class EngineManifestLoader
                         Url = "/api/voices",
                         TimeoutSeconds = 30
                     },
-                    LicenseUrl = "https://github.com/MycroftAI/mimic3/blob/master/LICENSE"
+                    LicenseUrl = "https://github.com/MycroftAI/mimic3/blob/master/LICENSE",
+                    VramTooltip = "CPU-based TTS, no GPU required. Higher quality than Piper but slower.",
+                    Icon = "🗣️",
+                    Tags = new List<string> { "tts", "cpu", "quality", "offline" }
                 }
             }
         };

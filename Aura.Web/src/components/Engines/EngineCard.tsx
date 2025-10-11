@@ -239,6 +239,7 @@ export function EngineCard({ engine }: EngineCardProps) {
         header={
           <div className={styles.header}>
             <div className={styles.title}>
+              {engine.icon && <span>{engine.icon}</span>}
               <Text weight="semibold" size={500}>{engine.name}</Text>
               {getStatusBadge()}
             </div>
@@ -260,6 +261,11 @@ export function EngineCard({ engine }: EngineCardProps) {
                 {engine.vramTooltip && ` • ${engine.vramTooltip}`}
               </Text>
             )}
+            {engine.isGated && !engine.canAutoStart && (
+              <Text className={styles.metadata} block style={{ color: tokens.colorNeutralForeground3 }}>
+                💡 You can still install this engine for future use. It won't auto-start without meeting hardware requirements.
+              </Text>
+            )}
           </div>
         }
       />
@@ -271,10 +277,10 @@ export function EngineCard({ engine }: EngineCardProps) {
                 appearance="primary"
                 icon={<ArrowDownload24Regular />}
                 onClick={handleInstall}
-                disabled={isProcessing || (engine.isGated && !engine.canInstall)}
+                disabled={isProcessing}
                 title={engine.gatingReason || undefined}
               >
-                {isProcessing ? <Spinner size="tiny" /> : 'Install'}
+                {isProcessing ? <Spinner size="tiny" /> : engine.isGated && !engine.canAutoStart ? 'Install anyway (for later)' : 'Install'}
               </Button>
             )}
             
@@ -283,7 +289,8 @@ export function EngineCard({ engine }: EngineCardProps) {
                 appearance="primary"
                 icon={<Play24Regular />}
                 onClick={handleStart}
-                disabled={isProcessing}
+                disabled={isProcessing || (engine.isGated && !engine.canAutoStart)}
+                title={engine.isGated && !engine.canAutoStart ? 'Cannot start: hardware requirements not met' : undefined}
               >
                 Start
               </Button>
