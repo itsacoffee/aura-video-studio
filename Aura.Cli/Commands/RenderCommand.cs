@@ -79,11 +79,21 @@ public class RenderCommand : ICommand
             Console.WriteLine("[4/5] Checking FFmpeg availability...");
             if (!CheckFFmpegAvailable())
             {
-                Console.WriteLine("✗ Error: FFmpeg not found in PATH");
-                Console.WriteLine("  Install from: https://ffmpeg.org/download.html");
-                return ExitCodes.RenderFail;
+                if (options.DryRun)
+                {
+                    Console.WriteLine("      ⚠ FFmpeg not found (dry-run mode, skipping check)");
+                }
+                else
+                {
+                    Console.WriteLine("✗ Error: FFmpeg not found in PATH");
+                    Console.WriteLine("  Install from: https://ffmpeg.org/download.html");
+                    return ExitCodes.RenderFail;
+                }
             }
-            Console.WriteLine("      ✓ FFmpeg available");
+            else
+            {
+                Console.WriteLine("      ✓ FFmpeg available");
+            }
             Console.WriteLine();
 
             // Execute rendering
