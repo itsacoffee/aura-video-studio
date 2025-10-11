@@ -53,6 +53,15 @@ public class EngineManifestEntry
     [JsonPropertyName("requiredVRAMGB")]
     public int? RequiredVRAMGB { get; set; }
 
+    [JsonPropertyName("vramTooltip")]
+    public string? VramTooltip { get; set; }
+
+    [JsonPropertyName("icon")]
+    public string? Icon { get; set; }
+
+    [JsonPropertyName("tags")]
+    public List<string>? Tags { get; set; }
+
     [JsonPropertyName("models")]
     public List<ModelEntry>? Models { get; set; }
 }

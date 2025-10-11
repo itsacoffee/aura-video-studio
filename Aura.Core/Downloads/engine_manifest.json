@@ -21,7 +21,10 @@
         "timeoutSeconds": 120
       },
       "licenseUrl": "https://github.com/AUTOMATIC1111/stable-diffusion-webui/blob/master/LICENSE.txt",
-      "requiredVRAMGB": 4
+      "requiredVRAMGB": 6,
+      "vramTooltip": "Minimum 6GB VRAM for SD 1.5, 12GB+ recommended for SDXL. NVIDIA GPU required.",
+      "icon": "🎨",
+      "tags": ["image-generation", "ai", "nvidia-only", "gpu-intensive"]
     },
     {
       "id": "comfyui",
@@ -43,7 +46,10 @@
         "timeoutSeconds": 60
       },
       "licenseUrl": "https://github.com/comfyanonymous/ComfyUI/blob/master/LICENSE",
-      "requiredVRAMGB": 4
+      "requiredVRAMGB": 6,
+      "vramTooltip": "Minimum 6GB VRAM for basic workflows. More VRAM for complex node graphs. NVIDIA GPU required.",
+      "icon": "🔗",
+      "tags": ["image-generation", "ai", "node-based", "nvidia-only", "gpu-intensive"]
     },
     {
       "id": "piper",
@@ -60,6 +66,9 @@
       "extractDir": "piper",
       "entrypoint": "piper.exe",
       "licenseUrl": "https://github.com/rhasspy/piper/blob/master/LICENSE.md",
+      "vramTooltip": "CPU-based TTS, no GPU required. Very fast and lightweight.",
+      "icon": "🎙️",
+      "tags": ["tts", "cpu", "fast", "offline"],
       "models": [
         {
           "id": "en_US-lessac-medium",
@@ -87,7 +96,10 @@
         "url": "/api/voices",
         "timeoutSeconds": 30
       },
-      "licenseUrl": "https://github.com/MycroftAI/mimic3/blob/master/LICENSE"
+      "licenseUrl": "https://github.com/MycroftAI/mimic3/blob/master/LICENSE",
+      "vramTooltip": "CPU-based TTS, no GPU required. Higher quality than Piper but slower.",
+      "icon": "🗣️",
+      "tags": ["tts", "cpu", "quality", "offline"]
     }
   ]
 }

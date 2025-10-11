@@ -14,6 +14,26 @@ Aura Video Studio supports local, offline engines for image generation and text-
 - Minimum 12GB VRAM for SDXL
 - Windows 11 x64 or Linux (Ubuntu 20.04+)
 
+**GPU Detection and VRAM Requirements:**
+
+Aura automatically detects your GPU and VRAM using multiple methods:
+1. **nvidia-smi** (primary method for NVIDIA GPUs)
+2. **Windows Management Instrumentation (WMI)** (fallback)
+3. **dxdiag** (secondary fallback for accurate VRAM detection)
+
+The system will only enable Local Stable Diffusion if:
+- An NVIDIA GPU is detected (AMD/Intel not currently supported for SD)
+- VRAM meets minimum requirements:
+  - **6GB+**: SD 1.5 models supported
+  - **8GB+**: SD 1.5 with higher quality settings
+  - **12GB+**: SDXL models supported (recommended for best quality)
+
+If your GPU doesn't meet these requirements, Aura will automatically fall back to:
+- Stock images from Pexels/Pixabay/Unsplash (with free API keys)
+- Pro cloud providers (Stability AI, Runway) if API keys are configured
+
+**Note**: You can bypass hardware checks for experimental purposes, but this may result in out-of-memory errors or crashes.
+
 ### Text-to-Speech
 - **Piper** - Fast, lightweight, offline TTS
   - Low latency, excellent for real-time use
@@ -211,6 +231,19 @@ When offline mode is enabled, Aura will:
 
 ## Performance Considerations
 
+### Download and Installation Performance
+
+Aura optimizes engine installation with:
+- **Parallel downloads**: Multiple components can be downloaded simultaneously
+- **Progressive SHA-256 verification**: Shows real-time progress during checksum verification
+- **Resume support**: Interrupted downloads can be resumed (where supported)
+- **Intelligent caching**: Previously downloaded components are reused
+
+**Typical Installation Times** (on 100 Mbps connection):
+- FFmpeg: ~2 minutes (80MB download)
+- Piper TTS: ~5 minutes (varies by voice model)
+- Stable Diffusion WebUI: ~15-30 minutes (2.5GB+ download)
+
 ### Stable Diffusion
 - **SDXL**: 30-60 seconds per image (12GB+ VRAM)
 - **SD 1.5**: 10-30 seconds per image (6GB+ VRAM)
@@ -222,6 +255,52 @@ When offline mode is enabled, Aura will:
 - **Windows SAPI**: ~5x real-time
 
 ## Troubleshooting
+
+### GPU Detection Issues
+
+#### GPU Not Detected
+If Aura doesn't detect your NVIDIA GPU:
+
+1. **Verify nvidia-smi is working:**
+   ```powershell
+   nvidia-smi
+   ```
+   If this fails, your NVIDIA drivers may not be installed correctly.
+
+2. **Check WMI detection:**
+   ```powershell
+   Get-WmiObject Win32_VideoController | Select-Object Name, AdapterRAM
+   ```
+   This should show your GPU and available memory.
+
+3. **Manually verify VRAM with dxdiag:**
+   - Press `Win + R`, type `dxdiag`, press Enter
+   - Go to "Display" tab
+   - Look for "Dedicated Memory" or "Display Memory"
+   - This shows your VRAM in MB (e.g., 8192 MB = 8 GB)
+
+4. **Driver Installation:**
+   - Download latest NVIDIA drivers from https://www.nvidia.com/drivers
+   - Use "Clean installation" option during setup
+   - Reboot after installation
+   - Verify with `nvidia-smi`
+
+#### Incorrect VRAM Detected
+If Aura shows wrong VRAM amount:
+
+- **WMI AdapterRAM is often unreliable** - Aura uses multiple detection methods
+- Primary method: nvidia-smi (most accurate)
+- Fallback 1: WMI VideoController
+- Fallback 2: dxdiag parsing
+- If all methods fail, manual override is available in Settings
+
+#### Manual GPU Override
+If automatic detection fails, you can manually configure your GPU:
+
+1. Go to **Settings → System Profile → Hardware**
+2. Disable "Auto-detect"
+3. Select your GPU from preset list (e.g., "NVIDIA RTX 3080 - 10GB")
+4. Or enter custom values for VRAM
 
 ### Stable Diffusion won't start
 1. Check GPU requirements: `nvidia-smi` (Windows/Linux)
@@ -384,6 +463,54 @@ Local engines only bind to `127.0.0.1` (localhost) by default:
 - See manifest for source URLs and licenses
 
 ## Advanced Configuration
+
+### Engine Manifest Format
+
+Aura uses a JSON manifest to define available engines and their properties. The manifest includes:
+
+**Core Properties:**
+- `id`: Unique identifier for the engine
+- `name`: Display name
+- `version`: Version string
+- `description`: Brief description
+- `sizeBytes`: Download size in bytes
+- `sha256`: Checksum for verification (optional)
+- `archiveType`: `zip`, `tar.gz`, or `git`
+- `urls`: Platform-specific download URLs
+- `entrypoint`: Executable or script to run
+
+**GPU and Hardware:**
+- `requiredVRAMGB`: Minimum VRAM in GB
+- `vramTooltip`: User-friendly tooltip explaining VRAM requirements
+- `icon`: Emoji or icon for UI display
+- `tags`: Array of tags for filtering (`["nvidia-only", "gpu-intensive", "cpu", "fast"]`)
+
+**Runtime:**
+- `defaultPort`: Default network port
+- `argsTemplate`: Command-line arguments template
+- `healthCheck`: URL path and timeout for health checks
+- `licenseUrl`: Link to license information
+
+**Example Entry:**
+```json
+{
+  "id": "stable-diffusion-webui",
+  "name": "Stable Diffusion WebUI",
+  "version": "1.9.0",
+  "requiredVRAMGB": 6,
+  "vramTooltip": "Minimum 6GB VRAM for SD 1.5, 12GB+ recommended for SDXL",
+  "icon": "🎨",
+  "tags": ["image-generation", "ai", "nvidia-only", "gpu-intensive"],
+  "healthCheck": {
+    "url": "/sdapi/v1/sd-models",
+    "timeoutSeconds": 120
+  }
+}
+```
+
+**Manifest Location:**
+- Bundled: `Aura.Core/Downloads/engine_manifest.json`
+- Runtime: `%LOCALAPPDATA%\Aura\engines-manifest.json`
 
 ### Custom Model Paths
 Edit `appsettings.json`:

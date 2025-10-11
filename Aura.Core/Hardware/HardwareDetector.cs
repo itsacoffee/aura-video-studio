@@ -232,6 +232,17 @@ public class HardwareDetector
                 string vendor = DetermineVendor(model);
                 string? series = DetermineSeries(model, vendor);
                 
+                // For NVIDIA cards without nvidia-smi, try dxdiag as fallback for accurate VRAM
+                if (vendor.Equals("NVIDIA", StringComparison.OrdinalIgnoreCase) && vramMB < 1024)
+                {
+                    var dxdiagVram = await GetDxdiagVramAsync(model);
+                    if (dxdiagVram > 0)
+                    {
+                        vramMB = dxdiagVram;
+                        _logger.LogInformation("Updated NVIDIA VRAM via dxdiag: {VRAM} MB", vramMB);
+                    }
+                }
+                
                 _logger.LogInformation("Found GPU via WMI: {Model}, {Vendor}, {VRAM} MB", 
                     model, vendor, vramMB);
                 
@@ -318,6 +329,67 @@ public class HardwareDetector
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Gets VRAM information from dxdiag as a fallback when nvidia-smi is not available
+    /// This is particularly useful for NVIDIA GPUs on systems without nvidia-smi in PATH
+    /// </summary>
+    private async Task<int> GetDxdiagVramAsync(string gpuModel)
+    {
+        try
+        {
+            var tempFile = Path.Combine(Path.GetTempPath(), $"dxdiag-{Guid.NewGuid()}.txt");
+            
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "dxdiag",
+                    Arguments = $"/t {tempFile}",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            // dxdiag needs time to gather information
+            await process.WaitForExitAsync();
+            
+            // Wait a bit more for the file to be written
+            await Task.Delay(2000);
+
+            if (File.Exists(tempFile))
+            {
+                string content = await File.ReadAllTextAsync(tempFile);
+                File.Delete(tempFile);
+                
+                // Look for dedicated memory or display memory lines
+                // Example formats:
+                // "Dedicated Memory: 8192 MB"
+                // "Display Memory: 8192 MB"
+                var lines = content.Split('\n');
+                foreach (var line in lines)
+                {
+                    if (line.Contains("Dedicated Memory:", StringComparison.OrdinalIgnoreCase) ||
+                        line.Contains("Display Memory:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var match = System.Text.RegularExpressions.Regex.Match(line, @"(\d+)\s*MB");
+                        if (match.Success && int.TryParse(match.Groups[1].Value, out int vramMB))
+                        {
+                            _logger.LogInformation("Found VRAM via dxdiag for {Model}: {VRAM} MB", gpuModel, vramMB);
+                            return vramMB;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to get VRAM from dxdiag");
+        }
+
+        return 0;
     }
 
     /// <summary>

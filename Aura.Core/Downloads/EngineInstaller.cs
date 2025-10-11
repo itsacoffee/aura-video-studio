@@ -177,8 +177,9 @@ public class EngineInstaller
             // Verify checksum if provided
             if (!string.IsNullOrEmpty(engine.Sha256))
             {
-                progress?.Report(new EngineInstallProgress(engine.Id, "verifying", 0, 0, 0, "Verifying checksum..."));
-                bool checksumValid = await VerifyChecksumAsync(archiveFile, engine.Sha256).ConfigureAwait(false);
+                progress?.Report(new EngineInstallProgress(engine.Id, "verifying", 0, engine.SizeBytes, 0, "Verifying checksum..."));
+                bool checksumValid = await VerifyChecksumAsync(archiveFile, engine.Sha256,
+                    p => progress?.Report(new EngineInstallProgress(engine.Id, "verifying", p.BytesProcessed, p.TotalBytes, p.PercentComplete, "Verifying checksum..."))).ConfigureAwait(false);
                 if (!checksumValid)
                 {
                     throw new InvalidOperationException("Checksum verification failed");
@@ -228,15 +229,32 @@ public class EngineInstaller
         }
     }
 
-    private async Task<bool> VerifyChecksumAsync(string filePath, string expectedSha256)
+    private async Task<bool> VerifyChecksumAsync(string filePath, string expectedSha256, Action<(long BytesProcessed, long TotalBytes, float PercentComplete)>? progress = null)
     {
         using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         using var sha256 = SHA256.Create();
         
-        byte[] hashBytes = await sha256.ComputeHashAsync(fs).ConfigureAwait(false);
-        string computedHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+        long totalBytes = fs.Length;
+        long bytesRead = 0;
+        var buffer = new byte[8192];
         
-        return computedHash.Equals(expectedSha256.ToLowerInvariant());
+        while (true)
+        {
+            int read = await fs.ReadAsync(buffer).ConfigureAwait(false);
+            if (read == 0) break;
+            
+            sha256.TransformBlock(buffer, 0, read, null, 0);
+            bytesRead += read;
+            
+            float percent = totalBytes > 0 ? (float)bytesRead / totalBytes * 100 : 0;
+            progress?.Invoke((bytesRead, totalBytes, percent));
+        }
+        
+        sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        byte[] hashBytes = sha256.Hash!;
+        string computedHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+        
+        return computedHash.Equals(expectedSha256.ToLowerInvariant(), StringComparison.Ordinal);
     }
 
     private async Task ExtractArchiveAsync(string archiveFile, string targetDir, string archiveType)

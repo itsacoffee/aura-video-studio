@@ -304,6 +304,54 @@ Run hardware probes.
 }
 ```
 
+#### `GET /diagnostics`
+Generate comprehensive diagnostics report (text format).
+
+**Response**:
+```json
+{
+  "success": true,
+  "report": "=== Aura Video Studio Diagnostics Report ===\nGenerated: 2025-10-11 17:30:00 UTC\n\n--- System Profile ---\nTier: A\nCPU Cores: 8 physical, 16 logical\nRAM: 32 GB\nGPU: NVIDIA GeForce RTX 3080\nVRAM: 10 GB\n..."
+}
+```
+
+**Use Cases**:
+- Copy diagnostics to clipboard for support requests
+- Generate bug reports
+- Troubleshoot installation issues
+
+#### `GET /diagnostics/json`
+Generate diagnostics report (JSON format).
+
+**Response**:
+```json
+{
+  "timestamp": "2025-10-11T17:30:00Z",
+  "systemProfile": {
+    "tier": "A",
+    "cpu": { "physical": 8, "logical": 16 },
+    "ram": { "gb": 32 },
+    "gpu": {
+      "vendor": "NVIDIA",
+      "model": "GeForce RTX 3080",
+      "vramGB": 10,
+      "series": "30"
+    },
+    "enableNVENC": true,
+    "enableSD": true,
+    "offlineOnly": false
+  },
+  "environment": {
+    "os": "Microsoft Windows NT 10.0.19045.0",
+    "platform": "Win32NT",
+    "is64BitOS": true,
+    "is64BitProcess": true,
+    "dotnetVersion": "8.0.0"
+  },
+  "logsLocation": "C:\\Users\\...\\AppData\\Local\\Aura\\logs"
+}
+```
+
 #### `GET /profiles/list`
 List available provider profiles.
 
