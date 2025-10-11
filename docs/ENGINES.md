@@ -4,15 +4,58 @@ Aura Video Studio supports local, offline engines for image generation and text-
 
 ## Supported Engines
 
+### Essential Tools
+- **FFmpeg** 🎬 - Video and audio processing toolkit (required for all video operations)
+  - Works on all systems (CPU-based)
+  - No special hardware requirements
+  
+- **Ollama** 🤖 - Local LLM for script generation
+  - CPU-based but GPU-accelerated when available
+  - No API keys required for local AI narration
+
 ### Image Generation
-- **Stable Diffusion WebUI (A1111)** - Full-featured SD WebUI with API support
-- **ComfyUI** - Node-based stable diffusion interface (planned)
+- **Stable Diffusion WebUI (A1111)** 🎨 - Full-featured SD WebUI with API support
+- **ComfyUI** 🔗 - Node-based stable diffusion interface
 
 **Requirements:**
 - NVIDIA GPU with CUDA support
 - Minimum 6GB VRAM for SD 1.5
 - Minimum 12GB VRAM for SDXL
 - Windows 11 x64 or Linux (Ubuntu 20.04+)
+
+### Text-to-Speech
+- **Piper** 🎙️ - Fast, lightweight, offline TTS
+  - Low latency, excellent for real-time use
+  - Multiple voice models (English, Spanish, French, German, etc.)
+  - No GPU required
+  
+- **Mimic3** 🗣️ - High-quality offline TTS server
+  - Better voice quality than Piper
+  - HTTP API for easy integration
+  - Supports multiple voices and languages
+
+- **Windows SAPI** - Built-in Windows TTS (always available)
+
+## Hardware Gating and "Install Anyway" Feature
+
+**All engines are now always visible** in the Download Center, regardless of your hardware. This allows you to:
+
+### Benefits of Pre-Installation
+- **Plan ahead**: Install engines now, use them when you upgrade your hardware
+- **Portability**: Install on one machine, copy to another with better hardware
+- **Learning**: Explore configurations and settings before getting the required hardware
+
+### How It Works
+1. **Hardware Detection**: Aura automatically detects your GPU and VRAM using nvidia-smi
+2. **Visual Warnings**: Engines that don't meet your current hardware show a ⚠️ warning
+3. **Install Anyway**: You can still install with the "Install anyway (for later)" button
+4. **Auto-Start Gating**: Engines won't auto-start if hardware requirements aren't met
+5. **Manual Override**: You can attempt to start manually (may fail due to insufficient resources)
+
+### Warning Examples
+- "Requires NVIDIA GPU" - No NVIDIA GPU detected
+- "Requires 6GB VRAM (detected: 4GB)" - GPU found but insufficient VRAM
+- "CPU-based tool, no GPU required" - Works on all systems
 
 **GPU Detection and VRAM Requirements:**
 
@@ -21,31 +64,23 @@ Aura automatically detects your GPU and VRAM using multiple methods:
 2. **Windows Management Instrumentation (WMI)** (fallback)
 3. **dxdiag** (secondary fallback for accurate VRAM detection)
 
-The system will only enable Local Stable Diffusion if:
-- An NVIDIA GPU is detected (AMD/Intel not currently supported for SD)
-- VRAM meets minimum requirements:
-  - **6GB+**: SD 1.5 models supported
-  - **8GB+**: SD 1.5 with higher quality settings
-  - **12GB+**: SDXL models supported (recommended for best quality)
+**Installation Behavior:**
+- All engines are **always available for installation**, regardless of hardware
+- Engines with unmet requirements show warnings but can still be installed
+- Engines won't auto-start if hardware requirements aren't met
+- You can manually attempt to start them (useful for testing or troubleshooting)
 
-If your GPU doesn't meet these requirements, Aura will automatically fall back to:
+**Recommended GPU Tiers:**
+- **6GB+**: SD 1.5 models supported
+- **8GB+**: SD 1.5 with higher quality settings
+- **12GB+**: SDXL models supported (recommended for best quality)
+
+**Fallback Options:**
+If your GPU doesn't meet these requirements, Aura can use:
 - Stock images from Pexels/Pixabay/Unsplash (with free API keys)
 - Pro cloud providers (Stability AI, Runway) if API keys are configured
 
-**Note**: You can bypass hardware checks for experimental purposes, but this may result in out-of-memory errors or crashes.
-
-### Text-to-Speech
-- **Piper** - Fast, lightweight, offline TTS
-  - Low latency, excellent for real-time use
-  - Multiple voice models (English, Spanish, French, German, etc.)
-  - No GPU required
-  
-- **Mimic3** - High-quality offline TTS server
-  - Better voice quality than Piper
-  - HTTP API for easy integration
-  - Supports multiple voices and languages
-
-- **Windows SAPI** - Built-in Windows TTS (always available)
+**Note**: Hardware requirements are guidance, not hard blocks. You can install and experiment with any engine.
 
 ## Installation
 

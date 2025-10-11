@@ -12,8 +12,11 @@ export interface EngineManifestEntry {
   // Gating information
   isGated?: boolean;
   canInstall?: boolean;
+  canAutoStart?: boolean; // New: can the engine auto-start with current hardware
   gatingReason?: string;
   vramTooltip?: string;
+  icon?: string;
+  tags?: string[];
 }
 
 export interface EngineStatus {

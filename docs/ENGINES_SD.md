@@ -21,6 +21,26 @@ Stable Diffusion enables high-quality, AI-generated images for your videos witho
 - **RAM**: 16GB system RAM
 - **Storage**: 50GB free space (for multiple models)
 
+### Hardware Gating and Pre-Installation
+
+**Important**: Aura now allows you to install engines even if your current hardware doesn't meet the requirements. This is useful for:
+- **Planning ahead**: Install engines now, use them when you upgrade your hardware
+- **Shared systems**: Install on a machine without NVIDIA GPU, then copy to another machine
+- **Learning**: Explore the tools and prepare configurations before hardware upgrades
+
+**What happens when you install without meeting requirements:**
+1. The engine will install successfully
+2. You can configure settings and explore the interface
+3. The engine **will not auto-start** (requires manual start and will likely fail)
+4. A clear warning is shown explaining the hardware limitation
+5. Once you upgrade your hardware, the engine will work automatically
+
+**Hardware Detection:**
+- Aura automatically detects your GPU using nvidia-smi
+- Cards show a ⚠️ warning if requirements aren't met
+- You'll see messages like "Requires NVIDIA GPU" or "Requires 6GB VRAM (detected: 4GB)"
+- The "Install anyway (for later)" button allows installation despite warnings
+
 ### Checking Your GPU
 
 #### Windows

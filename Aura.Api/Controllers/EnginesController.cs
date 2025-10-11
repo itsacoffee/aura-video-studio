@@ -58,27 +58,42 @@ public class EnginesController : ControllerBase
             bool hasNvidia = gpuInfo?.Vendor?.ToUpperInvariant() == "NVIDIA";
             bool hasEnoughVram = hasNvidia && (gpuInfo?.VramGB ?? 0) >= 6;
             
-            var engines = manifest.Engines.Select(e => new
+            var engines = manifest.Engines.Select(e => 
             {
-                e.Id,
-                e.Name,
-                e.Version,
-                e.Description,
-                e.SizeBytes,
-                e.DefaultPort,
-                e.LicenseUrl,
-                e.RequiredVRAMGB,
-                IsInstalled = _installer.IsInstalled(e.Id),
-                InstallPath = _installer.GetInstallPath(e.Id),
-                // Gating information
-                IsGated = e.RequiredVRAMGB > 0,
-                CanInstall = e.RequiredVRAMGB == 0 || hasEnoughVram,
-                GatingReason = e.RequiredVRAMGB > 0 && !hasNvidia 
-                    ? "Requires NVIDIA GPU" 
-                    : e.RequiredVRAMGB > 0 && !hasEnoughVram 
-                        ? $"Requires {e.RequiredVRAMGB}GB VRAM (detected: {gpuInfo?.VramGB ?? 0}GB)"
-                        : null,
-                VramTooltip = e.VramTooltip
+                bool requiresNvidia = e.RequiredVRAMGB > 0;
+                bool meetsRequirements = !requiresNvidia || (hasNvidia && (gpuInfo?.VramGB ?? 0) >= (e.RequiredVRAMGB ?? 0));
+                
+                string? gatingReason = null;
+                if (requiresNvidia && !hasNvidia)
+                {
+                    gatingReason = "Requires NVIDIA GPU";
+                }
+                else if (requiresNvidia && hasNvidia && !meetsRequirements)
+                {
+                    gatingReason = $"Requires {e.RequiredVRAMGB}GB VRAM (detected: {gpuInfo?.VramGB ?? 0}GB)";
+                }
+                
+                return new
+                {
+                    e.Id,
+                    e.Name,
+                    e.Version,
+                    e.Description,
+                    e.SizeBytes,
+                    e.DefaultPort,
+                    e.LicenseUrl,
+                    e.RequiredVRAMGB,
+                    IsInstalled = _installer.IsInstalled(e.Id),
+                    InstallPath = _installer.GetInstallPath(e.Id),
+                    // Gating information - now allows install anyway
+                    IsGated = requiresNvidia,
+                    CanInstall = true, // Always allow installation for future use
+                    CanAutoStart = meetsRequirements, // Only auto-start if requirements are met
+                    GatingReason = gatingReason,
+                    VramTooltip = e.VramTooltip,
+                    Icon = e.Icon,
+                    Tags = e.Tags
+                };
             }).ToList();
 
             return Ok(new { engines, hardwareInfo = new { hasNvidia, vramGB = gpuInfo?.VramGB ?? 0 } });
