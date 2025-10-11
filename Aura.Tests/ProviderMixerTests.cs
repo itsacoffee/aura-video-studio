@@ -278,4 +278,37 @@ public class ProviderMixerTests
         Assert.Equal("RuleBased", selection3.SelectedProvider);
         Assert.False(selection3.IsFallback);
     }
+
+    [Theory]
+    [InlineData("Pro")]
+    [InlineData("ProIfAvailable")]
+    [InlineData("Free")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void ProviderMixer_AlwaysReturnsProvider_NeverThrows(string preferredTier)
+    {
+        // Arrange - This is the critical acceptance test
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var emptyLlmProviders = new Dictionary<string, ILlmProvider>();
+        var emptyTtsProviders = new Dictionary<string, ITtsProvider>();
+        var emptyVisualProviders = new Dictionary<string, object>();
+
+        // Act & Assert - Should NEVER throw, always returns a fallback
+        var llmSelection = mixer.SelectLlmProvider(emptyLlmProviders, preferredTier ?? "Free");
+        Assert.NotNull(llmSelection);
+        Assert.NotNull(llmSelection.SelectedProvider);
+        Assert.Equal("RuleBased", llmSelection.SelectedProvider);
+
+        var ttsSelection = mixer.SelectTtsProvider(emptyTtsProviders, preferredTier ?? "Free");
+        Assert.NotNull(ttsSelection);
+        Assert.NotNull(ttsSelection.SelectedProvider);
+        Assert.Equal("Windows", ttsSelection.SelectedProvider);
+
+        var visualSelection = mixer.SelectVisualProvider(emptyVisualProviders, preferredTier ?? "Free", false, 0);
+        Assert.NotNull(visualSelection);
+        Assert.NotNull(visualSelection.SelectedProvider);
+        Assert.True(visualSelection.SelectedProvider == "Slideshow"); // Ultimate fallback
+    }
 }
