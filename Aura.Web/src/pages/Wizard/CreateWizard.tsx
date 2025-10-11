@@ -392,6 +392,32 @@ export function CreateWizard() {
     }
   };
 
+  const handleQuickDemo = async () => {
+    setGenerating(true);
+    try {
+      const response = await fetch('/api/quick/demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: settings.brief.topic || null,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setActiveJobId(data.jobId);
+        setShowGenerationPanel(true);
+      } else {
+        alert('Failed to start quick demo generation');
+      }
+    } catch (error) {
+      console.error('Error starting quick demo:', error);
+      alert('Error starting quick demo generation');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -498,6 +524,38 @@ export function CreateWizard() {
                   <Option value="Square1x1">1:1 Square (Instagram)</Option>
                 </Dropdown>
               </Field>
+            </div>
+
+            {/* Quick Demo Button */}
+            <div style={{ 
+              marginTop: tokens.spacingVerticalXXL, 
+              padding: tokens.spacingVerticalL,
+              borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+              textAlign: 'center'
+            }}>
+              <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
+                New to Aura?
+              </Title3>
+              <Text size={300} style={{ display: 'block', marginBottom: tokens.spacingVerticalL }}>
+                Try a Quick Demo - No setup required!
+              </Text>
+              <Button
+                appearance="primary"
+                size="large"
+                icon={<Play24Regular />}
+                onClick={handleQuickDemo}
+                disabled={generating}
+                style={{ minWidth: '200px' }}
+              >
+                {generating ? 'Starting...' : 'Quick Demo (Safe)'}
+              </Button>
+              <Text size={200} style={{ 
+                display: 'block', 
+                marginTop: tokens.spacingVerticalM,
+                color: tokens.colorNeutralForeground3
+              }}>
+                Generates a 10-15 second demo video with safe defaults
+              </Text>
             </div>
           </Card>
         )}

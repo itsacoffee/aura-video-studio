@@ -232,6 +232,7 @@ builder.Services.AddSingleton<Aura.Core.Captions.CaptionBuilder>();
 // Register Job Runner and Artifact Manager
 builder.Services.AddSingleton<Aura.Core.Artifacts.ArtifactManager>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.JobRunner>();
+builder.Services.AddSingleton<Aura.Core.Orchestrator.QuickService>();
 
 // Configure Kestrel to listen on specific port
 builder.WebHost.UseUrls("http://127.0.0.1:5005");
