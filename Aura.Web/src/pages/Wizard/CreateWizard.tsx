@@ -293,6 +293,35 @@ export function CreateWizard() {
     }
   };
 
+  const handleApplySafeDefaults = async () => {
+    try {
+      const response = await fetch('/api/preflight/safe-defaults');
+      
+      if (response.ok) {
+        await response.json(); // Acknowledge the response
+        
+        // Apply safe defaults to the selection
+        setSelectedProfile('Free-Only');
+        setPerStageSelection({
+          script: 'RuleBased',
+          tts: 'Windows',
+          visuals: 'Stock',
+          upload: 'Off',
+        });
+        
+        // Re-run preflight check with safe defaults
+        await handleRunPreflight();
+        
+        alert('Applied safe defaults: Free-Only mode with RuleBased script, Windows TTS, and Stock images.');
+      } else {
+        alert('Failed to get safe defaults');
+      }
+    } catch (error) {
+      console.error('Error applying safe defaults:', error);
+      alert('Error applying safe defaults');
+    }
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     try {
@@ -1047,6 +1076,7 @@ export function CreateWizard() {
                 report={preflightReport}
                 isRunning={isRunningPreflight}
                 onRunPreflight={handleRunPreflight}
+                onApplySafeDefaults={handleApplySafeDefaults}
               />
 
               {preflightReport && !preflightReport.ok && (

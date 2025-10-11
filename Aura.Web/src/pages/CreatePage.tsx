@@ -150,6 +150,27 @@ export function CreatePage() {
     }
   };
 
+  const handleApplySafeDefaults = async () => {
+    try {
+      const response = await fetch('/api/preflight/safe-defaults');
+      
+      if (response.ok) {
+        // Apply safe defaults
+        setSelectedProfile('Free-Only');
+        
+        // Re-run preflight check
+        await handleRunPreflight();
+        
+        alert('Applied safe defaults: Free-Only mode.');
+      } else {
+        alert('Failed to get safe defaults');
+      }
+    } catch (error) {
+      console.error('Error applying safe defaults:', error);
+      alert('Error applying safe defaults');
+    }
+  };
+
   const handleGenerate = async () => {
     setGenerating(true);
     try {
@@ -459,6 +480,7 @@ export function CreatePage() {
                 report={preflightReport}
                 isRunning={isRunningPreflight}
                 onRunPreflight={handleRunPreflight}
+                onApplySafeDefaults={handleApplySafeDefaults}
               />
 
               {preflightReport && !preflightReport.ok && (
