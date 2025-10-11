@@ -29,7 +29,7 @@ public class ScriptEndpointE2ETests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false, AutoFallback = true };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, mixer, providers);
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Introduction to Python",
@@ -76,7 +76,7 @@ public class ScriptEndpointE2ETests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false, AutoFallback = true };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, mixer, providers);
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Machine Learning Basics",
@@ -118,7 +118,7 @@ public class ScriptEndpointE2ETests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, mixer, providers);
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Test Topic",
@@ -161,7 +161,7 @@ public class ScriptEndpointE2ETests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, mixer, providers);
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Web Development",
@@ -198,7 +198,7 @@ public class ScriptEndpointE2ETests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, mixer, providers);
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Test Topic",
@@ -263,7 +263,7 @@ public class ScriptEndpointE2ETests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false, AutoFallback = true };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, mixer, providers);
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Cloud Computing",

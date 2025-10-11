@@ -55,11 +55,7 @@ public class ProviderDowngradeTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false, AutoFallback = true };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         // Act
         var result = await orchestrator.GenerateScriptAsync(
@@ -113,11 +109,7 @@ public class ProviderDowngradeTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         // Act - Request local provider tier which would prefer SD
         var result = await orchestrator.GenerateScriptAsync(
@@ -156,11 +148,7 @@ public class ProviderDowngradeTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         // Act
         var result = await orchestrator.GenerateScriptAsync(
@@ -202,11 +190,7 @@ public class ProviderDowngradeTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         // Act
         var result = await orchestrator.GenerateScriptAsync(
@@ -250,11 +234,7 @@ public class ProviderDowngradeTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         // Act
         var result = await orchestrator.GenerateScriptAsync(
@@ -307,11 +287,7 @@ public class ProviderDowngradeTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         // Act
         var result = await orchestrator.GenerateScriptAsync(

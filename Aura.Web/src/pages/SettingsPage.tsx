@@ -74,6 +74,8 @@ export function SettingsPage() {
     openai: '',
     elevenlabs: '',
     pexels: '',
+    pixabay: '',
+    unsplash: '',
     stabilityai: '',
   });
   const [keysModified, setKeysModified] = useState(false);
@@ -149,6 +151,8 @@ export function SettingsPage() {
           openai: data.openai || '',
           elevenlabs: data.elevenlabs || '',
           pexels: data.pexels || '',
+          pixabay: data.pixabay || '',
+          unsplash: data.unsplash || '',
           stabilityai: data.stabilityai || '',
         });
       }
@@ -190,6 +194,8 @@ export function SettingsPage() {
           openAiKey: apiKeys.openai,
           elevenLabsKey: apiKeys.elevenlabs,
           pexelsKey: apiKeys.pexels,
+          pixabayKey: apiKeys.pixabay,
+          unsplashKey: apiKeys.unsplash,
           stabilityAiKey: apiKeys.stabilityai,
         }),
       });
@@ -858,12 +864,28 @@ export function SettingsPage() {
                 onChange={(e) => updateApiKey('elevenlabs', e.target.value)}
               />
             </Field>
-            <Field label="Pexels API Key" hint="Required for stock video and images">
+            <Field label="Pexels API Key" hint="Required for stock video and images from Pexels">
               <Input 
                 type="password" 
                 placeholder="..." 
                 value={apiKeys.pexels}
                 onChange={(e) => updateApiKey('pexels', e.target.value)}
+              />
+            </Field>
+            <Field label="Pixabay API Key" hint="Required for stock video and images from Pixabay">
+              <Input 
+                type="password" 
+                placeholder="..." 
+                value={apiKeys.pixabay}
+                onChange={(e) => updateApiKey('pixabay', e.target.value)}
+              />
+            </Field>
+            <Field label="Unsplash API Key" hint="Required for stock images from Unsplash">
+              <Input 
+                type="password" 
+                placeholder="..." 
+                value={apiKeys.unsplash}
+                onChange={(e) => updateApiKey('unsplash', e.target.value)}
               />
             </Field>
             <Field label="Stability AI API Key" hint="Optional - for AI image generation">

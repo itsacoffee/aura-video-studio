@@ -217,11 +217,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Introduction to Python Programming",
@@ -278,11 +274,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false, AutoFallback = true };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Machine Learning Basics",
@@ -331,11 +323,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Test Topic",
@@ -362,17 +350,11 @@ public class ScriptApiTests
             CancellationToken.None
         );
 
-        // Assert - Should not throw exception (the critical fix!)
-        // The result will fail because RuleBased can't be instantiated via reflection in test,
-        // but the key is that it tried and didn't throw "No LLM providers available"
+        // Assert - RuleBased provider can now be instantiated successfully via reflection
         Assert.NotNull(result);
-        Assert.False(result.Success); // Expected to fail in test environment
-        
-        // The error should be about provider failure, not "No LLM providers available"
-        Assert.DoesNotContain("No LLM providers available", result.ErrorMessage ?? string.Empty);
-        
-        // Should report error code for provider failure
-        Assert.NotNull(result.ErrorCode);
+        Assert.True(result.Success); // Should succeed with RuleBased provider
+        Assert.NotNull(result.Script);
+        Assert.Equal("RuleBased", result.ProviderUsed);
     }
 
     [Fact]
@@ -388,11 +370,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Cloud Services",
@@ -441,11 +419,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var planSpec = new PlanSpec(
             TargetDuration: TimeSpan.FromMinutes(2),
@@ -495,11 +469,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Test Topic",
@@ -556,11 +526,7 @@ public class ScriptApiTests
 
         var config = new ProviderMixingConfig { LogProviderSelection = false };
         var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
-        var orchestrator = new ScriptOrchestrator(
-            NullLogger<ScriptOrchestrator>.Instance,
-            mixer,
-            providers
-        );
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
 
         var brief = new Brief(
             Topic: "Test Topic",

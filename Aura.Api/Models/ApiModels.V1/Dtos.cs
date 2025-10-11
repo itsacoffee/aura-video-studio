@@ -69,6 +69,8 @@ public record ApiKeysRequest(
     string? OpenAiKey, 
     string? ElevenLabsKey, 
     string? PexelsKey, 
+    string? PixabayKey,
+    string? UnsplashKey,
     string? StabilityAiKey);
 
 public record ProviderPathsRequest(
