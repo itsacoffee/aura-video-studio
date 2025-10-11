@@ -350,17 +350,11 @@ public class ScriptApiTests
             CancellationToken.None
         );
 
-        // Assert - Should not throw exception (the critical fix!)
-        // The result will fail because RuleBased can't be instantiated via reflection in test,
-        // but the key is that it tried and didn't throw "No LLM providers available"
+        // Assert - RuleBased provider can now be instantiated successfully via reflection
         Assert.NotNull(result);
-        Assert.False(result.Success); // Expected to fail in test environment
-        
-        // The error should be about provider failure, not "No LLM providers available"
-        Assert.DoesNotContain("No LLM providers available", result.ErrorMessage ?? string.Empty);
-        
-        // Should report error code for provider failure
-        Assert.NotNull(result.ErrorCode);
+        Assert.True(result.Success); // Should succeed with RuleBased provider
+        Assert.NotNull(result.Script);
+        Assert.Equal("RuleBased", result.ProviderUsed);
     }
 
     [Fact]
