@@ -203,15 +203,6 @@ User runs:
 - Sandboxed JavaScript execution
 - HTTPS-only for external resources (API is local HTTP)
 
-## Future Enhancements
-
-1. **Server-Sent Events (SSE)** for live log streaming and render progress
-2. **SignalR Hub** for real-time collaboration features
-3. **Electron-based Linux/macOS versions** (if demand exists)
-4. **Microsoft Store submission** for MSIX distribution
-5. **Auto-update mechanism** for portable distributions
-6. **Telemetry and crash reporting** (with user opt-out)
-
 ## Directory Structure
 
 ```

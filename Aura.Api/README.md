@@ -593,15 +593,6 @@ Ensure the web UI origin is listed in the CORS policy.
 ### Windows-Only Features Not Working on Linux
 Expected behavior. Windows-specific providers (TTS, hardware detection details) require Windows. Use mocks for Linux development.
 
-## Future Enhancements
-
-- [ ] Server-Sent Events (SSE) for `/logs/stream` and `/render/{id}/progress`
-- [ ] SignalR hub for real-time collaboration
-- [ ] Rate limiting and throttling
-- [ ] Authentication/authorization (if multi-user scenarios arise)
-- [ ] OpenAPI documentation enhancements
-- [ ] Async job queue for long-running operations
-
 ## Contributing
 
 See the main repository README for contribution guidelines.

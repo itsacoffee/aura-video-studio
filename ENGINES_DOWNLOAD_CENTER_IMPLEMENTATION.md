@@ -217,16 +217,6 @@ API calls → Backend
 - ✅ Aura.Web builds successfully
 - ❌ Aura.App fails on Linux (expected - Windows-only WinUI project)
 
-## Future Enhancements (Not in Scope)
-- Auto-launch on app startup (UI configuration)
-- Progress bars during installation
-- Model auto-download for TTS engines
-- Custom installation paths
-- Engine update detection
-- Batch operations (install multiple engines)
-- Advanced settings per engine
-- Log viewer in UI
-
 ## No Placeholders
 All functionality is fully implemented with working code:
 - ✅ API endpoints return real data

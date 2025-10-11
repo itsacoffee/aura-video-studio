@@ -412,25 +412,6 @@ Format:
 - Managed by ExternalProcessManager
 - Auto-restart on crash (configurable)
 
-## Future Enhancements
-
-### Voice Model Downloads
-- Add inline download buttons for Piper/Mimic3 voices
-- Progress bars for model downloads
-- Voice preview functionality
-
-### ComfyUI Support
-- ComfyUI launcher implementation
-- Workflow management UI
-- Node graph visualization
-
-### Advanced Features
-- Engine marketplace integration
-- Model auto-download
-- Automatic CUDA/cuDNN setup
-- Multi-GPU support
-- Docker container option
-
 ## Documentation References
 
 - `IMPLEMENTATION_SUMMARY_LOCAL_ENGINES.md` - Core engine architecture

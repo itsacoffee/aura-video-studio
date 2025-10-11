@@ -303,19 +303,6 @@ dotnet publish -p:PublishProfile=linux-x64
 
 ---
 
-## Future Enhancements (Optional)
-
-These are NOT required for this PR but could be added later:
-
-- [ ] Package as dotnet global tool
-- [ ] Add `--json` flag for JSON output
-- [ ] Add progress reporting with `--progress` flag
-- [ ] macOS publish profile and testing
-- [ ] Real-time streaming output
-- [ ] Advanced composition features
-
----
-
 ## Commits Summary
 
 1. **Initial plan** - Planning and architecture

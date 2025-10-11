@@ -168,14 +168,6 @@ The downgrade information can be surfaced to users via:
 3. Detailed logs in settings/diagnostics panel
 4. API response metadata for web/CLI clients
 
-## Future Enhancements
-
-1. **Preflight Validation**: Run validators before attempting generation
-2. **Provider Health Monitoring**: Track success rates and latency
-3. **Smart Selection**: Choose providers based on historical performance
-4. **User Preferences**: Allow users to customize fallback chains
-5. **TTS and Visual Orchestrators**: Apply same pattern to other stages
-
 ## Error Codes
 
 - **E300**: General provider failure

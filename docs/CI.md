@@ -300,15 +300,6 @@ webServer: {
 
 Or check if dev server is failing to start.
 
-## Future Enhancements
-
-Potential improvements for the CI pipeline:
-- Add performance benchmarking
-- Integrate security scanning (Dependabot, CodeQL)
-- Add Docker image builds
-- Implement preview deployments
-- Add visual regression testing baselines
-
 ## Related Documentation
 
 - [E2E Test README](../Aura.E2E/README.md)

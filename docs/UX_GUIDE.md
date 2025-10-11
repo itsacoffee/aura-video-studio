@@ -285,16 +285,6 @@ Every control has contextual help:
 - Close conflicting browser extensions
 - Verify focus is in wizard
 
-## Future Enhancements
-
-Planned features:
-- Settings export/import
-- Profile templates
-- Bulk video generation
-- Custom keyboard shortcuts
-- Dark mode toggle
-- Multi-language UI
-
 ## Related Documentation
 
 - [TTS and Captions Guide](./TTS-and-Captions.md)

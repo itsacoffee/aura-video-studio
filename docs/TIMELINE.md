@@ -296,17 +296,6 @@ This ensures consistent render output for the same timeline configuration.
 - Drag-and-drop clip reordering not yet implemented
 - No waveform visualization for audio tracks
 
-## Future Enhancements
-
-Planned features:
-- Real-time video preview
-- Drag-and-drop editing
-- Audio waveform display
-- Transition effects
-- Color grading
-- Multi-camera editing
-- Proxy workflows for large files
-
 ## Related Documentation
 
 - [UX Guide](./UX_GUIDE.md)

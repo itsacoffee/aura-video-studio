@@ -393,26 +393,6 @@ This ensures:
 - ✅ Cross-platform compatibility
 - ✅ Faster development iteration
 
-## Future Enhancements
-
-### Short-term
-- [ ] Add actual TTS synthesis demo (where supported)
-- [ ] Generate sample video file (if FFmpeg installed)
-- [ ] Show audio processing pipeline
-- [ ] Demonstrate subtitle generation
-
-### Medium-term
-- [ ] Interactive mode with prompts
-- [ ] Save generated script to file
-- [ ] Export demo results as JSON
-- [ ] Add performance benchmarks
-
-### Long-term
-- [ ] Full CLI video generator
-- [ ] Batch processing mode
-- [ ] REST API wrapper
-- [ ] Docker containerization
-
 ## Performance
 
 Typical demo execution time:

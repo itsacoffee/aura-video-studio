@@ -282,20 +282,6 @@ dotnet test --filter "FullyQualifiedName~EnumRoundTripTests|FullyQualifiedName~C
 - ✅ `Aura.Cli/README.md` - Comprehensive CLI documentation
 - ✅ `Aura.Tests/Models/EnumRoundTripTests.cs` - Test examples
 
-## Future Enhancements
-
-### Agent 13
-- Generate TypeScript types from C# models automatically (e.g., using Typewriter)
-- Add more enum converters as needed
-- Version bump to V2 when breaking changes are needed
-
-### Agent 14
-- Add `ComposeCommand` for timeline composition
-- Add `RenderCommand` for video rendering
-- Add `--json` flag for JSON output
-- Add progress reporting with `--progress` flag
-- Package as dotnet global tool for `dotnet tool install -g aura-cli`
-
 ## Breaking Changes
 
 **None.** This implementation is fully backward compatible:
