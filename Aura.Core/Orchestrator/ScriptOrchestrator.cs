@@ -147,18 +147,66 @@ public class ScriptOrchestrator
     {
         if (!_providers.TryGetValue(providerName, out var provider))
         {
-            _logger.LogWarning("Provider {Provider} not available", providerName);
-            return new ScriptResult
+            // Special case: if RuleBased is requested but not in dictionary, instantiate it as last resort
+            if (providerName == "RuleBased")
             {
-                Success = false,
-                ErrorCode = "E305",
-                ErrorMessage = $"Provider {providerName} not available",
-                Script = null,
-                ProviderUsed = providerName,
-                IsFallback = isFallback,
-                RequestedProvider = requestedProvider,
-                DowngradeReason = downgradeReason
-            };
+                _logger.LogWarning("RuleBased provider not in registry, instantiating as guaranteed fallback");
+                try
+                {
+                    // Instantiate RuleBased provider dynamically
+                    var type = Type.GetType("Aura.Providers.Llm.RuleBasedLlmProvider, Aura.Providers");
+                    if (type != null)
+                    {
+                        provider = (ILlmProvider)Activator.CreateInstance(type, _logger)!;
+                        _providers[providerName] = provider; // Cache it for future use
+                    }
+                    else
+                    {
+                        _logger.LogError("RuleBasedLlmProvider type not found via reflection");
+                        return new ScriptResult
+                        {
+                            Success = false,
+                            ErrorCode = "E305",
+                            ErrorMessage = "RuleBased provider type not found",
+                            Script = null,
+                            ProviderUsed = providerName,
+                            IsFallback = isFallback,
+                            RequestedProvider = requestedProvider,
+                            DowngradeReason = downgradeReason
+                        };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to instantiate RuleBased provider");
+                    return new ScriptResult
+                    {
+                        Success = false,
+                        ErrorCode = "E305",
+                        ErrorMessage = $"Failed to instantiate RuleBased provider: {ex.Message}",
+                        Script = null,
+                        ProviderUsed = providerName,
+                        IsFallback = isFallback,
+                        RequestedProvider = requestedProvider,
+                        DowngradeReason = downgradeReason
+                    };
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Provider {Provider} not available", providerName);
+                return new ScriptResult
+                {
+                    Success = false,
+                    ErrorCode = "E305",
+                    ErrorMessage = $"Provider {providerName} not available",
+                    Script = null,
+                    ProviderUsed = providerName,
+                    IsFallback = isFallback,
+                    RequestedProvider = requestedProvider,
+                    DowngradeReason = downgradeReason
+                };
+            }
         }
 
         try
