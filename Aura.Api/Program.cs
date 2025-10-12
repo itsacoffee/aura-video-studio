@@ -578,6 +578,7 @@ apiGroup.MapPost("/planner/recommendations", async (
 
 // Script generation endpoint
 apiGroup.MapPost("/script", async (
+    HttpContext httpContext,
     [FromBody] ScriptRequest request, 
     Aura.Core.Orchestrator.ScriptOrchestrator orchestrator,
     HardwareDetector hardwareDetector,
@@ -635,10 +636,11 @@ apiGroup.MapPost("/script", async (
         {
             Log.Error("Script generation failed: {ErrorCode} - {ErrorMessage}", result.ErrorCode, result.ErrorMessage);
             
-            // Use ProblemDetailsHelper for consistent error responses
+            // Use ProblemDetailsHelper for consistent error responses with correlation ID
             return ProblemDetailsHelper.CreateScriptError(
                 result.ErrorCode ?? "E300", 
-                result.ErrorMessage ?? "Script generation failed"
+                result.ErrorMessage ?? "Script generation failed",
+                httpContext
             );
         }
         
@@ -656,22 +658,22 @@ apiGroup.MapPost("/script", async (
     catch (JsonException ex)
     {
         Log.Error(ex, "Invalid enum value in script request");
-        return ProblemDetailsHelper.CreateScriptError("E303", ex.Message);
+        return ProblemDetailsHelper.CreateScriptError("E303", ex.Message, httpContext);
     }
     catch (ArgumentException ex)
     {
         Log.Error(ex, "Invalid argument for script generation");
-        return ProblemDetailsHelper.CreateScriptError("E303", ex.Message);
+        return ProblemDetailsHelper.CreateScriptError("E303", ex.Message, httpContext);
     }
     catch (TaskCanceledException)
     {
         Log.Warning("Script generation was cancelled");
-        return ProblemDetailsHelper.CreateScriptError("E301", "Script generation was cancelled");
+        return ProblemDetailsHelper.CreateScriptError("E301", "Script generation was cancelled", httpContext);
     }
     catch (Exception ex)
     {
         Log.Error(ex, "Error generating script: {Message}", ex.Message);
-        return ProblemDetailsHelper.CreateScriptError("E300", $"Error generating script: {ex.Message}");
+        return ProblemDetailsHelper.CreateScriptError("E300", $"Error generating script: {ex.Message}", httpContext);
     }
 })
 .WithName("GenerateScript")
