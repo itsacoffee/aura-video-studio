@@ -38,7 +38,19 @@ public class FfmpegLocator
         
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _toolsDirectory = toolsDirectory ?? Path.Combine(localAppData, "Aura", "Tools");
-        _dependenciesDirectory = Path.Combine(localAppData, "Aura", "dependencies");
+        
+        // If custom tools directory provided, derive dependencies from it
+        if (toolsDirectory != null)
+        {
+            var parentDir = Path.GetDirectoryName(_toolsDirectory);
+            _dependenciesDirectory = parentDir != null 
+                ? Path.Combine(parentDir, "dependencies") 
+                : Path.Combine(localAppData, "Aura", "dependencies");
+        }
+        else
+        {
+            _dependenciesDirectory = Path.Combine(localAppData, "Aura", "dependencies");
+        }
     }
 
     /// <summary>
