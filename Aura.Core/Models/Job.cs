@@ -19,6 +19,7 @@ public record Job
     public DateTime? FinishedAt { get; init; }
     public string? CorrelationId { get; init; }
     public string? ErrorMessage { get; init; }
+    public JobFailure? FailureDetails { get; init; }
     public Brief? Brief { get; init; }
     public PlanSpec? PlanSpec { get; init; }
     public VoiceSpec? VoiceSpec { get; init; }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Artifacts;
@@ -149,7 +150,8 @@ public class JobRunner
             var job = GetJob(jobId);
             if (job != null)
             {
-                UpdateJob(job, status: JobStatus.Failed, errorMessage: ex.Message);
+                var failureDetails = CreateFailureDetails(job, ex);
+                UpdateJob(job, status: JobStatus.Failed, errorMessage: ex.Message, failureDetails: failureDetails);
             }
         }
         finally
@@ -170,7 +172,8 @@ public class JobRunner
         List<JobArtifact>? artifacts = null,
         List<string>? logs = null,
         DateTime? finishedAt = null,
-        string? errorMessage = null)
+        string? errorMessage = null,
+        JobFailure? failureDetails = null)
     {
         var updated = job with
         {
@@ -181,7 +184,8 @@ public class JobRunner
             Artifacts = artifacts ?? job.Artifacts,
             Logs = logs ?? job.Logs,
             FinishedAt = finishedAt ?? job.FinishedAt,
-            ErrorMessage = errorMessage ?? job.ErrorMessage
+            ErrorMessage = errorMessage ?? job.ErrorMessage,
+            FailureDetails = failureDetails ?? job.FailureDetails
         };
 
         _activeJobs[job.Id] = updated;
@@ -191,6 +195,122 @@ public class JobRunner
         JobProgress?.Invoke(this, new JobProgressEventArgs(updated));
 
         return updated;
+    }
+
+    /// <summary>
+    /// Creates detailed failure information from an exception
+    /// </summary>
+    private JobFailure CreateFailureDetails(Job job, Exception ex)
+    {
+        var failureDetails = new JobFailure
+        {
+            Stage = job.Stage,
+            Message = GetFriendlyErrorMessage(ex),
+            CorrelationId = job.CorrelationId ?? string.Empty,
+            FailedAt = DateTime.UtcNow
+        };
+
+        // Check if this is an FFmpeg-related error
+        if (ex.Message.Contains("FFmpeg") || ex.Message.Contains("render failed"))
+        {
+            failureDetails = failureDetails with
+            {
+                ErrorCode = "E304-FFMPEG_RUNTIME",
+                StderrSnippet = TryReadFfmpegLog(job.Id),
+                LogPath = GetFfmpegLogPath(job.Id),
+                SuggestedActions = new[]
+                {
+                    "Try using software encoder (x264) instead of hardware acceleration",
+                    "Verify FFmpeg is properly installed using Dependencies page",
+                    "Check the full log for detailed error information",
+                    "Retry the render with different settings"
+                }
+            };
+        }
+        else
+        {
+            failureDetails = failureDetails with
+            {
+                SuggestedActions = new[]
+                {
+                    "Check the logs for more details",
+                    "Verify all dependencies are installed",
+                    "Retry the operation",
+                    "Contact support if the issue persists"
+                }
+            };
+        }
+
+        return failureDetails;
+    }
+
+    /// <summary>
+    /// Attempts to read the last 16KB of FFmpeg log for a job
+    /// </summary>
+    private string? TryReadFfmpegLog(string jobId)
+    {
+        try
+        {
+            var logPath = GetFfmpegLogPath(jobId);
+            if (!File.Exists(logPath))
+            {
+                return null;
+            }
+
+            // Read last 16KB of the log file
+            var fileInfo = new FileInfo(logPath);
+            var maxBytes = 16 * 1024; // 16KB
+
+            using var fileStream = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            
+            if (fileInfo.Length <= maxBytes)
+            {
+                // Read entire file if smaller than max
+                using var reader = new StreamReader(fileStream);
+                return reader.ReadToEnd();
+            }
+            else
+            {
+                // Read last 16KB
+                fileStream.Seek(-maxBytes, SeekOrigin.End);
+                using var reader = new StreamReader(fileStream);
+                var snippet = reader.ReadToEnd();
+                return $"... (showing last 16KB)\n{snippet}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read FFmpeg log for job {JobId}", jobId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the path to the FFmpeg log file for a job
+    /// </summary>
+    private string GetFfmpegLogPath(string jobId)
+    {
+        var logsDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Aura", "Logs", "ffmpeg");
+        return Path.Combine(logsDir, $"{jobId}.log");
+    }
+
+    /// <summary>
+    /// Extracts a friendly error message from an exception
+    /// </summary>
+    private string GetFriendlyErrorMessage(Exception ex)
+    {
+        // Extract the first line of the exception message for a cleaner display
+        var message = ex.Message.Split('\n')[0];
+        
+        // Try to extract a user-friendly portion
+        if (message.Contains("FFmpeg render failed"))
+        {
+            return "Render failed due to FFmpeg error";
+        }
+        
+        return message.Length > 200 ? message.Substring(0, 197) + "..." : message;
     }
 }
 
