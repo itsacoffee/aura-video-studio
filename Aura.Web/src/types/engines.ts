@@ -66,3 +66,37 @@ export interface StartRequest {
 export interface EngineActionRequest {
   engineId: string;
 }
+
+export interface EngineInstance {
+  id: string;
+  engineId: string;
+  name: string;
+  version: string;
+  mode: 'Managed' | 'External';
+  installPath: string;
+  executablePath?: string;
+  port?: number;
+  status: 'not_installed' | 'installed' | 'running';
+  isRunning: boolean;
+  isHealthy: boolean;
+  notes?: string;
+  healthCheckUrl?: string;
+}
+
+export interface AttachEngineRequest {
+  engineId: string;
+  installPath: string;
+  executablePath?: string;
+  port?: number;
+  healthCheckUrl?: string;
+  notes?: string;
+}
+
+export interface ReconfigureEngineRequest {
+  instanceId: string;
+  installPath?: string;
+  executablePath?: string;
+  port?: number;
+  healthCheckUrl?: string;
+  notes?: string;
+}
