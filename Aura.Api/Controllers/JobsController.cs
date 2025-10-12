@@ -32,7 +32,8 @@ public class JobsController : ControllerBase
     {
         try
         {
-            Log.Information("Creating new job for topic: {Topic}", request.Brief.Topic);
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] Creating new job for topic: {Topic}", correlationId, request.Brief.Topic);
 
             var brief = new Brief(
                 Topic: request.Brief.Topic,
@@ -73,16 +74,27 @@ public class JobsController : ControllerBase
                 planSpec, 
                 voiceSpec, 
                 renderSpec,
-                HttpContext.TraceIdentifier,
+                correlationId,
                 ct
             );
 
-            return Ok(new { jobId = job.Id, status = job.Status, stage = job.Stage });
+            return Ok(new { jobId = job.Id, status = job.Status, stage = job.Stage, correlationId });
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error creating job");
-            return StatusCode(500, new { error = "Error creating job", details = ex.Message });
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error creating job", correlationId);
+            
+            // Return structured ProblemDetails with correlation ID
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E203",
+                title = "Job Creation Failed",
+                status = 500,
+                detail = $"Failed to create job: {ex.Message}",
+                correlationId,
+                traceId = HttpContext.TraceIdentifier
+            });
         }
     }
 
@@ -94,18 +106,37 @@ public class JobsController : ControllerBase
     {
         try
         {
+            var correlationId = HttpContext.TraceIdentifier;
+            
             var job = _jobRunner.GetJob(jobId);
             if (job == null)
             {
-                return NotFound(new { error = "Job not found" });
+                Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
+                return NotFound(new 
+                { 
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Job Not Found", 
+                    status = 404,
+                    detail = $"Job {jobId} not found",
+                    correlationId
+                });
             }
 
             return Ok(job);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error retrieving job {JobId}", jobId);
-            return StatusCode(500, new { error = "Error retrieving job", details = ex.Message });
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error retrieving job {JobId}", correlationId, jobId);
+            
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Error Retrieving Job",
+                status = 500,
+                detail = $"Failed to retrieve job: {ex.Message}",
+                correlationId
+            });
         }
     }
 
@@ -117,24 +148,39 @@ public class JobsController : ControllerBase
     {
         try
         {
+            var correlationId = HttpContext.TraceIdentifier;
+            
             var jobs = _jobRunner.ListJobs(limit);
-            return Ok(new { jobs = jobs, count = jobs.Count });
+            return Ok(new { jobs = jobs, count = jobs.Count, correlationId });
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error listing jobs");
-            return StatusCode(500, new { error = "Error listing jobs", details = ex.Message });
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error listing jobs", correlationId);
+            
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Error Listing Jobs",
+                status = 500,
+                detail = $"Failed to list jobs: {ex.Message}",
+                correlationId
+            });
         }
     }
 
     /// <summary>
     /// Get latest artifacts from recent jobs
+    /// Does NOT attempt to resolve providers - simply returns persisted artifacts
     /// </summary>
     [HttpGet("recent-artifacts")]
     public IActionResult GetRecentArtifacts([FromQuery] int limit = 5)
     {
         try
         {
+            var correlationId = HttpContext.TraceIdentifier;
+            
+            // Get jobs from storage - does not trigger provider resolution
             var jobs = _jobRunner.ListJobs(50); // Get more jobs to find ones with artifacts
             var artifacts = jobs
                 .Where(j => j.Status == JobStatus.Done && j.Artifacts.Count > 0)
@@ -150,12 +196,23 @@ public class JobsController : ControllerBase
                 })
                 .ToList();
 
-            return Ok(new { artifacts = artifacts, count = artifacts.Count });
+            return Ok(new { artifacts = artifacts, count = artifacts.Count, correlationId });
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error getting recent artifacts");
-            return StatusCode(500, new { error = "Error getting recent artifacts", details = ex.Message });
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error getting recent artifacts", correlationId);
+            
+            // Return best-effort empty list rather than throwing
+            // This ensures the endpoint never crashes the API
+            return Ok(new
+            {
+                artifacts = new List<object>(),
+                count = 0,
+                correlationId,
+                warning = "Failed to retrieve artifacts, returning empty list",
+                detail = ex.Message
+            });
         }
     }
 }
