@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using Aura.Core.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 
@@ -10,199 +11,165 @@ namespace Aura.Core.Providers;
 
 /// <summary>
 /// Factory for creating and managing TTS providers based on configuration.
-/// Handles provider selection, API key validation, and fallback logic.
+/// Uses DI to resolve providers - no reflection or Activator.CreateInstance.
 /// </summary>
 public class TtsProviderFactory
 {
-    private readonly ILoggerFactory _loggerFactory;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<TtsProviderFactory> _logger;
     private readonly ProviderSettings _providerSettings;
-    private readonly IHttpClientFactory _httpClientFactory;
 
     public TtsProviderFactory(
-        ILoggerFactory loggerFactory,
-        ProviderSettings providerSettings,
-        IHttpClientFactory httpClientFactory)
+        IServiceProvider serviceProvider,
+        ILogger<TtsProviderFactory> logger,
+        ProviderSettings providerSettings)
     {
-        _loggerFactory = loggerFactory;
+        _serviceProvider = serviceProvider;
+        _logger = logger;
         _providerSettings = providerSettings;
-        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
     /// Creates all available TTS providers based on configuration.
+    /// Resolves providers from DI - never throws on failure.
     /// </summary>
     public Dictionary<string, ITtsProvider> CreateAvailableProviders()
     {
         var providers = new Dictionary<string, ITtsProvider>();
-        bool offlineOnly = _providerSettings.IsOfflineOnly();
+        string correlationId = Guid.NewGuid().ToString("N")[..8];
 
-        // Always add Windows TTS if available (platform-dependent)
+        _logger.LogInformation("[{CorrelationId}] Creating available TTS providers", correlationId);
+
+        // Try to resolve all registered ITtsProvider instances
         try
         {
-            var windowsProvider = CreateWindowsProvider();
-            if (windowsProvider != null)
+            var allProviders = _serviceProvider.GetServices<ITtsProvider>();
+            if (allProviders != null)
             {
-                providers["Windows"] = windowsProvider;
+                foreach (var provider in allProviders)
+                {
+                    if (provider != null)
+                    {
+                        var providerType = provider.GetType().Name;
+                        var providerName = providerType.Replace("TtsProvider", "");
+                        
+                        // Map type names to friendly names
+                        providerName = providerName switch
+                        {
+                            "Windows" => "Windows",
+                            "Piper" => "Piper",
+                            "Mimic3" => "Mimic3",
+                            "ElevenLabs" => "ElevenLabs",
+                            "PlayHT" => "PlayHT",
+                            "Null" => "Null",
+                            "Mock" => "Mock",
+                            _ => providerName
+                        };
+                        
+                        providers[providerName] = provider;
+                        _logger.LogInformation("[{CorrelationId}] Registered {Provider} TTS provider", correlationId, providerName);
+                    }
+                }
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Windows TTS not available on this platform
+            _logger.LogError(ex, "[{CorrelationId}] Error enumerating TTS providers from DI", correlationId);
         }
 
-        // Add Mock provider for testing/CI
-        providers["Mock"] = CreateMockProvider();
-        
-        // Add Null provider as final safety fallback (generates silence)
-        providers["Null"] = CreateNullProvider();
-
-        // Add Pro providers if not in offline mode
-        if (!offlineOnly)
-        {
-            var elevenLabsKey = _providerSettings.GetElevenLabsApiKey();
-            if (!string.IsNullOrEmpty(elevenLabsKey))
-            {
-                providers["ElevenLabs"] = CreateElevenLabsProvider(elevenLabsKey, offlineOnly);
-            }
-
-            var playHTKey = _providerSettings.GetPlayHTApiKey();
-            var playHTUserId = _providerSettings.GetPlayHTUserId();
-            if (!string.IsNullOrEmpty(playHTKey) && !string.IsNullOrEmpty(playHTUserId))
-            {
-                providers["PlayHT"] = CreatePlayHTProvider(playHTKey, playHTUserId, offlineOnly);
-            }
-        }
+        _logger.LogInformation("[{CorrelationId}] Total TTS providers available: {Count}", correlationId, providers.Count);
 
         return providers;
     }
 
     /// <summary>
     /// Gets the default TTS provider based on configuration and availability.
+    /// Never throws - returns NullTtsProvider if no other providers available.
     /// </summary>
     public ITtsProvider GetDefaultProvider()
     {
-        var providers = CreateAvailableProviders();
-
-        // Try Pro providers first if available
-        if (providers.ContainsKey("ElevenLabs"))
-        {
-            return providers["ElevenLabs"];
-        }
-
-        if (providers.ContainsKey("PlayHT"))
-        {
-            return providers["PlayHT"];
-        }
-
-        // Fall back to Windows TTS
-        if (providers.ContainsKey("Windows"))
-        {
-            return providers["Windows"];
-        }
-
-        // Last resort: Mock provider
-        return providers["Mock"];
-    }
-
-    private ITtsProvider? CreateWindowsProvider()
-    {
-        // Use reflection to check if the Windows TTS provider is available
-        // This avoids compile-time dependency on Windows-specific APIs
-        var assembly = typeof(ITtsProvider).Assembly;
-        var providerType = assembly.GetType("Aura.Providers.Tts.WindowsTtsProvider");
+        string correlationId = Guid.NewGuid().ToString("N")[..8];
         
-        if (providerType == null)
+        try
         {
-            // Try loading from Aura.Providers assembly
-            var providersAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => a.GetName().Name == "Aura.Providers");
+            var providers = CreateAvailableProviders();
+
+            // Try Pro providers first if available
+            if (providers.ContainsKey("ElevenLabs"))
+            {
+                _logger.LogInformation("[{CorrelationId}] Selected ElevenLabs as default TTS provider", correlationId);
+                return providers["ElevenLabs"];
+            }
+
+            if (providers.ContainsKey("PlayHT"))
+            {
+                _logger.LogInformation("[{CorrelationId}] Selected PlayHT as default TTS provider", correlationId);
+                return providers["PlayHT"];
+            }
+
+            // Try local providers
+            if (providers.ContainsKey("Mimic3"))
+            {
+                _logger.LogInformation("[{CorrelationId}] Selected Mimic3 as default TTS provider", correlationId);
+                return providers["Mimic3"];
+            }
+
+            if (providers.ContainsKey("Piper"))
+            {
+                _logger.LogInformation("[{CorrelationId}] Selected Piper as default TTS provider", correlationId);
+                return providers["Piper"];
+            }
+
+            // Fall back to Windows TTS
+            if (providers.ContainsKey("Windows"))
+            {
+                _logger.LogInformation("[{CorrelationId}] Selected Windows as default TTS provider", correlationId);
+                return providers["Windows"];
+            }
+
+            // Last resort: Null provider
+            if (providers.ContainsKey("Null"))
+            {
+                _logger.LogWarning("[{CorrelationId}] No TTS providers available, using Null provider (generates silence)", correlationId);
+                return providers["Null"];
+            }
+
+            // If even Null provider is not available in the dictionary, try to resolve it directly as absolute fallback
+            _logger.LogError("[{CorrelationId}] CRITICAL: No TTS providers registered, attempting to resolve Null provider directly", correlationId);
             
-            if (providersAssembly != null)
+            // Get all registered providers and find Null
+            var allProviders = _serviceProvider.GetServices<ITtsProvider>();
+            var nullProvider = allProviders?.FirstOrDefault(p => p.GetType().Name == "NullTtsProvider");
+            if (nullProvider != null)
             {
-                providerType = providersAssembly.GetType("Aura.Providers.Tts.WindowsTtsProvider");
+                _logger.LogWarning("[{CorrelationId}] Found Null provider via direct resolution", correlationId);
+                return nullProvider;
             }
+
+            // Final fallback - should never reach here if DI is configured properly
+            throw new InvalidOperationException("No TTS providers available and NullTtsProvider could not be resolved from DI");
         }
-
-        if (providerType != null)
+        catch (Exception ex)
         {
-            var logger = _loggerFactory.CreateLogger(providerType);
-            return Activator.CreateInstance(providerType, logger) as ITtsProvider;
-        }
-
-        return null;
-    }
-
-    private ITtsProvider CreateMockProvider()
-    {
-        var assembly = AppDomain.CurrentDomain.GetAssemblies()
-            .FirstOrDefault(a => a.GetName().Name == "Aura.Providers");
-        
-        if (assembly != null)
-        {
-            var providerType = assembly.GetType("Aura.Providers.Tts.MockTtsProvider");
-            if (providerType != null)
+            _logger.LogError(ex, "[{CorrelationId}] Error getting default TTS provider", correlationId);
+            
+            // Try one last time to get Null provider directly
+            try
             {
-                var logger = _loggerFactory.CreateLogger(providerType);
-                return (ITtsProvider)Activator.CreateInstance(providerType, logger)!;
+                var allProviders = _serviceProvider.GetServices<ITtsProvider>();
+                var nullProvider = allProviders?.FirstOrDefault(p => p.GetType().Name == "NullTtsProvider");
+                if (nullProvider != null)
+                {
+                    _logger.LogWarning("[{CorrelationId}] Recovered by resolving Null provider directly", correlationId);
+                    return nullProvider;
+                }
             }
-        }
-
-        throw new InvalidOperationException("MockTtsProvider not found");
-    }
-
-    private ITtsProvider CreateNullProvider()
-    {
-        var assembly = AppDomain.CurrentDomain.GetAssemblies()
-            .FirstOrDefault(a => a.GetName().Name == "Aura.Providers");
-        
-        if (assembly != null)
-        {
-            var providerType = assembly.GetType("Aura.Providers.Tts.NullTtsProvider");
-            if (providerType != null)
+            catch (Exception innerEx)
             {
-                var logger = _loggerFactory.CreateLogger(providerType);
-                return (ITtsProvider)Activator.CreateInstance(providerType, logger)!;
+                _logger.LogError(innerEx, "[{CorrelationId}] Failed to resolve Null provider as fallback", correlationId);
             }
+
+            throw;
         }
-
-        throw new InvalidOperationException("NullTtsProvider not found");
-    }
-
-    private ITtsProvider CreateElevenLabsProvider(string apiKey, bool offlineOnly)
-    {
-        var assembly = AppDomain.CurrentDomain.GetAssemblies()
-            .FirstOrDefault(a => a.GetName().Name == "Aura.Providers");
-        
-        if (assembly != null)
-        {
-            var providerType = assembly.GetType("Aura.Providers.Tts.ElevenLabsTtsProvider");
-            if (providerType != null)
-            {
-                var logger = _loggerFactory.CreateLogger(providerType);
-                var httpClient = _httpClientFactory.CreateClient();
-                return (ITtsProvider)Activator.CreateInstance(providerType, logger, httpClient, apiKey, offlineOnly)!;
-            }
-        }
-
-        throw new InvalidOperationException("ElevenLabsTtsProvider not found");
-    }
-
-    private ITtsProvider CreatePlayHTProvider(string apiKey, string userId, bool offlineOnly)
-    {
-        var assembly = AppDomain.CurrentDomain.GetAssemblies()
-            .FirstOrDefault(a => a.GetName().Name == "Aura.Providers");
-        
-        if (assembly != null)
-        {
-            var providerType = assembly.GetType("Aura.Providers.Tts.PlayHTTtsProvider");
-            if (providerType != null)
-            {
-                var logger = _loggerFactory.CreateLogger(providerType);
-                var httpClient = _httpClientFactory.CreateClient();
-                return (ITtsProvider)Activator.CreateInstance(providerType, logger, httpClient, apiKey, userId, offlineOnly)!;
-            }
-        }
-
-        throw new InvalidOperationException("PlayHTTtsProvider not found");
     }
 }

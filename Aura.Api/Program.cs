@@ -117,14 +117,24 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
 builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 
-// Register TTS provider factory and default provider
+// Register TTS providers with safe DI resolution
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton<Aura.Core.Providers.TtsProviderFactory>();
-builder.Services.AddSingleton<ITtsProvider>(sp =>
+
+// Register NullTtsProvider (always available as final fallback)
+builder.Services.AddSingleton<ITtsProvider, NullTtsProvider>();
+
+// Register WindowsTtsProvider (platform-dependent, may not be available on Linux)
+// Only register if we can create it successfully
+if (OperatingSystem.IsWindows())
 {
-    var factory = sp.GetRequiredService<Aura.Core.Providers.TtsProviderFactory>();
-    return factory.GetDefaultProvider();
-});
+    builder.Services.AddSingleton<ITtsProvider, WindowsTtsProvider>();
+}
+
+// Register TTS provider factory
+builder.Services.AddSingleton<Aura.Core.Providers.TtsProviderFactory>();
+
+// DO NOT resolve default provider during startup - let it be resolved lazily when first needed
+// This prevents startup crashes due to provider resolution issues
 
 builder.Services.AddSingleton<IVideoComposer>(sp => 
 {
