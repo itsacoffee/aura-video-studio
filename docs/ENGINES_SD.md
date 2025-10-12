@@ -263,9 +263,59 @@ Usually caused by:
 ## Model Management
 
 ### Where Models Are Stored
+
+**Default locations:**
 ```
-%LOCALAPPDATA%\Aura\Tools\stable-diffusion-webui\models\Stable-diffusion\
+%LOCALAPPDATA%\Aura\Tools\stable-diffusion-webui\models\
+├── Stable-diffusion\  (base models and refiners)
+├── VAE\              (VAE models)
+└── Lora\             (LoRA models)
 ```
+
+### Managing Models with Aura
+
+Aura provides a built-in **Models & Voices Manager** to help you:
+- View all installed models with file locations
+- See model sizes and verification status
+- Add external folders with your existing model collections
+- Open model folders directly from the UI
+- Verify model checksums (if available)
+- Remove models you no longer need
+
+**To access the Model Manager:**
+1. Go to **Settings → Download Center → Engines**
+2. Find your installed Stable Diffusion engine
+3. Expand the **"Models & Voices"** section
+4. View, manage, and organize your models
+
+### Using External Model Folders
+
+If you already have a collection of SD models in another location, you can add them as external folders without copying:
+
+1. In the Model Manager, click **"Add External Folder"**
+2. Enter the path to your model folder (e.g., `D:\StableDiffusion\Models`)
+3. Aura will index all models in that folder
+4. Models remain in their original location (read-only)
+5. Aura can use these models just like installed ones
+
+**Benefits of external folders:**
+- No duplication of large model files
+- Keep your existing organization
+- Share models across multiple applications
+- Easy to back up and sync
+
+### Model Verification
+
+Aura verifies models using SHA256 checksums when available:
+- **Verified** (✓): Checksum matches the expected value
+- **Unknown checksum**: Model is user-supplied or from external folder
+- **Not verified**: Verification failed or checksum mismatch
+
+To verify a model:
+1. Open the Model Manager
+2. Find the model in the list
+3. Click the checkmark icon to verify
+4. Aura will compute and compare the checksum
 
 ### Downloading Additional Models
 
