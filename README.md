@@ -67,10 +67,33 @@ cd Aura.Web && npm install && npm run dev
 
 For detailed build instructions, see [INSTALL.md](./INSTALL.md)
 
+### Smoke Testing
+
+Run startup sanity checks to ensure the application is healthy:
+
+```bash
+# Linux/macOS
+./scripts/smoke/start_and_probe.sh
+
+# Windows
+.\scripts\smoke\start_and_probe.ps1
+```
+
+The smoke test script:
+- Builds the solution
+- Runs core tests
+- Starts the API in background
+- Probes critical endpoints (health, capabilities, queue)
+- Monitors logs for exceptions
+- Returns exit code 0 on success
+
+See [scripts/smoke/README.md](./scripts/smoke/README.md) for detailed usage.
+
 **See detailed documentation:**
 - [INSTALL.md](./INSTALL.md) - **Build and installation guide**
 - [LOCAL_PROVIDERS_SETUP.md](./LOCAL_PROVIDERS_SETUP.md) - **How to set up local AI providers (Stable Diffusion, Ollama, FFmpeg)**
 - [PORTABLE.md](./PORTABLE.md) - **User guide for portable version**
+- [scripts/smoke/README.md](./scripts/smoke/README.md) - **Smoke test scripts for sanity checks**
 - [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md) - Original implementation details
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Complete architecture overview
 - [Aura.Api/README.md](./Aura.Api/README.md) - Backend API documentation
