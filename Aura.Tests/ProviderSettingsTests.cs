@@ -17,10 +17,6 @@ public class ProviderSettingsTests : IDisposable
         _logger = NullLogger<ProviderSettings>.Instance;
         _testDirectory = Path.Combine(Path.GetTempPath(), "aura-provider-settings-tests-" + Guid.NewGuid().ToString());
         Directory.CreateDirectory(_testDirectory);
-        
-        // Ensure test directory exists for Aura settings
-        var auraDir = Path.Combine(_testDirectory, "Aura");
-        Directory.CreateDirectory(auraDir);
     }
 
     public void Dispose()
@@ -40,159 +36,148 @@ public class ProviderSettingsTests : IDisposable
 
     private ProviderSettings CreateTestSettings()
     {
-        // Create a custom ProviderSettings that uses our test directory
-        // This requires using reflection or creating a testable version
-        // For now, we'll use the actual settings and clean up after each test
         return new ProviderSettings(_logger);
     }
 
     [Fact]
-    public void IsPortableModeEnabled_Should_ReturnFalse_ByDefault()
+    public void ProviderSettings_Should_AlwaysReturnPortableRoot()
     {
         // Arrange
         var settings = CreateTestSettings();
 
         // Act
-        var isEnabled = settings.IsPortableModeEnabled();
+        var portableRoot = settings.GetPortableRootPath();
 
-        // Assert - might be true if previous tests left data
-        // So we'll just test the SetPortableMode functionality instead
-        Assert.True(true); // Skip this test for now
+        // Assert - Portable mode is always enabled
+        Assert.NotNull(portableRoot);
+        Assert.NotEmpty(portableRoot);
     }
 
     [Fact]
-    public void GetPortableRootPath_Should_ReturnNull_ByDefault()
+    public void GetToolsDirectory_Should_ReturnToolsSubfolder()
     {
         // Arrange
         var settings = CreateTestSettings();
-
-        // Act
-        var path = settings.GetPortableRootPath();
-
-        // Assert - might have value from previous tests
-        // Just check that the method doesn't throw
-        Assert.True(true);
-    }
-
-    [Fact]
-    public void SetPortableMode_Should_EnablePortableMode()
-    {
-        // Arrange
-        var settings = CreateTestSettings();
-        var portableRoot = Path.Combine(_testDirectory, "portable-" + Guid.NewGuid().ToString());
-
-        // Act
-        settings.SetPortableMode(true, portableRoot);
-
-        // Assert
-        Assert.True(settings.IsPortableModeEnabled());
-        Assert.Equal(portableRoot, settings.GetPortableRootPath());
-        
-        // Cleanup
-        settings.SetPortableMode(false);
-    }
-
-    [Fact]
-    public void SetPortableMode_Should_DisablePortableMode()
-    {
-        // Arrange
-        var settings = CreateTestSettings();
-        var portableRoot = Path.Combine(_testDirectory, "portable-" + Guid.NewGuid().ToString());
-        settings.SetPortableMode(true, portableRoot);
-
-        // Act
-        settings.SetPortableMode(false);
-
-        // Assert
-        Assert.False(settings.IsPortableModeEnabled());
-    }
-
-    [Fact]
-    public void GetToolsDirectory_Should_ReturnPortableRoot_WhenPortableModeEnabled()
-    {
-        // Arrange
-        var settings = CreateTestSettings();
-        var portableRoot = Path.Combine(_testDirectory, "portable-" + Guid.NewGuid().ToString());
-        settings.SetPortableMode(true, portableRoot);
 
         // Act
         var toolsDir = settings.GetToolsDirectory();
+        var portableRoot = settings.GetPortableRootPath();
 
         // Assert
-        Assert.Equal(portableRoot, toolsDir);
-        
-        // Cleanup
-        settings.SetPortableMode(false);
+        Assert.Contains("Tools", toolsDir);
+        Assert.StartsWith(portableRoot, toolsDir);
+        Assert.True(Directory.Exists(toolsDir)); // Should create directory
     }
 
     [Fact]
-    public void GetToolsDirectory_Should_ReturnAppDataPath_WhenPortableModeDisabled()
+    public void GetAuraDataDirectory_Should_ReturnAuraDataSubfolder()
     {
         // Arrange
         var settings = CreateTestSettings();
-        settings.SetPortableMode(false);
 
         // Act
+        var auraDataDir = settings.GetAuraDataDirectory();
+        var portableRoot = settings.GetPortableRootPath();
+
+        // Assert
+        Assert.Contains("AuraData", auraDataDir);
+        Assert.StartsWith(portableRoot, auraDataDir);
+        Assert.True(Directory.Exists(auraDataDir)); // Should create directory
+    }
+
+    [Fact]
+    public void GetLogsDirectory_Should_ReturnLogsSubfolder()
+    {
+        // Arrange
+        var settings = CreateTestSettings();
+
+        // Act
+        var logsDir = settings.GetLogsDirectory();
+        var portableRoot = settings.GetPortableRootPath();
+
+        // Assert
+        Assert.Contains("Logs", logsDir);
+        Assert.StartsWith(portableRoot, logsDir);
+        Assert.True(Directory.Exists(logsDir)); // Should create directory
+    }
+
+    [Fact]
+    public void GetProjectsDirectory_Should_ReturnProjectsSubfolder()
+    {
+        // Arrange
+        var settings = CreateTestSettings();
+
+        // Act
+        var projectsDir = settings.GetProjectsDirectory();
+        var portableRoot = settings.GetPortableRootPath();
+
+        // Assert
+        Assert.Contains("Projects", projectsDir);
+        Assert.StartsWith(portableRoot, projectsDir);
+        Assert.True(Directory.Exists(projectsDir)); // Should create directory
+    }
+
+    [Fact]
+    public void GetDownloadsDirectory_Should_ReturnDownloadsSubfolder()
+    {
+        // Arrange
+        var settings = CreateTestSettings();
+
+        // Act
+        var downloadsDir = settings.GetDownloadsDirectory();
+        var portableRoot = settings.GetPortableRootPath();
+
+        // Assert
+        Assert.Contains("Downloads", downloadsDir);
+        Assert.StartsWith(portableRoot, downloadsDir);
+        Assert.True(Directory.Exists(downloadsDir)); // Should create directory
+    }
+
+    [Fact]
+    public void GetOutputDirectory_Should_DefaultToProjectsDirectory()
+    {
+        // Arrange
+        var settings = CreateTestSettings();
+
+        // Act
+        var outputDir = settings.GetOutputDirectory();
+        var projectsDir = settings.GetProjectsDirectory();
+
+        // Assert
+        Assert.Equal(projectsDir, outputDir);
+    }
+
+    [Fact]
+    public void PortableDirectories_Should_AllExistAfterFirstAccess()
+    {
+        // Arrange
+        var settings = CreateTestSettings();
+
+        // Act - Access all directory properties
+        var portableRoot = settings.GetPortableRootPath();
         var toolsDir = settings.GetToolsDirectory();
+        var auraDataDir = settings.GetAuraDataDirectory();
+        var logsDir = settings.GetLogsDirectory();
+        var projectsDir = settings.GetProjectsDirectory();
+        var downloadsDir = settings.GetDownloadsDirectory();
 
-        // Assert
-        Assert.Contains("dependencies", toolsDir);
-        Assert.Contains("Aura", toolsDir);
+        // Assert - All directories should be created
+        Assert.True(Directory.Exists(toolsDir));
+        Assert.True(Directory.Exists(auraDataDir));
+        Assert.True(Directory.Exists(logsDir));
+        Assert.True(Directory.Exists(projectsDir));
+        Assert.True(Directory.Exists(downloadsDir));
     }
 
     [Fact]
-    public void PortableMode_Settings_Should_PersistAcrossInstances()
+    public void ProviderSettings_Should_CreateSettingsInAuraData()
     {
-        // Arrange
-        var portableRoot = Path.Combine(_testDirectory, "portable-persist-" + Guid.NewGuid().ToString());
-        
-        // First instance - set portable mode
-        var settings1 = CreateTestSettings();
-        settings1.SetPortableMode(true, portableRoot);
-
-        // Act - Create new instance and reload
-        var settings2 = CreateTestSettings();
-
-        // Assert
-        Assert.True(settings2.IsPortableModeEnabled());
-        Assert.Equal(portableRoot, settings2.GetPortableRootPath());
-        
-        // Cleanup
-        settings2.SetPortableMode(false);
-    }
-
-    [Fact]
-    public void SetPortableMode_Should_HandleEmptyPath()
-    {
-        // Arrange
+        // Arrange & Act
         var settings = CreateTestSettings();
-
-        // Act
-        settings.SetPortableMode(true, "");
+        var auraDataDir = settings.GetAuraDataDirectory();
 
         // Assert
-        Assert.True(settings.IsPortableModeEnabled());
-        
-        // Cleanup
-        settings.SetPortableMode(false);
-    }
-
-    [Fact]
-    public void GetToolsDirectory_Should_FallbackToAppData_WhenPortableRootNotSet()
-    {
-        // Arrange
-        var settings = CreateTestSettings();
-        settings.SetPortableMode(false); // Ensure clean state
-        settings.SetPortableMode(true, "   "); // Enable with whitespace path
-
-        // Act
-        var toolsDir = settings.GetToolsDirectory();
-
-        // Assert - Should fallback to AppData since path is effectively empty
-        Assert.Contains("dependencies", toolsDir);
-        Assert.Contains("Aura", toolsDir);
-        
-        // Cleanup
-        settings.SetPortableMode(false);
+        Assert.True(Directory.Exists(auraDataDir));
+        // Settings file would be created on first save
     }
 }
