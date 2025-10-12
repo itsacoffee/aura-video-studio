@@ -6,6 +6,7 @@ using Aura.Core.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Aura.Core.Providers;
 
@@ -146,8 +147,9 @@ public class TtsProviderFactory
                 return nullProvider;
             }
 
-            // Final fallback - should never reach here if DI is configured properly
-            throw new InvalidOperationException("No TTS providers available and NullTtsProvider could not be resolved from DI");
+            // Final fallback - create NullTtsProvider directly if not available in DI
+            _logger.LogError("[{CorrelationId}] CRITICAL: No TTS providers available in DI, creating NullTtsProvider directly", correlationId);
+            return CreateNullProviderFallback(correlationId);
         }
         catch (Exception ex)
         {
@@ -169,7 +171,50 @@ public class TtsProviderFactory
                 _logger.LogError(innerEx, "[{CorrelationId}] Failed to resolve Null provider as fallback", correlationId);
             }
 
-            throw;
+            // Absolute final fallback - create NullTtsProvider directly
+            _logger.LogError("[{CorrelationId}] ULTIMATE FALLBACK: Creating NullTtsProvider directly", correlationId);
+            return CreateNullProviderFallback(correlationId);
         }
+    }
+
+    /// <summary>
+    /// Creates a NullTtsProvider directly when DI resolution fails.
+    /// This is the absolute last resort fallback to ensure the factory never returns null.
+    /// </summary>
+    private ITtsProvider CreateNullProviderFallback(string correlationId)
+    {
+        _logger.LogWarning("[{CorrelationId}] Creating emergency NullTtsProvider with NullLogger", correlationId);
+        
+        // Use reflection to create NullTtsProvider since we can't reference Aura.Providers from Aura.Core
+        // This avoids circular dependency
+        var nullProviderType = AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(a => a.GetTypes())
+            .FirstOrDefault(t => t.Name == "NullTtsProvider" && typeof(ITtsProvider).IsAssignableFrom(t));
+        
+        if (nullProviderType != null)
+        {
+            try
+            {
+                // Create logger for NullTtsProvider
+                var loggerType = typeof(ILogger<>).MakeGenericType(nullProviderType);
+                var nullLoggerType = typeof(NullLogger<>).MakeGenericType(nullProviderType);
+                var nullLogger = Activator.CreateInstance(nullLoggerType);
+                
+                // Create NullTtsProvider instance
+                var nullProvider = Activator.CreateInstance(nullProviderType, nullLogger);
+                if (nullProvider is ITtsProvider provider)
+                {
+                    _logger.LogInformation("[{CorrelationId}] Successfully created emergency NullTtsProvider", correlationId);
+                    return provider;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[{CorrelationId}] Failed to create NullTtsProvider via reflection", correlationId);
+            }
+        }
+
+        // If all else fails, throw - but this should never happen
+        throw new InvalidOperationException("Unable to create NullTtsProvider fallback. This should never happen.");
     }
 }
