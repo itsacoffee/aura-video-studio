@@ -39,8 +39,10 @@ export interface FailureToastOptions {
   title: string;
   message: string;
   errorDetails?: string;
-  onFix?: () => void;
-  onViewLogs?: () => void;
+  correlationId?: string;
+  errorCode?: string;
+  onRetry?: () => void;
+  onOpenLogs?: () => void;
 }
 
 /**
@@ -99,7 +101,7 @@ export function useNotifications() {
   };
 
   const showFailureToast = (options: FailureToastOptions) => {
-    const { title, message, errorDetails, onFix, onViewLogs } = options;
+    const { title, message, errorDetails, correlationId, errorCode, onRetry, onOpenLogs } = options;
 
     dispatchToast(
       <Toast>
@@ -114,26 +116,36 @@ export function useNotifications() {
                 {errorDetails}
               </div>
             )}
+            {correlationId && (
+              <div style={{ marginTop: tokens.spacingVerticalXS, fontSize: '11px', opacity: 0.7, fontFamily: 'monospace' }}>
+                Correlation ID: {correlationId}
+              </div>
+            )}
+            {errorCode && (
+              <div style={{ marginTop: tokens.spacingVerticalXXS, fontSize: '11px', opacity: 0.7 }}>
+                Error Code: {errorCode}
+              </div>
+            )}
           </div>
         </ToastBody>
-        {(onFix || onViewLogs) && (
+        {(onRetry || onOpenLogs) && (
           <ToastFooter className={styles.toastFooter}>
-            {onFix && (
+            {onRetry && (
               <Button
                 size="small"
                 appearance="primary"
-                onClick={onFix}
+                onClick={onRetry}
               >
-                Fix
+                Retry
               </Button>
             )}
-            {onViewLogs && (
+            {onOpenLogs && (
               <Button
                 size="small"
                 appearance="subtle"
-                onClick={onViewLogs}
+                onClick={onOpenLogs}
               >
-                View logs
+                Open Logs
               </Button>
             )}
           </ToastFooter>

@@ -372,6 +372,64 @@ apiGroup.MapGet("/logs", (HttpContext httpContext, string? level = null, string?
 .WithName("GetLogs")
 .WithOpenApi();
 
+// Open logs folder in file explorer
+apiGroup.MapPost("/logs/open-folder", () =>
+{
+    try
+    {
+        var logsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+        
+        // Create logs directory if it doesn't exist
+        if (!Directory.Exists(logsDirectory))
+        {
+            Directory.CreateDirectory(logsDirectory);
+        }
+
+        // Platform-specific logic to open folder in file explorer
+        if (OperatingSystem.IsWindows())
+        {
+            System.Diagnostics.Process.Start("explorer.exe", logsDirectory);
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            System.Diagnostics.Process.Start("open", logsDirectory);
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            // Try xdg-open first (most common), fallback to nautilus/dolphin
+            try
+            {
+                System.Diagnostics.Process.Start("xdg-open", logsDirectory);
+            }
+            catch
+            {
+                // Fallback options for Linux
+                try
+                {
+                    System.Diagnostics.Process.Start("nautilus", logsDirectory);
+                }
+                catch
+                {
+                    System.Diagnostics.Process.Start("dolphin", logsDirectory);
+                }
+            }
+        }
+        else
+        {
+            return Results.Problem("Opening folders is not supported on this platform", statusCode: 501);
+        }
+
+        return Results.Ok(new { success = true, path = logsDirectory });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error opening logs folder");
+        return Results.Problem("Error opening logs folder. Please navigate manually.", statusCode: 500);
+    }
+})
+.WithName("OpenLogsFolder")
+.WithOpenApi();
+
 // Capabilities endpoint
 apiGroup.MapGet("/capabilities", async (HardwareDetector detector) =>
 {

@@ -46,6 +46,8 @@ import { PreflightPanel } from '../../components/PreflightPanel';
 import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
 import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
 import { GenerationPanel } from '../../components/Generation/GenerationPanel';
+import { parseApiError, openLogsFolder } from '../../utils/apiErrorHandler';
+import { useNotifications } from '../../components/Notifications/Toasts';
 
 const useStyles = makeStyles({
   container: {
@@ -184,6 +186,8 @@ export function CreateWizard() {
   // Generation panel state
   const [showGenerationPanel, setShowGenerationPanel] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+
+  const { showFailureToast } = useNotifications();
 
   // Update provider selection
   const updateProviderSelection = (selection: PerStageProviderSelection) => {
@@ -382,11 +386,29 @@ export function CreateWizard() {
         setActiveJobId(data.jobId);
         setShowGenerationPanel(true);
       } else {
-        alert('Failed to start video generation');
+        const errorInfo = await parseApiError(response);
+        showFailureToast({
+          title: errorInfo.title,
+          message: errorInfo.message,
+          errorDetails: errorInfo.errorDetails,
+          correlationId: errorInfo.correlationId,
+          errorCode: errorInfo.errorCode,
+          onRetry: () => handleGenerate(),
+          onOpenLogs: openLogsFolder,
+        });
       }
     } catch (error) {
       console.error('Error starting generation:', error);
-      alert('Error starting video generation');
+      const errorInfo = await parseApiError(error);
+      showFailureToast({
+        title: errorInfo.title,
+        message: errorInfo.message,
+        errorDetails: errorInfo.errorDetails,
+        correlationId: errorInfo.correlationId,
+        errorCode: errorInfo.errorCode,
+        onRetry: () => handleGenerate(),
+        onOpenLogs: openLogsFolder,
+      });
     } finally {
       setGenerating(false);
     }
