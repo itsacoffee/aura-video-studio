@@ -31,6 +31,7 @@ export interface EngineStatus {
   health?: 'healthy' | 'unreachable' | null;
   processId?: number;
   logsPath?: string;
+  installPath?: string;
   messages: string[];
 }
 

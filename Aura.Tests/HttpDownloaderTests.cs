@@ -158,7 +158,7 @@ public class HttpDownloaderTests : IDisposable
     }
 
     [Fact]
-    public async Task DownloadFileAsync_Should_ReturnFalse_WhenChecksumMismatch()
+    public async Task DownloadFileAsync_Should_ThrowChecksumError_OnMismatch()
     {
         // Arrange
         var testContent = new byte[1024];
@@ -181,12 +181,14 @@ public class HttpDownloaderTests : IDisposable
         var downloader = new HttpDownloader(_logger, httpClient);
         var outputPath = Path.Combine(_testDirectory, "test-bad-checksum.bin");
 
-        // Act
-        var success = await downloader.DownloadFileAsync("http://test.com/file.bin", outputPath, wrongSha256);
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<DownloadException>(async () =>
+        {
+            await downloader.DownloadFileAsync("http://test.com/file.bin", outputPath, wrongSha256);
+        });
 
-        // Assert
-        Assert.False(success);
-        Assert.False(File.Exists(outputPath)); // File should not be created if checksum fails
+        Assert.Equal(DownloadErrorCodes.E_DL_CHECKSUM, exception.ErrorCode);
+        Assert.False(File.Exists(outputPath)); // File should not exist after checksum failure
     }
 
     [Fact]
@@ -299,6 +301,191 @@ public class HttpDownloaderTests : IDisposable
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
         {
             await downloader.DownloadFileAsync("http://test.com/file.bin", outputPath, null, null, cts.Token);
+        });
+    }
+
+    [Fact]
+    public async Task DownloadFileAsync_Should_FallbackToMirror_When404()
+    {
+        // Arrange
+        var testContent = new byte[1024];
+        new Random().NextBytes(testContent);
+
+        var callCount = 0;
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync((HttpRequestMessage req, CancellationToken ct) =>
+            {
+                callCount++;
+                if (req.RequestUri?.ToString().Contains("primary") == true)
+                {
+                    // Primary URL returns 404
+                    return new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.NotFound
+                    };
+                }
+                // Mirror succeeds
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new ByteArrayContent(testContent)
+                };
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object);
+        var downloader = new HttpDownloader(_logger, httpClient);
+        var outputPath = Path.Combine(_testDirectory, "test-mirror-fallback.bin");
+
+        var urls = new[] { "http://primary.com/file.bin", "http://mirror.com/file.bin" };
+
+        // Act
+        var success = await downloader.DownloadFileAsync(urls, outputPath);
+
+        // Assert
+        Assert.True(success);
+        Assert.True(File.Exists(outputPath));
+        Assert.True(callCount >= 2); // Should have tried both URLs
+    }
+
+    [Fact]
+    public async Task DownloadFileAsync_Should_ThrowDownloadException_WhenAllMirrorsFail()
+    {
+        // Arrange
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.NotFound
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object);
+        var downloader = new HttpDownloader(_logger, httpClient);
+        var outputPath = Path.Combine(_testDirectory, "test-all-mirrors-fail.bin");
+
+        var urls = new[] { "http://primary.com/file.bin", "http://mirror1.com/file.bin", "http://mirror2.com/file.bin" };
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<DownloadException>(async () =>
+        {
+            await downloader.DownloadFileAsync(urls, outputPath);
+        });
+
+        Assert.Equal(DownloadErrorCodes.E_DL_404, exception.ErrorCode);
+    }
+
+    [Fact]
+    public async Task DownloadFileAsync_Should_ThrowChecksumError_WhenVerificationFails()
+    {
+        // Arrange
+        var testContent = new byte[1024];
+        new Random().NextBytes(testContent);
+        var wrongSha256 = "0000000000000000000000000000000000000000000000000000000000000000";
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new ByteArrayContent(testContent)
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object);
+        var downloader = new HttpDownloader(_logger, httpClient);
+        var outputPath = Path.Combine(_testDirectory, "test-checksum-error.bin");
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<DownloadException>(async () =>
+        {
+            await downloader.DownloadFileAsync("http://test.com/file.bin", outputPath, wrongSha256);
+        });
+
+        Assert.Equal(DownloadErrorCodes.E_DL_CHECKSUM, exception.ErrorCode);
+        Assert.False(File.Exists(outputPath)); // File should be deleted on checksum failure
+    }
+
+    [Fact]
+    public async Task ImportLocalFileAsync_Should_ImportFile_Successfully()
+    {
+        // Arrange
+        var testContent = new byte[1024];
+        new Random().NextBytes(testContent);
+
+        var sourceFile = Path.Combine(_testDirectory, "source.bin");
+        await File.WriteAllBytesAsync(sourceFile, testContent);
+
+        // Calculate SHA256
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(testContent);
+        var expectedSha256 = Convert.ToHexString(hashBytes).ToLowerInvariant();
+
+        var httpClient = new HttpClient();
+        var downloader = new HttpDownloader(_logger, httpClient);
+        var outputPath = Path.Combine(_testDirectory, "imported.bin");
+
+        // Act
+        var (success, actualSha256) = await downloader.ImportLocalFileAsync(sourceFile, outputPath, expectedSha256);
+
+        // Assert
+        Assert.True(success);
+        Assert.Equal(expectedSha256, actualSha256);
+        Assert.True(File.Exists(outputPath));
+        var importedContent = await File.ReadAllBytesAsync(outputPath);
+        Assert.Equal(testContent.Length, importedContent.Length);
+    }
+
+    [Fact]
+    public async Task ImportLocalFileAsync_Should_StillImportOnChecksumMismatch()
+    {
+        // Arrange
+        var testContent = new byte[1024];
+        new Random().NextBytes(testContent);
+
+        var sourceFile = Path.Combine(_testDirectory, "source-mismatch.bin");
+        await File.WriteAllBytesAsync(sourceFile, testContent);
+
+        var wrongSha256 = "0000000000000000000000000000000000000000000000000000000000000000";
+
+        var httpClient = new HttpClient();
+        var downloader = new HttpDownloader(_logger, httpClient);
+        var outputPath = Path.Combine(_testDirectory, "imported-mismatch.bin");
+
+        // Act
+        var (success, actualSha256) = await downloader.ImportLocalFileAsync(sourceFile, outputPath, wrongSha256);
+
+        // Assert
+        Assert.False(success); // Should return false on checksum mismatch
+        Assert.NotNull(actualSha256);
+        Assert.NotEqual(wrongSha256, actualSha256);
+        Assert.True(File.Exists(outputPath)); // File should still be copied even with mismatch (user was warned)
+        var importedContent = await File.ReadAllBytesAsync(outputPath);
+        Assert.Equal(testContent.Length, importedContent.Length);
+    }
+
+    [Fact]
+    public async Task ImportLocalFileAsync_Should_ThrowFileNotFound_WhenFileDoesNotExist()
+    {
+        // Arrange
+        var httpClient = new HttpClient();
+        var downloader = new HttpDownloader(_logger, httpClient);
+        var outputPath = Path.Combine(_testDirectory, "nonexistent-import.bin");
+
+        // Act & Assert
+        await Assert.ThrowsAsync<FileNotFoundException>(async () =>
+        {
+            await downloader.ImportLocalFileAsync("C:\\nonexistent\\file.bin", outputPath);
         });
     }
 }
