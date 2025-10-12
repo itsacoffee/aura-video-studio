@@ -29,6 +29,9 @@ public class EngineManifestEntry
     [JsonPropertyName("urls")]
     public Dictionary<string, string> Urls { get; set; } = new(); // platform -> url
 
+    [JsonPropertyName("mirrors")]
+    public Dictionary<string, List<string>>? Mirrors { get; set; } // platform -> list of mirror URLs
+
     [JsonPropertyName("extractDir")]
     public string? ExtractDir { get; set; }
 
@@ -100,4 +103,34 @@ public class EngineManifest
 
     [JsonPropertyName("engines")]
     public List<EngineManifestEntry> Engines { get; set; } = new();
+}
+
+/// <summary>
+/// Installation provenance record
+/// </summary>
+public class InstallProvenance
+{
+    [JsonPropertyName("engineId")]
+    public string EngineId { get; set; } = string.Empty;
+
+    [JsonPropertyName("version")]
+    public string Version { get; set; } = string.Empty;
+
+    [JsonPropertyName("installedAt")]
+    public DateTime InstalledAt { get; set; }
+
+    [JsonPropertyName("installPath")]
+    public string InstallPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = string.Empty; // "Mirror", "CustomUrl", "LocalFile"
+
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+
+    [JsonPropertyName("sha256")]
+    public string? Sha256 { get; set; }
+
+    [JsonPropertyName("mirrorIndex")]
+    public int? MirrorIndex { get; set; }
 }

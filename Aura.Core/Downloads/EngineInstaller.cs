@@ -82,6 +82,19 @@ public class EngineInstaller
         IProgress<EngineInstallProgress>? progress = null,
         CancellationToken ct = default)
     {
+        await InstallAsync(engine, null, null, progress, ct);
+    }
+
+    /// <summary>
+    /// Install an engine with optional custom URL or local file
+    /// </summary>
+    public async Task<string> InstallAsync(
+        EngineManifestEntry engine,
+        string? customUrl = null,
+        string? localFilePath = null,
+        IProgress<EngineInstallProgress>? progress = null,
+        CancellationToken ct = default)
+    {
         _logger.LogInformation("Installing engine: {EngineId}", engine.Id);
 
         string installPath = Path.Combine(_installRoot, engine.Id);
@@ -91,32 +104,70 @@ public class EngineInstaller
         {
             _logger.LogWarning("Engine {EngineId} is already installed at {Path}", engine.Id, installPath);
             progress?.Report(new EngineInstallProgress(engine.Id, "complete", 0, 0, 100, "Already installed"));
-            return;
+            return installPath;
         }
 
         Directory.CreateDirectory(installPath);
 
+        string? sourceUrl = null;
+        string sourceType = "Mirror";
+        int? mirrorIndex = null;
+
         try
         {
-            // Get platform-specific URL
-            string platform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "windows" : "linux";
-            if (!engine.Urls.TryGetValue(platform, out string? url) || string.IsNullOrEmpty(url))
+            // Determine source: local file, custom URL, or manifest URLs
+            if (!string.IsNullOrEmpty(localFilePath))
             {
-                throw new InvalidOperationException($"No URL found for platform {platform}");
+                await InstallFromLocalFileAsync(engine, localFilePath, installPath, progress, ct).ConfigureAwait(false);
+                sourceUrl = localFilePath;
+                sourceType = "LocalFile";
             }
-
-            // Handle git repositories differently
-            if (engine.ArchiveType == "git")
+            else if (!string.IsNullOrEmpty(customUrl))
             {
-                await InstallFromGitAsync(engine, url, installPath, progress, ct).ConfigureAwait(false);
+                var (success, usedMirrorIndex) = await InstallFromArchiveAsync(engine, new[] { customUrl }, installPath, progress, ct).ConfigureAwait(false);
+                mirrorIndex = usedMirrorIndex;
+                sourceUrl = customUrl;
+                sourceType = "CustomUrl";
             }
             else
             {
-                await InstallFromArchiveAsync(engine, url, installPath, progress, ct).ConfigureAwait(false);
+                // Get platform-specific URL
+                string platform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "windows" : "linux";
+                if (!engine.Urls.TryGetValue(platform, out string? url) || string.IsNullOrEmpty(url))
+                {
+                    throw new InvalidOperationException($"No URL found for platform {platform}");
+                }
+
+                // Build URL list with mirrors
+                var urls = new List<string> { url };
+                if (engine.Mirrors != null && engine.Mirrors.TryGetValue(platform, out var mirrors))
+                {
+                    urls.AddRange(mirrors);
+                }
+
+                // Handle git repositories differently
+                if (engine.ArchiveType == "git")
+                {
+                    await InstallFromGitAsync(engine, url, installPath, progress, ct).ConfigureAwait(false);
+                    sourceUrl = url;
+                }
+                else
+                {
+                    var (success, usedMirrorIndex) = await InstallFromArchiveAsync(engine, urls.ToArray(), installPath, progress, ct).ConfigureAwait(false);
+                    mirrorIndex = usedMirrorIndex;
+                    sourceUrl = usedMirrorIndex.HasValue && usedMirrorIndex.Value < urls.Count 
+                        ? urls[usedMirrorIndex.Value] 
+                        : url;
+                }
             }
 
-            _logger.LogInformation("Engine {EngineId} installed successfully", engine.Id);
+            // Write provenance file
+            await WriteProvenanceAsync(engine, installPath, sourceType, sourceUrl, mirrorIndex).ConfigureAwait(false);
+
+            _logger.LogInformation("Engine {EngineId} installed successfully at {InstallPath}", engine.Id, installPath);
             progress?.Report(new EngineInstallProgress(engine.Id, "complete", engine.SizeBytes, engine.SizeBytes, 100, "Installation complete"));
+            
+            return installPath;
         }
         catch (Exception ex)
         {
@@ -176,13 +227,15 @@ public class EngineInstaller
         _logger.LogInformation("Git clone completed for {EngineId}", engine.Id);
     }
 
-    private async Task InstallFromArchiveAsync(
+    private async Task<(bool success, int? mirrorIndex)> InstallFromArchiveAsync(
         EngineManifestEntry engine,
-        string url,
+        string[] urls,
         string installPath,
         IProgress<EngineInstallProgress>? progress,
         CancellationToken ct)
     {
+        int? usedMirrorIndex = null;
+        
         // Use persistent download directory instead of temp
         string downloadDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -195,21 +248,28 @@ public class EngineInstaller
         {
             progress?.Report(new EngineInstallProgress(engine.Id, "downloading", 0, engine.SizeBytes, 0, "Starting download..."));
             
-            // Use HttpDownloader with resume, retry, and checksum verification
+            // Use HttpDownloader with mirror support, resume, retry, and checksum verification
             var downloadProgress = new Progress<HttpDownloadProgress>(p =>
             {
+                usedMirrorIndex = p.MirrorIndex;
+                string msg = p.Message ?? $"{p.PercentComplete:F1}% - {FormatBytes(p.BytesDownloaded)}/{FormatBytes(p.TotalBytes)} at {FormatSpeed(p.SpeedBytesPerSecond)}";
+                if (p.MirrorIndex.HasValue && p.MirrorIndex.Value > 0)
+                {
+                    msg = $"[Mirror {p.MirrorIndex.Value + 1}] {msg}";
+                }
+                
                 progress?.Report(new EngineInstallProgress(
                     engine.Id, 
                     "downloading", 
                     p.BytesDownloaded, 
                     p.TotalBytes, 
                     p.PercentComplete,
-                    p.Message ?? $"{p.PercentComplete:F1}% - {FormatBytes(p.BytesDownloaded)}/{FormatBytes(p.TotalBytes)} at {FormatSpeed(p.SpeedBytesPerSecond)}"
+                    msg
                 ));
             });
             
             bool downloadSuccess = await _downloader.DownloadFileAsync(
-                url, 
+                urls, 
                 archiveFile, 
                 engine.Sha256, // Pass checksum for verification
                 downloadProgress, 
@@ -232,6 +292,8 @@ public class EngineInstaller
                 File.Delete(archiveFile);
                 _logger.LogInformation("Cleaned up archive file for {EngineId}", engine.Id);
             }
+
+            return (true, usedMirrorIndex);
         }
         catch (Exception ex)
         {
@@ -244,6 +306,114 @@ public class EngineInstaller
                 _logger.LogInformation("Keeping partial download for resume: {File}", archiveFile);
             }
             throw;
+        }
+    }
+
+    private async Task InstallFromLocalFileAsync(
+        EngineManifestEntry engine,
+        string localFilePath,
+        string installPath,
+        IProgress<EngineInstallProgress>? progress,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Installing {EngineId} from local file: {Path}", engine.Id, localFilePath);
+
+        // Use persistent download directory
+        string downloadDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Aura", "Downloads", engine.Id, engine.Version);
+        Directory.CreateDirectory(downloadDir);
+        
+        string archiveFile = Path.Combine(downloadDir, $"{engine.Id}.archive");
+
+        try
+        {
+            progress?.Report(new EngineInstallProgress(engine.Id, "importing", 0, 0, 0, "Importing local file..."));
+
+            var importProgress = new Progress<HttpDownloadProgress>(p =>
+            {
+                progress?.Report(new EngineInstallProgress(
+                    engine.Id, 
+                    "importing", 
+                    p.BytesDownloaded, 
+                    p.TotalBytes, 
+                    p.PercentComplete,
+                    p.Message ?? "Importing..."
+                ));
+            });
+
+            // Import and verify checksum
+            var (success, actualSha256) = await _downloader.ImportLocalFileAsync(
+                localFilePath,
+                archiveFile,
+                engine.Sha256,
+                importProgress,
+                ct).ConfigureAwait(false);
+
+            if (!success && !string.IsNullOrEmpty(engine.Sha256))
+            {
+                _logger.LogWarning("Checksum mismatch for local file. Expected: {Expected}, Actual: {Actual}", 
+                    engine.Sha256, actualSha256);
+                progress?.Report(new EngineInstallProgress(
+                    engine.Id, "importing", 0, 0, 50, 
+                    "⚠️ Checksum mismatch - continuing anyway"));
+            }
+
+            _logger.LogInformation("Local file import complete for {EngineId}, SHA256: {Sha256}", 
+                engine.Id, actualSha256);
+
+            // Extract archive
+            progress?.Report(new EngineInstallProgress(engine.Id, "extracting", 0, 0, 75, "Extracting..."));
+            await ExtractArchiveAsync(archiveFile, installPath, engine.ArchiveType).ConfigureAwait(false);
+            
+            // Clean up
+            if (File.Exists(archiveFile))
+            {
+                File.Delete(archiveFile);
+                _logger.LogInformation("Cleaned up imported archive for {EngineId}", engine.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to install {EngineId} from local file", engine.Id);
+            throw;
+        }
+    }
+
+    private async Task WriteProvenanceAsync(
+        EngineManifestEntry engine,
+        string installPath,
+        string sourceType,
+        string? sourceUrl,
+        int? mirrorIndex)
+    {
+        try
+        {
+            var provenance = new InstallProvenance
+            {
+                EngineId = engine.Id,
+                Version = engine.Version,
+                InstalledAt = DateTime.UtcNow,
+                InstallPath = installPath,
+                Source = sourceType,
+                Url = sourceUrl,
+                Sha256 = engine.Sha256,
+                MirrorIndex = mirrorIndex
+            };
+
+            string provenancePath = Path.Combine(installPath, "install.json");
+            string json = System.Text.Json.JsonSerializer.Serialize(provenance, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            await File.WriteAllTextAsync(provenancePath, json).ConfigureAwait(false);
+            _logger.LogInformation("Wrote provenance file: {Path}", provenancePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write provenance file for {EngineId}", engine.Id);
+            // Don't fail the installation if provenance write fails
         }
     }
 

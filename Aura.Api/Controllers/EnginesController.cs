@@ -209,11 +209,15 @@ public class EnginesController : ControllerBase
                 return BadRequest(new { error = $"Engine {request.EngineId} is already installed" });
             }
 
-            // Install the engine
-            await _installer.InstallAsync(engine, null, ct);
+            // Install the engine with optional custom URL or local file
+            string installPath = await _installer.InstallAsync(
+                engine, 
+                request.CustomUrl, 
+                request.LocalFilePath, 
+                null, 
+                ct);
 
             // Register with the registry
-            string installPath = _installer.GetInstallPath(request.EngineId);
             string executablePath = System.IO.Path.Combine(installPath, engine.Entrypoint);
             
             var engineConfig = new EngineConfig(
@@ -251,6 +255,24 @@ public class EnginesController : ControllerBase
             _logger.LogError(ex, "Network error while installing {EngineId}", request.EngineId);
             return StatusCode(500, new { 
                 error = "Network error during download. Check your internet connection and try again.",
+                details = ex.Message 
+            });
+        }
+        catch (DownloadException ex)
+        {
+            _logger.LogError(ex, "Download error ({ErrorCode}) while installing {EngineId}", ex.ErrorCode, request.EngineId);
+            string errorMessage = ex.ErrorCode switch
+            {
+                DownloadErrorCodes.E_DL_404 => "File not found (404). All mirrors failed. Try a custom URL or local file.",
+                DownloadErrorCodes.E_DL_TIMEOUT => "Download timeout. Check your internet connection.",
+                DownloadErrorCodes.E_DL_CHECKSUM => "Checksum verification failed. The downloaded file is corrupted.",
+                _ => "Download failed. See details for more information."
+            };
+            
+            return StatusCode(500, new { 
+                error = errorMessage,
+                errorCode = ex.ErrorCode,
+                url = ex.Url,
                 details = ex.Message 
             });
         }
@@ -1032,7 +1054,12 @@ public class EnginesController : ControllerBase
     }
 }
 
-public record InstallRequest(string EngineId, string? Version = null, int? Port = null);
+public record InstallRequest(
+    string EngineId, 
+    string? Version = null, 
+    int? Port = null,
+    string? CustomUrl = null,
+    string? LocalFilePath = null);
 public record EngineActionRequest(string EngineId);
 public record StartRequest(string EngineId, int? Port = null, string? Args = null);
 public record EnginePreferences
