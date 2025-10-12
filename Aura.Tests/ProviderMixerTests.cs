@@ -457,4 +457,114 @@ public class ProviderMixerTests
         Assert.Equal("RuleBased", selection3.SelectedProvider);
         Assert.True(selection3.IsFallback);
     }
+
+    [Fact]
+    public void SelectLlmProvider_Should_HandleEmptyDictionary_WithGuaranteedFallback()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        // Act - Empty dictionary should return guaranteed fallback
+        var emptyProviders = new Dictionary<string, ILlmProvider>();
+        var selection = mixer.SelectLlmProvider(emptyProviders, "Pro");
+
+        // Assert
+        Assert.NotNull(selection);
+        Assert.Equal("RuleBased", selection.SelectedProvider);
+        Assert.True(selection.IsFallback);
+        Assert.Contains("guaranteed", selection.Reason, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SelectTtsProvider_Should_HandleEmptyDictionary_WithGuaranteedFallback()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        // Act - Empty dictionary should return guaranteed fallback
+        var emptyProviders = new Dictionary<string, ITtsProvider>();
+        var selection = mixer.SelectTtsProvider(emptyProviders, "Pro");
+
+        // Assert
+        Assert.NotNull(selection);
+        Assert.Equal("Windows", selection.SelectedProvider);
+        Assert.True(selection.IsFallback);
+        Assert.Contains("guaranteed", selection.Reason, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SelectVisualProvider_Should_NeverThrow_EmptyProviders()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var emptyProviders = new Dictionary<string, object>();
+
+        // Act - Should NOT throw, should return Slideshow as fallback
+        var selection = mixer.SelectVisualProvider(emptyProviders, "Pro", false, 0);
+
+        // Assert
+        Assert.NotNull(selection);
+        Assert.Equal("Slideshow", selection.SelectedProvider);
+        Assert.True(selection.IsFallback);
+        Assert.NotNull(selection.Reason);
+    }
+
+    [Fact]
+    public void ProviderMixer_Should_HandleAllProfileTypes_WithoutThrowing()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var emptyProviders = new Dictionary<string, ILlmProvider>();
+        
+        var profiles = new[] { "Free", "Pro", "ProIfAvailable", "Local", "Mixed", "Unknown", null, "" };
+
+        // Act & Assert - None should throw
+        foreach (var profile in profiles)
+        {
+            var exception = Record.Exception(() => 
+            {
+                var selection = mixer.SelectLlmProvider(emptyProviders, profile!);
+                Assert.NotNull(selection);
+                Assert.NotNull(selection.SelectedProvider);
+            });
+            
+            Assert.Null(exception);
+        }
+    }
+
+    [Fact]
+    public void SelectProvider_Should_RecoverFromErrors_InProviderDictionary()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        // Dictionary with some providers that might have issues
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["OpenAI"] = Mock.Of<ILlmProvider>(),
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act - Multiple calls should all succeed
+        var selection1 = mixer.SelectLlmProvider(providers, "Pro");
+        var selection2 = mixer.SelectLlmProvider(providers, "Free");
+        var selection3 = mixer.SelectLlmProvider(providers, "Unknown");
+
+        // Assert - All should return valid selections
+        Assert.NotNull(selection1);
+        Assert.Equal("OpenAI", selection1.SelectedProvider);
+        
+        Assert.NotNull(selection2);
+        Assert.Equal("RuleBased", selection2.SelectedProvider);
+        
+        Assert.NotNull(selection3);
+        Assert.NotNull(selection3.SelectedProvider);
+    }
 }

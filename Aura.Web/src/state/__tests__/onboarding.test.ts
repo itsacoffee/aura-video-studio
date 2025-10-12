@@ -369,4 +369,110 @@ describe('State machine transitions', () => {
     });
     expect(state.status).toBe('installed');
   });
+
+  it('should handle retry after validation failure', () => {
+    let state = initialOnboardingState;
+
+    // Start validation
+    state = onboardingReducer(state, { type: 'START_VALIDATION' });
+    expect(state.status).toBe('validating');
+
+    // Validation fails
+    state = onboardingReducer(state, {
+      type: 'VALIDATION_FAILED',
+      payload: {
+        report: {
+          ok: false,
+          stages: [
+            {
+              stage: 'Script',
+              status: 'fail',
+              provider: 'OpenAI',
+              message: 'API key missing',
+            },
+          ],
+        },
+        correlationId: 'test-1',
+      },
+    });
+    expect(state.status).toBe('invalid');
+
+    // User retries validation
+    state = onboardingReducer(state, { type: 'START_VALIDATION' });
+    expect(state.status).toBe('validating');
+    expect(state.errors).toEqual([]); // Errors should be cleared
+
+    // Validation succeeds on retry
+    state = onboardingReducer(state, {
+      type: 'VALIDATION_SUCCESS',
+      payload: {
+        report: { ok: true, stages: [] },
+        correlationId: 'test-2',
+      },
+    });
+    expect(state.status).toBe('valid');
+  });
+
+  it('should preserve state when step changes', () => {
+    let state = initialOnboardingState;
+
+    // Set mode
+    state = onboardingReducer(state, {
+      type: 'SET_MODE',
+      payload: 'pro',
+    });
+    expect(state.mode).toBe('pro');
+
+    // Change step
+    state = onboardingReducer(state, {
+      type: 'SET_STEP',
+      payload: 2,
+    });
+    expect(state.step).toBe(2);
+    expect(state.mode).toBe('pro'); // Mode should be preserved
+  });
+
+  it('should handle install failure gracefully', () => {
+    let state = initialOnboardingState;
+
+    // Start install
+    state = onboardingReducer(state, {
+      type: 'START_INSTALL',
+      payload: 'ffmpeg',
+    });
+    expect(state.status).toBe('installing');
+
+    // Install fails
+    state = onboardingReducer(state, {
+      type: 'INSTALL_FAILED',
+      payload: 'ffmpeg',
+    });
+    expect(state.status).toBe('idle'); // Should return to idle state
+  });
+
+  it('should track multiple validation attempts with correlationId', () => {
+    let state = initialOnboardingState;
+
+    // First validation
+    state = onboardingReducer(state, { type: 'START_VALIDATION' });
+    state = onboardingReducer(state, {
+      type: 'VALIDATION_FAILED',
+      payload: {
+        report: { ok: false, stages: [] },
+        correlationId: 'attempt-1',
+      },
+    });
+    expect(state.lastValidation?.correlationId).toBe('attempt-1');
+
+    // Second validation
+    state = onboardingReducer(state, { type: 'START_VALIDATION' });
+    state = onboardingReducer(state, {
+      type: 'VALIDATION_SUCCESS',
+      payload: {
+        report: { ok: true, stages: [] },
+        correlationId: 'attempt-2',
+      },
+    });
+    expect(state.lastValidation?.correlationId).toBe('attempt-2');
+  });
 });

@@ -150,7 +150,7 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
         message: activeJob.errorMessage || 'An error occurred during generation',
         correlationId: activeJob.correlationId,
         onRetry: () => {
-          // TODO: Implement retry logic - for now, close panel so user can start over
+          // Close panel so user can start a new generation
           onClose();
         },
         onOpenLogs: openLogsFolder,

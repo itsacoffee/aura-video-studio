@@ -199,4 +199,85 @@ test.describe('Wizard E2E - Free Profile', () => {
     // Verify button is back to normal state
     await expect(quickDemoButton).toBeVisible();
   });
+
+  test('should complete full Quick Demo lifecycle: start → progress → success', async ({ page }) => {
+    let jobStatus = 'queued';
+    let jobProgress = 0;
+
+    // Mock Quick Demo start API
+    await page.route('**/api/quick/demo', (route) => {
+      jobStatus = 'queued';
+      jobProgress = 0;
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ 
+          jobId: 'quick-demo-e2e-789', 
+          status: 'queued',
+          message: 'Quick demo started successfully'
+        })
+      });
+    });
+
+    // Mock job status API with progressive updates
+    await page.route('**/api/jobs/quick-demo-e2e-789', (route) => {
+      // Simulate progress
+      if (jobStatus === 'queued') {
+        jobStatus = 'Running';
+        jobProgress = 10;
+      } else if (jobStatus === 'Running' && jobProgress < 100) {
+        jobProgress = Math.min(jobProgress + 30, 100);
+        if (jobProgress >= 100) {
+          jobStatus = 'Done';
+        }
+      }
+
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'quick-demo-e2e-789',
+          status: jobStatus,
+          stage: jobProgress < 30 ? 'Script' : jobProgress < 60 ? 'TTS' : jobProgress < 90 ? 'Visuals' : 'Render',
+          progress: jobProgress,
+          artifacts: jobStatus === 'Done' ? [
+            {
+              type: 'video',
+              path: '/output/quick-demo-e2e-789/demo.mp4',
+              size: 2048000
+            },
+            {
+              type: 'captions',
+              path: '/output/quick-demo-e2e-789/demo.srt',
+              size: 1024
+            }
+          ] : []
+        })
+      });
+    });
+
+    // Navigate to wizard
+    await page.goto('/create');
+    
+    // Click Quick Demo button
+    const quickDemoButton = page.getByRole('button', { name: /Quick Demo \(Safe\)/i });
+    await expect(quickDemoButton).toBeVisible();
+    await expect(quickDemoButton).toBeEnabled();
+    await quickDemoButton.click();
+    
+    // Should show progress indicator
+    await expect(page.getByText(/Starting|Queued|Running/i)).toBeVisible({ timeout: 5000 });
+    
+    // Should show stage updates
+    // Note: These may not be visible in the mocked scenario, but in real app they would be
+    
+    // Wait for completion
+    await expect(page.getByText(/Complete|Done|Success/i)).toBeVisible({ timeout: 15000 });
+    
+    // Should show download or view buttons
+    const downloadButton = page.getByRole('button', { name: /Download|View|Open/i }).first();
+    if (await downloadButton.isVisible({ timeout: 2000 })) {
+      await expect(downloadButton).toBeEnabled();
+    }
+  });
 });

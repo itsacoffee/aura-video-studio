@@ -217,6 +217,135 @@ test.describe('First-Run Wizard E2E', () => {
     await expect(button).toBeVisible();
   });
 
+  test('should complete full flow: invalid → fix → validate → success', async ({ page }) => {
+    // Mock hardware probe API
+    await page.route('**/api/hardware/probe', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          gpu: 'NVIDIA RTX 3080',
+          vramGB: 10,
+          enableLocalDiffusion: true,
+        }),
+      });
+    });
+
+    let validationAttempt = 0;
+    
+    // Mock failed preflight check on first attempt, success on retry
+    await page.route('**/api/preflight?profile=Pro-Max*', (route) => {
+      validationAttempt++;
+      
+      if (validationAttempt === 1) {
+        // First attempt: Fail
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          headers: { 'X-Correlation-Id': 'test-correlation-fail' },
+          body: JSON.stringify({
+            ok: false,
+            stages: [
+              {
+                stage: 'Script',
+                status: 'fail',
+                provider: 'OpenAI',
+                message: 'API key not configured',
+                hint: 'Configure your OpenAI API key in Settings',
+                fixActions: [
+                  {
+                    type: 'OpenSettings',
+                    label: 'Add API Key',
+                    parameter: 'api-keys',
+                  },
+                ],
+              },
+              {
+                stage: 'TTS',
+                status: 'pass',
+                provider: 'Windows TTS',
+                message: 'Windows Speech Synthesis available',
+              },
+            ],
+          }),
+        });
+      } else {
+        // Retry: Success
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          headers: { 'X-Correlation-Id': 'test-correlation-success' },
+          body: JSON.stringify({
+            ok: true,
+            stages: [
+              {
+                stage: 'Script',
+                status: 'pass',
+                provider: 'OpenAI',
+                message: 'OpenAI configured successfully',
+              },
+              {
+                stage: 'TTS',
+                status: 'pass',
+                provider: 'Windows TTS',
+                message: 'Windows Speech Synthesis available',
+              },
+              {
+                stage: 'Visuals',
+                status: 'pass',
+                provider: 'Stock',
+                message: 'Stock images available',
+              },
+            ],
+          }),
+        });
+      }
+    });
+
+    // Navigate to first-run wizard
+    await page.goto('/onboarding');
+
+    // Step 0: Select Pro mode
+    const proCard = page.locator('text=Pro Mode').locator('..');
+    await proCard.click();
+    await page.getByRole('button', { name: 'Next' }).click();
+
+    // Step 1: Hardware Detection
+    await page.getByRole('button', { name: 'Next' }).click();
+    await expect(page.getByText(/NVIDIA RTX 3080/)).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: 'Next' }).click();
+
+    // Step 2: Components
+    await page.getByRole('button', { name: 'Next' }).click();
+
+    // Step 3: First validation - should fail
+    await page.getByRole('button', { name: 'Validate' }).click();
+    await expect(page.getByText('Validation Failed')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('API key not configured')).toBeVisible();
+
+    // User "fixes" the issue (in real scenario, would click fix action button)
+    // For this test, we just retry validation
+    
+    // Retry validation - should succeed
+    const retryButton = page.getByRole('button', { name: /Validate/i });
+    await retryButton.click();
+
+    // Should show validating state
+    await expect(page.getByText('Running preflight checks...')).toBeVisible();
+
+    // After successful validation, should show success state
+    await expect(page.getByText('All Set!')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Your system is ready to create amazing videos')).toBeVisible();
+
+    // Should be able to click Next (or Create My First Video)
+    const completeButton = page.getByRole('button', { name: 'Create My First Video' });
+    await expect(completeButton).toBeVisible();
+    await completeButton.click();
+
+    // Should navigate to create page
+    await expect(page).toHaveURL(/\/create/);
+  });
+
   test('should allow user to go back and change mode', async ({ page }) => {
     await page.goto('/onboarding');
 
