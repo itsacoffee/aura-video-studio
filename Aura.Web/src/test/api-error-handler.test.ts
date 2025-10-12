@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { parseApiError, ProblemDetails } from '../../utils/apiErrorHandler';
+import { parseApiError, ProblemDetails } from '../utils/apiErrorHandler';
 
 describe('API Error Handler', () => {
   it('should parse ProblemDetails from Response object', async () => {

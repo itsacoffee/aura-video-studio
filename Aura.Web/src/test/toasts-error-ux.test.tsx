@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { useNotifications, FailureToastOptions } from '../../components/Notifications/Toasts';
+import { useNotifications, FailureToastOptions } from '../components/Notifications/Toasts';
 
 // Wrapper for testing with FluentProvider
 const wrapper = ({ children }: { children: React.ReactNode }) => (
