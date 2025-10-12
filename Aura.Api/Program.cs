@@ -264,6 +264,14 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegInstaller>(sp =>
     return new Aura.Core.Dependencies.FfmpegInstaller(logger, downloader, toolsDirectory);
 });
 
+// Register FFmpeg Locator
+builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegLocator>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegLocator>>();
+    var toolsDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDirectory);
+});
+
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
 builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();
