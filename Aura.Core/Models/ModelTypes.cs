@@ -12,7 +12,11 @@ public enum ModelKind
     TTS,
     VAE,
     LoRA,
-    Refiner
+    Refiner,
+    SD_BASE,      // Stable Diffusion base model
+    SD_REFINER,   // Stable Diffusion refiner model
+    PIPER_VOICE,  // Piper TTS voice
+    LORA          // LoRA model (alias for LoRA)
 }
 
 /// <summary>
@@ -48,6 +52,8 @@ public class InstalledModel
     public string? Version { get; set; }
     public bool IsDefault { get; set; }
     public bool IsExternal { get; set; }
+    public string? Language { get; set; }
+    public string? Quality { get; set; }
 }
 
 /// <summary>
