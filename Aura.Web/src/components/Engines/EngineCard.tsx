@@ -42,6 +42,7 @@ import {
   ChevronDown24Regular,
   DocumentRegular,
   LinkRegular,
+  ShieldCheckmark24Regular,
 } from '@fluentui/react-icons';
 import type { EngineManifestEntry, EngineStatus } from '../../types/engines';
 import { useEnginesStore } from '../../state/engines';
@@ -139,6 +140,8 @@ export function EngineCard({ engine }: EngineCardProps) {
   const [localFilePath, setLocalFilePath] = useState('');
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [isLoadingUrl, setIsLoadingUrl] = useState(false);
+  const [urlVerificationStatus, setUrlVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
+  const [urlVerificationMessage, setUrlVerificationMessage] = useState<string>('');
   
   const {
     installEngine,
@@ -173,6 +176,66 @@ export function EngineCard({ engine }: EngineCardProps) {
       console.error('Failed to load resolved URL:', error);
     } finally {
       setIsLoadingUrl(false);
+    }
+  };
+
+  const handleVerifyUrl = async () => {
+    if (!resolvedUrl) return;
+    
+    setUrlVerificationStatus('verifying');
+    setUrlVerificationMessage('');
+    
+    try {
+      // Try HEAD request first (faster, doesn't download the file)
+      await fetch(resolvedUrl, { 
+        method: 'HEAD',
+        mode: 'no-cors', // Avoid CORS issues, but won't get response details
+      });
+      
+      // Since we're using no-cors mode, we can't check response.ok
+      // Instead, we'll attempt a GET with range header to check if the URL is accessible
+      const testResponse = await fetch(resolvedUrl, {
+        method: 'GET',
+        headers: {
+          'Range': 'bytes=0-0', // Request only 1 byte
+        },
+        mode: 'cors',
+      });
+      
+      if (testResponse.ok || testResponse.status === 206) {
+        setUrlVerificationStatus('success');
+        setUrlVerificationMessage(`URL verified! Status: ${testResponse.status} (${testResponse.statusText || 'OK'})`);
+      } else {
+        setUrlVerificationStatus('error');
+        setUrlVerificationMessage(`URL returned status: ${testResponse.status} (${testResponse.statusText})`);
+      }
+    } catch (error) {
+      // If CORS fails, try a simple proxy check via backend
+      try {
+        const response = await fetch(`http://127.0.0.1:5005/api/engines/verify-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: resolvedUrl }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.accessible) {
+            setUrlVerificationStatus('success');
+            setUrlVerificationMessage(`URL verified via proxy! Status: ${data.statusCode}`);
+          } else {
+            setUrlVerificationStatus('error');
+            setUrlVerificationMessage(`URL not accessible: ${data.error || 'Unknown error'}`);
+          }
+        } else {
+          throw new Error('Proxy verification failed');
+        }
+      } catch (proxyError) {
+        // Fallback: just report that we couldn't verify due to CORS/network
+        setUrlVerificationStatus('error');
+        setUrlVerificationMessage('Could not verify URL due to CORS restrictions or network issues. Try opening in browser to check manually.');
+        console.error('URL verification failed:', error, proxyError);
+      }
     }
   };
 
@@ -507,8 +570,44 @@ export function EngineCard({ engine }: EngineCardProps) {
                       >
                         Open in Browser
                       </Button>
+                      <Button
+                        size="small"
+                        appearance={urlVerificationStatus === 'success' ? 'primary' : 'secondary'}
+                        icon={<ShieldCheckmark24Regular />}
+                        onClick={handleVerifyUrl}
+                        disabled={urlVerificationStatus === 'verifying'}
+                        title="Verify that the URL is accessible and returns HTTP 200"
+                      >
+                        {urlVerificationStatus === 'verifying' ? <Spinner size="tiny" /> : 'Verify URL'}
+                      </Button>
                     </div>
                   </div>
+                  {urlVerificationStatus !== 'idle' && (
+                    <div style={{ 
+                      padding: tokens.spacingVerticalS,
+                      borderRadius: tokens.borderRadiusMedium,
+                      backgroundColor: urlVerificationStatus === 'success' 
+                        ? tokens.colorPaletteGreenBackground1 
+                        : urlVerificationStatus === 'error'
+                        ? tokens.colorPaletteRedBackground1
+                        : tokens.colorNeutralBackground3,
+                    }}>
+                      <Text 
+                        size={200} 
+                        style={{ 
+                          color: urlVerificationStatus === 'success' 
+                            ? tokens.colorPaletteGreenForeground1 
+                            : urlVerificationStatus === 'error'
+                            ? tokens.colorPaletteRedForeground1
+                            : tokens.colorNeutralForeground1,
+                        }}
+                      >
+                        {urlVerificationStatus === 'verifying' && '🔄 Verifying URL...'}
+                        {urlVerificationStatus === 'success' && `✅ ${urlVerificationMessage}`}
+                        {urlVerificationStatus === 'error' && `❌ ${urlVerificationMessage}`}
+                      </Text>
+                    </div>
+                  )}
                   <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                     This URL was resolved from the latest GitHub release for {engine.name}.
                     You can download manually or use the Install button below.
