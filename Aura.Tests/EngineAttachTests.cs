@@ -328,4 +328,49 @@ public class EngineAttachTests : IDisposable
         Assert.NotNull(error);
         Assert.Contains("not found", error);
     }
+
+    [Fact]
+    public async Task AttachExternalEngine_FFmpeg_WithValidPath_ShouldSucceed()
+    {
+        // Arrange
+        var processManager = new ExternalProcessManager(
+            NullLogger<ExternalProcessManager>.Instance,
+            _httpClient,
+            _logDirectory);
+
+        var registry = new LocalEnginesRegistry(
+            NullLogger<LocalEnginesRegistry>.Instance,
+            processManager,
+            _configPath);
+
+        var installPath = Path.Combine(_testDirectory, "ffmpeg");
+        Directory.CreateDirectory(installPath);
+        
+        // Create dummy executables
+        var ffmpegPath = Path.Combine(installPath, "ffmpeg.exe");
+        var ffprobePath = Path.Combine(installPath, "ffprobe.exe");
+        File.WriteAllText(ffmpegPath, "dummy");
+        File.WriteAllText(ffprobePath, "dummy");
+
+        // Act
+        var (success, error) = await registry.AttachExternalEngineAsync(
+            instanceId: "test-ffmpeg-1",
+            engineId: "ffmpeg",
+            name: "FFmpeg",
+            installPath: installPath,
+            executablePath: ffmpegPath,
+            port: null,
+            healthCheckUrl: null,
+            notes: "Test FFmpeg installation"
+        );
+
+        // Assert
+        Assert.True(success);
+        Assert.Null(error);
+
+        var config = registry.GetEngine("test-ffmpeg-1");
+        Assert.NotNull(config);
+        Assert.Equal("ffmpeg", config.EngineId);
+        Assert.Equal(Path.GetFullPath(ffmpegPath), config.ExecutablePath);
+    }
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -10,8 +10,9 @@ import {
   Card,
   Badge,
   Divider,
+  Tooltip,
 } from '@fluentui/react-components';
-import { Folder24Regular, Globe24Regular } from '@fluentui/react-icons';
+import { Folder24Regular, Globe24Regular, Copy24Regular, Info24Regular } from '@fluentui/react-icons';
 import { EngineCard } from './EngineCard';
 import { useEnginesStore } from '../../state/engines';
 
@@ -55,26 +56,57 @@ const useStyles = makeStyles({
     alignItems: 'center',
     marginBottom: tokens.spacingVerticalXS,
   },
+  instanceHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap',
+  },
   instancePath: {
     fontFamily: 'monospace',
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground3,
     wordBreak: 'break-all',
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
   },
   instanceActions: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap',
+  },
+  copyButton: {
+    cursor: 'pointer',
+    padding: '2px',
+    ':hover': {
+      color: tokens.colorBrandForeground1,
+    },
+  },
+  modeTooltip: {
+    cursor: 'help',
   },
 });
 
 export function EnginesTab() {
   const styles = useStyles();
   const { engines, instances, isLoading, error, fetchEngines, fetchInstances, openFolder, openWebUI } = useEnginesStore();
+  const [copiedPath, setCopiedPath] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEngines();
     fetchInstances();
   }, []);
+
+  const copyToClipboard = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPath(id);
+      setTimeout(() => setCopiedPath(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   if (isLoading && engines.length === 0) {
     return (
@@ -114,14 +146,36 @@ export function EnginesTab() {
             {instances.map((instance) => (
               <Card key={instance.id} className={styles.instanceCard}>
                 <div className={styles.instanceRow}>
-                  <div>
+                  <div className={styles.instanceHeader}>
                     <Text weight="semibold">{instance.name}</Text>
-                    <Badge appearance="filled" color={instance.mode === 'Managed' ? 'brand' : 'success'}>
-                      {instance.mode}
-                    </Badge>
-                    <Badge appearance="outline" color={instance.isRunning ? 'success' : 'subtle'}>
+                    <Tooltip
+                      content={
+                        instance.mode === 'Managed'
+                          ? 'Managed: App controls start/stop/process'
+                          : 'External: You run it; app only detects/uses it'
+                      }
+                      relationship="description"
+                    >
+                      <Badge 
+                        appearance="filled" 
+                        color={instance.mode === 'Managed' ? 'brand' : 'success'}
+                        className={styles.modeTooltip}
+                        icon={<Info24Regular />}
+                      >
+                        {instance.mode}
+                      </Badge>
+                    </Tooltip>
+                    <Badge 
+                      appearance="outline" 
+                      color={instance.isRunning ? 'success' : 'subtle'}
+                    >
                       {instance.status}
                     </Badge>
+                    {instance.isHealthy && instance.isRunning && (
+                      <Badge appearance="filled" color="success">
+                        Healthy
+                      </Badge>
+                    )}
                   </div>
                   <div className={styles.instanceActions}>
                     <Button
@@ -146,13 +200,45 @@ export function EnginesTab() {
                   </div>
                 </div>
                 <div>
-                  <Text className={styles.instancePath}>
-                    Path: {instance.installPath}
-                  </Text>
+                  <div className={styles.instancePath}>
+                    <Text>Path: {instance.installPath}</Text>
+                    <Tooltip
+                      content={copiedPath === `path-${instance.id}` ? 'Copied!' : 'Copy to clipboard'}
+                      relationship="label"
+                    >
+                      <Copy24Regular 
+                        className={styles.copyButton}
+                        onClick={() => copyToClipboard(instance.installPath, `path-${instance.id}`)}
+                      />
+                    </Tooltip>
+                  </div>
                   {instance.port && (
-                    <Text className={styles.instancePath}>
-                      Port: {instance.port}
-                    </Text>
+                    <div className={styles.instancePath}>
+                      <Text>Port: {instance.port}</Text>
+                      <Tooltip
+                        content={copiedPath === `port-${instance.id}` ? 'Copied!' : 'Copy to clipboard'}
+                        relationship="label"
+                      >
+                        <Copy24Regular 
+                          className={styles.copyButton}
+                          onClick={() => copyToClipboard(instance.port?.toString() || '', `port-${instance.id}`)}
+                        />
+                      </Tooltip>
+                    </div>
+                  )}
+                  {instance.executablePath && (
+                    <div className={styles.instancePath}>
+                      <Text>Executable: {instance.executablePath}</Text>
+                      <Tooltip
+                        content={copiedPath === `exe-${instance.id}` ? 'Copied!' : 'Copy to clipboard'}
+                        relationship="label"
+                      >
+                        <Copy24Regular 
+                          className={styles.copyButton}
+                          onClick={() => copyToClipboard(instance.executablePath || '', `exe-${instance.id}`)}
+                        />
+                      </Tooltip>
+                    </div>
                   )}
                   {instance.notes && (
                     <Text className={styles.instancePath}>

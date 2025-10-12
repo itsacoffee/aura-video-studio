@@ -357,6 +357,7 @@ export function EngineCard({ engine }: EngineCardProps) {
                 >
                   {isProcessing ? <Spinner size="tiny" /> : engine.isGated && !engine.canAutoStart ? 'Install anyway (for later)' : 'Install'}
                 </Button>
+                <Text style={{ margin: '0 8px', color: tokens.colorNeutralForeground3 }}>or</Text>
                 <AttachEngineDialog engineId={engine.id} engineName={engine.name} />
               </>
             )}
