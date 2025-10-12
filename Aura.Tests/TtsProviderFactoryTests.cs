@@ -208,4 +208,40 @@ public class TtsProviderFactoryTests
         Assert.DoesNotContain("NullTtsProvider", providers.Keys);
         Assert.DoesNotContain("MockTtsProvider", providers.Keys);
     }
+    
+    [Fact]
+    public void Factory_Should_CreateNullProviderWhenNoProvidersRegistered()
+    {
+        // Arrange - register factory but NO TTS providers at all (edge case)
+        var services = CreateServiceCollection();
+        // Intentionally not registering any ITtsProvider
+        
+        var serviceProvider = services.BuildServiceProvider();
+        var factory = serviceProvider.GetRequiredService<TtsProviderFactory>();
+        
+        // Act
+        var defaultProvider = factory.GetDefaultProvider();
+        
+        // Assert - should create a NullTtsProvider as emergency fallback
+        Assert.NotNull(defaultProvider);
+        Assert.Equal("NullTtsProvider", defaultProvider.GetType().Name);
+    }
+    
+    [Fact]
+    public void Factory_Should_ReturnEmptyDictionaryWhenNoProvidersRegistered()
+    {
+        // Arrange - register factory but NO TTS providers at all
+        var services = CreateServiceCollection();
+        // Intentionally not registering any ITtsProvider
+        
+        var serviceProvider = services.BuildServiceProvider();
+        var factory = serviceProvider.GetRequiredService<TtsProviderFactory>();
+        
+        // Act
+        var providers = factory.CreateAvailableProviders();
+        
+        // Assert - should return empty dictionary, not throw
+        Assert.NotNull(providers);
+        Assert.Empty(providers);
+    }
 }
