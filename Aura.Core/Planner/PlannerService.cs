@@ -15,9 +15,14 @@ namespace Aura.Core.Planner;
 public class PlannerService : IRecommendationService
 {
     private readonly ILogger<PlannerService> _logger;
-    private readonly Dictionary<string, ILlmPlannerProvider> _providers;
+    private readonly Func<Dictionary<string, ILlmPlannerProvider>>? _providerFactory;
+    private Dictionary<string, ILlmPlannerProvider>? _providers;
     private readonly string _preferredTier;
+    private readonly object _lock = new object();
 
+    /// <summary>
+    /// Constructor with pre-created providers (for backward compatibility)
+    /// </summary>
     public PlannerService(
         ILogger<PlannerService> logger,
         Dictionary<string, ILlmPlannerProvider> providers,
@@ -25,7 +30,47 @@ public class PlannerService : IRecommendationService
     {
         _logger = logger;
         _providers = providers;
+        _providerFactory = null;
         _preferredTier = preferredTier;
+    }
+
+    /// <summary>
+    /// Constructor with factory delegate for lazy provider initialization (recommended)
+    /// </summary>
+    public PlannerService(
+        ILogger<PlannerService> logger,
+        Func<Dictionary<string, ILlmPlannerProvider>> providerFactory,
+        string preferredTier = "ProIfAvailable")
+    {
+        _logger = logger;
+        _providerFactory = providerFactory;
+        _providers = null;
+        _preferredTier = preferredTier;
+    }
+
+    private Dictionary<string, ILlmPlannerProvider> GetProviders()
+    {
+        if (_providers != null)
+        {
+            return _providers;
+        }
+
+        if (_providerFactory == null)
+        {
+            throw new InvalidOperationException("No providers or provider factory configured");
+        }
+
+        lock (_lock)
+        {
+            if (_providers != null)
+            {
+                return _providers;
+            }
+
+            _logger.LogDebug("Lazily initializing Planner providers on first use");
+            _providers = _providerFactory();
+            return _providers;
+        }
     }
 
     public async Task<PlannerRecommendations> GenerateRecommendationsAsync(
@@ -63,13 +108,13 @@ public class PlannerService : IRecommendationService
                 selectedProvider.Value.Key, ex.Message);
 
             // Try fallback to RuleBased if it wasn't the primary
-            if (selectedProvider.Value.Key != "RuleBased" && _providers.ContainsKey("RuleBased"))
+            if (selectedProvider.Value.Key != "RuleBased" && GetProviders().ContainsKey("RuleBased"))
             {
                 _logger.LogInformation("Falling back to RuleBased provider");
 
                 try
                 {
-                    var recommendations = await _providers["RuleBased"]
+                    var recommendations = await GetProviders()["RuleBased"]
                         .GenerateRecommendationsAsync(request, ct)
                         .ConfigureAwait(false);
 
@@ -91,6 +136,8 @@ public class PlannerService : IRecommendationService
 
     private KeyValuePair<string, ILlmPlannerProvider>? SelectProvider()
     {
+        var providers = GetProviders();
+        
         // Priority order based on tier preference
         var providerPriority = _preferredTier switch
         {
@@ -102,12 +149,12 @@ public class PlannerService : IRecommendationService
 
         foreach (var providerName in providerPriority)
         {
-            if (_providers.TryGetValue(providerName, out var provider))
+            if (providers.TryGetValue(providerName, out var provider))
             {
                 return new KeyValuePair<string, ILlmPlannerProvider>(providerName, provider);
             }
         }
 
-        return _providers.FirstOrDefault();
+        return providers.FirstOrDefault();
     }
 }

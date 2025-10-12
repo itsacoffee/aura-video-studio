@@ -18,8 +18,13 @@ public class ScriptOrchestrator
     private readonly ILogger<ScriptOrchestrator> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ProviderMixer _providerMixer;
-    private readonly Dictionary<string, ILlmProvider> _providers;
+    private readonly Func<Dictionary<string, ILlmProvider>>? _providerFactory;
+    private Dictionary<string, ILlmProvider>? _providers;
+    private readonly object _lock = new object();
 
+    /// <summary>
+    /// Constructor with pre-created providers (for backward compatibility)
+    /// </summary>
     public ScriptOrchestrator(
         ILogger<ScriptOrchestrator> logger,
         ILoggerFactory loggerFactory,
@@ -30,6 +35,48 @@ public class ScriptOrchestrator
         _loggerFactory = loggerFactory;
         _providerMixer = providerMixer;
         _providers = providers;
+        _providerFactory = null;
+    }
+
+    /// <summary>
+    /// Constructor with factory delegate for lazy provider initialization (recommended)
+    /// </summary>
+    public ScriptOrchestrator(
+        ILogger<ScriptOrchestrator> logger,
+        ILoggerFactory loggerFactory,
+        ProviderMixer providerMixer,
+        Func<Dictionary<string, ILlmProvider>> providerFactory)
+    {
+        _logger = logger;
+        _loggerFactory = loggerFactory;
+        _providerMixer = providerMixer;
+        _providerFactory = providerFactory;
+        _providers = null;
+    }
+
+    private Dictionary<string, ILlmProvider> GetProviders()
+    {
+        if (_providers != null)
+        {
+            return _providers;
+        }
+
+        if (_providerFactory == null)
+        {
+            throw new InvalidOperationException("No providers or provider factory configured");
+        }
+
+        lock (_lock)
+        {
+            if (_providers != null)
+            {
+                return _providers;
+            }
+
+            _logger.LogDebug("Lazily initializing LLM providers on first use");
+            _providers = _providerFactory();
+            return _providers;
+        }
     }
 
     /// <summary>
@@ -69,7 +116,7 @@ public class ScriptOrchestrator
         }
 
         // Select provider
-        var selection = _providerMixer.SelectLlmProvider(_providers, preferredTier);
+        var selection = _providerMixer.SelectLlmProvider(GetProviders(), preferredTier);
         _providerMixer.LogSelection(selection);
 
         var requestedProvider = selection.SelectedProvider;
@@ -96,7 +143,7 @@ public class ScriptOrchestrator
                 selection.SelectedProvider, primaryFailureReason);
             
             // Try Ollama if not already tried
-            if (selection.SelectedProvider != "Ollama" && _providers.ContainsKey("Ollama"))
+            if (selection.SelectedProvider != "Ollama" && GetProviders().ContainsKey("Ollama"))
             {
                 _logger.LogInformation("Falling back to Ollama");
                 result = await TryGenerateWithProviderAsync(
@@ -154,7 +201,8 @@ public class ScriptOrchestrator
         string? downgradeReason,
         CancellationToken ct)
     {
-        if (!_providers.TryGetValue(providerName, out var provider))
+        var providers = GetProviders();
+        if (!providers.TryGetValue(providerName, out var provider))
         {
             // Special case: if RuleBased is requested but not in dictionary, instantiate it as last resort
             if (providerName == "RuleBased")
@@ -176,7 +224,7 @@ public class ScriptOrchestrator
                             var genericMethod = createLoggerMethod.MakeGenericMethod(type);
                             var logger = genericMethod.Invoke(null, new object[] { _loggerFactory });
                             provider = (ILlmProvider)Activator.CreateInstance(type, logger)!;
-                            _providers[providerName] = provider; // Cache it for future use
+                            providers[providerName] = provider; // Cache it for future use
                         }
                         else
                         {
