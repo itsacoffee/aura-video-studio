@@ -182,6 +182,7 @@ public class ProviderSettingsTests : IDisposable
     {
         // Arrange
         var settings = CreateTestSettings();
+        settings.SetPortableMode(false); // Ensure clean state
         settings.SetPortableMode(true, "   "); // Enable with whitespace path
 
         // Act
