@@ -48,7 +48,8 @@ public class FfmpegDetectionApiTests : IDisposable
         var ffmpegInstaller = new FfmpegInstaller(
             NullLogger<FfmpegInstaller>.Instance,
             downloader,
-            _toolsDirectory);
+            _toolsDirectory,
+            null); // No resolver for tests
         
         var ffmpegLocator = new FfmpegLocator(
             NullLogger<FfmpegLocator>.Instance,

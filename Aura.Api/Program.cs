@@ -341,6 +341,7 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegInstaller>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegInstaller>>();
     var downloader = sp.GetRequiredService<Aura.Core.Downloads.HttpDownloader>();
+    var resolver = sp.GetRequiredService<Aura.Core.Dependencies.GitHubReleaseResolver>();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
     
     // Use portable Tools folder if portable mode enabled, otherwise AppData
@@ -357,7 +358,7 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegInstaller>(sp =>
         toolsDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
     }
     
-    return new Aura.Core.Dependencies.FfmpegInstaller(logger, downloader, toolsDirectory);
+    return new Aura.Core.Dependencies.FfmpegInstaller(logger, downloader, toolsDirectory, resolver);
 });
 
 // Register FFmpeg Locator
