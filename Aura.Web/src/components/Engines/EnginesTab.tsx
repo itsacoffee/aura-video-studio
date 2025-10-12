@@ -14,6 +14,7 @@ import {
 } from '@fluentui/react-components';
 import { Folder24Regular, Globe24Regular, Copy24Regular, Info24Regular } from '@fluentui/react-icons';
 import { EngineCard } from './EngineCard';
+import { FFmpegCard } from './FFmpegCard';
 import { useEnginesStore } from '../../state/engines';
 
 const useStyles = makeStyles({
@@ -261,6 +262,9 @@ export function EnginesTab() {
           Install new engines or attach existing installations
         </Text>
       </div>
+
+      {/* FFmpeg - Special Card */}
+      <FFmpegCard />
 
       {engines.length === 0 && !isLoading ? (
         <div className={styles.emptyState}>
