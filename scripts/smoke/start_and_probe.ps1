@@ -71,11 +71,21 @@ try {
     # Step 1: Build the solution
     if (-not $SkipBuild) {
         Write-Info "[1/5] Building solution..."
-        $buildOutput = dotnet build --nologo 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Build failed!"
-            Write-Host $buildOutput
-            exit 1
+        # Build only core projects to avoid Windows-only Aura.App issues on Linux
+        $buildProjects = @(
+            "Aura.Core/Aura.Core.csproj",
+            "Aura.Providers/Aura.Providers.csproj",
+            "Aura.Api/Aura.Api.csproj",
+            "Aura.Tests/Aura.Tests.csproj"
+        )
+        
+        foreach ($project in $buildProjects) {
+            $buildOutput = dotnet build $project --nologo 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Build failed for $project!"
+                Write-Host $buildOutput
+                exit 1
+            }
         }
         Write-Success "Build completed successfully"
     } else {

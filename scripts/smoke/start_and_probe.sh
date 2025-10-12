@@ -110,11 +110,21 @@ trap cleanup EXIT INT TERM
 # Step 1: Build the solution
 if [ $SKIP_BUILD -eq 0 ]; then
     info "[1/5] Building solution..."
-    if ! dotnet build --nologo > /tmp/smoke-build.log 2>&1; then
-        error "Build failed!"
-        cat /tmp/smoke-build.log
-        exit 1
-    fi
+    # Build only core projects to avoid Windows-only Aura.App issues on Linux
+    BUILD_PROJECTS=(
+        "Aura.Core/Aura.Core.csproj"
+        "Aura.Providers/Aura.Providers.csproj"
+        "Aura.Api/Aura.Api.csproj"
+        "Aura.Tests/Aura.Tests.csproj"
+    )
+    
+    for project in "${BUILD_PROJECTS[@]}"; do
+        if ! dotnet build "$project" --nologo > /tmp/smoke-build.log 2>&1; then
+            error "Build failed for $project!"
+            cat /tmp/smoke-build.log
+            exit 1
+        fi
+    done
     success "Build completed successfully"
 else
     info "[1/5] Skipping build (--skip-build)"
