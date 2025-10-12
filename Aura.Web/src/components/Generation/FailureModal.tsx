@@ -71,7 +71,7 @@ interface FailureModalProps {
   jobId: string;
 }
 
-export function FailureModal({ open, onClose, failure, jobId }: FailureModalProps) {
+export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureModalProps) {
   const styles = useStyles();
   const [copied, setCopied] = useState(false);
   const [repairing, setRepairing] = useState(false);

@@ -10,6 +10,8 @@ Error: npm build failed
 The npm build (`npm run build`) in the `Aura.Web` directory was failing due to **TypeScript compilation errors**, not npm installation issues.
 
 ## Specific Errors Fixed
+
+### Previous Fixes
 1. **LocalEngines.tsx** (5 errors)
    - Removed unused imports: `Tooltip`, `DialogTrigger`, `ErrorCircle20Filled`
    - Removed unused variable: `engines` from useEnginesStore destructuring
@@ -20,6 +22,12 @@ The npm build (`npm run build`) in the `Aura.Web` directory was failing due to *
 
 3. **engine-workflows.test.ts** (1 error)
    - Removed unused import: `vi` from vitest
+
+### Latest Fix (2025-10-12)
+4. **FailureModal.tsx** (1 error)
+   - Fixed unused parameter error: `jobId` is declared but never used
+   - Solution: Renamed parameter to `_jobId` to indicate it's intentionally unused
+   - This preserves the interface for potential future use while satisfying TypeScript
 
 ## Solution Applied
 ### LocalEngines.tsx Changes
@@ -55,6 +63,7 @@ onChange={(e) => {
 ### Other File Changes
 - **ProviderSelection.tsx**: Removed `engines` from destructuring
 - **engine-workflows.test.ts**: Removed `vi` from import
+- **FailureModal.tsx** (Latest): Renamed `jobId` parameter to `_jobId` to indicate intentionally unused
 
 ### Additional Fix
 Removed `Aura.Web/pnpm-lock.yaml` to prevent package manager conflicts (repository uses npm, not pnpm).
