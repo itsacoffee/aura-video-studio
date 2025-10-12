@@ -17,6 +17,7 @@ import {
 import { Save24Regular } from '@fluentui/react-icons';
 import type { Profile } from '../types';
 import { LocalEngines } from '../components/Settings/LocalEngines';
+import { RescanPanel } from './DownloadCenter/RescanPanel';
 
 const useStyles = makeStyles({
   container: {
@@ -844,13 +845,17 @@ export function SettingsPage() {
       )}
 
       {activeTab === 'localengines' && (
-        <Card className={styles.section}>
-          <Title2>Local Engines</Title2>
-          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-            Manage local AI engines (Stable Diffusion, ComfyUI, Piper, Mimic3) with automatic installation and configuration.
-          </Text>
-          <LocalEngines />
-        </Card>
+        <>
+          <Card className={styles.section} style={{ marginBottom: tokens.spacingVerticalL }}>
+            <Title2>Local Engines</Title2>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              Manage local AI engines (Stable Diffusion, ComfyUI, Piper, Mimic3) with automatic installation and configuration.
+            </Text>
+            <LocalEngines />
+          </Card>
+
+          <RescanPanel />
+        </>
       )}
 
       {activeTab === 'apikeys' && (

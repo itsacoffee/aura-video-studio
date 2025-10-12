@@ -56,7 +56,7 @@ public class FfmpegLocator
     /// <summary>
     /// Check all candidate locations for FFmpeg and return first valid one
     /// </summary>
-    public async Task<FfmpegValidationResult> CheckAllCandidatesAsync(
+    public virtual async Task<FfmpegValidationResult> CheckAllCandidatesAsync(
         string? configuredPath = null,
         CancellationToken ct = default)
     {

@@ -97,7 +97,7 @@ public class ComponentDownloader
     /// <summary>
     /// Load components manifest
     /// </summary>
-    public async Task<ComponentsManifest> LoadManifestAsync(CancellationToken ct = default)
+    public virtual async Task<ComponentsManifest> LoadManifestAsync(CancellationToken ct = default)
     {
         if (_cachedManifest != null)
         {

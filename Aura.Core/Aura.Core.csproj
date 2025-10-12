@@ -12,4 +12,10 @@
     <PackageReference Include="System.Management" Version="9.0.9" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Dependencies/components.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

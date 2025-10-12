@@ -26,6 +26,8 @@ import {
   ErrorCircle24Filled,
 } from '@fluentui/react-icons';
 import { EnginesTab } from '../components/Engines/EnginesTab';
+import { RescanPanel } from './DownloadCenter/RescanPanel';
+
 
 interface DependencyComponent {
   name: string;
@@ -415,6 +417,8 @@ export function DownloadsPage() {
               </div>
             </div>
           </Card>
+
+          <RescanPanel />
 
       {loading ? (
         <Card className={styles.card}>
