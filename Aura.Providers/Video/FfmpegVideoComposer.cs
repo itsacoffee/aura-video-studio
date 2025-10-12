@@ -17,6 +17,7 @@ public class FfmpegVideoComposer : IVideoComposer
     private readonly string _ffmpegPath;
     private readonly string _workingDirectory;
     private string _outputDirectory;
+    private readonly string _logsDirectory;
 
     public FfmpegVideoComposer(ILogger<FfmpegVideoComposer> logger, string ffmpegPath, string? outputDirectory = null)
     {
@@ -26,6 +27,9 @@ public class FfmpegVideoComposer : IVideoComposer
         _outputDirectory = outputDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
             "AuraVideoStudio");
+        _logsDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Aura", "Logs", "ffmpeg");
         
         // Ensure working directory exists
         if (!Directory.Exists(_workingDirectory))
@@ -38,11 +42,24 @@ public class FfmpegVideoComposer : IVideoComposer
         {
             Directory.CreateDirectory(_outputDirectory);
         }
+        
+        // Ensure logs directory exists
+        if (!Directory.Exists(_logsDirectory))
+        {
+            Directory.CreateDirectory(_logsDirectory);
+        }
     }
 
     public async Task<string> RenderAsync(Timeline timeline, RenderSpec spec, IProgress<RenderProgress> progress, CancellationToken ct)
     {
-        _logger.LogInformation("Starting FFmpeg render at {Resolution}p", spec.Res.Height);
+        var jobId = Guid.NewGuid().ToString("N");
+        var correlationId = System.Diagnostics.Activity.Current?.Id ?? jobId;
+        
+        _logger.LogInformation("Starting FFmpeg render (JobId={JobId}, CorrelationId={CorrelationId}) at {Resolution}p", 
+            jobId, correlationId, spec.Res.Height);
+        
+        // Validate FFmpeg binary before starting
+        await ValidateFfmpegBinaryAsync(jobId, correlationId, ct);
         
         // Create output file path using configured output directory
         string outputFilePath = Path.Combine(
@@ -52,9 +69,13 @@ public class FfmpegVideoComposer : IVideoComposer
         // Build the FFmpeg command
         string ffmpegCommand = BuildFfmpegCommand(timeline, spec, outputFilePath);
         
-        _logger.LogDebug("FFmpeg command: {Command}", ffmpegCommand);
+        _logger.LogInformation("FFmpeg command (JobId={JobId}): {FFmpegPath} {Command}", 
+            jobId, _ffmpegPath, ffmpegCommand);
         
-        // Create process to run FFmpeg
+        // Create process to run FFmpeg with stderr/stdout capture
+        var stderrBuilder = new StringBuilder();
+        var stdoutBuilder = new StringBuilder();
+        
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -77,13 +98,16 @@ public class FfmpegVideoComposer : IVideoComposer
         var startTime = DateTime.Now;
         var lastReportTime = DateTime.Now;
         
-        // Set up output handler to parse progress
+        // Set up output handler to parse progress and capture output
         process.ErrorDataReceived += (sender, args) =>
         {
             if (string.IsNullOrEmpty(args.Data)) return;
             
+            // Capture for error reporting
+            stderrBuilder.AppendLine(args.Data);
+            
             // Log the output
-            _logger.LogTrace("FFmpeg: {Output}", args.Data);
+            _logger.LogTrace("FFmpeg stderr: {Output}", args.Data);
             
             // Parse progress if it contains time information
             if (args.Data.Contains("time="))
@@ -124,6 +148,16 @@ public class FfmpegVideoComposer : IVideoComposer
             }
         };
         
+        // Capture stdout as well
+        process.OutputDataReceived += (sender, args) =>
+        {
+            if (!string.IsNullOrEmpty(args.Data))
+            {
+                stdoutBuilder.AppendLine(args.Data);
+                _logger.LogTrace("FFmpeg stdout: {Output}", args.Data);
+            }
+        };
+        
         // Set up task to wait for process completion
         var tcs = new TaskCompletionSource<bool>();
         
@@ -135,7 +169,9 @@ public class FfmpegVideoComposer : IVideoComposer
             }
             else
             {
-                tcs.SetException(new Exception($"FFmpeg exited with code {process.ExitCode}"));
+                var stderr = stderrBuilder.ToString();
+                var exception = CreateFfmpegException(process.ExitCode, stderr, jobId, correlationId, ffmpegCommand);
+                tcs.SetException(exception);
             }
         };
         
@@ -151,6 +187,7 @@ public class FfmpegVideoComposer : IVideoComposer
             {
                 if (!process.HasExited)
                 {
+                    _logger.LogWarning("Cancelling FFmpeg render (JobId={JobId})", jobId);
                     process.Kill();
                 }
             }
@@ -160,10 +197,24 @@ public class FfmpegVideoComposer : IVideoComposer
             }
         });
         
-        // Wait for completion or cancellation
-        await tcs.Task;
+        // Wait for completion or cancellation with timeout
+        try
+        {
+            await tcs.Task;
+        }
+        catch (InvalidOperationException)
+        {
+            // Already has detailed error information
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Unexpected error
+            _logger.LogError(ex, "Unexpected FFmpeg error (JobId={JobId})", jobId);
+            throw new InvalidOperationException($"FFmpeg render failed unexpectedly: {ex.Message} (JobId: {jobId}, CorrelationId: {correlationId})", ex);
+        }
         
-        _logger.LogInformation("Render completed successfully: {OutputPath}", outputFilePath);
+        _logger.LogInformation("Render completed successfully (JobId={JobId}): {OutputPath}", jobId, outputFilePath);
         
         // Report 100% completion
         progress.Report(new RenderProgress(
@@ -232,5 +283,208 @@ public class FfmpegVideoComposer : IVideoComposer
         args.Add($"\"{outputPath}\"");
         
         return string.Join(" ", args);
+    }
+    
+    /// <summary>
+    /// Validate FFmpeg binary before use
+    /// </summary>
+    private async Task ValidateFfmpegBinaryAsync(string jobId, string correlationId, CancellationToken ct)
+    {
+        _logger.LogInformation("Validating FFmpeg binary: {Path}", _ffmpegPath);
+        
+        // Check file exists
+        if (!File.Exists(_ffmpegPath))
+        {
+            var error = new
+            {
+                code = "E302-FFMPEG_VALIDATION",
+                message = "FFmpeg binary not found",
+                ffmpegPath = _ffmpegPath,
+                correlationId,
+                howToFix = new[]
+                {
+                    "Install FFmpeg via Download Center",
+                    "Attach an existing FFmpeg installation",
+                    "Check FFmpeg installation path in settings"
+                }
+            };
+            
+            _logger.LogError("FFmpeg validation failed: {Error}", System.Text.Json.JsonSerializer.Serialize(error));
+            throw new InvalidOperationException($"FFmpeg binary not found at {_ffmpegPath}. " +
+                $"Install FFmpeg via Download Center or attach an existing installation. (CorrelationId: {correlationId})");
+        }
+        
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = _ffmpegPath,
+                Arguments = "-version",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            
+            using var process = Process.Start(psi);
+            if (process == null)
+            {
+                throw new InvalidOperationException("Failed to start FFmpeg process for validation");
+            }
+            
+            await process.WaitForExitAsync(ct);
+            
+            var output = await process.StandardOutput.ReadToEndAsync(ct);
+            var stderr = await process.StandardError.ReadToEndAsync(ct);
+            
+            if (process.ExitCode != 0)
+            {
+                var error = new
+                {
+                    code = "E302-FFMPEG_VALIDATION",
+                    message = "FFmpeg validation failed",
+                    exitCode = process.ExitCode,
+                    stderr = stderr.Length > 1000 ? stderr.Substring(0, 1000) + "..." : stderr,
+                    correlationId,
+                    howToFix = new[]
+                    {
+                        "FFmpeg binary may be corrupted - try reinstalling",
+                        "Check system dependencies (Visual C++ Redistributable on Windows)",
+                        "Use 'Repair' option in Download Center"
+                    }
+                };
+                
+                _logger.LogError("FFmpeg validation failed: {Error}", System.Text.Json.JsonSerializer.Serialize(error));
+                throw new InvalidOperationException($"FFmpeg validation failed with exit code {process.ExitCode}. " +
+                    $"See logs for details. (CorrelationId: {correlationId})");
+            }
+            
+            _logger.LogInformation("FFmpeg validation successful: {Version}", 
+                output.Split('\n').FirstOrDefault(l => l.Contains("ffmpeg version")) ?? "version unknown");
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            var error = new
+            {
+                code = "E302-FFMPEG_VALIDATION",
+                message = "FFmpeg validation exception",
+                exception = ex.Message,
+                correlationId,
+                howToFix = new[]
+                {
+                    "Ensure FFmpeg has execute permissions",
+                    "Check antivirus/security software blocking FFmpeg",
+                    "Try attaching a different FFmpeg installation"
+                }
+            };
+            
+            _logger.LogError(ex, "FFmpeg validation exception: {Error}", System.Text.Json.JsonSerializer.Serialize(error));
+            throw new InvalidOperationException($"FFmpeg validation failed: {ex.Message} (CorrelationId: {correlationId})", ex);
+        }
+    }
+    
+    /// <summary>
+    /// Handle FFmpeg process failure with detailed diagnostics
+    /// </summary>
+    private Exception CreateFfmpegException(
+        int exitCode,
+        string stderr,
+        string jobId,
+        string correlationId,
+        string? ffmpegCommand)
+    {
+        // Truncate stderr if too long
+        var stderrSnippet = stderr.Length > 16000 ? stderr.Substring(0, 16000) + "\n... (truncated)" : stderr;
+        
+        var errorInfo = new
+        {
+            code = "E304-FFMPEG_RUNTIME",
+            message = exitCode < 0 
+                ? $"FFmpeg crashed during render (exit code: {exitCode})" 
+                : $"FFmpeg failed during render (exit code: {exitCode})",
+            exitCode,
+            stderrSnippet,
+            jobId,
+            correlationId,
+            suggestedActions = GetSuggestedActions(exitCode, stderr)
+        };
+        
+        _logger.LogError("FFmpeg render failed: {Error}", System.Text.Json.JsonSerializer.Serialize(errorInfo));
+        
+        // Log full stderr to file
+        try
+        {
+            var logPath = Path.Combine(_logsDirectory, $"{jobId}.log");
+            File.WriteAllText(logPath, 
+                $"JobId: {jobId}\nCorrelationId: {correlationId}\nExit Code: {exitCode}\n" +
+                $"Command: {ffmpegCommand}\n\n=== STDERR ===\n{stderr}");
+            _logger.LogInformation("Full FFmpeg log written to: {LogPath}", logPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write FFmpeg log file");
+        }
+        
+        return new InvalidOperationException(
+            $"FFmpeg render failed (exit code: {exitCode}). {GetFriendlyMessage(exitCode, stderr)}. " +
+            $"CorrelationId: {correlationId}, JobId: {jobId}");
+    }
+    
+    private string[] GetSuggestedActions(int exitCode, string stderr)
+    {
+        var suggestions = new List<string>();
+        
+        if (exitCode < 0 || exitCode == -1073741515 || exitCode == -1094995529)
+        {
+            suggestions.Add("FFmpeg crashed - binary may be corrupted. Try reinstalling or repairing.");
+            suggestions.Add("Check system dependencies (Visual C++ Redistributable on Windows)");
+            suggestions.Add("If using hardware encoding (NVENC), try software encoding (x264) instead");
+        }
+        
+        if (stderr.Contains("Invalid data found") || stderr.Contains("moov atom not found"))
+        {
+            suggestions.Add("Input file may be corrupted or in an unsupported format");
+        }
+        
+        if (stderr.Contains("Encoder") && stderr.Contains("not found"))
+        {
+            suggestions.Add("Required encoder not available in your FFmpeg build");
+            suggestions.Add("Use software encoder (x264) in render settings");
+        }
+        
+        if (stderr.Contains("Permission denied") || stderr.Contains("Access is denied"))
+        {
+            suggestions.Add("Check file permissions on input/output paths");
+            suggestions.Add("Ensure no other application is using the files");
+        }
+        
+        if (suggestions.Count == 0)
+        {
+            suggestions.Add("Review FFmpeg log for details");
+            suggestions.Add("Try with different render settings");
+            suggestions.Add("Verify input files are valid");
+        }
+        
+        return suggestions.ToArray();
+    }
+    
+    private string GetFriendlyMessage(int exitCode, string stderr)
+    {
+        if (exitCode < 0 || exitCode == -1073741515 || exitCode == -1094995529)
+        {
+            return "FFmpeg crashed - this usually indicates a corrupted binary or missing system dependencies";
+        }
+        
+        if (stderr.Contains("Invalid data found"))
+        {
+            return "Input file appears to be corrupted or in an unsupported format";
+        }
+        
+        if (stderr.Contains("Encoder") && stderr.Contains("not found"))
+        {
+            return "Required encoder not available - try using software encoding (x264)";
+        }
+        
+        return "FFmpeg encountered an error during rendering";
     }
 }

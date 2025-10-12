@@ -246,6 +246,24 @@ builder.Services.AddSingleton<Aura.Core.Runtime.EngineDetector>(sp =>
     return new Aura.Core.Runtime.EngineDetector(logger, httpClient, toolsRoot);
 });
 
+// Register HttpDownloader for FFmpeg installer
+builder.Services.AddHttpClient<Aura.Core.Downloads.HttpDownloader>();
+builder.Services.AddSingleton<Aura.Core.Downloads.HttpDownloader>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Downloads.HttpDownloader>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    return new Aura.Core.Downloads.HttpDownloader(logger, httpClient);
+});
+
+// Register FFmpeg Installer
+builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegInstaller>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegInstaller>>();
+    var downloader = sp.GetRequiredService<Aura.Core.Downloads.HttpDownloader>();
+    var toolsDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    return new Aura.Core.Dependencies.FfmpegInstaller(logger, downloader, toolsDirectory);
+});
+
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
 builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();
