@@ -91,7 +91,21 @@ $AllowedFiles = @(
     "VISUAL_SUMMARY.md",  # Summary document
     "WEB_ARCHITECTURE_SUMMARY.md",  # Architecture summary
     "IMPLEMENTATION_SUMMARY_LOCAL_ENGINES.md",  # Has recommended next steps
-    "DEPLOYMENT.md"  # Deployment guide with recommendations
+    "DEPLOYMENT.md",  # Deployment guide with recommendations
+    "ACCEPTANCE_CHECK.md",  # Documents audit patterns
+    "BUG_SWEEP_IMPLEMENTATION.md",  # Documents sweep process
+    "STABILIZATION_COMPLETE.md",  # Documents stabilization results
+    "docs/ONBOARDING_IMPLEMENTATION.md",  # Implementation documentation
+    "docs/QUICK_DEMO.md",  # Demo documentation
+    "docs/QUICK_START.md",  # Quick start guide
+    "DOWNLOAD_CENTER_RELIABILITY_IMPLEMENTATION.md",  # Implementation doc
+    "DOWNLOAD_ROBUSTNESS_IMPLEMENTATION.md",  # Implementation doc
+    "ERROR_UX_IMPLEMENTATION.md",  # Implementation doc
+    "FIRST_RUN_WIZARD_STATE_MACHINE_IMPLEMENTATION.md",  # Implementation doc
+    "FLEXIBLE_ENGINES_IMPLEMENTATION.md",  # Implementation doc
+    "GUIDED_GENERATION_IMPLEMENTATION.md",  # Implementation doc
+    "IMPLEMENTATION_SUMMARY_DOWNLOAD_ROBUSTNESS.md",  # Implementation summary
+    "PR_DOWNLOAD_CENTER_IMPLEMENTATION.md"  # Implementation doc
 )
 
 Write-Host "🔍 Scanning for forbidden placeholder text..." -ForegroundColor Cyan
