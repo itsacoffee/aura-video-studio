@@ -42,6 +42,40 @@ public class HttpDownloader
         IProgress<HttpDownloadProgress>? progress = null,
         CancellationToken ct = default)
     {
+        for (int attempt = 0; attempt < MaxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    _logger.LogInformation("Retry attempt {Attempt} of {MaxRetries}", attempt, MaxRetries);
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct); // Exponential backoff
+                }
+
+                var result = await DownloadFileInternalAsync(url, outputPath, expectedSha256, progress, ct);
+                return result;
+            }
+            catch (HttpRequestException ex) when (attempt < MaxRetries - 1)
+            {
+                _logger.LogWarning(ex, "Download attempt {Attempt} failed, will retry", attempt + 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Download failed: {Url}", url);
+                throw;
+            }
+        }
+
+        return false;
+    }
+
+    private async Task<bool> DownloadFileInternalAsync(
+        string url,
+        string outputPath,
+        string? expectedSha256,
+        IProgress<HttpDownloadProgress>? progress,
+        CancellationToken ct)
+    {
         var partialPath = outputPath + ".partial";
         var startTime = DateTime.UtcNow;
         long totalBytesRead = 0;
@@ -70,43 +104,49 @@ public class HttpDownloader
             var totalBytes = existingBytes + (response.Content.Headers.ContentLength ?? 0);
             _logger.LogInformation("Downloading {Url} ({TotalBytes} bytes)", url, totalBytes);
 
-            // Open file for writing (append if resuming)
-            await using var fileStream = new FileStream(
-                partialPath,
-                existingBytes > 0 ? FileMode.Append : FileMode.Create,
-                FileAccess.Write,
-                FileShare.None,
-                BufferSize,
-                useAsync: true);
-
-            await using var httpStream = await response.Content.ReadAsStreamAsync(ct);
-            
-            var buffer = new byte[BufferSize];
-            int bytesRead;
-            var lastProgressReport = DateTime.UtcNow;
-
-            while ((bytesRead = await httpStream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
+            // Download to partial file
             {
-                await fileStream.WriteAsync(buffer, 0, bytesRead, ct);
-                totalBytesRead += bytesRead;
+                // Open file for writing (append if resuming)
+                await using var fileStream = new FileStream(
+                    partialPath,
+                    existingBytes > 0 ? FileMode.Append : FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,
+                    BufferSize,
+                    useAsync: true);
 
-                // Report progress every 500ms
-                if ((DateTime.UtcNow - lastProgressReport).TotalMilliseconds >= 500)
+                await using var httpStream = await response.Content.ReadAsStreamAsync(ct);
+                
+                var buffer = new byte[BufferSize];
+                int bytesRead;
+                var lastProgressReport = DateTime.UtcNow;
+
+                while ((bytesRead = await httpStream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
                 {
-                    var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
-                    var speed = elapsed > 0 ? totalBytesRead / elapsed : 0;
-                    var percentComplete = totalBytes > 0 ? (float)(totalBytesRead * 100.0 / totalBytes) : 0;
+                    await fileStream.WriteAsync(buffer, 0, bytesRead, ct);
+                    totalBytesRead += bytesRead;
 
-                    progress?.Report(new HttpDownloadProgress(
-                        totalBytesRead,
-                        totalBytes,
-                        percentComplete,
-                        speed
-                    ));
+                    // Report progress every 500ms
+                    if ((DateTime.UtcNow - lastProgressReport).TotalMilliseconds >= 500)
+                    {
+                        var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
+                        var speed = elapsed > 0 ? totalBytesRead / elapsed : 0;
+                        var percentComplete = totalBytes > 0 ? (float)(totalBytesRead * 100.0 / totalBytes) : 0;
 
-                    lastProgressReport = DateTime.UtcNow;
+                        progress?.Report(new HttpDownloadProgress(
+                            totalBytesRead,
+                            totalBytes,
+                            percentComplete,
+                            speed
+                        ));
+
+                        lastProgressReport = DateTime.UtcNow;
+                    }
                 }
-            }
+
+                // Ensure stream is flushed before closing
+                await fileStream.FlushAsync(ct);
+            } // File stream is now closed
 
             // Final progress report
             progress?.Report(new HttpDownloadProgress(totalBytesRead, totalBytes, 100, 0, "Download complete"));
@@ -130,6 +170,14 @@ public class HttpDownloader
                 {
                     _logger.LogError("Checksum mismatch! Expected: {Expected}, Actual: {Actual}", 
                         expectedSha256, actualSha256);
+                    
+                    // Delete the downloaded file on checksum failure
+                    if (File.Exists(outputPath))
+                    {
+                        File.Delete(outputPath);
+                        _logger.LogInformation("Deleted file with mismatched checksum");
+                    }
+                    
                     return false;
                 }
                 
