@@ -103,11 +103,20 @@ export function SettingsPage() {
   const [customProfileName, setCustomProfileName] = useState('');
   const [savedProfiles, setSavedProfiles] = useState<any[]>([]);
 
+  // Portable mode state
+  const [portableModeEnabled, setPortableModeEnabled] = useState(false);
+  const [portableRootPath, setPortableRootPath] = useState('');
+  const [toolsDirectory, setToolsDirectory] = useState('');
+  const [defaultAppDataPath, setDefaultAppDataPath] = useState('');
+  const [portableModeModified, setPortableModeModified] = useState(false);
+  const [savingPortableMode, setSavingPortableMode] = useState(false);
+
   useEffect(() => {
     fetchSettings();
     fetchProfiles();
     fetchApiKeys();
     fetchProviderPaths();
+    fetchPortableModeSettings();
   }, []);
 
   // Apply UI scale on load
@@ -503,6 +512,76 @@ export function SettingsPage() {
     alert(`Profile "${name}" deleted`);
   };
 
+  const fetchPortableModeSettings = async () => {
+    try {
+      const response = await fetch('/api/settings/portable');
+      if (response.ok) {
+        const data = await response.json();
+        setPortableModeEnabled(data.portableModeEnabled || false);
+        setPortableRootPath(data.portableRootPath || '');
+        setToolsDirectory(data.toolsDirectory || '');
+        setDefaultAppDataPath(data.defaultAppDataPath || '');
+      }
+    } catch (error) {
+      console.error('Error fetching portable mode settings:', error);
+    }
+  };
+
+  const savePortableModeSettings = async () => {
+    setSavingPortableMode(true);
+    try {
+      const response = await fetch('/api/settings/portable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          portableModeEnabled,
+          portableRootPath: portableRootPath.trim(),
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setToolsDirectory(data.toolsDirectory || '');
+        alert('Portable mode settings saved successfully! Please restart the application for changes to take full effect.');
+        setPortableModeModified(false);
+        await fetchPortableModeSettings();
+      } else {
+        alert('Error saving portable mode settings');
+      }
+    } catch (error) {
+      console.error('Error saving portable mode settings:', error);
+      alert('Error saving portable mode settings');
+    } finally {
+      setSavingPortableMode(false);
+    }
+  };
+
+  const openToolsFolder = async () => {
+    try {
+      const response = await fetch('/api/settings/open-tools-folder', {
+        method: 'POST',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Opened folder:', data.path);
+      } else {
+        alert('Error opening tools folder');
+      }
+    } catch (error) {
+      console.error('Error opening tools folder:', error);
+      alert('Error opening tools folder');
+    }
+  };
+
+  const updatePortableMode = (enabled: boolean) => {
+    setPortableModeEnabled(enabled);
+    setPortableModeModified(true);
+  };
+
+  const updatePortableRootPath = (path: string) => {
+    setPortableRootPath(path);
+    setPortableModeModified(true);
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -519,6 +598,7 @@ export function SettingsPage() {
       >
         <Tab value="system">System</Tab>
         <Tab value="ui">UI</Tab>
+        <Tab value="portable">Portable Mode</Tab>
         <Tab value="providers">Providers</Tab>
         <Tab value="localproviders">Local Providers</Tab>
         <Tab value="localengines">Local Engines</Tab>
@@ -592,6 +672,91 @@ export function SettingsPage() {
             <Text size={200} style={{ fontStyle: 'italic', color: tokens.colorNeutralForeground3 }}>
               Note: Changes take effect after saving and refreshing the page
             </Text>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'portable' && (
+        <Card className={styles.section}>
+          <Title2>Portable Mode</Title2>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+            Configure portable mode to install all tools under a single folder for easy copying/moving
+          </Text>
+          
+          <Card style={{ marginBottom: tokens.spacingVerticalL, padding: tokens.spacingVerticalM, backgroundColor: tokens.colorNeutralBackground3 }}>
+            <Text weight="semibold" size={300}>ℹ️ About Portable Mode</Text>
+            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
+              When enabled, all downloaded dependencies (FFmpeg, Ollama, Stable Diffusion, etc.) will be installed
+              to your specified folder instead of the system AppData folder. This allows you to:
+            </Text>
+            <ul style={{ marginTop: tokens.spacingVerticalS, marginLeft: tokens.spacingHorizontalL }}>
+              <li><Text size={200}>Copy the entire application folder to another machine</Text></li>
+              <li><Text size={200}>Move the application without breaking dependencies</Text></li>
+              <li><Text size={200}>Keep all tools organized in one location</Text></li>
+            </ul>
+            <Text size={200} style={{ marginTop: tokens.spacingVerticalS, fontStyle: 'italic', color: tokens.colorNeutralForeground3 }}>
+              Note: System dependencies (like GPU drivers) must still be installed on each machine.
+            </Text>
+          </Card>
+
+          <div className={styles.form}>
+            <Field label="Enable Portable Mode">
+              <Switch
+                checked={portableModeEnabled}
+                onChange={(_, data) => updatePortableMode(data.checked)}
+              />
+              <Text size={200}>
+                {portableModeEnabled ? 'Enabled' : 'Disabled'} - Install tools to a custom folder
+              </Text>
+            </Field>
+
+            <Field 
+              label="Portable Root Path" 
+              hint={portableModeEnabled ? "All tools will be installed here" : "Enable portable mode to set path"}
+            >
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
+                <Input 
+                  style={{ flex: 1 }}
+                  placeholder="C:\TTS\aura-video-studio\Tools or leave empty for default" 
+                  value={portableRootPath}
+                  onChange={(e) => updatePortableRootPath(e.target.value)}
+                  disabled={!portableModeEnabled}
+                />
+              </div>
+            </Field>
+
+            <Card style={{ padding: tokens.spacingVerticalM, backgroundColor: tokens.colorNeutralBackground2 }}>
+              <Text weight="semibold" size={300}>Current Configuration</Text>
+              <div style={{ marginTop: tokens.spacingVerticalS, display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
+                <Text size={200}><strong>Mode:</strong> {portableModeEnabled ? 'Portable' : 'Standard (AppData)'}</Text>
+                <Text size={200}><strong>Tools Directory:</strong> {toolsDirectory || 'Loading...'}</Text>
+                {!portableModeEnabled && (
+                  <Text size={200}><strong>Default AppData Path:</strong> {defaultAppDataPath || 'Loading...'}</Text>
+                )}
+              </div>
+            </Card>
+
+            {portableModeModified && (
+              <Text size={200} style={{ color: tokens.colorPaletteYellowForeground1 }}>
+                ⚠️ You have unsaved changes. Save and restart the application for changes to take effect.
+              </Text>
+            )}
+            
+            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
+              <Button 
+                appearance="primary" 
+                onClick={savePortableModeSettings}
+                disabled={!portableModeModified || savingPortableMode}
+              >
+                {savingPortableMode ? 'Saving...' : 'Save Portable Mode Settings'}
+              </Button>
+              <Button 
+                appearance="secondary" 
+                onClick={openToolsFolder}
+              >
+                Open Tools Folder
+              </Button>
+            </div>
           </div>
         </Card>
       )}
