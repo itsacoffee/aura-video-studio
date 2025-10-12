@@ -80,6 +80,115 @@ public class ScriptOrchestrator
     }
 
     /// <summary>
+    /// Generate a script using the appropriate provider based on tier and availability.
+    /// Uses the deterministic ResolveLlm method for provider selection.
+    /// </summary>
+    public async Task<ScriptResult> GenerateScriptDeterministicAsync(
+        Brief brief, 
+        PlanSpec spec, 
+        string preferredTier,
+        bool offlineOnly,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Starting deterministic script generation for topic: {Topic}, preferredTier: {Tier}, offlineOnly: {OfflineOnly}", 
+            brief.Topic, preferredTier, offlineOnly);
+
+        // Use the new deterministic ResolveLlm method
+        var decision = _providerMixer.ResolveLlm(GetProviders(), preferredTier, offlineOnly);
+        _providerMixer.LogDecision(decision);
+
+        // If Pro is blocked in offline mode, return error immediately
+        if (decision.ProviderName == "None")
+        {
+            return new ScriptResult
+            {
+                Success = false,
+                ErrorCode = "E307",
+                ErrorMessage = "Pro LLM providers require internet connection but system is in OfflineOnly mode. Please disable OfflineOnly mode or use Free providers.",
+                Script = null,
+                ProviderUsed = null,
+                IsFallback = false
+            };
+        }
+
+        var requestedProvider = decision.DowngradeChain.Length > 0 ? decision.DowngradeChain[0] : decision.ProviderName;
+
+        // Try the selected provider
+        var result = await TryGenerateWithProviderAsync(
+            brief, 
+            spec, 
+            decision.ProviderName, 
+            decision.IsFallback,
+            requestedProvider,
+            decision.FallbackFrom,
+            ct).ConfigureAwait(false);
+
+        if (result.Success)
+        {
+            return result;
+        }
+
+        // If primary provider failed, try remaining providers in the downgrade chain
+        var currentIndex = Array.IndexOf(decision.DowngradeChain, decision.ProviderName);
+        if (currentIndex >= 0 && currentIndex < decision.DowngradeChain.Length - 1)
+        {
+            var primaryFailureReason = result.ErrorMessage ?? "Provider failed";
+            _logger.LogWarning("Primary provider {Provider} failed, attempting fallback chain: {Reason}", 
+                decision.ProviderName, primaryFailureReason);
+            
+            // Try remaining providers in chain
+            for (int i = currentIndex + 1; i < decision.DowngradeChain.Length; i++)
+            {
+                var fallbackProvider = decision.DowngradeChain[i];
+                _logger.LogInformation("Falling back to {Provider}", fallbackProvider);
+                
+                result = await TryGenerateWithProviderAsync(
+                    brief, spec, fallbackProvider, true, requestedProvider, 
+                    $"Primary provider {decision.ProviderName} failed: {primaryFailureReason}", 
+                    ct).ConfigureAwait(false);
+                    
+                if (result.Success)
+                {
+                    _logger.LogWarning("Successfully downgraded from {Requested} to {Actual}", 
+                        requestedProvider, result.ProviderUsed);
+                    return result;
+                }
+            }
+        }
+
+        // If we're here and RuleBased hasn't been tried, try it as guaranteed fallback
+        if (!decision.DowngradeChain.Contains("RuleBased") && decision.ProviderName != "RuleBased")
+        {
+            _logger.LogInformation("Falling back to RuleBased provider (final guaranteed fallback)");
+            result = await TryGenerateWithProviderAsync(
+                brief, spec, "RuleBased", true, requestedProvider,
+                "All providers in chain failed, final fallback to RuleBased",
+                ct).ConfigureAwait(false);
+            if (result.Success)
+            {
+                _logger.LogWarning("Successfully downgraded from {Requested} to {Actual} (final fallback)", 
+                    requestedProvider, result.ProviderUsed);
+                return result;
+            }
+            else
+            {
+                _logger.LogError("CRITICAL: Even RuleBased fallback failed - no providers available");
+            }
+        }
+
+        // All providers failed
+        return new ScriptResult
+        {
+            Success = false,
+            ErrorCode = "E300",
+            ErrorMessage = "All LLM providers failed to generate script",
+            Script = null,
+            ProviderUsed = null,
+            IsFallback = false
+        };
+    }
+
+    /// <summary>
     /// Generate a script using the appropriate provider based on tier and availability
     /// </summary>
     public async Task<ScriptResult> GenerateScriptAsync(

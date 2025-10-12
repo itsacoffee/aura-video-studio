@@ -540,6 +540,39 @@ public class ProviderMixer
     }
 
     /// <summary>
+    /// Logs a provider decision
+    /// </summary>
+    public void LogDecision(ProviderDecision decision)
+    {
+        if (!_config.LogProviderSelection)
+            return;
+
+        if (decision.IsFallback)
+        {
+            _logger.LogWarning(
+                "[{Stage}] Provider: {Provider} (Rank {Rank}, FALLBACK from {FallbackFrom}) - {Reason}. Chain: [{Chain}]",
+                decision.Stage,
+                decision.ProviderName,
+                decision.PriorityRank,
+                decision.FallbackFrom,
+                decision.Reason,
+                string.Join(" → ", decision.DowngradeChain)
+            );
+        }
+        else
+        {
+            _logger.LogInformation(
+                "[{Stage}] Provider: {Provider} (Rank {Rank}) - {Reason}. Chain: [{Chain}]",
+                decision.Stage,
+                decision.ProviderName,
+                decision.PriorityRank,
+                decision.Reason,
+                string.Join(" → ", decision.DowngradeChain)
+            );
+        }
+    }
+
+    /// <summary>
     /// Normalizes provider names to match DI registration keys
     /// </summary>
     private static string NormalizeProviderName(string name)

@@ -29,6 +29,147 @@ public class ScriptOrchestratorTests
         Style: "Educational"
     );
 
+    #region Deterministic Provider Tests
+
+    [Fact]
+    public async Task GenerateScriptDeterministic_Should_UseProProvider_WhenAvailable()
+    {
+        // Arrange
+        var mockProProvider = new Mock<ILlmProvider>();
+        mockProProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("# Test Script\n## Introduction\nTest content");
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["OpenAI"] = mockProProvider.Object,
+            ["Ollama"] = Mock.Of<ILlmProvider>(),
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
+
+        // Act
+        var result = await orchestrator.GenerateScriptDeterministicAsync(
+            _testBrief,
+            _testSpec,
+            "Pro",
+            offlineOnly: false,
+            CancellationToken.None
+        );
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Equal("OpenAI", result.ProviderUsed);
+        Assert.NotNull(result.Script);
+        mockProProvider.Verify(p => p.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GenerateScriptDeterministic_Should_BlockPro_WhenOfflineOnly()
+    {
+        // Arrange
+        var mockProProvider = new Mock<ILlmProvider>();
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["OpenAI"] = mockProProvider.Object
+        };
+
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
+
+        // Act
+        var result = await orchestrator.GenerateScriptDeterministicAsync(
+            _testBrief,
+            _testSpec,
+            "Pro",
+            offlineOnly: true,
+            CancellationToken.None
+        );
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("E307", result.ErrorCode);
+        Assert.Contains("OfflineOnly", result.ErrorMessage);
+        mockProProvider.Verify(p => p.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GenerateScriptDeterministic_Should_DowngradeGracefully_WhenProIfAvailableAndOffline()
+    {
+        // Arrange
+        var mockFreeProvider = new Mock<ILlmProvider>();
+        mockFreeProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("# Test Script\n## Introduction\nTest content");
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["Ollama"] = mockFreeProvider.Object,
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
+
+        // Act
+        var result = await orchestrator.GenerateScriptDeterministicAsync(
+            _testBrief,
+            _testSpec,
+            "ProIfAvailable",
+            offlineOnly: true,
+            CancellationToken.None
+        );
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Equal("Ollama", result.ProviderUsed);
+        Assert.NotNull(result.Script);
+        Assert.False(result.IsFallback); // Not a fallback because Ollama is first in offline chain
+    }
+
+    [Fact]
+    public async Task GenerateScriptDeterministic_Should_FallbackToOllama_WhenProUnavailable()
+    {
+        // Arrange
+        var mockOllamaProvider = new Mock<ILlmProvider>();
+        mockOllamaProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("# Test Script\n## Introduction\nTest content");
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["Ollama"] = mockOllamaProvider.Object,
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+        var orchestrator = new ScriptOrchestrator(NullLogger<ScriptOrchestrator>.Instance, NullLoggerFactory.Instance, mixer, providers);
+
+        // Act
+        var result = await orchestrator.GenerateScriptDeterministicAsync(
+            _testBrief,
+            _testSpec,
+            "Pro",
+            offlineOnly: false,
+            CancellationToken.None
+        );
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Equal("Ollama", result.ProviderUsed);
+        Assert.True(result.IsFallback);
+        Assert.NotNull(result.RequestedProvider);
+        Assert.NotNull(result.Script);
+    }
+
+    #endregion
+
     [Fact]
     public async Task GenerateScript_Should_UseProProvider_WhenAvailable()
     {
