@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
@@ -567,4 +568,354 @@ public class ProviderMixerTests
         Assert.NotNull(selection3);
         Assert.NotNull(selection3.SelectedProvider);
     }
+
+    #region ResolveLlm Tests (Deterministic Provider Decision)
+
+    [Fact]
+    public void ResolveLlm_Should_ReturnDeterministicDecision_ProAvailable()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["OpenAI"] = Mock.Of<ILlmProvider>(),
+            ["Azure"] = Mock.Of<ILlmProvider>(),
+            ["Ollama"] = Mock.Of<ILlmProvider>(),
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision = mixer.ResolveLlm(providers, "Pro", offlineOnly: false);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("OpenAI", decision.ProviderName);
+        Assert.Equal(1, decision.PriorityRank);
+        Assert.False(decision.IsFallback);
+        Assert.Null(decision.FallbackFrom);
+        Assert.Equal(new[] { "OpenAI", "Azure", "Gemini", "Ollama", "RuleBased" }, decision.DowngradeChain);
+        Assert.Contains("available and preferred", decision.Reason);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_FallbackToOllama_WhenProUnavailable()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["Ollama"] = Mock.Of<ILlmProvider>(),
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision = mixer.ResolveLlm(providers, "Pro", offlineOnly: false);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("Ollama", decision.ProviderName);
+        Assert.Equal(4, decision.PriorityRank); // 4th in chain (OpenAI, Azure, Gemini, then Ollama)
+        Assert.True(decision.IsFallback);
+        Assert.Equal("OpenAI → Azure → Gemini", decision.FallbackFrom);
+        Assert.Equal(new[] { "OpenAI", "Azure", "Gemini", "Ollama", "RuleBased" }, decision.DowngradeChain);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_FallbackToRuleBased_WhenNoProvidersAvailable()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var emptyProviders = new Dictionary<string, ILlmProvider>();
+
+        // Act
+        var decision = mixer.ResolveLlm(emptyProviders, "Pro", offlineOnly: false);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("RuleBased", decision.ProviderName);
+        Assert.Equal(5, decision.PriorityRank); // Last in chain
+        Assert.True(decision.IsFallback);
+        Assert.Equal("All providers", decision.FallbackFrom);
+        Assert.Contains("guaranteed", decision.Reason);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_BlockPro_InOfflineMode()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["OpenAI"] = Mock.Of<ILlmProvider>(),
+            ["Ollama"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision = mixer.ResolveLlm(providers, "Pro", offlineOnly: true);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("None", decision.ProviderName);
+        Assert.Equal(0, decision.PriorityRank);
+        Assert.False(decision.IsFallback);
+        Assert.Contains("offline-only mode", decision.Reason);
+        Assert.Empty(decision.DowngradeChain);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_DowngradeToFree_WhenProIfAvailableAndOffline()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["OpenAI"] = Mock.Of<ILlmProvider>(),
+            ["Ollama"] = Mock.Of<ILlmProvider>(),
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision = mixer.ResolveLlm(providers, "ProIfAvailable", offlineOnly: true);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("Ollama", decision.ProviderName);
+        Assert.Equal(1, decision.PriorityRank);
+        Assert.False(decision.IsFallback);
+        Assert.Equal(new[] { "Ollama", "RuleBased" }, decision.DowngradeChain);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_UseOllama_WhenAvailableInOfflineMode()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["Ollama"] = Mock.Of<ILlmProvider>(),
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision = mixer.ResolveLlm(providers, "Free", offlineOnly: true);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("Ollama", decision.ProviderName);
+        Assert.Equal(1, decision.PriorityRank);
+        Assert.False(decision.IsFallback);
+        Assert.Equal(new[] { "Ollama", "RuleBased" }, decision.DowngradeChain);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_UseRuleBased_WhenOllamaNotAvailableInOfflineMode()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision = mixer.ResolveLlm(providers, "Free", offlineOnly: true);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("RuleBased", decision.ProviderName);
+        Assert.Equal(2, decision.PriorityRank);
+        Assert.True(decision.IsFallback);
+        Assert.Equal("Ollama", decision.FallbackFrom);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_ReturnGuaranteedFallback_WhenNoProvidersInOfflineMode()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var emptyProviders = new Dictionary<string, ILlmProvider>();
+
+        // Act
+        var decision = mixer.ResolveLlm(emptyProviders, "Free", offlineOnly: true);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("RuleBased", decision.ProviderName);
+        Assert.Equal(2, decision.PriorityRank);
+        Assert.True(decision.IsFallback);
+        Assert.Equal("All providers", decision.FallbackFrom);
+        Assert.Contains("guaranteed", decision.Reason);
+    }
+
+    [Theory]
+    [InlineData("Pro", false, "OpenAI")]
+    [InlineData("ProIfAvailable", false, "OpenAI")]
+    [InlineData("Free", false, "Ollama")]
+    [InlineData("Free", true, "Ollama")]
+    public void ResolveLlm_Should_BeDeterministic_ForVariousCombinations(
+        string tier, bool offlineOnly, string expectedProvider)
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["OpenAI"] = Mock.Of<ILlmProvider>(),
+            ["Azure"] = Mock.Of<ILlmProvider>(),
+            ["Ollama"] = Mock.Of<ILlmProvider>(),
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision1 = mixer.ResolveLlm(providers, tier, offlineOnly);
+        var decision2 = mixer.ResolveLlm(providers, tier, offlineOnly);
+        var decision3 = mixer.ResolveLlm(providers, tier, offlineOnly);
+
+        // Assert - All calls should return identical decisions
+        Assert.Equal(decision1.ProviderName, decision2.ProviderName);
+        Assert.Equal(decision2.ProviderName, decision3.ProviderName);
+        Assert.Equal(expectedProvider, decision1.ProviderName);
+        Assert.Equal(decision1.PriorityRank, decision2.PriorityRank);
+        Assert.Equal(decision1.DowngradeChain, decision2.DowngradeChain);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_NeverThrow_WithEmptyProviders()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+        var emptyProviders = new Dictionary<string, ILlmProvider>();
+
+        // Act & Assert - Should never throw
+        var exception = Record.Exception(() =>
+        {
+            var decision1 = mixer.ResolveLlm(emptyProviders, "Pro", offlineOnly: false);
+            var decision2 = mixer.ResolveLlm(emptyProviders, "ProIfAvailable", offlineOnly: true);
+            var decision3 = mixer.ResolveLlm(emptyProviders, "Free", offlineOnly: false);
+            var decision4 = mixer.ResolveLlm(emptyProviders, null!, offlineOnly: true);
+
+            // All should return valid decisions
+            Assert.NotNull(decision1);
+            Assert.NotNull(decision2);
+            Assert.NotNull(decision3);
+            Assert.NotNull(decision4);
+        });
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_ProvideCompleteDowngradeChain_ForPro()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision = mixer.ResolveLlm(providers, "Pro", offlineOnly: false);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("RuleBased", decision.ProviderName);
+        Assert.Equal(new[] { "OpenAI", "Azure", "Gemini", "Ollama", "RuleBased" }, decision.DowngradeChain);
+        Assert.True(decision.IsFallback);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_LogDowngradeReasons()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["Ollama"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision = mixer.ResolveLlm(providers, "Pro", offlineOnly: false);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("Ollama", decision.ProviderName);
+        Assert.True(decision.IsFallback);
+        Assert.NotNull(decision.FallbackFrom);
+        Assert.Contains("OpenAI", decision.FallbackFrom);
+        Assert.Contains("Azure", decision.FallbackFrom);
+        Assert.Contains("Gemini", decision.FallbackFrom);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_HandleAzureAsFallback()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["Azure"] = Mock.Of<ILlmProvider>(),
+            ["Ollama"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision = mixer.ResolveLlm(providers, "Pro", offlineOnly: false);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("Azure", decision.ProviderName);
+        Assert.Equal(2, decision.PriorityRank);
+        Assert.True(decision.IsFallback);
+        Assert.Equal("OpenAI", decision.FallbackFrom);
+    }
+
+    [Fact]
+    public void ResolveLlm_Should_HandleGeminiAsFallback()
+    {
+        // Arrange
+        var config = new ProviderMixingConfig { LogProviderSelection = false };
+        var mixer = new ProviderMixer(NullLogger<ProviderMixer>.Instance, config);
+
+        var providers = new Dictionary<string, ILlmProvider>
+        {
+            ["Gemini"] = Mock.Of<ILlmProvider>(),
+            ["RuleBased"] = Mock.Of<ILlmProvider>()
+        };
+
+        // Act
+        var decision = mixer.ResolveLlm(providers, "Pro", offlineOnly: false);
+
+        // Assert
+        Assert.NotNull(decision);
+        Assert.Equal("Gemini", decision.ProviderName);
+        Assert.Equal(3, decision.PriorityRank);
+        Assert.True(decision.IsFallback);
+        Assert.Equal("OpenAI → Azure", decision.FallbackFrom);
+    }
+
+    #endregion
 }

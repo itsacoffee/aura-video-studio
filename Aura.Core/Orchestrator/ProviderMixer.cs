@@ -23,6 +23,133 @@ public class ProviderMixer
     }
 
     /// <summary>
+    /// Resolves the best available LLM provider based on tier, availability, and offline mode.
+    /// This method is deterministic and never throws - always returns a valid ProviderDecision.
+    /// 
+    /// Fallback chain:
+    /// - Pro tier (online): OpenAI → Azure → Gemini → Ollama → RuleBased (guaranteed)
+    /// - ProIfAvailable (online): OpenAI → Azure → Gemini → Ollama → RuleBased (guaranteed)
+    /// - Pro tier (offline): Error - Pro requires internet
+    /// - ProIfAvailable (offline): Ollama → RuleBased (guaranteed)
+    /// - Free tier: Ollama → RuleBased (guaranteed)
+    /// - Empty providers: RuleBased (guaranteed - never throws)
+    /// </summary>
+    public ProviderDecision ResolveLlm(
+        Dictionary<string, ILlmProvider> availableProviders,
+        string preferredTier,
+        bool offlineOnly = false)
+    {
+        var stage = "Script";
+        _logger.LogInformation("Resolving LLM provider for {Stage} stage (tier: {Tier}, offlineOnly: {OfflineOnly})", 
+            stage, preferredTier, offlineOnly);
+
+        // Build the complete downgrade chain based on tier and offline mode
+        var downgradeChain = BuildLlmDowngradeChain(preferredTier, offlineOnly);
+
+        // If offline mode is enabled and Pro tier is requested, we need to handle this specially
+        if (offlineOnly && preferredTier == "Pro")
+        {
+            // Pro tier in offline mode is not allowed - but we still return a decision with empty chain
+            return new ProviderDecision
+            {
+                Stage = stage,
+                ProviderName = "None",
+                PriorityRank = 0,
+                DowngradeChain = downgradeChain,
+                Reason = "Pro providers require internet connection but system is in offline-only mode",
+                IsFallback = false,
+                FallbackFrom = null
+            };
+        }
+
+        // Find the first available provider in the downgrade chain
+        for (int i = 0; i < downgradeChain.Length; i++)
+        {
+            var providerName = downgradeChain[i];
+            
+            // Check if provider is available
+            if (availableProviders.ContainsKey(providerName))
+            {
+                var isFallback = i > 0; // It's a fallback if not the first in chain
+                var fallbackFrom = isFallback ? string.Join(" → ", downgradeChain[0..i]) : null;
+                
+                return new ProviderDecision
+                {
+                    Stage = stage,
+                    ProviderName = providerName,
+                    PriorityRank = i + 1, // 1-based ranking
+                    DowngradeChain = downgradeChain,
+                    Reason = isFallback 
+                        ? $"Fallback to {providerName} (higher-tier providers unavailable)"
+                        : $"{providerName} available and preferred",
+                    IsFallback = isFallback,
+                    FallbackFrom = fallbackFrom
+                };
+            }
+        }
+
+        // No providers available in dictionary - return RuleBased as guaranteed fallback
+        // RuleBased is always available even if not registered
+        var guaranteedFallbackRank = downgradeChain.Length;
+        return new ProviderDecision
+        {
+            Stage = stage,
+            ProviderName = "RuleBased",
+            PriorityRank = guaranteedFallbackRank,
+            DowngradeChain = downgradeChain,
+            Reason = "RuleBased fallback - guaranteed always-available provider",
+            IsFallback = true,
+            FallbackFrom = "All providers"
+        };
+    }
+
+    /// <summary>
+    /// Builds the deterministic downgrade chain for LLM providers based on tier and offline mode
+    /// </summary>
+    private static string[] BuildLlmDowngradeChain(string preferredTier, bool offlineOnly)
+    {
+        // Normalize tier name
+        var tier = (preferredTier ?? "Free").Trim();
+
+        if (offlineOnly)
+        {
+            // In offline mode, only local providers are allowed
+            if (tier == "Pro")
+            {
+                // Pro tier in offline mode - empty chain since Pro requires internet
+                return System.Array.Empty<string>();
+            }
+            else if (tier == "ProIfAvailable")
+            {
+                // ProIfAvailable downgrades to Free in offline mode
+                return new[] { "Ollama", "RuleBased" };
+            }
+            else
+            {
+                // Free tier always uses local providers
+                return new[] { "Ollama", "RuleBased" };
+            }
+        }
+        else
+        {
+            // Online mode - full chain
+            if (tier == "Pro" || tier == "ProIfAvailable")
+            {
+                return new[] { "OpenAI", "Azure", "Gemini", "Ollama", "RuleBased" };
+            }
+            else if (tier == "Free")
+            {
+                return new[] { "Ollama", "RuleBased" };
+            }
+            else
+            {
+                // Unknown tier or specific provider - use Free tier chain
+                return new[] { "Ollama", "RuleBased" };
+            }
+        }
+    }
+
+    /// <summary>
     /// Selects the best available LLM provider based on profile and availability
     /// 
     /// Fallback chain:
