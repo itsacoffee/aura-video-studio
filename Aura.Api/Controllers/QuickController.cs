@@ -35,35 +35,49 @@ public class QuickController : ControllerBase
     {
         try
         {
-            Log.Information("Quick Demo requested with topic: {Topic}", request?.Topic ?? "(default)");
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] Quick Demo requested with topic: {Topic}", correlationId, request?.Topic ?? "(default)");
 
             var result = await _quickService.CreateQuickDemoAsync(request?.Topic, ct);
 
             if (result.Success)
             {
+                Log.Information("[{CorrelationId}] Quick Demo job created successfully: {JobId}", correlationId, result.JobId);
                 return Ok(new
                 {
                     jobId = result.JobId,
                     status = "queued",
-                    message = result.Message
+                    message = result.Message,
+                    correlationId
                 });
             }
             else
             {
+                Log.Warning("[{CorrelationId}] Quick Demo creation failed: {Message}", correlationId, result.Message);
                 return StatusCode(500, new
                 {
-                    error = "Quick demo creation failed",
-                    details = result.Message
+                    type = "https://docs.aura.studio/errors/E200",
+                    title = "Quick Demo Failed",
+                    status = 500,
+                    detail = result.Message,
+                    correlationId,
+                    guidance = "Quick Demo uses safe defaults and should always work. This error indicates a system issue. Please check logs or contact support."
                 });
             }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error creating quick demo");
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error creating quick demo", correlationId);
+            
             return StatusCode(500, new
             {
-                error = "Error creating quick demo",
-                details = ex.Message
+                type = "https://docs.aura.studio/errors/E200",
+                title = "Quick Demo Error",
+                status = 500,
+                detail = $"Unexpected error creating quick demo: {ex.Message}",
+                correlationId,
+                guidance = "Quick Demo should never fail. This indicates a critical system issue. Please check logs and verify all dependencies are installed."
             });
         }
     }

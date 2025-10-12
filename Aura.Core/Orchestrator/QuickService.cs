@@ -8,7 +8,7 @@ namespace Aura.Core.Orchestrator;
 
 /// <summary>
 /// Service for one-click safe video generation with guaranteed-success settings.
-/// Forces Free-only providers: RuleBased LLM + Windows TTS + Stock visuals.
+/// Forces Free-only providers: RuleBased LLM + Windows/Null TTS + Stock visuals.
 /// Locks render to 1080p30 H.264 for maximum compatibility.
 /// </summary>
 public class QuickService
@@ -25,14 +25,17 @@ public class QuickService
     /// <summary>
     /// Creates and starts a quick demo video job with safe defaults.
     /// Generates a 10-15 second video with captions.
+    /// Explicitly uses safe providers to ensure success.
     /// </summary>
     public async Task<QuickDemoResult> CreateQuickDemoAsync(
         string? topic = null,
         CancellationToken ct = default)
     {
+        var correlationId = $"quick-demo-{DateTime.UtcNow:yyyyMMddHHmmss}";
+        
         try
         {
-            _logger.LogInformation("Starting Quick Demo generation with safe defaults");
+            _logger.LogInformation("[{CorrelationId}] Starting Quick Demo generation with safe defaults", correlationId);
 
             // Force safe brief settings
             var brief = new Brief(
@@ -43,6 +46,8 @@ public class QuickService
                 Language: "en-US",
                 Aspect: Aspect.Widescreen16x9
             );
+            
+            _logger.LogInformation("[{CorrelationId}] Quick Demo brief created: {Topic}", correlationId, brief.Topic);
 
             // Target 10-15 seconds duration (0.25 minutes)
             var planSpec = new PlanSpec(
@@ -51,14 +56,19 @@ public class QuickService
                 Density: Density.Sparse,
                 Style: "Demo"
             );
+            
+            _logger.LogInformation("[{CorrelationId}] Quick Demo plan: {Duration}s", correlationId, planSpec.TargetDuration.TotalSeconds);
 
-            // Safe voice settings - uses Windows TTS default
+            // Safe voice settings - uses Windows TTS or Null TTS fallback
+            // The factory will automatically select the best available provider
             var voiceSpec = new VoiceSpec(
                 VoiceName: "en-US-Standard-A",
                 Rate: 1.0,
                 Pitch: 0.0,
                 Pause: PauseStyle.Short
             );
+            
+            _logger.LogInformation("[{CorrelationId}] Quick Demo voice spec configured", correlationId);
 
             // Lock to 1080p30 H.264 for maximum compatibility
             var renderSpec = new RenderSpec(
@@ -71,17 +81,23 @@ public class QuickService
                 QualityLevel: 75,
                 EnableSceneCut: true
             );
+            
+            _logger.LogInformation("[{CorrelationId}] Quick Demo render spec: {Width}x{Height} @ {Fps}fps {Codec}", 
+                correlationId, renderSpec.Res.Width, renderSpec.Res.Height, renderSpec.Fps, renderSpec.Codec);
 
+            // Create and start the job with safe defaults
+            _logger.LogInformation("[{CorrelationId}] Creating Quick Demo job with JobRunner", correlationId);
+            
             var job = await _jobRunner.CreateAndStartJobAsync(
                 brief,
                 planSpec,
                 voiceSpec,
                 renderSpec,
-                correlationId: $"quick-demo-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                correlationId: correlationId,
                 ct
             );
 
-            _logger.LogInformation("Quick Demo job created: {JobId}", job.Id);
+            _logger.LogInformation("[{CorrelationId}] Quick Demo job created successfully: {JobId}", correlationId, job.Id);
 
             return new QuickDemoResult(
                 Success: true,
@@ -91,11 +107,13 @@ public class QuickService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create Quick Demo");
+            _logger.LogError(ex, "[{CorrelationId}] Failed to create Quick Demo: {Message}", correlationId, ex.Message);
+            
+            // Never throw - always return structured error
             return new QuickDemoResult(
                 Success: false,
                 JobId: null,
-                Message: $"Failed to create quick demo: {ex.Message}"
+                Message: $"Failed to create quick demo: {ex.Message}. Correlation ID: {correlationId}"
             );
         }
     }
