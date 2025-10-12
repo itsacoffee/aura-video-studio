@@ -70,8 +70,10 @@ public class EngineLifecycleManagerTests : IDisposable
         // Register a test engine with auto-start
         var testEngine = new EngineConfig(
             Id: "test-engine",
+            EngineId: "test-engine",
             Name: "Test Engine",
             Version: "1.0",
+            Mode: EngineMode.Managed,
             InstallPath: _testDirectory,
             ExecutablePath: GetEchoExecutable(),
             Arguments: GetEchoArguments(),
@@ -116,8 +118,10 @@ public class EngineLifecycleManagerTests : IDisposable
         // Start a test engine
         var testEngine = new EngineConfig(
             Id: "test-engine",
+            EngineId: "test-engine",
             Name: "Test Engine",
             Version: "1.0",
+            Mode: EngineMode.Managed,
             InstallPath: _testDirectory,
             ExecutablePath: GetEchoExecutable(),
             Arguments: GetEchoArguments(),
@@ -160,8 +164,10 @@ public class EngineLifecycleManagerTests : IDisposable
         // Register multiple test engines
         var engine1 = new EngineConfig(
             Id: "engine1",
+            EngineId: "engine1",
             Name: "Engine 1",
             Version: "1.0",
+            Mode: EngineMode.Managed,
             InstallPath: _testDirectory,
             ExecutablePath: GetEchoExecutable(),
             Arguments: "test1",
@@ -172,8 +178,10 @@ public class EngineLifecycleManagerTests : IDisposable
 
         var engine2 = new EngineConfig(
             Id: "engine2",
+            EngineId: "engine2",
             Name: "Engine 2",
             Version: "1.0",
+            Mode: EngineMode.Managed,
             InstallPath: _testDirectory,
             ExecutablePath: GetEchoExecutable(),
             Arguments: "test2",
@@ -241,8 +249,10 @@ public class EngineLifecycleManagerTests : IDisposable
 
         var testEngine = new EngineConfig(
             Id: "test-engine",
+            EngineId: "test-engine",
             Name: "Test Engine",
             Version: "1.0",
+            Mode: EngineMode.Managed,
             InstallPath: _testDirectory,
             ExecutablePath: GetEchoExecutable(),
             Arguments: GetEchoArguments(),
@@ -330,8 +340,10 @@ public class EngineLifecycleManagerTests : IDisposable
 
         var testEngine = new EngineConfig(
             Id: "test-engine",
+            EngineId: "test-engine",
             Name: "Test Engine",
             Version: "1.0",
+            Mode: EngineMode.Managed,
             InstallPath: _testDirectory,
             ExecutablePath: GetEchoExecutable(),
             Arguments: GetEchoArguments(),
