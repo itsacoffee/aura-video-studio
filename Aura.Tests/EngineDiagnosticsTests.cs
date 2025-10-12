@@ -66,6 +66,9 @@ public class EngineDiagnosticsTests : IDisposable
         Assert.True(result.PathWritable);
         Assert.True(result.AvailableDiskSpaceBytes > 0);
         Assert.Null(result.ChecksumStatus);
+        Assert.Null(result.ExpectedSha256); // No SHA256 configured
+        Assert.Null(result.ActualSha256);
+        Assert.Null(result.FailedUrl); // No URL configured in this test
     }
 
     [Fact]
@@ -114,6 +117,7 @@ public class EngineDiagnosticsTests : IDisposable
         Assert.True(result.IsInstalled);
         Assert.Equal("Valid", result.ChecksumStatus);
         Assert.Empty(result.Issues);
+        Assert.Null(result.ActualSha256); // Valid installation, no need to show actual
     }
 
     [Fact]
@@ -127,7 +131,8 @@ public class EngineDiagnosticsTests : IDisposable
             Name = "Broken Engine",
             Version = "1.0",
             Entrypoint = "missing.exe",
-            SizeBytes = 1024 * 1024
+            SizeBytes = 1024 * 1024,
+            Sha256 = "expected123"
         };
         
         var enginePath = installer.GetInstallPath(engine.Id);
@@ -141,6 +146,7 @@ public class EngineDiagnosticsTests : IDisposable
         Assert.True(result.IsInstalled); // Has files
         Assert.Equal("Invalid", result.ChecksumStatus);
         Assert.Contains(result.Issues, issue => issue.Contains("Entrypoint file not found"));
+        Assert.Equal("expected123", result.ExpectedSha256); // Should show expected even if invalid
     }
 
     [Fact]
@@ -199,5 +205,73 @@ public class EngineDiagnosticsTests : IDisposable
         // Assert - The old broken installation should be removed
         var filesAfterRepair = Directory.Exists(enginePath) ? Directory.GetFiles(enginePath) : Array.Empty<string>();
         Assert.DoesNotContain(filesAfterRepair, f => Path.GetFileName(f) == "broken.txt");
+    }
+
+    [Fact]
+    public async Task RepairAsync_Should_CleanupPartialDownloads()
+    {
+        // Arrange
+        var installer = new EngineInstaller(_logger, _httpClient, _installRoot);
+        var engine = new EngineManifestEntry
+        {
+            Id = "partial-test",
+            Name = "Partial Test",
+            Version = "1.0",
+            Entrypoint = "test.exe",
+            SizeBytes = 1024,
+            ArchiveType = "zip",
+            Urls = new System.Collections.Generic.Dictionary<string, string>()
+        };
+        
+        // Create a partial download
+        string downloadDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Aura", "Downloads", engine.Id, engine.Version);
+        Directory.CreateDirectory(downloadDir);
+        var partialFile = Path.Combine(downloadDir, $"{engine.Id}.archive.partial");
+        File.WriteAllText(partialFile, "partial content");
+
+        // Act - This will fail because we don't have a real URL, but it should clean up partial files
+        try
+        {
+            await installer.RepairAsync(engine);
+        }
+        catch
+        {
+            // Expected to fail without a real download URL
+        }
+
+        // Assert - The partial file should be deleted
+        Assert.False(File.Exists(partialFile));
+    }
+
+    [Fact]
+    public async Task GetDiagnosticsAsync_Should_ShowExpectedSha256_WhenNotInstalled()
+    {
+        // Arrange
+        var installer = new EngineInstaller(_logger, _httpClient, _installRoot);
+        var engine = new EngineManifestEntry
+        {
+            Id = "sha-test",
+            Name = "SHA Test",
+            Version = "1.0",
+            Entrypoint = "test.exe",
+            SizeBytes = 1024,
+            Sha256 = "abc123def456",
+            Urls = new System.Collections.Generic.Dictionary<string, string>
+            {
+                { "windows", "http://example.com/test.zip" },
+                { "linux", "http://example.com/test.tar.gz" }
+            }
+        };
+
+        // Act
+        var result = await installer.GetDiagnosticsAsync(engine);
+
+        // Assert
+        Assert.False(result.IsInstalled);
+        Assert.Equal("abc123def456", result.ExpectedSha256);
+        Assert.NotNull(result.FailedUrl); // Should show the URL
+        Assert.Contains("example.com", result.FailedUrl);
     }
 }

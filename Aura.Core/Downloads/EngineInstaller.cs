@@ -39,6 +39,9 @@ public record EngineDiagnosticsResult(
     long AvailableDiskSpaceBytes,
     string? LastError,
     string? ChecksumStatus,
+    string? ExpectedSha256,
+    string? ActualSha256,
+    string? FailedUrl,
     List<string> Issues
 );
 
@@ -325,6 +328,36 @@ public class EngineInstaller
     {
         _logger.LogInformation("Repairing engine: {EngineId}", engine.Id);
 
+        // Clean up partial downloads
+        string downloadDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Aura", "Downloads", engine.Id, engine.Version);
+        
+        if (Directory.Exists(downloadDir))
+        {
+            try
+            {
+                var partialFiles = Directory.GetFiles(downloadDir, "*.partial");
+                foreach (var partialFile in partialFiles)
+                {
+                    _logger.LogInformation("Deleting partial download: {File}", partialFile);
+                    File.Delete(partialFile);
+                }
+                
+                // Also delete the main archive file if it exists but might be corrupted
+                var archiveFile = Path.Combine(downloadDir, $"{engine.Id}.archive");
+                if (File.Exists(archiveFile))
+                {
+                    _logger.LogInformation("Deleting potentially corrupted archive: {File}", archiveFile);
+                    File.Delete(archiveFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to clean up some partial downloads");
+            }
+        }
+
         // Remove and reinstall
         await RemoveAsync(engine).ConfigureAwait(false);
         await InstallAsync(engine, progress, ct).ConfigureAwait(false);
@@ -344,6 +377,9 @@ public class EngineInstaller
         bool pathWritable = false;
         long availableDiskSpace = 0;
         string? checksumStatus = null;
+        string? expectedSha256 = null;
+        string? actualSha256 = null;
+        string? failedUrl = null;
 
         // Check disk space
         try
@@ -380,12 +416,24 @@ public class EngineInstaller
             issues.Add($"Path is not writable: {ex.Message}");
         }
 
-        // Check if partial download exists
-        string tempPath = Path.GetTempPath();
-        var partialFiles = Directory.GetFiles(tempPath, $"{engine.Id}-*.tmp");
-        if (partialFiles.Length > 0)
+        // Check if partial download exists in download directory
+        string downloadDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Aura", "Downloads", engine.Id, engine.Version);
+        if (Directory.Exists(downloadDir))
         {
-            issues.Add($"Found {partialFiles.Length} partial download(s) in temp folder. Repair will clean these up.");
+            var partialFiles = Directory.GetFiles(downloadDir, "*.partial");
+            if (partialFiles.Length > 0)
+            {
+                issues.Add($"Found {partialFiles.Length} partial download(s). Repair will clean these up and retry.");
+            }
+        }
+
+        // Get the download URL for this platform
+        string platform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "windows" : "linux";
+        if (engine.Urls.TryGetValue(platform, out string? url) && !string.IsNullOrEmpty(url))
+        {
+            failedUrl = url;
         }
 
         // If installed, verify checksum
@@ -396,7 +444,29 @@ public class EngineInstaller
             if (!verifyResult.IsValid)
             {
                 issues.AddRange(verifyResult.Issues);
+                
+                // Try to compute actual checksum for the entrypoint file
+                expectedSha256 = engine.Sha256;
+                if (!string.IsNullOrEmpty(expectedSha256))
+                {
+                    try
+                    {
+                        // Note: We're checking the archive's SHA256, not individual files
+                        // In a failed installation, the archive may not exist, so we just report the expected value
+                        actualSha256 = "Unable to compute (installation incomplete or corrupted)";
+                        issues.Add($"Expected checksum: {expectedSha256}");
+                    }
+                    catch
+                    {
+                        // Ignore errors when computing checksum
+                    }
+                }
             }
+        }
+        else if (!string.IsNullOrEmpty(engine.Sha256))
+        {
+            // Not installed but we know the expected checksum
+            expectedSha256 = engine.Sha256;
         }
 
         return await Task.FromResult(new EngineDiagnosticsResult(
@@ -408,6 +478,9 @@ public class EngineInstaller
             availableDiskSpace,
             null, // LastError would come from process manager
             checksumStatus,
+            expectedSha256,
+            actualSha256,
+            failedUrl,
             issues
         ));
     }

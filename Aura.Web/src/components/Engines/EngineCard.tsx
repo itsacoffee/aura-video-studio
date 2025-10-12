@@ -491,6 +491,38 @@ export function EngineCard({ engine }: EngineCardProps) {
                     </div>
                   )}
                   
+                  {diagnosticsData.expectedSha256 && (
+                    <div className={styles.diagnosticsItem}>
+                      <Text className={styles.diagnosticsLabel}>Expected SHA256:</Text>
+                      <Text style={{ fontFamily: 'monospace', fontSize: '12px', wordBreak: 'break-all' }}>
+                        {diagnosticsData.expectedSha256}
+                      </Text>
+                    </div>
+                  )}
+                  
+                  {diagnosticsData.actualSha256 && (
+                    <div className={styles.diagnosticsItem}>
+                      <Text className={styles.diagnosticsLabel}>Actual SHA256:</Text>
+                      <Text style={{ 
+                        fontFamily: 'monospace', 
+                        fontSize: '12px', 
+                        wordBreak: 'break-all',
+                        color: tokens.colorPaletteRedForeground1 
+                      }}>
+                        {diagnosticsData.actualSha256}
+                      </Text>
+                    </div>
+                  )}
+                  
+                  {diagnosticsData.failedUrl && (
+                    <div className={styles.diagnosticsItem}>
+                      <Text className={styles.diagnosticsLabel}>Download URL:</Text>
+                      <Text style={{ fontFamily: 'monospace', fontSize: '12px', wordBreak: 'break-all' }}>
+                        {diagnosticsData.failedUrl}
+                      </Text>
+                    </div>
+                  )}
+                  
                   {diagnosticsData.lastError && (
                     <div className={styles.diagnosticsItem}>
                       <Text className={styles.diagnosticsLabel}>Last Error:</Text>
