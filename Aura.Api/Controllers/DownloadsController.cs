@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Dependencies;
 using Aura.Core.Downloads;
+using Aura.Core.Runtime;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -17,16 +18,22 @@ public class DownloadsController : ControllerBase
 {
     private readonly ILogger<DownloadsController> _logger;
     private readonly FfmpegInstaller _ffmpegInstaller;
+    private readonly FfmpegLocator _ffmpegLocator;
+    private readonly LocalEnginesRegistry _enginesRegistry;
     private readonly EngineManifestLoader _manifestLoader;
     private readonly string _logsDirectory;
     
     public DownloadsController(
         ILogger<DownloadsController> logger,
         FfmpegInstaller ffmpegInstaller,
+        FfmpegLocator ffmpegLocator,
+        LocalEnginesRegistry enginesRegistry,
         EngineManifestLoader manifestLoader)
     {
         _logger = logger;
         _ffmpegInstaller = ffmpegInstaller;
+        _ffmpegLocator = ffmpegLocator;
+        _enginesRegistry = enginesRegistry;
         _manifestLoader = manifestLoader;
         
         _logsDirectory = Path.Combine(
@@ -363,6 +370,189 @@ public class DownloadsController : ControllerBase
     }
     
     /// <summary>
+    /// Rescan and validate FFmpeg installation
+    /// </summary>
+    [HttpPost("ffmpeg/rescan")]
+    public async Task<IActionResult> RescanFFmpeg(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("Rescanning for FFmpeg");
+            
+            // Get any configured path from registry
+            var ffmpegConfig = _enginesRegistry.GetEngine("ffmpeg");
+            var configuredPath = ffmpegConfig?.ExecutablePath;
+            
+            // Check all candidates
+            var result = await _ffmpegLocator.CheckAllCandidatesAsync(configuredPath, ct);
+            
+            if (result.Found && !string.IsNullOrEmpty(result.FfmpegPath))
+            {
+                _logger.LogInformation("FFmpeg found during rescan: {Path}", result.FfmpegPath);
+                
+                // Update registry with found installation
+                var installDir = Path.GetDirectoryName(result.FfmpegPath) ?? "";
+                
+                // Persist to registry
+                if (ffmpegConfig != null)
+                {
+                    // Update existing
+                    await _enginesRegistry.ReconfigureEngineAsync(
+                        "ffmpeg",
+                        installPath: installDir,
+                        executablePath: result.FfmpegPath);
+                }
+                else
+                {
+                    // Register new
+                    await _enginesRegistry.AttachExternalEngineAsync(
+                        "ffmpeg",
+                        "ffmpeg",
+                        "FFmpeg",
+                        installDir,
+                        result.FfmpegPath,
+                        null,
+                        null,
+                        $"Auto-detected via rescan at {DateTime.UtcNow}");
+                }
+                
+                return Ok(new
+                {
+                    success = true,
+                    found = true,
+                    ffmpegPath = result.FfmpegPath,
+                    versionString = result.VersionString,
+                    validationOutput = result.ValidationOutput,
+                    reason = result.Reason,
+                    attemptedPaths = result.AttemptedPaths
+                });
+            }
+            else
+            {
+                _logger.LogWarning("FFmpeg not found during rescan");
+                
+                return Ok(new
+                {
+                    success = true,
+                    found = false,
+                    ffmpegPath = (string?)null,
+                    reason = result.Reason,
+                    attemptedPaths = result.AttemptedPaths,
+                    howToFix = new[]
+                    {
+                        "Install FFmpeg using the Install button",
+                        "Manually download FFmpeg and use 'Attach Existing'",
+                        $"Place FFmpeg in {Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "dependencies", "bin")} and click Rescan again"
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to rescan for FFmpeg");
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message,
+                code = "E302-FFMPEG_RESCAN_FAILED"
+            });
+        }
+    }
+    
+    /// <summary>
+    /// Attach existing FFmpeg installation from absolute path
+    /// </summary>
+    [HttpPost("ffmpeg/attach")]
+    public async Task<IActionResult> AttachFFmpeg(
+        [FromBody] AttachFFmpegRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.Path))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Path is required",
+                    code = "E302-INVALID_PATH",
+                    howToFix = new[] { "Provide a valid file or folder path to FFmpeg" }
+                });
+            }
+            
+            _logger.LogInformation("Attaching FFmpeg from: {Path}", request.Path);
+            
+            // Validate the path
+            var validation = await _ffmpegLocator.ValidatePathAsync(request.Path, ct);
+            
+            if (!validation.Found || string.IsNullOrEmpty(validation.FfmpegPath))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = validation.Reason ?? "FFmpeg not found at specified path",
+                    code = "E302-FFMPEG_NOT_FOUND",
+                    attemptedPaths = validation.AttemptedPaths,
+                    howToFix = new[]
+                    {
+                        "Ensure the path points to ffmpeg.exe (Windows) or ffmpeg binary (Linux/Mac)",
+                        "If pointing to a folder, ensure it contains ffmpeg.exe or ffmpeg in root or bin/ subdirectory",
+                        "Verify the binary is executable and not corrupted"
+                    }
+                });
+            }
+            
+            // Use FfmpegInstaller to create install.json metadata
+            var installResult = await _ffmpegInstaller.AttachExistingAsync(validation.FfmpegPath, ct);
+            
+            if (!installResult.Success)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = installResult.ErrorMessage,
+                    code = "E302-ATTACH_FAILED"
+                });
+            }
+            
+            // Register with engines registry
+            var installDir = Path.GetDirectoryName(validation.FfmpegPath) ?? "";
+            await _enginesRegistry.AttachExternalEngineAsync(
+                "ffmpeg",
+                "ffmpeg",
+                "FFmpeg (External)",
+                installDir,
+                validation.FfmpegPath,
+                null,
+                null,
+                $"User attached from {request.Path}");
+            
+            _logger.LogInformation("Successfully attached FFmpeg from {Path}", validation.FfmpegPath);
+            
+            return Ok(new
+            {
+                success = true,
+                ffmpegPath = validation.FfmpegPath,
+                installPath = installDir,
+                versionString = validation.VersionString,
+                validationOutput = validation.ValidationOutput,
+                mode = "External"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to attach FFmpeg");
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message,
+                code = "E302-ATTACH_ERROR",
+                howToFix = new[] { "Check system permissions and ensure the path is accessible" }
+            });
+        }
+    }
+    
+    /// <summary>
     /// Get FFmpeg install log
     /// </summary>
     [HttpGet("ffmpeg/install-log")]
@@ -411,4 +601,9 @@ public class FfmpegInstallRequest
     public string? LocalArchivePath { get; set; }
     public string? AttachPath { get; set; }
     public string? Version { get; set; }
+}
+
+public class AttachFFmpegRequest
+{
+    public string? Path { get; set; }
 }
