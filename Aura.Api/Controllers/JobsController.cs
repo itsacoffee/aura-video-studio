@@ -170,6 +170,73 @@ public class JobsController : ControllerBase
     }
 
     /// <summary>
+    /// Get detailed failure information for a failed job
+    /// </summary>
+    [HttpGet("{jobId}/failure-details")]
+    public IActionResult GetJobFailureDetails(string jobId)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            
+            var job = _jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
+                return NotFound(new 
+                { 
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Job Not Found", 
+                    status = 404,
+                    detail = $"Job {jobId} not found",
+                    correlationId
+                });
+            }
+
+            if (job.Status != JobStatus.Failed)
+            {
+                return BadRequest(new
+                {
+                    type = "https://docs.aura.studio/errors/E400",
+                    title = "Job Not Failed",
+                    status = 400,
+                    detail = $"Job {jobId} has not failed (status: {job.Status})",
+                    correlationId
+                });
+            }
+
+            if (job.FailureDetails == null)
+            {
+                // Return basic failure info if detailed info not available
+                return Ok(new
+                {
+                    stage = job.Stage,
+                    message = job.ErrorMessage ?? "Job failed",
+                    correlationId = job.CorrelationId ?? correlationId,
+                    suggestedActions = new[] { "Check logs for details", "Retry the operation" },
+                    failedAt = job.FinishedAt ?? DateTime.UtcNow
+                });
+            }
+
+            return Ok(job.FailureDetails);
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error retrieving failure details for job {JobId}", correlationId, jobId);
+            
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Error Retrieving Failure Details",
+                status = 500,
+                detail = $"Failed to retrieve failure details: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
     /// Get latest artifacts from recent jobs
     /// Does NOT attempt to resolve providers - simply returns persisted artifacts
     /// </summary>
