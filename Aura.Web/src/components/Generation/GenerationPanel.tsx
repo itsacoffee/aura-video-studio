@@ -21,6 +21,7 @@ import { useJobsStore } from '../../state/jobs';
 import { useNotifications } from '../Notifications/Toasts';
 import { useNavigate } from 'react-router-dom';
 import { openLogsFolder } from '../../utils/apiErrorHandler';
+import { FailureModal } from './FailureModal';
 
 const useStyles = makeStyles({
   panel: {
@@ -110,11 +111,12 @@ const STAGES = ['Script', 'Voice', 'Visuals', 'Compose', 'Render', 'Complete'];
 
 export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
   const styles = useStyles();
-  const { activeJob, getJob } = useJobsStore();
+  const { activeJob, getJob, getFailureDetails } = useJobsStore();
   const { showSuccessToast, showFailureToast } = useNotifications();
   const navigate = useNavigate();
   const [showLogs, setShowLogs] = useState(false);
   const [notificationShown, setNotificationShown] = useState(false);
+  const [showFailureModal, setShowFailureModal] = useState(false);
 
   useEffect(() => {
     getJob(jobId);
@@ -145,19 +147,27 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
       });
       setNotificationShown(true);
     } else if (activeJob.status === 'Failed') {
-      showFailureToast({
-        title: 'Generation failed',
-        message: activeJob.errorMessage || 'An error occurred during generation',
-        correlationId: activeJob.correlationId,
-        onRetry: () => {
-          // Close panel so user can start a new generation
-          onClose();
-        },
-        onOpenLogs: openLogsFolder,
+      // Fetch detailed failure information
+      getFailureDetails(activeJob.id).then((failureDetails) => {
+        if (failureDetails) {
+          // Show detailed modal with failure information
+          setShowFailureModal(true);
+        } else {
+          // Fallback to basic toast if failure details not available
+          showFailureToast({
+            title: 'Generation failed',
+            message: activeJob.errorMessage || 'An error occurred during generation',
+            correlationId: activeJob.correlationId,
+            onRetry: () => {
+              onClose();
+            },
+            onOpenLogs: openLogsFolder,
+          });
+        }
       });
       setNotificationShown(true);
     }
-  }, [activeJob, notificationShown, showSuccessToast, showFailureToast, navigate, onClose]);
+  }, [activeJob, notificationShown, showSuccessToast, showFailureToast, navigate, onClose, getFailureDetails]);
 
   const formatDuration = (startedAt: string, finishedAt: string) => {
     const start = new Date(startedAt);
@@ -341,6 +351,16 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
           </Button>
         )}
       </div>
+
+      {/* Failure Modal */}
+      {activeJob.failureDetails && (
+        <FailureModal
+          open={showFailureModal}
+          onClose={() => setShowFailureModal(false)}
+          failure={activeJob.failureDetails}
+          jobId={activeJob.id}
+        />
+      )}
     </div>
   );
 }

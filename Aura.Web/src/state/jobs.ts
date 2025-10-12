@@ -12,6 +12,19 @@ export interface Job {
   finishedAt?: string;
   correlationId?: string;
   errorMessage?: string;
+  failureDetails?: JobFailure;
+}
+
+export interface JobFailure {
+  stage: string;
+  message: string;
+  correlationId: string;
+  stderrSnippet?: string;
+  installLogSnippet?: string;
+  logPath?: string;
+  suggestedActions: string[];
+  errorCode?: string;
+  failedAt: string;
 }
 
 export interface JobArtifact {
@@ -36,6 +49,7 @@ interface JobsState {
   // Actions
   createJob: (brief: any, planSpec: any, voiceSpec: any, renderSpec: any) => Promise<string>;
   getJob: (jobId: string) => Promise<void>;
+  getFailureDetails: (jobId: string) => Promise<JobFailure | null>;
   listJobs: () => Promise<void>;
   setActiveJob: (job: Job | null) => void;
   startPolling: (jobId: string) => void;
@@ -94,6 +108,36 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       set({ activeJob: job });
     } catch (error) {
       console.error('Error getting job:', error);
+    }
+  },
+
+  getFailureDetails: async (jobId: string) => {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/failure-details`);
+      if (!response.ok) {
+        if (response.status === 404 || response.status === 400) {
+          return null;
+        }
+        throw new Error('Failed to get failure details');
+      }
+
+      const failureDetails: JobFailure = await response.json();
+      
+      // Update active job with failure details if it matches
+      const state = get();
+      if (state.activeJob && state.activeJob.id === jobId) {
+        set({ 
+          activeJob: { 
+            ...state.activeJob, 
+            failureDetails 
+          } 
+        });
+      }
+      
+      return failureDetails;
+    } catch (error) {
+      console.error('Error getting failure details:', error);
+      return null;
     }
   },
 
