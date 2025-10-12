@@ -55,8 +55,11 @@ test.describe('Engine Diagnostics E2E', () => {
           availableDiskSpaceBytes: 50000000000,
           lastError: 'Download failed: Connection timeout',
           checksumStatus: null,
+          expectedSha256: 'abc123def456',
+          actualSha256: null,
+          failedUrl: 'http://example.com/test-engine.zip',
           issues: [
-            'Found 1 partial download(s) in temp folder. Repair will clean these up.'
+            'Found 1 partial download(s). Repair will clean these up and retry.'
           ]
         })
       });
@@ -136,6 +139,9 @@ test.describe('Engine Diagnostics E2E', () => {
           availableDiskSpaceBytes: 50000000000,
           lastError: 'Download failed',
           checksumStatus: null,
+          expectedSha256: 'expected123',
+          actualSha256: null,
+          failedUrl: 'http://example.com/engine.zip',
           issues: ['Some issue detected']
         })
       });
@@ -226,6 +232,9 @@ test.describe('Engine Diagnostics E2E', () => {
           availableDiskSpaceBytes: 50000000000,
           lastError: null,
           checksumStatus: 'Valid',
+          expectedSha256: null,
+          actualSha256: null,
+          failedUrl: 'http://example.com/installed-engine.zip',
           issues: []
         })
       });
@@ -236,5 +245,79 @@ test.describe('Engine Diagnostics E2E', () => {
     // Open diagnostics from the menu (for installed engines)
     // This would require clicking the more menu and selecting an option
     // For now, we can verify the API response structure is correct
+  });
+
+  test('should display SHA256 mismatch details in diagnostics', async ({ page }) => {
+    // Mock APIs for an engine with checksum mismatch
+    await page.route('**/api/engines/list', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          engines: [
+            {
+              id: 'corrupted-engine',
+              name: 'Corrupted Engine',
+              version: '1.0.0',
+              isInstalled: true,
+            }
+          ]
+        })
+      });
+    });
+
+    await page.route('**/api/engines/status?engineId=corrupted-engine', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          engineId: 'corrupted-engine',
+          name: 'Corrupted Engine',
+          status: 'installed',
+          isInstalled: true,
+          isRunning: false,
+          messages: ['Checksum verification failed']
+        })
+      });
+    });
+
+    await page.route('**/api/engines/diagnostics/engine?engineId=corrupted-engine', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          engineId: 'corrupted-engine',
+          installPath: '/path/to/engine',
+          isInstalled: true,
+          pathExists: true,
+          pathWritable: true,
+          availableDiskSpaceBytes: 50000000000,
+          lastError: 'Checksum verification failed',
+          checksumStatus: 'Invalid',
+          expectedSha256: 'abc123def456789',
+          actualSha256: 'Unable to compute (installation incomplete or corrupted)',
+          failedUrl: 'http://example.com/engine.zip',
+          issues: ['Expected checksum: abc123def456789', 'Entrypoint file not found']
+        })
+      });
+    });
+
+    await page.waitForLoadState('networkidle');
+
+    // Click on "Why did this fail?" link
+    await page.getByText('Why did this fail?').click();
+
+    // Dialog should appear
+    await expect(page.getByRole('dialog')).toBeVisible();
+    
+    // Verify SHA256 details are displayed
+    await expect(page.getByText('Expected SHA256:')).toBeVisible();
+    await expect(page.getByText('abc123def456789')).toBeVisible();
+    await expect(page.getByText('Actual SHA256:')).toBeVisible();
+    await expect(page.getByText('Unable to compute')).toBeVisible();
+    
+    // Verify download URL is shown
+    await expect(page.getByText('Download URL:')).toBeVisible();
+    await expect(page.getByText('example.com/engine.zip')).toBeVisible();
   });
 });

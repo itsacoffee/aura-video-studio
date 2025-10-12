@@ -612,6 +612,9 @@ public class EnginesController : ControllerBase
                 diagnostics.AvailableDiskSpaceBytes,
                 LastError = status.LastError ?? diagnostics.LastError,
                 diagnostics.ChecksumStatus,
+                diagnostics.ExpectedSha256,
+                diagnostics.ActualSha256,
+                diagnostics.FailedUrl,
                 diagnostics.Issues
             };
 
