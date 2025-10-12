@@ -36,6 +36,7 @@ import {
 } from '@fluentui/react-icons';
 import type { EngineManifestEntry, EngineStatus } from '../../types/engines';
 import { useEnginesStore } from '../../state/engines';
+import { AttachEngineDialog } from './AttachEngineDialog';
 
 const useStyles = makeStyles({
   card: {
@@ -346,15 +347,18 @@ export function EngineCard({ engine }: EngineCardProps) {
         <div className={styles.row}>
           <div className={styles.actions}>
             {!isInstalled && (
-              <Button
-                appearance="primary"
-                icon={<ArrowDownload24Regular />}
-                onClick={handleInstall}
-                disabled={isProcessing}
-                title={engine.gatingReason || undefined}
-              >
-                {isProcessing ? <Spinner size="tiny" /> : engine.isGated && !engine.canAutoStart ? 'Install anyway (for later)' : 'Install'}
-              </Button>
+              <>
+                <Button
+                  appearance="primary"
+                  icon={<ArrowDownload24Regular />}
+                  onClick={handleInstall}
+                  disabled={isProcessing}
+                  title={engine.gatingReason || undefined}
+                >
+                  {isProcessing ? <Spinner size="tiny" /> : engine.isGated && !engine.canAutoStart ? 'Install anyway (for later)' : 'Install'}
+                </Button>
+                <AttachEngineDialog engineId={engine.id} engineName={engine.name} />
+              </>
             )}
             
             {isInstalled && !isRunning && (

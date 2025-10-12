@@ -1,21 +1,27 @@
 import { create } from 'zustand';
-import type { EngineManifestEntry, EngineStatus } from '../types/engines';
+import type { EngineManifestEntry, EngineStatus, EngineInstance, AttachEngineRequest, ReconfigureEngineRequest } from '../types/engines';
 
 interface EnginesState {
   engines: EngineManifestEntry[];
   engineStatuses: Map<string, EngineStatus>;
+  instances: EngineInstance[];
   isLoading: boolean;
   error: string | null;
   
   // Actions
   fetchEngines: () => Promise<void>;
   fetchEngineStatus: (engineId: string) => Promise<void>;
+  fetchInstances: () => Promise<void>;
   installEngine: (engineId: string, version?: string, port?: number) => Promise<void>;
+  attachEngine: (request: AttachEngineRequest) => Promise<void>;
+  reconfigureEngine: (request: ReconfigureEngineRequest) => Promise<void>;
   verifyEngine: (engineId: string) => Promise<any>;
   repairEngine: (engineId: string) => Promise<void>;
   removeEngine: (engineId: string) => Promise<void>;
   startEngine: (engineId: string, port?: number, args?: string) => Promise<void>;
   stopEngine: (engineId: string) => Promise<void>;
+  openFolder: (engineId: string) => Promise<void>;
+  openWebUI: (engineId: string) => Promise<string>;
   refreshStatus: (engineId: string) => Promise<void>;
   getDiagnostics: (engineId: string) => Promise<any>;
 }
@@ -23,6 +29,7 @@ interface EnginesState {
 export const useEnginesStore = create<EnginesState>((set, get) => ({
   engines: [],
   engineStatuses: new Map(),
+  instances: [],
   isLoading: false,
   error: null,
 
@@ -242,6 +249,109 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
       return result;
     } catch (error) {
       console.error(`Failed to get diagnostics for ${engineId}:`, error);
+      throw error;
+    }
+  },
+
+  fetchInstances: async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:5005/api/engines/instances');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch instances: ${response.statusText}`);
+      }
+      const data = await response.json();
+      set({ instances: data.instances });
+    } catch (error) {
+      console.error('Failed to fetch instances:', error);
+      set({ error: error instanceof Error ? error.message : 'Failed to fetch instances' });
+    }
+  },
+
+  attachEngine: async (request: AttachEngineRequest) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch('http://127.0.0.1:5005/api/engines/attach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to attach engine');
+      }
+      
+      await get().fetchInstances();
+      set({ isLoading: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to attach engine',
+        isLoading: false 
+      });
+      throw error;
+    }
+  },
+
+  reconfigureEngine: async (request: ReconfigureEngineRequest) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch('http://127.0.0.1:5005/api/engines/reconfigure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reconfigure engine');
+      }
+      
+      await get().fetchInstances();
+      set({ isLoading: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to reconfigure engine',
+        isLoading: false 
+      });
+      throw error;
+    }
+  },
+
+  openFolder: async (engineId: string) => {
+    try {
+      const response = await fetch('http://127.0.0.1:5005/api/engines/open-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ engineId }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to open folder');
+      }
+    } catch (error) {
+      console.error(`Failed to open folder for ${engineId}:`, error);
+      throw error;
+    }
+  },
+
+  openWebUI: async (engineId: string) => {
+    try {
+      const response = await fetch('http://127.0.0.1:5005/api/engines/open-webui', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ engineId }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get web UI URL');
+      }
+      
+      const data = await response.json();
+      return data.url;
+    } catch (error) {
+      console.error(`Failed to get web UI for ${engineId}:`, error);
       throw error;
     }
   },

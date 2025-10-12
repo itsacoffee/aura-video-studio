@@ -99,8 +99,10 @@ public class EngineCrashRestartTests : IDisposable
 
         var engine = new EngineConfig(
             Id: "test-engine",
+            EngineId: "test-engine",
             Name: "Test Engine",
             Version: "1.0",
+            Mode: EngineMode.Managed,
             InstallPath: _testDirectory,
             ExecutablePath: GetTestExecutable(),
             Arguments: GetTestArguments(),
@@ -149,8 +151,10 @@ public class EngineCrashRestartTests : IDisposable
         // Register a couple of test engines
         var engine1 = new EngineConfig(
             Id: "engine-1",
+            EngineId: "engine-1",
             Name: "Engine 1",
             Version: "1.0",
+            Mode: EngineMode.Managed,
             InstallPath: _testDirectory,
             ExecutablePath: GetTestExecutable(),
             Arguments: GetTestArguments(),
@@ -161,8 +165,10 @@ public class EngineCrashRestartTests : IDisposable
 
         var engine2 = new EngineConfig(
             Id: "engine-2",
+            EngineId: "engine-2",
             Name: "Engine 2",
             Version: "1.0",
+            Mode: EngineMode.Managed,
             InstallPath: _testDirectory,
             ExecutablePath: GetTestExecutable(),
             Arguments: GetTestArguments(),
@@ -241,8 +247,10 @@ public class EngineCrashRestartTests : IDisposable
 
         var engine = new EngineConfig(
             Id: "test-engine",
+            EngineId: "test-engine",
             Name: "Test Engine",
             Version: "1.0",
+            Mode: EngineMode.Managed,
             InstallPath: _testDirectory,
             ExecutablePath: GetTestExecutable(),
             Arguments: GetTestArguments(),

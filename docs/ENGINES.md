@@ -596,3 +596,107 @@ Delete the engine directory:
 - **Mimic3**: AGPL-3.0 License
 - **Stable Diffusion Models**: Varies by model (check model licenses)
 - See `LICENSE` file for Aura Video Studio license
+
+---
+
+# Engine Management Modes
+
+Aura Video Studio supports two modes for managing AI engines: **Managed** and **External**.
+
+## Managed Mode (App-Controlled)
+- Aura installs and manages the engine
+- App can start, stop, and restart the engine
+- Engine installed to app-controlled directory
+- Automatic updates and health monitoring
+- Suitable for new installations
+
+## External Mode (User-Managed)
+- You install and manage the engine yourself
+- Aura detects and uses your existing installation
+- You control starting/stopping the engine
+- Useful for existing installations or custom setups
+- Perfect for advanced users with specific requirements
+
+## Attaching Existing Installations
+
+You can attach any existing engine installation to Aura without reinstalling or moving files.
+
+### Steps to Attach
+
+1. Navigate to **Downloads → Engines** tab
+2. Find the engine you want to attach (e.g., Stable Diffusion WebUI)
+3. Click **"Attach Existing Install"**
+4. Fill in the dialog:
+   - **Install Path** (required): Absolute path to your installation directory
+   - **Executable Path** (optional): Path to the main executable or start script
+   - **Port** (optional): Web UI port number
+   - **Health Check URL** (optional): URL for health checks
+   - **Notes** (optional): Any notes about your installation
+5. Click **"Attach"**
+
+### Example: Attaching Stable Diffusion WebUI
+
+```
+Install Path: C:\AI\stable-diffusion-webui
+Executable Path: C:\AI\stable-diffusion-webui\webui-user.bat
+Port: 7860
+Health Check URL: http://localhost:7860/sdapi/v1/sd-models
+Notes: Custom installation with SDXL models
+```
+
+### Example: Attaching FFmpeg
+
+```
+Install Path: C:\Tools\ffmpeg
+Executable Path: C:\Tools\ffmpeg\bin\ffmpeg.exe
+Port: (leave empty - FFmpeg doesn't use a web UI)
+Notes: System-wide FFmpeg installation
+```
+
+## Engine Instance Management
+
+### Viewing Instances
+
+All engine instances (both Managed and External) are shown in the **Engines** tab under "Engine Instances":
+
+- **Mode Badge**: Shows whether the instance is Managed or External
+- **Status Badge**: Shows current status (installed/running/not_installed)
+- **Install Path**: Full path to the installation
+- **Port**: Web UI port number (if applicable)
+- **Notes**: Any custom notes you added
+
+### Available Actions
+
+#### Open Folder
+Opens the engine installation folder in your system file explorer (Windows: `explorer.exe`, Linux: `xdg-open`, macOS: `open`)
+
+#### Open Web UI
+Opens the engine's web interface in your browser (for engines with web UIs)
+
+#### Start/Stop (Managed Only)
+Only available for Managed instances. External instances must be started/stopped manually.
+
+## API Reference
+
+See the main documentation for complete API details.
+
+## Best Practices
+
+### When to Use Managed Mode
+- First-time installation
+- Want automatic updates
+- Don't want to manage dependencies manually
+- Need app-controlled start/stop
+
+### When to Use External Mode
+- Already have the engine installed
+- Custom configuration or modifications
+- Shared installation across multiple apps
+- Advanced user with specific requirements
+
+### Tips for External Installations
+1. **Use Absolute Paths**: Always provide full, absolute paths
+2. **Verify Before Attaching**: Make sure the engine works independently first
+3. **Document Your Setup**: Use the Notes field to record important details
+4. **Keep Paths Accessible**: Don't move installations after attaching
+5. **Test Health Checks**: Ensure the health check URL is correct

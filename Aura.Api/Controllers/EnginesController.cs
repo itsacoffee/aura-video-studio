@@ -217,14 +217,16 @@ public class EnginesController : ControllerBase
             string executablePath = System.IO.Path.Combine(installPath, engine.Entrypoint);
             
             var engineConfig = new EngineConfig(
-                engine.Id,
-                engine.Name,
-                request.Version ?? engine.Version,
-                installPath,
-                executablePath,
-                engine.ArgsTemplate,
-                request.Port ?? engine.DefaultPort,
-                engine.HealthCheck != null ? $"http://localhost:{request.Port ?? engine.DefaultPort}{engine.HealthCheck.Url}" : null,
+                Id: engine.Id,
+                EngineId: engine.Id,
+                Name: engine.Name,
+                Version: request.Version ?? engine.Version,
+                Mode: EngineMode.Managed,
+                InstallPath: installPath,
+                ExecutablePath: executablePath,
+                Arguments: engine.ArgsTemplate,
+                Port: request.Port ?? engine.DefaultPort,
+                HealthCheckUrl: engine.HealthCheck != null ? $"http://localhost:{request.Port ?? engine.DefaultPort}{engine.HealthCheck.Url}" : null,
                 StartOnAppLaunch: false,
                 AutoRestart: false
             );
@@ -786,6 +788,248 @@ public class EnginesController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Attach an existing external engine installation
+    /// </summary>
+    [HttpPost("attach")]
+    public async Task<IActionResult> AttachExisting([FromBody] AttachEngineRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.EngineId))
+            {
+                return BadRequest(new { error = "engineId is required" });
+            }
+
+            if (string.IsNullOrEmpty(request.InstallPath))
+            {
+                return BadRequest(new { error = "installPath is required" });
+            }
+
+            // Generate unique instance ID
+            var instanceId = $"{request.EngineId}-external-{Guid.NewGuid().ToString("N")[..8]}";
+            
+            var manifest = await _manifestLoader.LoadManifestAsync();
+            var engine = manifest.Engines.FirstOrDefault(e => e.Id == request.EngineId);
+            string engineName = engine?.Name ?? request.EngineId;
+
+            var (success, error) = await _registry.AttachExternalEngineAsync(
+                instanceId,
+                request.EngineId,
+                engineName,
+                request.InstallPath,
+                request.ExecutablePath,
+                request.Port,
+                request.HealthCheckUrl,
+                request.Notes
+            );
+
+            if (!success)
+            {
+                return BadRequest(new { error });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                instanceId,
+                engineId = request.EngineId,
+                installPath = request.InstallPath,
+                message = $"Successfully attached external {engineName} installation"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to attach external engine");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Reconfigure an existing engine instance
+    /// </summary>
+    [HttpPost("reconfigure")]
+    public async Task<IActionResult> Reconfigure([FromBody] ReconfigureEngineRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.InstanceId))
+            {
+                return BadRequest(new { error = "instanceId is required" });
+            }
+
+            var (success, error) = await _registry.ReconfigureEngineAsync(
+                request.InstanceId,
+                request.InstallPath,
+                request.ExecutablePath,
+                request.Port,
+                request.HealthCheckUrl,
+                request.Notes
+            );
+
+            if (!success)
+            {
+                return BadRequest(new { error });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                instanceId = request.InstanceId,
+                message = "Engine reconfigured successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reconfigure engine");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get all engine instances (both managed and external)
+    /// </summary>
+    [HttpGet("instances")]
+    public async Task<IActionResult> GetInstances()
+    {
+        try
+        {
+            var engines = _registry.GetAllEngines();
+            var instances = new List<object>();
+
+            foreach (var engine in engines)
+            {
+                var status = await _registry.GetEngineStatusAsync(engine.Id);
+                instances.Add(new
+                {
+                    engine.Id,
+                    engine.EngineId,
+                    engine.Name,
+                    engine.Version,
+                    Mode = engine.Mode.ToString(),
+                    engine.InstallPath,
+                    engine.ExecutablePath,
+                    engine.Port,
+                    Status = status.IsRunning ? "running" : (status.IsInstalled ? "installed" : "not_installed"),
+                    status.IsRunning,
+                    status.IsHealthy,
+                    engine.Notes,
+                    engine.HealthCheckUrl
+                });
+            }
+
+            return Ok(new { instances });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get engine instances");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Open the engine installation folder in system file explorer
+    /// </summary>
+    [HttpPost("open-folder")]
+    public IActionResult OpenFolder([FromBody] EngineActionRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.EngineId))
+            {
+                return BadRequest(new { error = "engineId is required" });
+            }
+
+            var engine = _registry.GetEngine(request.EngineId);
+            if (engine == null)
+            {
+                return NotFound(new { error = "Engine not found" });
+            }
+
+            if (string.IsNullOrEmpty(engine.InstallPath) || !Directory.Exists(engine.InstallPath))
+            {
+                return BadRequest(new { error = "Install path not found" });
+            }
+
+            // Open folder using platform-specific command
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                UseShellExecute = true,
+                FileName = engine.InstallPath
+            };
+
+            if (OperatingSystem.IsWindows())
+            {
+                startInfo.FileName = "explorer.exe";
+                startInfo.Arguments = engine.InstallPath;
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                startInfo.FileName = "xdg-open";
+                startInfo.Arguments = engine.InstallPath;
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                startInfo.FileName = "open";
+                startInfo.Arguments = engine.InstallPath;
+            }
+
+            System.Diagnostics.Process.Start(startInfo);
+
+            return Ok(new
+            {
+                success = true,
+                path = engine.InstallPath,
+                message = "Folder opened successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to open folder for engine {EngineId}", request.EngineId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get the web UI URL for an engine
+    /// </summary>
+    [HttpPost("open-webui")]
+    public IActionResult GetWebUIUrl([FromBody] EngineActionRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(request.EngineId))
+            {
+                return BadRequest(new { error = "engineId is required" });
+            }
+
+            var engine = _registry.GetEngine(request.EngineId);
+            if (engine == null)
+            {
+                return NotFound(new { error = "Engine not found" });
+            }
+
+            if (!engine.Port.HasValue)
+            {
+                return BadRequest(new { error = "Engine does not have a web UI" });
+            }
+
+            var url = $"http://localhost:{engine.Port}";
+
+            return Ok(new
+            {
+                success = true,
+                url,
+                message = "Open this URL in your browser"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get web UI URL for engine {EngineId}", request.EngineId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }
 
 public record InstallRequest(string EngineId, string? Version = null, int? Port = null);
@@ -796,3 +1040,19 @@ public record EnginePreferences
     public int? Port { get; set; }
     public bool AutoStart { get; set; }
 }
+public record AttachEngineRequest(
+    string EngineId,
+    string InstallPath,
+    string? ExecutablePath = null,
+    int? Port = null,
+    string? HealthCheckUrl = null,
+    string? Notes = null
+);
+public record ReconfigureEngineRequest(
+    string InstanceId,
+    string? InstallPath = null,
+    string? ExecutablePath = null,
+    int? Port = null,
+    string? HealthCheckUrl = null,
+    string? Notes = null
+);

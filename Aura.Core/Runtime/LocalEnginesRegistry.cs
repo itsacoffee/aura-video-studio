@@ -10,10 +10,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Runtime;
 
+public enum EngineMode
+{
+    Managed,   // App-controlled: can start/stop
+    External   // User-managed: app only detects/uses
+}
+
 public record EngineConfig(
-    string Id,
+    string Id,           // Instance ID (unique per instance, e.g. "sd-webui-1", "sd-webui-external")
+    string EngineId,     // Engine type ID (e.g. "sd-webui", "comfyui", "ffmpeg")
     string Name,
     string Version,
+    EngineMode Mode,
     string InstallPath,
     string? ExecutablePath,
     string? Arguments,
@@ -21,17 +29,20 @@ public record EngineConfig(
     string? HealthCheckUrl,
     bool StartOnAppLaunch,
     bool AutoRestart,
+    string? Notes = null,
     IDictionary<string, string>? EnvironmentVariables = null
 );
 
 public record EngineStatus(
     string Id,
     string Name,
+    EngineMode Mode,
     bool IsInstalled,
     bool IsRunning,
     bool IsHealthy,
     string? Version,
     string? InstallPath,
+    int? Port,
     DateTime? LastStarted,
     string? Error
 );
@@ -94,7 +105,7 @@ public class LocalEnginesRegistry
         var config = GetEngine(engineId);
         if (config == null)
         {
-            return new EngineStatus(engineId, engineId, false, false, false, null, null, null, "Engine not registered");
+            return new EngineStatus(engineId, engineId, EngineMode.Managed, false, false, false, null, null, null, null, "Engine not registered");
         }
 
         var processStatus = _processManager.GetStatus(engineId);
@@ -109,11 +120,13 @@ public class LocalEnginesRegistry
         return new EngineStatus(
             config.Id,
             config.Name,
+            config.Mode,
             isInstalled,
             processStatus.IsRunning,
             isHealthy,
             config.Version,
             config.InstallPath,
+            config.Port,
             processStatus.StartTime,
             processStatus.LastError
         );
@@ -201,6 +214,103 @@ public class LocalEnginesRegistry
                 _logger.LogError(ex, "Failed to stop engine {Id}", engineId);
             }
         }
+    }
+
+    /// <summary>
+    /// Get all instances of a specific engine type
+    /// </summary>
+    public IReadOnlyList<EngineConfig> GetEngineInstances(string engineId)
+    {
+        return _engines.Values.Where(e => e.EngineId == engineId).ToList();
+    }
+
+    /// <summary>
+    /// Attach an existing external engine installation
+    /// </summary>
+    public async Task<(bool success, string? error)> AttachExternalEngineAsync(
+        string instanceId,
+        string engineId,
+        string name,
+        string installPath,
+        string? executablePath,
+        int? port,
+        string? healthCheckUrl,
+        string? notes = null)
+    {
+        // Validate paths exist
+        if (!Directory.Exists(installPath))
+        {
+            return (false, $"Install path does not exist: {installPath}");
+        }
+
+        if (!string.IsNullOrEmpty(executablePath) && !File.Exists(executablePath))
+        {
+            return (false, $"Executable not found: {executablePath}");
+        }
+
+        var config = new EngineConfig(
+            Id: instanceId,
+            EngineId: engineId,
+            Name: name,
+            Version: "External",
+            Mode: EngineMode.External,
+            InstallPath: Path.GetFullPath(installPath),
+            ExecutablePath: !string.IsNullOrEmpty(executablePath) ? Path.GetFullPath(executablePath) : null,
+            Arguments: null,
+            Port: port,
+            HealthCheckUrl: healthCheckUrl,
+            StartOnAppLaunch: false,
+            AutoRestart: false,
+            Notes: notes
+        );
+
+        await RegisterEngineAsync(config);
+        _logger.LogInformation("Attached external engine {EngineId} as instance {InstanceId}", engineId, instanceId);
+        
+        return (true, null);
+    }
+
+    /// <summary>
+    /// Reconfigure an existing engine instance
+    /// </summary>
+    public async Task<(bool success, string? error)> ReconfigureEngineAsync(
+        string instanceId,
+        string? installPath = null,
+        string? executablePath = null,
+        int? port = null,
+        string? healthCheckUrl = null,
+        string? notes = null)
+    {
+        var config = GetEngine(instanceId);
+        if (config == null)
+        {
+            return (false, "Engine instance not found");
+        }
+
+        // Validate new paths if provided
+        if (installPath != null && !Directory.Exists(installPath))
+        {
+            return (false, $"Install path does not exist: {installPath}");
+        }
+
+        if (executablePath != null && !File.Exists(executablePath))
+        {
+            return (false, $"Executable not found: {executablePath}");
+        }
+
+        var updatedConfig = config with
+        {
+            InstallPath = installPath != null ? Path.GetFullPath(installPath) : config.InstallPath,
+            ExecutablePath = executablePath != null ? Path.GetFullPath(executablePath) : config.ExecutablePath,
+            Port = port ?? config.Port,
+            HealthCheckUrl = healthCheckUrl ?? config.HealthCheckUrl,
+            Notes = notes ?? config.Notes
+        };
+
+        await RegisterEngineAsync(updatedConfig);
+        _logger.LogInformation("Reconfigured engine instance {InstanceId}", instanceId);
+        
+        return (true, null);
     }
 
     private async Task LoadConfigAsync()
