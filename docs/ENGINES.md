@@ -2,6 +2,88 @@
 
 Aura Video Studio supports local, offline engines for image generation and text-to-speech, giving you full control over your creative pipeline without requiring cloud services or API keys.
 
+## Engine Installation Modes
+
+Aura supports **two modes** for managing engines, giving you flexibility in how you work:
+
+### Managed Mode (App-Controlled)
+- **Fully automated**: Aura handles installation, updates, and lifecycle management
+- **Start/Stop control**: Use Aura's UI to start/stop engines
+- **Auto-restart**: Optional automatic restart if engines crash
+- **Process monitoring**: Real-time status, health checks, and log capture
+- **Best for**: Users who want a hands-off, integrated experience
+
+### External Mode (User-Managed)
+- **Bring your own**: Point Aura to engines you've already installed
+- **You control**: Start/stop engines manually using their own interfaces
+- **Flexible paths**: Install anywhere on your system (not forced into Aura's directory)
+- **Aura detects**: App monitors health and provides "Open Folder" / "Open Web UI" shortcuts
+- **Best for**: Advanced users with existing setups, or testing custom configurations
+
+### How to Choose
+- **New to AI engines?** Use **Managed Mode** - let Aura handle everything
+- **Already have SD WebUI/ComfyUI/Ollama?** Use **External Mode** - attach your existing installs
+- **Want control?** Use **External Mode** - manage engines your way
+- **Want convenience?** Use **Managed Mode** - one-click install and start
+
+### Attaching Existing Engines
+
+To attach an existing engine installation:
+
+1. Navigate to **Download Center → Engines** tab
+2. Find the engine you want to attach (e.g., "Stable Diffusion WebUI")
+3. Click **"Attach Existing Install"** button
+4. Provide the following information:
+   - **Install Path**: Absolute path to the installation directory (e.g., `C:\Tools\sd-webui`)
+   - **Executable Path** (optional): Path to the main executable or start script (e.g., `webui.bat`)
+   - **Port** (optional): Web UI port number (e.g., `7860`)
+   - **Health Check URL** (optional): URL endpoint for health checks (e.g., `http://localhost:7860/internal/ping`)
+   - **Notes** (optional): Any notes about this installation
+5. Click **"Attach"**
+
+Aura will validate the paths and add the engine to your instances list.
+
+### Managing Engine Instances
+
+Once attached or installed, your engines appear in the **Engine Instances** section:
+
+- **Mode badge**: Shows whether it's "Managed" (app-controlled) or "External" (user-managed)
+  - Hover over the badge to see a tooltip explaining the mode
+- **Status badge**: Shows current status (installed, running, not_installed)
+- **Health badge**: Shows if the engine is healthy when running
+- **Path display**: Full path to installation (click copy icon to copy to clipboard)
+- **Port display**: Port number (click copy icon to copy)
+- **Executable display**: Path to executable if specified (click copy icon to copy)
+- **Actions**:
+  - **Open Folder**: Opens the installation directory in your file explorer
+  - **Open Web UI**: Opens the engine's web interface in your browser (if applicable)
+  - **Start/Stop**: For Managed engines only
+
+### Example: Attaching FFmpeg
+
+If you already have FFmpeg installed:
+
+1. Click **"Attach Existing Install"** on the FFmpeg card
+2. **Install Path**: `C:\Tools\ffmpeg` (or `/usr/local/bin` on Linux)
+3. **Executable Path**: `C:\Tools\ffmpeg\bin\ffmpeg.exe` (or `/usr/local/bin/ffmpeg`)
+4. Click **"Attach"**
+
+Aura will verify the path and add FFmpeg to your instances.
+
+### Example: Attaching Stable Diffusion WebUI
+
+If you already have SD WebUI running:
+
+1. Click **"Attach Existing Install"** on the Stable Diffusion WebUI card
+2. **Install Path**: `C:\Tools\stable-diffusion-webui`
+3. **Executable Path**: `C:\Tools\stable-diffusion-webui\webui-user.bat`
+4. **Port**: `7860` (or your custom port)
+5. **Health Check URL**: `http://localhost:7860/internal/ping`
+6. **Notes**: "My custom SD WebUI with extra models"
+7. Click **"Attach"**
+
+Now you can use "Open Folder" and "Open Web UI" buttons to quickly access your installation.
+
 ## Supported Engines
 
 ### Essential Tools
