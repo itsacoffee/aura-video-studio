@@ -26,6 +26,80 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Check if portable mode is enabled
+    /// </summary>
+    public bool IsPortableModeEnabled()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("portableModeEnabled", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Get the portable root path (where all tools are installed in portable mode)
+    /// </summary>
+    public string? GetPortableRootPath()
+    {
+        LoadSettings();
+        var path = GetStringSetting("portableRootPath", "");
+        return string.IsNullOrWhiteSpace(path) ? null : path;
+    }
+
+    /// <summary>
+    /// Set portable mode configuration
+    /// </summary>
+    public void SetPortableMode(bool enabled, string? portableRootPath = null)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+
+        _settings["portableModeEnabled"] = enabled;
+        if (!string.IsNullOrWhiteSpace(portableRootPath))
+        {
+            _settings["portableRootPath"] = portableRootPath;
+        }
+        else if (!enabled)
+        {
+            // Remove portableRootPath if disabling portable mode
+            _settings.Remove("portableRootPath");
+        }
+
+        SaveSettings();
+        // Force reload to ensure changes are reflected
+        _settings = null;
+    }
+
+    /// <summary>
+    /// Get the effective tools directory (portable root or AppData)
+    /// </summary>
+    public string GetToolsDirectory()
+    {
+        if (IsPortableModeEnabled())
+        {
+            var portableRoot = GetPortableRootPath();
+            if (!string.IsNullOrWhiteSpace(portableRoot))
+            {
+                return portableRoot;
+            }
+        }
+
+        // Default to AppData
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Aura",
+            "dependencies");
+    }
+
+    /// <summary>
     /// Get Stable Diffusion WebUI URL
     /// </summary>
     public string GetStableDiffusionUrl()
@@ -191,5 +265,29 @@ public class ProviderSettings
     {
         _settings = null;
         LoadSettings();
+    }
+
+    private void SaveSettings()
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(_configPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+            File.WriteAllText(_configPath, json);
+            _logger.LogInformation("Saved provider settings to {Path}", _configPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save provider settings");
+            throw;
+        }
     }
 }
