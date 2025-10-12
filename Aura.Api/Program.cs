@@ -198,6 +198,16 @@ builder.Services.AddSingleton<Aura.Core.Runtime.ExternalProcessManager>(sp =>
     return new Aura.Core.Runtime.ExternalProcessManager(logger, httpClient, logDirectory);
 });
 
+// Register ModelInstaller
+builder.Services.AddHttpClient<Aura.Core.Downloads.ModelInstaller>();
+builder.Services.AddSingleton<Aura.Core.Downloads.ModelInstaller>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Downloads.ModelInstaller>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    var installRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    return new Aura.Core.Downloads.ModelInstaller(logger, httpClient, installRoot);
+});
+
 builder.Services.AddSingleton<Aura.Core.Runtime.LocalEnginesRegistry>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Runtime.LocalEnginesRegistry>>();
