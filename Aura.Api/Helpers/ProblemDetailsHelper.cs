@@ -169,4 +169,23 @@ public static class ProblemDetailsHelper
         }
         return "Please try again or contact support if the issue persists.";
     }
+
+    /// <summary>
+    /// Creates a generic ProblemDetails result with correlation ID
+    /// </summary>
+    public static IResult CreateProblem(
+        string detail,
+        int statusCode = 500,
+        string title = "An error occurred",
+        string? type = null,
+        HttpContext? httpContext = null)
+    {
+        return CreateProblemWithCorrelationId(
+            detail: detail,
+            statusCode: statusCode,
+            title: title,
+            type: type ?? "https://docs.aura.studio/errors/generic",
+            httpContext: httpContext
+        );
+    }
 }

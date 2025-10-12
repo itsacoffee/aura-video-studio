@@ -20,6 +20,7 @@ import {
 import { useJobsStore } from '../../state/jobs';
 import { useNotifications } from '../Notifications/Toasts';
 import { useNavigate } from 'react-router-dom';
+import { openLogsFolder } from '../../utils/apiErrorHandler';
 
 const useStyles = makeStyles({
   panel: {
@@ -147,9 +148,12 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
       showFailureToast({
         title: 'Generation failed',
         message: activeJob.errorMessage || 'An error occurred during generation',
-        onViewLogs: () => {
-          setShowLogs(true);
+        correlationId: activeJob.correlationId,
+        onRetry: () => {
+          // TODO: Implement retry logic - for now, close panel so user can start over
+          onClose();
         },
+        onOpenLogs: openLogsFolder,
       });
       setNotificationShown(true);
     }
