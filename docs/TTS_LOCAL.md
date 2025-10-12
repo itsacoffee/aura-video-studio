@@ -57,6 +57,38 @@ chmod +x ~/.local/share/aura/tools/piper/piper
 
 ### Voice Models
 
+Piper voices are ONNX models that contain the neural network for speech synthesis. Each voice has different characteristics (gender, accent, quality).
+
+#### Managing Voices with Aura
+
+Aura provides a built-in **Models & Voices Manager** to help you:
+- View all installed voices with file locations
+- See voice metadata (language, quality, size)
+- Add external folders with your existing voice collections
+- Open voice folders directly from the UI
+- Remove voices you no longer need
+
+**To access the Voice Manager:**
+1. Go to **Settings → Download Center → Engines**
+2. Find your installed Piper engine
+3. Expand the **"Models & Voices"** section
+4. View, manage, and organize your voices
+
+#### Using External Voice Folders
+
+If you already have Piper voices in another location, you can add them as external folders:
+
+1. In the Voice Manager, click **"Add External Folder"**
+2. Enter the path to your voices folder (e.g., `D:\Piper\Voices`)
+3. Aura will index all `.onnx` voice files in that folder
+4. Voices remain in their original location (read-only)
+5. Aura can use these voices just like installed ones
+
+**Benefits of external folders:**
+- No duplication of voice files
+- Keep your existing organization
+- Share voices across multiple applications
+
 #### Popular English Voices
 
 | Voice | Quality | Size | Speed | Style |

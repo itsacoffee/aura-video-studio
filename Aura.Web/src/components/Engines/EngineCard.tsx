@@ -23,6 +23,10 @@ import {
   DialogActions,
   Input,
   Label,
+  Accordion,
+  AccordionItem,
+  AccordionHeader,
+  AccordionPanel,
 } from '@fluentui/react-components';
 import {
   Play24Regular,
@@ -42,6 +46,7 @@ import {
 import type { EngineManifestEntry, EngineStatus } from '../../types/engines';
 import { useEnginesStore } from '../../state/engines';
 import { AttachEngineDialog } from './AttachEngineDialog';
+import { ModelManager } from './ModelManager';
 
 const useStyles = makeStyles({
   card: {
@@ -580,6 +585,20 @@ export function EngineCard({ engine }: EngineCardProps) {
               </Button>
             </div>
           </div>
+        )}
+
+        {/* Models & Voices Manager */}
+        {isInstalled && (engine.id === 'stable-diffusion-webui' || engine.id === 'comfyui' || engine.id === 'piper' || engine.id === 'mimic3') && (
+          <Accordion style={{ marginTop: tokens.spacingVerticalM }} collapsible>
+            <AccordionItem value="models">
+              <AccordionHeader>
+                <Text weight="semibold">Models & Voices</Text>
+              </AccordionHeader>
+              <AccordionPanel>
+                <ModelManager engineId={engine.id} engineName={engine.name} />
+              </AccordionPanel>
+            </AccordionItem>
+          </Accordion>
         )}
       </CardPreview>
 
