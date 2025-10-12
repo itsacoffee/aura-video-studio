@@ -325,6 +325,7 @@ public class HttpDownloader
         _logger.LogInformation("Local file SHA256: {Sha256}", actualSha256);
 
         // Verify checksum if provided
+        bool checksumValid = true;
         if (!string.IsNullOrEmpty(expectedSha256))
         {
             if (!string.Equals(actualSha256, expectedSha256, StringComparison.OrdinalIgnoreCase))
@@ -333,13 +334,14 @@ public class HttpDownloader
                     expectedSha256, actualSha256);
                 
                 progress?.Report(new HttpDownloadProgress(0, 0, 0, 0, 
-                    "⚠️ Checksum mismatch - proceed with caution"));
+                    "⚠️ Checksum mismatch - continuing anyway"));
                 
-                // Return false but also return the actual checksum so caller can decide
-                return (false, actualSha256);
+                checksumValid = false;
             }
-            
-            _logger.LogInformation("Checksum verified successfully");
+            else
+            {
+                _logger.LogInformation("Checksum verified successfully");
+            }
         }
 
         progress?.Report(new HttpDownloadProgress(0, 100, 50, 0, "Copying file..."));
@@ -372,6 +374,6 @@ public class HttpDownloader
         progress?.Report(new HttpDownloadProgress(totalBytes, totalBytes, 100, 0, "Import complete"));
         _logger.LogInformation("Local file imported successfully");
 
-        return (true, actualSha256);
+        return (checksumValid, actualSha256);
     }
 }
