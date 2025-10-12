@@ -17,6 +17,8 @@ import {
   Copy24Regular,
   Folder24Regular,
   ArrowClockwise24Regular,
+  Wrench24Regular,
+  Settings24Regular,
 } from '@fluentui/react-icons';
 import { JobFailure } from '../../state/jobs';
 import { openLogsFolder } from '../../utils/apiErrorHandler';
@@ -72,6 +74,7 @@ interface FailureModalProps {
 export function FailureModal({ open, onClose, failure, jobId }: FailureModalProps) {
   const styles = useStyles();
   const [copied, setCopied] = useState(false);
+  const [repairing, setRepairing] = useState(false);
 
   const handleCopyCorrelationId = () => {
     navigator.clipboard.writeText(failure.correlationId);
@@ -93,6 +96,35 @@ export function FailureModal({ open, onClose, failure, jobId }: FailureModalProp
     onClose();
     // User will need to start a new generation from the main UI
   };
+
+  const handleRepairFFmpeg = async () => {
+    setRepairing(true);
+    try {
+      const response = await fetch('/api/downloads/ffmpeg/repair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (response.ok) {
+        alert('FFmpeg repair initiated. Please wait for it to complete.');
+      } else {
+        alert('Failed to start FFmpeg repair. Please try manually from the Dependencies page.');
+      }
+    } catch (error) {
+      console.error('Error repairing FFmpeg:', error);
+      alert('Error initiating FFmpeg repair.');
+    } finally {
+      setRepairing(false);
+    }
+  };
+
+  const handleAttachFFmpeg = async () => {
+    // Open dependencies page where user can attach FFmpeg
+    window.location.href = '/dependencies';
+  };
+
+  const isFFmpegError = failure.errorCode?.includes('FFMPEG') || 
+                        failure.message.toLowerCase().includes('ffmpeg');
 
   return (
     <Dialog open={open} onOpenChange={(_, data) => data.open || onClose()}>
@@ -176,6 +208,25 @@ export function FailureModal({ open, onClose, failure, jobId }: FailureModalProp
           >
             View Full Log
           </Button>
+          {isFFmpegError && (
+            <>
+              <Button
+                appearance="secondary"
+                icon={<Wrench24Regular />}
+                onClick={handleRepairFFmpeg}
+                disabled={repairing}
+              >
+                {repairing ? 'Repairing...' : 'Repair FFmpeg'}
+              </Button>
+              <Button
+                appearance="secondary"
+                icon={<Settings24Regular />}
+                onClick={handleAttachFFmpeg}
+              >
+                Attach FFmpeg
+              </Button>
+            </>
+          )}
           <Button
             appearance="primary"
             icon={<ArrowClockwise24Regular />}
