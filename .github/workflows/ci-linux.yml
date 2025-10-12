@@ -36,6 +36,33 @@ jobs:
         run: |
           pwsh -File ./scripts/audit/no_future_text.ps1
 
+      - name: Grep for forbidden placeholders
+        shell: bash
+        run: |
+          echo "🔍 Scanning for forbidden placeholder markers..."
+          
+          # Search for patterns in source files, excluding documentation and dependencies
+          if grep -rn "TODO\|FIXME\|FUTURE\|NEXT STEPS\|OPTIONAL ENHANCEMENTS" \
+            --include="*.cs" \
+            --include="*.ts" \
+            --include="*.tsx" \
+            --include="*.js" \
+            --include="*.jsx" \
+            --exclude-dir=node_modules \
+            --exclude-dir=bin \
+            --exclude-dir=obj \
+            --exclude-dir=dist \
+            --exclude-dir=coverage \
+            --exclude-dir=.git \
+            . 2>/dev/null; then
+            echo ""
+            echo "❌ ERROR: Code contains placeholder markers."
+            echo "Remove TODO/FIXME/FUTURE/NEXT STEPS/OPTIONAL ENHANCEMENTS before committing."
+            exit 1
+          else
+            echo "✅ No placeholder markers found in code"
+          fi
+
       - name: Linux Audit
         run: |
           chmod +x ./scripts/audit/scan.sh || true
