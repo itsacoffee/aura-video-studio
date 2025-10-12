@@ -1,3 +1,4 @@
+using Aura.Core.Dependencies;
 using Aura.Core.Downloads;
 using Aura.Core.Runtime;
 using Microsoft.AspNetCore.Mvc;
@@ -5,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,6 +23,7 @@ public class EnginesController : ControllerBase
     private readonly ExternalProcessManager _processManager;
     private readonly EngineLifecycleManager _lifecycleManager;
     private readonly EngineDetector? _engineDetector;
+    private readonly GitHubReleaseResolver? _releaseResolver;
 
     public EnginesController(
         ILogger<EnginesController> logger,
@@ -29,7 +32,8 @@ public class EnginesController : ControllerBase
         LocalEnginesRegistry registry,
         ExternalProcessManager processManager,
         EngineLifecycleManager lifecycleManager,
-        EngineDetector? engineDetector = null)
+        EngineDetector? engineDetector = null,
+        GitHubReleaseResolver? releaseResolver = null)
     {
         _logger = logger;
         _manifestLoader = manifestLoader;
@@ -38,6 +42,7 @@ public class EnginesController : ControllerBase
         _processManager = processManager;
         _lifecycleManager = lifecycleManager;
         _engineDetector = engineDetector;
+        _releaseResolver = releaseResolver;
     }
 
     /// <summary>
@@ -1050,6 +1055,85 @@ public class EnginesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get web UI URL for engine {EngineId}", request.EngineId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Resolve download URL for an engine from GitHub Releases API
+    /// </summary>
+    [HttpGet("resolve-url")]
+    public async Task<IActionResult> ResolveUrl([FromQuery] string engineId, CancellationToken ct = default)
+    {
+        try
+        {
+            var manifest = await _manifestLoader.LoadManifestAsync();
+            var engine = manifest.Engines.FirstOrDefault(e => e.Id == engineId);
+            
+            if (engine == null)
+            {
+                return NotFound(new { error = $"Engine '{engineId}' not found" });
+            }
+
+            // If no GitHub repo or already installed, return static URL
+            if (string.IsNullOrEmpty(engine.GitHubRepo) || _installer.IsInstalled(engineId))
+            {
+                var platform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "windows" : "linux";
+                var staticUrl = engine.Urls?.GetValueOrDefault(platform);
+                
+                return Ok(new 
+                { 
+                    url = staticUrl,
+                    source = "static",
+                    githubRepo = engine.GitHubRepo
+                });
+            }
+
+            // Try to resolve from GitHub API
+            if (_releaseResolver != null && !string.IsNullOrEmpty(engine.AssetPattern))
+            {
+                var resolvedUrl = await _releaseResolver.ResolveLatestAssetUrlAsync(
+                    engine.GitHubRepo, 
+                    engine.AssetPattern, 
+                    ct);
+                
+                if (!string.IsNullOrEmpty(resolvedUrl))
+                {
+                    return Ok(new 
+                    { 
+                        url = resolvedUrl,
+                        source = "github-api",
+                        githubRepo = engine.GitHubRepo
+                    });
+                }
+            }
+
+            // Fallback to mirrors or static URL
+            var currentPlatform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "windows" : "linux";
+            
+            // Try mirrors first
+            if (engine.Mirrors?.TryGetValue(currentPlatform, out var mirrors) == true && mirrors.Count > 0)
+            {
+                return Ok(new 
+                { 
+                    url = mirrors[0],
+                    source = "mirror",
+                    githubRepo = engine.GitHubRepo
+                });
+            }
+
+            // Fallback to static URL
+            var fallbackUrl = engine.Urls?.GetValueOrDefault(currentPlatform);
+            return Ok(new 
+            { 
+                url = fallbackUrl,
+                source = "static",
+                githubRepo = engine.GitHubRepo
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve URL for engine {EngineId}", engineId);
             return StatusCode(500, new { error = ex.Message });
         }
     }

@@ -1,0 +1,48 @@
+{
+  "components": [
+    {
+      "id": "ffmpeg",
+      "name": "FFmpeg",
+      "githubRepo": "BtbN/FFmpeg-Builds",
+      "assetPattern": "ffmpeg-*-win64-gpl-*.zip",
+      "mirrors": [
+        "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+      ],
+      "description": "Essential video and audio processing toolkit",
+      "extractPath": "bin/"
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama",
+      "githubRepo": "ollama/ollama",
+      "assetPattern": {
+        "windows": "ollama-windows-amd64.zip",
+        "linux": "ollama-linux-amd64.tar.gz"
+      },
+      "mirrors": [],
+      "description": "Local LLM engine for script generation"
+    },
+    {
+      "id": "stable-diffusion-webui",
+      "name": "Stable Diffusion WebUI",
+      "githubRepo": "AUTOMATIC1111/stable-diffusion-webui",
+      "assetPattern": null,
+      "mirrors": [
+        "https://github.com/AUTOMATIC1111/stable-diffusion-webui.git"
+      ],
+      "description": "AUTOMATIC1111's Stable Diffusion WebUI",
+      "isGitRepo": true
+    },
+    {
+      "id": "piper",
+      "name": "Piper TTS",
+      "githubRepo": "rhasspy/piper",
+      "assetPattern": {
+        "windows": "piper_windows_amd64.zip",
+        "linux": "piper_linux_x86_64.tar.gz"
+      },
+      "mirrors": [],
+      "description": "Fast, local neural text-to-speech"
+    }
+  ]
+}

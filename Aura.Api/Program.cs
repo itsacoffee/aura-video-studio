@@ -193,6 +193,15 @@ builder.Services.AddSingleton<Aura.Core.Downloads.EngineManifestLoader>(sp =>
     return new Aura.Core.Downloads.EngineManifestLoader(logger, httpClient, manifestPath);
 });
 
+// Register GitHubReleaseResolver
+builder.Services.AddHttpClient<Aura.Core.Dependencies.GitHubReleaseResolver>();
+builder.Services.AddSingleton<Aura.Core.Dependencies.GitHubReleaseResolver>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.GitHubReleaseResolver>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    return new Aura.Core.Dependencies.GitHubReleaseResolver(logger, httpClient);
+});
+
 builder.Services.AddHttpClient<Aura.Core.Downloads.EngineInstaller>();
 builder.Services.AddSingleton<Aura.Core.Downloads.EngineInstaller>(sp =>
 {

@@ -139,10 +139,17 @@ public class EngineManifestLoader
                     SizeBytes = 83558400, // ~80MB
                     Sha256 = "",
                     ArchiveType = "zip",
+                    GitHubRepo = "BtbN/FFmpeg-Builds",
+                    AssetPattern = "ffmpeg-*-win64-gpl-*.zip",
                     Urls = new Dictionary<string, string>
                     {
                         { "windows", "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-win64-gpl-6.0.zip" },
                         { "linux", "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" }
+                    },
+                    Mirrors = new Dictionary<string, List<string>>
+                    {
+                        { "windows", new List<string> { "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" } },
+                        { "linux", new List<string> { "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" } }
                     },
                     ExtractDir = "ffmpeg",
                     Entrypoint = platform == "windows" ? "ffmpeg.exe" : "ffmpeg",
@@ -160,6 +167,8 @@ public class EngineManifestLoader
                     SizeBytes = 524288000, // ~500MB
                     Sha256 = "",
                     ArchiveType = "zip",
+                    GitHubRepo = "ollama/ollama",
+                    AssetPattern = platform == "windows" ? "ollama-windows-amd64.zip" : "ollama-linux-amd64.tar.gz",
                     Urls = new Dictionary<string, string>
                     {
                         { "windows", "https://github.com/ollama/ollama/releases/download/v0.1.19/ollama-windows-amd64.zip" },
@@ -243,6 +252,8 @@ public class EngineManifestLoader
                     SizeBytes = 50000000, // ~50MB
                     Sha256 = "",
                     ArchiveType = "zip",
+                    GitHubRepo = "rhasspy/piper",
+                    AssetPattern = platform == "windows" ? "piper_windows_amd64.zip" : "piper_linux_x86_64.tar.gz",
                     Urls = new Dictionary<string, string>
                     {
                         { "windows", "https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_windows_amd64.zip" },

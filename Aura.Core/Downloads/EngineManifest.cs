@@ -32,6 +32,12 @@ public class EngineManifestEntry
     [JsonPropertyName("mirrors")]
     public Dictionary<string, List<string>>? Mirrors { get; set; } // platform -> list of mirror URLs
 
+    [JsonPropertyName("githubRepo")]
+    public string? GitHubRepo { get; set; } // e.g., "BtbN/FFmpeg-Builds"
+
+    [JsonPropertyName("assetPattern")]
+    public string? AssetPattern { get; set; } // Pattern to match GitHub release assets, e.g., "ffmpeg-*-win64-gpl-*.zip"
+
     [JsonPropertyName("extractDir")]
     public string? ExtractDir { get; set; }
 

@@ -137,6 +137,8 @@ export function EngineCard({ engine }: EngineCardProps) {
   const [customUrl, setCustomUrl] = useState('');
   const [showLocalFileDialog, setShowLocalFileDialog] = useState(false);
   const [localFilePath, setLocalFilePath] = useState('');
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
   
   const {
     installEngine,
@@ -151,9 +153,28 @@ export function EngineCard({ engine }: EngineCardProps) {
 
   useEffect(() => {
     loadStatus();
+    loadResolvedUrl();
     const interval = setInterval(loadStatus, 5000); // Poll every 5 seconds
     return () => clearInterval(interval);
   }, [engine.id]);
+
+  const loadResolvedUrl = async () => {
+    if (!engine.githubRepo || isInstalled) {
+      return; // Don't fetch URL if already installed or no GitHub repo
+    }
+    setIsLoadingUrl(true);
+    try {
+      const response = await fetch(`http://127.0.0.1:5005/api/engines/resolve-url?engineId=${engine.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setResolvedUrl(data.url);
+      }
+    } catch (error) {
+      console.error('Failed to load resolved URL:', error);
+    } finally {
+      setIsLoadingUrl(false);
+    }
+  };
 
   const loadStatus = async () => {
     try {
@@ -445,6 +466,66 @@ export function EngineCard({ engine }: EngineCardProps) {
         }
       />
       <CardPreview className={styles.content}>
+        {/* Display resolved GitHub release URL if available */}
+        {!isInstalled && resolvedUrl && (
+          <Accordion collapsible>
+            <AccordionItem value="download-info">
+              <AccordionHeader>
+                <Info24Regular style={{ marginRight: '8px' }} />
+                Download Information
+              </AccordionHeader>
+              <AccordionPanel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}>
+                  <div>
+                    <Label weight="semibold">Resolved Download URL:</Label>
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: tokens.spacingHorizontalS, 
+                      alignItems: 'center',
+                      marginTop: tokens.spacingVerticalXXS 
+                    }}>
+                      <Input 
+                        value={resolvedUrl} 
+                        readOnly 
+                        style={{ flex: 1, fontFamily: 'monospace', fontSize: '12px' }}
+                      />
+                      <Button
+                        size="small"
+                        appearance="secondary"
+                        onClick={() => {
+                          navigator.clipboard.writeText(resolvedUrl);
+                          alert('URL copied to clipboard!');
+                        }}
+                      >
+                        Copy
+                      </Button>
+                      <Button
+                        size="small"
+                        appearance="secondary"
+                        icon={<LinkRegular />}
+                        onClick={() => window.open(resolvedUrl, '_blank')}
+                      >
+                        Open in Browser
+                      </Button>
+                    </div>
+                  </div>
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    This URL was resolved from the latest GitHub release for {engine.name}.
+                    You can download manually or use the Install button below.
+                  </Text>
+                </div>
+              </AccordionPanel>
+            </AccordionItem>
+          </Accordion>
+        )}
+        
+        {!isInstalled && isLoadingUrl && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+            <Spinner size="tiny" />
+            <Text size={200}>Resolving download URL from GitHub...</Text>
+          </div>
+        )}
+        
         <div className={styles.row}>
           <div className={styles.actions}>
             {!isInstalled && (

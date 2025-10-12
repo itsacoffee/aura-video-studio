@@ -9,6 +9,8 @@ export interface EngineManifestEntry {
   requiredVRAMGB?: number;
   isInstalled: boolean;
   installPath: string;
+  githubRepo?: string; // e.g., "BtbN/FFmpeg-Builds"
+  assetPattern?: string; // Pattern to match GitHub release assets
   // Gating information
   isGated?: boolean;
   canInstall?: boolean;
