@@ -22,18 +22,24 @@ public class PreflightController : ControllerBase
     /// Run preflight checks for a specific profile
     /// </summary>
     /// <param name="profile">Profile name (Free-Only, Balanced Mix, Pro-Max). Defaults to Free-Only.</param>
+    /// <param name="correlationId">Optional correlation ID for request tracking</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Preflight check report</returns>
     [HttpGet]
     public async Task<IActionResult> GetPreflightReport(
         [FromQuery] string profile = "Free-Only",
+        [FromQuery] string? correlationId = null,
         CancellationToken ct = default)
     {
         try
         {
-            Log.Information("Preflight check requested for profile: {Profile}", profile);
+            var corrId = correlationId ?? Guid.NewGuid().ToString();
+            Log.Information("Preflight check requested for profile: {Profile}, CorrelationId: {CorrelationId}", profile, corrId);
             
             var report = await _preflightService.RunPreflightAsync(profile, ct);
+            
+            // Add correlation ID to response headers for tracing
+            Response.Headers["X-Correlation-Id"] = corrId;
             
             return Ok(report);
         }

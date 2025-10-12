@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useReducer } from 'react';
 import {
   makeStyles,
   tokens,
@@ -18,8 +18,19 @@ import {
   Play24Regular,
   Settings24Regular,
   VideoClip24Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
+import {
+  onboardingReducer,
+  initialOnboardingState,
+  runValidationThunk,
+  detectHardwareThunk,
+  installItemThunk,
+  getButtonLabel,
+  isButtonDisabled,
+} from '../../state/onboarding';
+import type { FixAction } from '../../state/providers';
 
 const useStyles = makeStyles({
   container: {
@@ -94,39 +105,28 @@ const useStyles = makeStyles({
     textAlign: 'center',
     padding: tokens.spacingVerticalXXL,
   },
+  errorCard: {
+    padding: tokens.spacingVerticalL,
+    backgroundColor: tokens.colorPaletteRedBackground1,
+  },
+  fixActionsContainer: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: tokens.spacingVerticalM,
+    marginTop: tokens.spacingVerticalL,
+  },
+  fixActionCard: {
+    padding: tokens.spacingVerticalM,
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
+  },
 });
-
-type WizardMode = 'free' | 'local' | 'pro';
-
-interface HardwareInfo {
-  gpu?: string;
-  vram?: number;
-  canRunSD: boolean;
-  recommendation: string;
-}
-
-interface InstallItem {
-  id: string;
-  name: string;
-  required: boolean;
-  installed: boolean;
-  installing: boolean;
-}
 
 export function FirstRunWizard() {
   const styles = useStyles();
   const navigate = useNavigate();
-  const [step, setStep] = useState(0);
-  const [mode, setMode] = useState<WizardMode>('free');
-  const [hardware, setHardware] = useState<HardwareInfo | null>(null);
-  const [detectingHardware, setDetectingHardware] = useState(false);
-  const [installItems, setInstallItems] = useState<InstallItem[]>([
-    { id: 'ffmpeg', name: 'FFmpeg (Video encoding)', required: true, installed: false, installing: false },
-    { id: 'ollama', name: 'Ollama (Local AI)', required: false, installed: false, installing: false },
-    { id: 'stable-diffusion', name: 'Stable Diffusion WebUI', required: false, installed: false, installing: false },
-  ]);
-  const [validating, setValidating] = useState(false);
-  const [validationComplete, setValidationComplete] = useState(false);
+  const [state, dispatch] = useReducer(onboardingReducer, initialOnboardingState);
 
   const totalSteps = 4;
 
@@ -139,77 +139,61 @@ export function FirstRunWizard() {
     }
   }, [navigate]);
 
-  const detectHardware = async () => {
-    setDetectingHardware(true);
-    try {
-      // Call hardware detection API
-      const response = await fetch('/api/hardware/probe');
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Parse hardware info
-        const gpuInfo = data.gpu || 'Unknown GPU';
-        const vramGB = data.vramGB || 0;
-        const canRunSD = data.enableLocalDiffusion || false;
-        
-        let recommendation = '';
-        if (canRunSD) {
-          recommendation = `Your ${gpuInfo} with ${vramGB}GB VRAM can run Stable Diffusion locally!`;
-        } else {
-          recommendation = `Your system doesn't meet requirements for local Stable Diffusion. We recommend using Stock images or Pro cloud providers.`;
-        }
-        
-        setHardware({
-          gpu: gpuInfo,
-          vram: vramGB,
-          canRunSD,
-          recommendation,
-        });
-      }
-    } catch (error) {
-      console.error('Hardware detection failed:', error);
-      setHardware({
-        canRunSD: false,
-        recommendation: 'Could not detect hardware. We recommend starting with Free-only mode using Stock images.',
-      });
+  // Auto-advance to next step when validation succeeds
+  useEffect(() => {
+    if (state.status === 'valid' && state.step === 3) {
+      // Validation passed on final step, mark as ready
+      dispatch({ type: 'MARK_READY' });
     }
-    setDetectingHardware(false);
+  }, [state.status, state.step]);
+
+  const handleNext = async () => {
+    if (state.step === 1 && !state.hardware) {
+      // Detect hardware before moving to step 2
+      await detectHardwareThunk(dispatch);
+    }
+
+    if (state.step === 2) {
+      // Install required items
+      const requiredItems = state.installItems.filter(item => item.required && !item.installed);
+      for (const item of requiredItems) {
+        await installItemThunk(item.id, dispatch);
+      }
+    }
+
+    if (state.step === 3) {
+      // Run validation only if not already valid
+      if (state.status === 'idle' || state.status === 'installed') {
+        await runValidationThunk(state, dispatch);
+        return; // Don't advance yet, wait for validation result
+      } else if (state.status === 'valid' || state.status === 'ready') {
+        // Already validated, complete onboarding
+        completeOnboarding();
+        return;
+      } else if (state.status === 'invalid') {
+        // Show fix actions, don't advance
+        return;
+      }
+    }
+
+    if (state.step < totalSteps - 1) {
+      dispatch({ type: 'SET_STEP', payload: state.step + 1 });
+    }
   };
 
-  const installItem = async (itemId: string) => {
-    setInstallItems(prev => prev.map(item =>
-      item.id === itemId ? { ...item, installing: true } : item
-    ));
-
-    // Simulate installation (in real app, this would call the download API)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    setInstallItems(prev => prev.map(item =>
-      item.id === itemId ? { ...item, installing: false, installed: true } : item
-    ));
+  const handleBack = () => {
+    if (state.step > 0) {
+      dispatch({ type: 'SET_STEP', payload: state.step - 1 });
+      // Reset validation when going back
+      if (state.step === 3) {
+        dispatch({ type: 'RESET_VALIDATION' });
+      }
+    }
   };
 
-  const runValidation = async () => {
-    setValidating(true);
-    
-    // Run preflight check
-    try {
-      const profileMap: Record<WizardMode, string> = {
-        free: 'Free-Only',
-        local: 'Balanced Mix',
-        pro: 'Pro-Max',
-      };
-      
-      const response = await fetch(`/api/preflight?profile=${profileMap[mode]}`);
-      if (response.ok) {
-        const report = await response.json();
-        setValidationComplete(report.ok);
-      }
-    } catch (error) {
-      console.error('Validation failed:', error);
-    }
-    
-    setValidating(false);
+  const handleSkip = () => {
+    localStorage.setItem('hasSeenOnboarding', 'true');
+    navigate('/');
   };
 
   const completeOnboarding = () => {
@@ -217,39 +201,32 @@ export function FirstRunWizard() {
     navigate('/create');
   };
 
-  const handleNext = async () => {
-    if (step === 1 && !hardware) {
-      // Detect hardware before moving to step 2
-      await detectHardware();
+  const handleFixAction = (action: FixAction) => {
+    switch (action.type) {
+      case 'Install':
+        // Navigate to downloads page with the item pre-selected
+        navigate(`/downloads?item=${action.parameter}`);
+        break;
+      case 'Start':
+        // Show instructions for starting the service
+        alert(`To start ${action.parameter}, please follow these steps:\n\n${action.description}`);
+        break;
+      case 'OpenSettings':
+        // Navigate to settings with the specific tab
+        navigate(`/settings?tab=${action.parameter}`);
+        break;
+      case 'SwitchToFree':
+        // Switch to free alternative
+        dispatch({ type: 'RESET_VALIDATION' });
+        alert(`Switched to ${action.parameter}. Click Validate again to check.`);
+        break;
+      case 'Help':
+        // Open help URL
+        if (action.parameter) {
+          window.open(action.parameter, '_blank');
+        }
+        break;
     }
-    
-    if (step === 2) {
-      // Install required items
-      const requiredItems = installItems.filter(item => item.required && !item.installed);
-      for (const item of requiredItems) {
-        await installItem(item.id);
-      }
-    }
-    
-    if (step === 3) {
-      // Run validation
-      await runValidation();
-    }
-    
-    if (step < totalSteps - 1) {
-      setStep(step + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (step > 0) {
-      setStep(step - 1);
-    }
-  };
-
-  const handleSkip = () => {
-    localStorage.setItem('hasSeenOnboarding', 'true');
-    navigate('/');
   };
 
   const renderStep0 = () => (
@@ -260,8 +237,8 @@ export function FirstRunWizard() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
         <Card
           className={styles.modeCard}
-          onClick={() => setMode('free')}
-          style={mode === 'free' ? { 
+          onClick={() => dispatch({ type: 'SET_MODE', payload: 'free' })}
+          style={state.mode === 'free' ? { 
             borderColor: tokens.colorBrandBackground, 
             borderWidth: '2px',
             borderStyle: 'solid'
@@ -281,8 +258,8 @@ export function FirstRunWizard() {
 
         <Card
           className={styles.modeCard}
-          onClick={() => setMode('local')}
-          style={mode === 'local' ? { 
+          onClick={() => dispatch({ type: 'SET_MODE', payload: 'local' })}
+          style={state.mode === 'local' ? { 
             borderColor: tokens.colorBrandBackground, 
             borderWidth: '2px',
             borderStyle: 'solid'
@@ -302,8 +279,8 @@ export function FirstRunWizard() {
 
         <Card
           className={styles.modeCard}
-          onClick={() => setMode('pro')}
-          style={mode === 'pro' ? { 
+          onClick={() => dispatch({ type: 'SET_MODE', payload: 'pro' })}
+          style={state.mode === 'pro' ? { 
             borderColor: tokens.colorBrandBackground, 
             borderWidth: '2px',
             borderStyle: 'solid'
@@ -328,25 +305,25 @@ export function FirstRunWizard() {
     <>
       <Title2>Hardware Detection</Title2>
       
-      {detectingHardware ? (
+      {state.isDetectingHardware ? (
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
             <Spinner size="small" />
             <Text>Detecting your hardware capabilities...</Text>
           </div>
         </Card>
-      ) : hardware ? (
+      ) : state.hardware ? (
         <div className={styles.hardwareInfo}>
           <Card>
             <Title3>System Information</Title3>
-            {hardware.gpu && <Text>GPU: {hardware.gpu}</Text>}
-            {hardware.vram && <Text>VRAM: {hardware.vram}GB</Text>}
+            {state.hardware.gpu && <Text>GPU: {state.hardware.gpu}</Text>}
+            {state.hardware.vram && <Text>VRAM: {state.hardware.vram}GB</Text>}
             <Text style={{ marginTop: tokens.spacingVerticalM }}>
-              <strong>Recommendation:</strong> {hardware.recommendation}
+              <strong>Recommendation:</strong> {state.hardware.recommendation}
             </Text>
           </Card>
 
-          {!hardware.canRunSD && mode === 'local' && (
+          {!state.hardware.canRunSD && state.mode === 'local' && (
             <Card>
               <Badge appearance="filled" color="warning">⚠ Note</Badge>
               <Text style={{ marginTop: tokens.spacingVerticalS }}>
@@ -370,7 +347,7 @@ export function FirstRunWizard() {
       <Text>We'll help you install the necessary tools for your chosen mode.</Text>
 
       <div className={styles.installList}>
-        {installItems.map(item => (
+        {state.installItems.map(item => (
           <Card key={item.id} className={styles.validationItem}>
             <div style={{ width: '24px' }}>
               {item.installed ? (
@@ -387,7 +364,7 @@ export function FirstRunWizard() {
               <Button
                 size="small"
                 appearance="primary"
-                onClick={() => installItem(item.id)}
+                onClick={() => installItemThunk(item.id, dispatch)}
               >
                 Install
               </Button>
@@ -408,14 +385,14 @@ export function FirstRunWizard() {
     <>
       <Title2>Validation & Demo</Title2>
       
-      {validating ? (
+      {state.status === 'validating' ? (
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
             <Spinner size="small" />
             <Text>Running preflight checks...</Text>
           </div>
         </Card>
-      ) : validationComplete ? (
+      ) : state.status === 'valid' || state.status === 'ready' ? (
         <div className={styles.successCard}>
           <Checkmark24Regular style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }} />
           <Title1 style={{ marginTop: tokens.spacingVerticalL }}>All Set!</Title1>
@@ -444,16 +421,72 @@ export function FirstRunWizard() {
             </Button>
           </div>
         </div>
+      ) : state.status === 'invalid' && state.lastValidation ? (
+        <>
+          <Card className={styles.errorCard}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+              <Warning24Regular style={{ fontSize: '32px', color: tokens.colorPaletteRedForeground1 }} />
+              <div>
+                <Title3>Validation Failed</Title3>
+                <Text>Some providers are not available. Please fix the issues below to continue.</Text>
+              </div>
+            </div>
+          </Card>
+
+          {state.lastValidation.failedStages.map((stage, index) => (
+            <Card key={index}>
+              <Title3>{stage.stage} Stage</Title3>
+              <Text><strong>Provider:</strong> {stage.provider}</Text>
+              <Text><strong>Issue:</strong> {stage.message}</Text>
+              {stage.hint && (
+                <Text style={{ marginTop: tokens.spacingVerticalS, fontStyle: 'italic' }}>
+                  💡 {stage.hint}
+                </Text>
+              )}
+              
+              {stage.suggestions && stage.suggestions.length > 0 && (
+                <div style={{ marginTop: tokens.spacingVerticalM }}>
+                  <Text weight="semibold">Suggestions:</Text>
+                  <ul style={{ marginTop: tokens.spacingVerticalXS }}>
+                    {stage.suggestions.map((suggestion, i) => (
+                      <li key={i}><Text size={200}>{suggestion}</Text></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {stage.fixActions && stage.fixActions.length > 0 && (
+                <div className={styles.fixActionsContainer}>
+                  <Text weight="semibold">Quick Fixes:</Text>
+                  {stage.fixActions.map((action, i) => (
+                    <Button
+                      key={i}
+                      appearance="secondary"
+                      onClick={() => handleFixAction(action)}
+                      style={{ justifyContent: 'flex-start' }}
+                    >
+                      {action.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </Card>
+          ))}
+
+          <Card>
+            <Text>After fixing the issues, click Validate again to re-check your setup.</Text>
+          </Card>
+        </>
       ) : (
         <Card>
-          <Text>Click Next to validate your setup...</Text>
+          <Text>Click Validate to check your setup and ensure all providers are working correctly.</Text>
         </Card>
       )}
     </>
   );
 
   const renderStepContent = () => {
-    switch (step) {
+    switch (state.step) {
       case 0:
         return renderStep0();
       case 1:
@@ -467,6 +500,10 @@ export function FirstRunWizard() {
     }
   };
 
+  const isLastStep = state.step === totalSteps - 1;
+  const buttonLabel = getButtonLabel(state.status, isLastStep);
+  const buttonDisabled = isButtonDisabled(state.status, state.isDetectingHardware);
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -475,7 +512,7 @@ export function FirstRunWizard() {
           {Array.from({ length: totalSteps }).map((_, i) => (
             <div
               key={i}
-              className={`${styles.step} ${i === step ? styles.stepActive : ''} ${i < step ? styles.stepCompleted : ''}`}
+              className={`${styles.step} ${i === state.step ? styles.stepActive : ''} ${i < state.step ? styles.stepCompleted : ''}`}
             />
           ))}
         </div>
@@ -485,7 +522,7 @@ export function FirstRunWizard() {
         {renderStepContent()}
       </div>
 
-      {!validationComplete && (
+      {state.status !== 'ready' && (
         <div className={styles.footer}>
           <Button
             appearance="subtle"
@@ -495,24 +532,32 @@ export function FirstRunWizard() {
           </Button>
 
           <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
-            {step > 0 && (
+            {state.step > 0 && (
               <Button
                 appearance="secondary"
                 icon={<ChevronLeft24Regular />}
                 onClick={handleBack}
-                disabled={validating || detectingHardware}
+                disabled={buttonDisabled}
               >
                 Back
               </Button>
             )}
             <Button
               appearance="primary"
-              icon={step < totalSteps - 1 ? <ChevronRight24Regular /> : <Play24Regular />}
+              icon={
+                state.status === 'validating' || state.status === 'installing' ? (
+                  <Spinner size="tiny" />
+                ) : isLastStep ? (
+                  <Play24Regular />
+                ) : (
+                  <ChevronRight24Regular />
+                )
+              }
               iconPosition="after"
               onClick={handleNext}
-              disabled={validating || detectingHardware}
+              disabled={buttonDisabled}
             >
-              {step < totalSteps - 1 ? 'Next' : 'Validate'}
+              {buttonLabel}
             </Button>
           </div>
         </div>
