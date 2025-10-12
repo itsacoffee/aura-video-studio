@@ -38,7 +38,15 @@ New-Item -ItemType Directory -Force -Path "$buildDir\api" | Out-Null
 New-Item -ItemType Directory -Force -Path "$buildDir\web" | Out-Null
 New-Item -ItemType Directory -Force -Path "$buildDir\ffmpeg" | Out-Null
 New-Item -ItemType Directory -Force -Path "$buildDir\config" | Out-Null
-Write-Host "      ✓ Directories created" -ForegroundColor Green
+
+# Create portable folder structure
+New-Item -ItemType Directory -Force -Path "$buildDir\Tools" | Out-Null
+New-Item -ItemType Directory -Force -Path "$buildDir\AuraData" | Out-Null
+New-Item -ItemType Directory -Force -Path "$buildDir\Logs" | Out-Null
+New-Item -ItemType Directory -Force -Path "$buildDir\Projects" | Out-Null
+New-Item -ItemType Directory -Force -Path "$buildDir\Downloads" | Out-Null
+
+Write-Host "      ✓ Directories created (including portable structure)" -ForegroundColor Green
 
 # Build core projects
 Write-Host "[2/8] Building .NET projects..." -ForegroundColor Yellow
@@ -104,6 +112,24 @@ Copy-Item "$rootDir\PORTABLE.md" -Destination "$buildDir\README.md" -Force
 if (Test-Path "$rootDir\LICENSE") {
     Copy-Item "$rootDir\LICENSE" -Destination $buildDir -Force
 }
+
+# Create README in AuraData
+$auraDataReadme = @"
+# AuraData Directory
+
+This directory contains application settings, configuration, and metadata.
+
+## Files
+- **settings.json** - User preferences and provider configuration
+- **install-manifest.json** - Installed dependencies and their locations
+- **engines-manifest.json** - Local engine installations metadata
+- **engines-config.json** - Engine runtime configuration
+
+## Purpose
+All application data is stored in this folder to keep the installation portable.
+You can back up this folder to preserve your settings across installations.
+"@
+Set-Content -Path "$buildDir\AuraData\README.txt" -Value $auraDataReadme -Encoding UTF8
 
 # Copy assets if they exist
 $assetsSourceDir = Join-Path $rootDir "assets"
@@ -360,6 +386,11 @@ Write-Host "  /api/*                - Aura.Api binaries with Web UI in wwwroot" 
 Write-Host "  /web/*                - Aura.Web static build (reference copy)" -ForegroundColor White
 Write-Host "  /ffmpeg/*             - FFmpeg binaries" -ForegroundColor White
 Write-Host "  /config/*             - Configuration files" -ForegroundColor White
+Write-Host "  /Tools/               - Downloaded dependencies (empty by default)" -ForegroundColor White
+Write-Host "  /AuraData/            - Settings, manifests, and metadata" -ForegroundColor White
+Write-Host "  /Logs/                - Application logs (created on first run)" -ForegroundColor White
+Write-Host "  /Projects/            - Generated videos and project files" -ForegroundColor White
+Write-Host "  /Downloads/           - Temporary download storage" -ForegroundColor White
 Write-Host "  /start_portable.cmd   - Launcher with /healthz check" -ForegroundColor White
 Write-Host "  /checksums.txt        - File checksums" -ForegroundColor White
 Write-Host "  /sbom.json            - Software Bill of Materials" -ForegroundColor White

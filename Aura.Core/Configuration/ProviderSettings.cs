@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
@@ -8,95 +9,134 @@ namespace Aura.Core.Configuration;
 
 /// <summary>
 /// Manages provider configuration settings (paths, URLs, etc.)
-/// Loads from JSON files in AppData folder
+/// Portable-only: All data stored relative to application root
 /// </summary>
 public class ProviderSettings
 {
     private readonly ILogger<ProviderSettings> _logger;
     private readonly string _configPath;
+    private readonly string _portableRoot;
     private Dictionary<string, object>? _settings;
 
     public ProviderSettings(ILogger<ProviderSettings> logger)
     {
         _logger = logger;
-        _configPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Aura",
-            "provider-paths.json");
-    }
-
-    /// <summary>
-    /// Check if portable mode is enabled
-    /// </summary>
-    public bool IsPortableModeEnabled()
-    {
-        LoadSettings();
-        if (_settings != null && _settings.TryGetValue("portableModeEnabled", out var value))
+        
+        // Determine portable root from assembly location
+        var assemblyLocation = Assembly.GetExecutingAssembly().Location;
+        var assemblyDir = Path.GetDirectoryName(assemblyLocation);
+        
+        // For published apps, we're in the root. For dev, we're in bin/Debug/net8.0
+        // Go up until we find a reasonable root (has Aura.Api.dll or is parent of bin folder)
+        _portableRoot = DeterminePortableRoot(assemblyDir ?? Directory.GetCurrentDirectory());
+        
+        // Store settings in AuraData subfolder
+        var auraDataDir = Path.Combine(_portableRoot, "AuraData");
+        if (!Directory.Exists(auraDataDir))
         {
-            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            Directory.CreateDirectory(auraDataDir);
+        }
+        
+        _configPath = Path.Combine(auraDataDir, "settings.json");
+        
+        _logger.LogInformation("ProviderSettings initialized with portable root: {PortableRoot}", _portableRoot);
+    }
+    
+    private static string DeterminePortableRoot(string startPath)
+    {
+        var current = new DirectoryInfo(startPath);
+        
+        // Check if we're in a bin folder (development scenario)
+        if (current.Name.Equals("bin", StringComparison.OrdinalIgnoreCase) || 
+            current.Parent?.Name.Equals("bin", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            // Go up to project root
+            while (current != null && current.Name != "Aura.Api" && current.Name != "Aura.Core")
             {
-                return true;
+                current = current.Parent;
+            }
+            
+            // If we found project folder, go up one more to solution root
+            if (current != null && (current.Name == "Aura.Api" || current.Name == "Aura.Core"))
+            {
+                current = current.Parent;
             }
         }
-        return false;
+        
+        return current?.FullName ?? startPath;
     }
 
     /// <summary>
-    /// Get the portable root path (where all tools are installed in portable mode)
+    /// Get the portable root path (application root directory)
     /// </summary>
-    public string? GetPortableRootPath()
+    public string GetPortableRootPath()
     {
-        LoadSettings();
-        var path = GetStringSetting("portableRootPath", "");
-        return string.IsNullOrWhiteSpace(path) ? null : path;
+        return _portableRoot;
     }
 
     /// <summary>
-    /// Set portable mode configuration
-    /// </summary>
-    public void SetPortableMode(bool enabled, string? portableRootPath = null)
-    {
-        LoadSettings();
-        if (_settings == null)
-        {
-            _settings = new Dictionary<string, object>();
-        }
-
-        _settings["portableModeEnabled"] = enabled;
-        if (!string.IsNullOrWhiteSpace(portableRootPath))
-        {
-            _settings["portableRootPath"] = portableRootPath;
-        }
-        else if (!enabled)
-        {
-            // Remove portableRootPath if disabling portable mode
-            _settings.Remove("portableRootPath");
-        }
-
-        SaveSettings();
-        // Force reload to ensure changes are reflected
-        _settings = null;
-    }
-
-    /// <summary>
-    /// Get the effective tools directory (portable root or AppData)
+    /// Get the tools directory (where dependencies are installed)
     /// </summary>
     public string GetToolsDirectory()
     {
-        if (IsPortableModeEnabled())
+        var toolsDir = Path.Combine(_portableRoot, "Tools");
+        if (!Directory.Exists(toolsDir))
         {
-            var portableRoot = GetPortableRootPath();
-            if (!string.IsNullOrWhiteSpace(portableRoot))
-            {
-                return portableRoot;
-            }
+            Directory.CreateDirectory(toolsDir);
         }
-
-        // Default to AppData
-        return Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Aura",
-            "dependencies");
+        return toolsDir;
+    }
+    
+    /// <summary>
+    /// Get the AuraData directory (for settings, manifests, logs)
+    /// </summary>
+    public string GetAuraDataDirectory()
+    {
+        var auraDataDir = Path.Combine(_portableRoot, "AuraData");
+        if (!Directory.Exists(auraDataDir))
+        {
+            Directory.CreateDirectory(auraDataDir);
+        }
+        return auraDataDir;
+    }
+    
+    /// <summary>
+    /// Get the downloads directory (for in-progress downloads)
+    /// </summary>
+    public string GetDownloadsDirectory()
+    {
+        var downloadsDir = Path.Combine(_portableRoot, "Downloads");
+        if (!Directory.Exists(downloadsDir))
+        {
+            Directory.CreateDirectory(downloadsDir);
+        }
+        return downloadsDir;
+    }
+    
+    /// <summary>
+    /// Get the logs directory
+    /// </summary>
+    public string GetLogsDirectory()
+    {
+        var logsDir = Path.Combine(_portableRoot, "Logs");
+        if (!Directory.Exists(logsDir))
+        {
+            Directory.CreateDirectory(logsDir);
+        }
+        return logsDir;
+    }
+    
+    /// <summary>
+    /// Get the projects directory (for user projects)
+    /// </summary>
+    public string GetProjectsDirectory()
+    {
+        var projectsDir = Path.Combine(_portableRoot, "Projects");
+        if (!Directory.Exists(projectsDir))
+        {
+            Directory.CreateDirectory(projectsDir);
+        }
+        return projectsDir;
     }
 
     /// <summary>
@@ -161,12 +201,10 @@ public class ProviderSettings
         LoadSettings();
         var path = GetStringSetting("outputDirectory", "");
         
-        // If empty, use default Videos folder
+        // If user has set custom path, use it; otherwise use Projects folder
         if (string.IsNullOrWhiteSpace(path))
         {
-            return Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
-                "AuraVideoStudio");
+            return GetProjectsDirectory();
         }
         
         return path;

@@ -11,7 +11,8 @@ using Xunit;
 namespace Aura.Tests;
 
 /// <summary>
-/// Integration tests for portable mode functionality
+/// Integration tests for portable-only mode functionality
+/// All installations are portable by default
 /// </summary>
 public class PortableModeIntegrationTests : IDisposable
 {
@@ -47,17 +48,49 @@ public class PortableModeIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void PortableMode_Should_CreateStructureInPortableRoot()
+    public void PortableMode_Should_AlwaysBeEnabled()
     {
         // Arrange
         var settings = new ProviderSettings(_providerLogger);
-        settings.SetPortableMode(true, _portableRoot);
 
         // Act
+        var portableRoot = settings.GetPortableRootPath();
         var toolsDir = settings.GetToolsDirectory();
 
-        // Assert
-        Assert.Equal(_portableRoot, toolsDir);
+        // Assert - Portable mode is always on
+        Assert.NotNull(portableRoot);
+        Assert.NotEmpty(portableRoot);
+        Assert.NotNull(toolsDir);
+        Assert.Contains("Tools", toolsDir);
+    }
+
+    [Fact]
+    public void PortableMode_Should_CreateExpectedDirectoryStructure()
+    {
+        // Arrange
+        var settings = new ProviderSettings(_providerLogger);
+
+        // Act
+        var portableRoot = settings.GetPortableRootPath();
+        var toolsDir = settings.GetToolsDirectory();
+        var auraDataDir = settings.GetAuraDataDirectory();
+        var logsDir = settings.GetLogsDirectory();
+        var projectsDir = settings.GetProjectsDirectory();
+        var downloadsDir = settings.GetDownloadsDirectory();
+
+        // Assert - All directories should be created under portable root
+        Assert.StartsWith(portableRoot, toolsDir);
+        Assert.StartsWith(portableRoot, auraDataDir);
+        Assert.StartsWith(portableRoot, logsDir);
+        Assert.StartsWith(portableRoot, projectsDir);
+        Assert.StartsWith(portableRoot, downloadsDir);
+        
+        // Verify directories are created
+        Assert.True(Directory.Exists(toolsDir));
+        Assert.True(Directory.Exists(auraDataDir));
+        Assert.True(Directory.Exists(logsDir));
+        Assert.True(Directory.Exists(projectsDir));
+        Assert.True(Directory.Exists(downloadsDir));
     }
 
     [Fact]
@@ -65,8 +98,8 @@ public class PortableModeIntegrationTests : IDisposable
     {
         // Arrange
         var httpClient = new HttpClient();
-        var manifestPath = Path.Combine(_portableRoot, "manifest.json");
-        var downloadDirectory = _portableRoot;
+        var manifestPath = Path.Combine(_portableRoot, "install-manifest.json");
+        var downloadDirectory = Path.Combine(_portableRoot, "Downloads");
 
         // Act
         var manager = new DependencyManager(
@@ -79,7 +112,6 @@ public class PortableModeIntegrationTests : IDisposable
         // Assert
         Assert.True(manager.IsPortableModeEnabled());
         Assert.Equal(_portableRoot, manager.GetPortableRoot());
-        Assert.Equal(downloadDirectory, manager.GetComponentDirectory("FFmpeg"));
     }
 
     [Fact]
@@ -87,8 +119,8 @@ public class PortableModeIntegrationTests : IDisposable
     {
         // Arrange
         var httpClient = new HttpClient();
-        var manifestPath = Path.Combine(_portableRoot, "manifest.json");
-        var downloadDirectory = _portableRoot;
+        var manifestPath = Path.Combine(_portableRoot, "install-manifest.json");
+        var downloadDirectory = Path.Combine(_portableRoot, "Downloads");
 
         var manager = new DependencyManager(
             _dependencyLogger,
@@ -107,119 +139,47 @@ public class PortableModeIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void PortableMode_Should_AllowSwitchingBetweenModes()
-    {
-        // Arrange
-        var settings = new ProviderSettings(_providerLogger);
-        
-        // Ensure we start clean
-        settings.SetPortableMode(false);
-        
-        // Act & Assert - Start in standard mode
-        Assert.False(settings.IsPortableModeEnabled());
-        var standardPath = settings.GetToolsDirectory();
-        Assert.Contains("Aura", standardPath);
-
-        // Switch to portable mode
-        settings.SetPortableMode(true, _portableRoot);
-        Assert.True(settings.IsPortableModeEnabled());
-        Assert.Equal(_portableRoot, settings.GetToolsDirectory());
-
-        // Switch back to standard mode
-        settings.SetPortableMode(false);
-        Assert.False(settings.IsPortableModeEnabled());
-        var backToStandard = settings.GetToolsDirectory();
-        Assert.Contains("Aura", backToStandard);
-    }
-
-    [Fact]
-    public async Task PortableMode_Should_IsolateInstallations()
+    public async Task PortableMode_Should_SupportMultipleInstallLocations()
     {
         // Arrange
         var httpClient = new HttpClient();
-        var portableManifest = Path.Combine(_portableRoot, "manifest.json");
-        var portableDir = _portableRoot;
+        var portableManifest = Path.Combine(_portableRoot, "install-manifest.json");
+        var portableDownloads = Path.Combine(_portableRoot, "Downloads");
 
-        var standardRoot = Path.Combine(_testDirectory, "standard");
-        Directory.CreateDirectory(standardRoot);
-        var standardManifest = Path.Combine(standardRoot, "manifest.json");
-        var standardDir = Path.Combine(standardRoot, "dependencies");
+        var alternateRoot = Path.Combine(_testDirectory, "alternate");
+        Directory.CreateDirectory(alternateRoot);
+        var alternateManifest = Path.Combine(alternateRoot, "install-manifest.json");
+        var alternateDownloads = Path.Combine(alternateRoot, "Downloads");
 
-        // Create managers for both modes
-        var portableManager = new DependencyManager(
+        // Create managers for both locations
+        var manager1 = new DependencyManager(
             _dependencyLogger,
             httpClient,
             portableManifest,
-            portableDir,
+            portableDownloads,
             _portableRoot);
 
-        var standardManager = new DependencyManager(
+        var manager2 = new DependencyManager(
             _dependencyLogger,
             httpClient,
-            standardManifest,
-            standardDir,
-            null);
+            alternateManifest,
+            alternateDownloads,
+            alternateRoot);
 
         // Act
-        var portableManifestData = await portableManager.LoadManifestAsync();
-        var standardManifestData = await standardManager.LoadManifestAsync();
+        var manifest1 = await manager1.LoadManifestAsync();
+        var manifest2 = await manager2.LoadManifestAsync();
 
         // Assert - Both should have their own manifests
         Assert.True(File.Exists(portableManifest));
-        Assert.True(File.Exists(standardManifest));
-        Assert.NotEqual(portableManifest, standardManifest);
+        Assert.True(File.Exists(alternateManifest));
+        Assert.NotEqual(portableManifest, alternateManifest);
         
-        // Portable manager should be in portable mode
-        Assert.True(portableManager.IsPortableModeEnabled());
-        Assert.Equal(_portableRoot, portableManager.GetPortableRoot());
+        // Both managers should be in portable mode with their respective roots
+        Assert.True(manager1.IsPortableModeEnabled());
+        Assert.Equal(_portableRoot, manager1.GetPortableRoot());
         
-        // Standard manager should not be in portable mode
-        Assert.False(standardManager.IsPortableModeEnabled());
-        Assert.Null(standardManager.GetPortableRoot());
-    }
-
-    [Fact]
-    public void PortableRoot_Should_SupportDifferentPaths()
-    {
-        // Arrange
-        var settings = new ProviderSettings(_providerLogger);
-        var path1 = Path.Combine(_testDirectory, "location1");
-        var path2 = Path.Combine(_testDirectory, "location2");
-
-        // Act & Assert - Set first path
-        settings.SetPortableMode(true, path1);
-        Assert.Equal(path1, settings.GetPortableRootPath());
-        Assert.Equal(path1, settings.GetToolsDirectory());
-
-        // Change to second path
-        settings.SetPortableMode(true, path2);
-        Assert.Equal(path2, settings.GetPortableRootPath());
-        Assert.Equal(path2, settings.GetToolsDirectory());
-    }
-
-    [Fact]
-    public void PortableMode_PathValidation_Should_HandleInvalidPaths()
-    {
-        // Arrange
-        var settings = new ProviderSettings(_providerLogger);
-        
-        // Ensure we start clean
-        settings.SetPortableMode(false);
-
-        // Act & Assert - Empty path with portable mode enabled should still use portable logic
-        // but fallback to AppData since path is empty
-        settings.SetPortableMode(true, "");
-        Assert.True(settings.IsPortableModeEnabled());
-        var toolsDir = settings.GetToolsDirectory();
-        // When portable mode is enabled but path is empty/whitespace, it falls back to AppData
-        Assert.Contains("dependencies", toolsDir); // Should fallback to AppData
-
-        // Whitespace path should also fallback
-        settings.SetPortableMode(true, "   ");
-        var toolsDir2 = settings.GetToolsDirectory();
-        Assert.Contains("dependencies", toolsDir2); // Should fallback to AppData
-        
-        // Cleanup
-        settings.SetPortableMode(false);
+        Assert.True(manager2.IsPortableModeEnabled());
+        Assert.Equal(alternateRoot, manager2.GetPortableRoot());
     }
 }

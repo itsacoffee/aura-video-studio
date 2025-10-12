@@ -1,31 +1,48 @@
-# Aura Video Studio - Portable Version
+# Aura Video Studio - Portable Edition
 
 ## Overview
 
-The portable version of Aura Video Studio is a self-contained distribution that requires no installation. Simply extract and run!
+Aura Video Studio is distributed as a **portable-only** application. All data, settings, and dependencies are stored within the application folder, making it easy to move or backup your installation.
 
 ## What's Included
 
-After extracting the ZIP, you'll have this structure:
+After extracting the ZIP, you'll have this portable structure:
 
 ```
 AuraVideoStudio_Portable_x64/
-├── Api/
-│   ├── Aura.Api.exe            ← Main executable
-│   ├── wwwroot/                 ← Web UI files (MUST be here!)
+├── api/
+│   ├── Aura.Api.exe              ← Main executable
+│   ├── wwwroot/                   ← Web UI files (MUST be here!)
 │   │   ├── index.html
 │   │   └── assets/
-│   └── (DLLs and dependencies)
-├── ffmpeg/
+│   └── (runtime dependencies)
+├── Tools/                         ← Downloaded dependencies (empty initially)
+│   └── (FFmpeg, Ollama, etc. installed here)
+├── AuraData/                      ← Application data and settings
+│   ├── settings.json
+│   ├── install-manifest.json
+│   └── README.txt
+├── Logs/                          ← Application logs (created on first run)
+├── Projects/                      ← Generated videos and project files
+├── Downloads/                     ← Temporary download storage
+├── ffmpeg/                        ← Optional pre-bundled FFmpeg
 │   ├── ffmpeg.exe
 │   └── ffprobe.exe
-├── Launch.bat                   ← Easy launcher
-├── README.md                    ← This file
-├── appsettings.json            ← Configuration
+├── start_portable.cmd             ← Easy launcher with health check
+├── README.md                      ← This file
+├── checksums.txt                  ← File integrity checksums
 └── LICENSE
 ```
 
-**Important:** The `wwwroot` folder MUST be inside the `Api` folder for the web UI to work!
+## Portable Benefits
+
+✅ **No installation required** - Extract and run  
+✅ **No registry entries** - Everything stored in the app folder  
+✅ **Easy backup** - Copy the entire folder  
+✅ **Multiple installations** - Run different versions side-by-side  
+✅ **Clean uninstall** - Just delete the folder  
+
+**Important:** All dependencies and settings are stored within this folder. You can move the entire folder to another location or machine without breaking anything.
 
 ## System Requirements
 
@@ -38,17 +55,32 @@ AuraVideoStudio_Portable_x64/
 
 ### Option 1: Using the Launcher (Recommended)
 
-1. Extract the ZIP file to any folder
-2. Double-click `Launch.bat`
-3. The API will start and your default browser will open to `http://127.0.0.1:5005`
-4. Wait a few seconds for the application to load
+1. Extract the ZIP file to any folder (e.g., `C:\Aura` or `D:\Tools\Aura`)
+2. Double-click `start_portable.cmd`
+3. Wait for the launcher to verify the API is healthy
+4. Your default browser will open to `http://127.0.0.1:5005`
+5. The application will create `Logs/`, `AuraData/`, and other folders on first run
 
 ### Option 2: Manual Launch
 
 1. Extract the ZIP file to any folder
-2. Navigate to the `Api` folder
+2. Navigate to the `api` folder
 3. Double-click `Aura.Api.exe`
 4. Open your web browser and go to `http://127.0.0.1:5005`
+
+## Portable Data Structure
+
+All application data is stored in the extracted folder:
+
+- **Tools/** - Downloaded dependencies (FFmpeg, Ollama, Stable Diffusion, etc.)
+- **AuraData/** - Settings, manifests, and configuration
+  - `settings.json` - User preferences and provider configuration
+  - `install-manifest.json` - Tracks installed components
+- **Logs/** - Application and tool logs (check here for troubleshooting)
+- **Projects/** - Your generated videos and project files
+- **Downloads/** - Temporary storage for downloads in progress
+
+You can move the entire folder to another location or machine, and everything will continue to work (except system dependencies like GPU drivers).
 
 ## Troubleshooting
 
@@ -102,21 +134,49 @@ If the web UI doesn't load:
 
 ## Logs
 
-Application logs are stored in the `logs/` folder inside the `Api` directory. Check these files if you encounter any issues:
+Application logs are stored in the `Logs/` folder at the root of your installation:
 
-- `aura-api-YYYYMMDD.log` - Daily log files
+- `Logs/aura-api-YYYYMMDD.log` - Daily API log files
+- `Logs/tools/` - Logs from background tools (if any)
 
-## Firewall Warning
-
-Windows Firewall may prompt you to allow network access for `Aura.Api.exe`. This is normal - the API needs to accept local HTTP connections on port 5005. Click "Allow access" to continue.
+Check these files if you encounter issues. Logs include structured information with correlation IDs for debugging.
 
 ## Uninstalling
 
-To remove the portable version:
+To remove the portable installation:
 
-1. Close the application
-2. Delete the extracted folder
-3. Optionally, delete settings stored in `%LOCALAPPDATA%\Aura\`
+1. Close the application (close the API window or terminate the process)
+2. Delete the entire extracted folder
+3. All settings and data are contained within - no registry or AppData cleanup needed
+
+## Backing Up Your Installation
+
+To backup your settings and projects:
+
+1. Copy the entire folder to another location
+2. Or just backup specific folders:
+   - `AuraData/` - Settings and configuration
+   - `Projects/` - Your generated videos
+   - `Tools/` - Downloaded dependencies (can be re-downloaded)
+
+## Moving to Another Machine
+
+To move your installation:
+
+1. Copy the entire folder to the new machine
+2. Make sure system dependencies are installed:
+   - .NET 8 Runtime (usually included in the portable build)
+   - GPU drivers (if using GPU features)
+3. Run `start_portable.cmd`
+4. All your settings, projects, and tools will work immediately
+
+Note: Downloaded tools in the `Tools/` folder are portable, but you may need to re-download them if they depend on specific system configurations.
+
+## Firewall and Security
+
+**Firewall Prompt**: Windows Firewall may ask for permission when you first run `Aura.Api.exe`. This is normal - the API needs to accept local HTTP connections on port 5005. Click "Allow access" to continue.
+
+**Security**: The application only listens on localhost (127.0.0.1) and is not accessible from other machines unless you explicitly configure it.
 
 ## Health Check
 
