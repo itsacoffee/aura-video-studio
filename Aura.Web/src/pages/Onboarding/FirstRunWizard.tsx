@@ -31,6 +31,9 @@ import {
   isButtonDisabled,
 } from '../../state/onboarding';
 import type { FixAction } from '../../state/providers';
+import { InstallItemCard } from '../../components/Onboarding/InstallItemCard';
+import { FileLocationsSummary } from '../../components/Onboarding/FileLocationsSummary';
+import { useEnginesStore } from '../../state/engines';
 
 const useStyles = makeStyles({
   container: {
@@ -127,6 +130,7 @@ export function FirstRunWizard() {
   const styles = useStyles();
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(onboardingReducer, initialOnboardingState);
+  const { attachEngine } = useEnginesStore();
 
   const totalSteps = 4;
 
@@ -227,6 +231,35 @@ export function FirstRunWizard() {
         }
         break;
     }
+  };
+
+  const handleAttachExisting = async (itemId: string, installPath: string, executablePath?: string) => {
+    try {
+      // Call attach engine API
+      await attachEngine({
+        engineId: itemId,
+        installPath,
+        executablePath,
+      });
+      
+      // Mark item as installed in state
+      dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
+    } catch (error) {
+      console.error(`Failed to attach ${itemId}:`, error);
+      dispatch({ 
+        type: 'INSTALL_FAILED', 
+        payload: { 
+          itemId, 
+          error: error instanceof Error ? error.message : 'Failed to attach existing installation' 
+        } 
+      });
+      throw error;
+    }
+  };
+
+  const handleSkipItem = (itemId: string) => {
+    // Mark item as skipped (treat as installed for progression)
+    dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
   };
 
   const renderStep0 = () => (
@@ -348,28 +381,15 @@ export function FirstRunWizard() {
 
       <div className={styles.installList}>
         {state.installItems.map(item => (
-          <Card key={item.id} className={styles.validationItem}>
-            <div style={{ width: '24px' }}>
-              {item.installed ? (
-                <Checkmark24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
-              ) : item.installing ? (
-                <Spinner size="tiny" />
-              ) : null}
-            </div>
-            <div style={{ flex: 1 }}>
-              <Text weight="semibold">{item.name}</Text>
-              {item.required && <Badge size="small" color="danger">Required</Badge>}
-            </div>
-            {!item.installed && !item.installing && (
-              <Button
-                size="small"
-                appearance="primary"
-                onClick={() => installItemThunk(item.id, dispatch)}
-              >
-                Install
-              </Button>
-            )}
-          </Card>
+          <InstallItemCard
+            key={item.id}
+            item={item}
+            onInstall={() => installItemThunk(item.id, dispatch)}
+            onAttachExisting={async (installPath, executablePath) => {
+              await handleAttachExisting(item.id, installPath, executablePath);
+            }}
+            onSkip={!item.required ? () => handleSkipItem(item.id) : undefined}
+          />
         ))}
       </div>
 
@@ -393,34 +413,39 @@ export function FirstRunWizard() {
           </div>
         </Card>
       ) : state.status === 'valid' || state.status === 'ready' ? (
-        <div className={styles.successCard}>
-          <Checkmark24Regular style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }} />
-          <Title1 style={{ marginTop: tokens.spacingVerticalL }}>All Set!</Title1>
-          <Text style={{ marginTop: tokens.spacingVerticalM }}>
-            Your system is ready to create amazing videos. Let's create your first project!
-          </Text>
-          <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, justifyContent: 'center', marginTop: tokens.spacingVerticalXL }}>
-            <Button
-              appearance="primary"
-              size="large"
-              icon={<VideoClip24Regular />}
-              onClick={completeOnboarding}
-            >
-              Create My First Video
-            </Button>
-            <Button
-              appearance="secondary"
-              size="large"
-              icon={<Settings24Regular />}
-              onClick={() => {
-                localStorage.setItem('hasSeenOnboarding', 'true');
-                navigate('/settings');
-              }}
-            >
-              Go to Settings
-            </Button>
+        <>
+          <div className={styles.successCard}>
+            <Checkmark24Regular style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }} />
+            <Title1 style={{ marginTop: tokens.spacingVerticalL }}>All Set!</Title1>
+            <Text style={{ marginTop: tokens.spacingVerticalM }}>
+              Your system is ready to create amazing videos. Let's create your first project!
+            </Text>
+            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, justifyContent: 'center', marginTop: tokens.spacingVerticalXL }}>
+              <Button
+                appearance="primary"
+                size="large"
+                icon={<VideoClip24Regular />}
+                onClick={completeOnboarding}
+              >
+                Create My First Video
+              </Button>
+              <Button
+                appearance="secondary"
+                size="large"
+                icon={<Settings24Regular />}
+                onClick={() => {
+                  localStorage.setItem('hasSeenOnboarding', 'true');
+                  navigate('/settings');
+                }}
+              >
+                Go to Settings
+              </Button>
+            </div>
           </div>
-        </div>
+          
+          {/* Show file locations summary */}
+          <FileLocationsSummary />
+        </>
       ) : state.status === 'invalid' && state.lastValidation ? (
         <>
           <Card className={styles.errorCard}>

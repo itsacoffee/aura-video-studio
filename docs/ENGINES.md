@@ -219,6 +219,165 @@ For advanced users or offline scenarios, see:
 - [Stable Diffusion Setup](./ENGINES_SD.md)
 - [Local TTS Setup](./TTS_LOCAL.md)
 
+## Where Are My Files?
+
+Understanding where Aura stores your engines, models, and generated content is important for managing disk space, adding custom models, and troubleshooting.
+
+### Default Installation Paths
+
+By default, Aura installs engines in the following locations:
+
+**Windows:**
+```
+%USERPROFILE%\.aura\engines\
+├── ffmpeg\              # FFmpeg binaries
+├── stable-diffusion-webui\  # SD WebUI installation
+├── comfyui\             # ComfyUI installation
+├── piper\               # Piper TTS
+└── mimic3\              # Mimic3 TTS
+```
+
+**Linux/macOS:**
+```
+~/.aura/engines/
+├── ffmpeg/              # FFmpeg binaries
+├── stable-diffusion-webui/  # SD WebUI installation
+├── comfyui/             # ComfyUI installation
+├── piper/               # Piper TTS
+└── mimic3/              # Mimic3 TTS
+```
+
+### Finding Your Installation Paths
+
+1. **From Onboarding Wizard**:
+   - After successful validation, the wizard shows a "📂 Where are my files?" section
+   - Lists all installed engines with exact paths
+   - Click "Open Folder" to browse to any engine's directory
+
+2. **From Download Center**:
+   - Navigate to **Download Center → Engines** tab
+   - Each engine card shows its installation path
+   - Use the "Open Folder" button to open in file explorer
+   - Use the "Copy Path" icon to copy the path to clipboard
+
+3. **From Settings**:
+   - Navigate to **Settings → Local Engines**
+   - View all configured engine instances with paths
+   - Edit or reconfigure paths as needed
+
+### Adding Custom Models
+
+#### Stable Diffusion Models
+
+To add your own Stable Diffusion models:
+
+1. Locate your SD installation folder (use "Open Folder" button)
+2. Navigate to `models/Stable-diffusion/`
+3. Copy your `.safetensors` or `.ckpt` model files here
+4. Restart SD WebUI or click "Refresh" in the Web UI
+5. Models will appear in the model dropdown
+
+**Example paths:**
+- Windows: `C:\Users\YourName\.aura\engines\stable-diffusion-webui\models\Stable-diffusion\`
+- Linux: `~/.aura/engines/stable-diffusion-webui/models/Stable-diffusion/`
+
+Popular model locations:
+- [Civitai](https://civitai.com/) - Community models
+- [Hugging Face](https://huggingface.co/models?pipeline_tag=text-to-image) - Open source models
+
+#### Piper TTS Voices
+
+To add additional Piper voice models:
+
+1. Download voice files from [Piper Voices](https://github.com/rhasspy/piper/releases)
+2. Open Piper installation folder
+3. Place `.onnx` and `.onnx.json` files in `voices/` directory
+4. Restart Aura or refresh the TTS provider list
+
+**Example path:**
+- Windows: `C:\Users\YourName\.aura\engines\piper\voices\`
+- Linux: `~/.aura/engines/piper/voices/`
+
+#### ComfyUI Custom Nodes
+
+To add custom nodes to ComfyUI:
+
+1. Open ComfyUI installation folder
+2. Navigate to `custom_nodes/`
+3. Clone or copy custom node repositories here
+4. Restart ComfyUI
+5. Nodes will appear in the ComfyUI interface
+
+### Generated Content
+
+Your generated videos and assets are stored in:
+
+**Windows:**
+```
+%USERPROFILE%\.aura\projects\
+└── [project-id]\
+    ├── script.json          # Generated script
+    ├── audio\               # TTS output
+    ├── images\              # Generated/stock images
+    └── output\              # Final rendered videos
+```
+
+**Linux/macOS:**
+```
+~/.aura/projects/
+└── [project-id]/
+    ├── script.json          # Generated script
+    ├── audio/               # TTS output
+    ├── images/              # Generated/stock images
+    └── output/              # Final rendered videos
+```
+
+### Disk Space Considerations
+
+Typical installation sizes:
+
+- **FFmpeg**: ~100 MB
+- **Stable Diffusion WebUI**: ~4-8 GB (varies by models)
+- **ComfyUI**: ~2-6 GB (varies by models)
+- **Piper TTS**: ~50-200 MB per voice model
+- **Mimic3 TTS**: ~100-500 MB per voice model
+- **SD Models**: 2-7 GB each (depending on model size)
+
+Projects can vary widely:
+- Simple project: ~50-200 MB
+- Complex project with many generated images: ~500 MB - 2 GB
+
+**Tips to manage disk space:**
+1. Remove old projects you no longer need
+2. Delete unused SD models
+3. Use the "Remove" button in Download Center to uninstall engines cleanly
+4. Consider using external drives for model storage (configure custom paths)
+
+### Accessing Web UIs
+
+For engines with web interfaces (SD WebUI, ComfyUI):
+
+1. **From Onboarding**: Click "Open Web UI" in the file locations summary
+2. **From Download Center**: Click "Open Web UI" on the engine card
+3. **Manually**: Navigate to `http://localhost:7860` (SD WebUI) or `http://localhost:8188` (ComfyUI)
+
+**Default ports:**
+- Stable Diffusion WebUI: `7860`
+- ComfyUI: `8188`
+- Mimic3: `59125`
+
+*Note: Ports can be customized during installation or via Settings → Local Engines*
+
+### Backing Up Your Setup
+
+To backup your Aura configuration:
+
+1. **Engine installations**: Copy `~/.aura/engines/` directory
+2. **Projects**: Copy `~/.aura/projects/` directory  
+3. **Settings**: Copy `%APPDATA%/aura/` (Windows) or `~/.config/aura/` (Linux/macOS)
+
+This allows you to restore your complete setup on a new machine or after reinstallation.
+
 ## Engine Management
 
 ### Starting and Stopping Engines
