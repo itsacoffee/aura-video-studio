@@ -21,6 +21,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Input,
+  Label,
 } from '@fluentui/react-components';
 import {
   Play24Regular,
@@ -33,6 +35,9 @@ import {
   Folder24Regular,
   MoreHorizontal24Regular,
   Info24Regular,
+  ChevronDown24Regular,
+  DocumentRegular,
+  LinkRegular,
 } from '@fluentui/react-icons';
 import type { EngineManifestEntry, EngineStatus } from '../../types/engines';
 import { useEnginesStore } from '../../state/engines';
@@ -123,6 +128,10 @@ export function EngineCard({ engine }: EngineCardProps) {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [diagnosticsData, setDiagnosticsData] = useState<any>(null);
   const [isLoadingDiagnostics, setIsLoadingDiagnostics] = useState(false);
+  const [showCustomUrlDialog, setShowCustomUrlDialog] = useState(false);
+  const [customUrl, setCustomUrl] = useState('');
+  const [showLocalFileDialog, setShowLocalFileDialog] = useState(false);
+  const [localFilePath, setLocalFilePath] = useState('');
   
   const {
     installEngine,
@@ -163,6 +172,74 @@ export function EngineCard({ engine }: EngineCardProps) {
       console.error('Installation failed:', error);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleCustomUrlInstall = async () => {
+    if (!customUrl.trim()) {
+      alert('Please enter a valid URL');
+      return;
+    }
+    setIsProcessing(true);
+    setShowCustomUrlDialog(false);
+    try {
+      // Call API with custom URL
+      const response = await fetch('http://127.0.0.1:5005/api/engines/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          engineId: engine.id,
+          customUrl: customUrl.trim(),
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Installation failed');
+      }
+      
+      await loadStatus();
+      alert('Installation from custom URL completed successfully!');
+    } catch (error) {
+      console.error('Custom URL installation failed:', error);
+      alert(`Installation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
+      setCustomUrl('');
+    }
+  };
+
+  const handleLocalFileInstall = async () => {
+    if (!localFilePath.trim()) {
+      alert('Please enter a valid file path');
+      return;
+    }
+    setIsProcessing(true);
+    setShowLocalFileDialog(false);
+    try {
+      // Call API with local file path
+      const response = await fetch('http://127.0.0.1:5005/api/engines/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          engineId: engine.id,
+          localFilePath: localFilePath.trim(),
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Installation failed');
+      }
+      
+      await loadStatus();
+      alert('Installation from local file completed successfully!');
+    } catch (error) {
+      console.error('Local file installation failed:', error);
+      alert(`Installation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
+      setLocalFilePath('');
     }
   };
 
@@ -232,10 +309,29 @@ export function EngineCard({ engine }: EngineCardProps) {
     }
   };
 
-  const handleOpenFolder = () => {
-    if (engine.installPath) {
-      // This would need to be implemented via an API endpoint that opens the folder
-      alert(`Install path: ${engine.installPath}`);
+  const handleOpenFolder = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:5005/api/engines/open-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ engineId: engine.id }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to open folder');
+      }
+      
+      const result = await response.json();
+      console.log('Opened folder:', result.path);
+    } catch (error) {
+      console.error('Failed to open folder:', error);
+      // Fallback: show the path
+      if (status?.installPath || engine.installPath) {
+        alert(`Install path: ${status?.installPath || engine.installPath}`);
+      } else {
+        alert('Install path not available');
+      }
     }
   };
 
@@ -348,15 +444,32 @@ export function EngineCard({ engine }: EngineCardProps) {
           <div className={styles.actions}>
             {!isInstalled && (
               <>
-                <Button
-                  appearance="primary"
-                  icon={<ArrowDownload24Regular />}
-                  onClick={handleInstall}
-                  disabled={isProcessing}
-                  title={engine.gatingReason || undefined}
-                >
-                  {isProcessing ? <Spinner size="tiny" /> : engine.isGated && !engine.canAutoStart ? 'Install anyway (for later)' : 'Install'}
-                </Button>
+                <Menu>
+                  <MenuTrigger disableButtonEnhancement>
+                    <Button
+                      appearance="primary"
+                      icon={<ArrowDownload24Regular />}
+                      disabled={isProcessing}
+                      title={engine.gatingReason || undefined}
+                    >
+                      {isProcessing ? <Spinner size="tiny" /> : engine.isGated && !engine.canAutoStart ? 'Install (for later)' : 'Install'}
+                      <ChevronDown24Regular style={{ marginLeft: '4px' }} />
+                    </Button>
+                  </MenuTrigger>
+                  <MenuPopover>
+                    <MenuList>
+                      <MenuItem icon={<ArrowDownload24Regular />} onClick={handleInstall}>
+                        Official Mirrors
+                      </MenuItem>
+                      <MenuItem icon={<LinkRegular />} onClick={() => setShowCustomUrlDialog(true)}>
+                        Custom URL...
+                      </MenuItem>
+                      <MenuItem icon={<DocumentRegular />} onClick={() => setShowLocalFileDialog(true)}>
+                        Install from Local File...
+                      </MenuItem>
+                    </MenuList>
+                  </MenuPopover>
+                </Menu>
                 <Text style={{ margin: '0 8px', color: tokens.colorNeutralForeground3 }}>or</Text>
                 <AttachEngineDialog engineId={engine.id} engineName={engine.name} />
               </>
@@ -440,7 +553,110 @@ export function EngineCard({ engine }: EngineCardProps) {
             {status.logsPath && ` • Logs: ${status.logsPath}`}
           </Text>
         )}
+
+        {isInstalled && (status?.installPath || engine.installPath) && (
+          <div style={{ marginTop: tokens.spacingVerticalS, padding: tokens.spacingVerticalS, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
+            <Text weight="semibold" block style={{ marginBottom: tokens.spacingVerticalXXS }}>
+              Install Location:
+            </Text>
+            <Text style={{ fontFamily: 'monospace', fontSize: '13px' }} block>
+              {status?.installPath || engine.installPath}
+            </Text>
+            <div style={{ marginTop: tokens.spacingVerticalXS, display: 'flex', gap: tokens.spacingHorizontalS }}>
+              <Button 
+                size="small" 
+                appearance="subtle"
+                onClick={() => navigator.clipboard.writeText(status?.installPath || engine.installPath || '')}
+              >
+                Copy Path
+              </Button>
+              <Button 
+                size="small" 
+                appearance="subtle"
+                icon={<Folder24Regular />}
+                onClick={handleOpenFolder}
+              >
+                Open Folder
+              </Button>
+            </div>
+          </div>
+        )}
       </CardPreview>
+
+      {/* Custom URL Dialog */}
+      <Dialog open={showCustomUrlDialog} onOpenChange={(_, data) => setShowCustomUrlDialog(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Install from Custom URL</DialogTitle>
+            <DialogContent>
+              <Text block style={{ marginBottom: tokens.spacingVerticalM }}>
+                Enter a direct download URL for {engine.name}. The file will be verified against the expected checksum if available.
+              </Text>
+              <Label htmlFor="customUrl">Download URL:</Label>
+              <Input
+                id="customUrl"
+                value={customUrl}
+                onChange={(e) => setCustomUrl(e.target.value)}
+                placeholder="https://example.com/engine.zip"
+                style={{ width: '100%' }}
+              />
+              <Text block style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 }}>
+                ⚠️ Only use trusted sources. Files will be verified if a checksum is available.
+              </Text>
+            </DialogContent>
+            <DialogActions>
+              <Button 
+                appearance="primary" 
+                onClick={handleCustomUrlInstall}
+                disabled={!customUrl.trim()}
+              >
+                Install
+              </Button>
+              <Button appearance="secondary" onClick={() => setShowCustomUrlDialog(false)}>
+                Cancel
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Local File Dialog */}
+      <Dialog open={showLocalFileDialog} onOpenChange={(_, data) => setShowLocalFileDialog(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Install from Local File</DialogTitle>
+            <DialogContent>
+              <Text block style={{ marginBottom: tokens.spacingVerticalM }}>
+                Enter the full path to a local archive file for {engine.name}. The file will be verified against the expected checksum if available.
+              </Text>
+              <Label htmlFor="localFilePath">File Path:</Label>
+              <Input
+                id="localFilePath"
+                value={localFilePath}
+                onChange={(e) => setLocalFilePath(e.target.value)}
+                placeholder="C:\Downloads\engine.zip or /home/user/downloads/engine.zip"
+                style={{ width: '100%' }}
+              />
+              <Text block style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 }}>
+                💡 You can download the archive manually if official servers are down.
+                Files will be verified if a checksum is available.
+              </Text>
+            </DialogContent>
+            <DialogActions>
+              <Button 
+                appearance="primary" 
+                onClick={handleLocalFileInstall}
+                disabled={!localFilePath.trim()}
+              >
+                Install
+              </Button>
+              <Button appearance="secondary" onClick={() => setShowLocalFileDialog(false)}>
+                Cancel
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
       {/* Diagnostics Dialog */}
       <Dialog open={showDiagnostics} onOpenChange={(_, data) => setShowDiagnostics(data.open)}>

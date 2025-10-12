@@ -173,6 +173,7 @@ public class EnginesController : ControllerBase
                 health = isRunning ? (isHealthy ? "healthy" : "unreachable") : null,
                 processId,
                 logsPath,
+                installPath = _installer.GetInstallPath(engineId),
                 messages
             });
         }
