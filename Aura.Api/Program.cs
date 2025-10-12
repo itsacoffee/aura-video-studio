@@ -99,7 +99,7 @@ builder.Services.AddSingleton(sp =>
 // Provider mixer
 builder.Services.AddSingleton<Aura.Core.Orchestrator.ProviderMixer>();
 
-// Script orchestrator with dynamic provider creation
+// Script orchestrator with lazy provider creation
 builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Orchestrator.ScriptOrchestrator>>();
@@ -146,7 +146,7 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
 });
 builder.Services.AddSingleton<VideoOrchestrator>();
 
-// Register planner provider factory and PlannerService with LLM routing
+// Register planner provider factory and PlannerService with lazy LLM routing
 builder.Services.AddSingleton<Aura.Providers.Planner.PlannerProviderFactory>();
 builder.Services.AddSingleton<IRecommendationService>(sp =>
 {
@@ -154,11 +154,10 @@ builder.Services.AddSingleton<IRecommendationService>(sp =>
     var factory = sp.GetRequiredService<Aura.Providers.Planner.PlannerProviderFactory>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
     
-    // Create available planner providers
-    var providers = factory.CreateAvailableProviders(loggerFactory);
-    
+    // Use factory delegate for lazy provider initialization - providers created on first use
     // Use ProIfAvailable by default - will use Pro providers if API keys exist, else fall back to free
-    return new Aura.Core.Planner.PlannerService(logger, providers, "ProIfAvailable");
+    Func<Dictionary<string, ILlmPlannerProvider>> providerFactory = () => factory.CreateAvailableProviders(loggerFactory);
+    return new Aura.Core.Planner.PlannerService(logger, providerFactory, "ProIfAvailable");
 });
 
 // Keep HeuristicRecommendationService available for direct use if needed
@@ -166,6 +165,9 @@ builder.Services.AddSingleton<Aura.Core.Planner.HeuristicRecommendationService>(
 
 builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
 builder.Services.AddSingleton<Aura.Api.Services.PreflightService>();
+
+// Register Provider Warmup Service - warms up providers in background, never crashes startup
+builder.Services.AddHostedService<Aura.Api.HostedServices.ProviderWarmupService>();
 
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
