@@ -10,15 +10,19 @@
       "sha256": "",
       "archiveType": "zip",
       "urls": {
-        "windows": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-win64-gpl-6.0.zip",
+        "windows": "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
         "linux": "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
       },
       "mirrors": {
         "windows": [
-          "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2024-01-01-12-55/ffmpeg-n6.0-latest-win64-gpl-6.0.zip"
+          "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-win64-gpl-6.0.zip",
+          "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2024-01-01-12-55/ffmpeg-n6.0-latest-win64-gpl-6.0.zip",
+          "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-6.0-essentials_build.zip",
+          "https://github.com/GyanD/codexffmpeg/releases/download/6.0/ffmpeg-6.0-essentials_build.zip"
         ],
         "linux": [
-          "https://johnvansickle.com/ffmpeg/old-releases/ffmpeg-6.0-amd64-static.tar.xz"
+          "https://johnvansickle.com/ffmpeg/old-releases/ffmpeg-6.0-amd64-static.tar.xz",
+          "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-linux64-gpl-6.0.tar.xz"
         ]
       },
       "extractDir": "ffmpeg",
