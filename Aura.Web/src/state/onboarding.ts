@@ -212,7 +212,7 @@ export async function runValidationThunk(
     };
 
     const correlationId = `validation-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const response = await fetch(`/api/preflight?profile=${profileMap[state.mode]}`);
+    const response = await fetch(`/api/preflight?profile=${profileMap[state.mode]}&correlationId=${correlationId}`);
 
     if (!response.ok) {
       throw new Error(`Preflight check failed: ${response.statusText}`);
