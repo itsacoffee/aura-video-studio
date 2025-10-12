@@ -258,77 +258,55 @@ public class DownloadsController : ControllerBase
     {
         try
         {
-            // Look for FFmpeg in standard locations
-            var toolsDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Aura", "Tools", "ffmpeg");
+            _logger.LogInformation("Getting FFmpeg status");
             
-            if (!Directory.Exists(toolsDir))
+            // Get configured path from registry
+            var ffmpegConfig = _enginesRegistry.GetEngine("ffmpeg");
+            var configuredPath = ffmpegConfig?.ExecutablePath;
+            
+            // Check if FFmpeg is available using locator
+            var result = await _ffmpegLocator.CheckAllCandidatesAsync(configuredPath, default);
+            
+            if (result.Found && !string.IsNullOrEmpty(result.FfmpegPath))
+            {
+                // Try to get metadata
+                var installDir = Path.GetDirectoryName(result.FfmpegPath);
+                FfmpegInstallMetadata? metadata = null;
+                
+                if (!string.IsNullOrEmpty(installDir))
+                {
+                    metadata = await _ffmpegInstaller.GetInstallMetadataAsync(installDir);
+                }
+                
+                var state = metadata?.SourceType == "AttachExisting" ? "ExternalAttached" : "Installed";
+                
+                return Ok(new
+                {
+                    state,
+                    installPath = installDir,
+                    ffmpegPath = result.FfmpegPath,
+                    ffprobePath = metadata?.FfprobePath,
+                    version = result.VersionString ?? metadata?.Version,
+                    versionString = result.VersionString,
+                    sourceType = metadata?.SourceType,
+                    installedAt = metadata?.InstalledAt,
+                    validatedAt = metadata?.ValidatedAt,
+                    validated = metadata?.Validated ?? true,
+                    validationOutput = result.ValidationOutput,
+                    lastError = (string?)null
+                });
+            }
+            else
             {
                 return Ok(new
                 {
                     state = "NotInstalled",
                     installPath = (string?)null,
                     ffmpegPath = (string?)null,
-                    lastError = (string?)null
+                    attemptedPaths = result.AttemptedPaths,
+                    lastError = result.Reason
                 });
             }
-            
-            // Find latest version directory
-            var versionDirs = Directory.GetDirectories(toolsDir);
-            if (versionDirs.Length == 0)
-            {
-                return Ok(new
-                {
-                    state = "NotInstalled",
-                    installPath = (string?)null,
-                    ffmpegPath = (string?)null,
-                    lastError = (string?)null
-                });
-            }
-            
-            // Get metadata from latest version
-            var latestVersionDir = versionDirs.OrderByDescending(d => d).First();
-            var metadata = await _ffmpegInstaller.GetInstallMetadataAsync(latestVersionDir);
-            
-            if (metadata == null)
-            {
-                return Ok(new
-                {
-                    state = "PartiallyFailed",
-                    installPath = latestVersionDir,
-                    ffmpegPath = (string?)null,
-                    lastError = "Metadata not found"
-                });
-            }
-            
-            // Verify binary still exists
-            if (!System.IO.File.Exists(metadata.FfmpegPath))
-            {
-                return Ok(new
-                {
-                    state = "PartiallyFailed",
-                    installPath = metadata.InstallPath,
-                    ffmpegPath = metadata.FfmpegPath,
-                    lastError = "FFmpeg binary not found at recorded path"
-                });
-            }
-            
-            var state = metadata.SourceType == "AttachExisting" ? "ExternalAttached" : "Installed";
-            
-            return Ok(new
-            {
-                state,
-                installPath = metadata.InstallPath,
-                ffmpegPath = metadata.FfmpegPath,
-                ffprobePath = metadata.FfprobePath,
-                version = metadata.Version,
-                sourceType = metadata.SourceType,
-                installedAt = metadata.InstalledAt,
-                validated = metadata.Validated,
-                validationOutput = metadata.ValidationOutput,
-                lastError = (string?)null
-            });
         }
         catch (Exception ex)
         {
@@ -627,6 +605,48 @@ public class DownloadsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to read install log");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+    
+    /// <summary>
+    /// Get FFmpeg job logs for a specific render
+    /// </summary>
+    [HttpGet("ffmpeg/logs/{jobId}")]
+    public IActionResult GetFFmpegJobLog(string jobId, [FromQuery] int lines = 500)
+    {
+        try
+        {
+            var ffmpegLogsDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Aura", "Logs", "ffmpeg");
+            
+            if (!Directory.Exists(ffmpegLogsDir))
+            {
+                return NotFound(new { error = "FFmpeg logs directory not found" });
+            }
+            
+            var logPath = Path.Combine(ffmpegLogsDir, $"{jobId}.log");
+            
+            if (!System.IO.File.Exists(logPath))
+            {
+                return NotFound(new { error = $"Log file not found for job {jobId}" });
+            }
+            
+            var allLines = System.IO.File.ReadAllLines(logPath);
+            var tailLines = allLines.TakeLast(lines).ToArray();
+            
+            return Ok(new
+            {
+                log = string.Join("\n", tailLines),
+                logPath,
+                totalLines = allLines.Length,
+                jobId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to read FFmpeg job log for {JobId}", jobId);
             return StatusCode(500, new { error = ex.Message });
         }
     }

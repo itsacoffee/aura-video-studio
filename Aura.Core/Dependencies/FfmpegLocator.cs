@@ -54,6 +54,46 @@ public class FfmpegLocator
     }
 
     /// <summary>
+    /// Get the effective FFmpeg path to use for operations
+    /// Returns the first valid FFmpeg found or throws if none available
+    /// </summary>
+    public async Task<string> GetEffectiveFfmpegPathAsync(
+        string? configuredPath = null,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Resolving effective FFmpeg path");
+        
+        var result = await CheckAllCandidatesAsync(configuredPath, ct);
+        
+        if (result.Found && !string.IsNullOrEmpty(result.FfmpegPath))
+        {
+            _logger.LogInformation("Resolved effective FFmpeg path: {Path}", result.FfmpegPath);
+            return result.FfmpegPath;
+        }
+        
+        var error = new
+        {
+            code = "E302-FFMPEG_NOT_FOUND",
+            message = "FFmpeg binary not found",
+            attemptedPaths = result.AttemptedPaths,
+            howToFix = new[]
+            {
+                "Install FFmpeg via Download Center",
+                "Attach an existing FFmpeg installation using 'Attach Existing'",
+                $"Place FFmpeg in {Path.Combine(_dependenciesDirectory, "bin")} and click Rescan",
+                "Add FFmpeg to system PATH"
+            }
+        };
+        
+        _logger.LogError("FFmpeg not found after checking all candidates: {Error}", 
+            System.Text.Json.JsonSerializer.Serialize(error));
+        
+        throw new InvalidOperationException(
+            $"FFmpeg not found. Checked {result.AttemptedPaths.Count} locations. " +
+            $"Install FFmpeg via Download Center or attach an existing installation.");
+    }
+    
+    /// <summary>
     /// Check all candidate locations for FFmpeg and return first valid one
     /// </summary>
     public virtual async Task<FfmpegValidationResult> CheckAllCandidatesAsync(

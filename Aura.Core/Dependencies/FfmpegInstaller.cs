@@ -52,8 +52,10 @@ public class FfmpegInstallMetadata
     public string SourceType { get; set; } = "";
     public string? Sha256 { get; set; }
     public DateTime InstalledAt { get; set; }
+    public DateTime ValidatedAt { get; set; }
     public bool Validated { get; set; }
     public string? ValidationOutput { get; set; }
+    public string? InstallLogPath { get; set; }
 }
 
 /// <summary>
@@ -334,6 +336,7 @@ public class FfmpegInstaller
             FfprobePath = ffprobePath,
             SourceType = "AttachExisting",
             InstalledAt = DateTime.UtcNow,
+            ValidatedAt = DateTime.UtcNow,
             Validated = true,
             ValidationOutput = validationResult.output
         };
@@ -448,6 +451,7 @@ public class FfmpegInstaller
                 SourceType = sourceType.ToString(),
                 Sha256 = sha256,
                 InstalledAt = DateTime.UtcNow,
+                ValidatedAt = DateTime.UtcNow,
                 Validated = true,
                 ValidationOutput = validationResult.output
             };
