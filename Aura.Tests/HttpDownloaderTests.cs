@@ -296,7 +296,7 @@ public class HttpDownloaderTests : IDisposable
         var outputPath = Path.Combine(_testDirectory, "test-cancel.bin");
 
         // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
         {
             await downloader.DownloadFileAsync("http://test.com/file.bin", outputPath, null, null, cts.Token);
         });

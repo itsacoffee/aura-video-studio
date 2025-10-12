@@ -239,10 +239,53 @@ public class EnginesController : ControllerBase
                 message = $"Engine {engine.Name} installed successfully"
             });
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Install operation cancelled for {EngineId}", request.EngineId);
+            return StatusCode(499, new { error = "Installation cancelled by user" });
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Network error while installing {EngineId}", request.EngineId);
+            return StatusCode(500, new { 
+                error = "Network error during download. Check your internet connection and try again.",
+                details = ex.Message 
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Permission error while installing {EngineId}", request.EngineId);
+            return StatusCode(500, new { 
+                error = "Permission denied. Cannot write to installation directory. Check folder permissions.",
+                details = ex.Message 
+            });
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "File system error while installing {EngineId}", request.EngineId);
+            string errorMsg = ex.Message.Contains("not enough space") || ex.Message.Contains("disk full")
+                ? "Not enough disk space. Free up space and try again."
+                : "File system error during installation.";
+            return StatusCode(500, new { 
+                error = errorMsg,
+                details = ex.Message 
+            });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("checksum") || ex.Message.Contains("verification"))
+        {
+            _logger.LogError(ex, "Checksum verification failed for {EngineId}", request.EngineId);
+            return StatusCode(500, new { 
+                error = "Download verification failed. The file may be corrupted. Please try again.",
+                details = ex.Message 
+            });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to install engine {EngineId}", request.EngineId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { 
+                error = $"Installation failed: {ex.Message}",
+                details = ex.ToString()
+            });
         }
     }
 
@@ -315,10 +358,26 @@ public class EnginesController : ControllerBase
                 message = $"Engine {engine.Name} repaired successfully"
             });
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Repair operation cancelled for {EngineId}", request.EngineId);
+            return StatusCode(499, new { error = "Repair cancelled by user" });
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Network error while repairing {EngineId}", request.EngineId);
+            return StatusCode(500, new { 
+                error = "Network error during repair. Check your internet connection and try again.",
+                details = ex.Message 
+            });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to repair engine {EngineId}", request.EngineId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { 
+                error = $"Repair failed: {ex.Message}",
+                details = ex.ToString()
+            });
         }
     }
 
