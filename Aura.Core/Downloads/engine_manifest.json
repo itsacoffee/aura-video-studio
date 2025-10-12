@@ -5,7 +5,9 @@
       "id": "ffmpeg",
       "name": "FFmpeg",
       "version": "6.0",
-      "description": "Essential video and audio processing toolkit for all media operations",
+      "recommendedVersion": "6.0+",
+      "minimumVersion": "3.4",
+      "description": "Essential video and audio processing toolkit for all media operations. Any version >= 3.4 is supported.",
       "sizeBytes": 83558400,
       "sha256": "",
       "archiveType": "zip",
@@ -15,16 +17,18 @@
       },
       "mirrors": {
         "windows": [
-          "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-win64-gpl-6.0.zip",
-          "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2024-01-01-12-55/ffmpeg-n6.0-latest-win64-gpl-6.0.zip",
-          "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-6.0-essentials_build.zip",
-          "https://github.com/GyanD/codexffmpeg/releases/download/6.0/ffmpeg-6.0-essentials_build.zip"
+          "https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip",
+          "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
+          "https://github.com/GyanD/codexffmpeg/releases/latest/download/ffmpeg-release-essentials.zip"
         ],
         "linux": [
-          "https://johnvansickle.com/ffmpeg/old-releases/ffmpeg-6.0-amd64-static.tar.xz",
-          "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-linux64-gpl-6.0.tar.xz"
+          "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz",
+          "https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-linux64-gpl.tar.xz"
         ]
       },
+      "resolveViaGitHubApi": true,
+      "gitHubRepo": "BtbN/FFmpeg-Builds",
+      "assetPattern": "ffmpeg-*-latest-*64-gpl*",
       "extractDir": "ffmpeg",
       "entrypoint": "ffmpeg.exe",
       "licenseUrl": "https://www.ffmpeg.org/legal.html",

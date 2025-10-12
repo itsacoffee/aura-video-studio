@@ -105,12 +105,12 @@ public class DownloadsController : ControllerBase
                         return NotFound(new { error = "FFmpeg not found in engine manifest" });
                     }
                     
-                    var mirrors = new List<string>();
+                    var staticMirrors = new List<string>();
                     
                     // Use custom URL if provided
                     if (!string.IsNullOrEmpty(request.CustomUrl))
                     {
-                        mirrors.Add(request.CustomUrl);
+                        staticMirrors.Add(request.CustomUrl);
                         await System.IO.File.AppendAllTextAsync(logPath, 
                             $"[{DateTime.UtcNow:O}] Using custom URL: {request.CustomUrl}\n", ct);
                     }
@@ -118,20 +118,58 @@ public class DownloadsController : ControllerBase
                     // Add primary URL
                     if (ffmpegEngine.Urls.ContainsKey("windows"))
                     {
-                        mirrors.Add(ffmpegEngine.Urls["windows"]);
+                        staticMirrors.Add(ffmpegEngine.Urls["windows"]);
                     }
                     
-                    // Add mirrors
+                    // Add mirrors from manifest
                     if (ffmpegEngine.Mirrors != null && ffmpegEngine.Mirrors.ContainsKey("windows"))
                     {
-                        mirrors.AddRange(ffmpegEngine.Mirrors["windows"]);
+                        staticMirrors.AddRange(ffmpegEngine.Mirrors["windows"]);
                     }
                     
-                    // Fallback mirrors
-                    mirrors.Add("https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip");
+                    // Fallback mirror
+                    staticMirrors.Add("https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip");
                     
                     await System.IO.File.AppendAllTextAsync(logPath, 
-                        $"[{DateTime.UtcNow:O}] Attempting installation from {mirrors.Count} mirrors\n", ct);
+                        $"[{DateTime.UtcNow:O}] Resolving mirrors via GitHub API...\n", ct);
+                    
+                    // Resolve mirrors dynamically via GitHub API
+                    string? githubRepo = null;
+                    string? assetPattern = null;
+                    
+                    try
+                    {
+                        var manifestData = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(
+                            System.IO.File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "engine_manifest.json")));
+                        
+                        if (manifestData.TryGetProperty("engines", out var engines))
+                        {
+                            foreach (var engine in engines.EnumerateArray())
+                            {
+                                if (engine.TryGetProperty("id", out var id) && id.GetString() == "ffmpeg")
+                                {
+                                    if (engine.TryGetProperty("gitHubRepo", out var repo))
+                                        githubRepo = repo.GetString();
+                                    if (engine.TryGetProperty("assetPattern", out var pattern))
+                                        assetPattern = pattern.GetString();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to read GitHub repo info from manifest");
+                    }
+                    
+                    var mirrors = await _ffmpegInstaller.ResolveMirrorsAsync(
+                        githubRepo,
+                        assetPattern,
+                        staticMirrors.ToArray(),
+                        ct);
+                    
+                    await System.IO.File.AppendAllTextAsync(logPath, 
+                        $"[{DateTime.UtcNow:O}] Resolved {mirrors.Count} total mirrors\n", ct);
                     
                     foreach (var mirror in mirrors)
                     {

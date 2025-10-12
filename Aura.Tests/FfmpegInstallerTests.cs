@@ -31,7 +31,8 @@ public class FfmpegInstallerTests : IDisposable
         _installer = new FfmpegInstaller(
             NullLogger<FfmpegInstaller>.Instance,
             _downloader,
-            _testDirectory);
+            _testDirectory,
+            null); // No resolver for tests
     }
     
     [Fact]

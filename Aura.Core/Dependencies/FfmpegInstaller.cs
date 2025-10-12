@@ -63,20 +63,79 @@ public class FfmpegInstaller
 {
     private readonly ILogger<FfmpegInstaller> _logger;
     private readonly HttpDownloader _downloader;
+    private readonly GitHubReleaseResolver? _releaseResolver;
     private readonly string _toolsDirectory;
     
     public FfmpegInstaller(
         ILogger<FfmpegInstaller> logger,
         HttpDownloader downloader,
-        string? toolsDirectory = null)
+        string? toolsDirectory = null,
+        GitHubReleaseResolver? releaseResolver = null)
     {
         _logger = logger;
         _downloader = downloader;
+        _releaseResolver = releaseResolver;
         _toolsDirectory = toolsDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Aura", "Tools");
         
         Directory.CreateDirectory(_toolsDirectory);
+    }
+    
+    /// <summary>
+    /// Resolve download mirrors dynamically via GitHub Releases API
+    /// </summary>
+    /// <param name="githubRepo">Repository in format "owner/repo"</param>
+    /// <param name="assetPattern">Wildcard pattern to match assets</param>
+    /// <param name="fallbackMirrors">Static fallback mirrors if API fails</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>List of resolved mirror URLs</returns>
+    public async Task<List<string>> ResolveMirrorsAsync(
+        string? githubRepo,
+        string? assetPattern,
+        string[] fallbackMirrors,
+        CancellationToken ct = default)
+    {
+        var mirrors = new List<string>();
+        
+        // Try GitHub API resolution first
+        if (_releaseResolver != null && !string.IsNullOrEmpty(githubRepo) && !string.IsNullOrEmpty(assetPattern))
+        {
+            try
+            {
+                _logger.LogInformation("Attempting to resolve FFmpeg asset URL via GitHub API: {Repo}", githubRepo);
+                var resolvedUrl = await _releaseResolver.ResolveLatestAssetUrlAsync(githubRepo, assetPattern, ct);
+                
+                if (!string.IsNullOrEmpty(resolvedUrl))
+                {
+                    _logger.LogInformation("Resolved asset URL via GitHub API: {Url}", resolvedUrl);
+                    mirrors.Add(resolvedUrl);
+                }
+                else
+                {
+                    _logger.LogWarning("GitHub API resolution returned no matching assets for {Pattern}", assetPattern);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to resolve FFmpeg URL via GitHub API, will use fallback mirrors");
+            }
+        }
+        
+        // Add fallback mirrors
+        if (fallbackMirrors != null && fallbackMirrors.Length > 0)
+        {
+            mirrors.AddRange(fallbackMirrors);
+        }
+        
+        // Log all mirrors
+        _logger.LogInformation("Total {Count} mirrors available for download", mirrors.Count);
+        for (int i = 0; i < mirrors.Count; i++)
+        {
+            _logger.LogDebug("Mirror {Index}: {Url}", i + 1, mirrors[i]);
+        }
+        
+        return mirrors;
     }
     
     /// <summary>
