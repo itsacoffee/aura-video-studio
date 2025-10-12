@@ -259,13 +259,13 @@ public class ProviderMixer
             };
         }
 
-        // Windows TTS is ALWAYS available as last resort - never throw
-        _logger.LogWarning("No TTS providers in registry, returning Windows as guaranteed fallback");
+        // Null TTS is ALWAYS available as last resort - never throw (generates silence)
+        _logger.LogWarning("No TTS providers in registry, returning Null as guaranteed fallback");
         return new ProviderSelection
         {
             Stage = stage,
-            SelectedProvider = "Windows",
-            Reason = "Windows TTS fallback - guaranteed always-available provider",
+            SelectedProvider = "Null",
+            Reason = "Null TTS fallback - guaranteed always-available provider (generates silence)",
             IsFallback = true,
             FallbackFrom = "All TTS providers"
         };

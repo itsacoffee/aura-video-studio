@@ -52,6 +52,9 @@ public class TtsProviderFactory
 
         // Add Mock provider for testing/CI
         providers["Mock"] = CreateMockProvider();
+        
+        // Add Null provider as final safety fallback (generates silence)
+        providers["Null"] = CreateNullProvider();
 
         // Add Pro providers if not in offline mode
         if (!offlineOnly)
@@ -145,6 +148,24 @@ public class TtsProviderFactory
         }
 
         throw new InvalidOperationException("MockTtsProvider not found");
+    }
+
+    private ITtsProvider CreateNullProvider()
+    {
+        var assembly = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Aura.Providers");
+        
+        if (assembly != null)
+        {
+            var providerType = assembly.GetType("Aura.Providers.Tts.NullTtsProvider");
+            if (providerType != null)
+            {
+                var logger = _loggerFactory.CreateLogger(providerType);
+                return (ITtsProvider)Activator.CreateInstance(providerType, logger)!;
+            }
+        }
+
+        throw new InvalidOperationException("NullTtsProvider not found");
     }
 
     private ITtsProvider CreateElevenLabsProvider(string apiKey, bool offlineOnly)

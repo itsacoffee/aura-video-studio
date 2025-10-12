@@ -239,12 +239,12 @@ public class ProviderMixerTests
 
         var emptyProviders = new Dictionary<string, ITtsProvider>(); // NO providers at all
 
-        // Act - Should NOT throw, should return Windows as guaranteed fallback
+        // Act - Should NOT throw, should return Null as guaranteed fallback
         var selection = mixer.SelectTtsProvider(emptyProviders, "Pro");
 
         // Assert
         Assert.NotNull(selection);
-        Assert.Equal("Windows", selection.SelectedProvider);
+        Assert.Equal("Null", selection.SelectedProvider);
         Assert.True(selection.IsFallback);
         Assert.Contains("guaranteed", selection.Reason, System.StringComparison.OrdinalIgnoreCase);
     }
@@ -304,7 +304,7 @@ public class ProviderMixerTests
         var ttsSelection = mixer.SelectTtsProvider(emptyTtsProviders, preferredTier ?? "Free");
         Assert.NotNull(ttsSelection);
         Assert.NotNull(ttsSelection.SelectedProvider);
-        Assert.Equal("Windows", ttsSelection.SelectedProvider);
+        Assert.Equal("Null", ttsSelection.SelectedProvider);
 
         var visualSelection = mixer.SelectVisualProvider(emptyVisualProviders, preferredTier ?? "Free", false, 0);
         Assert.NotNull(visualSelection);
@@ -359,14 +359,14 @@ public class ProviderMixerTests
         var freeSelection = mixer.SelectTtsProvider(emptyProviders, "Free");
 
         // Assert - All should return Windows as guaranteed fallback
-        Assert.Equal("Windows", proSelection.SelectedProvider);
+        Assert.Equal("Null", proSelection.SelectedProvider);
         Assert.True(proSelection.IsFallback);
         Assert.Equal("All TTS providers", proSelection.FallbackFrom);
 
-        Assert.Equal("Windows", proIfAvailableSelection.SelectedProvider);
+        Assert.Equal("Null", proIfAvailableSelection.SelectedProvider);
         Assert.True(proIfAvailableSelection.IsFallback);
 
-        Assert.Equal("Windows", freeSelection.SelectedProvider);
+        Assert.Equal("Null", freeSelection.SelectedProvider);
         Assert.True(freeSelection.IsFallback);
     }
 
@@ -489,7 +489,7 @@ public class ProviderMixerTests
 
         // Assert
         Assert.NotNull(selection);
-        Assert.Equal("Windows", selection.SelectedProvider);
+        Assert.Equal("Null", selection.SelectedProvider);
         Assert.True(selection.IsFallback);
         Assert.Contains("guaranteed", selection.Reason, System.StringComparison.OrdinalIgnoreCase);
     }
