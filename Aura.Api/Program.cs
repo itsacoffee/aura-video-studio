@@ -175,9 +175,36 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.DependencyManager>>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
-    var manifestPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "manifest.json");
-    var downloadDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "dependencies");
-    return new Aura.Core.Dependencies.DependencyManager(logger, httpClient, manifestPath, downloadDirectory);
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    
+    // Check if portable mode is enabled
+    string manifestPath;
+    string downloadDirectory;
+    string? portableRoot = null;
+    
+    if (providerSettings.IsPortableModeEnabled())
+    {
+        portableRoot = providerSettings.GetPortableRootPath();
+        if (!string.IsNullOrWhiteSpace(portableRoot))
+        {
+            manifestPath = Path.Combine(portableRoot, "manifest.json");
+            downloadDirectory = portableRoot;
+        }
+        else
+        {
+            // Fallback to AppData if portable root is not set
+            manifestPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "manifest.json");
+            downloadDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "dependencies");
+        }
+    }
+    else
+    {
+        // Use AppData
+        manifestPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "manifest.json");
+        downloadDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "dependencies");
+    }
+    
+    return new Aura.Core.Dependencies.DependencyManager(logger, httpClient, manifestPath, downloadDirectory, portableRoot);
 });
 
 // Register DownloadService
@@ -207,7 +234,22 @@ builder.Services.AddSingleton<Aura.Core.Downloads.EngineInstaller>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Downloads.EngineInstaller>>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
-    var installRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    
+    // Use portable Tools folder if portable mode enabled, otherwise AppData
+    string installRoot;
+    if (providerSettings.IsPortableModeEnabled())
+    {
+        var portableRoot = providerSettings.GetPortableRootPath();
+        installRoot = !string.IsNullOrWhiteSpace(portableRoot) 
+            ? Path.Combine(portableRoot, "Tools")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    }
+    else
+    {
+        installRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    }
+    
     return new Aura.Core.Downloads.EngineInstaller(logger, httpClient, installRoot);
 });
 
@@ -225,7 +267,22 @@ builder.Services.AddSingleton<Aura.Core.Downloads.ModelInstaller>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Downloads.ModelInstaller>>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
-    var installRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    
+    // Use portable Tools folder if portable mode enabled, otherwise AppData
+    string installRoot;
+    if (providerSettings.IsPortableModeEnabled())
+    {
+        var portableRoot = providerSettings.GetPortableRootPath();
+        installRoot = !string.IsNullOrWhiteSpace(portableRoot) 
+            ? Path.Combine(portableRoot, "Tools")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    }
+    else
+    {
+        installRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    }
+    
     return new Aura.Core.Downloads.ModelInstaller(logger, httpClient, installRoot);
 });
 
@@ -251,7 +308,22 @@ builder.Services.AddSingleton<Aura.Core.Runtime.EngineDetector>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Runtime.EngineDetector>>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
-    var toolsRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    
+    // Use portable Tools folder if portable mode enabled, otherwise AppData
+    string toolsRoot;
+    if (providerSettings.IsPortableModeEnabled())
+    {
+        var portableRoot = providerSettings.GetPortableRootPath();
+        toolsRoot = !string.IsNullOrWhiteSpace(portableRoot) 
+            ? Path.Combine(portableRoot, "Tools")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    }
+    else
+    {
+        toolsRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    }
+    
     return new Aura.Core.Runtime.EngineDetector(logger, httpClient, toolsRoot);
 });
 
@@ -269,7 +341,22 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegInstaller>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegInstaller>>();
     var downloader = sp.GetRequiredService<Aura.Core.Downloads.HttpDownloader>();
-    var toolsDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    
+    // Use portable Tools folder if portable mode enabled, otherwise AppData
+    string toolsDirectory;
+    if (providerSettings.IsPortableModeEnabled())
+    {
+        var portableRoot = providerSettings.GetPortableRootPath();
+        toolsDirectory = !string.IsNullOrWhiteSpace(portableRoot) 
+            ? Path.Combine(portableRoot, "Tools")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    }
+    else
+    {
+        toolsDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    }
+    
     return new Aura.Core.Dependencies.FfmpegInstaller(logger, downloader, toolsDirectory);
 });
 
@@ -277,7 +364,22 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegInstaller>(sp =>
 builder.Services.AddSingleton<Aura.Core.Dependencies.FfmpegLocator>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegLocator>>();
-    var toolsDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    
+    // Use portable Tools folder if portable mode enabled, otherwise AppData
+    string toolsDirectory;
+    if (providerSettings.IsPortableModeEnabled())
+    {
+        var portableRoot = providerSettings.GetPortableRootPath();
+        toolsDirectory = !string.IsNullOrWhiteSpace(portableRoot) 
+            ? Path.Combine(portableRoot, "Tools")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    }
+    else
+    {
+        toolsDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
+    }
+    
     return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDirectory);
 });
 
@@ -1368,6 +1470,111 @@ apiGroup.MapGet("/providers/paths/load", () =>
     }
 })
 .WithName("LoadProviderPaths")
+.WithOpenApi();
+
+// Portable Mode Settings
+apiGroup.MapGet("/settings/portable", () =>
+{
+    try
+    {
+        var providerSettings = app.Services.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+        var isEnabled = providerSettings.IsPortableModeEnabled();
+        var portableRoot = providerSettings.GetPortableRootPath();
+        var toolsDirectory = providerSettings.GetToolsDirectory();
+        
+        return Results.Ok(new 
+        { 
+            portableModeEnabled = isEnabled,
+            portableRootPath = portableRoot ?? "",
+            toolsDirectory = toolsDirectory,
+            defaultAppDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "dependencies")
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error loading portable mode settings");
+        return Results.Problem("Error loading portable mode settings", statusCode: 500);
+    }
+})
+.WithName("GetPortableModeSettings")
+.WithOpenApi();
+
+apiGroup.MapPost("/settings/portable", ([FromBody] JsonElement request) =>
+{
+    try
+    {
+        var providerSettings = app.Services.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+        
+        var enabled = request.TryGetProperty("portableModeEnabled", out var enabledProp) && enabledProp.GetBoolean();
+        var portableRootPath = request.TryGetProperty("portableRootPath", out var pathProp) ? pathProp.GetString() : null;
+        
+        // Validate portable root path if enabled
+        if (enabled && !string.IsNullOrWhiteSpace(portableRootPath))
+        {
+            // Create directory if it doesn't exist
+            if (!Directory.Exists(portableRootPath))
+            {
+                Directory.CreateDirectory(portableRootPath);
+            }
+        }
+        
+        providerSettings.SetPortableMode(enabled, portableRootPath);
+        
+        return Results.Ok(new 
+        { 
+            success = true, 
+            message = "Portable mode settings saved successfully",
+            portableModeEnabled = enabled,
+            portableRootPath = portableRootPath ?? "",
+            toolsDirectory = providerSettings.GetToolsDirectory()
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error saving portable mode settings");
+        return Results.Problem("Error saving portable mode settings", statusCode: 500);
+    }
+})
+.WithName("SavePortableModeSettings")
+.WithOpenApi();
+
+// Open Tools Folder
+apiGroup.MapPost("/settings/open-tools-folder", () =>
+{
+    try
+    {
+        var providerSettings = app.Services.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+        var toolsDirectory = providerSettings.GetToolsDirectory();
+        
+        // Create directory if it doesn't exist
+        if (!Directory.Exists(toolsDirectory))
+        {
+            Directory.CreateDirectory(toolsDirectory);
+        }
+
+        // Platform-specific logic to open folder in file explorer
+        if (OperatingSystem.IsWindows())
+        {
+            System.Diagnostics.Process.Start("explorer.exe", toolsDirectory);
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            System.Diagnostics.Process.Start("open", toolsDirectory);
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            System.Diagnostics.Process.Start("xdg-open", toolsDirectory);
+        }
+
+        return Results.Ok(new { success = true, path = toolsDirectory });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error opening tools folder");
+        return Results.Problem("Error opening tools folder", statusCode: 500);
+    }
+})
+.WithName("OpenToolsFolder")
 .WithOpenApi();
 
 // Assets search endpoint - search stock providers

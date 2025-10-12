@@ -16,22 +16,30 @@ public class DependencyManager
     private readonly HttpClient _httpClient;
     private readonly string _manifestPath;
     private readonly string _downloadDirectory;
+    private readonly string? _portableRoot;
 
     public DependencyManager(
         ILogger<DependencyManager> logger,
         HttpClient httpClient,
         string manifestPath,
-        string downloadDirectory)
+        string downloadDirectory,
+        string? portableRoot = null)
     {
         _logger = logger;
         _httpClient = httpClient;
         _manifestPath = manifestPath;
         _downloadDirectory = downloadDirectory;
+        _portableRoot = portableRoot;
         
         // Ensure download directory exists
         if (!Directory.Exists(_downloadDirectory))
         {
             Directory.CreateDirectory(_downloadDirectory);
+        }
+
+        if (!string.IsNullOrEmpty(_portableRoot))
+        {
+            _logger.LogInformation("Portable mode enabled with root: {PortableRoot}", _portableRoot);
         }
     }
     
@@ -470,6 +478,22 @@ public class DependencyManager
     public string GetComponentDirectory(string componentName)
     {
         return _downloadDirectory;
+    }
+
+    /// <summary>
+    /// Get the portable root path (if portable mode is enabled)
+    /// </summary>
+    public string? GetPortableRoot()
+    {
+        return _portableRoot;
+    }
+
+    /// <summary>
+    /// Check if portable mode is enabled
+    /// </summary>
+    public bool IsPortableModeEnabled()
+    {
+        return !string.IsNullOrEmpty(_portableRoot);
     }
     
     private async Task<string> RunPostInstallProbeAsync(DependencyComponent component)

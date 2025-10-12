@@ -281,4 +281,56 @@ public class DependencyManagerTests : IDisposable
         var downloadedContent = await File.ReadAllBytesAsync(testFilePath);
         Assert.Equal(testContent.Length, downloadedContent.Length);
     }
+
+    [Fact]
+    public void DependencyManager_Should_SupportPortableRoot()
+    {
+        // Arrange
+        var httpClient = new HttpClient();
+        var portableRoot = Path.Combine(_testDirectory, "portable");
+        
+        // Act
+        var manager = new DependencyManager(_logger, httpClient, _manifestPath, _downloadDirectory, portableRoot);
+        
+        // Assert
+        Assert.True(manager.IsPortableModeEnabled());
+        Assert.Equal(portableRoot, manager.GetPortableRoot());
+    }
+
+    [Fact]
+    public void DependencyManager_Should_NotEnablePortableMode_WhenPortableRootIsNull()
+    {
+        // Arrange
+        var httpClient = new HttpClient();
+        
+        // Act
+        var manager = new DependencyManager(_logger, httpClient, _manifestPath, _downloadDirectory, null);
+        
+        // Assert
+        Assert.False(manager.IsPortableModeEnabled());
+        Assert.Null(manager.GetPortableRoot());
+    }
+
+    [Fact]
+    public void DependencyManager_Should_CreatePortableRootDirectory_WhenProvided()
+    {
+        // Arrange
+        var httpClient = new HttpClient();
+        var portableRoot = Path.Combine(_testDirectory, "new-portable-root");
+        
+        // Ensure directory doesn't exist initially
+        if (Directory.Exists(portableRoot))
+        {
+            Directory.Delete(portableRoot, true);
+        }
+        
+        // Act
+        var manager = new DependencyManager(_logger, httpClient, 
+            Path.Combine(portableRoot, "manifest.json"), 
+            portableRoot, 
+            portableRoot);
+        
+        // Assert - downloadDirectory should be created
+        Assert.True(Directory.Exists(portableRoot));
+    }
 }
