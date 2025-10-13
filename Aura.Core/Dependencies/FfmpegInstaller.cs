@@ -326,11 +326,14 @@ public class FfmpegInstaller
             };
         }
         
+        // Extract version from validation output
+        var detectedVersion = ExtractVersionFromOutput(validationResult.output) ?? "external";
+        
         // Write metadata
         var metadata = new FfmpegInstallMetadata
         {
             Id = "ffmpeg",
-            Version = "external",
+            Version = detectedVersion,
             InstallPath = installDir,
             FfmpegPath = resolvedFfmpegPath,
             FfprobePath = ffprobePath,
@@ -439,11 +442,14 @@ public class FfmpegInstaller
                 }
             }
             
+            // Extract actual version from validation output (prefer detected over manifest version)
+            var detectedVersion = ExtractVersionFromOutput(validationResult.output) ?? version;
+            
             // Write install metadata
             var metadata = new FfmpegInstallMetadata
             {
                 Id = "ffmpeg",
-                Version = version,
+                Version = detectedVersion,
                 InstallPath = installDir,
                 FfmpegPath = ffmpegPath,
                 FfprobePath = ffprobePath,
@@ -696,5 +702,34 @@ public class FfmpegInstaller
             _logger.LogWarning(ex, "Failed to read install metadata from {Path}", metadataPath);
             return null;
         }
+    }
+    
+    /// <summary>
+    /// Extract version string from ffmpeg -version output
+    /// </summary>
+    private string? ExtractVersionFromOutput(string? output)
+    {
+        if (string.IsNullOrEmpty(output))
+            return null;
+
+        try
+        {
+            // First line typically contains: "ffmpeg version N-xxxxx-..." or "ffmpeg version 6.0-..."
+            var firstLine = output.Split('\n')[0];
+            if (firstLine.Contains("ffmpeg version", StringComparison.OrdinalIgnoreCase))
+            {
+                var parts = firstLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 3)
+                {
+                    return parts[2]; // Version string (e.g., "N-111617-gdd5a56c1b5", "6.0", "7.0.1")
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to extract version string from FFmpeg output");
+        }
+
+        return null;
     }
 }

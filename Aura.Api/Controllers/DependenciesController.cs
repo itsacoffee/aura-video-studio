@@ -14,21 +14,24 @@ public class DependenciesController : ControllerBase
     private readonly ILogger<DependenciesController> _logger;
     private readonly DependencyRescanService _rescanService;
     private readonly FfmpegInstaller? _ffmpegInstaller;
+    private readonly FfmpegLocator? _ffmpegLocator;
 
     public DependenciesController(
         ILogger<DependenciesController> logger,
         DependencyRescanService rescanService,
-        FfmpegInstaller? ffmpegInstaller = null)
+        FfmpegInstaller? ffmpegInstaller = null,
+        FfmpegLocator? ffmpegLocator = null)
     {
         _logger = logger;
         _rescanService = rescanService;
         _ffmpegInstaller = ffmpegInstaller;
+        _ffmpegLocator = ffmpegLocator;
     }
 
     /// <summary>
     /// Rescan all dependencies and return full report
     /// </summary>
-    [HttpGet("rescan")]
+    [HttpPost("rescan")]
     public async Task<IActionResult> RescanAll(CancellationToken ct)
     {
         try
@@ -245,4 +248,181 @@ public class DependenciesController : ControllerBase
             });
         }
     }
+    
+    /// <summary>
+    /// Install a dependency component
+    /// </summary>
+    [HttpPost("{componentId}/install")]
+    public async Task<IActionResult> InstallComponent(string componentId, CancellationToken ct)
+    {
+        if (componentId != "ffmpeg" || _ffmpegInstaller == null)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = $"Installation not supported for component: {componentId}"
+            });
+        }
+        
+        try
+        {
+            _logger.LogInformation("Installing {ComponentId} via API", componentId);
+            
+            // Use default mirrors for installation
+            var mirrors = new[]
+            {
+                "https://github.com/GyanD/codexffmpeg/releases/latest/download/ffmpeg-release-essentials.zip",
+                "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+            };
+            
+            var result = await _ffmpegInstaller.InstallFromMirrorsAsync(
+                mirrors,
+                "latest",
+                null,
+                null,
+                ct);
+            
+            if (result.Success)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    installed = true,
+                    path = result.FfmpegPath,
+                    version = result.ValidationOutput != null ? ExtractVersionFromValidationOutput(result.ValidationOutput) : null,
+                    installPath = result.InstallPath,
+                    source = result.SourceType.ToString(),
+                    logPath = (string?)null
+                });
+            }
+            else
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    installed = false,
+                    error = result.ErrorMessage
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to install {ComponentId}", componentId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message
+            });
+        }
+    }
+    
+    /// <summary>
+    /// Attach existing dependency installation
+    /// </summary>
+    [HttpPost("{componentId}/attach")]
+    public async Task<IActionResult> AttachComponent(
+        string componentId, 
+        [FromBody] AttachComponentRequest request,
+        CancellationToken ct)
+    {
+        if (componentId != "ffmpeg" || _ffmpegInstaller == null || _ffmpegLocator == null)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = $"Attach not supported for component: {componentId}"
+            });
+        }
+        
+        if (string.IsNullOrEmpty(request.Path))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = "Path is required"
+            });
+        }
+        
+        try
+        {
+            _logger.LogInformation("Attaching {ComponentId} from path: {Path}", componentId, request.Path);
+            
+            // Validate the path first
+            var validation = await _ffmpegLocator.ValidatePathAsync(request.Path, ct);
+            
+            if (!validation.Found || string.IsNullOrEmpty(validation.FfmpegPath))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = validation.Reason ?? "FFmpeg not found at specified path",
+                    attemptedPaths = validation.AttemptedPaths
+                });
+            }
+            
+            // Attach using installer
+            var result = await _ffmpegInstaller.AttachExistingAsync(validation.FfmpegPath, ct);
+            
+            if (result.Success)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    installed = true,
+                    path = result.FfmpegPath,
+                    version = validation.VersionString,
+                    installPath = result.InstallPath,
+                    source = result.SourceType.ToString()
+                });
+            }
+            else
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = result.ErrorMessage
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to attach {ComponentId}", componentId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message
+            });
+        }
+    }
+    
+    private string? ExtractVersionFromValidationOutput(string? output)
+    {
+        if (string.IsNullOrEmpty(output))
+            return null;
+
+        try
+        {
+            var firstLine = output.Split('\n')[0];
+            if (firstLine.Contains("ffmpeg version", StringComparison.OrdinalIgnoreCase))
+            {
+                var parts = firstLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 3)
+                {
+                    return parts[2];
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors
+        }
+
+        return null;
+    }
+}
+
+public class AttachComponentRequest
+{
+    public string Path { get; set; } = "";
+    public bool AttachInPlace { get; set; } = false;
 }
