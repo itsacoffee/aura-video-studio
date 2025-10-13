@@ -64,6 +64,8 @@ public class DependencyManager
         }
         
         // Create a new manifest if it doesn't exist or couldn't be loaded
+        // Note: FFmpeg version is now dynamically resolved via GitHub API
+        // The version here is just a placeholder for backwards compatibility
         var newManifest = new DependencyManifest
         {
             Components = new List<DependencyComponent>
@@ -71,27 +73,29 @@ public class DependencyManager
                 new DependencyComponent
                 {
                     Name = "FFmpeg",
-                    Version = "6.0",
+                    Version = "latest", // Dynamically resolved from GitHub
                     IsRequired = true,
                     InstallPath = "dependencies/ffmpeg",
                     PostInstallProbe = "ffmpeg",
                     Files = new List<DependencyFile>
                     {
+                        // Files are now dynamically resolved via ComponentDownloader
+                        // This entry is kept for backwards compatibility only
                         new DependencyFile
                         {
                             Filename = "ffmpeg.exe",
-                            Url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-win64-gpl-6.0.zip",
-                            Sha256 = "e25bfb9fc6986e5e42b0bcff64c20433171125243c5ebde1bbee29a4637434a9",
+                            Url = "", // Resolved dynamically
+                            Sha256 = "",
                             ExtractPath = "bin/ffmpeg.exe",
-                            SizeBytes = 83558400
+                            SizeBytes = 0
                         },
                         new DependencyFile
                         {
                             Filename = "ffprobe.exe",
-                            Url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-win64-gpl-6.0.zip",
-                            Sha256 = "e25bfb9fc6986e5e42b0bcff64c20433171125243c5ebde1bbee29a4637434a9",
+                            Url = "", // Resolved dynamically
+                            Sha256 = "",
                             ExtractPath = "bin/ffprobe.exe",
-                            SizeBytes = 83558400
+                            SizeBytes = 0
                         }
                     }
                 },
