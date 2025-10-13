@@ -24,9 +24,31 @@ public class FfmpegValidationResult
 }
 
 /// <summary>
+/// Interface for FFmpeg path resolution and validation
+/// </summary>
+public interface IFfmpegLocator
+{
+    /// <summary>
+    /// Get the effective FFmpeg path to use for operations
+    /// Returns the first valid FFmpeg found or throws if none available
+    /// </summary>
+    Task<string> GetEffectiveFfmpegPathAsync(string? configuredPath = null, CancellationToken ct = default);
+    
+    /// <summary>
+    /// Check all candidate locations for FFmpeg and return first valid one
+    /// </summary>
+    Task<FfmpegValidationResult> CheckAllCandidatesAsync(string? configuredPath = null, CancellationToken ct = default);
+    
+    /// <summary>
+    /// Validate a specific FFmpeg path
+    /// </summary>
+    Task<FfmpegValidationResult> ValidatePathAsync(string ffmpegPath, CancellationToken ct = default);
+}
+
+/// <summary>
 /// Centralized FFmpeg detection and path resolution
 /// </summary>
-public class FfmpegLocator
+public class FfmpegLocator : IFfmpegLocator
 {
     private readonly ILogger<FfmpegLocator> _logger;
     private readonly string _toolsDirectory;

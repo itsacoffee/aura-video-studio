@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Dependencies;
 using Aura.Providers.Video;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -30,11 +31,13 @@ public class FfmpegPathDetectionTests : IDisposable
         
         // Arrange - use a simple executable name (as would come from PATH)
         var pathExecutableName = "ffmpeg";
+        var locator = new FfmpegLocator(NullLogger<FfmpegLocator>.Instance, _testDirectory);
         
         // Act - this should NOT throw an exception about file not found
         // because we skip File.Exists check for PATH executables
         var composer = new FfmpegVideoComposer(
             NullLogger<FfmpegVideoComposer>.Instance,
+            locator,
             pathExecutableName,
             _testDirectory);
         
@@ -49,10 +52,12 @@ public class FfmpegPathDetectionTests : IDisposable
         
         // Arrange - use an absolute path that doesn't exist
         var absolutePath = Path.Combine(_testDirectory, "nonexistent", "ffmpeg.exe");
+        var locator = new FfmpegLocator(NullLogger<FfmpegLocator>.Instance, _testDirectory);
         
         // Act & Assert - constructor should succeed (validation happens during render)
         var composer = new FfmpegVideoComposer(
             NullLogger<FfmpegVideoComposer>.Instance,
+            locator,
             absolutePath,
             _testDirectory);
         

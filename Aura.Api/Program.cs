@@ -81,6 +81,16 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<Aura.Core.Hardware.DiagnosticsHelper>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
+
+// Register FFmpeg locator for centralized FFmpeg path resolution
+builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegLocator>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var toolsDir = providerSettings.GetToolsDirectory();
+    return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDir);
+});
+
 builder.Services.AddHttpClient(); // For LLM providers
 builder.Services.AddSingleton<Aura.Core.Orchestrator.LlmProviderFactory>();
 
@@ -140,9 +150,10 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<FfmpegVideoComposer>>();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-    var ffmpegPath = providerSettings.GetFfmpegPath();
+    var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
+    var configuredFfmpegPath = providerSettings.GetFfmpegPath();
     var outputDirectory = providerSettings.GetOutputDirectory();
-    return new FfmpegVideoComposer(logger, ffmpegPath, outputDirectory);
+    return new FfmpegVideoComposer(logger, ffmpegLocator, configuredFfmpegPath, outputDirectory);
 });
 builder.Services.AddSingleton<VideoOrchestrator>();
 
