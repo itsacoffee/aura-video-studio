@@ -524,7 +524,7 @@ public class FfmpegInstaller
     }
     
     /// <summary>
-    /// Validate FFmpeg binary by running -version
+    /// Validate FFmpeg binary by running -version and smoke test
     /// </summary>
     private async Task<(bool success, string? output, string? error)> ValidateFfmpegBinaryAsync(
         string ffmpegPath,
@@ -534,6 +534,7 @@ public class FfmpegInstaller
         
         try
         {
+            // First check: -version
             var psi = new ProcessStartInfo
             {
                 FileName = ffmpegPath,
@@ -566,13 +567,111 @@ public class FfmpegInstaller
                 return (false, stdout, "FFmpeg output does not contain version information");
             }
             
-            _logger.LogInformation("FFmpeg validation successful");
+            _logger.LogInformation("FFmpeg version check passed");
+            
+            // Second check: smoke test (generate short silent audio)
+            var smokeTestResult = await RunSmokeTestAsync(ffmpegPath, ct);
+            if (!smokeTestResult.success)
+            {
+                _logger.LogWarning("FFmpeg smoke test failed: {Error}", smokeTestResult.error);
+                return (false, stdout, $"Smoke test failed: {smokeTestResult.error}");
+            }
+            
+            _logger.LogInformation("FFmpeg validation successful (version + smoke test passed)");
             return (true, stdout, null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "FFmpeg validation failed");
             return (false, null, ex.Message);
+        }
+    }
+    
+    /// <summary>
+    /// Run a smoke test to ensure FFmpeg can actually process media
+    /// </summary>
+    public async Task<(bool success, string? output, string? error)> RunSmokeTestAsync(
+        string ffmpegPath,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Running FFmpeg smoke test: {Path}", ffmpegPath);
+        
+        var tempOut = Path.Combine(Path.GetTempPath(), $"ffmpeg_smoke_test_{Guid.NewGuid():N}.wav");
+        
+        try
+        {
+            // Generate 0.2 seconds of silent stereo audio at 48kHz
+            var psi = new ProcessStartInfo
+            {
+                FileName = ffmpegPath,
+                Arguments = $"-hide_banner -loglevel error -f lavfi -i anullsrc=cl=stereo:r=48000 -t 0.2 -y \"{tempOut}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            
+            using var process = Process.Start(psi);
+            if (process == null)
+            {
+                return (false, null, "Failed to start FFmpeg process for smoke test");
+            }
+            
+            // Use shorter timeout for smoke test (10 seconds)
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+            
+            await process.WaitForExitAsync(linkedCts.Token);
+            
+            var stdout = await process.StandardOutput.ReadToEndAsync(ct);
+            var stderr = await process.StandardError.ReadToEndAsync(ct);
+            
+            if (process.ExitCode != 0)
+            {
+                _logger.LogWarning("FFmpeg smoke test failed with exit code {ExitCode}: {Error}", 
+                    process.ExitCode, stderr);
+                return (false, null, $"Exit code {process.ExitCode}: {stderr}");
+            }
+            
+            // Verify output file was created and has reasonable size
+            if (!File.Exists(tempOut))
+            {
+                return (false, null, "Smoke test output file was not created");
+            }
+            
+            var fileInfo = new FileInfo(tempOut);
+            if (fileInfo.Length < 100)
+            {
+                return (false, null, $"Smoke test output file too small ({fileInfo.Length} bytes)");
+            }
+            
+            _logger.LogInformation("FFmpeg smoke test passed (generated {Size} byte WAV)", fileInfo.Length);
+            return (true, "Smoke test passed", null);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("FFmpeg smoke test timed out");
+            return (false, null, "Smoke test timed out after 10 seconds");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "FFmpeg smoke test exception");
+            return (false, null, ex.Message);
+        }
+        finally
+        {
+            // Cleanup temp file
+            try
+            {
+                if (File.Exists(tempOut))
+                {
+                    File.Delete(tempOut);
+                }
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
         }
     }
     
