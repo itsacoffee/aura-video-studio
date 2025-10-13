@@ -46,8 +46,9 @@ public static class WavMerger
             using var segmentStream = new FileStream(segment.FilePath, FileMode.Open, FileAccess.Read);
             using var segmentReader = new BinaryReader(segmentStream);
             
-            // Skip header
-            segmentReader.BaseStream.Seek(44, SeekOrigin.Begin);
+            // Read header to position at data start
+            var segmentHeader = ReadWavHeader(segmentReader);
+            // Now we're positioned right at the start of the audio data
             
             // Read samples and copy to output buffer
             int sampleIndex = startSample;
