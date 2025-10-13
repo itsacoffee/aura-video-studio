@@ -79,6 +79,13 @@ namespace Aura.App
                     // HTTP client
                     services.AddHttpClient();
                     
+                    // Register FFmpeg locator for centralized FFmpeg path resolution
+                    services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
+                    {
+                        var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegLocator>>();
+                        return new Aura.Core.Dependencies.FfmpegLocator(logger);
+                    });
+                    
                     // Provider registrations - register all implementations
                     
                     // LLM providers
@@ -101,12 +108,13 @@ namespace Aura.App
                     services.AddTransient<FfmpegVideoComposer>(sp =>
                     {
                         var logger = sp.GetRequiredService<ILogger<FfmpegVideoComposer>>();
+                        var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
                         
                         // In a real implementation, we would get this path from settings
-                        string ffmpegPath = Path.Combine(
+                        string configuredFfmpegPath = Path.Combine(
                             AppContext.BaseDirectory, "scripts", "ffmpeg", "ffmpeg.exe");
                         
-                        return new FfmpegVideoComposer(logger, ffmpegPath);
+                        return new FfmpegVideoComposer(logger, ffmpegLocator, configuredFfmpegPath);
                     });
                     services.AddTransient<IVideoComposer>(sp => sp.GetRequiredService<FfmpegVideoComposer>());
                     

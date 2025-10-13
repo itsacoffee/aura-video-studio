@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Dependencies;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
@@ -14,15 +15,17 @@ namespace Aura.Providers.Video;
 public class FfmpegVideoComposer : IVideoComposer
 {
     private readonly ILogger<FfmpegVideoComposer> _logger;
-    private readonly string _ffmpegPath;
+    private readonly IFfmpegLocator _ffmpegLocator;
+    private readonly string? _configuredFfmpegPath;
     private readonly string _workingDirectory;
     private string _outputDirectory;
     private readonly string _logsDirectory;
 
-    public FfmpegVideoComposer(ILogger<FfmpegVideoComposer> logger, string ffmpegPath, string? outputDirectory = null)
+    public FfmpegVideoComposer(ILogger<FfmpegVideoComposer> logger, IFfmpegLocator ffmpegLocator, string? configuredFfmpegPath = null, string? outputDirectory = null)
     {
         _logger = logger;
-        _ffmpegPath = ffmpegPath;
+        _ffmpegLocator = ffmpegLocator;
+        _configuredFfmpegPath = configuredFfmpegPath;
         _workingDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "Render");
         _outputDirectory = outputDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
@@ -58,11 +61,24 @@ public class FfmpegVideoComposer : IVideoComposer
         _logger.LogInformation("Starting FFmpeg render (JobId={JobId}, CorrelationId={CorrelationId}) at {Resolution}p", 
             jobId, correlationId, spec.Res.Height);
         
-        // Validate FFmpeg binary before starting
-        await ValidateFfmpegBinaryAsync(jobId, correlationId, ct);
+        // Resolve FFmpeg path once at the start - this is the single source of truth for this render job
+        string ffmpegPath;
+        try
+        {
+            ffmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(_configuredFfmpegPath, ct);
+            _logger.LogInformation("Resolved FFmpeg path for job {JobId}: {FfmpegPath}", jobId, ffmpegPath);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Failed to resolve FFmpeg path for job {JobId}", jobId);
+            throw;
+        }
         
-        // Pre-validate audio files
-        await PreValidateAudioAsync(timeline, jobId, correlationId, ct);
+        // Validate FFmpeg binary before starting
+        await ValidateFfmpegBinaryAsync(ffmpegPath, jobId, correlationId, ct);
+        
+        // Pre-validate audio files - pass the resolved ffmpeg path
+        await PreValidateAudioAsync(timeline, ffmpegPath, jobId, correlationId, ct);
         
         // Create output file path using configured output directory
         string outputFilePath = Path.Combine(
@@ -73,7 +89,7 @@ public class FfmpegVideoComposer : IVideoComposer
         string ffmpegCommand = BuildFfmpegCommand(timeline, spec, outputFilePath);
         
         _logger.LogInformation("FFmpeg command (JobId={JobId}): {FFmpegPath} {Command}", 
-            jobId, _ffmpegPath, ffmpegCommand);
+            jobId, ffmpegPath, ffmpegCommand);
         
         // Create process to run FFmpeg with stderr/stdout capture
         var stderrBuilder = new StringBuilder();
@@ -83,7 +99,7 @@ public class FfmpegVideoComposer : IVideoComposer
         {
             StartInfo = new ProcessStartInfo
             {
-                FileName = _ffmpegPath,
+                FileName = ffmpegPath,
                 Arguments = ffmpegCommand,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -291,25 +307,25 @@ public class FfmpegVideoComposer : IVideoComposer
     /// <summary>
     /// Validate FFmpeg binary before use
     /// </summary>
-    private async Task ValidateFfmpegBinaryAsync(string jobId, string correlationId, CancellationToken ct)
+    private async Task ValidateFfmpegBinaryAsync(string ffmpegPath, string jobId, string correlationId, CancellationToken ct)
     {
-        _logger.LogInformation("Validating FFmpeg binary: {Path}", _ffmpegPath);
+        _logger.LogInformation("Validating FFmpeg binary: {Path}", ffmpegPath);
         
         // For executables in PATH (like "ffmpeg"), File.Exists() will return false
         // So we skip the file existence check and go straight to running the command
         // The command execution will fail if FFmpeg is not found, giving us better error info
-        bool isPathExecutable = !Path.IsPathRooted(_ffmpegPath) && 
-                                !_ffmpegPath.Contains(Path.DirectorySeparatorChar) &&
-                                !_ffmpegPath.Contains(Path.AltDirectorySeparatorChar);
+        bool isPathExecutable = !Path.IsPathRooted(ffmpegPath) && 
+                                !ffmpegPath.Contains(Path.DirectorySeparatorChar) &&
+                                !ffmpegPath.Contains(Path.AltDirectorySeparatorChar);
         
         // Check file exists only if it's an absolute or relative path (not just an executable name)
-        if (!isPathExecutable && !File.Exists(_ffmpegPath))
+        if (!isPathExecutable && !File.Exists(ffmpegPath))
         {
             var error = new
             {
                 code = "E302-FFMPEG_VALIDATION",
                 message = "FFmpeg binary not found",
-                ffmpegPath = _ffmpegPath,
+                ffmpegPath = ffmpegPath,
                 correlationId,
                 howToFix = new[]
                 {
@@ -321,7 +337,7 @@ public class FfmpegVideoComposer : IVideoComposer
             };
             
             _logger.LogError("FFmpeg validation failed: {Error}", System.Text.Json.JsonSerializer.Serialize(error));
-            throw new InvalidOperationException($"FFmpeg binary not found at {_ffmpegPath}. " +
+            throw new InvalidOperationException($"FFmpeg binary not found at {ffmpegPath}. " +
                 $"Install FFmpeg via Download Center or attach an existing installation. (CorrelationId: {correlationId})");
         }
         
@@ -329,7 +345,7 @@ public class FfmpegVideoComposer : IVideoComposer
         {
             var psi = new ProcessStartInfo
             {
-                FileName = _ffmpegPath,
+                FileName = ffmpegPath,
                 Arguments = "-version",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -397,12 +413,12 @@ public class FfmpegVideoComposer : IVideoComposer
     /// <summary>
     /// Pre-validate audio files before rendering and attempt remediation if needed
     /// </summary>
-    private async Task PreValidateAudioAsync(Timeline timeline, string jobId, string correlationId, CancellationToken ct)
+    private async Task PreValidateAudioAsync(Timeline timeline, string ffmpegPath, string jobId, string correlationId, CancellationToken ct)
     {
         _logger.LogInformation("Pre-validating audio files (JobId={JobId})", jobId);
         
         // Get ffprobe path (same directory as ffmpeg)
-        var ffmpegDir = Path.GetDirectoryName(_ffmpegPath);
+        var ffmpegDir = Path.GetDirectoryName(ffmpegPath);
         var ffprobePath = ffmpegDir != null ? Path.Combine(ffmpegDir, "ffprobe.exe") : null;
         if (ffprobePath != null && !File.Exists(ffprobePath))
         {
@@ -411,7 +427,7 @@ public class FfmpegVideoComposer : IVideoComposer
         
         var validator = new Aura.Core.Audio.AudioValidator(
             Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Audio.AudioValidator>.Instance,
-            _ffmpegPath,
+            ffmpegPath,
             ffprobePath);
         
         // Validate narration
