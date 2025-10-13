@@ -282,6 +282,70 @@ public class JobsController : ControllerBase
             });
         }
     }
+    
+    /// <summary>
+    /// Retry a failed job with specific remediation strategy
+    /// </summary>
+    [HttpPost("{jobId}/retry")]
+    public async Task<IActionResult> RetryJob(
+        string jobId,
+        [FromQuery] string? strategy = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] Retry request for job {JobId} with strategy {Strategy}", 
+                correlationId, jobId, strategy ?? "default");
+            
+            // Get the job
+            var job = _jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                return NotFound(new
+                {
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Job Not Found",
+                    status = 404,
+                    detail = $"Job {jobId} not found",
+                    correlationId
+                });
+            }
+            
+            // For now, return guidance on retry strategies
+            // Full retry implementation would require job state management
+            return Ok(new
+            {
+                jobId,
+                currentStatus = job.Status,
+                currentStage = job.Stage,
+                strategy = strategy ?? "manual",
+                message = "Job retry not yet fully implemented. Please create a new job with adjusted settings.",
+                suggestedActions = new[]
+                {
+                    "Re-generate with different TTS provider if narration failed",
+                    "Use software encoder (x264) if hardware encoding failed",
+                    "Check FFmpeg installation if render failed",
+                    "Verify input files are valid if validation failed"
+                },
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error retrying job {JobId}", correlationId, jobId);
+            
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Retry Failed",
+                status = 500,
+                detail = $"Failed to retry job: {ex.Message}",
+                correlationId
+            });
+        }
+    }
 }
 
 /// <summary>

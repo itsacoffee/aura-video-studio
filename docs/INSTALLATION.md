@@ -4,6 +4,7 @@ This guide covers installing and configuring Aura Video Studio dependencies, wit
 
 ## Table of Contents
 
+- [System Requirements](#system-requirements)
 - [Quick Start](#quick-start)
 - [FFmpeg Installation](#ffmpeg-installation)
 - [Portable Mode](#portable-mode)
@@ -11,6 +12,33 @@ This guide covers installing and configuring Aura Video Studio dependencies, wit
 - [Repair and Rescan](#repair-and-rescan)
 - [Reading Logs and CorrelationId](#reading-logs-and-correlationid)
 - [Troubleshooting FAQ](#troubleshooting-faq)
+
+## System Requirements
+
+### Windows
+
+- **Operating System**: Windows 10 (1809 or later) or Windows 11
+- **Runtime**: .NET 8.0 Runtime
+- **Visual C++ Redistributable**: Microsoft Visual C++ 2015-2022 Redistributable (x64 and x86)
+  - Required for FFmpeg to function properly
+  - Download from: https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist
+  - Install both x64 and x86 versions for maximum compatibility
+  - **Symptoms if missing**: FFmpeg crashes with exit code -1073741515 or -1094995529
+
+### Linux
+
+- **Operating System**: Ubuntu 20.04+, Debian 11+, or equivalent
+- **Runtime**: .NET 8.0 Runtime
+- **Dependencies**: 
+  ```bash
+  sudo apt install libicu-dev libssl-dev
+  ```
+
+### Common
+
+- **Disk Space**: Minimum 2GB free space for dependencies
+- **Internet Connection**: Required for downloading dependencies and API-based providers
+- **Memory**: 4GB RAM minimum, 8GB recommended for image generation
 
 ## Quick Start
 

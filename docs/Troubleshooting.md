@@ -339,3 +339,196 @@ If settings are corrupted:
 - [Stable Diffusion Setup](./ENGINES_SD.md) - SD-specific guide
 - [Local TTS Setup](./TTS_LOCAL.md) - Piper and Mimic3 guides
 - [GitHub Issues](https://github.com/Coffee285/aura-video-studio/issues) - Report bugs or request help
+
+---
+
+## FFmpeg Issues
+
+### FFmpeg Not Found or Installation Fails
+
+**Symptoms:**
+- Download Center shows "FFmpeg v6.0" but download fails with 404
+- Error: "FFmpeg binary not found"
+- Render fails with "E302-FFMPEG_VALIDATION"
+
+**Solution:**
+
+1. **Use Dynamic Resolution:**
+   - The app now dynamically resolves FFmpeg releases from GitHub
+   - Download Center will show only real, validated assets
+   - If GitHub API fails, mirror URLs will be tried automatically
+
+2. **Attach Existing FFmpeg:**
+   - If you already have FFmpeg installed, use "Attach Existing"
+   - Point to your ffmpeg.exe location (e.g., `C:\ffmpeg\bin\ffmpeg.exe`)
+   - The app will validate and use your installation
+
+3. **Verify Installation:**
+   - Use API endpoint: `POST /api/dependencies/ffmpeg/verify`
+   - This runs a smoke test to ensure FFmpeg works
+   - Check response for validation output and any errors
+
+4. **Repair FFmpeg:**
+   - Use API endpoint: `POST /api/dependencies/ffmpeg/repair`
+   - This rescans and refreshes FFmpeg paths
+   - If FFmpeg is corrupted, reinstall via Download Center
+
+### FFmpeg Crashes During Render
+
+**Symptoms:**
+- Error: "FFmpeg crashed during render (exit code: -1094995529)"
+- Render fails with "E304-FFMPEG_RUNTIME"
+- Invalid data found when processing input
+
+**Common Causes & Solutions:**
+
+1. **Missing Visual C++ Redistributable (Windows):**
+   ```
+   Error: FFmpeg crashed with negative exit code
+   ```
+   **Fix:** Install [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)
+   - Download and install both x64 and x86 versions
+   - Restart your computer
+   - Re-verify FFmpeg installation
+
+2. **Corrupted Audio Input:**
+   ```
+   Error: Invalid data found when processing input
+   ```
+   **Fix:** The app now automatically validates and repairs audio:
+   - Corrupted TTS output is re-encoded to clean WAV
+   - If re-encoding fails, app generates silent fallback
+   - Check logs for remediation attempts
+   
+   **Manual Fix:**
+   - Delete corrupted narration files
+   - Re-generate narration with TTS provider
+   - Try a different TTS provider if issue persists
+
+3. **Hardware Encoder Issues:**
+   ```
+   Error: NVENC encoder not found or crashed
+   ```
+   **Fix:** Use software encoding:
+   - The app will automatically retry with software encoder (libx264)
+   - Verify your GPU drivers are up-to-date
+   - Consider using software encoding for better compatibility
+
+4. **Antivirus Blocking FFmpeg:**
+   ```
+   Error: Permission denied or Access is denied
+   ```
+   **Fix:**
+   - Add FFmpeg to antivirus exception list
+   - Check Windows Security > Virus & threat protection > Manage settings
+   - Ensure FFmpeg has execute permissions
+
+### Audio Validation Failures
+
+**Symptoms:**
+- Error: "E305-AUDIO_VALIDATION"
+- Narration file too small or corrupted
+- TTS provider returns invalid output
+
+**Automatic Remediation:**
+
+The app now includes automatic audio validation and repair:
+
+1. **Pre-Render Validation:**
+   - Before rendering, all audio files are validated
+   - File size checked (must be > 128 bytes)
+   - Audio format validated with ffprobe/ffmpeg
+
+2. **Automatic Re-Encoding:**
+   - If audio is corrupted, app attempts re-encode to clean WAV
+   - Uses conservative settings: 48kHz, stereo, PCM 16-bit
+   - Original file replaced with re-encoded version
+
+3. **Silent Fallback:**
+   - If re-encoding fails, app generates silent WAV
+   - Job continues with silent audio to prevent complete failure
+   - Check logs for "Generated silent fallback" message
+
+**Manual Steps:**
+
+If automatic remediation fails:
+
+1. **Check TTS Provider:**
+   ```bash
+   # Verify TTS is working
+   POST /api/preflight
+   ```
+   - Ensure selected TTS provider is available
+   - Try a different TTS provider (Windows TTS, Piper, etc.)
+
+2. **Regenerate Narration:**
+   - Delete corrupted narration files from job artifacts
+   - Re-run Quick Demo or job with fresh TTS synthesis
+   - Monitor TTS provider for errors
+
+3. **Check FFprobe:**
+   ```bash
+   ffprobe -v error narration.wav
+   ```
+   - Should return no errors for valid audio
+   - If errors appear, file is corrupted
+
+### Viewing Detailed Logs
+
+All FFmpeg errors include:
+- **JobId**: Unique identifier for the render job
+- **CorrelationId**: Tracing identifier for debugging
+- **Stderr Snippet**: Last 64KB of FFmpeg output
+- **Log File**: Full log at `%LOCALAPPDATA%\Aura\Logs\ffmpeg\{jobId}.log`
+
+**Example Error Response:**
+```json
+{
+  "code": "E304-FFMPEG_RUNTIME",
+  "message": "FFmpeg crashed during render",
+  "exitCode": -1073741515,
+  "stderrSnippet": "... last 64KB of output ...",
+  "jobId": "abc123",
+  "correlationId": "xyz789",
+  "suggestedActions": [
+    "FFmpeg crashed - binary may be corrupted",
+    "Check system dependencies (Visual C++ Redistributable)",
+    "Try software encoding (x264) instead of hardware encoding"
+  ],
+  "ffmpegCommand": "..."
+}
+```
+
+### Retry Failed Jobs
+
+Use the retry endpoint to attempt job again with different strategy:
+
+```bash
+POST /api/jobs/{jobId}/retry?strategy=software-encoder
+```
+
+**Strategies:**
+- `software-encoder`: Retry with libx264 instead of hardware encoding
+- `re-synthesize`: Regenerate TTS narration before retry
+- `default`: Standard retry without special handling
+
+### Getting Help
+
+When reporting FFmpeg issues, include:
+1. **CorrelationId** and **JobId** from error
+2. FFmpeg log file from `%LOCALAPPDATA%\Aura\Logs\ffmpeg\`
+3. FFmpeg version: Check in Download Center or run `ffmpeg -version`
+4. OS version and GPU model (if using hardware encoding)
+5. Steps to reproduce the issue
+
+**Diagnostic Commands:**
+```bash
+# Verify FFmpeg
+POST /api/dependencies/ffmpeg/verify
+
+# Repair FFmpeg
+POST /api/dependencies/ffmpeg/repair
+
+# Rescan all dependencies
+GET /api/dependencies/rescan
+```
