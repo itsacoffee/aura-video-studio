@@ -292,8 +292,15 @@ public class FfmpegVideoComposer : IVideoComposer
     {
         _logger.LogInformation("Validating FFmpeg binary: {Path}", _ffmpegPath);
         
-        // Check file exists
-        if (!File.Exists(_ffmpegPath))
+        // For executables in PATH (like "ffmpeg"), File.Exists() will return false
+        // So we skip the file existence check and go straight to running the command
+        // The command execution will fail if FFmpeg is not found, giving us better error info
+        bool isPathExecutable = !Path.IsPathRooted(_ffmpegPath) && 
+                                !_ffmpegPath.Contains(Path.DirectorySeparatorChar) &&
+                                !_ffmpegPath.Contains(Path.AltDirectorySeparatorChar);
+        
+        // Check file exists only if it's an absolute or relative path (not just an executable name)
+        if (!isPathExecutable && !File.Exists(_ffmpegPath))
         {
             var error = new
             {
@@ -305,7 +312,8 @@ public class FfmpegVideoComposer : IVideoComposer
                 {
                     "Install FFmpeg via Download Center",
                     "Attach an existing FFmpeg installation",
-                    "Check FFmpeg installation path in settings"
+                    "Check FFmpeg installation path in settings",
+                    "Add FFmpeg to system PATH"
                 }
             };
             
