@@ -295,7 +295,9 @@ public class FfmpegVideoComposer : IVideoComposer
         // For executables in PATH (like "ffmpeg"), File.Exists() will return false
         // So we skip the file existence check and go straight to running the command
         // The command execution will fail if FFmpeg is not found, giving us better error info
-        bool isPathExecutable = !Path.IsPathRooted(_ffmpegPath) && !_ffmpegPath.Contains(Path.DirectorySeparatorChar);
+        bool isPathExecutable = !Path.IsPathRooted(_ffmpegPath) && 
+                                !_ffmpegPath.Contains(Path.DirectorySeparatorChar) &&
+                                !_ffmpegPath.Contains(Path.AltDirectorySeparatorChar);
         
         // Check file exists only if it's an absolute or relative path (not just an executable name)
         if (!isPathExecutable && !File.Exists(_ffmpegPath))
