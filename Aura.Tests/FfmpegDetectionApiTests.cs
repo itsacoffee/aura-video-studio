@@ -278,11 +278,19 @@ public class FfmpegDetectionApiTests : IDisposable
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            // Create a simple batch script for Windows
+            // Create a batch script that handles both -version and smoke test
             var batchContent = @"@echo off
 if ""%1""==""-version"" (
     echo ffmpeg version 6.0-test Copyright (c) 2000-2024 the FFmpeg developers
     echo built with gcc 12.2.0
+    exit /b 0
+)
+if ""%1""==""-hide_banner"" (
+    REM Smoke test command - create output file with enough content (>100 bytes)
+    for %%a in (%*) do set ""lastarg=%%~a""
+    echo RIFF....WAVEfmt ................data................................ > %lastarg%
+    echo Mock WAV file content for testing purposes only. >> %lastarg%
+    echo This ensures the file is large enough for validation. >> %lastarg%
     exit /b 0
 )
 exit /b 1";
@@ -290,11 +298,21 @@ exit /b 1";
         }
         else
         {
-            // Create a shell script for Unix
+            // Create a shell script that handles both -version and smoke test
             var shellContent = @"#!/bin/bash
 if [ ""$1"" = ""-version"" ]; then
     echo ""ffmpeg version 6.0-test Copyright (c) 2000-2024 the FFmpeg developers""
     echo ""built with gcc 12.2.0""
+    exit 0
+fi
+if [ ""$1"" = ""-hide_banner"" ]; then
+    # Smoke test - create output file with enough content (>100 bytes)
+    output=""${!#}""
+    {
+        printf ""RIFF....WAVEfmt ................data................................""
+        echo ""Mock WAV file content for testing purposes only.""
+        echo ""This ensures the file is large enough for validation.""
+    } > ""$output""
     exit 0
 fi
 exit 1";
