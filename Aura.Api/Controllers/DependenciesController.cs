@@ -13,13 +13,16 @@ public class DependenciesController : ControllerBase
 {
     private readonly ILogger<DependenciesController> _logger;
     private readonly DependencyRescanService _rescanService;
+    private readonly FfmpegInstaller? _ffmpegInstaller;
 
     public DependenciesController(
         ILogger<DependenciesController> logger,
-        DependencyRescanService rescanService)
+        DependencyRescanService rescanService,
+        FfmpegInstaller? ffmpegInstaller = null)
     {
         _logger = logger;
         _rescanService = rescanService;
+        _ffmpegInstaller = ffmpegInstaller;
     }
 
     /// <summary>
@@ -104,6 +107,137 @@ public class DependenciesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get last scan time");
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message
+            });
+        }
+    }
+    
+    /// <summary>
+    /// Verify FFmpeg installation and run smoke test
+    /// </summary>
+    [HttpPost("{componentId}/verify")]
+    public async Task<IActionResult> VerifyComponent(string componentId, CancellationToken ct)
+    {
+        if (componentId != "ffmpeg" || _ffmpegInstaller == null)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = $"Verification not supported for component: {componentId}"
+            });
+        }
+        
+        try
+        {
+            _logger.LogInformation("Verifying FFmpeg installation via API");
+            
+            // Try to find FFmpeg via rescan
+            var report = await _rescanService.RescanAllAsync(ct);
+            var ffmpegDep = report.Dependencies.Find(d => d.Id == "ffmpeg");
+            
+            if (ffmpegDep == null || ffmpegDep.Status != DependencyStatus.Installed || string.IsNullOrEmpty(ffmpegDep.Path))
+            {
+                return Ok(new
+                {
+                    success = false,
+                    available = false,
+                    status = ffmpegDep?.Status.ToString() ?? "Missing",
+                    error = ffmpegDep?.ErrorMessage ?? "FFmpeg not found. Install or attach FFmpeg first."
+                });
+            }
+            
+            // Run smoke test
+            var smokeTestResult = await _ffmpegInstaller.RunSmokeTestAsync(ffmpegDep.Path, ct);
+            
+            if (!smokeTestResult.success)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    available = true,
+                    path = ffmpegDep.Path,
+                    validationOutput = ffmpegDep.ValidationOutput,
+                    smokeTestPassed = false,
+                    error = smokeTestResult.error,
+                    diagnostics = new
+                    {
+                        output = smokeTestResult.output,
+                        suggestion = "FFmpeg binary may be corrupted. Try reinstalling or repairing."
+                    }
+                });
+            }
+            
+            return Ok(new
+            {
+                success = true,
+                available = true,
+                path = ffmpegDep.Path,
+                validationOutput = ffmpegDep.ValidationOutput,
+                smokeTestPassed = true,
+                output = smokeTestResult.output
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to verify {ComponentId}", componentId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message
+            });
+        }
+    }
+    
+    /// <summary>
+    /// Repair or reinstall a component
+    /// </summary>
+    [HttpPost("{componentId}/repair")]
+    public async Task<IActionResult> RepairComponent(string componentId, CancellationToken ct)
+    {
+        if (componentId != "ffmpeg")
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = $"Repair not supported for component: {componentId}"
+            });
+        }
+        
+        try
+        {
+            _logger.LogInformation("Repairing {ComponentId} via API", componentId);
+            
+            // For now, repair = rescan to update paths
+            // In the future, this could trigger reinstallation
+            var report = await _rescanService.RescanAllAsync(ct);
+            var ffmpegDep = report.Dependencies.Find(d => d.Id == "ffmpeg");
+            
+            if (ffmpegDep == null || ffmpegDep.Status != DependencyStatus.Installed)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    repaired = false,
+                    status = ffmpegDep?.Status.ToString() ?? "Missing",
+                    message = "FFmpeg not found. Use Download Center to install FFmpeg."
+                });
+            }
+            
+            return Ok(new
+            {
+                success = true,
+                repaired = true,
+                path = ffmpegDep.Path,
+                validationOutput = ffmpegDep.ValidationOutput,
+                message = "FFmpeg path refreshed successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to repair {ComponentId}", componentId);
             return StatusCode(500, new
             {
                 success = false,

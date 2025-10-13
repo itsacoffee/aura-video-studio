@@ -61,6 +61,9 @@ public class FfmpegVideoComposer : IVideoComposer
         // Validate FFmpeg binary before starting
         await ValidateFfmpegBinaryAsync(jobId, correlationId, ct);
         
+        // Pre-validate audio files
+        await PreValidateAudioAsync(timeline, jobId, correlationId, ct);
+        
         // Create output file path using configured output directory
         string outputFilePath = Path.Combine(
             _outputDirectory,
@@ -392,6 +395,158 @@ public class FfmpegVideoComposer : IVideoComposer
     }
     
     /// <summary>
+    /// Pre-validate audio files before rendering and attempt remediation if needed
+    /// </summary>
+    private async Task PreValidateAudioAsync(Timeline timeline, string jobId, string correlationId, CancellationToken ct)
+    {
+        _logger.LogInformation("Pre-validating audio files (JobId={JobId})", jobId);
+        
+        // Get ffprobe path (same directory as ffmpeg)
+        var ffmpegDir = Path.GetDirectoryName(_ffmpegPath);
+        var ffprobePath = ffmpegDir != null ? Path.Combine(ffmpegDir, "ffprobe.exe") : null;
+        if (ffprobePath != null && !File.Exists(ffprobePath))
+        {
+            ffprobePath = null;
+        }
+        
+        var validator = new Aura.Core.Audio.AudioValidator(
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Audio.AudioValidator>.Instance,
+            _ffmpegPath,
+            ffprobePath);
+        
+        // Validate narration
+        if (!string.IsNullOrEmpty(timeline.NarrationPath))
+        {
+            await ValidateAndRemediateAudioFileAsync(
+                validator, 
+                timeline.NarrationPath, 
+                "narration", 
+                jobId, 
+                correlationId, 
+                ct);
+        }
+        
+        // Validate music if present
+        if (!string.IsNullOrEmpty(timeline.MusicPath))
+        {
+            await ValidateAndRemediateAudioFileAsync(
+                validator, 
+                timeline.MusicPath, 
+                "music", 
+                jobId, 
+                correlationId, 
+                ct);
+        }
+        
+        _logger.LogInformation("Audio pre-validation complete (JobId={JobId})", jobId);
+    }
+    
+    /// <summary>
+    /// Validate a single audio file and attempt remediation if corrupted
+    /// </summary>
+    private async Task ValidateAndRemediateAudioFileAsync(
+        Aura.Core.Audio.AudioValidator validator,
+        string audioPath,
+        string audioType,
+        string jobId,
+        string correlationId,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Validating {AudioType} audio: {Path} (JobId={JobId})", 
+            audioType, audioPath, jobId);
+        
+        var validation = await validator.ValidateAsync(audioPath, ct);
+        
+        if (validation.IsValid)
+        {
+            _logger.LogInformation("{AudioType} audio validation passed (JobId={JobId})", audioType, jobId);
+            return;
+        }
+        
+        // Audio is invalid - attempt remediation
+        _logger.LogWarning("{AudioType} audio validation failed: {Error} (JobId={JobId})", 
+            audioType, validation.ErrorMessage, jobId);
+        
+        if (validation.IsCorrupted)
+        {
+            _logger.LogInformation("Attempting to re-encode corrupted {AudioType} audio (JobId={JobId})", 
+                audioType, jobId);
+            
+            // Try re-encoding to a clean WAV
+            var reEncodedPath = Path.Combine(
+                Path.GetDirectoryName(audioPath) ?? Path.GetTempPath(),
+                $"{Path.GetFileNameWithoutExtension(audioPath)}_reencoded.wav");
+            
+            var (success, errorMessage) = await validator.ReencodeAsync(audioPath, reEncodedPath, ct);
+            
+            if (success)
+            {
+                _logger.LogInformation("Successfully re-encoded {AudioType} audio (JobId={JobId})", 
+                    audioType, jobId);
+                
+                // Replace the original file with the re-encoded version
+                File.Delete(audioPath);
+                File.Move(reEncodedPath, audioPath);
+                
+                _logger.LogInformation("Replaced corrupted {AudioType} with re-encoded version (JobId={JobId})", 
+                    audioType, jobId);
+                return;
+            }
+            
+            _logger.LogError("Re-encoding failed: {Error}. Attempting to generate silent fallback (JobId={JobId})", 
+                errorMessage, jobId);
+            
+            // Re-encoding failed - generate silent WAV as fallback
+            var (silentSuccess, silentError) = await validator.GenerateSilentWavAsync(
+                audioPath + ".silent.wav", 
+                10.0, // 10 seconds default
+                ct);
+            
+            if (silentSuccess)
+            {
+                _logger.LogWarning("Generated silent {AudioType} fallback (JobId={JobId})", audioType, jobId);
+                
+                // Replace with silent version
+                File.Delete(audioPath);
+                File.Move(audioPath + ".silent.wav", audioPath);
+                return;
+            }
+            
+            // All remediation attempts failed
+            var error = new
+            {
+                code = "E305-AUDIO_VALIDATION",
+                message = $"{audioType} audio file is corrupted and could not be repaired",
+                audioPath,
+                validationError = validation.ErrorMessage,
+                reencodeError = errorMessage,
+                silentFallbackError = silentError,
+                jobId,
+                correlationId,
+                howToFix = new[]
+                {
+                    $"Re-generate the {audioType} audio",
+                    "Ensure TTS provider is working correctly",
+                    "Check audio file is not in use by another application",
+                    "Try using a different TTS provider"
+                }
+            };
+            
+            _logger.LogError("All audio remediation attempts failed: {Error}", 
+                System.Text.Json.JsonSerializer.Serialize(error));
+            
+            throw new InvalidOperationException(
+                $"{audioType} audio validation failed and remediation unsuccessful: {validation.ErrorMessage}. " +
+                $"CorrelationId: {correlationId}, JobId: {jobId}");
+        }
+        
+        // Not corrupted but still invalid (e.g., file not found)
+        throw new InvalidOperationException(
+            $"{audioType} audio validation failed: {validation.ErrorMessage}. " +
+            $"CorrelationId: {correlationId}, JobId: {jobId}");
+    }
+    
+    /// <summary>
     /// Handle FFmpeg process failure with detailed diagnostics
     /// </summary>
     private Exception CreateFfmpegException(
@@ -401,8 +556,11 @@ public class FfmpegVideoComposer : IVideoComposer
         string correlationId,
         string? ffmpegCommand)
     {
-        // Truncate stderr if too long
-        var stderrSnippet = stderr.Length > 16000 ? stderr.Substring(0, 16000) + "\n... (truncated)" : stderr;
+        // Keep last 64KB of stderr for inline reporting (as per requirements)
+        const int MaxStderrInline = 64 * 1024; // 64KB
+        var stderrSnippet = stderr.Length > MaxStderrInline 
+            ? "... (truncated)\n" + stderr.Substring(stderr.Length - MaxStderrInline) 
+            : stderr;
         
         var errorInfo = new
         {
@@ -414,7 +572,8 @@ public class FfmpegVideoComposer : IVideoComposer
             stderrSnippet,
             jobId,
             correlationId,
-            suggestedActions = GetSuggestedActions(exitCode, stderr)
+            suggestedActions = GetSuggestedActions(exitCode, stderr),
+            ffmpegCommand
         };
         
         _logger.LogError("FFmpeg render failed: {Error}", System.Text.Json.JsonSerializer.Serialize(errorInfo));
@@ -425,7 +584,7 @@ public class FfmpegVideoComposer : IVideoComposer
             var logPath = Path.Combine(_logsDirectory, $"{jobId}.log");
             File.WriteAllText(logPath, 
                 $"JobId: {jobId}\nCorrelationId: {correlationId}\nExit Code: {exitCode}\n" +
-                $"Command: {ffmpegCommand}\n\n=== STDERR ===\n{stderr}");
+                $"Command: {ffmpegCommand}\n\n=== FULL STDERR ({stderr.Length} bytes) ===\n{stderr}");
             _logger.LogInformation("Full FFmpeg log written to: {LogPath}", logPath);
         }
         catch (Exception ex)
