@@ -4,10 +4,10 @@
     {
       "id": "ffmpeg",
       "name": "FFmpeg",
-      "version": "6.0",
+      "version": "latest",
       "recommendedVersion": "6.0+",
       "minimumVersion": "3.4",
-      "description": "Essential video and audio processing toolkit for all media operations. Any version >= 3.4 is supported.",
+      "description": "Essential video and audio processing toolkit for all media operations. Any version >= 3.4 is supported, including FFmpeg 7.x and 8.x.",
       "sizeBytes": 83558400,
       "sha256": "",
       "archiveType": "zip",
