@@ -88,7 +88,7 @@ public class DownloadsController : ControllerBase
                     
                     result = await _ffmpegInstaller.InstallFromLocalArchiveAsync(
                         request.LocalArchivePath,
-                        request.Version ?? "6.0",
+                        request.Version ?? "latest",
                         null,
                         null,
                         ct);

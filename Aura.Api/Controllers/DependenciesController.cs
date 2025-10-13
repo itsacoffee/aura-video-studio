@@ -28,7 +28,7 @@ public class DependenciesController : ControllerBase
     /// <summary>
     /// Rescan all dependencies and return full report
     /// </summary>
-    [HttpGet("rescan")]
+    [HttpPost("rescan")]
     public async Task<IActionResult> RescanAll(CancellationToken ct)
     {
         try
