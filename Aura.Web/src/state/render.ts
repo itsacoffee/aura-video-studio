@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { apiUrl } from '../config/api';
 
 export interface RenderSettings {
   resolution: {

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { apiUrl } from '../../../config/api';
 import {
   makeStyles,
   tokens,
