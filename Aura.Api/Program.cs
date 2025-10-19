@@ -181,6 +181,7 @@ builder.Services.AddSingleton<Aura.Api.Services.PreflightService>();
 // Register health check and startup validation services
 builder.Services.AddSingleton<Aura.Api.Services.HealthCheckService>();
 builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
+builder.Services.AddSingleton<Aura.Api.Services.FirstRunDiagnostics>();
 
 // Register Provider Warmup Service - warms up providers in background, never crashes startup
 builder.Services.AddHostedService<Aura.Api.HostedServices.ProviderWarmupService>();
@@ -358,12 +359,16 @@ builder.WebHost.UseUrls(apiUrl);
 
 var app = builder.Build();
 
-// Perform startup validation - fail fast with clear errors
+// Perform startup validation - warn on non-critical issues but continue
 var startupValidator = app.Services.GetRequiredService<Aura.Api.Services.StartupValidator>();
 if (!startupValidator.Validate())
 {
-    Log.Fatal("Startup validation failed. Application cannot start. See errors above.");
-    Environment.Exit(1);
+    Log.Warning("Startup validation detected some issues. Application will attempt to start anyway.");
+    Log.Warning("If you experience problems, please review the errors above and check:");
+    Log.Warning("  - File system permissions");
+    Log.Warning("  - Antivirus/firewall settings");
+    Log.Warning("  - Available disk space");
+    // Don't exit - let the application start and users can fix issues via the UI
 }
 
 // Add correlation ID middleware early in the pipeline
@@ -417,6 +422,23 @@ apiGroup.MapGet("/health/ready", async (Aura.Api.Services.HealthCheckService hea
     return Results.Json(result, statusCode: statusCode);
 })
 .WithName("HealthReady")
+.WithOpenApi();
+
+// First-run diagnostics endpoint - comprehensive system check with actionable guidance
+apiGroup.MapGet("/health/first-run", async (Aura.Api.Services.FirstRunDiagnostics diagnostics, CancellationToken ct) =>
+{
+    try
+    {
+        var result = await diagnostics.RunDiagnosticsAsync(ct);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error running first-run diagnostics");
+        return Results.Problem("Error running diagnostics", statusCode: 500);
+    }
+})
+.WithName("FirstRunDiagnostics")
 .WithOpenApi();
 
 // Legacy health check endpoint for backward compatibility
