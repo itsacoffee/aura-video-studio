@@ -141,7 +141,14 @@ public class JobRunner
             var job = GetJob(jobId);
             if (job != null)
             {
-                UpdateJob(job, status: JobStatus.Failed, errorMessage: "Job was cancelled");
+                // Add cancellation message to logs so it's visible in UI
+                var cancelLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Job was cancelled by user";
+                var updatedLogs = new List<string>(job.Logs) { cancelLog };
+                
+                UpdateJob(job, 
+                    status: JobStatus.Failed, 
+                    errorMessage: "Job was cancelled",
+                    logs: updatedLogs);
             }
         }
         catch (Exception ex)
@@ -151,7 +158,16 @@ public class JobRunner
             if (job != null)
             {
                 var failureDetails = CreateFailureDetails(job, ex);
-                UpdateJob(job, status: JobStatus.Failed, errorMessage: ex.Message, failureDetails: failureDetails);
+                
+                // Add error to logs so it's visible in UI
+                var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] ERROR: {GetFriendlyErrorMessage(ex)}";
+                var updatedLogs = new List<string>(job.Logs) { errorLog };
+                
+                UpdateJob(job, 
+                    status: JobStatus.Failed, 
+                    errorMessage: ex.Message, 
+                    failureDetails: failureDetails,
+                    logs: updatedLogs);
             }
         }
         finally
