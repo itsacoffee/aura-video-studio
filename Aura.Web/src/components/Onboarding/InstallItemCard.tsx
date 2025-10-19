@@ -101,6 +101,7 @@ export function InstallItemCard({ item, onInstall, onAttachExisting, onSkip }: I
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
             <Text weight="semibold">{item.name}</Text>
             {item.required && <Badge size="small" color="danger">Required</Badge>}
+            {item.installed && <Badge size="small" color="success">Installed</Badge>}
           </div>
           
           {item.description && (
@@ -109,7 +110,13 @@ export function InstallItemCard({ item, onInstall, onAttachExisting, onSkip }: I
             </Text>
           )}
           
-          {item.defaultPath && (
+          {item.installing && (
+            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorBrandForeground1 }}>
+              ⏳ Installing... This may take a few minutes.
+            </Text>
+          )}
+          
+          {item.defaultPath && !item.installing && (
             <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
               📁 Default install location: <code style={{ 
                 backgroundColor: tokens.colorNeutralBackground3, 

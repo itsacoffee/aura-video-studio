@@ -421,6 +421,19 @@ export function FirstRunWizard() {
         </ul>
       </Card>
 
+      {state.errors.length > 0 && (
+        <Card style={{ backgroundColor: tokens.colorPaletteRedBackground1, padding: tokens.spacingVerticalM }}>
+          <Text weight="semibold" style={{ color: tokens.colorPaletteRedForeground1, marginBottom: tokens.spacingVerticalS }}>
+            ⚠️ Installation Errors
+          </Text>
+          {state.errors.map((error, index) => (
+            <Text key={index} size={200} style={{ color: tokens.colorPaletteRedForeground1, display: 'block', marginTop: tokens.spacingVerticalXS }}>
+              • {error}
+            </Text>
+          ))}
+        </Card>
+      )}
+
       <Card>
         <Text>
           💡 Tip: After installation, you can verify everything is working on the next screen.
