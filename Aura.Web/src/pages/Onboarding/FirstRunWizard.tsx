@@ -27,6 +27,7 @@ import {
   runValidationThunk,
   detectHardwareThunk,
   installItemThunk,
+  checkAllInstallationStatusesThunk,
   getButtonLabel,
   isButtonDisabled,
 } from '../../state/onboarding';
@@ -142,6 +143,13 @@ export function FirstRunWizard() {
       navigate('/');
     }
   }, [navigate]);
+
+  // Check installation status when entering step 2
+  useEffect(() => {
+    if (state.step === 2) {
+      checkAllInstallationStatusesThunk(dispatch);
+    }
+  }, [state.step]);
 
   // Auto-advance to next step when validation succeeds
   useEffect(() => {

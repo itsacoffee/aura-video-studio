@@ -328,11 +328,13 @@ export async function installItemThunk(
   try {
     // Map itemId to API endpoint
     let apiEndpoint: string;
+    let statusEndpoint: string;
     let requestBody: any;
     
     switch (itemId) {
       case 'ffmpeg':
         apiEndpoint = 'http://127.0.0.1:5005/api/downloads/ffmpeg/install';
+        statusEndpoint = 'http://127.0.0.1:5005/api/downloads/ffmpeg/status';
         requestBody = { mode: 'managed' };
         break;
       case 'ollama':
@@ -362,6 +364,18 @@ export async function installItemThunk(
     
     if (!result.success) {
       throw new Error(result.error || 'Installation failed');
+    }
+
+    // After successful installation, verify status
+    try {
+      const statusResponse = await fetch(statusEndpoint);
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        console.log(`${itemId} installation verified:`, statusData);
+      }
+    } catch (statusError) {
+      console.warn(`Failed to verify ${itemId} status after installation:`, statusError);
+      // Don't fail the installation for this, just log it
     }
 
     dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
@@ -411,4 +425,49 @@ export function isButtonDisabled(status: WizardStatus, isDetectingHardware: bool
 // Check if can advance to next step
 export function canAdvanceStep(status: WizardStatus): boolean {
   return status === 'valid' || status === 'ready';
+}
+
+// Check installation status for an item
+export async function checkInstallationStatusThunk(
+  itemId: string,
+  dispatch: React.Dispatch<OnboardingAction>
+): Promise<void> {
+  try {
+    let statusEndpoint: string;
+    
+    switch (itemId) {
+      case 'ffmpeg':
+        statusEndpoint = 'http://127.0.0.1:5005/api/downloads/ffmpeg/status';
+        break;
+      case 'ollama':
+      case 'stable-diffusion':
+        // Status check not yet implemented for these items
+        return;
+      default:
+        return;
+    }
+
+    const response = await fetch(statusEndpoint);
+    if (response.ok) {
+      const data = await response.json();
+      // If the item is installed, mark it as such
+      if (data.state === 'Installed' || data.state === 'ExternalAttached') {
+        dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
+      }
+    }
+  } catch (error) {
+    console.warn(`Failed to check installation status for ${itemId}:`, error);
+    // Don't throw, just log the error
+  }
+}
+
+// Check all installation statuses
+export async function checkAllInstallationStatusesThunk(
+  dispatch: React.Dispatch<OnboardingAction>
+): Promise<void> {
+  await Promise.all([
+    checkInstallationStatusThunk('ffmpeg', dispatch),
+    checkInstallationStatusThunk('ollama', dispatch),
+    checkInstallationStatusThunk('stable-diffusion', dispatch),
+  ]);
 }
