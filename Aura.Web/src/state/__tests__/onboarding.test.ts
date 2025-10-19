@@ -19,6 +19,31 @@ describe('onboardingReducer', () => {
     expect(state.errors).toEqual([]);
   });
 
+  it('should have install items with descriptions and default paths', () => {
+    const state = initialOnboardingState;
+    
+    // Check ffmpeg item
+    const ffmpegItem = state.installItems.find(item => item.id === 'ffmpeg');
+    expect(ffmpegItem).toBeDefined();
+    expect(ffmpegItem?.description).toBeTruthy();
+    expect(ffmpegItem?.defaultPath).toBeTruthy();
+    expect(ffmpegItem?.defaultPath).toContain('ffmpeg');
+    
+    // Check ollama item
+    const ollamaItem = state.installItems.find(item => item.id === 'ollama');
+    expect(ollamaItem).toBeDefined();
+    expect(ollamaItem?.description).toBeTruthy();
+    expect(ollamaItem?.defaultPath).toBeTruthy();
+    expect(ollamaItem?.defaultPath).toContain('ollama');
+    
+    // Check stable-diffusion item
+    const sdItem = state.installItems.find(item => item.id === 'stable-diffusion');
+    expect(sdItem).toBeDefined();
+    expect(sdItem?.description).toBeTruthy();
+    expect(sdItem?.defaultPath).toBeTruthy();
+    expect(sdItem?.defaultPath).toContain('stable-diffusion');
+  });
+
   it('should handle SET_STEP', () => {
     const state = onboardingReducer(initialOnboardingState, {
       type: 'SET_STEP',
