@@ -24,6 +24,15 @@ public record Job
     public PlanSpec? PlanSpec { get; init; }
     public VoiceSpec? VoiceSpec { get; init; }
     public RenderSpec? RenderSpec { get; init; }
+    
+    // Enhanced fields for new jobs API
+    public DateTime CreatedUtc { get; init; } = DateTime.UtcNow;
+    public DateTime? StartedUtc { get; init; }
+    public DateTime? EndedUtc { get; init; }
+    public List<JobStep> Steps { get; init; } = new();
+    public JobOutput? Output { get; init; }
+    public List<string> Warnings { get; init; } = new();
+    public List<JobStepError> Errors { get; init; } = new();
 }
 
 /// <summary>
@@ -35,7 +44,9 @@ public enum JobStatus
     Running,
     Done,
     Failed,
-    Skipped
+    Skipped,
+    Canceled,
+    Succeeded  // Alias for Done to match SSE contract
 }
 
 /// <summary>

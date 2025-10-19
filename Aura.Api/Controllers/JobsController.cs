@@ -3,6 +3,8 @@ using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
+using System.Text;
+using System.Text.Json;
 
 namespace Aura.Api.Controllers;
 
@@ -345,6 +347,166 @@ public class JobsController : ControllerBase
                 correlationId
             });
         }
+    }
+    
+    /// <summary>
+    /// Stream Server-Sent Events for job progress updates
+    /// </summary>
+    [HttpGet("{jobId}/events")]
+    public async Task GetJobEvents(string jobId, CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        Log.Information("[{CorrelationId}] SSE stream requested for job {JobId}", correlationId, jobId);
+        
+        // Set headers for SSE
+        Response.Headers.Add("Content-Type", "text/event-stream");
+        Response.Headers.Add("Cache-Control", "no-cache");
+        Response.Headers.Add("Connection", "keep-alive");
+        Response.Headers.Add("X-Accel-Buffering", "no"); // Disable nginx buffering
+        
+        try
+        {
+            var job = _jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                await SendSseEvent("error", new { message = "Job not found", jobId, correlationId });
+                return;
+            }
+            
+            // Send initial job status
+            await SendSseEvent("job-status", new { status = job.Status.ToString(), correlationId });
+            
+            // Poll for updates and stream them
+            var lastStatus = job.Status;
+            var lastStage = job.Stage;
+            var lastPercent = job.Percent;
+            
+            while (!ct.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)
+            {
+                await Task.Delay(1000, ct); // Poll every second
+                
+                job = _jobRunner.GetJob(jobId);
+                if (job == null) break;
+                
+                // Send status change events
+                if (job.Status != lastStatus)
+                {
+                    await SendSseEvent("job-status", new { status = job.Status.ToString(), correlationId });
+                    lastStatus = job.Status;
+                }
+                
+                // Send stage change events
+                if (job.Stage != lastStage)
+                {
+                    await SendSseEvent("step-status", new { step = job.Stage, status = "Running", correlationId });
+                    lastStage = job.Stage;
+                }
+                
+                // Send progress updates
+                if (job.Percent != lastPercent)
+                {
+                    await SendSseEvent("step-progress", new { step = job.Stage, progressPct = job.Percent, correlationId });
+                    lastPercent = job.Percent;
+                }
+                
+                await Response.Body.FlushAsync(ct);
+            }
+            
+            // Send final event
+            if (job?.Status == JobStatus.Done || job?.Status == JobStatus.Succeeded)
+            {
+                var outputPath = job.Artifacts.FirstOrDefault(a => a.Type == "video")?.Path ?? "";
+                var sizeBytes = job.Artifacts.FirstOrDefault(a => a.Type == "video")?.SizeBytes ?? 0;
+                
+                await SendSseEvent("job-completed", new 
+                { 
+                    status = "Succeeded", 
+                    output = new { videoPath = outputPath, sizeBytes },
+                    correlationId 
+                });
+            }
+            else if (job?.Status == JobStatus.Failed)
+            {
+                var errors = job.Errors.Any() 
+                    ? job.Errors.ToArray() 
+                    : new[] { new JobStepError { Code = "UnknownError", Message = job.ErrorMessage ?? "Job failed", Remediation = "Check logs for details" } };
+                    
+                await SendSseEvent("job-failed", new 
+                { 
+                    status = "Failed", 
+                    errors,
+                    correlationId 
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected, this is normal
+            Log.Debug("[{CorrelationId}] SSE stream canceled for job {JobId}", correlationId, jobId);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[{CorrelationId}] Error streaming events for job {JobId}", correlationId, jobId);
+            await SendSseEvent("error", new { message = ex.Message, correlationId });
+        }
+    }
+    
+    /// <summary>
+    /// Cancel a running job
+    /// </summary>
+    [HttpPost("{jobId}/cancel")]
+    public IActionResult CancelJob(string jobId)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] Cancel request for job {JobId}", correlationId, jobId);
+            
+            var job = _jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                return NotFound(new
+                {
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Job Not Found",
+                    status = 404,
+                    detail = $"Job {jobId} not found",
+                    correlationId
+                });
+            }
+            
+            // TODO: Implement actual cancellation in JobRunner
+            // For now, just return accepted
+            return Accepted(new
+            {
+                jobId,
+                message = "Job cancellation requested",
+                currentStatus = job.Status,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error canceling job {JobId}", correlationId, jobId);
+            
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Cancel Failed",
+                status = 500,
+                detail = $"Failed to cancel job: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+    
+    private async Task SendSseEvent(string eventType, object data)
+    {
+        var json = JsonSerializer.Serialize(data);
+        var message = $"event: {eventType}\ndata: {json}\n\n";
+        var bytes = Encoding.UTF8.GetBytes(message);
+        await Response.Body.WriteAsync(bytes);
     }
 }
 
