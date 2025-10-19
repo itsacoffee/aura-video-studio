@@ -90,6 +90,7 @@ The smoke test script:
 See [scripts/smoke/README.md](./scripts/smoke/README.md) for detailed usage.
 
 **See detailed documentation:**
+- [PORTABLE_FIRST_RUN.md](./PORTABLE_FIRST_RUN.md) - **🎯 First-time setup guide for portable version**
 - [INSTALL.md](./INSTALL.md) - **Build and installation guide**
 - [LOCAL_PROVIDERS_SETUP.md](./LOCAL_PROVIDERS_SETUP.md) - **How to set up local AI providers (Stable Diffusion, Ollama, FFmpeg)**
 - [PORTABLE.md](./PORTABLE.md) - **User guide for portable version**
