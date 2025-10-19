@@ -21,6 +21,9 @@ public class FfmpegValidationResult
     public string? ValidationOutput { get; set; }
     public string? Reason { get; set; }
     public List<string> AttemptedPaths { get; set; } = new();
+    public bool HasX264 { get; set; }
+    public List<string> Diagnostics { get; set; } = new();
+    public string Source { get; set; } = "Missing"; // Portable, Attached, PATH, Missing
 }
 
 /// <summary>
@@ -146,6 +149,14 @@ public class FfmpegLocator : IFfmpegLocator
                 result.VersionString = ExtractVersionString(validation.output);
                 result.ValidationOutput = validation.output;
                 result.Reason = "Valid FFmpeg binary found";
+                result.HasX264 = CheckX264Support(validation.output);
+                result.Source = DetermineSource(candidate);
+                
+                if (!result.HasX264)
+                {
+                    result.Diagnostics.Add("x264 encoder not detected - video encoding may be limited");
+                }
+                
                 return result;
             }
             else
@@ -228,6 +239,13 @@ public class FfmpegLocator : IFfmpegLocator
             result.VersionString = ExtractVersionString(validation.output);
             result.ValidationOutput = validation.output;
             result.Reason = "Valid FFmpeg binary";
+            result.HasX264 = CheckX264Support(validation.output);
+            result.Source = "Attached";
+            
+            if (!result.HasX264)
+            {
+                result.Diagnostics.Add("x264 encoder not detected - video encoding may be limited");
+            }
         }
         else
         {
@@ -309,6 +327,14 @@ public class FfmpegLocator : IFfmpegLocator
                 result.VersionString = ExtractVersionString(validation.output);
                 result.ValidationOutput = validation.output;
                 result.Reason = "Found on PATH";
+                result.HasX264 = CheckX264Support(validation.output);
+                result.Source = "PATH";
+                
+                if (!result.HasX264)
+                {
+                    result.Diagnostics.Add("x264 encoder not detected - video encoding may be limited");
+                }
+                
                 _logger.LogInformation("FFmpeg found on PATH");
             }
             else
@@ -402,5 +428,37 @@ public class FfmpegLocator : IFfmpegLocator
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Check if FFmpeg output indicates x264 encoder support
+    /// </summary>
+    private bool CheckX264Support(string? output)
+    {
+        if (string.IsNullOrEmpty(output))
+            return false;
+
+        // Look for libx264 in the configuration or encoders list
+        return output.Contains("libx264", StringComparison.OrdinalIgnoreCase) ||
+               output.Contains("--enable-libx264", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Determine source of FFmpeg binary based on path
+    /// </summary>
+    private string DetermineSource(string ffmpegPath)
+    {
+        if (ffmpegPath.Contains(_toolsDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Portable";
+        }
+        else if (ffmpegPath.Contains(_dependenciesDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Attached";
+        }
+        else
+        {
+            return "PATH";
+        }
     }
 }
