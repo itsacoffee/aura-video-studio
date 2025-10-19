@@ -79,6 +79,7 @@ builder.Services.AddCors(options =>
 
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
+builder.Services.AddSingleton<IHardwareDetector>(sp => sp.GetRequiredService<HardwareDetector>());
 builder.Services.AddSingleton<Aura.Core.Hardware.DiagnosticsHelper>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
 

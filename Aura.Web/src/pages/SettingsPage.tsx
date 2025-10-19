@@ -17,6 +17,7 @@ import {
 import { Save24Regular } from '@fluentui/react-icons';
 import type { Profile } from '../types';
 import { LocalEngines } from '../components/Settings/LocalEngines';
+import { ProvidersTable } from '../components/Settings/ProvidersTable';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
 
 const useStyles = makeStyles({
@@ -714,6 +715,14 @@ export function SettingsPage() {
       {activeTab === 'providers' && (
         <>
           <Card className={styles.section}>
+            <Title2>Provider Capabilities</Title2>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              View which providers are available on your system based on hardware, API keys, and OS.
+            </Text>
+            <ProvidersTable />
+          </Card>
+
+          <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
             <Title2>Provider Profiles</Title2>
             <Text>Select a provider profile to configure which services are used</Text>
             <div style={{ marginTop: tokens.spacingVerticalL }}>

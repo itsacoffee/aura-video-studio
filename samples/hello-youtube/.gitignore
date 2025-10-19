@@ -1,0 +1,16 @@
+# Ignore large binary media files
+*.mp4
+*.mp3
+*.wav
+*.mov
+*.avi
+
+# Keep the output directory but ignore its contents
+output/*
+!output/.gitkeep
+
+# Keep asset directories but ignore media files
+assets/broll/*.mp4
+assets/broll/*.mov
+assets/music/*.mp3
+assets/music/*.wav

@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Hardware;
 
-public class HardwareDetector
+public class HardwareDetector : IHardwareDetector
 {
     private readonly ILogger<HardwareDetector> _logger;
 
