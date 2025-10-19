@@ -40,6 +40,8 @@ export interface OnboardingState {
   installItems: Array<{
     id: string;
     name: string;
+    description?: string;
+    defaultPath?: string;
     required: boolean;
     installed: boolean;
     installing: boolean;
@@ -55,9 +57,33 @@ export const initialOnboardingState: OnboardingState = {
   isDetectingHardware: false,
   hardware: null,
   installItems: [
-    { id: 'ffmpeg', name: 'FFmpeg (Video encoding)', required: true, installed: false, installing: false },
-    { id: 'ollama', name: 'Ollama (Local AI)', required: false, installed: false, installing: false },
-    { id: 'stable-diffusion', name: 'Stable Diffusion WebUI', required: false, installed: false, installing: false },
+    { 
+      id: 'ffmpeg', 
+      name: 'FFmpeg (Video encoding)', 
+      description: 'Essential video and audio processing toolkit. Required for all video generation.',
+      defaultPath: '%LOCALAPPDATA%\\Aura\\Tools\\ffmpeg',
+      required: true, 
+      installed: false, 
+      installing: false 
+    },
+    { 
+      id: 'ollama', 
+      name: 'Ollama (Local AI)', 
+      description: 'Run AI models locally for script generation. Privacy-focused alternative to cloud APIs.',
+      defaultPath: '%LOCALAPPDATA%\\Aura\\Tools\\ollama',
+      required: false, 
+      installed: false, 
+      installing: false 
+    },
+    { 
+      id: 'stable-diffusion', 
+      name: 'Stable Diffusion WebUI', 
+      description: 'Generate custom images locally. Requires NVIDIA GPU with 6GB+ VRAM.',
+      defaultPath: '%LOCALAPPDATA%\\Aura\\Tools\\stable-diffusion-webui',
+      required: false, 
+      installed: false, 
+      installing: false 
+    },
   ],
 };
 
@@ -300,8 +326,43 @@ export async function installItemThunk(
   dispatch({ type: 'START_INSTALL', payload: itemId });
 
   try {
-    // Simulate installation (in real app, this would call the download API)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Map itemId to API endpoint
+    let apiEndpoint: string;
+    let requestBody: any;
+    
+    switch (itemId) {
+      case 'ffmpeg':
+        apiEndpoint = 'http://127.0.0.1:5005/api/downloads/ffmpeg/install';
+        requestBody = { mode: 'managed' };
+        break;
+      case 'ollama':
+      case 'stable-diffusion':
+        // For other engines, we'll use the attach or skip for now
+        // These could be implemented in the future with proper download endpoints
+        console.log(`Installation for ${itemId} not yet implemented via API. Please use Download Center.`);
+        dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
+        return;
+      default:
+        throw new Error(`Unknown item: ${itemId}`);
+    }
+
+    // Call the actual download API
+    const response = await fetch(apiEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(errorData.error || `Installation failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Installation failed');
+    }
 
     dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
   } catch (error) {

@@ -393,9 +393,29 @@ export function FirstRunWizard() {
         ))}
       </div>
 
+      <Card style={{ backgroundColor: tokens.colorNeutralBackground3 }}>
+        <Text weight="semibold" style={{ marginBottom: tokens.spacingVerticalS }}>
+          📌 Installation Options
+        </Text>
+        <Text style={{ marginBottom: tokens.spacingVerticalM }}>
+          For each component, you have three options:
+        </Text>
+        <ul style={{ marginLeft: tokens.spacingHorizontalL, marginBottom: 0 }}>
+          <li>
+            <Text><strong>Install:</strong> Automatically download and install to the default location shown above</Text>
+          </li>
+          <li>
+            <Text><strong>Use Existing:</strong> If you already have it installed, point Aura to its location</Text>
+          </li>
+          <li>
+            <Text><strong>Skip:</strong> Skip optional components (you can install them later from the Downloads page)</Text>
+          </li>
+        </ul>
+      </Card>
+
       <Card>
         <Text>
-          💡 Tip: You can always install additional engines later from the Downloads page.
+          💡 Tip: After installation, you can verify everything is working on the next screen.
         </Text>
       </Card>
     </>
