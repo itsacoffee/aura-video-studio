@@ -1,0 +1,79 @@
+{
+  "topic": "Hello YouTube - Aura Video Studio Demo",
+  "audience": "Content creators and video producers",
+  "goal": "Demonstrate Aura Video Studio capabilities",
+  "tone": "Informative",
+  "language": "en-US",
+  "aspect": "Widescreen16x9",
+  "targetDurationMinutes": 0.5,
+  "pacing": "Conversational",
+  "density": "Balanced",
+  "style": "Modern",
+  "useLocalOnly": true,
+  "providerTier": "Free",
+  "scenes": [
+    {
+      "index": 0,
+      "heading": "Introduction",
+      "script": "Welcome to Aura Video Studio!",
+      "startSeconds": 0.0,
+      "durationSeconds": 3.0,
+      "visualKeywords": ["technology", "studio", "welcome"]
+    },
+    {
+      "index": 1,
+      "heading": "Local Providers",
+      "script": "This is a sample video created entirely with local and free providers.",
+      "startSeconds": 3.0,
+      "durationSeconds": 5.0,
+      "visualKeywords": ["computer", "software", "local"]
+    },
+    {
+      "index": 2,
+      "heading": "No API Keys",
+      "script": "No API keys required. No cloud services needed.",
+      "startSeconds": 8.0,
+      "durationSeconds": 4.0,
+      "visualKeywords": ["security", "privacy", "offline"]
+    },
+    {
+      "index": 3,
+      "heading": "Call to Action",
+      "script": "Start creating your own videos today!",
+      "startSeconds": 12.0,
+      "durationSeconds": 3.0,
+      "visualKeywords": ["creative", "video", "production"]
+    }
+  ],
+  "assets": {
+    "broll": [
+      "assets/broll/broll-1.mp4",
+      "assets/broll/broll-2.mp4",
+      "assets/broll/broll-3.mp4"
+    ],
+    "music": "assets/music/background.mp3"
+  },
+  "renderSettings": {
+    "resolution": {
+      "width": 1920,
+      "height": 1080
+    },
+    "fps": 30,
+    "codec": "H264",
+    "container": "mp4",
+    "videoBitrateK": 8000,
+    "audioBitrateK": 192,
+    "qualityLevel": 75,
+    "enableSceneCut": true
+  },
+  "captionsSettings": {
+    "enabled": true,
+    "format": "srt",
+    "burnIn": true,
+    "fontFamily": "Arial",
+    "fontSize": 24,
+    "fontColor": "#FFFFFF",
+    "backgroundColor": "#000000",
+    "backgroundOpacity": 0.7
+  }
+}
