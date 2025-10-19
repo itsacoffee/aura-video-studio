@@ -45,8 +45,8 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorPaletteYellowBackground1,
   },
   issueCardInfo: {
-    borderLeftColor: tokens.colorPaletteBlueBorder2,
-    backgroundColor: tokens.colorPaletteBlueBackground1,
+    borderLeftColor: tokens.colorPaletteBlueBorderActive,
+    backgroundColor: tokens.colorPaletteBlueBackground2,
   },
   issueHeader: {
     display: 'flex',
