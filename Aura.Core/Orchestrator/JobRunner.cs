@@ -151,7 +151,16 @@ public class JobRunner
             if (job != null)
             {
                 var failureDetails = CreateFailureDetails(job, ex);
-                UpdateJob(job, status: JobStatus.Failed, errorMessage: ex.Message, failureDetails: failureDetails);
+                
+                // Add error to logs so it's visible in UI
+                var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] ERROR: {GetFriendlyErrorMessage(ex)}";
+                var updatedLogs = new List<string>(job.Logs) { errorLog };
+                
+                UpdateJob(job, 
+                    status: JobStatus.Failed, 
+                    errorMessage: ex.Message, 
+                    failureDetails: failureDetails,
+                    logs: updatedLogs);
             }
         }
         finally
