@@ -47,6 +47,8 @@ const useStyles = makeStyles({
 export interface InstallItem {
   id: string;
   name: string;
+  description?: string;
+  defaultPath?: string;
   required: boolean;
   installed: boolean;
   installing: boolean;
@@ -99,7 +101,32 @@ export function InstallItemCard({ item, onInstall, onAttachExisting, onSkip }: I
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
             <Text weight="semibold">{item.name}</Text>
             {item.required && <Badge size="small" color="danger">Required</Badge>}
+            {item.installed && <Badge size="small" color="success">Installed</Badge>}
           </div>
+          
+          {item.description && (
+            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
+              {item.description}
+            </Text>
+          )}
+          
+          {item.installing && (
+            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorBrandForeground1 }}>
+              ⏳ Installing... This may take a few minutes.
+            </Text>
+          )}
+          
+          {item.defaultPath && !item.installing && (
+            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
+              📁 Default install location: <code style={{ 
+                backgroundColor: tokens.colorNeutralBackground3, 
+                padding: '2px 6px', 
+                borderRadius: '4px',
+                fontFamily: 'monospace',
+                fontSize: tokens.fontSizeBase200
+              }}>{item.defaultPath}</code>
+            </Text>
+          )}
         </div>
 
         {!item.installed && !item.installing && (
@@ -150,7 +177,7 @@ export function InstallItemCard({ item, onInstall, onAttachExisting, onSkip }: I
                 <Input
                   value={installPath}
                   onChange={(e) => setInstallPath(e.target.value)}
-                  placeholder="e.g., C:\Tools\ffmpeg or /usr/local/bin"
+                  placeholder={item.defaultPath ? `e.g., ${item.defaultPath.replace('%LOCALAPPDATA%', 'C:\\Users\\YourName\\AppData\\Local')}` : "e.g., C:\\Tools\\ffmpeg or /usr/local/bin"}
                 />
               </Field>
 
@@ -158,7 +185,7 @@ export function InstallItemCard({ item, onInstall, onAttachExisting, onSkip }: I
                 <Input
                   value={executablePath}
                   onChange={(e) => setExecutablePath(e.target.value)}
-                  placeholder="e.g., ffmpeg.exe or /usr/local/bin/ffmpeg"
+                  placeholder={`e.g., ${item.id}.exe or ${item.id}`}
                 />
               </Field>
 

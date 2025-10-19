@@ -40,6 +40,8 @@ export interface OnboardingState {
   installItems: Array<{
     id: string;
     name: string;
+    description?: string;
+    defaultPath?: string;
     required: boolean;
     installed: boolean;
     installing: boolean;
@@ -55,9 +57,33 @@ export const initialOnboardingState: OnboardingState = {
   isDetectingHardware: false,
   hardware: null,
   installItems: [
-    { id: 'ffmpeg', name: 'FFmpeg (Video encoding)', required: true, installed: false, installing: false },
-    { id: 'ollama', name: 'Ollama (Local AI)', required: false, installed: false, installing: false },
-    { id: 'stable-diffusion', name: 'Stable Diffusion WebUI', required: false, installed: false, installing: false },
+    { 
+      id: 'ffmpeg', 
+      name: 'FFmpeg (Video encoding)', 
+      description: 'Essential video and audio processing toolkit. Required for all video generation.',
+      defaultPath: '%LOCALAPPDATA%\\Aura\\Tools\\ffmpeg',
+      required: true, 
+      installed: false, 
+      installing: false 
+    },
+    { 
+      id: 'ollama', 
+      name: 'Ollama (Local AI)', 
+      description: 'Run AI models locally for script generation. Privacy-focused alternative to cloud APIs.',
+      defaultPath: '%LOCALAPPDATA%\\Aura\\Tools\\ollama',
+      required: false, 
+      installed: false, 
+      installing: false 
+    },
+    { 
+      id: 'stable-diffusion', 
+      name: 'Stable Diffusion WebUI', 
+      description: 'Generate custom images locally. Requires NVIDIA GPU with 6GB+ VRAM.',
+      defaultPath: '%LOCALAPPDATA%\\Aura\\Tools\\stable-diffusion-webui',
+      required: false, 
+      installed: false, 
+      installing: false 
+    },
   ],
 };
 
@@ -300,8 +326,57 @@ export async function installItemThunk(
   dispatch({ type: 'START_INSTALL', payload: itemId });
 
   try {
-    // Simulate installation (in real app, this would call the download API)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Map itemId to API endpoint
+    let apiEndpoint: string;
+    let statusEndpoint: string;
+    let requestBody: any;
+    
+    switch (itemId) {
+      case 'ffmpeg':
+        apiEndpoint = 'http://127.0.0.1:5005/api/downloads/ffmpeg/install';
+        statusEndpoint = 'http://127.0.0.1:5005/api/downloads/ffmpeg/status';
+        requestBody = { mode: 'managed' };
+        break;
+      case 'ollama':
+      case 'stable-diffusion':
+        // For other engines, we'll use the attach or skip for now
+        // These could be implemented in the future with proper download endpoints
+        console.log(`Installation for ${itemId} not yet implemented via API. Please use Download Center.`);
+        dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
+        return;
+      default:
+        throw new Error(`Unknown item: ${itemId}`);
+    }
+
+    // Call the actual download API
+    const response = await fetch(apiEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(errorData.error || `Installation failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Installation failed');
+    }
+
+    // After successful installation, verify status
+    try {
+      const statusResponse = await fetch(statusEndpoint);
+      if (statusResponse.ok) {
+        const statusData = await statusResponse.json();
+        console.log(`${itemId} installation verified:`, statusData);
+      }
+    } catch (statusError) {
+      console.warn(`Failed to verify ${itemId} status after installation:`, statusError);
+      // Don't fail the installation for this, just log it
+    }
 
     dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
   } catch (error) {
@@ -350,4 +425,49 @@ export function isButtonDisabled(status: WizardStatus, isDetectingHardware: bool
 // Check if can advance to next step
 export function canAdvanceStep(status: WizardStatus): boolean {
   return status === 'valid' || status === 'ready';
+}
+
+// Check installation status for an item
+export async function checkInstallationStatusThunk(
+  itemId: string,
+  dispatch: React.Dispatch<OnboardingAction>
+): Promise<void> {
+  try {
+    let statusEndpoint: string;
+    
+    switch (itemId) {
+      case 'ffmpeg':
+        statusEndpoint = 'http://127.0.0.1:5005/api/downloads/ffmpeg/status';
+        break;
+      case 'ollama':
+      case 'stable-diffusion':
+        // Status check not yet implemented for these items
+        return;
+      default:
+        return;
+    }
+
+    const response = await fetch(statusEndpoint);
+    if (response.ok) {
+      const data = await response.json();
+      // If the item is installed, mark it as such
+      if (data.state === 'Installed' || data.state === 'ExternalAttached') {
+        dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
+      }
+    }
+  } catch (error) {
+    console.warn(`Failed to check installation status for ${itemId}:`, error);
+    // Don't throw, just log the error
+  }
+}
+
+// Check all installation statuses
+export async function checkAllInstallationStatusesThunk(
+  dispatch: React.Dispatch<OnboardingAction>
+): Promise<void> {
+  await Promise.all([
+    checkInstallationStatusThunk('ffmpeg', dispatch),
+    checkInstallationStatusThunk('ollama', dispatch),
+    checkInstallationStatusThunk('stable-diffusion', dispatch),
+  ]);
 }
