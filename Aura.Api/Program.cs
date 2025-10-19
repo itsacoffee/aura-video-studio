@@ -177,6 +177,10 @@ builder.Services.AddSingleton<Aura.Core.Planner.HeuristicRecommendationService>(
 builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
 builder.Services.AddSingleton<Aura.Api.Services.PreflightService>();
 
+// Register health check and startup validation services
+builder.Services.AddSingleton<Aura.Api.Services.HealthCheckService>();
+builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
+
 // Register Provider Warmup Service - warms up providers in background, never crashes startup
 builder.Services.AddHostedService<Aura.Api.HostedServices.ProviderWarmupService>();
 
@@ -345,10 +349,21 @@ builder.Services.AddSingleton<Aura.Core.Artifacts.ArtifactManager>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.JobRunner>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.QuickService>();
 
-// Configure Kestrel to listen on specific port
-builder.WebHost.UseUrls("http://127.0.0.1:5005");
+// Configure Kestrel to listen on specific port with environment variable overrides
+var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL") 
+    ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") 
+    ?? "http://127.0.0.1:5005";
+builder.WebHost.UseUrls(apiUrl);
 
 var app = builder.Build();
+
+// Perform startup validation - fail fast with clear errors
+var startupValidator = app.Services.GetRequiredService<Aura.Api.Services.StartupValidator>();
+if (!startupValidator.Validate())
+{
+    Log.Fatal("Startup validation failed. Application cannot start. See errors above.");
+    Environment.Exit(1);
+}
 
 // Add correlation ID middleware early in the pipeline
 app.UseCorrelationId();
@@ -383,7 +398,27 @@ else
 // API endpoints are grouped under /api prefix
 var apiGroup = app.MapGroup("/api");
 
-// Health check endpoint
+// Health check endpoints
+apiGroup.MapGet("/health/live", (Aura.Api.Services.HealthCheckService healthService) =>
+{
+    var result = healthService.CheckLiveness();
+    return Results.Ok(result);
+})
+.WithName("HealthLive")
+.WithOpenApi();
+
+apiGroup.MapGet("/health/ready", async (Aura.Api.Services.HealthCheckService healthService, CancellationToken ct) =>
+{
+    var result = await healthService.CheckReadinessAsync(ct);
+    
+    // Return 503 Service Unavailable if unhealthy, 200 OK if healthy or degraded
+    var statusCode = result.Status == Aura.Api.Models.HealthStatus.Unhealthy ? 503 : 200;
+    return Results.Json(result, statusCode: statusCode);
+})
+.WithName("HealthReady")
+.WithOpenApi();
+
+// Legacy health check endpoint for backward compatibility
 apiGroup.MapGet("/healthz", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
     .WithName("HealthCheck")
     .WithOpenApi();
