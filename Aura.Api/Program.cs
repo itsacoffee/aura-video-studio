@@ -441,6 +441,97 @@ apiGroup.MapGet("/health/first-run", async (Aura.Api.Services.FirstRunDiagnostic
 .WithName("FirstRunDiagnostics")
 .WithOpenApi();
 
+// Auto-fix endpoint - attempt to automatically resolve common issues
+apiGroup.MapPost("/health/auto-fix", async (
+    [FromBody] Dictionary<string, object>? options,
+    Aura.Api.Services.FirstRunDiagnostics diagnostics,
+    Aura.Core.Dependencies.FfmpegInstaller ffmpegInstaller,
+    CancellationToken ct) =>
+{
+    try
+    {
+        var issueCode = options?.ContainsKey("issueCode") == true 
+            ? options["issueCode"]?.ToString() 
+            : null;
+
+        if (string.IsNullOrEmpty(issueCode))
+        {
+            return Results.BadRequest(new { success = false, message = "Issue code is required" });
+        }
+
+        // Handle FFmpeg installation
+        if (issueCode == "E302-FFMPEG_NOT_FOUND")
+        {
+            Log.Information("Attempting auto-fix for FFmpeg installation");
+            
+            var progress = new Progress<Aura.Core.Downloads.HttpDownloadProgress>(p =>
+            {
+                Log.Information("FFmpeg download progress: {Percent}%", p.PercentComplete);
+            });
+
+            // Determine the best mirror to use based on platform
+            var mirrors = new List<string>();
+            if (OperatingSystem.IsWindows())
+            {
+                mirrors.Add("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip");
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                mirrors.Add("https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz");
+            }
+
+            if (!mirrors.Any())
+            {
+                return Results.Ok(new 
+                { 
+                    success = false, 
+                    message = "Automatic FFmpeg installation is not supported on this platform. Please install manually."
+                });
+            }
+
+            var result = await ffmpegInstaller.InstallFromMirrorsAsync(
+                mirrors.ToArray(),
+                "latest",
+                null,
+                progress,
+                ct);
+
+            if (result.Success)
+            {
+                Log.Information("FFmpeg installed successfully at: {Path}", result.FfmpegPath);
+                return Results.Ok(new 
+                { 
+                    success = true, 
+                    message = "FFmpeg installed successfully",
+                    ffmpegPath = result.FfmpegPath
+                });
+            }
+            else
+            {
+                Log.Error("FFmpeg installation failed: {Error}", result.ErrorMessage);
+                return Results.Ok(new 
+                { 
+                    success = false, 
+                    message = $"FFmpeg installation failed: {result.ErrorMessage}"
+                });
+            }
+        }
+
+        return Results.Ok(new 
+        { 
+            success = false, 
+            message = $"Auto-fix not available for issue: {issueCode}"
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error during auto-fix");
+        return Results.Problem($"Error during auto-fix: {ex.Message}", statusCode: 500);
+    }
+})
+.WithName("AutoFixIssue")
+.WithOpenApi();
+
 // Legacy health check endpoint for backward compatibility
 apiGroup.MapGet("/healthz", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
     .WithName("HealthCheck")
