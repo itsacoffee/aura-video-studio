@@ -141,7 +141,14 @@ public class JobRunner
             var job = GetJob(jobId);
             if (job != null)
             {
-                UpdateJob(job, status: JobStatus.Failed, errorMessage: "Job was cancelled");
+                // Add cancellation message to logs so it's visible in UI
+                var cancelLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Job was cancelled by user";
+                var updatedLogs = new List<string>(job.Logs) { cancelLog };
+                
+                UpdateJob(job, 
+                    status: JobStatus.Failed, 
+                    errorMessage: "Job was cancelled",
+                    logs: updatedLogs);
             }
         }
         catch (Exception ex)
