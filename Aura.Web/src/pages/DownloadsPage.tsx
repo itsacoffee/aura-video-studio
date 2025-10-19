@@ -27,6 +27,7 @@ import {
 } from '@fluentui/react-icons';
 import { EnginesTab } from '../components/Engines/EnginesTab';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
+import { useNotifications } from '../components/Notifications/Toasts';
 
 
 interface DependencyComponent {
@@ -103,6 +104,7 @@ const useStyles = makeStyles({
 
 export function DownloadsPage() {
   const styles = useStyles();
+  const { showSuccessToast, showFailureToast } = useNotifications();
   const [manifest, setManifest] = useState<DependencyComponent[]>([]);
   const [loading, setLoading] = useState(true);
   const [componentStatus, setComponentStatus] = useState<ComponentStatus>({});
@@ -279,11 +281,17 @@ export function DownloadsPage() {
       if (response.ok) {
         await checkComponentStatus(componentName);
       } else {
-        alert('Failed to remove component');
+        showFailureToast({
+          title: 'Remove Failed',
+          message: 'Failed to remove component',
+        });
       }
     } catch (error) {
       console.error(`Error removing ${componentName}:`, error);
-      alert('Network error during removal');
+      showFailureToast({
+        title: 'Network Error',
+        message: 'Network error during removal',
+      });
     }
   };
 
@@ -292,7 +300,10 @@ export function DownloadsPage() {
       const response = await fetch(`/api/downloads/${componentName}/folder`);
       if (response.ok) {
         const data = await response.json();
-        alert(`Component folder: ${data.path}\n\nPlease navigate to this path manually in your file explorer.`);
+        showSuccessToast({
+          title: 'Component Folder',
+          message: `Path: ${data.path}\n\nPlease navigate to this path manually in your file explorer.`,
+        });
       }
     } catch (error) {
       console.error(`Error getting folder for ${componentName}:`, error);
@@ -311,7 +322,10 @@ export function DownloadsPage() {
           '',
           ...data.steps
         ].join('\n');
-        alert(instructionsText);
+        showSuccessToast({
+          title: 'Manual Installation Instructions',
+          message: instructionsText,
+        });
       }
     } catch (error) {
       console.error(`Error getting manual instructions for ${componentName}:`, error);

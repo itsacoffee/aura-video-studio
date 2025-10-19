@@ -26,6 +26,7 @@ import {
   Folder24Regular,
   Link24Regular,
 } from '@fluentui/react-icons';
+import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
   card: {
@@ -75,6 +76,7 @@ interface FFmpegStatus {
 
 export function FFmpegCard() {
   const styles = useStyles();
+  const { showSuccessToast, showFailureToast } = useNotifications();
   const [status, setStatus] = useState<FFmpegStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -117,7 +119,10 @@ export function FFmpegCard() {
 
       if (response.ok) {
         await loadStatus();
-        alert('FFmpeg installed successfully!');
+        showSuccessToast({
+          title: 'FFmpeg Installed',
+          message: 'FFmpeg installed successfully!',
+        });
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Installation failed');
@@ -125,7 +130,10 @@ export function FFmpegCard() {
     } catch (err) {
       console.error('FFmpeg installation failed:', err);
       setError(err instanceof Error ? err.message : 'Installation failed');
-      alert(`Installation failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      showFailureToast({
+        title: 'Installation Failed',
+        message: `Installation failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -143,9 +151,15 @@ export function FFmpegCard() {
         const data = await response.json();
         if (data.found) {
           await loadStatus();
-          alert(`FFmpeg found and registered!\nPath: ${data.ffmpegPath}\nVersion: ${data.versionString}`);
+          showSuccessToast({
+            title: 'FFmpeg Found',
+            message: `FFmpeg found and registered!\nPath: ${data.ffmpegPath}\nVersion: ${data.versionString}`,
+          });
         } else {
-          alert(`FFmpeg not found in standard locations.\n\nAttempted paths:\n${data.attemptedPaths?.join('\n')}\n\nUse "Attach Existing" to specify a custom path.`);
+          showFailureToast({
+            title: 'FFmpeg Not Found',
+            message: `FFmpeg not found in standard locations.\n\nAttempted paths:\n${data.attemptedPaths?.join('\n')}\n\nUse "Attach Existing" to specify a custom path.`,
+          });
         }
       } else {
         throw new Error('Rescan failed');
@@ -160,7 +174,10 @@ export function FFmpegCard() {
 
   const handleAttach = async () => {
     if (!attachPath.trim()) {
-      alert('Please enter a path');
+      showFailureToast({
+        title: 'Path Required',
+        message: 'Please enter a path',
+      });
       return;
     }
 
@@ -178,7 +195,10 @@ export function FFmpegCard() {
       if (response.ok) {
         const data = await response.json();
         await loadStatus();
-        alert(`FFmpeg attached successfully!\nPath: ${data.ffmpegPath}\nVersion: ${data.versionString}`);
+        showSuccessToast({
+          title: 'FFmpeg Attached',
+          message: `FFmpeg attached successfully!\nPath: ${data.ffmpegPath}\nVersion: ${data.versionString}`,
+        });
         setAttachPath('');
       } else {
         const errorData = await response.json();
@@ -187,7 +207,10 @@ export function FFmpegCard() {
     } catch (err) {
       console.error('FFmpeg attach failed:', err);
       setError(err instanceof Error ? err.message : 'Attach failed');
-      alert(`Failed to attach: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      showFailureToast({
+        title: 'Attach Failed',
+        message: `Failed to attach: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -195,7 +218,10 @@ export function FFmpegCard() {
 
   const handleOpenFolder = async () => {
     if (!status?.ffmpegPath) {
-      alert('FFmpeg path not available');
+      showFailureToast({
+        title: 'Path Not Available',
+        message: 'FFmpeg path not available',
+      });
       return;
     }
 
@@ -208,11 +234,17 @@ export function FFmpegCard() {
 
       if (!response.ok) {
         // Fallback: just show the path
-        alert(`FFmpeg location: ${status.ffmpegPath}`);
+        showSuccessToast({
+          title: 'FFmpeg Location',
+          message: `FFmpeg location: ${status.ffmpegPath}`,
+        });
       }
     } catch (err) {
       console.error('Failed to open folder:', err);
-      alert(`FFmpeg location: ${status.ffmpegPath}`);
+      showSuccessToast({
+        title: 'FFmpeg Location',
+        message: `FFmpeg location: ${status.ffmpegPath}`,
+      });
     }
   };
 

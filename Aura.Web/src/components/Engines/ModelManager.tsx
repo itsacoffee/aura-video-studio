@@ -29,6 +29,7 @@ import {
   Warning24Regular,
   Add24Regular,
 } from '@fluentui/react-icons';
+import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
   container: {
@@ -139,6 +140,7 @@ interface ModelManagerProps {
 
 export function ModelManager({ engineId, engineName }: ModelManagerProps) {
   const styles = useStyles();
+  const { showSuccessToast, showFailureToast } = useNotifications();
   const [models, setModels] = useState<InstalledModel[]>([]);
   const [externalFolders, setExternalFolders] = useState<ExternalFolder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -183,7 +185,10 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
 
   const handleAddExternalFolder = async () => {
     if (!addFolderPath.trim()) {
-      alert('Please enter a folder path');
+      showFailureToast({
+        title: 'Path Required',
+        message: 'Please enter a folder path',
+      });
       return;
     }
 
@@ -213,13 +218,19 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
       }
 
       const result = await response.json();
-      alert(`Added external folder! Discovered ${result.modelsDiscovered} models.`);
+      showSuccessToast({
+        title: 'Folder Added',
+        message: `Added external folder! Discovered ${result.modelsDiscovered} models.`,
+      });
       setAddFolderPath('');
       setShowAddFolderDialog(false);
       await loadModels();
       await loadExternalFolders();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to add external folder');
+      showFailureToast({
+        title: 'Add Folder Failed',
+        message: err instanceof Error ? err.message : 'Failed to add external folder',
+      });
     } finally {
       setIsAddingFolder(false);
     }
@@ -247,7 +258,10 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
 
       await loadModels();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to remove model');
+      showFailureToast({
+        title: 'Remove Failed',
+        message: err instanceof Error ? err.message : 'Failed to remove model',
+      });
     }
   };
 
@@ -264,7 +278,10 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
         throw new Error(error.error || 'Failed to open folder');
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to open folder');
+      showFailureToast({
+        title: 'Open Folder Failed',
+        message: err instanceof Error ? err.message : 'Failed to open folder',
+      });
     }
   };
 
@@ -284,10 +301,16 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
       }
 
       const result = await response.json();
-      alert(`Verification: ${result.status}`);
+      showSuccessToast({
+        title: 'Verification Complete',
+        message: `Verification: ${result.status}`,
+      });
       await loadModels();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Verification failed');
+      showFailureToast({
+        title: 'Verification Failed',
+        message: err instanceof Error ? err.message : 'Verification failed',
+      });
     }
   };
 

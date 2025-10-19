@@ -48,6 +48,7 @@ import type { EngineManifestEntry, EngineStatus } from '../../types/engines';
 import { useEnginesStore } from '../../state/engines';
 import { AttachEngineDialog } from './AttachEngineDialog';
 import { ModelManager } from './ModelManager';
+import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
   card: {
@@ -129,6 +130,7 @@ interface EngineCardProps {
 
 export function EngineCard({ engine }: EngineCardProps) {
   const styles = useStyles();
+  const { showSuccessToast, showFailureToast } = useNotifications();
   const [status, setStatus] = useState<EngineStatus | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -266,7 +268,10 @@ export function EngineCard({ engine }: EngineCardProps) {
 
   const handleCustomUrlInstall = async () => {
     if (!customUrl.trim()) {
-      alert('Please enter a valid URL');
+      showFailureToast({
+        title: 'URL Required',
+        message: 'Please enter a valid URL',
+      });
       return;
     }
     setIsProcessing(true);
@@ -288,10 +293,16 @@ export function EngineCard({ engine }: EngineCardProps) {
       }
       
       await loadStatus();
-      alert('Installation from custom URL completed successfully!');
+      showSuccessToast({
+        title: 'Installation Complete',
+        message: 'Installation from custom URL completed successfully!',
+      });
     } catch (error) {
       console.error('Custom URL installation failed:', error);
-      alert(`Installation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showFailureToast({
+        title: 'Installation Failed',
+        message: `Installation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     } finally {
       setIsProcessing(false);
       setCustomUrl('');
@@ -300,7 +311,10 @@ export function EngineCard({ engine }: EngineCardProps) {
 
   const handleLocalFileInstall = async () => {
     if (!localFilePath.trim()) {
-      alert('Please enter a valid file path');
+      showFailureToast({
+        title: 'Path Required',
+        message: 'Please enter a valid file path',
+      });
       return;
     }
     setIsProcessing(true);
@@ -322,10 +336,16 @@ export function EngineCard({ engine }: EngineCardProps) {
       }
       
       await loadStatus();
-      alert('Installation from local file completed successfully!');
+      showSuccessToast({
+        title: 'Installation Complete',
+        message: 'Installation from local file completed successfully!',
+      });
     } catch (error) {
       console.error('Local file installation failed:', error);
-      alert(`Installation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showFailureToast({
+        title: 'Installation Failed',
+        message: `Installation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     } finally {
       setIsProcessing(false);
       setLocalFilePath('');
@@ -360,7 +380,17 @@ export function EngineCard({ engine }: EngineCardProps) {
     setIsProcessing(true);
     try {
       const result = await verifyEngine(engine.id);
-      alert(result.isValid ? 'Verification passed!' : `Verification failed: ${result.issues.join(', ')}`);
+      if (result.isValid) {
+        showSuccessToast({
+          title: 'Verification Passed',
+          message: 'Verification passed!',
+        });
+      } else {
+        showFailureToast({
+          title: 'Verification Failed',
+          message: `Verification failed: ${result.issues.join(', ')}`,
+        });
+      }
     } catch (error) {
       console.error('Verification failed:', error);
     } finally {
@@ -417,9 +447,15 @@ export function EngineCard({ engine }: EngineCardProps) {
       console.error('Failed to open folder:', error);
       // Fallback: show the path
       if (status?.installPath || engine.installPath) {
-        alert(`Install path: ${status?.installPath || engine.installPath}`);
+        showSuccessToast({
+          title: 'Install Path',
+          message: `Install path: ${status?.installPath || engine.installPath}`,
+        });
       } else {
-        alert('Install path not available');
+        showFailureToast({
+          title: 'Path Not Available',
+          message: 'Install path not available',
+        });
       }
     }
   };
@@ -447,10 +483,16 @@ export function EngineCard({ engine }: EngineCardProps) {
     try {
       await repairEngine(engine.id);
       await loadStatus();
-      alert('Repair completed successfully!');
+      showSuccessToast({
+        title: 'Repair Complete',
+        message: 'Repair completed successfully!',
+      });
     } catch (error) {
       console.error('Repair failed:', error);
-      alert(`Repair failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showFailureToast({
+        title: 'Repair Failed',
+        message: `Repair failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -557,7 +599,10 @@ export function EngineCard({ engine }: EngineCardProps) {
                         appearance="secondary"
                         onClick={() => {
                           navigator.clipboard.writeText(resolvedUrl);
-                          alert('URL copied to clipboard!');
+                          showSuccessToast({
+                            title: 'Copied',
+                            message: 'URL copied to clipboard!',
+                          });
                         }}
                       >
                         Copy

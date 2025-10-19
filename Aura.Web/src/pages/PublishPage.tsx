@@ -10,6 +10,7 @@ import {
 } from '@fluentui/react-components';
 import { Share24Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
+import { useNotifications } from '../components/Notifications/Toasts';
 
 const useStyles = makeStyles({
   container: {
@@ -43,6 +44,7 @@ const useStyles = makeStyles({
 
 export function PublishPage() {
   const styles = useStyles();
+  const { showFailureToast } = useNotifications();
   const [metadata, setMetadata] = useState({
     title: '',
     description: '',
@@ -50,7 +52,10 @@ export function PublishPage() {
   });
 
   const handlePublish = () => {
-    alert('YouTube publishing requires OAuth setup. Configure OAuth credentials in Settings to enable direct publishing.');
+    showFailureToast({
+      title: 'OAuth Setup Required',
+      message: 'YouTube publishing requires OAuth setup. Configure OAuth credentials in Settings to enable direct publishing.',
+    });
   };
 
   return (

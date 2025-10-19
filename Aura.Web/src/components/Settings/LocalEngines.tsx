@@ -31,6 +31,7 @@ import {
   Warning20Regular,
 } from '@fluentui/react-icons';
 import { useEnginesStore } from '../../state/engines';
+import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
   container: {
@@ -135,6 +136,7 @@ const LOCAL_ENGINES: LocalEngineConfig[] = [
 
 export function LocalEngines() {
   const styles = useStyles();
+  const { showSuccessToast, showFailureToast } = useNotifications();
   const {
     engineStatuses,
     fetchEngines,
@@ -180,14 +182,23 @@ export function LocalEngines() {
       });
 
       if (response.ok) {
-        alert('Engine preferences saved successfully');
+        showSuccessToast({
+          title: 'Preferences Saved',
+          message: 'Engine preferences saved successfully',
+        });
         setHasChanges(false);
       } else {
-        alert('Failed to save preferences');
+        showFailureToast({
+          title: 'Save Failed',
+          message: 'Failed to save preferences',
+        });
       }
     } catch (error) {
       console.error('Failed to save preferences:', error);
-      alert('Failed to save preferences');
+      showFailureToast({
+        title: 'Save Failed',
+        message: 'Failed to save preferences',
+      });
     }
   };
 
@@ -198,7 +209,10 @@ export function LocalEngines() {
       await fetchEngineStatus(engineId);
     } catch (error) {
       console.error(`Failed to start ${engineId}:`, error);
-      alert(`Failed to start engine. Check console for details.`);
+      showFailureToast({
+        title: 'Engine Start Failed',
+        message: `Failed to start engine. Check console for details.`,
+      });
     }
   };
 
@@ -214,7 +228,10 @@ export function LocalEngines() {
   const handleValidateEngine = async (engineId: string) => {
     try {
       await fetchEngineStatus(engineId);
-      alert('Engine status refreshed');
+      showSuccessToast({
+        title: 'Status Refreshed',
+        message: 'Engine status refreshed',
+      });
     } catch (error) {
       console.error(`Failed to validate ${engineId}:`, error);
     }
@@ -225,9 +242,15 @@ export function LocalEngines() {
     if (status?.installedVersion) {
       // In a real application, this would open the folder in file explorer
       // For web app, we can just show the path
-      alert(`Engine is installed. See Downloads page for management.`);
+      showSuccessToast({
+        title: 'Engine Installed',
+        message: `Engine is installed. See Downloads page for management.`,
+      });
     } else {
-      alert('Engine is not installed yet. Install from the Downloads page.');
+      showFailureToast({
+        title: 'Engine Not Installed',
+        message: 'Engine is not installed yet. Install from the Downloads page.',
+      });
     }
   };
 
@@ -239,11 +262,17 @@ export function LocalEngines() {
         setDiagnostics(data);
         setShowDiagnostics(true);
       } else {
-        alert('Failed to fetch diagnostics');
+        showFailureToast({
+          title: 'Diagnostics Failed',
+          message: 'Failed to fetch diagnostics',
+        });
       }
     } catch (error) {
       console.error('Failed to fetch diagnostics:', error);
-      alert('Failed to fetch diagnostics');
+      showFailureToast({
+        title: 'Diagnostics Failed',
+        message: 'Failed to fetch diagnostics',
+      });
     }
   };
 
@@ -256,11 +285,17 @@ export function LocalEngines() {
         setSelectedEngineForLogs(engineId);
         setShowLogs(true);
       } else {
-        alert('Failed to fetch logs');
+        showFailureToast({
+          title: 'Logs Failed',
+          message: 'Failed to fetch logs',
+        });
       }
     } catch (error) {
       console.error('Failed to fetch logs:', error);
-      alert('Failed to fetch logs');
+      showFailureToast({
+        title: 'Logs Failed',
+        message: 'Failed to fetch logs',
+      });
     }
   };
 
