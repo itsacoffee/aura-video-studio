@@ -102,7 +102,7 @@ public static class SafeFileWriter
     {
         await WriteFileAsync(finalPath, async stream =>
         {
-            using var writer = new StreamWriter(stream);
+            using var writer = new StreamWriter(stream, leaveOpen: true);
             await writer.WriteAsync(text);
             await writer.FlushAsync();
         }, ct);
