@@ -240,7 +240,59 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for production setup instructions.
 
 ## Getting Help
 
-- **Documentation:** [docs/](./docs/)
+### If Generate Stalls or Shows No Progress
+
+If clicking "Generate" doesn't show any visible progress or errors:
+
+1. **Open the Render Status Drawer**
+   - The drawer should open automatically when you start a job
+   - If not, check the browser console for errors
+   - Look for the drawer on the right side of the screen
+
+2. **Run System Check**
+   - Go to Settings → System → Run Check
+   - This validates FFmpeg, disk space, and other dependencies
+   - Fix any issues highlighted in red
+
+3. **Copy the Correlation ID**
+   - Every job has a correlation ID shown in the drawer header
+   - Copy it for troubleshooting: `Job abc12345`
+   - Search logs: `grep "abc12345" AuraData/logs/*.log`
+
+4. **Try the Sample Preset**
+   - Click "Try Sample" in the UI
+   - This uses only local providers and bundled assets
+   - Must succeed on clean machines with only FFmpeg
+   - If this fails, check FFmpeg installation
+
+5. **Check the Logs**
+   - View `AuraData/logs/aura-api-*.log` for errors
+   - Look for entries with your correlation ID
+   - Common issues:
+     - FFmpeg not found
+     - Missing API keys
+     - Insufficient disk space
+     - Output directory not writable
+
+6. **View Technical Details**
+   - In the Render Status Drawer, expand "Technical Details" for failed steps
+   - This shows FFmpeg stderr and full error context
+   - Click "Copy" to save for support requests
+
+### Common Issues and Fixes
+
+| Issue | Solution |
+|-------|----------|
+| FFmpeg not found | Install FFmpeg (see step 2 above) |
+| Missing API key | Add key in Settings → Providers |
+| No disk space | Free up at least 5GB |
+| Output directory error | Check permissions in Settings → Output |
+| GPU encoding fails | Switch to software encoding (H.264) |
+
+### Documentation
+
+- **Jobs API:** [docs/jobs.md](./docs/jobs.md)
+- **Error Codes:** [docs/errors.md](./docs/errors.md)
 - **Issues:** https://github.com/Coffee285/aura-video-studio/issues
 - **Logs:** Check `AuraData/logs/aura-api-*.log` for errors
 
