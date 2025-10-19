@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { EngineManifestEntry, EngineStatus, EngineInstance, AttachEngineRequest, ReconfigureEngineRequest } from '../types/engines';
+import { apiUrl } from '../config/api';
 
 interface EnginesState {
   engines: EngineManifestEntry[];
@@ -36,7 +37,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
   fetchEngines: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/list');
+      const response = await fetch(apiUrl('/api/engines/list'));
       if (!response.ok) {
         throw new Error(`Failed to fetch engines: ${response.statusText}`);
       }
@@ -52,7 +53,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
 
   fetchEngineStatus: async (engineId: string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:5005/api/engines/status?engineId=${engineId}`);
+      const response = await fetch(apiUrl(`/api/engines/status?engineId=${engineId}`));
       if (!response.ok) {
         throw new Error(`Failed to fetch status: ${response.statusText}`);
       }
@@ -85,7 +86,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
   installEngine: async (engineId: string, version?: string, port?: number) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/install', {
+      const response = await fetch(apiUrl('/api/engines/install'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId, version, port }),
@@ -110,7 +111,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
 
   verifyEngine: async (engineId: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/verify', {
+      const response = await fetch(apiUrl('/api/engines/verify'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
@@ -132,7 +133,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
   repairEngine: async (engineId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/repair', {
+      const response = await fetch(apiUrl('/api/engines/repair'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
@@ -158,7 +159,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
   removeEngine: async (engineId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/remove', {
+      const response = await fetch(apiUrl('/api/engines/remove'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
@@ -185,7 +186,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
   startEngine: async (engineId: string, port?: number, args?: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/start', {
+      const response = await fetch(apiUrl('/api/engines/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId, port, args }),
@@ -210,7 +211,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
   stopEngine: async (engineId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/stop', {
+      const response = await fetch(apiUrl('/api/engines/stop'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
@@ -238,7 +239,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
 
   getDiagnostics: async (engineId: string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:5005/api/engines/diagnostics/engine?engineId=${engineId}`);
+      const response = await fetch(apiUrl(`/api/engines/diagnostics/engine?engineId=${engineId}`));
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -255,7 +256,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
 
   fetchInstances: async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/instances');
+      const response = await fetch(apiUrl('/api/engines/instances'));
       if (!response.ok) {
         throw new Error(`Failed to fetch instances: ${response.statusText}`);
       }
@@ -270,7 +271,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
   attachEngine: async (request: AttachEngineRequest) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/attach', {
+      const response = await fetch(apiUrl('/api/engines/attach'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
@@ -295,7 +296,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
   reconfigureEngine: async (request: ReconfigureEngineRequest) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/reconfigure', {
+      const response = await fetch(apiUrl('/api/engines/reconfigure'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
@@ -319,7 +320,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
 
   openFolder: async (engineId: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/open-folder', {
+      const response = await fetch(apiUrl('/api/engines/open-folder'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
@@ -337,7 +338,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
 
   openWebUI: async (engineId: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/open-webui', {
+      const response = await fetch(apiUrl('/api/engines/open-webui'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -175,7 +176,7 @@ export function LocalEngines() {
 
   const saveEnginePreferences = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/preferences', {
+      const response = await fetch(apiUrl('/api/engines/preferences'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(engineConfigs),
@@ -256,7 +257,7 @@ export function LocalEngines() {
 
   const handleRunDiagnostics = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/diagnostics');
+      const response = await fetch(apiUrl('/api/engines/diagnostics'))
       if (response.ok) {
         const data = await response.json();
         setDiagnostics(data);
@@ -278,7 +279,7 @@ export function LocalEngines() {
 
   const handleViewLogs = async (engineId: string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:5005/api/engines/logs?engineId=${engineId}`);
+      const response = await fetch(apiUrl(`/api/engines/logs?engineId=${engineId}`));
       if (response.ok) {
         const data = await response.json();
         setLogs(data.logs || 'No logs available');

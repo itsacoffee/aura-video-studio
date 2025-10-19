@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiUrl } from '../../../config/api';
 import {
   Dialog,
   DialogTrigger,

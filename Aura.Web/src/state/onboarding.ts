@@ -1,6 +1,7 @@
 // Onboarding state management with state machine for First-Run Wizard
 
 import type { PreflightReport, StageCheck } from './providers';
+import { apiUrl } from '../config/api';
 
 /**
  * Wizard validation status - deterministic state machine
@@ -333,8 +334,8 @@ export async function installItemThunk(
     
     switch (itemId) {
       case 'ffmpeg':
-        apiEndpoint = 'http://127.0.0.1:5005/api/downloads/ffmpeg/install';
-        statusEndpoint = 'http://127.0.0.1:5005/api/downloads/ffmpeg/status';
+        apiEndpoint = apiUrl('/api/downloads/ffmpeg/install');
+        statusEndpoint = apiUrl('/api/downloads/ffmpeg/status');
         requestBody = { mode: 'managed' };
         break;
       case 'ollama':
@@ -437,7 +438,7 @@ export async function checkInstallationStatusThunk(
     
     switch (itemId) {
       case 'ffmpeg':
-        statusEndpoint = 'http://127.0.0.1:5005/api/downloads/ffmpeg/status';
+        statusEndpoint = apiUrl('/api/downloads/ffmpeg/status');
         break;
       case 'ollama':
       case 'stable-diffusion':
