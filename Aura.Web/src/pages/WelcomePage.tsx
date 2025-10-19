@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -82,8 +83,8 @@ export function WelcomePage() {
     }
 
     Promise.all([
-      fetch('/api/healthz').then(res => res.json()),
-      fetch('/api/capabilities').then(res => res.json()),
+      fetch(apiUrl('/api/healthz')).then(res => res.json()),
+      fetch(apiUrl('/api/capabilities')).then(res => res.json()),
     ])
       .then(([healthData, capData]) => {
         setHealth(healthData);

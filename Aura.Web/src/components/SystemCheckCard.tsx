@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import {
   Card,
   CardHeader,
@@ -104,7 +105,7 @@ export function SystemCheckCard({
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/health/ready');
+      const response = await fetch(apiUrl('/api/health/ready'));
       const data = await response.json();
 
       setHealthStatus(data);

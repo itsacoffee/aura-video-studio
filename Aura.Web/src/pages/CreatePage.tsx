@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -152,7 +153,7 @@ export function CreatePage() {
 
   const handleApplySafeDefaults = async () => {
     try {
-      const response = await fetch('/api/preflight/safe-defaults');
+      const response = await fetch(apiUrl('/api/preflight/safe-defaults'));
       
       if (response.ok) {
         // Apply safe defaults
