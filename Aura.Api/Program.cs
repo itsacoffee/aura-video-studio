@@ -181,6 +181,7 @@ builder.Services.AddSingleton<Aura.Api.Services.PreflightService>();
 // Register health check and startup validation services
 builder.Services.AddSingleton<Aura.Api.Services.HealthCheckService>();
 builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
+builder.Services.AddSingleton<Aura.Api.Services.FirstRunDiagnostics>();
 
 // Register Provider Warmup Service - warms up providers in background, never crashes startup
 builder.Services.AddHostedService<Aura.Api.HostedServices.ProviderWarmupService>();
@@ -358,12 +359,16 @@ builder.WebHost.UseUrls(apiUrl);
 
 var app = builder.Build();
 
-// Perform startup validation - fail fast with clear errors
+// Perform startup validation - warn on non-critical issues but continue
 var startupValidator = app.Services.GetRequiredService<Aura.Api.Services.StartupValidator>();
 if (!startupValidator.Validate())
 {
-    Log.Fatal("Startup validation failed. Application cannot start. See errors above.");
-    Environment.Exit(1);
+    Log.Warning("Startup validation detected some issues. Application will attempt to start anyway.");
+    Log.Warning("If you experience problems, please review the errors above and check:");
+    Log.Warning("  - File system permissions");
+    Log.Warning("  - Antivirus/firewall settings");
+    Log.Warning("  - Available disk space");
+    // Don't exit - let the application start and users can fix issues via the UI
 }
 
 // Add correlation ID middleware early in the pipeline
@@ -417,6 +422,114 @@ apiGroup.MapGet("/health/ready", async (Aura.Api.Services.HealthCheckService hea
     return Results.Json(result, statusCode: statusCode);
 })
 .WithName("HealthReady")
+.WithOpenApi();
+
+// First-run diagnostics endpoint - comprehensive system check with actionable guidance
+apiGroup.MapGet("/health/first-run", async (Aura.Api.Services.FirstRunDiagnostics diagnostics, CancellationToken ct) =>
+{
+    try
+    {
+        var result = await diagnostics.RunDiagnosticsAsync(ct);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error running first-run diagnostics");
+        return Results.Problem("Error running diagnostics", statusCode: 500);
+    }
+})
+.WithName("FirstRunDiagnostics")
+.WithOpenApi();
+
+// Auto-fix endpoint - attempt to automatically resolve common issues
+apiGroup.MapPost("/health/auto-fix", async (
+    [FromBody] Dictionary<string, object>? options,
+    Aura.Api.Services.FirstRunDiagnostics diagnostics,
+    Aura.Core.Dependencies.FfmpegInstaller ffmpegInstaller,
+    CancellationToken ct) =>
+{
+    try
+    {
+        var issueCode = options?.ContainsKey("issueCode") == true 
+            ? options["issueCode"]?.ToString() 
+            : null;
+
+        if (string.IsNullOrEmpty(issueCode))
+        {
+            return Results.BadRequest(new { success = false, message = "Issue code is required" });
+        }
+
+        // Handle FFmpeg installation
+        if (issueCode == "E302-FFMPEG_NOT_FOUND")
+        {
+            Log.Information("Attempting auto-fix for FFmpeg installation");
+            
+            var progress = new Progress<Aura.Core.Downloads.HttpDownloadProgress>(p =>
+            {
+                Log.Information("FFmpeg download progress: {Percent}%", p.PercentComplete);
+            });
+
+            // Determine the best mirror to use based on platform
+            var mirrors = new List<string>();
+            if (OperatingSystem.IsWindows())
+            {
+                mirrors.Add("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip");
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                mirrors.Add("https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz");
+            }
+
+            if (!mirrors.Any())
+            {
+                return Results.Ok(new 
+                { 
+                    success = false, 
+                    message = "Automatic FFmpeg installation is not supported on this platform. Please install manually."
+                });
+            }
+
+            var result = await ffmpegInstaller.InstallFromMirrorsAsync(
+                mirrors.ToArray(),
+                "latest",
+                null,
+                progress,
+                ct);
+
+            if (result.Success)
+            {
+                Log.Information("FFmpeg installed successfully at: {Path}", result.FfmpegPath);
+                return Results.Ok(new 
+                { 
+                    success = true, 
+                    message = "FFmpeg installed successfully",
+                    ffmpegPath = result.FfmpegPath
+                });
+            }
+            else
+            {
+                Log.Error("FFmpeg installation failed: {Error}", result.ErrorMessage);
+                return Results.Ok(new 
+                { 
+                    success = false, 
+                    message = $"FFmpeg installation failed: {result.ErrorMessage}"
+                });
+            }
+        }
+
+        return Results.Ok(new 
+        { 
+            success = false, 
+            message = $"Auto-fix not available for issue: {issueCode}"
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error during auto-fix");
+        return Results.Problem($"Error during auto-fix: {ex.Message}", statusCode: 500);
+    }
+})
+.WithName("AutoFixIssue")
 .WithOpenApi();
 
 // Legacy health check endpoint for backward compatibility

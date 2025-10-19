@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { Play24Regular, Settings24Regular } from '@fluentui/react-icons';
 import type { HardwareCapabilities } from '../types';
 import { SystemCheckCard } from '../components/SystemCheckCard';
+import { FirstRunDiagnostics } from '../components/FirstRunDiagnostics';
 
 const useStyles = makeStyles({
   container: {
@@ -97,6 +98,15 @@ export function WelcomePage() {
 
   return (
     <div className={styles.container}>
+      {/* First-Run Diagnostics */}
+      <FirstRunDiagnostics 
+        autoRun={true}
+        onNeedsSetup={() => {
+          // Optionally redirect to onboarding if critical issues found
+          console.log('System needs setup');
+        }}
+      />
+
       {/* System Health Check */}
       <SystemCheckCard autoRetry={true} retryInterval={30000} />
 
