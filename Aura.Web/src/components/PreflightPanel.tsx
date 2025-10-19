@@ -20,6 +20,7 @@ import {
 } from '@fluentui/react-icons';
 import type { PreflightReport, StageCheck, CheckStatus, FixAction } from '../state/providers';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from './Notifications/Toasts';
 
 const useStyles = makeStyles({
   container: {
@@ -85,6 +86,7 @@ interface PreflightPanelProps {
 export function PreflightPanel({ profile, report, isRunning, onRunPreflight, onApplySafeDefaults }: PreflightPanelProps) {
   const styles = useStyles();
   const navigate = useNavigate();
+  const { showFailureToast } = useNotifications();
 
   const getStatusIcon = (status: CheckStatus) => {
     switch (status) {
@@ -149,7 +151,10 @@ export function PreflightPanel({ profile, report, isRunning, onRunPreflight, onA
         break;
       case 'Start':
         // For now, just show a message - actual start requires backend support
-        alert(`Please start ${action.parameter} manually. Check the Downloads page for instructions.`);
+        showFailureToast({
+          title: 'Manual Start Required',
+          message: `Please start ${action.parameter} manually. Check the Downloads page for instructions.`,
+        });
         break;
     }
   };

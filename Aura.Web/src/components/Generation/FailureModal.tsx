@@ -22,6 +22,7 @@ import {
 } from '@fluentui/react-icons';
 import { JobFailure } from '../../state/jobs';
 import { openLogsFolder } from '../../utils/apiErrorHandler';
+import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
   dialogContent: {
@@ -73,6 +74,7 @@ interface FailureModalProps {
 
 export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureModalProps) {
   const styles = useStyles();
+  const { showSuccessToast, showFailureToast } = useNotifications();
   const [copied, setCopied] = useState(false);
   const [repairing, setRepairing] = useState(false);
 
@@ -106,13 +108,22 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
       });
 
       if (response.ok) {
-        alert('FFmpeg repair initiated. Please wait for it to complete.');
+        showSuccessToast({
+          title: 'FFmpeg Repair Started',
+          message: 'FFmpeg repair initiated. Please wait for it to complete.',
+        });
       } else {
-        alert('Failed to start FFmpeg repair. Please try manually from the Dependencies page.');
+        showFailureToast({
+          title: 'Repair Failed',
+          message: 'Failed to start FFmpeg repair. Please try manually from the Dependencies page.',
+        });
       }
     } catch (error) {
       console.error('Error repairing FFmpeg:', error);
-      alert('Error initiating FFmpeg repair.');
+      showFailureToast({
+        title: 'Repair Error',
+        message: 'Error initiating FFmpeg repair.',
+      });
     } finally {
       setRepairing(false);
     }

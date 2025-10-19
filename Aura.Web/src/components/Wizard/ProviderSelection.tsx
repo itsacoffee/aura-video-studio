@@ -22,6 +22,7 @@ import {
   UploadProviders,
 } from '../../state/providers';
 import { useEnginesStore } from '../../state/engines';
+import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
   section: {
@@ -59,6 +60,7 @@ interface ProviderSelectionProps {
 
 export function ProviderSelection({ selection, onSelectionChange }: ProviderSelectionProps) {
   const styles = useStyles();
+  const { showFailureToast } = useNotifications();
   const { engineStatuses, fetchEngines, fetchEngineStatus, installEngine, isLoading } = useEnginesStore();
   const [installing, setInstalling] = useState<string | null>(null);
 
@@ -108,7 +110,10 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
       // Optionally trigger preflight revalidation here
     } catch (error) {
       console.error(`Failed to install ${engineId}:`, error);
-      alert(`Failed to install ${providerValue}. Check console for details.`);
+      showFailureToast({
+        title: 'Installation Failed',
+        message: `Failed to install ${providerValue}. Check console for details.`,
+      });
     } finally {
       setInstalling(null);
     }

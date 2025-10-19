@@ -8,6 +8,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { Folder24Regular, Globe24Regular, Copy24Regular } from '@fluentui/react-icons';
+import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
   container: {
@@ -57,6 +58,7 @@ interface EngineInfo {
 
 export function FileLocationsSummary() {
   const styles = useStyles();
+  const { showFailureToast } = useNotifications();
   const [engines, setEngines] = useState<EngineInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -100,7 +102,10 @@ export function FileLocationsSummary() {
       }
     } catch (error) {
       console.error('Failed to open folder:', error);
-      alert('Failed to open folder. Please navigate manually to the path shown above.');
+      showFailureToast({
+        title: 'Cannot Open Folder',
+        message: 'Failed to open folder. Please navigate manually to the path shown above.',
+      });
     }
   };
 
