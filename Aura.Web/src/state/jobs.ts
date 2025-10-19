@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { apiUrl } from '../config/api';
 
 export interface Job {
   id: string;
@@ -144,7 +145,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   listJobs: async () => {
     set({ loading: true });
     try {
-      const response = await fetch('/api/jobs');
+      const response = await fetch(apiUrl('/api/jobs'));
       if (!response.ok) {
         throw new Error('Failed to list jobs');
       }

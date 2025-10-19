@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -129,7 +130,7 @@ export function SettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('/api/settings/load');
+      const response = await fetch(apiUrl('/api/settings/load'));
       if (response.ok) {
         const data = await response.json();
         setSettings(data);
@@ -144,7 +145,7 @@ export function SettingsPage() {
 
   const fetchProfiles = async () => {
     try {
-      const response = await fetch('/api/profiles/list');
+      const response = await fetch(apiUrl('/api/profiles/list'));
       if (response.ok) {
         const data = await response.json();
         setProfiles(data.profiles || []);
@@ -156,7 +157,7 @@ export function SettingsPage() {
 
   const fetchApiKeys = async () => {
     try {
-      const response = await fetch('/api/apikeys/load');
+      const response = await fetch(apiUrl('/api/apikeys/load'));
       if (response.ok) {
         const data = await response.json();
         setApiKeys({
@@ -247,7 +248,7 @@ export function SettingsPage() {
 
   const fetchProviderPaths = async () => {
     try {
-      const response = await fetch('/api/providers/paths/load');
+      const response = await fetch(apiUrl('/api/providers/paths/load'));
       if (response.ok) {
         const data = await response.json();
         setProviderPaths({
@@ -515,7 +516,7 @@ export function SettingsPage() {
 
   const fetchPortableModeSettings = async () => {
     try {
-      const response = await fetch('/api/settings/portable');
+      const response = await fetch(apiUrl('/api/settings/portable'));
       if (response.ok) {
         const data = await response.json();
         setPortableRootPath(data.portableRootPath || '');

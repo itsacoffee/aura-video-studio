@@ -26,6 +26,7 @@ import {
   Folder24Regular,
   Link24Regular,
 } from '@fluentui/react-icons';
+import { apiUrl } from '../../config/api';
 import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
@@ -92,7 +93,7 @@ export function FFmpegCard() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/downloads/ffmpeg/status');
+      const response = await fetch(apiUrl('/api/downloads/ffmpeg/status'));
       if (response.ok) {
         const data = await response.json();
         setStatus(data);
@@ -111,7 +112,7 @@ export function FFmpegCard() {
     setIsProcessing(true);
     setError(null);
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/downloads/ffmpeg/install', {
+      const response = await fetch(apiUrl('/api/downloads/ffmpeg/install'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'managed' }),
@@ -143,7 +144,7 @@ export function FFmpegCard() {
     setIsProcessing(true);
     setError(null);
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/downloads/ffmpeg/rescan', {
+      const response = await fetch(apiUrl('/api/downloads/ffmpeg/rescan'), {
         method: 'POST',
       });
 
@@ -186,7 +187,7 @@ export function FFmpegCard() {
     setError(null);
 
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/downloads/ffmpeg/attach', {
+      const response = await fetch(apiUrl('/api/downloads/ffmpeg/attach'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: attachPath.trim() }),
@@ -226,7 +227,7 @@ export function FFmpegCard() {
     }
 
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/open-folder', {
+      const response = await fetch(apiUrl('/api/engines/open-folder'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId: 'ffmpeg' }),

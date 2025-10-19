@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -82,7 +83,7 @@ export function RescanPanel() {
     setError(null);
 
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/dependencies/rescan');
+      const response = await fetch(apiUrl('/api/dependencies/rescan'))
       
       if (response.ok) {
         const data = await response.json();

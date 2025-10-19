@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -120,7 +121,7 @@ export function DownloadsPage() {
 
   const fetchManifest = async () => {
     try {
-      const response = await fetch('/api/downloads/manifest');
+      const response = await fetch(apiUrl('/api/downloads/manifest'));
       if (response.ok) {
         const data = await response.json();
         setManifest(data.components || []);

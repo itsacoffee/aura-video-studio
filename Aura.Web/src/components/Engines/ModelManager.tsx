@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -158,7 +159,7 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://127.0.0.1:5005/api/models/list?engineId=${engineId}`);
+      const response = await fetch(apiUrl(`/api/models/list?engineId=${engineId}`));
       if (!response.ok) {
         throw new Error('Failed to load models');
       }
@@ -173,7 +174,7 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
 
   const loadExternalFolders = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/models/external-folders');
+      const response = await fetch(apiUrl('/api/models/external-folders'))
       if (response.ok) {
         const data = await response.json();
         setExternalFolders(data.folders || []);
@@ -202,7 +203,7 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
         kind = 'MIMIC3_VOICE';
       }
 
-      const response = await fetch('http://127.0.0.1:5005/api/models/add-external', {
+      const response = await fetch(apiUrl('/api/models/add-external'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -242,7 +243,7 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
     }
 
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/models/remove', {
+      const response = await fetch(apiUrl('/api/models/remove'), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -267,7 +268,7 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
 
   const handleOpenFolder = async (filePath: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/models/open-folder', {
+      const response = await fetch(apiUrl('/api/models/open-folder'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filePath }),
@@ -287,7 +288,7 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
 
   const handleVerifyModel = async (model: InstalledModel) => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/models/verify', {
+      const response = await fetch(apiUrl('/api/models/verify'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

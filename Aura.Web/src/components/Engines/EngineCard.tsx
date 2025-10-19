@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 import {
   Card,
   CardHeader,
@@ -169,7 +170,7 @@ export function EngineCard({ engine }: EngineCardProps) {
     }
     setIsLoadingUrl(true);
     try {
-      const response = await fetch(`http://127.0.0.1:5005/api/engines/resolve-url?engineId=${engine.id}`);
+      const response = await fetch(apiUrl(`/api/engines/resolve-url?engineId=${engine.id}`));
       if (response.ok) {
         const data = await response.json();
         setResolvedUrl(data.url);
@@ -214,7 +215,7 @@ export function EngineCard({ engine }: EngineCardProps) {
     } catch (error) {
       // If CORS fails, try a simple proxy check via backend
       try {
-        const response = await fetch(`http://127.0.0.1:5005/api/engines/verify-url`, {
+        const response = await fetch(apiUrl(`/api/engines/verify-url`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: resolvedUrl }),
@@ -244,7 +245,7 @@ export function EngineCard({ engine }: EngineCardProps) {
   const loadStatus = async () => {
     try {
       await fetchEngineStatus(engine.id);
-      const response = await fetch(`http://127.0.0.1:5005/api/engines/status?engineId=${engine.id}`);
+      const response = await fetch(apiUrl(`/api/engines/status?engineId=${engine.id}`));
       if (response.ok) {
         const data = await response.json();
         setStatus(data);
@@ -278,7 +279,7 @@ export function EngineCard({ engine }: EngineCardProps) {
     setShowCustomUrlDialog(false);
     try {
       // Call API with custom URL
-      const response = await fetch('http://127.0.0.1:5005/api/engines/install', {
+      const response = await fetch(apiUrl('/api/engines/install'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -321,7 +322,7 @@ export function EngineCard({ engine }: EngineCardProps) {
     setShowLocalFileDialog(false);
     try {
       // Call API with local file path
-      const response = await fetch('http://127.0.0.1:5005/api/engines/install', {
+      const response = await fetch(apiUrl('/api/engines/install'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -430,7 +431,7 @@ export function EngineCard({ engine }: EngineCardProps) {
 
   const handleOpenFolder = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/open-folder', {
+      const response = await fetch(apiUrl('/api/engines/open-folder'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId: engine.id }),

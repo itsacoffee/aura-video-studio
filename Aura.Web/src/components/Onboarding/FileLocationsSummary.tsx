@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 import {
   Card,
   Button,
@@ -70,7 +71,7 @@ export function FileLocationsSummary() {
     setIsLoading(true);
     try {
       // Fetch engine instances to get install paths
-      const response = await fetch('http://127.0.0.1:5005/api/engines/instances');
+      const response = await fetch(apiUrl('/api/engines/instances'))
       if (response.ok) {
         const data = await response.json();
         const engineInfo: EngineInfo[] = data.instances.map((instance: any) => ({
@@ -91,7 +92,7 @@ export function FileLocationsSummary() {
 
   const handleOpenFolder = async (engineId: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/open-folder', {
+      const response = await fetch(apiUrl('/api/engines/open-folder'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
@@ -111,7 +112,7 @@ export function FileLocationsSummary() {
 
   const handleOpenWebUI = async (engineId: string) => {
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/engines/open-webui', {
+      const response = await fetch(apiUrl('/api/engines/open-webui'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),

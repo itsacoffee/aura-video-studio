@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -94,7 +95,7 @@ export function ResultsTray() {
   const fetchRecentArtifacts = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/jobs/recent-artifacts?limit=5');
+      const response = await fetch(apiUrl('/api/jobs/recent-artifacts?limit=5'));
       if (response.ok) {
         const data = await response.json();
         setArtifacts(data.artifacts || []);

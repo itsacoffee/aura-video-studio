@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -299,7 +300,7 @@ export function CreateWizard() {
 
   const handleApplySafeDefaults = async () => {
     try {
-      const response = await fetch('/api/preflight/safe-defaults');
+      const response = await fetch(apiUrl('/api/preflight/safe-defaults'));
       
       if (response.ok) {
         await response.json(); // Acknowledge the response

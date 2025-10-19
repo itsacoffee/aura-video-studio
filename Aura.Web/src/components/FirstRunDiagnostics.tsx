@@ -17,6 +17,7 @@ import {
   Info24Regular,
   ArrowRight24Regular,
 } from '@fluentui/react-icons';
+import { apiUrl } from '../config/api';
 
 const useStyles = makeStyles({
   card: {
@@ -122,7 +123,7 @@ export function FirstRunDiagnostics({ onReady, onNeedsSetup, autoRun = true }: F
     setError(null);
     
     try {
-      const response = await fetch('/api/health/first-run');
+      const response = await fetch(apiUrl('/api/health/first-run'));
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
