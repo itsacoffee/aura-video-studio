@@ -14,6 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Play24Regular, Settings24Regular } from '@fluentui/react-icons';
 import type { HardwareCapabilities } from '../types';
+import { SystemCheckCard } from '../components/SystemCheckCard';
 
 const useStyles = makeStyles({
   container: {
@@ -96,6 +97,9 @@ export function WelcomePage() {
 
   return (
     <div className={styles.container}>
+      {/* System Health Check */}
+      <SystemCheckCard autoRetry={true} retryInterval={30000} />
+
       <div className={styles.hero}>
         <Title1 className={styles.title}>Welcome to Aura Video Studio</Title1>
         <Text size={500} className={styles.subtitle}>
