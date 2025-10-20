@@ -19,6 +19,7 @@ public class JobRunner
     private readonly ILogger<JobRunner> _logger;
     private readonly ArtifactManager _artifactManager;
     private readonly VideoOrchestrator _orchestrator;
+    private readonly Aura.Core.Hardware.HardwareDetector _hardwareDetector;
     private readonly Dictionary<string, Job> _activeJobs = new();
     private readonly Dictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
 
@@ -27,11 +28,13 @@ public class JobRunner
     public JobRunner(
         ILogger<JobRunner> logger,
         ArtifactManager artifactManager,
-        VideoOrchestrator orchestrator)
+        VideoOrchestrator orchestrator,
+        Aura.Core.Hardware.HardwareDetector hardwareDetector)
     {
         _logger = logger;
         _artifactManager = artifactManager;
         _orchestrator = orchestrator;
+        _hardwareDetector = hardwareDetector;
     }
 
     /// <summary>
@@ -158,6 +161,13 @@ public class JobRunner
                 stage: "Initialization",
                 progressMessage: "Initializing job execution");
 
+            // Detect system profile for orchestration
+            _logger.LogInformation("[Job {JobId}] Detecting system hardware...", jobId);
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
+            _logger.LogInformation("[Job {JobId}] System Profile - Tier: {Tier}, CPU: {Cores} cores, RAM: {Ram}GB, GPU: {Gpu}", 
+                jobId, systemProfile.Tier, systemProfile.LogicalCores, systemProfile.RamGB, 
+                systemProfile.Gpu?.Model ?? "None");
+
             // Create progress reporter with detailed stage tracking
             var progress = new Progress<string>(message =>
             {
@@ -173,15 +183,16 @@ public class JobRunner
                     progressMessage: progressMsg);
             });
 
-            // Execute orchestrator
+            // Execute orchestrator with system profile
             var outputPath = await _orchestrator.GenerateVideoAsync(
                 job.Brief!,
                 job.PlanSpec!,
                 job.VoiceSpec!,
                 job.RenderSpec!,
+                systemProfile,
                 progress,
                 ct
-            );
+            ).ConfigureAwait(false);
 
             // Add final artifact
             var artifact = _artifactManager.CreateArtifact(jobId, "video.mp4", outputPath, "video/mp4");
@@ -195,7 +206,7 @@ public class JobRunner
                 artifacts: artifacts,
                 finishedAt: DateTime.UtcNow);
 
-            _logger.LogInformation("Job {JobId} completed successfully", jobId);
+            _logger.LogInformation("Job {JobId} completed successfully. Output: {OutputPath}", jobId, outputPath);
         }
         catch (OperationCanceledException)
         {
@@ -215,7 +226,8 @@ public class JobRunner
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Job {JobId} failed: {Message}", jobId, ex.Message);
+            _logger.LogError(ex, "Job {JobId} failed: {Message}\nStack Trace: {StackTrace}", 
+                jobId, ex.Message, ex.StackTrace);
             var job = GetJob(jobId);
             if (job != null)
             {
@@ -223,13 +235,18 @@ public class JobRunner
                 
                 // Add error to logs so it's visible in UI
                 var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] ERROR: {GetFriendlyErrorMessage(ex)}";
-                var updatedLogs = new List<string>(job.Logs) { errorLog };
+                var stackLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Stack Trace: {ex.StackTrace}";
+                var updatedLogs = new List<string>(job.Logs) { errorLog, stackLog };
                 
                 UpdateJob(job, 
                     status: JobStatus.Failed, 
                     errorMessage: ex.Message, 
                     failureDetails: failureDetails,
-                    logs: updatedLogs);
+                    logs: updatedLogs,
+                    finishedAt: DateTime.UtcNow);
+                
+                // Save job state to artifact manager
+                _artifactManager.SaveJob(job);
             }
         }
         finally
