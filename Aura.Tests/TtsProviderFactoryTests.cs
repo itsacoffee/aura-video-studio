@@ -29,9 +29,15 @@ public class TtsProviderFactoryTests
         services.AddSingleton<ILogger<WindowsTtsProvider>>(NullLogger<WindowsTtsProvider>.Instance);
         services.AddSingleton<ILogger<MockTtsProvider>>(NullLogger<MockTtsProvider>.Instance);
         services.AddSingleton<ILogger<ProviderSettings>>(NullLogger<ProviderSettings>.Instance);
+        services.AddSingleton<ILogger<Aura.Core.Audio.WavValidator>>(NullLogger<Aura.Core.Audio.WavValidator>.Instance);
+        services.AddSingleton<ILogger<Aura.Core.Audio.SilentWavGenerator>>(NullLogger<Aura.Core.Audio.SilentWavGenerator>.Instance);
         
         // Register ProviderSettings
         services.AddSingleton<ProviderSettings>();
+        
+        // Register Audio services required by TTS providers
+        services.AddSingleton<Aura.Core.Audio.WavValidator>();
+        services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
         
         // Register factory
         services.AddSingleton<TtsProviderFactory>();
