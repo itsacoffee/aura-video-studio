@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -301,32 +302,72 @@ public class DownloadService
                     await Task.Delay(TimeSpan.FromSeconds(delaySeconds), ct);
                 }
 
-                // TODO: Implement actual download logic using HttpClient
-                // For now, this is a placeholder
                 _logger.LogInformation("Download attempt {Attempt} from {Url}", attempt, mirror.Url);
 
-                // Simulate progress reporting
-                for (int i = 0; i <= 100; i += 10)
+                // Perform the actual download
+                using var request = new HttpRequestMessage(HttpMethod.Get, mirror.Url);
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+                response.EnsureSuccessStatusCode();
+
+                var totalBytes = response.Content.Headers.ContentLength ?? 0;
+                long bytesDownloaded = 0;
+
+                var tempPath = outputPath + ".partial";
+                await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true))
+                await using (var httpStream = await response.Content.ReadAsStreamAsync(ct))
                 {
-                    if (ct.IsCancellationRequested)
+                    var buffer = new byte[8192];
+                    int bytesRead;
+                    var lastProgressReport = DateTime.UtcNow;
+
+                    while ((bytesRead = await httpStream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
                     {
-                        return false;
+                        await fileStream.WriteAsync(buffer, 0, bytesRead, ct);
+                        bytesDownloaded += bytesRead;
+
+                        // Report progress every 500ms
+                        if ((DateTime.UtcNow - lastProgressReport).TotalMilliseconds >= 500 || bytesDownloaded == totalBytes)
+                        {
+                            var percentComplete = totalBytes > 0 ? (int)((bytesDownloaded * 100.0) / totalBytes) : 0;
+                            
+                            ReportProgress(progress, new DownloadProgressEventArgs
+                            {
+                                DownloadId = downloadId,
+                                Stage = DownloadStage.Downloading,
+                                PercentComplete = percentComplete,
+                                Message = $"Downloading... {percentComplete}% ({bytesDownloaded}/{totalBytes} bytes)",
+                                CurrentUrl = mirror.Url,
+                                MirrorIndex = mirrorIndex,
+                                FilePath = outputPath
+                            });
+
+                            lastProgressReport = DateTime.UtcNow;
+                        }
                     }
 
-                    ReportProgress(progress, new DownloadProgressEventArgs
-                    {
-                        DownloadId = downloadId,
-                        Stage = DownloadStage.Downloading,
-                        PercentComplete = i,
-                        Message = $"Downloading... {i}%",
-                        CurrentUrl = mirror.Url,
-                        MirrorIndex = mirrorIndex,
-                        FilePath = outputPath
-                    });
-
-                    await Task.Delay(100, ct);
+                    await fileStream.FlushAsync(ct);
                 }
 
+                // Move temp file to final location
+                if (File.Exists(outputPath))
+                {
+                    File.Delete(outputPath);
+                }
+                File.Move(tempPath, outputPath);
+
+                // Final progress report
+                ReportProgress(progress, new DownloadProgressEventArgs
+                {
+                    DownloadId = downloadId,
+                    Stage = DownloadStage.Downloading,
+                    PercentComplete = 100,
+                    Message = "Download complete",
+                    CurrentUrl = mirror.Url,
+                    MirrorIndex = mirrorIndex,
+                    FilePath = outputPath
+                });
+
+                _logger.LogInformation("Successfully downloaded {Bytes} bytes from {Url}", bytesDownloaded, mirror.Url);
                 return true;
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
