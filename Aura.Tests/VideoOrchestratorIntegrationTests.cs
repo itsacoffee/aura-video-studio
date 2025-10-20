@@ -173,7 +173,15 @@ public class VideoOrchestratorIntegrationTests
         public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
         {
             DraftScriptCalled = true;
-            return Task.FromResult("## Scene 1\nThis is a test script about AI.\n\n## Scene 2\nIt covers the basics.");
+            // Return a properly formatted script with title, at least 2 scenes, and appropriate word count for the duration
+            // For 30 seconds, we need ~75 words (2.5 words per second)
+            return Task.FromResult(@"# AI Revolution
+
+## Scene 1
+Artificial intelligence is transforming our world. From self-driving cars to smart assistants, AI is everywhere. This technology enables machines to learn and perform tasks that require human intelligence.
+
+## Scene 2
+Today AI is used in healthcare finance education and entertainment. Machine learning analyzes data to make predictions recognize patterns and automate processes. The future is exciting.");
         }
     }
 
@@ -219,9 +227,17 @@ public class VideoOrchestratorIntegrationTests
 
     private class MockFfmpegLocator : Aura.Core.Dependencies.IFfmpegLocator
     {
+        private readonly string _mockPath;
+
+        public MockFfmpegLocator()
+        {
+            // Create a temporary file to simulate FFmpeg
+            _mockPath = System.IO.Path.GetTempFileName();
+        }
+
         public Task<string> GetEffectiveFfmpegPathAsync(string? configuredPath = null, CancellationToken ct = default)
         {
-            return Task.FromResult("/usr/bin/ffmpeg");
+            return Task.FromResult(_mockPath);
         }
 
         public Task<Aura.Core.Dependencies.FfmpegValidationResult> CheckAllCandidatesAsync(string? configuredPath = null, CancellationToken ct = default)
@@ -229,7 +245,7 @@ public class VideoOrchestratorIntegrationTests
             return Task.FromResult(new Aura.Core.Dependencies.FfmpegValidationResult
             {
                 Found = true,
-                FfmpegPath = "/usr/bin/ffmpeg",
+                FfmpegPath = _mockPath,
                 VersionString = "4.4.0",
                 ValidationOutput = "ffmpeg version 4.4.0",
                 Reason = "Mock FFmpeg",
