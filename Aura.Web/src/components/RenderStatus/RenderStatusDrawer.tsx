@@ -211,9 +211,12 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
   const handleRetry = async () => {
     if (!jobId) return;
     try {
-      await retryJob(jobId);
+      const response = await retryJob(jobId);
       onClose();
-      // TODO: Create new job and reopen drawer
+      // Retry creates a new job - navigate to it
+      if (response?.jobId) {
+        window.location.href = `/generate?jobId=${response.jobId}`;
+      }
     } catch (error) {
       console.error('Failed to retry job:', error);
     }
@@ -229,8 +232,8 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
   };
 
   const handleOpenSystemCheck = () => {
-    // TODO: Trigger system check
-    console.log('System check triggered');
+    // Navigate to health check page
+    window.location.href = '/health';
   };
 
   const handleOpenFolder = () => {
