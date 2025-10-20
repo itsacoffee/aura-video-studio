@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Dependencies;
+using Aura.Core.Errors;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
@@ -75,7 +76,7 @@ public class FfmpegVideoComposer : IVideoComposer
         catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Failed to resolve FFmpeg path for job {JobId}", jobId);
-            throw;
+            throw FfmpegException.NotFound(correlationId: correlationId);
         }
         
         // Validate FFmpeg binary before starting
@@ -234,7 +235,11 @@ public class FfmpegVideoComposer : IVideoComposer
             else
             {
                 var stderr = stderrBuilder.ToString();
-                var exception = CreateFfmpegException(process.ExitCode, stderr, jobId, correlationId, ffmpegCommand);
+                var exception = FfmpegException.FromProcessFailure(
+                    process.ExitCode, 
+                    stderr, 
+                    jobId, 
+                    correlationId);
                 tcs.SetException(exception);
             }
         };
@@ -244,31 +249,83 @@ public class FfmpegVideoComposer : IVideoComposer
         process.BeginErrorReadLine();
         process.BeginOutputReadLine();
         
-        // Register cancellation
-        ct.Register(() =>
+        // Register cancellation with graceful termination
+        var cancellationRegistration = ct.Register(() =>
         {
             try
             {
                 if (!process.HasExited)
                 {
                     _logger.LogWarning("Cancelling FFmpeg render (JobId={JobId})", jobId);
-                    process.Kill();
+                    
+                    // Try graceful termination first (send 'q' to stdin if possible)
+                    try
+                    {
+                        process.StandardInput?.Write('q');
+                        process.StandardInput?.Flush();
+                        
+                        // Give it 2 seconds to exit gracefully
+                        if (!process.WaitForExit(2000))
+                        {
+                            _logger.LogWarning("Graceful termination timeout, killing process (JobId={JobId})", jobId);
+                            process.Kill(entireProcessTree: true);
+                        }
+                    }
+                    catch
+                    {
+                        // If graceful termination fails, kill immediately
+                        process.Kill(entireProcessTree: true);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to kill FFmpeg process during cancellation");
+                _logger.LogWarning(ex, "Failed to terminate FFmpeg process during cancellation");
             }
         });
         
         // Wait for completion or cancellation with timeout
         try
         {
-            await tcs.Task;
+            // Set a reasonable timeout (30 minutes for renders)
+            var timeoutTask = Task.Delay(TimeSpan.FromMinutes(30), ct);
+            var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
+            
+            if (completedTask == timeoutTask)
+            {
+                _logger.LogError("FFmpeg render timeout after 30 minutes (JobId={JobId})", jobId);
+                
+                // Kill the process
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                    }
+                }
+                catch (Exception killEx)
+                {
+                    _logger.LogWarning(killEx, "Failed to kill timed-out FFmpeg process");
+                }
+                
+                throw new FfmpegException(
+                    "FFmpeg render operation timed out after 30 minutes",
+                    FfmpegErrorCategory.Timeout,
+                    jobId: jobId,
+                    correlationId: correlationId,
+                    suggestedActions: new[]
+                    {
+                        "Try with shorter content or lower resolution",
+                        "Check system resources (CPU, disk space)",
+                        "Ensure FFmpeg is not hanging on a corrupted input file"
+                    });
+            }
+            
+            await tcs.Task; // This will throw if the process failed
         }
-        catch (InvalidOperationException)
+        catch (FfmpegException)
         {
-            // Already has detailed error information
+            // Already properly formatted FFmpeg exception
             throw;
         }
         catch (Exception ex)
@@ -279,6 +336,22 @@ public class FfmpegVideoComposer : IVideoComposer
         }
         finally
         {
+            // Dispose cancellation registration
+            cancellationRegistration.Dispose();
+            
+            // Ensure process is cleaned up
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+            
             // Close log file
             try
             {
@@ -291,6 +364,9 @@ public class FfmpegVideoComposer : IVideoComposer
             {
                 // Ignore cleanup errors
             }
+            
+            // Dispose process
+            process.Dispose();
         }
         
         _logger.LogInformation("Render completed successfully (JobId={JobId}): {OutputPath}", jobId, outputFilePath);
@@ -623,112 +699,5 @@ public class FfmpegVideoComposer : IVideoComposer
             $"CorrelationId: {correlationId}, JobId: {jobId}");
     }
     
-    /// <summary>
-    /// Handle FFmpeg process failure with detailed diagnostics
-    /// </summary>
-    private Exception CreateFfmpegException(
-        int exitCode,
-        string stderr,
-        string jobId,
-        string correlationId,
-        string? ffmpegCommand)
-    {
-        // Keep last 64KB of stderr for inline reporting (as per requirements)
-        const int MaxStderrInline = 64 * 1024; // 64KB
-        var stderrSnippet = stderr.Length > MaxStderrInline 
-            ? "... (truncated)\n" + stderr.Substring(stderr.Length - MaxStderrInline) 
-            : stderr;
-        
-        var errorInfo = new
-        {
-            code = "E304-FFMPEG_RUNTIME",
-            message = exitCode < 0 
-                ? $"FFmpeg crashed during render (exit code: {exitCode})" 
-                : $"FFmpeg failed during render (exit code: {exitCode})",
-            exitCode,
-            stderrSnippet,
-            jobId,
-            correlationId,
-            suggestedActions = GetSuggestedActions(exitCode, stderr),
-            ffmpegCommand
-        };
-        
-        _logger.LogError("FFmpeg render failed: {Error}", System.Text.Json.JsonSerializer.Serialize(errorInfo));
-        
-        // Log full stderr to file
-        try
-        {
-            var logPath = Path.Combine(_logsDirectory, $"{jobId}.log");
-            File.WriteAllText(logPath, 
-                $"JobId: {jobId}\nCorrelationId: {correlationId}\nExit Code: {exitCode}\n" +
-                $"Command: {ffmpegCommand}\n\n=== FULL STDERR ({stderr.Length} bytes) ===\n{stderr}");
-            _logger.LogInformation("Full FFmpeg log written to: {LogPath}", logPath);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to write FFmpeg log file");
-        }
-        
-        return new InvalidOperationException(
-            $"FFmpeg render failed (exit code: {exitCode}). {GetFriendlyMessage(exitCode, stderr)}. " +
-            $"CorrelationId: {correlationId}, JobId: {jobId}");
-    }
-    
-    private string[] GetSuggestedActions(int exitCode, string stderr)
-    {
-        var suggestions = new List<string>();
-        
-        if (exitCode < 0 || exitCode == -1073741515 || exitCode == -1094995529)
-        {
-            suggestions.Add("FFmpeg crashed - binary may be corrupted. Try reinstalling or repairing.");
-            suggestions.Add("Check system dependencies (Visual C++ Redistributable on Windows)");
-            suggestions.Add("If using hardware encoding (NVENC), try software encoding (x264) instead");
-        }
-        
-        if (stderr.Contains("Invalid data found") || stderr.Contains("moov atom not found"))
-        {
-            suggestions.Add("Input file may be corrupted or in an unsupported format");
-        }
-        
-        if (stderr.Contains("Encoder") && stderr.Contains("not found"))
-        {
-            suggestions.Add("Required encoder not available in your FFmpeg build");
-            suggestions.Add("Use software encoder (x264) in render settings");
-        }
-        
-        if (stderr.Contains("Permission denied") || stderr.Contains("Access is denied"))
-        {
-            suggestions.Add("Check file permissions on input/output paths");
-            suggestions.Add("Ensure no other application is using the files");
-        }
-        
-        if (suggestions.Count == 0)
-        {
-            suggestions.Add("Review FFmpeg log for details");
-            suggestions.Add("Try with different render settings");
-            suggestions.Add("Verify input files are valid");
-        }
-        
-        return suggestions.ToArray();
-    }
-    
-    private string GetFriendlyMessage(int exitCode, string stderr)
-    {
-        if (exitCode < 0 || exitCode == -1073741515 || exitCode == -1094995529)
-        {
-            return "FFmpeg crashed - this usually indicates a corrupted binary or missing system dependencies";
-        }
-        
-        if (stderr.Contains("Invalid data found"))
-        {
-            return "Input file appears to be corrupted or in an unsupported format";
-        }
-        
-        if (stderr.Contains("Encoder") && stderr.Contains("not found"))
-        {
-            return "Required encoder not available - try using software encoding (x264)";
-        }
-        
-        return "FFmpeg encountered an error during rendering";
-    }
+
 }
