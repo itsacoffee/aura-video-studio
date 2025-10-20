@@ -174,7 +174,17 @@ public class LlmProviderFactory
             throw new Exception("RuleBasedLlmProvider type not found");
         }
 
-        var logger = loggerFactory.CreateLogger(type);
+        // Use generic CreateLogger<T> method via reflection
+        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+            .GetMethod("CreateLogger", new[] { typeof(ILoggerFactory) });
+        if (createLoggerMethod == null)
+        {
+            throw new Exception("CreateLogger<T> method not found");
+        }
+        
+        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
+        
         return (ILlmProvider)Activator.CreateInstance(type, logger)!;
     }
 
@@ -190,7 +200,18 @@ public class LlmProviderFactory
             return null;
         }
 
-        var logger = loggerFactory.CreateLogger(type);
+        // Use generic CreateLogger<T> method via reflection
+        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+            .GetMethod("CreateLogger", new[] { typeof(ILoggerFactory) });
+        if (createLoggerMethod == null)
+        {
+            _logger.LogWarning("CreateLogger<T> method not found");
+            return null;
+        }
+        
+        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
+
         return (ILlmProvider)Activator.CreateInstance(
             type, 
             logger, 
@@ -213,7 +234,18 @@ public class LlmProviderFactory
             return null;
         }
 
-        var logger = loggerFactory.CreateLogger(type);
+        // Use generic CreateLogger<T> method via reflection
+        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+            .GetMethod("CreateLogger", new[] { typeof(ILoggerFactory) });
+        if (createLoggerMethod == null)
+        {
+            _logger.LogWarning("CreateLogger<T> method not found");
+            return null;
+        }
+        
+        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
+
         return (ILlmProvider)Activator.CreateInstance(
             type,
             logger,
@@ -234,7 +266,18 @@ public class LlmProviderFactory
             return null;
         }
 
-        var logger = loggerFactory.CreateLogger(type);
+        // Use generic CreateLogger<T> method via reflection
+        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+            .GetMethod("CreateLogger", new[] { typeof(ILoggerFactory) });
+        if (createLoggerMethod == null)
+        {
+            _logger.LogWarning("CreateLogger<T> method not found");
+            return null;
+        }
+        
+        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
+
         return (ILlmProvider)Activator.CreateInstance(
             type,
             logger,
@@ -256,7 +299,18 @@ public class LlmProviderFactory
             return null;
         }
 
-        var logger = loggerFactory.CreateLogger(type);
+        // Use generic CreateLogger<T> method via reflection
+        var createLoggerMethod = typeof(LoggerFactoryExtensions)
+            .GetMethod("CreateLogger", new[] { typeof(ILoggerFactory) });
+        if (createLoggerMethod == null)
+        {
+            _logger.LogWarning("CreateLogger<T> method not found");
+            return null;
+        }
+        
+        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
+        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
+
         return (ILlmProvider)Activator.CreateInstance(
             type,
             logger,
