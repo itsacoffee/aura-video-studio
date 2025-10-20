@@ -19,6 +19,7 @@ public class JobRunner
     private readonly ArtifactManager _artifactManager;
     private readonly VideoOrchestrator _orchestrator;
     private readonly Dictionary<string, Job> _activeJobs = new();
+    private readonly Dictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
 
     public event EventHandler<JobProgressEventArgs>? JobProgress;
 
@@ -58,8 +59,12 @@ public class JobRunner
         _activeJobs[job.Id] = job;
         _artifactManager.SaveJob(job);
 
+        // Create a linked cancellation token source that responds to both the provided token and manual cancellation
+        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _jobCancellationTokens[job.Id] = linkedCts;
+
         // Start execution in background
-        _ = Task.Run(async () => await ExecuteJobAsync(job.Id, ct), ct);
+        _ = Task.Run(async () => await ExecuteJobAsync(job.Id, linkedCts.Token), linkedCts.Token);
 
         return job;
     }
@@ -83,6 +88,50 @@ public class JobRunner
     public List<Job> ListJobs(int limit = 50)
     {
         return _artifactManager.ListJobs(limit);
+    }
+
+    /// <summary>
+    /// Cancels a running job.
+    /// </summary>
+    /// <param name="jobId">The ID of the job to cancel</param>
+    /// <returns>True if the job was found and cancellation was requested, false otherwise</returns>
+    public bool CancelJob(string jobId)
+    {
+        _logger.LogInformation("Cancellation requested for job {JobId}", jobId);
+        
+        // Check if job is active and has a cancellation token
+        if (_jobCancellationTokens.TryGetValue(jobId, out var cts))
+        {
+            try
+            {
+                cts.Cancel();
+                _logger.LogInformation("Cancellation token triggered for job {JobId}", jobId);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cancelling job {JobId}", jobId);
+                return false;
+            }
+        }
+        
+        // Job not found or not active
+        var job = GetJob(jobId);
+        if (job == null)
+        {
+            _logger.LogWarning("Cannot cancel job {JobId}: job not found", jobId);
+            return false;
+        }
+        
+        // Job exists but is not running
+        if (job.Status != JobStatus.Running && job.Status != JobStatus.Queued)
+        {
+            _logger.LogWarning("Cannot cancel job {JobId}: job is in status {Status}", jobId, job.Status);
+            return false;
+        }
+        
+        _logger.LogWarning("Job {JobId} is marked as active but has no cancellation token", jobId);
+        return false;
     }
 
     /// <summary>
@@ -173,6 +222,13 @@ public class JobRunner
         finally
         {
             _activeJobs.Remove(jobId);
+            
+            // Clean up cancellation token
+            if (_jobCancellationTokens.TryGetValue(jobId, out var cts))
+            {
+                cts.Dispose();
+                _jobCancellationTokens.Remove(jobId);
+            }
         }
     }
 

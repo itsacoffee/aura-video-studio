@@ -474,16 +474,48 @@ public class JobsController : ControllerBase
                     correlationId
                 });
             }
-            
-            // TODO: Implement actual cancellation in JobRunner
-            // For now, just return accepted
-            return Accepted(new
+
+            // Check if job is in a cancellable state
+            if (job.Status != JobStatus.Running && job.Status != JobStatus.Queued)
             {
-                jobId,
-                message = "Job cancellation requested",
-                currentStatus = job.Status,
-                correlationId
-            });
+                return BadRequest(new
+                {
+                    type = "https://docs.aura.studio/errors/E400",
+                    title = "Job Not Cancellable",
+                    status = 400,
+                    detail = $"Job is in {job.Status} status and cannot be cancelled",
+                    currentStatus = job.Status,
+                    correlationId
+                });
+            }
+            
+            // Attempt to cancel the job
+            bool cancelled = _jobRunner.CancelJob(jobId);
+            
+            if (cancelled)
+            {
+                Log.Information("[{CorrelationId}] Successfully cancelled job {JobId}", correlationId, jobId);
+                return Accepted(new
+                {
+                    jobId,
+                    message = "Job cancellation triggered successfully",
+                    currentStatus = job.Status,
+                    correlationId
+                });
+            }
+            else
+            {
+                Log.Warning("[{CorrelationId}] Failed to cancel job {JobId}", correlationId, jobId);
+                return StatusCode(500, new
+                {
+                    type = "https://docs.aura.studio/errors/E500",
+                    title = "Cancellation Failed",
+                    status = 500,
+                    detail = "Job could not be cancelled. It may have already completed or been cancelled.",
+                    currentStatus = job.Status,
+                    correlationId
+                });
+            }
         }
         catch (Exception ex)
         {

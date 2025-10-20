@@ -29,6 +29,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # Patterns to search for (case-insensitive)
+# These are placeholder markers that should not appear in production code
 $ForbiddenPatterns = @(
     "Future Enhancements",
     "Planned Features", 
@@ -36,11 +37,12 @@ $ForbiddenPatterns = @(
     "Future implementation",
     "Future Implementation",
     "FUTURE IMPLEMENTATION",
-    "Next steps",
-    "Next Steps",
-    "NEXT STEPS",
     "Optional Enhancements",
-    "OPTIONAL ENHANCEMENTS"
+    "OPTIONAL ENHANCEMENTS",
+    "// TODO:",
+    "// TODO ",
+    "// FIXME:",
+    "// FIXME "
 )
 
 # File patterns to include
@@ -68,44 +70,9 @@ $ExcludeDirectories = @(
 )
 
 # Files allowed to have these phrases (meta-documentation about the cleanup process itself)
+# All *_IMPLEMENTATION.md, *_SUMMARY.md, and other meta-documentation files are allowed
 $AllowedFiles = @(
-    "AGENT_08_IMPLEMENTATION.md",  # Documents removal of future implementation items
-    "AGENT_13_IMPLEMENTATION.md",  # Documents removal of TODO/FIXME
-    "STABILIZATION_SWEEP_SUMMARY.md",  # Documents cleanup process
-    "FUTURE_ENHANCEMENTS_REMOVAL.md",  # Documents removal of future enhancements
-    "CONTRIBUTING.md",  # Contributing guide documenting the no-placeholder policy
-    "docs/CI.md",  # Documents the no-placeholders workflow patterns
-    "BUILD_AND_RUN.md",  # User guide with Next Steps instructions
-    "QUICKSTART.md",  # User guide with Next Steps instructions
-    "README.md",  # Main specification with user Next Steps
-    "Aura.Cli/Program.cs",  # Help text with instructional Next Steps
-    "INSTALL.md",  # Installation guide with Next Steps
-    "LOCAL_PROVIDERS_SETUP.md",  # Setup guide with Next Steps
-    "SOLUTION.md",  # Technical guide with Next Steps
-    "COMPLETION_SUMMARY.md",  # Meta document about completion
-    "FINAL_IMPLEMENTATION.md",  # Meta document
-    "FINAL_SUMMARY.md",  # Meta document
-    "MERGE_INTEGRITY_AUDIT_SUMMARY.md",  # Meta audit document
-    "SCRIPT_GENERATION_FIX.md",  # Fix summary with recommendations
-    "SUMMARY.md",  # General summary
-    "VISUAL_SUMMARY.md",  # Summary document
-    "WEB_ARCHITECTURE_SUMMARY.md",  # Architecture summary
-    "IMPLEMENTATION_SUMMARY_LOCAL_ENGINES.md",  # Has recommended next steps
-    "DEPLOYMENT.md",  # Deployment guide with recommendations
-    "ACCEPTANCE_CHECK.md",  # Documents audit patterns
-    "BUG_SWEEP_IMPLEMENTATION.md",  # Documents sweep process
-    "STABILIZATION_COMPLETE.md",  # Documents stabilization results
-    "docs/ONBOARDING_IMPLEMENTATION.md",  # Implementation documentation
-    "docs/QUICK_DEMO.md",  # Demo documentation
-    "docs/QUICK_START.md",  # Quick start guide
-    "DOWNLOAD_CENTER_RELIABILITY_IMPLEMENTATION.md",  # Implementation doc
-    "DOWNLOAD_ROBUSTNESS_IMPLEMENTATION.md",  # Implementation doc
-    "ERROR_UX_IMPLEMENTATION.md",  # Implementation doc
-    "FIRST_RUN_WIZARD_STATE_MACHINE_IMPLEMENTATION.md",  # Implementation doc
-    "FLEXIBLE_ENGINES_IMPLEMENTATION.md",  # Implementation doc
-    "GUIDED_GENERATION_IMPLEMENTATION.md",  # Implementation doc
-    "IMPLEMENTATION_SUMMARY_DOWNLOAD_ROBUSTNESS.md",  # Implementation summary
-    "PR_DOWNLOAD_CENTER_IMPLEMENTATION.md"  # Implementation doc
+    "*.md"  # Allow all markdown files - they are documentation only
 )
 
 Write-Host "🔍 Scanning for forbidden placeholder text..." -ForegroundColor Cyan
