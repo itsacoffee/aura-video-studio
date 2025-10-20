@@ -24,6 +24,24 @@ public static class WavMerger
             throw new ArgumentException("No segments to merge");
         }
 
+        // Validate all input files exist and have minimum size
+        const int MinWavFileSize = 44; // WAV header size
+        foreach (var segment in segmentsList)
+        {
+            if (!File.Exists(segment.FilePath))
+            {
+                throw new FileNotFoundException($"Segment file not found: {segment.FilePath}");
+            }
+            
+            var info = new FileInfo(segment.FilePath);
+            if (info.Length < MinWavFileSize)
+            {
+                throw new InvalidDataException(
+                    $"Segment file is too small to be a valid WAV file: {segment.FilePath} " +
+                    $"({info.Length} bytes, minimum {MinWavFileSize} bytes)");
+            }
+        }
+
         // Read the first file to get format info
         var firstSegment = segmentsList[0];
         using var firstStream = new FileStream(firstSegment.FilePath, FileMode.Open, FileAccess.Read);
@@ -81,6 +99,15 @@ public static class WavMerger
 
             // Atomic rename
             File.Move(tempPath, outputPath, overwrite: true);
+            
+            // Validate output file was created successfully
+            var outputInfo = new FileInfo(outputPath);
+            if (!outputInfo.Exists || outputInfo.Length < MinWavFileSize)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to create valid merged output file: {outputPath} " +
+                    $"(exists: {outputInfo.Exists}, size: {outputInfo.Length} bytes)");
+            }
         }
         catch
         {
