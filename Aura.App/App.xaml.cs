@@ -74,6 +74,10 @@ namespace Aura.App
                         return new DependencyManager(logger, httpClient, manifestPath, downloadDir);
                     });
                     
+                    // Register validators
+                    services.AddSingleton<Aura.Core.Validation.PreGenerationValidator>();
+                    services.AddSingleton<Aura.Core.Validation.ScriptValidator>();
+                    
                     // Register smart orchestration services
                     services.AddSingleton<Aura.Core.Services.Generation.ResourceMonitor>();
                     services.AddSingleton<Aura.Core.Services.Generation.StrategySelector>();

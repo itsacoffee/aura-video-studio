@@ -424,6 +424,29 @@ export function CreateWizard() {
   const handleQuickDemo = async () => {
     setGenerating(true);
     try {
+      // Validate before starting generation
+      const validationResponse = await fetch('http://localhost:5005/api/validation/brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: 'AI Video Generation Demo',
+          durationMinutes: 0.5,
+        }),
+      });
+
+      if (validationResponse.ok) {
+        const validationData = await validationResponse.json();
+        if (!validationData.isValid) {
+          showFailureToast({
+            title: 'Validation Failed',
+            message: validationData.issues.join('\n'),
+          });
+          setGenerating(false);
+          return;
+        }
+      }
+
+      // Validation passed, proceed with generation
       const response = await fetch('/api/quick/demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -596,7 +619,7 @@ export function CreateWizard() {
               <Button
                 appearance="primary"
                 size="large"
-                icon={<Play24Regular />}
+                icon={generating ? <Spinner size="tiny" /> : <Play24Regular />}
                 onClick={handleQuickDemo}
                 disabled={generating}
                 style={{ minWidth: '200px' }}

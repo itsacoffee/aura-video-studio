@@ -161,6 +161,10 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     return new FfmpegVideoComposer(logger, ffmpegLocator, configuredFfmpegPath, outputDirectory);
 });
 
+// Register validators
+builder.Services.AddSingleton<Aura.Core.Validation.PreGenerationValidator>();
+builder.Services.AddSingleton<Aura.Core.Validation.ScriptValidator>();
+
 // Register smart orchestration services
 builder.Services.AddSingleton<Aura.Core.Services.Generation.ResourceMonitor>();
 builder.Services.AddSingleton<Aura.Core.Services.Generation.StrategySelector>();

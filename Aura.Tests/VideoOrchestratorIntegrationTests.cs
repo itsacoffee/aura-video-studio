@@ -14,6 +14,7 @@ namespace Aura.Tests;
 
 public class VideoOrchestratorIntegrationTests
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<VideoOrchestrator> _orchestratorLogger;
     private readonly ILogger<VideoGenerationOrchestrator> _smartOrchestratorLogger;
     private readonly ILogger<ResourceMonitor> _monitorLogger;
@@ -21,11 +22,11 @@ public class VideoOrchestratorIntegrationTests
 
     public VideoOrchestratorIntegrationTests()
     {
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        _orchestratorLogger = loggerFactory.CreateLogger<VideoOrchestrator>();
-        _smartOrchestratorLogger = loggerFactory.CreateLogger<VideoGenerationOrchestrator>();
-        _monitorLogger = loggerFactory.CreateLogger<ResourceMonitor>();
-        _selectorLogger = loggerFactory.CreateLogger<StrategySelector>();
+        _loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        _orchestratorLogger = _loggerFactory.CreateLogger<VideoOrchestrator>();
+        _smartOrchestratorLogger = _loggerFactory.CreateLogger<VideoGenerationOrchestrator>();
+        _monitorLogger = _loggerFactory.CreateLogger<ResourceMonitor>();
+        _selectorLogger = _loggerFactory.CreateLogger<StrategySelector>();
     }
 
     [Fact]
@@ -40,6 +41,13 @@ public class VideoOrchestratorIntegrationTests
         var mockTtsProvider = new MockTtsProvider();
         var mockVideoComposer = new MockVideoComposer();
         var mockImageProvider = new MockImageProvider();
+        var mockFfmpegLocator = new MockFfmpegLocator();
+        var mockHardwareDetector = new MockHardwareDetector();
+        var preGenerationValidator = new Aura.Core.Validation.PreGenerationValidator(
+            _loggerFactory.CreateLogger<Aura.Core.Validation.PreGenerationValidator>(),
+            mockFfmpegLocator,
+            mockHardwareDetector);
+        var scriptValidator = new Aura.Core.Validation.ScriptValidator();
 
         var orchestrator = new VideoOrchestrator(
             _orchestratorLogger,
@@ -48,6 +56,8 @@ public class VideoOrchestratorIntegrationTests
             mockVideoComposer,
             smartOrchestrator,
             monitor,
+            preGenerationValidator,
+            scriptValidator,
             mockImageProvider);
 
         var brief = new Brief("AI Revolution", null, null, "Professional", "English", Aspect.Widescreen16x9);
@@ -107,6 +117,13 @@ public class VideoOrchestratorIntegrationTests
         var mockLlmProvider = new MockLlmProvider();
         var mockTtsProvider = new MockTtsProvider();
         var mockVideoComposer = new MockVideoComposer();
+        var mockFfmpegLocator = new MockFfmpegLocator();
+        var mockHardwareDetector = new MockHardwareDetector();
+        var preGenerationValidator = new Aura.Core.Validation.PreGenerationValidator(
+            _loggerFactory.CreateLogger<Aura.Core.Validation.PreGenerationValidator>(),
+            mockFfmpegLocator,
+            mockHardwareDetector);
+        var scriptValidator = new Aura.Core.Validation.ScriptValidator();
 
         var orchestrator = new VideoOrchestrator(
             _orchestratorLogger,
@@ -114,7 +131,9 @@ public class VideoOrchestratorIntegrationTests
             mockTtsProvider,
             mockVideoComposer,
             smartOrchestrator,
-            monitor);
+            monitor,
+            preGenerationValidator,
+            scriptValidator);
 
         var brief = new Brief("Test Video", null, null, "Professional", "English", Aspect.Widescreen16x9);
         var planSpec = new PlanSpec(TimeSpan.FromSeconds(30), Pacing.Conversational, Density.Balanced, "Modern");
@@ -154,7 +173,15 @@ public class VideoOrchestratorIntegrationTests
         public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
         {
             DraftScriptCalled = true;
-            return Task.FromResult("## Scene 1\nThis is a test script about AI.\n\n## Scene 2\nIt covers the basics.");
+            // Return a properly formatted script with title, at least 2 scenes, and appropriate word count for the duration
+            // For 30 seconds, we need ~75 words (2.5 words per second)
+            return Task.FromResult(@"# AI Revolution
+
+## Scene 1
+Artificial intelligence is transforming our world. From self-driving cars to smart assistants, AI is everywhere. This technology enables machines to learn and perform tasks that require human intelligence.
+
+## Scene 2
+Today AI is used in healthcare finance education and entertainment. Machine learning analyzes data to make predictions recognize patterns and automate processes. The future is exciting.");
         }
     }
 
@@ -195,6 +222,79 @@ public class VideoOrchestratorIntegrationTests
                 new Asset("image", "/tmp/test-image.jpg", "CC0", null)
             };
             return Task.FromResult<IReadOnlyList<Asset>>(assets);
+        }
+    }
+
+    private class MockFfmpegLocator : Aura.Core.Dependencies.IFfmpegLocator
+    {
+        private readonly string _mockPath;
+
+        public MockFfmpegLocator()
+        {
+            // Create a temporary file to simulate FFmpeg
+            _mockPath = System.IO.Path.GetTempFileName();
+        }
+
+        public Task<string> GetEffectiveFfmpegPathAsync(string? configuredPath = null, CancellationToken ct = default)
+        {
+            return Task.FromResult(_mockPath);
+        }
+
+        public Task<Aura.Core.Dependencies.FfmpegValidationResult> CheckAllCandidatesAsync(string? configuredPath = null, CancellationToken ct = default)
+        {
+            return Task.FromResult(new Aura.Core.Dependencies.FfmpegValidationResult
+            {
+                Found = true,
+                FfmpegPath = _mockPath,
+                VersionString = "4.4.0",
+                ValidationOutput = "ffmpeg version 4.4.0",
+                Reason = "Mock FFmpeg",
+                HasX264 = true,
+                Source = "Mock"
+            });
+        }
+
+        public Task<Aura.Core.Dependencies.FfmpegValidationResult> ValidatePathAsync(string ffmpegPath, CancellationToken ct = default)
+        {
+            return Task.FromResult(new Aura.Core.Dependencies.FfmpegValidationResult
+            {
+                Found = true,
+                FfmpegPath = ffmpegPath,
+                VersionString = "4.4.0",
+                ValidationOutput = "ffmpeg version 4.4.0",
+                Reason = "Mock FFmpeg",
+                HasX264 = true,
+                Source = "Mock"
+            });
+        }
+    }
+
+    private class MockHardwareDetector : Aura.Core.Hardware.IHardwareDetector
+    {
+        public Task<SystemProfile> DetectSystemAsync()
+        {
+            return Task.FromResult(new SystemProfile
+            {
+                AutoDetect = true,
+                LogicalCores = 8,
+                PhysicalCores = 4,
+                RamGB = 16,
+                Gpu = new GpuInfo("NVIDIA", "GTX 1080", 8, "10"),
+                Tier = HardwareTier.B,
+                EnableNVENC = true,
+                EnableSD = true,
+                OfflineOnly = false
+            });
+        }
+
+        public SystemProfile ApplyManualOverrides(SystemProfile detected, HardwareOverrides overrides)
+        {
+            return detected;
+        }
+
+        public Task RunHardwareProbeAsync()
+        {
+            return Task.CompletedTask;
         }
     }
 }
