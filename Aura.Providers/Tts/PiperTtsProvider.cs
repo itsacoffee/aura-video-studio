@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Audio;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
@@ -14,20 +15,27 @@ namespace Aura.Providers.Tts;
 /// <summary>
 /// Piper TTS provider - lightweight, offline, fast CLI-based TTS
 /// https://github.com/rhasspy/piper
+/// Uses atomic file operations and validation for reliability.
 /// </summary>
 public class PiperTtsProvider : ITtsProvider
 {
     private readonly ILogger<PiperTtsProvider> _logger;
+    private readonly SilentWavGenerator _silentWavGenerator;
+    private readonly WavValidator _wavValidator;
     private readonly string _piperExecutable;
     private readonly string _voiceModelPath;
     private readonly string _outputDirectory;
 
     public PiperTtsProvider(
         ILogger<PiperTtsProvider> logger,
+        SilentWavGenerator silentWavGenerator,
+        WavValidator wavValidator,
         string piperExecutable,
         string voiceModelPath)
     {
         _logger = logger;
+        _silentWavGenerator = silentWavGenerator;
+        _wavValidator = wavValidator;
         _piperExecutable = piperExecutable;
         _voiceModelPath = voiceModelPath;
         _outputDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "TTS", "Piper");
@@ -83,7 +91,7 @@ public class PiperTtsProvider : ITtsProvider
                 if (!success)
                 {
                     _logger.LogWarning("Failed to synthesize line {Index}, creating silence", i);
-                    CreateSilenceWav(outputPath, (int)line.Duration.TotalSeconds);
+                    await _silentWavGenerator.GenerateAsync(outputPath, line.Duration, sampleRate: 22050, ct: ct);
                 }
 
                 segmentPaths.Add(outputPath);
@@ -179,48 +187,7 @@ public class PiperTtsProvider : ITtsProvider
         }
     }
 
-    private void CreateSilenceWav(string outputPath, int durationSeconds)
-    {
-        // Create a minimal 16-bit PCM WAV file with silence
-        const int sampleRate = 22050;
-        const short channels = 1;
-        const short bitsPerSample = 16;
-        
-        int numSamples = sampleRate * durationSeconds;
-        int dataSize = numSamples * channels * (bitsPerSample / 8);
 
-        using var fs = new FileStream(outputPath, FileMode.Create);
-        using var writer = new BinaryWriter(fs);
-
-        // RIFF header
-        writer.Write(new[] { 'R', 'I', 'F', 'F' });
-        writer.Write(36 + dataSize); // File size - 8
-        writer.Write(new[] { 'W', 'A', 'V', 'E' });
-
-        // fmt chunk
-        writer.Write(new[] { 'f', 'm', 't', ' ' });
-        writer.Write(16); // Chunk size
-        writer.Write((short)1); // PCM format
-        writer.Write(channels);
-        writer.Write(sampleRate);
-        writer.Write(sampleRate * channels * (bitsPerSample / 8)); // Byte rate
-        writer.Write((short)(channels * (bitsPerSample / 8))); // Block align
-        writer.Write(bitsPerSample);
-
-        // data chunk
-        writer.Write(new[] { 'd', 'a', 't', 'a' });
-        writer.Write(dataSize);
-        
-        // Write silence (zeros)
-        byte[] silence = new byte[4096];
-        int remaining = dataSize;
-        while (remaining > 0)
-        {
-            int toWrite = Math.Min(remaining, silence.Length);
-            writer.Write(silence, 0, toWrite);
-            remaining -= toWrite;
-        }
-    }
 
     private void MergeWavFiles(List<string> inputFiles, string outputFile)
     {
@@ -231,45 +198,76 @@ public class PiperTtsProvider : ITtsProvider
 
         if (inputFiles.Count == 1)
         {
-            File.Copy(inputFiles[0], outputFile, overwrite: true);
+            // Use atomic copy for single file
+            string tempPath = outputFile + ".tmp";
+            try
+            {
+                File.Copy(inputFiles[0], tempPath, overwrite: true);
+                File.Move(tempPath, outputFile, overwrite: true);
+            }
+            catch
+            {
+                if (File.Exists(tempPath))
+                {
+                    try { File.Delete(tempPath); } catch { }
+                }
+                throw;
+            }
             return;
         }
 
         // Simple concatenation for WAV files with same format
-        // Read first file to get header
-        using var firstFile = new FileStream(inputFiles[0], FileMode.Open, FileAccess.Read);
-        byte[] header = new byte[44];
-        firstFile.Read(header, 0, 44);
-
-        // Calculate total data size
-        long totalDataSize = 0;
-        foreach (var file in inputFiles)
+        string tempPath2 = outputFile + ".tmp";
+        try
         {
-            var info = new FileInfo(file);
-            totalDataSize += info.Length - 44; // Subtract WAV header
-        }
+            // Read first file to get header
+            using var firstFile = new FileStream(inputFiles[0], FileMode.Open, FileAccess.Read);
+            byte[] header = new byte[44];
+            firstFile.Read(header, 0, 44);
 
-        // Write output file
-        using var output = new FileStream(outputFile, FileMode.Create, FileAccess.Write);
-        using var writer = new BinaryWriter(output);
-
-        // Write RIFF header with updated size
-        writer.Write(header, 0, 4); // "RIFF"
-        writer.Write((int)(totalDataSize + 36)); // File size - 8
-        writer.Write(header, 8, 36); // Rest of header
-
-        // Copy data from all input files
-        byte[] buffer = new byte[8192];
-        foreach (var file in inputFiles)
-        {
-            using var input = new FileStream(file, FileMode.Open, FileAccess.Read);
-            input.Seek(44, SeekOrigin.Begin); // Skip header
-            
-            int bytesRead;
-            while ((bytesRead = input.Read(buffer, 0, buffer.Length)) > 0)
+            // Calculate total data size
+            long totalDataSize = 0;
+            foreach (var file in inputFiles)
             {
-                writer.Write(buffer, 0, bytesRead);
+                var info = new FileInfo(file);
+                totalDataSize += info.Length - 44; // Subtract WAV header
             }
+
+            // Write output file to temp location
+            using (var output = new FileStream(tempPath2, FileMode.Create, FileAccess.Write))
+            using (var writer = new BinaryWriter(output))
+            {
+                // Write RIFF header with updated size
+                writer.Write(header, 0, 4); // "RIFF"
+                writer.Write((int)(totalDataSize + 36)); // File size - 8
+                writer.Write(header, 8, 36); // Rest of header
+
+                // Copy data from all input files
+                byte[] buffer = new byte[8192];
+                foreach (var file in inputFiles)
+                {
+                    using var input = new FileStream(file, FileMode.Open, FileAccess.Read);
+                    input.Seek(44, SeekOrigin.Begin); // Skip header
+                    
+                    int bytesRead;
+                    while ((bytesRead = input.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        writer.Write(buffer, 0, bytesRead);
+                    }
+                }
+            }
+
+            // Atomic rename
+            File.Move(tempPath2, outputFile, overwrite: true);
+        }
+        catch
+        {
+            // Clean up temp file on error
+            if (File.Exists(tempPath2))
+            {
+                try { File.Delete(tempPath2); } catch { }
+            }
+            throw;
         }
     }
 }

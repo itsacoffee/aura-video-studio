@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Audio;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
@@ -16,21 +17,28 @@ namespace Aura.Providers.Tts;
 /// <summary>
 /// Mimic3 TTS provider - offline HTTP server-based TTS
 /// https://github.com/MycroftAI/mimic3
+/// Uses atomic file operations and validation for reliability.
 /// </summary>
 public class Mimic3TtsProvider : ITtsProvider
 {
     private readonly ILogger<Mimic3TtsProvider> _logger;
     private readonly HttpClient _httpClient;
+    private readonly SilentWavGenerator _silentWavGenerator;
+    private readonly WavValidator _wavValidator;
     private readonly string _baseUrl;
     private readonly string _outputDirectory;
 
     public Mimic3TtsProvider(
         ILogger<Mimic3TtsProvider> logger,
         HttpClient httpClient,
+        SilentWavGenerator silentWavGenerator,
+        WavValidator wavValidator,
         string baseUrl = "http://127.0.0.1:59125")
     {
         _logger = logger;
         _httpClient = httpClient;
+        _silentWavGenerator = silentWavGenerator;
+        _wavValidator = wavValidator;
         _baseUrl = baseUrl;
         _outputDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "TTS", "Mimic3");
 
@@ -100,8 +108,8 @@ public class Mimic3TtsProvider : ITtsProvider
 
                 if (!success)
                 {
-                    _logger.LogWarning("Failed to synthesize line {Index}", i);
-                    throw new InvalidOperationException($"Failed to synthesize line {i}");
+                    _logger.LogWarning("Failed to synthesize line {Index}, creating silence as fallback", i);
+                    await _silentWavGenerator.GenerateAsync(outputPath, line.Duration, ct: ct);
                 }
 
                 segmentPaths.Add(outputPath);
@@ -193,9 +201,12 @@ public class Mimic3TtsProvider : ITtsProvider
                 return false;
             }
 
-            // Save WAV data to file
-            using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
-            await response.Content.CopyToAsync(fs, ct);
+            // Save WAV data atomically with validation
+            var helper = new TtsFileHelper(_wavValidator, _logger);
+            await helper.WriteWavAtomicallyAsync(outputPath, async stream =>
+            {
+                await response.Content.CopyToAsync(stream, ct);
+            }, ct);
 
             return File.Exists(outputPath) && new FileInfo(outputPath).Length > 0;
         }
@@ -215,44 +226,75 @@ public class Mimic3TtsProvider : ITtsProvider
 
         if (inputFiles.Count == 1)
         {
-            File.Copy(inputFiles[0], outputFile, overwrite: true);
+            // Use atomic copy for single file
+            string tempPath = outputFile + ".tmp";
+            try
+            {
+                File.Copy(inputFiles[0], tempPath, overwrite: true);
+                File.Move(tempPath, outputFile, overwrite: true);
+            }
+            catch
+            {
+                if (File.Exists(tempPath))
+                {
+                    try { File.Delete(tempPath); } catch { }
+                }
+                throw;
+            }
             return;
         }
 
         // Simple concatenation for WAV files with same format
-        using var firstFile = new FileStream(inputFiles[0], FileMode.Open, FileAccess.Read);
-        byte[] header = new byte[44];
-        firstFile.Read(header, 0, 44);
-
-        // Calculate total data size
-        long totalDataSize = 0;
-        foreach (var file in inputFiles)
+        string tempPath2 = outputFile + ".tmp";
+        try
         {
-            var info = new FileInfo(file);
-            totalDataSize += info.Length - 44; // Subtract WAV header
-        }
+            using var firstFile = new FileStream(inputFiles[0], FileMode.Open, FileAccess.Read);
+            byte[] header = new byte[44];
+            firstFile.Read(header, 0, 44);
 
-        // Write output file
-        using var output = new FileStream(outputFile, FileMode.Create, FileAccess.Write);
-        using var writer = new BinaryWriter(output);
-
-        // Write RIFF header with updated size
-        writer.Write(header, 0, 4); // "RIFF"
-        writer.Write((int)(totalDataSize + 36)); // File size - 8
-        writer.Write(header, 8, 36); // Rest of header
-
-        // Copy data from all input files
-        byte[] buffer = new byte[8192];
-        foreach (var file in inputFiles)
-        {
-            using var input = new FileStream(file, FileMode.Open, FileAccess.Read);
-            input.Seek(44, SeekOrigin.Begin); // Skip header
-            
-            int bytesRead;
-            while ((bytesRead = input.Read(buffer, 0, buffer.Length)) > 0)
+            // Calculate total data size
+            long totalDataSize = 0;
+            foreach (var file in inputFiles)
             {
-                writer.Write(buffer, 0, bytesRead);
+                var info = new FileInfo(file);
+                totalDataSize += info.Length - 44; // Subtract WAV header
             }
+
+            // Write output file to temp location
+            using (var output = new FileStream(tempPath2, FileMode.Create, FileAccess.Write))
+            using (var writer = new BinaryWriter(output))
+            {
+                // Write RIFF header with updated size
+                writer.Write(header, 0, 4); // "RIFF"
+                writer.Write((int)(totalDataSize + 36)); // File size - 8
+                writer.Write(header, 8, 36); // Rest of header
+
+                // Copy data from all input files
+                byte[] buffer = new byte[8192];
+                foreach (var file in inputFiles)
+                {
+                    using var input = new FileStream(file, FileMode.Open, FileAccess.Read);
+                    input.Seek(44, SeekOrigin.Begin); // Skip header
+                    
+                    int bytesRead;
+                    while ((bytesRead = input.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        writer.Write(buffer, 0, bytesRead);
+                    }
+                }
+            }
+
+            // Atomic rename
+            File.Move(tempPath2, outputFile, overwrite: true);
+        }
+        catch
+        {
+            // Clean up temp file on error
+            if (File.Exists(tempPath2))
+            {
+                try { File.Delete(tempPath2); } catch { }
+            }
+            throw;
         }
     }
 }

@@ -13,6 +13,7 @@ public static class WavMerger
 {
     /// <summary>
     /// Merges multiple WAV files into a single output file with gaps for timing.
+    /// Uses atomic write pattern (temp file + rename).
     /// </summary>
     public static void MergeWavFiles(IEnumerable<WavSegment> segments, string outputPath)
     {
@@ -67,11 +68,29 @@ public static class WavMerger
             }
         }
         
-        // Write output file
-        using var outputStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
-        using var outputWriter = new BinaryWriter(outputStream);
-        
-        WriteWavFile(outputWriter, outputSamples, header.SampleRate, header.NumChannels, header.BitsPerSample);
+        // Write to temp file first for atomic operation
+        string tempPath = outputPath + ".tmp";
+        try
+        {
+            // Write output file to temp location
+            using (var outputStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write))
+            using (var outputWriter = new BinaryWriter(outputStream))
+            {
+                WriteWavFile(outputWriter, outputSamples, header.SampleRate, header.NumChannels, header.BitsPerSample);
+            }
+
+            // Atomic rename
+            File.Move(tempPath, outputPath, overwrite: true);
+        }
+        catch
+        {
+            // Clean up temp file on error
+            if (File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); } catch { }
+            }
+            throw;
+        }
     }
 
     private static WavHeader ReadWavHeader(BinaryReader reader)

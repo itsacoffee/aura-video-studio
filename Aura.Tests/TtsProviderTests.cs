@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Audio;
 using Aura.Core.Models;
 using Aura.Providers.Tts;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,7 +18,8 @@ public class TtsProviderTests
     public async Task MockTtsProvider_Should_GenerateValidWav()
     {
         // Arrange
-        var provider = new MockTtsProvider(NullLogger<MockTtsProvider>.Instance);
+        var wavValidator = new WavValidator(NullLogger<WavValidator>.Instance);
+        var provider = new MockTtsProvider(NullLogger<MockTtsProvider>.Instance, wavValidator);
         var lines = new List<ScriptLine>
         {
             new ScriptLine(0, "Hello world", TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(2)),
@@ -56,7 +58,8 @@ public class TtsProviderTests
     public async Task MockTtsProvider_Should_GenerateCorrectDuration()
     {
         // Arrange
-        var provider = new MockTtsProvider(NullLogger<MockTtsProvider>.Instance);
+        var wavValidator = new WavValidator(NullLogger<WavValidator>.Instance);
+        var provider = new MockTtsProvider(NullLogger<MockTtsProvider>.Instance, wavValidator);
         var lines = new List<ScriptLine>
         {
             new ScriptLine(0, "Line 1", TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(1)),
@@ -111,7 +114,8 @@ public class TtsProviderTests
     public async Task MockTtsProvider_Should_ReturnMockVoices()
     {
         // Arrange
-        var provider = new MockTtsProvider(NullLogger<MockTtsProvider>.Instance);
+        var wavValidator = new WavValidator(NullLogger<WavValidator>.Instance);
+        var provider = new MockTtsProvider(NullLogger<MockTtsProvider>.Instance, wavValidator);
 
         // Act
         var voices = await provider.GetAvailableVoicesAsync();
@@ -126,7 +130,8 @@ public class TtsProviderTests
     public async Task MockTtsProvider_Should_HandleEmptyLines()
     {
         // Arrange
-        var provider = new MockTtsProvider(NullLogger<MockTtsProvider>.Instance);
+        var wavValidator = new WavValidator(NullLogger<WavValidator>.Instance);
+        var provider = new MockTtsProvider(NullLogger<MockTtsProvider>.Instance, wavValidator);
         var lines = new List<ScriptLine>
         {
             new ScriptLine(0, "", TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(1))

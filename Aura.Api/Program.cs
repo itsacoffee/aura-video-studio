@@ -128,6 +128,10 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
 builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 
+// Register Audio services
+builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
+builder.Services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
+
 // Register TTS providers with safe DI resolution
 builder.Services.AddHttpClient();
 

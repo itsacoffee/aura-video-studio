@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Audio;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
@@ -13,15 +14,18 @@ namespace Aura.Providers.Tts;
 /// <summary>
 /// Mock TTS provider for CI/Linux environments.
 /// Generates deterministic beep/silence WAV files with correct length for testing.
+/// Uses atomic file operations and validation for reliability.
 /// </summary>
 public class MockTtsProvider : ITtsProvider
 {
     private readonly ILogger<MockTtsProvider> _logger;
+    private readonly WavValidator _wavValidator;
     private readonly string _outputDirectory;
 
-    public MockTtsProvider(ILogger<MockTtsProvider> logger)
+    public MockTtsProvider(ILogger<MockTtsProvider> logger, WavValidator wavValidator)
     {
         _logger = logger;
+        _wavValidator = wavValidator;
         _outputDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "TTS");
         
         // Ensure output directory exists
@@ -58,22 +62,26 @@ public class MockTtsProvider : ITtsProvider
         }
 
         // Generate a deterministic WAV file with the correct length
-        string outputFilePath = Path.Combine(_outputDirectory, $"narration_mock_{DateTime.Now:yyyyMMddHHmmss}.wav");
+        string outputFilePath = Path.Combine(_outputDirectory, $"narration_mock_{Guid.NewGuid():N}.wav");
         
         _logger.LogInformation("MockTtsProvider: Generating {Duration}s of mock audio for {Count} lines", 
             totalDuration.TotalSeconds, linesList.Count);
 
-        // Generate WAV file
-        await GenerateWavFileAsync(outputFilePath, totalDuration, ct);
+        // Generate WAV file atomically with validation
+        var helper = new TtsFileHelper(_wavValidator, _logger);
+        await helper.WriteWavAtomicallyAsync(outputFilePath, async stream =>
+        {
+            await GenerateWavContentAsync(stream, totalDuration, ct);
+        }, ct);
 
         return outputFilePath;
     }
 
     /// <summary>
-    /// Generates a deterministic WAV file with silence/beep pattern.
+    /// Generates deterministic WAV content with silence/beep pattern.
     /// WAV format: 44.1kHz, 16-bit, mono
     /// </summary>
-    private async Task GenerateWavFileAsync(string outputPath, TimeSpan duration, CancellationToken ct)
+    private async Task GenerateWavContentAsync(FileStream fileStream, TimeSpan duration, CancellationToken ct)
     {
         const int sampleRate = 44100;
         const short bitsPerSample = 16;
@@ -82,8 +90,7 @@ public class MockTtsProvider : ITtsProvider
         int numSamples = (int)(duration.TotalSeconds * sampleRate);
         int dataSize = numSamples * numChannels * (bitsPerSample / 8);
         
-        using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
-        using var writer = new BinaryWriter(fileStream);
+        await using var writer = new BinaryWriter(fileStream, System.Text.Encoding.UTF8, leaveOpen: false);
 
         // Write WAV header
         WriteWavHeader(writer, dataSize, sampleRate, bitsPerSample, numChannels);
