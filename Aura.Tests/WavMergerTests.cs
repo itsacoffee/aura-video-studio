@@ -162,6 +162,151 @@ public class WavMergerTests
         }
     }
 
+    [Fact]
+    public void MergeWavFiles_Should_ThrowOnEmptyFile()
+    {
+        // Arrange - Create an empty file (0 bytes)
+        var tempDir = Path.Combine(Path.GetTempPath(), "AuraTests", Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var emptyFile = Path.Combine(tempDir, "empty.wav");
+            var outputFile = Path.Combine(tempDir, "merged.wav");
+
+            // Create a 0-byte file
+            File.WriteAllBytes(emptyFile, Array.Empty<byte>());
+
+            var segments = new List<WavSegment>
+            {
+                new WavSegment(emptyFile, TimeSpan.Zero, TimeSpan.FromSeconds(1))
+            };
+
+            // Act & Assert
+            var exception = Assert.Throws<InvalidDataException>(() =>
+                WavMerger.MergeWavFiles(segments, outputFile));
+            
+            Assert.Contains("too small", exception.Message);
+            Assert.Contains("0 bytes", exception.Message);
+        }
+        finally
+        {
+            // Cleanup
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    [Fact]
+    public void MergeWavFiles_Should_ThrowOnTooSmallFile()
+    {
+        // Arrange - Create a file smaller than WAV header (< 44 bytes)
+        var tempDir = Path.Combine(Path.GetTempPath(), "AuraTests", Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var tooSmallFile = Path.Combine(tempDir, "small.wav");
+            var outputFile = Path.Combine(tempDir, "merged.wav");
+
+            // Create a 20-byte file (less than 44-byte WAV header)
+            File.WriteAllBytes(tooSmallFile, new byte[20]);
+
+            var segments = new List<WavSegment>
+            {
+                new WavSegment(tooSmallFile, TimeSpan.Zero, TimeSpan.FromSeconds(1))
+            };
+
+            // Act & Assert
+            var exception = Assert.Throws<InvalidDataException>(() =>
+                WavMerger.MergeWavFiles(segments, outputFile));
+            
+            Assert.Contains("too small", exception.Message);
+            Assert.Contains("20 bytes", exception.Message);
+            Assert.Contains("minimum 44 bytes", exception.Message);
+        }
+        finally
+        {
+            // Cleanup
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    [Fact]
+    public void MergeWavFiles_Should_ThrowOnMissingFile()
+    {
+        // Arrange - Reference a file that doesn't exist
+        var tempDir = Path.Combine(Path.GetTempPath(), "AuraTests", Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var missingFile = Path.Combine(tempDir, "does_not_exist.wav");
+            var outputFile = Path.Combine(tempDir, "merged.wav");
+
+            var segments = new List<WavSegment>
+            {
+                new WavSegment(missingFile, TimeSpan.Zero, TimeSpan.FromSeconds(1))
+            };
+
+            // Act & Assert
+            var exception = Assert.Throws<FileNotFoundException>(() =>
+                WavMerger.MergeWavFiles(segments, outputFile));
+            
+            Assert.Contains("not found", exception.Message);
+        }
+        finally
+        {
+            // Cleanup
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    [Fact]
+    public void MergeWavFiles_Should_ValidateOutputFileCreated()
+    {
+        // Arrange - Create valid input files
+        var tempDir = Path.Combine(Path.GetTempPath(), "AuraTests", Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var file1 = Path.Combine(tempDir, "test1.wav");
+            var outputFile = Path.Combine(tempDir, "merged.wav");
+
+            CreateTestWav(file1, TimeSpan.FromSeconds(0.5));
+
+            var segments = new List<WavSegment>
+            {
+                new WavSegment(file1, TimeSpan.Zero, TimeSpan.FromSeconds(0.5))
+            };
+
+            // Act
+            WavMerger.MergeWavFiles(segments, outputFile);
+
+            // Assert - Output file exists and has valid size
+            Assert.True(File.Exists(outputFile));
+            var outputInfo = new FileInfo(outputFile);
+            Assert.True(outputInfo.Length >= 44, "Output file should be at least 44 bytes (WAV header)");
+        }
+        finally
+        {
+            // Cleanup
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
     private void CreateTestWav(string path, TimeSpan duration)
     {
         const int sampleRate = 44100;
