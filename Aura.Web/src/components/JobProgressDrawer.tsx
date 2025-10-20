@@ -49,15 +49,15 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
     const pollProgress = async () => {
       try {
         // Fetch job progress
-        const progressResponse = await fetch(`/api/render/${jobId}/progress`);
+        const progressResponse = await fetch(`/api/jobs/${jobId}/progress`);
         if (progressResponse.ok) {
           const progressData = await progressResponse.json();
           setProgress(progressData.progress);
           setStatus(progressData.status);
         }
 
-        // Fetch logs filtered by job ID
-        const logsResponse = await fetch(`/api/logs?limit=100&search=${jobId}`);
+        // Fetch logs filtered by job ID (using correlationId parameter)
+        const logsResponse = await fetch(`/api/logs?lines=100&correlationId=${jobId}`);
         if (logsResponse.ok) {
           const logsData = await logsResponse.json();
           if (logsData.logs && Array.isArray(logsData.logs)) {
