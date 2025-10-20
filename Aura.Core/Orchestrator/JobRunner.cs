@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Artifacts;
 using Aura.Core.Models;
+using Aura.Core.Models.Events;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -150,14 +151,26 @@ public class JobRunner
 
             _logger.LogInformation("Starting job {JobId}", jobId);
             
-            // Update to running status
-            job = UpdateJob(job, status: JobStatus.Running, percent: 0);
+            // Update to running status with initialization message
+            job = UpdateJob(job, 
+                status: JobStatus.Running, 
+                percent: 0, 
+                stage: "Initialization",
+                progressMessage: "Initializing job execution");
 
-            // Create progress reporter
+            // Create progress reporter with detailed stage tracking
             var progress = new Progress<string>(message =>
             {
                 _logger.LogInformation("[Job {JobId}] {Message}", jobId, message);
-                job = UpdateJob(job, logs: new List<string>(job.Logs) { $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {message}" });
+                
+                // Determine stage and progress from message
+                var (stage, percent, progressMsg) = ParseProgressMessage(message, job.Stage, job.Percent);
+                
+                job = UpdateJob(job, 
+                    stage: stage,
+                    percent: percent,
+                    logs: new List<string>(job.Logs) { $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {message}" },
+                    progressMessage: progressMsg);
             });
 
             // Execute orchestrator
@@ -245,7 +258,8 @@ public class JobRunner
         List<string>? logs = null,
         DateTime? finishedAt = null,
         string? errorMessage = null,
-        JobFailure? failureDetails = null)
+        JobFailure? failureDetails = null,
+        string? progressMessage = null)
     {
         var updated = job with
         {
@@ -263,10 +277,41 @@ public class JobRunner
         _activeJobs[job.Id] = updated;
         _artifactManager.SaveJob(updated);
 
-        // Raise progress event
-        JobProgress?.Invoke(this, new JobProgressEventArgs(updated));
+        // Raise progress event with detailed information
+        var eventArgs = new JobProgressEventArgs(
+            jobId: updated.Id,
+            progress: updated.Percent,
+            status: updated.Status,
+            stage: updated.Stage,
+            message: progressMessage ?? GetProgressMessage(updated),
+            correlationId: updated.CorrelationId ?? string.Empty,
+            eta: updated.Eta
+        );
+        
+        JobProgress?.Invoke(this, eventArgs);
 
         return updated;
+    }
+
+    /// <summary>
+    /// Gets a human-readable progress message for a job
+    /// </summary>
+    private string GetProgressMessage(Job job)
+    {
+        if (!string.IsNullOrEmpty(job.ErrorMessage) && job.Status == JobStatus.Failed)
+        {
+            return job.ErrorMessage;
+        }
+
+        return job.Status switch
+        {
+            JobStatus.Queued => "Job is queued for execution",
+            JobStatus.Running => $"Processing: {job.Stage}",
+            JobStatus.Done => "Job completed successfully",
+            JobStatus.Failed => "Job failed",
+            JobStatus.Canceled => "Job was canceled",
+            _ => $"Status: {job.Status}"
+        };
     }
 
     /// <summary>
@@ -384,17 +429,51 @@ public class JobRunner
         
         return message.Length > 200 ? message.Substring(0, 197) + "..." : message;
     }
-}
 
-/// <summary>
-/// Event args for job progress updates.
-/// </summary>
-public class JobProgressEventArgs : EventArgs
-{
-    public Job Job { get; }
-
-    public JobProgressEventArgs(Job job)
+    /// <summary>
+    /// Parses a progress message to extract stage, progress percentage, and formatted message
+    /// </summary>
+    private (string stage, int percent, string message) ParseProgressMessage(string message, string currentStage, int currentPercent)
     {
-        Job = job;
+        var stage = currentStage;
+        var percent = currentPercent;
+        var formattedMessage = message;
+
+        // Parse stage transitions from orchestrator messages
+        if (message.Contains("Generating script", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Script";
+            percent = 10;
+            formattedMessage = "Generating video script";
+        }
+        else if (message.Contains("Generating narration", StringComparison.OrdinalIgnoreCase) || 
+                 message.Contains("voice", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Voice";
+            percent = 30;
+            formattedMessage = "Generating voice narration";
+        }
+        else if (message.Contains("visual", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("image", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Visuals";
+            percent = 50;
+            formattedMessage = "Generating visual assets";
+        }
+        else if (message.Contains("render", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("composing video", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Rendering";
+            percent = 70;
+            formattedMessage = "Rendering final video";
+        }
+        else if (message.Contains("postprocess", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Postprocessing";
+            percent = 90;
+            formattedMessage = "Finalizing video";
+        }
+
+        return (stage, percent, formattedMessage);
     }
 }
