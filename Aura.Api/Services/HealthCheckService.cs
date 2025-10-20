@@ -5,9 +5,11 @@ using System.Linq;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Api.Helpers;
 using Aura.Api.Models;
 using Aura.Core.Configuration;
 using Aura.Core.Dependencies;
+using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Api.Services;
@@ -20,15 +22,18 @@ public class HealthCheckService
     private readonly ILogger<HealthCheckService> _logger;
     private readonly IFfmpegLocator _ffmpegLocator;
     private readonly ProviderSettings _providerSettings;
+    private readonly TtsProviderFactory _ttsProviderFactory;
 
     public HealthCheckService(
         ILogger<HealthCheckService> logger,
         IFfmpegLocator ffmpegLocator,
-        ProviderSettings providerSettings)
+        ProviderSettings providerSettings,
+        TtsProviderFactory ttsProviderFactory)
     {
         _logger = logger;
         _ffmpegLocator = ffmpegLocator;
         _providerSettings = providerSettings;
+        _ttsProviderFactory = ttsProviderFactory;
     }
 
     /// <summary>
@@ -69,6 +74,22 @@ public class HealthCheckService
         if (portCheck.Status != HealthStatus.Healthy)
         {
             errors.Add(portCheck.Message ?? "Port availability check failed");
+        }
+
+        // Disk space check
+        var diskSpaceCheck = CheckDiskSpace();
+        checks.Add(diskSpaceCheck);
+        if (diskSpaceCheck.Status != HealthStatus.Healthy)
+        {
+            errors.Add(diskSpaceCheck.Message ?? "Disk space check failed");
+        }
+
+        // TTS provider check
+        var ttsCheck = await CheckTtsProvidersAsync(ct);
+        checks.Add(ttsCheck);
+        if (ttsCheck.Status != HealthStatus.Healthy)
+        {
+            errors.Add(ttsCheck.Message ?? "TTS provider check failed");
         }
 
         // Determine overall status
@@ -242,7 +263,7 @@ public class HealthCheckService
     }
 
     /// <summary>
-    /// Check port availability (ensure configured port is not in use by another process)
+    /// Check port availability with process ownership detection
     /// </summary>
     private SubCheckResult CheckPortAvailability()
     {
@@ -250,31 +271,68 @@ public class HealthCheckService
         {
             // Check if port 5005 is in use
             var port = 5005;
-            var isInUse = IsPortInUse(port);
+            var portCheck = NetworkUtility.CheckPort(port);
 
-            if (isInUse)
+            if (!portCheck.IsInUse)
             {
                 return new SubCheckResult(
                     "PortAvailability",
-                    HealthStatus.Degraded,
-                    $"Port {port} is in use (this instance may be using it)",
+                    HealthStatus.Healthy,
+                    $"Port {port} is available",
                     new Dictionary<string, object> 
                     { 
                         ["port"] = port,
-                        ["inUse"] = true
+                        ["inUse"] = false
                     }
                 );
             }
 
+            if (portCheck.IsOwnedByCurrentProcess)
+            {
+                return new SubCheckResult(
+                    "PortAvailability",
+                    HealthStatus.Healthy,
+                    $"Port {port} is being used by this application",
+                    new Dictionary<string, object> 
+                    { 
+                        ["port"] = port,
+                        ["inUse"] = true,
+                        ["ownedByCurrentProcess"] = true
+                    }
+                );
+            }
+
+            // Port is in use by another process
+            var message = NetworkUtility.GetPortStatusMessage(port, portCheck);
+            var remediation = NetworkUtility.GetPortRemediationMessage(port, portCheck);
+
+            var details = new Dictionary<string, object> 
+            { 
+                ["port"] = port,
+                ["inUse"] = true,
+                ["ownedByCurrentProcess"] = false
+            };
+
+            if (portCheck.OwningProcessId.HasValue)
+            {
+                details["owningProcessId"] = portCheck.OwningProcessId.Value;
+            }
+
+            if (portCheck.OwningProcessName != null)
+            {
+                details["owningProcessName"] = portCheck.OwningProcessName;
+            }
+
+            if (!string.IsNullOrEmpty(remediation))
+            {
+                details["remediation"] = remediation;
+            }
+
             return new SubCheckResult(
                 "PortAvailability",
-                HealthStatus.Healthy,
-                $"Port {port} is available or being used by this instance",
-                new Dictionary<string, object> 
-                { 
-                    ["port"] = port,
-                    ["inUse"] = false
-                }
+                HealthStatus.Unhealthy,
+                message,
+                details
             );
         }
         catch (Exception ex)
@@ -289,21 +347,110 @@ public class HealthCheckService
     }
 
     /// <summary>
-    /// Check if a port is in use
+    /// Check disk space availability
     /// </summary>
-    private static bool IsPortInUse(int port)
+    private SubCheckResult CheckDiskSpace()
     {
         try
         {
-            var ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
-            var tcpListeners = ipGlobalProperties.GetActiveTcpListeners();
+            var outputDir = _providerSettings.GetOutputDirectory();
+            var driveInfo = new DriveInfo(Path.GetPathRoot(outputDir) ?? "/");
             
-            return tcpListeners.Any(endpoint => endpoint.Port == port);
+            var freeSpaceGB = driveInfo.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0);
+            var totalSpaceGB = driveInfo.TotalSize / (1024.0 * 1024.0 * 1024.0);
+            var freeSpacePercent = (freeSpaceGB / totalSpaceGB) * 100;
+
+            var details = new Dictionary<string, object>
+            {
+                ["freeSpaceGB"] = Math.Round(freeSpaceGB, 2),
+                ["totalSpaceGB"] = Math.Round(totalSpaceGB, 2),
+                ["freeSpacePercent"] = Math.Round(freeSpacePercent, 1),
+                ["outputDirectory"] = outputDir
+            };
+
+            // Critical if less than 1 GB or less than 5% free
+            if (freeSpaceGB < 1.0 || freeSpacePercent < 5)
+            {
+                return new SubCheckResult(
+                    "DiskSpace",
+                    HealthStatus.Unhealthy,
+                    $"Low disk space: {freeSpaceGB:F2} GB free ({freeSpacePercent:F1}% of {totalSpaceGB:F2} GB)",
+                    details
+                );
+            }
+
+            // Warning if less than 5 GB or less than 10% free
+            if (freeSpaceGB < 5.0 || freeSpacePercent < 10)
+            {
+                return new SubCheckResult(
+                    "DiskSpace",
+                    HealthStatus.Degraded,
+                    $"Disk space getting low: {freeSpaceGB:F2} GB free ({freeSpacePercent:F1}% of {totalSpaceGB:F2} GB)",
+                    details
+                );
+            }
+
+            return new SubCheckResult(
+                "DiskSpace",
+                HealthStatus.Healthy,
+                $"Sufficient disk space: {freeSpaceGB:F2} GB free ({freeSpacePercent:F1}% of {totalSpaceGB:F2} GB)",
+                details
+            );
         }
-        catch
+        catch (Exception ex)
         {
-            // If we can't check, assume it's not in use
-            return false;
+            _logger.LogError(ex, "Error checking disk space");
+            return new SubCheckResult(
+                "DiskSpace",
+                HealthStatus.Degraded,
+                $"Unable to check disk space: {ex.Message}"
+            );
+        }
+    }
+
+    /// <summary>
+    /// Check TTS provider availability
+    /// </summary>
+    private async Task<SubCheckResult> CheckTtsProvidersAsync(CancellationToken ct)
+    {
+        try
+        {
+            var availableProviders = _ttsProviderFactory.CreateAvailableProviders();
+            
+            if (availableProviders.Count == 0)
+            {
+                return new SubCheckResult(
+                    "TtsProviders",
+                    HealthStatus.Degraded,
+                    "No TTS providers available",
+                    new Dictionary<string, object>
+                    {
+                        ["availableProviders"] = Array.Empty<string>(),
+                        ["count"] = 0
+                    }
+                );
+            }
+
+            var providerNames = availableProviders.Keys.ToList();
+            return new SubCheckResult(
+                "TtsProviders",
+                HealthStatus.Healthy,
+                $"{providerNames.Count} TTS provider(s) available: {string.Join(", ", providerNames)}",
+                new Dictionary<string, object>
+                {
+                    ["availableProviders"] = providerNames.ToArray(),
+                    ["count"] = providerNames.Count
+                }
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking TTS providers");
+            return new SubCheckResult(
+                "TtsProviders",
+                HealthStatus.Degraded,
+                $"Unable to check TTS providers: {ex.Message}"
+            );
         }
     }
 }

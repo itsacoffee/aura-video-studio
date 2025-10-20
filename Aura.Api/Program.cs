@@ -190,6 +190,9 @@ builder.Services.AddSingleton<Aura.Api.Services.FirstRunDiagnostics>();
 // Register Provider Warmup Service - warms up providers in background, never crashes startup
 builder.Services.AddHostedService<Aura.Api.HostedServices.ProviderWarmupService>();
 
+// Register Health Check Background Service - runs scheduled health checks
+builder.Services.AddHostedService<Aura.Api.HostedServices.HealthCheckBackgroundService>();
+
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
 builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
