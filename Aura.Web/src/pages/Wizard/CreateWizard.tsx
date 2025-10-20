@@ -49,6 +49,7 @@ import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
 import { GenerationPanel } from '../../components/Generation/GenerationPanel';
 import { parseApiError, openLogsFolder } from '../../utils/apiErrorHandler';
 import { useNotifications } from '../../components/Notifications/Toasts';
+import { useJobState } from '../../state/jobState';
 
 const useStyles = makeStyles({
   container: {
@@ -188,7 +189,7 @@ export function CreateWizard() {
   const [showGenerationPanel, setShowGenerationPanel] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
-  const { showFailureToast } = useNotifications();
+  const { showFailureToast, showSuccessToast } = useNotifications();
 
   // Update provider selection
   const updateProviderSelection = (selection: PerStageProviderSelection) => {
@@ -384,6 +385,11 @@ export function CreateWizard() {
 
       if (response.ok) {
         const data = await response.json();
+        
+        // Set job in global state for status bar
+        useJobState.getState().setJob(data.jobId);
+        useJobState.getState().updateProgress(0, 'Starting video generation...');
+        
         setActiveJobId(data.jobId);
         setShowGenerationPanel(true);
       } else {
@@ -428,14 +434,39 @@ export function CreateWizard() {
 
       if (response.ok) {
         const data = await response.json();
+        
+        // Set job in global state for status bar
+        useJobState.getState().setJob(data.jobId);
+        useJobState.getState().updateProgress(0, 'Starting quick demo...');
+        
+        // Show success toast
+        showSuccessToast({
+          title: 'Quick Demo Started',
+          message: `Job ID: ${data.jobId}`,
+        });
+        
         setActiveJobId(data.jobId);
         setShowGenerationPanel(true);
       } else {
-        alert('Failed to start quick demo generation');
+        const errorInfo = await parseApiError(response);
+        showFailureToast({
+          title: 'Failed to Start Quick Demo',
+          message: errorInfo.message,
+          errorDetails: errorInfo.errorDetails,
+          correlationId: errorInfo.correlationId,
+          errorCode: errorInfo.errorCode,
+        });
       }
     } catch (error) {
       console.error('Error starting quick demo:', error);
-      alert('Error starting quick demo generation');
+      const errorInfo = await parseApiError(error);
+      showFailureToast({
+        title: 'Failed to Start Quick Demo',
+        message: errorInfo.message,
+        errorDetails: errorInfo.errorDetails,
+        correlationId: errorInfo.correlationId,
+        errorCode: errorInfo.errorCode,
+      });
     } finally {
       setGenerating(false);
     }
