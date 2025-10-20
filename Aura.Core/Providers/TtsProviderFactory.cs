@@ -195,17 +195,46 @@ public class TtsProviderFactory
         {
             try
             {
-                // Create logger for NullTtsProvider
-                var loggerType = typeof(ILogger<>).MakeGenericType(nullProviderType);
-                var nullLoggerType = typeof(NullLogger<>).MakeGenericType(nullProviderType);
-                var nullLogger = Activator.CreateInstance(nullLoggerType);
+                // NullTtsProvider requires SilentWavGenerator, which requires WavValidator and logger
+                // Create WavValidator
+                var wavValidatorType = AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(a => a.GetTypes())
+                    .FirstOrDefault(t => t.Name == "WavValidator");
                 
-                // Create NullTtsProvider instance
-                var nullProvider = Activator.CreateInstance(nullProviderType, nullLogger);
-                if (nullProvider is ITtsProvider provider)
+                var silentWavGeneratorType = AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(a => a.GetTypes())
+                    .FirstOrDefault(t => t.Name == "SilentWavGenerator");
+
+                if (wavValidatorType != null && silentWavGeneratorType != null)
                 {
-                    _logger.LogInformation("[{CorrelationId}] Successfully created emergency NullTtsProvider", correlationId);
-                    return provider;
+                    // Create WavValidator logger
+                    var wavValidatorLoggerType = typeof(ILogger<>).MakeGenericType(wavValidatorType);
+                    var wavValidatorNullLoggerType = typeof(NullLogger<>).MakeGenericType(wavValidatorType);
+                    var wavValidatorLogger = Activator.CreateInstance(wavValidatorNullLoggerType);
+                    
+                    // Create WavValidator
+                    var wavValidator = Activator.CreateInstance(wavValidatorType, wavValidatorLogger);
+
+                    // Create SilentWavGenerator logger
+                    var silentWavGeneratorLoggerType = typeof(ILogger<>).MakeGenericType(silentWavGeneratorType);
+                    var silentWavGeneratorNullLoggerType = typeof(NullLogger<>).MakeGenericType(silentWavGeneratorType);
+                    var silentWavGeneratorLogger = Activator.CreateInstance(silentWavGeneratorNullLoggerType);
+                    
+                    // Create SilentWavGenerator
+                    var silentWavGenerator = Activator.CreateInstance(silentWavGeneratorType, silentWavGeneratorLogger);
+
+                    // Create logger for NullTtsProvider
+                    var nullProviderLoggerType = typeof(ILogger<>).MakeGenericType(nullProviderType);
+                    var nullProviderNullLoggerType = typeof(NullLogger<>).MakeGenericType(nullProviderType);
+                    var nullProviderLogger = Activator.CreateInstance(nullProviderNullLoggerType);
+                    
+                    // Create NullTtsProvider instance with its dependencies
+                    var nullProvider = Activator.CreateInstance(nullProviderType, nullProviderLogger, silentWavGenerator);
+                    if (nullProvider is ITtsProvider provider)
+                    {
+                        _logger.LogInformation("[{CorrelationId}] Successfully created emergency NullTtsProvider with dependencies", correlationId);
+                        return provider;
+                    }
                 }
             }
             catch (Exception ex)
