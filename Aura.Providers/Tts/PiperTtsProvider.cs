@@ -103,6 +103,16 @@ public class PiperTtsProvider : ITtsProvider
 
             MergeWavFiles(segmentPaths, finalPath);
 
+            // Validate the merged file
+            var validationResult = await _wavValidator.ValidateAsync(finalPath, ct);
+            if (!validationResult.IsValid)
+            {
+                _logger.LogError("Merged narration file failed validation: {Error}", validationResult.ErrorMessage);
+                throw new InvalidOperationException($"Failed to create valid narration file: {validationResult.ErrorMessage}");
+            }
+            
+            _logger.LogInformation("Narration validation passed: {Path}", finalPath);
+
             // Clean up segment files
             foreach (var segment in segmentPaths)
             {
@@ -196,6 +206,23 @@ public class PiperTtsProvider : ITtsProvider
             throw new ArgumentException("No input files to merge");
         }
 
+        // Validate all input files exist and have minimum size
+        const int MinWavFileSize = 44; // WAV header size
+        foreach (var file in inputFiles)
+        {
+            if (!File.Exists(file))
+            {
+                throw new FileNotFoundException($"Input file not found: {file}");
+            }
+            
+            var info = new FileInfo(file);
+            if (info.Length < MinWavFileSize)
+            {
+                throw new InvalidDataException(
+                    $"Input file is too small to be a valid WAV file: {file} ({info.Length} bytes, minimum {MinWavFileSize} bytes)");
+            }
+        }
+
         if (inputFiles.Count == 1)
         {
             // Use atomic copy for single file
@@ -223,7 +250,11 @@ public class PiperTtsProvider : ITtsProvider
             // Read first file to get header
             using var firstFile = new FileStream(inputFiles[0], FileMode.Open, FileAccess.Read);
             byte[] header = new byte[44];
-            firstFile.Read(header, 0, 44);
+            int headerBytesRead = firstFile.Read(header, 0, 44);
+            if (headerBytesRead < 44)
+            {
+                throw new InvalidDataException($"Failed to read WAV header from {inputFiles[0]}");
+            }
 
             // Calculate total data size
             long totalDataSize = 0;
@@ -259,6 +290,18 @@ public class PiperTtsProvider : ITtsProvider
 
             // Atomic rename
             File.Move(tempPath2, outputFile, overwrite: true);
+            
+            // Validate output file was created successfully
+            var outputInfo = new FileInfo(outputFile);
+            if (!outputInfo.Exists || outputInfo.Length < MinWavFileSize)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to create valid merged output file: {outputFile} " +
+                    $"(exists: {outputInfo.Exists}, size: {outputInfo.Length} bytes)");
+            }
+            
+            _logger.LogInformation("Successfully merged {Count} files into {Path} ({Size} bytes)", 
+                inputFiles.Count, outputFile, outputInfo.Length);
         }
         catch
         {

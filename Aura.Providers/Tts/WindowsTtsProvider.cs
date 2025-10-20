@@ -126,6 +126,23 @@ public class WindowsTtsProvider : ITtsProvider
 
             // Merge WAV files with proper timing
             WavMerger.MergeWavFiles(segments, outputFilePath);
+            
+            // Validate the merged file (only on Windows where TTS is available)
+            if (File.Exists(outputFilePath))
+            {
+                var outputInfo = new FileInfo(outputFilePath);
+                if (outputInfo.Length < 128)
+                {
+                    _logger.LogError("Merged narration file is too small: {Size} bytes", outputInfo.Length);
+                    throw new InvalidOperationException($"Failed to create valid narration file (only {outputInfo.Length} bytes)");
+                }
+                _logger.LogInformation("Narration file created successfully: {Path} ({Size} bytes)", outputFilePath, outputInfo.Length);
+            }
+            else
+            {
+                _logger.LogError("Merged narration file was not created: {Path}", outputFilePath);
+                throw new InvalidOperationException("Failed to create narration file");
+            }
         }
         
         // Clean up temp files
@@ -147,11 +164,10 @@ public class WindowsTtsProvider : ITtsProvider
         return outputFilePath;
 #else
         await Task.CompletedTask;
-        _logger.LogWarning("Windows TTS is not available on this platform. Returning stub file path.");
-        string outputFilePath = Path.Combine(_outputDirectory, $"narration_{DateTime.Now:yyyyMMddHHmmss}.wav");
-        // Create an empty file as a placeholder
-        await File.WriteAllBytesAsync(outputFilePath, Array.Empty<byte>(), ct);
-        return outputFilePath;
+        _logger.LogError("Windows TTS is not available on this platform. Cannot synthesize audio.");
+        throw new PlatformNotSupportedException(
+            "Windows TTS is only available on Windows 10 (build 19041) or later. " +
+            "Please use a different TTS provider (Piper, Mimic3, ElevenLabs, or PlayHT) on this platform.");
 #endif
     }
     
