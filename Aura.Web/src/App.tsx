@@ -23,6 +23,9 @@ import { RecentJobsPage } from './pages/RecentJobsPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { NotificationsToaster, useNotifications } from './components/Notifications/Toasts';
+import { JobStatusBar } from './components/StatusBar/JobStatusBar';
+import { JobProgressDrawer } from './components/JobProgressDrawer';
+import { useJobState } from './state/jobState';
 
 const useStyles = makeStyles({
   root: {
@@ -53,10 +56,43 @@ function App() {
   });
   const [showShortcuts, setShowShortcuts] = useState(false);
   const { toasterId } = useNotifications();
+  
+  // Job state for status bar
+  const { currentJobId, status, progress, message } = useJobState();
+  const [showDrawer, setShowDrawer] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
+  
+  // Poll job progress when a job is active
+  useEffect(() => {
+    if (!currentJobId || status === 'completed' || status === 'failed') {
+      return;
+    }
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/jobs/${currentJobId}/progress`);
+        if (response.ok) {
+          const data = await response.json();
+          useJobState.getState().updateProgress(data.progress, data.currentStage);
+          
+          if (data.status === 'completed') {
+            useJobState.getState().setStatus('completed');
+            useJobState.getState().updateProgress(100, 'Video generation complete!');
+          } else if (data.status === 'failed') {
+            useJobState.getState().setStatus('failed');
+            useJobState.getState().updateProgress(data.progress, 'Generation failed');
+          }
+        }
+      } catch (error) {
+        console.error('Error polling job progress:', error);
+      }
+    }, 1000);
+
+    return () => clearInterval(pollInterval);
+  }, [currentJobId, status]);
 
   // Global keyboard shortcut handler for Ctrl+K
   useEffect(() => {
@@ -80,6 +116,13 @@ function App() {
       <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
         <div className={styles.root}>
           <BrowserRouter>
+            {/* Status bar for job progress */}
+            <JobStatusBar
+              status={status}
+              progress={progress}
+              message={message}
+              onViewDetails={() => setShowDrawer(true)}
+            />
             <Layout>
               <Routes>
                 <Route path="/" element={<WelcomePage />} />
@@ -104,6 +147,13 @@ function App() {
             onClose={() => setShowShortcuts(false)} 
           />
           <NotificationsToaster toasterId={toasterId} />
+          
+          {/* Job progress drawer */}
+          <JobProgressDrawer
+            isOpen={showDrawer}
+            onClose={() => setShowDrawer(false)}
+            jobId={currentJobId || ''}
+          />
         </div>
       </FluentProvider>
     </ThemeContext.Provider>

@@ -540,6 +540,66 @@ public class JobsController : ControllerBase
         var bytes = Encoding.UTF8.GetBytes(message);
         await Response.Body.WriteAsync(bytes);
     }
+
+    /// <summary>
+    /// Get job progress information for status bar updates
+    /// </summary>
+    [HttpGet("{jobId}/progress")]
+    public IActionResult GetJobProgress(string jobId)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            
+            var job = _jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
+                return NotFound(new 
+                { 
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Job Not Found", 
+                    status = 404,
+                    detail = $"Job {jobId} not found",
+                    correlationId
+                });
+            }
+
+            // Map job status to string for UI
+            var statusString = job.Status switch
+            {
+                JobStatus.Running => "running",
+                JobStatus.Done or JobStatus.Succeeded => "completed",
+                JobStatus.Failed => "failed",
+                _ => "idle"
+            };
+
+            return Ok(new
+            {
+                jobId = job.Id,
+                status = statusString,
+                progress = job.Percent,
+                currentStage = job.Stage,
+                startedAt = job.StartedAt,
+                completedAt = job.FinishedAt,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error retrieving job progress {JobId}", correlationId, jobId);
+            
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Error Retrieving Job Progress",
+                status = 500,
+                detail = $"Failed to retrieve job progress: {ex.Message}",
+                correlationId
+            });
+        }
+    }
 }
 
 /// <summary>
