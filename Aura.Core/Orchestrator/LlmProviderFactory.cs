@@ -44,60 +44,33 @@ public class LlmProviderFactory
         // Always available: RuleBased provider (GUARANTEED - never allow this to fail)
         try
         {
+            _logger.LogInformation("Attempting to register RuleBased provider...");
             providers["RuleBased"] = CreateRuleBasedProvider(loggerFactory);
-            _logger.LogInformation("RuleBased provider registered");
+            _logger.LogInformation("✓ RuleBased provider registered successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex, "CRITICAL: Failed to create RuleBased provider - attempting fallback instantiation");
-            
-            // Absolute last-resort: Try direct instantiation without reflection
-            try
-            {
-                // Dynamically load the Aura.Providers assembly and create RuleBasedLlmProvider
-                var providersAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => a.GetName().Name == "Aura.Providers");
-                
-                if (providersAssembly != null)
-                {
-                    var ruleBasedType = providersAssembly.GetType("Aura.Providers.Llm.RuleBasedLlmProvider");
-                    if (ruleBasedType != null)
-                    {
-                        var logger = loggerFactory.CreateLogger(ruleBasedType);
-                        var instance = Activator.CreateInstance(ruleBasedType, logger);
-                        if (instance is ILlmProvider llmProvider)
-                        {
-                            providers["RuleBased"] = llmProvider;
-                            _logger.LogWarning("RuleBased provider registered via fallback instantiation");
-                        }
-                    }
-                }
-                
-                // If we still don't have RuleBased, this is a critical configuration error
-                if (!providers.ContainsKey("RuleBased"))
-                {
-                    _logger.LogCritical("CRITICAL: Unable to instantiate RuleBased provider - system will have no guaranteed fallback!");
-                }
-            }
-            catch (Exception fallbackEx)
-            {
-                _logger.LogCritical(fallbackEx, "CRITICAL: Fallback instantiation of RuleBased provider also failed");
-            }
+            _logger.LogCritical(ex, "✗ CRITICAL: Failed to create RuleBased provider");
         }
 
         // Try to create Ollama provider (local)
         try
         {
+            _logger.LogInformation("Attempting to register Ollama provider...");
             var ollamaProvider = CreateOllamaProvider(loggerFactory);
             if (ollamaProvider != null)
             {
                 providers["Ollama"] = ollamaProvider;
-                _logger.LogInformation("Ollama provider registered");
+                _logger.LogInformation("✓ Ollama provider registered successfully");
+            }
+            else
+            {
+                _logger.LogDebug("✗ Ollama provider not available (returned null)");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Ollama provider not available");
+            _logger.LogWarning(ex, "✗ Ollama provider registration failed");
         }
 
         // Load API keys
@@ -108,17 +81,26 @@ public class LlmProviderFactory
         {
             if (apiKeys.TryGetValue("openai", out var openAiKey) && !string.IsNullOrWhiteSpace(openAiKey))
             {
+                _logger.LogInformation("Attempting to register OpenAI provider...");
                 var openAiProvider = CreateOpenAiProvider(loggerFactory, openAiKey);
                 if (openAiProvider != null)
                 {
                     providers["OpenAI"] = openAiProvider;
-                    _logger.LogInformation("OpenAI provider registered");
+                    _logger.LogInformation("✓ OpenAI provider registered successfully");
                 }
+                else
+                {
+                    _logger.LogDebug("✗ OpenAI provider not available (returned null)");
+                }
+            }
+            else
+            {
+                _logger.LogDebug("✗ OpenAI provider skipped (no API key configured)");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to create OpenAI provider");
+            _logger.LogWarning(ex, "✗ OpenAI provider registration failed");
         }
 
         try
@@ -128,64 +110,71 @@ public class LlmProviderFactory
                 !string.IsNullOrWhiteSpace(azureKey) && 
                 !string.IsNullOrWhiteSpace(azureEndpoint))
             {
+                _logger.LogInformation("Attempting to register Azure OpenAI provider...");
                 var azureProvider = CreateAzureOpenAiProvider(loggerFactory, azureKey, azureEndpoint);
                 if (azureProvider != null)
                 {
                     providers["Azure"] = azureProvider;
-                    _logger.LogInformation("Azure OpenAI provider registered");
+                    _logger.LogInformation("✓ Azure OpenAI provider registered successfully");
                 }
+                else
+                {
+                    _logger.LogDebug("✗ Azure OpenAI provider not available (returned null)");
+                }
+            }
+            else
+            {
+                _logger.LogDebug("✗ Azure OpenAI provider skipped (missing API key or endpoint)");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to create Azure OpenAI provider");
+            _logger.LogWarning(ex, "✗ Azure OpenAI provider registration failed");
         }
 
         try
         {
             if (apiKeys.TryGetValue("gemini", out var geminiKey) && !string.IsNullOrWhiteSpace(geminiKey))
             {
+                _logger.LogInformation("Attempting to register Gemini provider...");
                 var geminiProvider = CreateGeminiProvider(loggerFactory, geminiKey);
                 if (geminiProvider != null)
                 {
                     providers["Gemini"] = geminiProvider;
-                    _logger.LogInformation("Gemini provider registered");
+                    _logger.LogInformation("✓ Gemini provider registered successfully");
                 }
+                else
+                {
+                    _logger.LogDebug("✗ Gemini provider not available (returned null)");
+                }
+            }
+            else
+            {
+                _logger.LogDebug("✗ Gemini provider skipped (no API key configured)");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to create Gemini provider");
+            _logger.LogWarning(ex, "✗ Gemini provider registration failed");
         }
 
+        _logger.LogInformation("========================================");
         _logger.LogInformation("Registered {Count} LLM providers: {Providers}", 
             providers.Count, string.Join(", ", providers.Keys));
+        _logger.LogInformation("========================================");
 
         return providers;
     }
 
     private ILlmProvider CreateRuleBasedProvider(ILoggerFactory loggerFactory)
     {
-        // Use reflection to create RuleBasedLlmProvider
         var type = Type.GetType("Aura.Providers.Llm.RuleBasedLlmProvider, Aura.Providers");
         if (type == null)
         {
             throw new Exception("RuleBasedLlmProvider type not found");
         }
 
-        // Create a typed logger using reflection
-        var createLoggerMethod = typeof(LoggerFactoryExtensions)
-            .GetMethods()
-            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
-        
-        if (createLoggerMethod == null)
-        {
-            throw new Exception("CreateLogger<T> method not found on LoggerFactoryExtensions");
-        }
-        
-        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
-        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
-        
+        var logger = loggerFactory.CreateLogger(type);
         return (ILlmProvider)Activator.CreateInstance(type, logger)!;
     }
 
@@ -194,7 +183,6 @@ public class LlmProviderFactory
         var ollamaUrl = _providerSettings.GetOllamaUrl();
         var httpClient = _httpClientFactory.CreateClient();
         
-        // Use reflection to create OllamaLlmProvider
         var type = Type.GetType("Aura.Providers.Llm.OllamaLlmProvider, Aura.Providers");
         if (type == null)
         {
@@ -202,20 +190,7 @@ public class LlmProviderFactory
             return null;
         }
 
-        // Create a typed logger using reflection
-        var createLoggerMethod = typeof(LoggerFactoryExtensions)
-            .GetMethods()
-            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
-        
-        if (createLoggerMethod == null)
-        {
-            _logger.LogWarning("CreateLogger<T> method not found");
-            return null;
-        }
-        
-        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
-        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
-
+        var logger = loggerFactory.CreateLogger(type);
         return (ILlmProvider)Activator.CreateInstance(
             type, 
             logger, 
@@ -231,7 +206,6 @@ public class LlmProviderFactory
     {
         var httpClient = _httpClientFactory.CreateClient();
         
-        // Use reflection to create OpenAiLlmProvider
         var type = Type.GetType("Aura.Providers.Llm.OpenAiLlmProvider, Aura.Providers");
         if (type == null)
         {
@@ -239,20 +213,7 @@ public class LlmProviderFactory
             return null;
         }
 
-        // Create a typed logger using reflection
-        var createLoggerMethod = typeof(LoggerFactoryExtensions)
-            .GetMethods()
-            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
-        
-        if (createLoggerMethod == null)
-        {
-            _logger.LogWarning("CreateLogger<T> method not found");
-            return null;
-        }
-        
-        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
-        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
-
+        var logger = loggerFactory.CreateLogger(type);
         return (ILlmProvider)Activator.CreateInstance(
             type,
             logger,
@@ -266,7 +227,6 @@ public class LlmProviderFactory
     {
         var httpClient = _httpClientFactory.CreateClient();
         
-        // Use reflection to create AzureOpenAiLlmProvider
         var type = Type.GetType("Aura.Providers.Llm.AzureOpenAiLlmProvider, Aura.Providers");
         if (type == null)
         {
@@ -274,20 +234,7 @@ public class LlmProviderFactory
             return null;
         }
 
-        // Create a typed logger using reflection
-        var createLoggerMethod = typeof(LoggerFactoryExtensions)
-            .GetMethods()
-            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
-        
-        if (createLoggerMethod == null)
-        {
-            _logger.LogWarning("CreateLogger<T> method not found");
-            return null;
-        }
-        
-        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
-        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
-
+        var logger = loggerFactory.CreateLogger(type);
         return (ILlmProvider)Activator.CreateInstance(
             type,
             logger,
@@ -302,7 +249,6 @@ public class LlmProviderFactory
     {
         var httpClient = _httpClientFactory.CreateClient();
         
-        // Use reflection to create GeminiLlmProvider
         var type = Type.GetType("Aura.Providers.Llm.GeminiLlmProvider, Aura.Providers");
         if (type == null)
         {
@@ -310,20 +256,7 @@ public class LlmProviderFactory
             return null;
         }
 
-        // Create a typed logger using reflection
-        var createLoggerMethod = typeof(LoggerFactoryExtensions)
-            .GetMethods()
-            .FirstOrDefault(m => m.Name == "CreateLogger" && m.IsGenericMethod && m.GetParameters().Length == 1);
-        
-        if (createLoggerMethod == null)
-        {
-            _logger.LogWarning("CreateLogger<T> method not found");
-            return null;
-        }
-        
-        var genericMethod = createLoggerMethod.MakeGenericMethod(type);
-        var logger = genericMethod.Invoke(null, new object[] { loggerFactory });
-
+        var logger = loggerFactory.CreateLogger(type);
         return (ILlmProvider)Activator.CreateInstance(
             type,
             logger,
