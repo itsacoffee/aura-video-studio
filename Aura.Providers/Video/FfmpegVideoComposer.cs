@@ -61,6 +61,10 @@ public class FfmpegVideoComposer : IVideoComposer
         _logger.LogInformation("Starting FFmpeg render (JobId={JobId}, CorrelationId={CorrelationId}) at {Resolution}p", 
             jobId, correlationId, spec.Res.Height);
         
+        // Set up FFmpeg log file path
+        var ffmpegLogPath = Path.Combine(_logsDirectory, $"{jobId}.log");
+        StreamWriter? logWriter = null;
+        
         // Resolve FFmpeg path once at the start - this is the single source of truth for this render job
         string ffmpegPath;
         try
@@ -117,6 +121,26 @@ public class FfmpegVideoComposer : IVideoComposer
         var startTime = DateTime.Now;
         var lastReportTime = DateTime.Now;
         
+        // Initialize log writer for FFmpeg output
+        try
+        {
+            logWriter = new StreamWriter(ffmpegLogPath, append: false, encoding: Encoding.UTF8)
+            {
+                AutoFlush = true
+            };
+            logWriter.WriteLine($"FFmpeg Render Log - Job ID: {jobId}");
+            logWriter.WriteLine($"Correlation ID: {correlationId}");
+            logWriter.WriteLine($"Started: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+            logWriter.WriteLine($"Resolution: {spec.Res.Width}x{spec.Res.Height}");
+            logWriter.WriteLine($"FFmpeg Path: {ffmpegPath}");
+            logWriter.WriteLine($"Command: {ffmpegCommand}");
+            logWriter.WriteLine(new string('-', 80));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create FFmpeg log file at {LogPath}", ffmpegLogPath);
+        }
+
         // Set up output handler to parse progress and capture output
         process.ErrorDataReceived += (sender, args) =>
         {
@@ -124,6 +148,16 @@ public class FfmpegVideoComposer : IVideoComposer
             
             // Capture for error reporting
             stderrBuilder.AppendLine(args.Data);
+            
+            // Write to log file
+            try
+            {
+                logWriter?.WriteLine($"[stderr] {args.Data}");
+            }
+            catch
+            {
+                // Ignore log write errors
+            }
             
             // Log the output
             _logger.LogTrace("FFmpeg stderr: {Output}", args.Data);
@@ -173,6 +207,17 @@ public class FfmpegVideoComposer : IVideoComposer
             if (!string.IsNullOrEmpty(args.Data))
             {
                 stdoutBuilder.AppendLine(args.Data);
+                
+                // Write to log file
+                try
+                {
+                    logWriter?.WriteLine($"[stdout] {args.Data}");
+                }
+                catch
+                {
+                    // Ignore log write errors
+                }
+                
                 _logger.LogTrace("FFmpeg stdout: {Output}", args.Data);
             }
         };
@@ -232,8 +277,24 @@ public class FfmpegVideoComposer : IVideoComposer
             _logger.LogError(ex, "Unexpected FFmpeg error (JobId={JobId})", jobId);
             throw new InvalidOperationException($"FFmpeg render failed unexpectedly: {ex.Message} (JobId: {jobId}, CorrelationId: {correlationId})", ex);
         }
+        finally
+        {
+            // Close log file
+            try
+            {
+                logWriter?.WriteLine(new string('-', 80));
+                logWriter?.WriteLine($"Completed: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+                logWriter?.WriteLine($"Exit Code: {process.ExitCode}");
+                logWriter?.Dispose();
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
         
         _logger.LogInformation("Render completed successfully (JobId={JobId}): {OutputPath}", jobId, outputFilePath);
+        _logger.LogInformation("FFmpeg log written to: {LogPath}", ffmpegLogPath);
         
         // Report 100% completion
         progress.Report(new RenderProgress(
