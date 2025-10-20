@@ -1,53 +1,311 @@
-# FFmpeg Detection Manual Test Plan
+# FFmpeg Detection Test Plan
+
+## Overview
+This document provides comprehensive testing procedures for FFmpeg detection and management across different installation scenarios, focusing on portable distribution compatibility.
 
 ## Test Environment
-- Backend API: http://127.0.0.1:5005
-- Frontend: http://localhost:5173
-- Test data directory: `/tmp/ffmpeg-test`
+- **Portable Distribution**: Extracted from AuraVideoStudio_Portable_x64.zip
+- **Backend API**: http://127.0.0.1:5005
+- **Web UI**: http://127.0.0.1:5005 (served by API)
+- **Test Scenarios**: 
+  1. No FFmpeg installed
+  2. FFmpeg in PATH
+  3. FFmpeg in portable folder
+  4. FFmpeg pre-bundled in distribution
 
-## Test Cases
+## Test Categories
 
-### Test 1: Manual Copy + Rescan Workflow
-
-**Objective**: Verify that manually copying FFmpeg to the dependencies folder and clicking "Rescan" detects and registers it.
-
-**Steps**:
-1. Start the Aura API backend
-2. Open the UI and navigate to Download Center → Engines tab
-3. Verify FFmpeg card shows "Not Installed" status
-4. Manually copy FFmpeg to the dependencies folder:
-   - **Windows**: `%LOCALAPPDATA%\Aura\dependencies\bin\ffmpeg.exe`
-   - **Linux/Mac**: `~/.local/share/Aura/dependencies/bin/ffmpeg`
-5. Click the "Rescan" button on the FFmpeg card
-6. Verify:
-   - Alert shows "FFmpeg found and registered!"
-   - FFmpeg card status changes to "Installed"
-   - Path is displayed showing the dependencies folder location
-   - Version string is shown
-
-**Expected Result**: FFmpeg is detected, registered, and the UI updates to show installed status with path.
+### 1. Detection Scenarios
+### 2. Installation Methods
+### 3. Attachment Methods
+### 4. Priority and Fallback
+### 5. Portable Distribution Integration
 
 ---
 
-### Test 2: Attach Existing via Absolute Path
+## 1. Detection Scenarios
 
-**Objective**: Verify that "Attach Existing..." allows specifying any absolute path to FFmpeg.
+### Test 1.1: No FFmpeg Detected (Clean System)
+
+**Objective:** Verify behavior when FFmpeg is not found anywhere
+
+**Preconditions:**
+- Clean Windows installation
+- No FFmpeg in PATH
+- No FFmpeg in portable folders
+
+**Steps:**
+1. Extract portable distribution
+2. Start application via start_portable.cmd
+3. Navigate to Download Center
+4. Observe FFmpeg card status
+
+**Expected Result:**
+```
+Status: ❌ Not Installed
+Message: FFmpeg is required for video rendering
+Version: N/A
+Location: Not found
+
+Actions Available:
+[Install] [Attach Existing] [Rescan]
+```
+
+**Pass Criteria:**
+- ✅ Clear "Not Installed" status
+- ✅ Helpful message shown
+- ✅ Install option prominently displayed
+- ✅ No false detection
+
+---
+
+### Test 1.2: FFmpeg in System PATH
+
+**Objective:** Verify detection of FFmpeg in system PATH
+
+**Preconditions:**
+- FFmpeg installed system-wide
+- ffmpeg.exe accessible via PATH
+
+**Steps:**
+1. Verify FFmpeg in PATH:
+   ```cmd
+   ffmpeg -version
+   ```
+2. Start Aura Video Studio
+3. Navigate to Download Center
+4. Observe auto-detection
+
+**Expected Result:**
+```
+Status: ✅ Installed (External)
+Version: ffmpeg version 6.0-essentials
+Location: C:\Program Files\ffmpeg\bin\ffmpeg.exe
+Source: System PATH
+
+Actions Available:
+[Open Folder] [Verify] [Detach]
+```
+
+**Pass Criteria:**
+- ✅ Auto-detected on startup
+- ✅ Version displayed correctly
+- ✅ Path shown
+- ✅ Marked as "External" installation
+
+---
+
+### Test 1.3: FFmpeg in Portable Folder (Pre-bundled)
+
+**Objective:** Verify detection of pre-bundled FFmpeg
+
+**Preconditions:**
+- FFmpeg included in portable ZIP
+- Located at: `ffmpeg/ffmpeg.exe` (relative to root)
+
+**Steps:**
+1. Extract portable distribution with FFmpeg included
+2. Verify file exists: `ffmpeg/ffmpeg.exe`
+3. Start application
+4. Check detection
+
+**Expected Result:**
+```
+Status: ✅ Installed (Bundled)
+Version: ffmpeg version 6.0-essentials
+Location: .\ffmpeg\ffmpeg.exe
+Source: Portable Bundle
+
+Actions Available:
+[Open Folder] [Verify] [Update]
+```
+
+**Pass Criteria:**
+- ✅ Detected automatically
+- ✅ Recognized as bundled
+- ✅ Ready for immediate use
+- ✅ No additional setup needed
+
+---
+
+### Test 1.4: FFmpeg in Tools Folder (Downloaded)
+
+**Objective:** Verify detection after download via Download Center
+
+**Preconditions:**
+- FFmpeg downloaded via Install button
+- Located in: `Tools/ffmpeg/bin/ffmpeg.exe`
+
+**Steps:**
+1. Start with no FFmpeg
+2. Click "Install" on FFmpeg card
+3. Wait for download completion
+4. Verify detection
+
+**Expected Result:**
+```
+Status: ✅ Installed (Downloaded)
+Version: ffmpeg version 6.0-essentials
+Location: .\Tools\ffmpeg\bin\ffmpeg.exe
+Source: Downloaded via Aura
+
+Actions Available:
+[Open Folder] [Verify] [Update] [Uninstall]
+```
+
+**Pass Criteria:**
+- ✅ Detected after download
+- ✅ Registered in install manifest
+- ✅ Uninstall option available
+- ✅ Can be updated
+
+---
+
+## 2. Installation Methods
+
+### Test 2.1: Download and Install via UI
+
+**Objective:** Test standard installation workflow
+
+**Steps:**
+1. Navigate to Download Center → Engines
+2. Click "Install" on FFmpeg card
+3. Observe download progress:
+   - Progress bar
+   - Download speed
+   - Estimated time
+4. Wait for installation
+5. Verify completion
+
+**Expected Progress:**
+```
+Status: Downloading FFmpeg...
+Progress: ████████████░░░░░░░░ 60%
+Downloaded: 31 MB / 52 MB
+Speed: 5.2 MB/s
+ETA: 4 seconds
+
+↓
+
+Status: Extracting...
+Progress: ████████████████████ 100%
+
+↓
+
+Status: ✅ Installed Successfully
+Version: ffmpeg 6.0-essentials
+Location: .\Tools\ffmpeg\bin\ffmpeg.exe
+```
+
+**Pass Criteria:**
+- ✅ Download starts immediately
+- ✅ Progress updates in real-time
+- ✅ Extraction automatic
+- ✅ Registration automatic
+- ✅ No manual steps required
+
+---
+
+### Test 2.2: Resume Interrupted Download
+
+**Objective:** Verify download resume capability
+
+**Steps:**
+1. Start FFmpeg download
+2. Wait until 50% complete
+3. Kill API process or disconnect network
+4. Restart application
+5. Return to Download Center
+6. Observe resume option
+
+**Expected Result:**
+```
+⚠️  Incomplete Download
+FFmpeg download was interrupted
+Downloaded: 26 MB / 52 MB (50%)
+
+[Resume Download] [Start Over] [Cancel]
+```
+
+**Recovery Steps:**
+1. Click "Resume Download"
+2. Verify continues from 50%
+3. Verify completes successfully
+
+**Pass Criteria:**
+- ✅ Incomplete download detected
+- ✅ Resume option available
+- ✅ Downloads continue from checkpoint
+- ✅ No re-download of completed portions
+
+---
+
+## 3. Attachment Methods
+
+## Test Cases
+
+### Test 3.1: Manual Copy + Rescan Workflow
+
+**Objective**: Verify that manually copying FFmpeg to the portable folder and clicking "Rescan" detects it
 
 **Steps**:
-1. Start the Aura API backend
-2. Open the UI and navigate to Download Center → Engines tab
-3. Click "Attach Existing..." button on FFmpeg card
-4. In the dialog, enter an absolute path to FFmpeg:
-   - **Windows**: `C:\ffmpeg\bin\ffmpeg.exe` (or wherever FFmpeg is installed)
-   - **Linux/Mac**: `/usr/bin/ffmpeg` or custom location
-5. Click "Attach" button
-6. Verify:
-   - Success message appears with path and version
-   - FFmpeg card updates to show "Installed"
-   - The absolute path is displayed
-   - Version information is shown
+1. Download FFmpeg manually from ffmpeg.org
+2. Extract to: `[Portable]\Tools\ffmpeg\bin\ffmpeg.exe`
+3. Open Aura Video Studio
+4. Navigate to Download Center → Engines
+5. Click "Rescan" button on FFmpeg card
 
-**Expected Result**: FFmpeg is validated, registered with the provided absolute path, and UI updates accordingly.
+**Expected Result:**
+```
+✅ FFmpeg Found and Registered!
+Version: ffmpeg version 6.0-essentials
+Location: .\Tools\ffmpeg\bin\ffmpeg.exe
+Source: Manual Installation
+
+FFmpeg is now ready to use.
+```
+
+**Pass Criteria:**
+- ✅ Rescan detects manually placed FFmpeg
+- ✅ Version verified automatically
+- ✅ Status updates to "Installed"
+- ✅ Path shown correctly
+
+---
+
+### Test 3.2: Attach Existing via Absolute Path
+
+**Objective**: Verify "Attach Existing..." allows specifying any absolute path to FFmpeg
+
+**Steps**:
+1. Navigate to Download Center → Engines
+2. Click "Attach Existing..." button on FFmpeg card
+3. In the dialog, enter an absolute path:
+   - Windows: `C:\ffmpeg\bin\ffmpeg.exe`
+   - Or system: `C:\Program Files\ffmpeg\bin\ffmpeg.exe`
+4. Click "Attach" button
+
+**Expected Result:**
+```
+✅ FFmpeg Attached Successfully!
+Version: ffmpeg version 6.0-full
+Location: C:\ffmpeg\bin\ffmpeg.exe
+Source: External (Attached)
+
+Verification output:
+ffmpeg version 6.0-full_build-www.gyan.dev Copyright...
+```
+
+**Pass Criteria:**
+- ✅ Validates FFmpeg executable
+- ✅ Extracts version information
+- ✅ Registers with absolute path
+- ✅ Status updates to "Installed"
+- ✅ Shows as "External" source
+
+---
+
+### Test 3.3: Attach via Directory Path
 
 ---
 

@@ -173,6 +173,20 @@ Write-Host "  2. Run Launch.bat" -ForegroundColor White
 Write-Host "  3. Open http://127.0.0.1:5005 in your browser" -ForegroundColor White
 Write-Host ""
 
+    # Generate version info file for auto-update
+    Write-Host ""
+    Write-Host "Generating version information..." -ForegroundColor Yellow
+    $versionInfo = @{
+        version = "1.0.0"
+        buildDate = (Get-Date -Format "o")
+        platform = "win-$($Platform.ToLower())"
+        configuration = $Configuration
+        checksum = $hash.Hash
+        downloadUrl = "https://github.com/Coffee285/aura-video-studio/releases/latest/download/AuraVideoStudio_Portable_x64.zip"
+    }
+    $versionInfo | ConvertTo-Json -Depth 5 | Out-File "$portableBuildDir\version.json" -Encoding utf8
+    Write-Host "✓ version.json generated for auto-update" -ForegroundColor Green
+
     # Generate build report
     $buildEndTime = Get-Date
     $buildDuration = $buildEndTime - $buildStartTime
@@ -203,9 +217,24 @@ Write-Host ""
 7. ✅ Created launcher script
 8. ✅ Generated portable ZIP
 9. ✅ Generated SHA-256 checksum
+10. ✅ Generated version information for auto-update
 
 ## Warnings
 $( if ($buildWarnings.Count -gt 0) { $buildWarnings -join "`n- " } else { "None" })
+
+## Auto-Update Support
+The build includes version.json file with:
+- Version: 1.0.0
+- Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+- Platform: win-$($Platform.ToLower())
+- Checksum: $($hash.Hash)
+
+## Dependency Bundling
+The portable distribution supports flexible dependency management:
+- FFmpeg can be pre-bundled in /ffmpeg folder (if available)
+- Dependencies can be downloaded on-demand via Download Center
+- Manual attachment of existing installations supported
+- All dependencies stored in portable folder structure
 
 ---
 *Build completed successfully at $buildEndTime*
