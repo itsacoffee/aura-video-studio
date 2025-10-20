@@ -14,6 +14,7 @@ namespace Aura.Tests;
 
 public class VideoOrchestratorIntegrationTests
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<VideoOrchestrator> _orchestratorLogger;
     private readonly ILogger<VideoGenerationOrchestrator> _smartOrchestratorLogger;
     private readonly ILogger<ResourceMonitor> _monitorLogger;
@@ -21,11 +22,11 @@ public class VideoOrchestratorIntegrationTests
 
     public VideoOrchestratorIntegrationTests()
     {
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        _orchestratorLogger = loggerFactory.CreateLogger<VideoOrchestrator>();
-        _smartOrchestratorLogger = loggerFactory.CreateLogger<VideoGenerationOrchestrator>();
-        _monitorLogger = loggerFactory.CreateLogger<ResourceMonitor>();
-        _selectorLogger = loggerFactory.CreateLogger<StrategySelector>();
+        _loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        _orchestratorLogger = _loggerFactory.CreateLogger<VideoOrchestrator>();
+        _smartOrchestratorLogger = _loggerFactory.CreateLogger<VideoGenerationOrchestrator>();
+        _monitorLogger = _loggerFactory.CreateLogger<ResourceMonitor>();
+        _selectorLogger = _loggerFactory.CreateLogger<StrategySelector>();
     }
 
     [Fact]
@@ -40,6 +41,13 @@ public class VideoOrchestratorIntegrationTests
         var mockTtsProvider = new MockTtsProvider();
         var mockVideoComposer = new MockVideoComposer();
         var mockImageProvider = new MockImageProvider();
+        var mockFfmpegLocator = new MockFfmpegLocator();
+        var mockHardwareDetector = new MockHardwareDetector();
+        var preGenerationValidator = new Aura.Core.Validation.PreGenerationValidator(
+            _loggerFactory.CreateLogger<Aura.Core.Validation.PreGenerationValidator>(),
+            mockFfmpegLocator,
+            mockHardwareDetector);
+        var scriptValidator = new Aura.Core.Validation.ScriptValidator();
 
         var orchestrator = new VideoOrchestrator(
             _orchestratorLogger,
@@ -48,6 +56,8 @@ public class VideoOrchestratorIntegrationTests
             mockVideoComposer,
             smartOrchestrator,
             monitor,
+            preGenerationValidator,
+            scriptValidator,
             mockImageProvider);
 
         var brief = new Brief("AI Revolution", null, null, "Professional", "English", Aspect.Widescreen16x9);
@@ -107,6 +117,13 @@ public class VideoOrchestratorIntegrationTests
         var mockLlmProvider = new MockLlmProvider();
         var mockTtsProvider = new MockTtsProvider();
         var mockVideoComposer = new MockVideoComposer();
+        var mockFfmpegLocator = new MockFfmpegLocator();
+        var mockHardwareDetector = new MockHardwareDetector();
+        var preGenerationValidator = new Aura.Core.Validation.PreGenerationValidator(
+            _loggerFactory.CreateLogger<Aura.Core.Validation.PreGenerationValidator>(),
+            mockFfmpegLocator,
+            mockHardwareDetector);
+        var scriptValidator = new Aura.Core.Validation.ScriptValidator();
 
         var orchestrator = new VideoOrchestrator(
             _orchestratorLogger,
@@ -114,7 +131,9 @@ public class VideoOrchestratorIntegrationTests
             mockTtsProvider,
             mockVideoComposer,
             smartOrchestrator,
-            monitor);
+            monitor,
+            preGenerationValidator,
+            scriptValidator);
 
         var brief = new Brief("Test Video", null, null, "Professional", "English", Aspect.Widescreen16x9);
         var planSpec = new PlanSpec(TimeSpan.FromSeconds(30), Pacing.Conversational, Density.Balanced, "Modern");
@@ -195,6 +214,71 @@ public class VideoOrchestratorIntegrationTests
                 new Asset("image", "/tmp/test-image.jpg", "CC0", null)
             };
             return Task.FromResult<IReadOnlyList<Asset>>(assets);
+        }
+    }
+
+    private class MockFfmpegLocator : Aura.Core.Dependencies.IFfmpegLocator
+    {
+        public Task<string> GetEffectiveFfmpegPathAsync(string? configuredPath = null, CancellationToken ct = default)
+        {
+            return Task.FromResult("/usr/bin/ffmpeg");
+        }
+
+        public Task<Aura.Core.Dependencies.FfmpegValidationResult> CheckAllCandidatesAsync(string? configuredPath = null, CancellationToken ct = default)
+        {
+            return Task.FromResult(new Aura.Core.Dependencies.FfmpegValidationResult
+            {
+                Found = true,
+                FfmpegPath = "/usr/bin/ffmpeg",
+                VersionString = "4.4.0",
+                ValidationOutput = "ffmpeg version 4.4.0",
+                Reason = "Mock FFmpeg",
+                HasX264 = true,
+                Source = "Mock"
+            });
+        }
+
+        public Task<Aura.Core.Dependencies.FfmpegValidationResult> ValidatePathAsync(string ffmpegPath, CancellationToken ct = default)
+        {
+            return Task.FromResult(new Aura.Core.Dependencies.FfmpegValidationResult
+            {
+                Found = true,
+                FfmpegPath = ffmpegPath,
+                VersionString = "4.4.0",
+                ValidationOutput = "ffmpeg version 4.4.0",
+                Reason = "Mock FFmpeg",
+                HasX264 = true,
+                Source = "Mock"
+            });
+        }
+    }
+
+    private class MockHardwareDetector : Aura.Core.Hardware.IHardwareDetector
+    {
+        public Task<SystemProfile> DetectSystemAsync()
+        {
+            return Task.FromResult(new SystemProfile
+            {
+                AutoDetect = true,
+                LogicalCores = 8,
+                PhysicalCores = 4,
+                RamGB = 16,
+                Gpu = new GpuInfo("NVIDIA", "GTX 1080", 8, "10"),
+                Tier = HardwareTier.B,
+                EnableNVENC = true,
+                EnableSD = true,
+                OfflineOnly = false
+            });
+        }
+
+        public SystemProfile ApplyManualOverrides(SystemProfile detected, HardwareOverrides overrides)
+        {
+            return detected;
+        }
+
+        public Task RunHardwareProbeAsync()
+        {
+            return Task.CompletedTask;
         }
     }
 }

@@ -7,6 +7,7 @@ using Aura.Core.Models;
 using Aura.Core.Models.Generation;
 using Aura.Core.Providers;
 using Aura.Core.Services.Generation;
+using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Orchestrator;
@@ -24,6 +25,8 @@ public class VideoOrchestrator
     private readonly VideoGenerationOrchestrator _smartOrchestrator;
     private readonly ResourceMonitor _resourceMonitor;
     private readonly IImageProvider? _imageProvider;
+    private readonly PreGenerationValidator _preGenerationValidator;
+    private readonly ScriptValidator _scriptValidator;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -32,6 +35,8 @@ public class VideoOrchestrator
         IVideoComposer videoComposer,
         VideoGenerationOrchestrator smartOrchestrator,
         ResourceMonitor resourceMonitor,
+        PreGenerationValidator preGenerationValidator,
+        ScriptValidator scriptValidator,
         IImageProvider? imageProvider = null)
     {
         _logger = logger;
@@ -41,6 +46,8 @@ public class VideoOrchestrator
         _smartOrchestrator = smartOrchestrator;
         _resourceMonitor = resourceMonitor;
         _imageProvider = imageProvider;
+        _preGenerationValidator = preGenerationValidator;
+        _scriptValidator = scriptValidator;
     }
 
     /// <summary>
@@ -57,6 +64,17 @@ public class VideoOrchestrator
     {
         try
         {
+            // Pre-generation validation
+            progress?.Report("Validating system readiness...");
+            var validationResult = await _preGenerationValidator.ValidateSystemReadyAsync(brief, planSpec, ct).ConfigureAwait(false);
+            if (!validationResult.IsValid)
+            {
+                var issues = string.Join("\n", validationResult.Issues);
+                _logger.LogError("Pre-generation validation failed: {Issues}", issues);
+                throw new ValidationException("System validation failed", validationResult.Issues);
+            }
+            _logger.LogInformation("Pre-generation validation passed");
+
             progress?.Report("Starting smart video generation pipeline...");
             _logger.LogInformation("Using smart orchestration for topic: {Topic}", brief.Topic);
 
@@ -96,6 +114,11 @@ public class VideoOrchestrator
 
             return outputPath;
         }
+        catch (ValidationException)
+        {
+            // Re-throw validation exceptions without wrapping
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during smart video generation");
@@ -116,6 +139,17 @@ public class VideoOrchestrator
     {
         try
         {
+            // Pre-generation validation
+            progress?.Report("Validating system readiness...");
+            var validationResult = await _preGenerationValidator.ValidateSystemReadyAsync(brief, planSpec, ct).ConfigureAwait(false);
+            if (!validationResult.IsValid)
+            {
+                var issues = string.Join("\n", validationResult.Issues);
+                _logger.LogError("Pre-generation validation failed: {Issues}", issues);
+                throw new ValidationException("System validation failed", validationResult.Issues);
+            }
+            _logger.LogInformation("Pre-generation validation passed");
+
             progress?.Report("Starting video generation pipeline...");
 
             // Stage 1: Script generation
@@ -123,6 +157,26 @@ public class VideoOrchestrator
             _logger.LogInformation("Generating script for topic: {Topic}", brief.Topic);
             string script = await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
             _logger.LogInformation("Script generated: {Length} characters", script.Length);
+
+            // Validate script quality
+            var scriptValidation = _scriptValidator.Validate(script, planSpec);
+            if (!scriptValidation.IsValid)
+            {
+                _logger.LogWarning("Script validation failed: {Issues}", string.Join(", ", scriptValidation.Issues));
+                _logger.LogInformation("Attempting script regeneration...");
+                
+                // Try regenerating once
+                script = await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
+                scriptValidation = _scriptValidator.Validate(script, planSpec);
+                
+                if (!scriptValidation.IsValid)
+                {
+                    var issues = string.Join("\n", scriptValidation.Issues);
+                    _logger.LogError("Script validation failed after retry: {Issues}", issues);
+                    throw new ValidationException("Script quality validation failed", scriptValidation.Issues);
+                }
+            }
+            _logger.LogInformation("Script validation passed");
 
             // Stage 2: Parse script into scenes
             progress?.Report("Stage 2/5: Parsing scenes...");
@@ -157,6 +211,11 @@ public class VideoOrchestrator
 
             progress?.Report("Video generation complete!");
             return outputPath;
+        }
+        catch (ValidationException)
+        {
+            // Re-throw validation exceptions without wrapping
+            throw;
         }
         catch (Exception ex)
         {
@@ -284,6 +343,26 @@ public class VideoOrchestrator
                     // Generate script using LLM
                     generatedScript = await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
                     _logger.LogInformation("Script generated: {Length} characters", generatedScript.Length);
+                    
+                    // Validate script quality
+                    var scriptValidation = _scriptValidator.Validate(generatedScript, planSpec);
+                    if (!scriptValidation.IsValid)
+                    {
+                        _logger.LogWarning("Script validation failed: {Issues}", string.Join(", ", scriptValidation.Issues));
+                        _logger.LogInformation("Attempting script regeneration...");
+                        
+                        // Try regenerating once
+                        generatedScript = await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
+                        scriptValidation = _scriptValidator.Validate(generatedScript, planSpec);
+                        
+                        if (!scriptValidation.IsValid)
+                        {
+                            var issues = string.Join("\n", scriptValidation.Issues);
+                            _logger.LogError("Script validation failed after retry: {Issues}", issues);
+                            throw new ValidationException("Script quality validation failed", scriptValidation.Issues);
+                        }
+                    }
+                    _logger.LogInformation("Script validation passed");
                     
                     // Parse scenes immediately for downstream tasks
                     parsedScenes = ParseScriptIntoScenes(generatedScript, planSpec.TargetDuration);
