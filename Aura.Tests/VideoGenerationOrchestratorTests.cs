@@ -222,6 +222,12 @@ public class VideoGenerationOrchestratorTests
             false,
             true);
 
+        var taskResults = new Dictionary<string, TaskResult>
+        {
+            ["task1"] = new TaskResult("task1", true, "result1", null),
+            ["task2"] = new TaskResult("task2", false, null, "error"),
+        };
+
         // Act
         var result = new OrchestrationResult(
             Succeeded: true,
@@ -229,7 +235,8 @@ public class VideoGenerationOrchestratorTests
             CompletedTasks: 8,
             FailedTasks: 2,
             ExecutionTime: TimeSpan.FromMinutes(5),
-            Strategy: strategy);
+            Strategy: strategy,
+            TaskResults: taskResults);
 
         // Assert
         Assert.True(result.Succeeded);
