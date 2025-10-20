@@ -74,6 +74,10 @@ namespace Aura.App
                         return new DependencyManager(logger, httpClient, manifestPath, downloadDir);
                     });
                     
+                    // Register smart orchestration services
+                    services.AddSingleton<Aura.Core.Services.Generation.ResourceMonitor>();
+                    services.AddSingleton<Aura.Core.Services.Generation.StrategySelector>();
+                    services.AddSingleton<Aura.Core.Services.Generation.VideoGenerationOrchestrator>();
                     services.AddSingleton<VideoOrchestrator>();
                     
                     // HTTP client

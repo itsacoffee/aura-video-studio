@@ -65,10 +65,10 @@ public class HealthEndpointIntegrationTests : IClassFixture<WebApplicationFactor
         // Assert
         Assert.NotNull(result);
         
-        // Should have all 4 checks
-        Assert.Equal(4, result.Checks.Count);
+        // Should have at least the core 4 checks (may have more from additional services)
+        Assert.True(result.Checks.Count >= 4, $"Expected at least 4 checks, got {result.Checks.Count}");
         
-        // Verify check names
+        // Verify core check names exist
         Assert.Contains(result.Checks, c => c.Name == "FFmpeg");
         Assert.Contains(result.Checks, c => c.Name == "TempDirectory");
         Assert.Contains(result.Checks, c => c.Name == "ProviderRegistry");

@@ -160,6 +160,11 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     var outputDirectory = providerSettings.GetOutputDirectory();
     return new FfmpegVideoComposer(logger, ffmpegLocator, configuredFfmpegPath, outputDirectory);
 });
+
+// Register smart orchestration services
+builder.Services.AddSingleton<Aura.Core.Services.Generation.ResourceMonitor>();
+builder.Services.AddSingleton<Aura.Core.Services.Generation.StrategySelector>();
+builder.Services.AddSingleton<Aura.Core.Services.Generation.VideoGenerationOrchestrator>();
 builder.Services.AddSingleton<VideoOrchestrator>();
 
 // Register planner provider factory and PlannerService with lazy LLM routing

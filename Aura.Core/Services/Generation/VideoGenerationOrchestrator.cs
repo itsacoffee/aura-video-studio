@@ -112,7 +112,8 @@ public class VideoGenerationOrchestrator
                 CompletedTasks: completedTasks,
                 FailedTasks: failedTasks,
                 ExecutionTime: stopwatch.Elapsed,
-                Strategy: strategy);
+                Strategy: strategy,
+                TaskResults: _taskResults);
 
             // Record strategy performance
             _strategySelector.RecordStrategyPerformance(
@@ -362,9 +363,14 @@ public record OrchestrationResult(
     int CompletedTasks,
     int FailedTasks,
     TimeSpan ExecutionTime,
-    GenerationStrategy Strategy)
+    GenerationStrategy Strategy,
+    IReadOnlyDictionary<string, TaskResult> TaskResults)
 {
     public double QualityScore => TotalTasks > 0 ? (double)CompletedTasks / TotalTasks : 0;
+    public IReadOnlyList<string> FailureReasons => TaskResults.Values
+        .Where(r => !r.Succeeded && r.ErrorMessage != null)
+        .Select(r => r.ErrorMessage!)
+        .ToList();
 }
 
 /// <summary>
