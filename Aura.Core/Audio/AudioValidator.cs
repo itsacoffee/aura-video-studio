@@ -74,6 +74,35 @@ public class AudioValidator
             };
         }
 
+        // If this is a WAV file, use specialized WAV validator first (only if we have validation tools)
+        if (audioPath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase) && 
+            (!string.IsNullOrEmpty(_ffmpegPath) || !string.IsNullOrEmpty(_ffprobePath)))
+        {
+            var wavValidator = new WavValidator(_logger as ILogger<WavValidator> ?? 
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<WavValidator>.Instance);
+            
+            // Do a quick check first - if it doesn't even have valid headers, mark as corrupted
+            if (await wavValidator.QuickValidateAsync(audioPath, ct))
+            {
+                var wavResult = await wavValidator.ValidateAsync(audioPath, ct);
+                if (!wavResult.IsValid)
+                {
+                    return new AudioValidationResult
+                    {
+                        IsValid = false,
+                        ErrorMessage = $"WAV validation failed: {wavResult.ErrorMessage}",
+                        IsCorrupted = true,
+                        Duration = wavResult.Duration,
+                        Format = wavResult.Format,
+                        DiagnosticOutput = $"Sample Rate: {wavResult.SampleRate}Hz, Channels: {wavResult.Channels}, Bits: {wavResult.BitsPerSample}"
+                    };
+                }
+                
+                // WAV validation passed - still run ffprobe/ffmpeg for additional checks if available
+                _logger.LogInformation("WAV header validation passed, performing additional checks");
+            }
+        }
+
         // Try ffprobe first if available (more detailed)
         if (!string.IsNullOrEmpty(_ffprobePath) && File.Exists(_ffprobePath))
         {
