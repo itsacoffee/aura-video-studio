@@ -19,6 +19,7 @@ import { DownloadsPage } from './pages/DownloadsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LogViewerPage } from './pages/LogViewerPage';
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
+import { RecentJobsPage } from './pages/RecentJobsPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { NotificationsToaster, useNotifications } from './components/Notifications/Toasts';
@@ -90,6 +91,7 @@ function App() {
                 <Route path="/render" element={<RenderPage />} />
                 <Route path="/publish" element={<PublishPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/jobs" element={<RecentJobsPage />} />
                 <Route path="/downloads" element={<DownloadsPage />} />
                 <Route path="/logs" element={<LogViewerPage />} />
                 <Route path="/settings" element={<SettingsPage />} />

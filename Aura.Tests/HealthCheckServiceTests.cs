@@ -6,6 +6,7 @@ using Aura.Api.Models;
 using Aura.Api.Services;
 using Aura.Core.Configuration;
 using Aura.Core.Dependencies;
+using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -24,13 +25,19 @@ public class HealthCheckServiceTests
         _providerSettingsLogger = NullLogger<ProviderSettings>.Instance;
     }
 
+    private Mock<TtsProviderFactory> CreateMockTtsProviderFactory()
+    {
+        return new Mock<TtsProviderFactory>(null, null, null);
+    }
+
     [Fact]
     public void CheckLiveness_Should_ReturnHealthy()
     {
         // Arrange
         var mockFfmpegLocator = new Mock<IFfmpegLocator>();
         var providerSettings = new ProviderSettings(_providerSettingsLogger);
-        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings);
+        var mockTtsProviderFactory = new Mock<TtsProviderFactory>(null, null, null);
+        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings, mockTtsProviderFactory.Object);
 
         // Act
         var result = service.CheckLiveness();
@@ -56,7 +63,7 @@ public class HealthCheckServiceTests
             });
 
         var providerSettings = new ProviderSettings(_providerSettingsLogger);
-        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings);
+        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings, CreateMockTtsProviderFactory().Object);
 
         // Act
         var result = await service.CheckReadinessAsync();
@@ -86,7 +93,7 @@ public class HealthCheckServiceTests
             });
 
         var providerSettings = new ProviderSettings(_providerSettingsLogger);
-        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings);
+        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings, CreateMockTtsProviderFactory().Object);
 
         // Act
         var result = await service.CheckReadinessAsync();
@@ -111,7 +118,7 @@ public class HealthCheckServiceTests
             .ReturnsAsync(new FfmpegValidationResult { Found = true, FfmpegPath = "/usr/bin/ffmpeg" });
 
         var providerSettings = new ProviderSettings(_providerSettingsLogger);
-        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings);
+        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings, CreateMockTtsProviderFactory().Object);
 
         // Act
         var result = await service.CheckReadinessAsync();
@@ -132,7 +139,7 @@ public class HealthCheckServiceTests
             .ReturnsAsync(new FfmpegValidationResult { Found = true, FfmpegPath = "/usr/bin/ffmpeg" });
 
         var providerSettings = new ProviderSettings(_providerSettingsLogger);
-        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings);
+        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings, CreateMockTtsProviderFactory().Object);
 
         // Act
         var result = await service.CheckReadinessAsync();
@@ -156,7 +163,7 @@ public class HealthCheckServiceTests
             .ReturnsAsync(new FfmpegValidationResult { Found = true, FfmpegPath = "/usr/bin/ffmpeg" });
 
         var providerSettings = new ProviderSettings(_providerSettingsLogger);
-        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings);
+        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings, CreateMockTtsProviderFactory().Object);
 
         // Act
         var result = await service.CheckReadinessAsync();
@@ -180,7 +187,7 @@ public class HealthCheckServiceTests
             .ReturnsAsync(new FfmpegValidationResult { Found = true, FfmpegPath = "/usr/bin/ffmpeg" });
 
         var providerSettings = new ProviderSettings(_providerSettingsLogger);
-        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings);
+        var service = new HealthCheckService(_logger, mockFfmpegLocator.Object, providerSettings, CreateMockTtsProviderFactory().Object);
 
         // Act
         var result = await service.CheckReadinessAsync();
