@@ -175,6 +175,9 @@ if (OperatingSystem.IsWindows())
 // Register TTS provider factory
 builder.Services.AddSingleton<Aura.Core.Providers.TtsProviderFactory>();
 
+// Register Image provider factory
+builder.Services.AddSingleton<Aura.Core.Providers.ImageProviderFactory>();
+
 // DO NOT resolve default provider during startup - let it be resolved lazily when first needed
 // This prevents startup crashes due to provider resolution issues
 
@@ -584,6 +587,9 @@ if (!startupValidator.Validate())
 
 // Add correlation ID middleware early in the pipeline
 app.UseCorrelationId();
+
+// Add global exception handling middleware
+app.UseExceptionHandling();
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
