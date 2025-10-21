@@ -203,6 +203,10 @@ builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>()
 builder.Services.AddSingleton<Aura.Core.Services.ProviderRetryWrapper>();
 builder.Services.AddScoped<Aura.Core.Services.ResourceCleanupManager>();
 
+// Register resource management services
+builder.Services.AddSingleton<Aura.Core.Services.Resources.TemporaryFileCleanupService>();
+builder.Services.AddSingleton<Aura.Core.Services.Resources.DiskSpaceChecker>();
+
 // Register smart orchestration services
 builder.Services.AddSingleton<Aura.Core.Services.Generation.ResourceMonitor>();
 builder.Services.AddSingleton<Aura.Core.Services.Generation.StrategySelector>();
