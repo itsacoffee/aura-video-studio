@@ -239,6 +239,52 @@ builder.Services.AddSingleton<Aura.Core.Services.Content.PacingOptimizer>(sp =>
     return new Aura.Core.Services.Content.PacingOptimizer(logger);
 });
 
+// Register asset library services
+builder.Services.AddSingleton<Aura.Core.Services.Assets.ThumbnailGenerator>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Assets.ThumbnailGenerator>>();
+    return new Aura.Core.Services.Assets.ThumbnailGenerator(logger);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Assets.AssetLibraryService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Assets.AssetLibraryService>>();
+    var thumbnailGenerator = sp.GetRequiredService<Aura.Core.Services.Assets.ThumbnailGenerator>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var libraryPath = Path.Combine(providerSettings.GetOutputDirectory(), "AssetLibrary");
+    return new Aura.Core.Services.Assets.AssetLibraryService(logger, libraryPath, thumbnailGenerator);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Assets.AssetTagger>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Assets.AssetTagger>>();
+    return new Aura.Core.Services.Assets.AssetTagger(logger);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Assets.StockImageService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Assets.StockImageService>>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient();
+    // API keys can be configured through environment variables or app settings
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var pexelsKey = configuration["StockImages:PexelsApiKey"];
+    var pixabayKey = configuration["StockImages:PixabayApiKey"];
+    return new Aura.Core.Services.Assets.StockImageService(logger, httpClient, pexelsKey, pixabayKey);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Assets.AIImageGenerator>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Assets.AIImageGenerator>>();
+    return new Aura.Core.Services.Assets.AIImageGenerator(logger);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Assets.AssetUsageTracker>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Assets.AssetUsageTracker>>();
+    return new Aura.Core.Services.Assets.AssetUsageTracker(logger);
+});
+
 // Register health check and startup validation services
 builder.Services.AddSingleton<Aura.Api.Services.HealthCheckService>();
 builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
