@@ -40,7 +40,9 @@ public class VisualAssetSuggester
         string sceneScript, 
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Suggesting assets for scene: {Heading}", sceneHeading);
+        // Sanitize heading for logging (remove newlines to prevent log forging)
+        var sanitizedHeading = sceneHeading.Replace('\n', ' ').Replace('\r', ' ');
+        _logger.LogInformation("Suggesting assets for scene: {Heading}", sanitizedHeading);
 
         // Check cache first (cache for 1 hour)
         var cacheKey = $"assets_{sceneHeading}_{sceneScript.GetHashCode()}";
