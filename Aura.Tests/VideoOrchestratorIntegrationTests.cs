@@ -48,6 +48,16 @@ public class VideoOrchestratorIntegrationTests
             mockFfmpegLocator,
             mockHardwareDetector);
         var scriptValidator = new Aura.Core.Validation.ScriptValidator();
+        var retryWrapper = new Aura.Core.Services.ProviderRetryWrapper(
+            _loggerFactory.CreateLogger<Aura.Core.Services.ProviderRetryWrapper>());
+        var ttsValidator = new Aura.Core.Validation.TtsOutputValidator(
+            _loggerFactory.CreateLogger<Aura.Core.Validation.TtsOutputValidator>());
+        var imageValidator = new Aura.Core.Validation.ImageOutputValidator(
+            _loggerFactory.CreateLogger<Aura.Core.Validation.ImageOutputValidator>());
+        var llmValidator = new Aura.Core.Validation.LlmOutputValidator(
+            _loggerFactory.CreateLogger<Aura.Core.Validation.LlmOutputValidator>());
+        var cleanupManager = new Aura.Core.Services.ResourceCleanupManager(
+            _loggerFactory.CreateLogger<Aura.Core.Services.ResourceCleanupManager>());
 
         var orchestrator = new VideoOrchestrator(
             _orchestratorLogger,
@@ -58,6 +68,11 @@ public class VideoOrchestratorIntegrationTests
             monitor,
             preGenerationValidator,
             scriptValidator,
+            retryWrapper,
+            ttsValidator,
+            imageValidator,
+            llmValidator,
+            cleanupManager,
             mockImageProvider);
 
         var brief = new Brief("AI Revolution", null, null, "Professional", "English", Aspect.Widescreen16x9);
@@ -124,6 +139,16 @@ public class VideoOrchestratorIntegrationTests
             mockFfmpegLocator,
             mockHardwareDetector);
         var scriptValidator = new Aura.Core.Validation.ScriptValidator();
+        var retryWrapper = new Aura.Core.Services.ProviderRetryWrapper(
+            _loggerFactory.CreateLogger<Aura.Core.Services.ProviderRetryWrapper>());
+        var ttsValidator = new Aura.Core.Validation.TtsOutputValidator(
+            _loggerFactory.CreateLogger<Aura.Core.Validation.TtsOutputValidator>());
+        var imageValidator = new Aura.Core.Validation.ImageOutputValidator(
+            _loggerFactory.CreateLogger<Aura.Core.Validation.ImageOutputValidator>());
+        var llmValidator = new Aura.Core.Validation.LlmOutputValidator(
+            _loggerFactory.CreateLogger<Aura.Core.Validation.LlmOutputValidator>());
+        var cleanupManager = new Aura.Core.Services.ResourceCleanupManager(
+            _loggerFactory.CreateLogger<Aura.Core.Services.ResourceCleanupManager>());
 
         var orchestrator = new VideoOrchestrator(
             _orchestratorLogger,
@@ -133,7 +158,12 @@ public class VideoOrchestratorIntegrationTests
             smartOrchestrator,
             monitor,
             preGenerationValidator,
-            scriptValidator);
+            scriptValidator,
+            retryWrapper,
+            ttsValidator,
+            imageValidator,
+            llmValidator,
+            cleanupManager);
 
         var brief = new Brief("Test Video", null, null, "Professional", "English", Aspect.Widescreen16x9);
         var planSpec = new PlanSpec(TimeSpan.FromSeconds(30), Pacing.Conversational, Density.Balanced, "Modern");

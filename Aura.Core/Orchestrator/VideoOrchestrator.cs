@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Generation;
 using Aura.Core.Providers;
+using Aura.Core.Services;
 using Aura.Core.Services.Generation;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,11 @@ public class VideoOrchestrator
     private readonly IImageProvider? _imageProvider;
     private readonly PreGenerationValidator _preGenerationValidator;
     private readonly ScriptValidator _scriptValidator;
+    private readonly ProviderRetryWrapper _retryWrapper;
+    private readonly TtsOutputValidator _ttsValidator;
+    private readonly ImageOutputValidator _imageValidator;
+    private readonly LlmOutputValidator _llmValidator;
+    private readonly ResourceCleanupManager _cleanupManager;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -37,6 +43,11 @@ public class VideoOrchestrator
         ResourceMonitor resourceMonitor,
         PreGenerationValidator preGenerationValidator,
         ScriptValidator scriptValidator,
+        ProviderRetryWrapper retryWrapper,
+        TtsOutputValidator ttsValidator,
+        ImageOutputValidator imageValidator,
+        LlmOutputValidator llmValidator,
+        ResourceCleanupManager cleanupManager,
         IImageProvider? imageProvider = null)
     {
         _logger = logger;
@@ -48,6 +59,11 @@ public class VideoOrchestrator
         _imageProvider = imageProvider;
         _preGenerationValidator = preGenerationValidator;
         _scriptValidator = scriptValidator;
+        _retryWrapper = retryWrapper;
+        _ttsValidator = ttsValidator;
+        _imageValidator = imageValidator;
+        _llmValidator = llmValidator;
+        _cleanupManager = cleanupManager;
     }
 
     /// <summary>
@@ -124,6 +140,11 @@ public class VideoOrchestrator
             _logger.LogError(ex, "Error during smart video generation");
             throw;
         }
+        finally
+        {
+            // Clean up temporary resources on completion or failure
+            _cleanupManager.CleanupAll();
+        }
     }
 
     /// <summary>
@@ -155,28 +176,31 @@ public class VideoOrchestrator
             // Stage 1: Script generation
             progress?.Report("Stage 1/5: Generating script...");
             _logger.LogInformation("Generating script for topic: {Topic}", brief.Topic);
-            string script = await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
-            _logger.LogInformation("Script generated: {Length} characters", script.Length);
-
-            // Validate script quality
-            var scriptValidation = _scriptValidator.Validate(script, planSpec);
-            if (!scriptValidation.IsValid)
-            {
-                _logger.LogWarning("Script validation failed: {Issues}", string.Join(", ", scriptValidation.Issues));
-                _logger.LogInformation("Attempting script regeneration...");
-                
-                // Try regenerating once
-                script = await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
-                scriptValidation = _scriptValidator.Validate(script, planSpec);
-                
-                if (!scriptValidation.IsValid)
+            
+            string script = await _retryWrapper.ExecuteWithRetryAsync(
+                async (ctRetry) =>
                 {
-                    var issues = string.Join("\n", scriptValidation.Issues);
-                    _logger.LogError("Script validation failed after retry: {Issues}", issues);
-                    throw new ValidationException("Script quality validation failed", scriptValidation.Issues);
-                }
-            }
-            _logger.LogInformation("Script validation passed");
+                    var generatedScript = await _llmProvider.DraftScriptAsync(brief, planSpec, ctRetry).ConfigureAwait(false);
+                    
+                    // Validate script structure and content
+                    var structuralValidation = _scriptValidator.Validate(generatedScript, planSpec);
+                    var contentValidation = _llmValidator.ValidateScriptContent(generatedScript, planSpec);
+                    
+                    if (!structuralValidation.IsValid || !contentValidation.IsValid)
+                    {
+                        var allIssues = structuralValidation.Issues.Concat(contentValidation.Issues).ToList();
+                        _logger.LogWarning("Script validation failed: {Issues}", string.Join(", ", allIssues));
+                        throw new ValidationException("Script quality validation failed", allIssues);
+                    }
+                    
+                    return generatedScript;
+                },
+                "Script Generation",
+                ct,
+                maxRetries: 2
+            ).ConfigureAwait(false);
+            
+            _logger.LogInformation("Script generated and validated: {Length} characters", script.Length);
 
             // Stage 2: Parse script into scenes
             progress?.Report("Stage 2/5: Parsing scenes...");
@@ -186,8 +210,30 @@ public class VideoOrchestrator
             // Stage 3: Generate narration
             progress?.Report("Stage 3/5: Generating narration...");
             var scriptLines = ConvertScenesToScriptLines(scenes);
-            string narrationPath = await _ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, ct).ConfigureAwait(false);
-            _logger.LogInformation("Narration generated at: {Path}", narrationPath);
+            
+            string narrationPath = await _retryWrapper.ExecuteWithRetryAsync(
+                async (ctRetry) =>
+                {
+                    var audioPath = await _ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, ctRetry).ConfigureAwait(false);
+                    
+                    // Validate audio output
+                    var minDuration = TimeSpan.FromSeconds(Math.Max(5, planSpec.TargetDuration.TotalSeconds * 0.3));
+                    var audioValidation = _ttsValidator.ValidateAudioFile(audioPath, minDuration);
+                    
+                    if (!audioValidation.IsValid)
+                    {
+                        _logger.LogWarning("Audio validation failed: {Issues}", string.Join(", ", audioValidation.Issues));
+                        throw new ValidationException("Audio quality validation failed", audioValidation.Issues);
+                    }
+                    
+                    _cleanupManager.RegisterTempFile(audioPath);
+                    return audioPath;
+                },
+                "Audio Generation",
+                ct
+            ).ConfigureAwait(false);
+            
+            _logger.LogInformation("Narration generated and validated at: {Path}", narrationPath);
 
             // Stage 4: Build timeline (placeholder for music/assets)
             progress?.Report("Stage 4/5: Building timeline...");
@@ -221,6 +267,11 @@ public class VideoOrchestrator
         {
             _logger.LogError(ex, "Error during video generation");
             throw;
+        }
+        finally
+        {
+            // Clean up temporary resources on completion or failure
+            _cleanupManager.CleanupAll();
         }
     }
 
@@ -340,29 +391,31 @@ public class VideoOrchestrator
             switch (node.TaskType)
             {
                 case GenerationTaskType.ScriptGeneration:
-                    // Generate script using LLM
-                    generatedScript = await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
-                    _logger.LogInformation("Script generated: {Length} characters", generatedScript.Length);
-                    
-                    // Validate script quality
-                    var scriptValidation = _scriptValidator.Validate(generatedScript, planSpec);
-                    if (!scriptValidation.IsValid)
-                    {
-                        _logger.LogWarning("Script validation failed: {Issues}", string.Join(", ", scriptValidation.Issues));
-                        _logger.LogInformation("Attempting script regeneration...");
-                        
-                        // Try regenerating once
-                        generatedScript = await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
-                        scriptValidation = _scriptValidator.Validate(generatedScript, planSpec);
-                        
-                        if (!scriptValidation.IsValid)
+                    // Generate script using LLM with retry logic
+                    generatedScript = await _retryWrapper.ExecuteWithRetryAsync(
+                        async (ctRetry) =>
                         {
-                            var issues = string.Join("\n", scriptValidation.Issues);
-                            _logger.LogError("Script validation failed after retry: {Issues}", issues);
-                            throw new ValidationException("Script quality validation failed", scriptValidation.Issues);
-                        }
-                    }
-                    _logger.LogInformation("Script validation passed");
+                            var script = await _llmProvider.DraftScriptAsync(brief, planSpec, ctRetry).ConfigureAwait(false);
+                            
+                            // Validate script structure and content
+                            var structuralValidation = _scriptValidator.Validate(script, planSpec);
+                            var contentValidation = _llmValidator.ValidateScriptContent(script, planSpec);
+                            
+                            if (!structuralValidation.IsValid || !contentValidation.IsValid)
+                            {
+                                var allIssues = structuralValidation.Issues.Concat(contentValidation.Issues).ToList();
+                                _logger.LogWarning("Script validation failed: {Issues}", string.Join(", ", allIssues));
+                                throw new ValidationException("Script quality validation failed", allIssues);
+                            }
+                            
+                            return script;
+                        },
+                        "Script Generation",
+                        ct,
+                        maxRetries: 2 // Try up to 2 times for script generation
+                    ).ConfigureAwait(false);
+                    
+                    _logger.LogInformation("Script generated and validated: {Length} characters", generatedScript.Length);
                     
                     // Parse scenes immediately for downstream tasks
                     parsedScenes = ParseScriptIntoScenes(generatedScript, planSpec.TargetDuration);
@@ -378,8 +431,33 @@ public class VideoOrchestrator
                     }
 
                     var scriptLines = ConvertScenesToScriptLines(parsedScenes);
-                    narrationPath = await _ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, ct).ConfigureAwait(false);
-                    _logger.LogInformation("Narration generated at: {Path}", narrationPath);
+                    
+                    // Generate audio with retry logic and validation
+                    narrationPath = await _retryWrapper.ExecuteWithRetryAsync(
+                        async (ctRetry) =>
+                        {
+                            var audioPath = await _ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, ctRetry).ConfigureAwait(false);
+                            
+                            // Validate audio output
+                            var minDuration = TimeSpan.FromSeconds(Math.Max(5, planSpec.TargetDuration.TotalSeconds * 0.3));
+                            var audioValidation = _ttsValidator.ValidateAudioFile(audioPath, minDuration);
+                            
+                            if (!audioValidation.IsValid)
+                            {
+                                _logger.LogWarning("Audio validation failed: {Issues}", string.Join(", ", audioValidation.Issues));
+                                throw new ValidationException("Audio quality validation failed", audioValidation.Issues);
+                            }
+                            
+                            // Register for cleanup (will be promoted to artifact later)
+                            _cleanupManager.RegisterTempFile(audioPath);
+                            
+                            return audioPath;
+                        },
+                        "Audio Generation",
+                        ct
+                    ).ConfigureAwait(false);
+                    
+                    _logger.LogInformation("Narration generated and validated at: {Path}", narrationPath);
                     return narrationPath;
 
                 case GenerationTaskType.ImageGeneration:
@@ -405,9 +483,49 @@ public class VideoOrchestrator
 
                     var scene = parsedScenes[sceneIndex];
                     var visualSpec = new VisualSpec(planSpec.Style, brief.Aspect, Array.Empty<string>());
-                    var assets = await _imageProvider.FetchOrGenerateAsync(scene, visualSpec, ct).ConfigureAwait(false);
+                    
+                    // Generate images with retry logic and validation
+                    var assets = await _retryWrapper.ExecuteWithRetryAsync(
+                        async (ctRetry) =>
+                        {
+                            var generatedAssets = await _imageProvider.FetchOrGenerateAsync(scene, visualSpec, ctRetry).ConfigureAwait(false);
+                            
+                            // Validate image assets
+                            var imageValidation = _imageValidator.ValidateImageAssets(generatedAssets, expectedMinCount: 1);
+                            
+                            if (!imageValidation.IsValid)
+                            {
+                                _logger.LogWarning("Image validation failed for scene {SceneIndex}: {Issues}", 
+                                    sceneIndex, string.Join(", ", imageValidation.Issues));
+                                
+                                // For image generation, we can be more lenient and return empty if validation fails
+                                // This prevents the entire pipeline from failing due to missing stock images
+                                if (generatedAssets.Count == 0)
+                                {
+                                    _logger.LogWarning("No assets generated for scene {SceneIndex}, continuing with empty asset list", sceneIndex);
+                                    return Array.Empty<Asset>();
+                                }
+                            }
+                            
+                            // Register image files for cleanup (skip URLs)
+                            foreach (var asset in generatedAssets)
+                            {
+                                if (!string.IsNullOrEmpty(asset.PathOrUrl) &&
+                                    !asset.PathOrUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                                    !asset.PathOrUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    _cleanupManager.RegisterTempFile(asset.PathOrUrl);
+                                }
+                            }
+                            
+                            return generatedAssets;
+                        },
+                        $"Image Generation (Scene {sceneIndex})",
+                        ct
+                    ).ConfigureAwait(false);
+                    
                     sceneAssets[sceneIndex] = assets;
-                    _logger.LogDebug("Generated {Count} assets for scene {Index}", assets.Count, sceneIndex);
+                    _logger.LogDebug("Generated and validated {Count} assets for scene {Index}", assets.Count, sceneIndex);
                     return assets;
 
                 case GenerationTaskType.VideoComposition:
