@@ -171,6 +171,15 @@ builder.Services.AddSingleton<Aura.Core.Services.Generation.StrategySelector>();
 builder.Services.AddSingleton<Aura.Core.Services.Generation.VideoGenerationOrchestrator>();
 builder.Services.AddSingleton<VideoOrchestrator>();
 
+// Register timeline editor services
+builder.Services.AddSingleton<Aura.Core.Services.Editor.TimelineRenderer>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Editor.TimelineRenderer>>();
+    var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
+    var ffmpegPath = ffmpegLocator.GetEffectiveFfmpegPathAsync().GetAwaiter().GetResult();
+    return new Aura.Core.Services.Editor.TimelineRenderer(logger, ffmpegPath);
+});
+
 // Register planner provider factory and PlannerService with lazy LLM routing
 builder.Services.AddSingleton<Aura.Providers.Planner.PlannerProviderFactory>();
 builder.Services.AddSingleton<IRecommendationService>(sp =>
