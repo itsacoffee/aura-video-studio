@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Services.Health;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services;
