@@ -14,6 +14,12 @@ export interface Track {
   name: string;
   type: 'video' | 'audio';
   clips: TimelineClip[];
+  muted?: boolean;
+  solo?: boolean;
+  volume?: number; // 0-200
+  pan?: number; // -100 to 100
+  locked?: boolean;
+  height?: number; // pixels
 }
 
 export interface ChapterMarker {
@@ -48,12 +54,18 @@ interface TimelineState {
   zoom: number;
   selectedClipId: string | null;
   selectedOverlayId: string | null;
+  isPlaying: boolean;
+  inPoint?: number;
+  outPoint?: number;
   
   setSnappingEnabled: (enabled: boolean) => void;
   setCurrentTime: (time: number) => void;
   setZoom: (zoom: number) => void;
   setSelectedClipId: (id: string | null) => void;
   setSelectedOverlayId: (id: string | null) => void;
+  setPlaying: (playing: boolean) => void;
+  setInPoint: (time?: number) => void;
+  setOutPoint: (time?: number) => void;
   
   addClip: (trackId: string, clip: TimelineClip) => void;
   updateClip: (clip: TimelineClip) => void;
@@ -68,29 +80,41 @@ interface TimelineState {
   updateOverlay: (overlay: TextOverlay) => void;
   removeOverlay: (overlayId: string) => void;
   
+  // Audio track controls
+  updateTrack: (trackId: string, updates: Partial<Track>) => void;
+  toggleMute: (trackId: string) => void;
+  toggleSolo: (trackId: string) => void;
+  toggleLock: (trackId: string) => void;
+  
   exportChapters: () => string;
 }
 
 export const useTimelineStore = create<TimelineState>((set, get) => ({
   tracks: [
-    { id: 'V1', name: 'Video 1', type: 'video', clips: [] },
-    { id: 'V2', name: 'Video 2', type: 'video', clips: [] },
-    { id: 'A1', name: 'Audio 1', type: 'audio', clips: [] },
-    { id: 'A2', name: 'Audio 2', type: 'audio', clips: [] },
+    { id: 'V1', name: 'Video 1', type: 'video', clips: [], muted: false, volume: 100, pan: 0, locked: false, height: 60 },
+    { id: 'V2', name: 'Video 2', type: 'video', clips: [], muted: false, volume: 100, pan: 0, locked: false, height: 60 },
+    { id: 'A1', name: 'Audio 1', type: 'audio', clips: [], muted: false, volume: 100, pan: 0, locked: false, height: 80 },
+    { id: 'A2', name: 'Audio 2', type: 'audio', clips: [], muted: false, volume: 100, pan: 0, locked: false, height: 80 },
   ],
   markers: [],
   overlays: [],
   snappingEnabled: true,
   currentTime: 0,
-  zoom: 1.0,
+  zoom: 50,
   selectedClipId: null,
   selectedOverlayId: null,
+  isPlaying: false,
+  inPoint: undefined,
+  outPoint: undefined,
   
   setSnappingEnabled: (enabled) => set({ snappingEnabled: enabled }),
   setCurrentTime: (time) => set({ currentTime: time }),
   setZoom: (zoom) => set({ zoom }),
   setSelectedClipId: (id) => set({ selectedClipId: id }),
   setSelectedOverlayId: (id) => set({ selectedOverlayId: id }),
+  setPlaying: (playing) => set({ isPlaying: playing }),
+  setInPoint: (time) => set({ inPoint: time }),
+  setOutPoint: (time) => set({ outPoint: time }),
   
   addClip: (trackId, clip) => set((state) => {
     const tracks = state.tracks.map((track) =>
@@ -175,6 +199,31 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   
   removeOverlay: (overlayId) => set((state) => ({
     overlays: state.overlays.filter((o) => o.id !== overlayId),
+  })),
+  
+  // Audio track controls
+  updateTrack: (trackId, updates) => set((state) => ({
+    tracks: state.tracks.map((track) =>
+      track.id === trackId ? { ...track, ...updates } : track
+    ),
+  })),
+  
+  toggleMute: (trackId) => set((state) => ({
+    tracks: state.tracks.map((track) =>
+      track.id === trackId ? { ...track, muted: !track.muted } : track
+    ),
+  })),
+  
+  toggleSolo: (trackId) => set((state) => ({
+    tracks: state.tracks.map((track) =>
+      track.id === trackId ? { ...track, solo: !track.solo } : track
+    ),
+  })),
+  
+  toggleLock: (trackId) => set((state) => ({
+    tracks: state.tracks.map((track) =>
+      track.id === trackId ? { ...track, locked: !track.locked } : track
+    ),
   })),
   
   exportChapters: () => {
