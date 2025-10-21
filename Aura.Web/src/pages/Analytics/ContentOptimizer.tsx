@@ -3,10 +3,13 @@ import {
   Button,
   Card,
   Text,
-  Title,
-  Input,
+  Title1,
+  Title2,
+  Title3,
+  Field,
   Textarea,
-  Select,
+  Dropdown,
+  Option,
   Spinner,
   Badge,
   Checkbox,
@@ -179,39 +182,43 @@ export function ContentOptimizer() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Title>Content Optimization Engine</Title>
+        <Title1>Content Optimization Engine</Title1>
         <Text>Get actionable recommendations to improve your content for maximum engagement</Text>
       </div>
 
       <Card className={styles.form}>
-        <Textarea
-          label="Content Script"
-          placeholder="Enter your video script or content..."
-          value={content}
-          onChange={(_, data) => setContent(data.value)}
-          rows={8}
-          resize="vertical"
-        />
+        <Field label="Content Script">
+          <Textarea
+            placeholder="Enter your video script or content..."
+            value={content}
+            onChange={(_, data) => setContent(data.value)}
+            rows={8}
+            resize="vertical"
+          />
+        </Field>
 
         <div className={styles.formRow}>
-          <Select
-            label="Content Type"
-            value={contentType}
-            onChange={(_, data) => setContentType(data.value)}
-          >
-            <option value="tutorial">Tutorial</option>
-            <option value="entertainment">Entertainment</option>
-            <option value="educational">Educational</option>
-            <option value="short">Short Form</option>
-          </Select>
+          <Field label="Content Type">
+            <Dropdown
+              value={contentType}
+              selectedOptions={[contentType]}
+              onOptionSelect={(_, data) => setContentType(data.optionValue || 'tutorial')}
+            >
+              <Option value="tutorial">Tutorial</Option>
+              <Option value="entertainment">Entertainment</Option>
+              <Option value="educational">Educational</Option>
+              <Option value="short">Short Form</Option>
+            </Dropdown>
+          </Field>
 
-          <Input
-            label="Video Duration"
-            type="text"
-            value={videoDuration}
-            onChange={(_, data) => setVideoDuration(data.value)}
-            placeholder="HH:MM:SS"
-          />
+          <Field label="Video Duration">
+            <Textarea
+              value={videoDuration}
+              onChange={(_, data) => setVideoDuration(data.value)}
+              placeholder="HH:MM:SS"
+              rows={1}
+            />
+          </Field>
         </div>
 
         <div>
@@ -245,18 +252,18 @@ export function ContentOptimizer() {
         <div className={styles.results}>
           <Card className={styles.scoreComparison}>
             <div className={styles.scoreItem}>
-              <Text size={200}>Current Score</Text>
-              <Title size={900}>{(roadmap.currentScore * 100).toFixed(0)}%</Title>
+              <Title2>Current Score</Title2>
+              <Title1>{(roadmap.currentScore * 100).toFixed(0)}%</Title1>
             </div>
             <div className={styles.scoreItem}>
-              <Text size={200}>Potential Score</Text>
-              <Title size={900} style={{ color: tokens.colorBrandForeground1 }}>
+              <Title2>Potential Score</Title2>
+              <Title1 style={{ color: tokens.colorBrandForeground1 }}>
                 {(roadmap.potentialScore * 100).toFixed(0)}%
-              </Title>
+              </Title1>
             </div>
             <div className={styles.scoreItem}>
-              <Text size={200}>Estimated Time</Text>
-              <Title size={600}>{roadmap.estimatedTimeToImprove}</Title>
+              <Title2>Estimated Time</Title2>
+              <Title3>{roadmap.estimatedTimeToImprove}</Title3>
             </div>
           </Card>
 
@@ -268,7 +275,7 @@ export function ContentOptimizer() {
 
           {selectedTab === 'roadmap' && (
             <Card>
-              <Title size={400}>Prioritized Action Items</Title>
+              <Title2>Prioritized Action Items</Title2>
               <div className={styles.actionItems}>
                 {roadmap.prioritizedActions.map((action, index) => (
                   <div key={index} className={styles.actionItem}>
@@ -296,7 +303,7 @@ export function ContentOptimizer() {
 
           {selectedTab === 'quickwins' && (
             <Card>
-              <Title size={400}>Quick Wins</Title>
+              <Title2>Quick Wins</Title2>
               <Text>Easy improvements with high impact:</Text>
               <div className={styles.actionItems}>
                 {roadmap.quickWins.map((win, index) => (
@@ -311,10 +318,10 @@ export function ContentOptimizer() {
 
           {selectedTab === 'platforms' && (
             <Card>
-              <Title size={400}>Platform-Specific Optimizations</Title>
+              <Title2>Platform-Specific Optimizations</Title2>
               {Object.entries(platformOptimizations).map(([platform, optimization]) => (
                 <div key={platform} className={styles.platformOptimization}>
-                  <Title size={300}>{optimization.platform}</Title>
+                  <Title3>{optimization.platform}</Title3>
                   <Text>Optimal Duration: {optimization.optimalDuration}</Text>
                   <Text>Aspect Ratio: {optimization.recommendedAspectRatio}</Text>
                   <Text>Thumbnail Size: {optimization.optimalThumbnailSize}</Text>

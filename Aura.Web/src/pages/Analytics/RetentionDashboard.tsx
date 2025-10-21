@@ -3,10 +3,12 @@ import {
   Button,
   Card,
   Text,
-  Title,
-  Input,
+  Title1,
+  Title2,
+  Field,
   Textarea,
-  Select,
+  Dropdown,
+  Option,
   Spinner,
   Badge,
   makeStyles,
@@ -109,48 +111,53 @@ export function RetentionDashboard() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Title>Audience Retention Analytics</Title>
+        <Title1>Audience Retention Analytics</Title1>
         <Text>Analyze and predict how your audience will engage with your content</Text>
       </div>
 
       <Card className={styles.form}>
-        <Textarea
-          label="Content Script"
-          placeholder="Enter your video script or content..."
-          value={content}
-          onChange={(_, data) => setContent(data.value)}
-          rows={8}
-          resize="vertical"
-        />
+        <Field label="Content Script">
+          <Textarea
+            placeholder="Enter your video script or content..."
+            value={content}
+            onChange={(_, data) => setContent(data.value)}
+            rows={8}
+            resize="vertical"
+          />
+        </Field>
 
         <div className={styles.formRow}>
-          <Select
-            label="Content Type"
-            value={contentType}
-            onChange={(_, data) => setContentType(data.value)}
-          >
-            <option value="tutorial">Tutorial</option>
-            <option value="entertainment">Entertainment</option>
-            <option value="educational">Educational</option>
-            <option value="short">Short Form</option>
-          </Select>
+          <Field label="Content Type">
+            <Dropdown
+              value={contentType}
+              selectedOptions={[contentType]}
+              onOptionSelect={(_, data) => setContentType(data.optionValue || 'tutorial')}
+            >
+              <Option value="tutorial">Tutorial</Option>
+              <Option value="entertainment">Entertainment</Option>
+              <Option value="educational">Educational</Option>
+              <Option value="short">Short Form</Option>
+            </Dropdown>
+          </Field>
 
-          <Input
-            label="Video Duration"
-            type="text"
-            value={videoDuration}
-            onChange={(_, data) => setVideoDuration(data.value)}
-            placeholder="HH:MM:SS"
-          />
+          <Field label="Video Duration">
+            <Textarea
+              value={videoDuration}
+              onChange={(_, data) => setVideoDuration(data.value)}
+              placeholder="HH:MM:SS"
+              rows={1}
+            />
+          </Field>
         </div>
 
-        <Input
-          label="Target Demographic (Optional)"
-          type="text"
-          value={targetDemographic}
-          onChange={(_, data) => setTargetDemographic(data.value)}
-          placeholder="e.g., Young adults, Tech professionals"
-        />
+        <Field label="Target Demographic (Optional)">
+          <Textarea
+            value={targetDemographic}
+            onChange={(_, data) => setTargetDemographic(data.value)}
+            placeholder="e.g., Young adults, Tech professionals"
+            rows={1}
+          />
+        </Field>
 
         <Button
           appearance="primary"
@@ -168,16 +175,16 @@ export function RetentionDashboard() {
       {prediction && (
         <div className={styles.results}>
           <Card className={styles.scoreCard}>
-            <Title size={400}>Predicted Average Retention</Title>
-            <Title size={900} style={{ color: tokens.colorBrandForeground1 }}>
+            <Title2>Predicted Average Retention</Title2>
+            <Title1 style={{ color: tokens.colorBrandForeground1 }}>
               {(prediction.predictedAverageRetention * 100).toFixed(1)}%
-            </Title>
+            </Title1>
             <Text>Optimal Length: {prediction.optimalLength}</Text>
           </Card>
 
           {prediction.engagementDips.length > 0 && (
             <Card>
-              <Title size={400}>Engagement Dip Points</Title>
+              <Title2>Engagement Dip Points</Title2>
               <div className={styles.dips}>
                 {prediction.engagementDips.map((dip, index) => (
                   <div key={index} className={styles.dipItem}>
@@ -199,7 +206,7 @@ export function RetentionDashboard() {
           )}
 
           <Card>
-            <Title size={400}>Recommendations</Title>
+            <Title2>Recommendations</Title2>
             <div className={styles.recommendations}>
               {prediction.recommendations.map((rec, index) => (
                 <div key={index} className={styles.recommendationItem}>
@@ -210,7 +217,7 @@ export function RetentionDashboard() {
           </Card>
 
           <Card>
-            <Title size={400}>Retention Curve</Title>
+            <Title2>Retention Curve</Title2>
             <div className={styles.retentionCurve}>
               <Text size={200}>Predicted retention over time:</Text>
               {prediction.retentionCurve.map((point, index) => (
