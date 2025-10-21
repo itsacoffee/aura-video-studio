@@ -11,7 +11,9 @@ import {
   Folder24Regular,
   TaskListSquareLtr24Regular,
   HeartPulse24Regular,
-  Image24Regular
+  Image24Regular,
+  Lightbulb24Regular,
+  DataTrending24Regular
 } from '@fluentui/react-icons';
 
 export interface NavItem {
@@ -24,6 +26,8 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { key: 'home', name: 'Welcome', icon: Home24Regular, path: '/' },
   { key: 'dashboard', name: 'Dashboard', icon: Document24Regular, path: '/dashboard' },
+  { key: 'ideation', name: 'Ideation', icon: Lightbulb24Regular, path: '/ideation' },
+  { key: 'trending', name: 'Trending Topics', icon: DataTrending24Regular, path: '/trending' },
   { key: 'create', name: 'Create', icon: VideoClip24Regular, path: '/create' },
   { key: 'projects', name: 'Projects', icon: Folder24Regular, path: '/projects' },
   { key: 'assets', name: 'Asset Library', icon: Image24Regular, path: '/assets' },

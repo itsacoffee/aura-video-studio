@@ -141,6 +141,9 @@ builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationContex
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ProjectContextManager>();
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationalLlmService>();
 
+// Register Ideation service
+builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
+
 // Register Audio services
 builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
 builder.Services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
