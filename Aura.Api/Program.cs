@@ -150,6 +150,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfilePersistence>(sp
     return new Aura.Core.Services.Profiles.ProfilePersistence(logger, baseDirectory);
 });
 builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfileService>();
+builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfileContextProvider>();
 
 // Register Ideation service
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
