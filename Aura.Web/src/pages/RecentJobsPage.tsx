@@ -265,6 +265,14 @@ export function RecentJobsPage() {
                   )}
                 </div>
                 <div className={styles.jobActions}>
+                  {job.status === 'Done' && (
+                    <Button
+                      appearance="primary"
+                      onClick={() => window.location.href = `/editor/${job.id}`}
+                    >
+                      Edit Video
+                    </Button>
+                  )}
                   {job.status === 'Failed' && (
                     <Button
                       appearance="subtle"

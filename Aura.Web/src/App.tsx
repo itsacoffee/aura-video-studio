@@ -13,6 +13,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { CreatePage } from './pages/CreatePage';
 import { CreateWizard } from './pages/Wizard/CreateWizard';
 import { TimelinePage } from './pages/TimelinePage';
+import { TimelineEditor } from './pages/Editor/TimelineEditor';
 import { RenderPage } from './pages/RenderPage';
 import { PublishPage } from './pages/PublishPage';
 import { DownloadsPage } from './pages/DownloadsPage';
@@ -134,6 +135,7 @@ function App() {
                 <Route path="/create" element={<CreateWizard />} />
                 <Route path="/create/legacy" element={<CreatePage />} />
                 <Route path="/timeline" element={<TimelinePage />} />
+                <Route path="/editor/:jobId" element={<TimelineEditor />} />
                 <Route path="/render" element={<RenderPage />} />
                 <Route path="/publish" element={<PublishPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
