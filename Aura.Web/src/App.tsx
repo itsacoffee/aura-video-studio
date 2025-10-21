@@ -24,6 +24,7 @@ import { RecentJobsPage } from './pages/RecentJobsPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { SetupWizard } from './pages/Setup/SetupWizard';
 import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard';
+import { AssetLibrary } from './pages/Assets/AssetLibrary';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { NotificationsToaster, useNotifications } from './components/Notifications/Toasts';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
@@ -139,6 +140,7 @@ function App() {
                 <Route path="/render" element={<RenderPage />} />
                 <Route path="/publish" element={<PublishPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/assets" element={<AssetLibrary />} />
                 <Route path="/jobs" element={<RecentJobsPage />} />
                 <Route path="/downloads" element={<DownloadsPage />} />
                 <Route path="/health" element={<ProviderHealthDashboard />} />
