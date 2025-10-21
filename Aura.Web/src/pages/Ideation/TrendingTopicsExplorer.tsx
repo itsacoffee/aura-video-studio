@@ -1,0 +1,170 @@
+import React, { useState, useEffect } from 'react';
+import {
+  makeStyles,
+  tokens,
+  Text,
+  Input,
+  Button,
+  Spinner,
+} from '@fluentui/react-components';
+import { DataTrendingRegular, SearchRegular } from '@fluentui/react-icons';
+import { TrendingTopicCard } from '../../components/ideation/TrendingTopicCard';
+import {
+  ideationService,
+  type TrendingTopic,
+} from '../../services/ideationService';
+
+const useStyles = makeStyles({
+  container: {
+    padding: tokens.spacingVerticalXXL,
+    maxWidth: '1400px',
+    margin: '0 auto',
+  },
+  header: {
+    marginBottom: tokens.spacingVerticalXXL,
+  },
+  title: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
+    marginBottom: tokens.spacingVerticalM,
+  },
+  icon: {
+    fontSize: '32px',
+    color: tokens.colorBrandForeground1,
+  },
+  subtitle: {
+    color: tokens.colorNeutralForeground3,
+    maxWidth: '800px',
+  },
+  filterSection: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    marginBottom: tokens.spacingVerticalXL,
+    alignItems: 'flex-end',
+  },
+  filterInput: {
+    flex: 1,
+    maxWidth: '400px',
+  },
+  topicsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+    gap: tokens.spacingVerticalL,
+  },
+  loadingContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: tokens.spacingVerticalXXXL,
+    gap: tokens.spacingVerticalM,
+  },
+  errorContainer: {
+    padding: tokens.spacingVerticalL,
+    backgroundColor: tokens.colorPaletteRedBackground1,
+    borderRadius: tokens.borderRadiusMedium,
+    color: tokens.colorPaletteRedForeground1,
+  },
+});
+
+export const TrendingTopicsExplorer: React.FC = () => {
+  const styles = useStyles();
+  const [topics, setTopics] = useState<TrendingTopic[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [niche, setNiche] = useState('');
+
+  useEffect(() => {
+    loadTrendingTopics();
+  }, []);
+
+  const loadTrendingTopics = async (nicheFilter?: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await ideationService.getTrending(nicheFilter, 10);
+      setTopics(response.topics);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to load trending topics'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = () => {
+    loadTrendingTopics(niche || undefined);
+  };
+
+  const handleSelectTopic = (topic: TrendingTopic) => {
+    console.log('Selected topic:', topic);
+    // Could navigate to brainstorming with this topic pre-filled
+  };
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.title}>
+          <DataTrendingRegular className={styles.icon} />
+          <Text size={800} weight="bold">
+            Trending Topics
+          </Text>
+        </div>
+        <Text className={styles.subtitle} size={400}>
+          Discover popular and rising topics in your niche. Find content
+          opportunities with high search volume and manageable competition.
+        </Text>
+      </div>
+
+      <div className={styles.filterSection}>
+        <div className={styles.filterInput}>
+          <Text size={300} style={{ marginBottom: '4px' }}>
+            Filter by Niche (Optional)
+          </Text>
+          <Input
+            placeholder="e.g., Technology, Health, Business"
+            value={niche}
+            onChange={(e) => setNiche(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          />
+        </div>
+        <Button
+          appearance="primary"
+          icon={<SearchRegular />}
+          onClick={handleSearch}
+        >
+          Search
+        </Button>
+      </div>
+
+      {error && (
+        <div className={styles.errorContainer}>
+          <Text weight="semibold">Error:</Text>
+          <Text>{error}</Text>
+        </div>
+      )}
+
+      {loading ? (
+        <div className={styles.loadingContainer}>
+          <Spinner size="extra-large" />
+          <Text size={500} weight="semibold">
+            Analyzing trending topics...
+          </Text>
+        </div>
+      ) : (
+        <div className={styles.topicsGrid}>
+          {topics.map((topic) => (
+            <TrendingTopicCard
+              key={topic.topicId}
+              topic={topic}
+              onSelect={handleSelectTopic}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
