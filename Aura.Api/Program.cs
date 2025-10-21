@@ -128,6 +128,19 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
 builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 
+// Register Conversation/Context Management services
+builder.Services.AddSingleton<Aura.Core.Services.Conversation.ContextPersistence>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Conversation.ContextPersistence>>();
+    var baseDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Aura");
+    return new Aura.Core.Services.Conversation.ContextPersistence(logger, baseDirectory);
+});
+builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationContextManager>();
+builder.Services.AddSingleton<Aura.Core.Services.Conversation.ProjectContextManager>();
+builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationalLlmService>();
+
 // Register Audio services
 builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
 builder.Services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
