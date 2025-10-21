@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Artifacts;
 using Aura.Core.Models;
 using Aura.Core.Models.Events;
 using Aura.Core.Providers;
+using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Orchestrator;
@@ -219,9 +221,54 @@ public class JobRunner
                 var updatedLogs = new List<string>(job.Logs) { cancelLog };
                 
                 UpdateJob(job, 
+                    status: JobStatus.Canceled, 
+                    errorMessage: "Job was cancelled by user",
+                    logs: updatedLogs,
+                    finishedAt: DateTime.UtcNow);
+            }
+        }
+        catch (ValidationException vex)
+        {
+            _logger.LogError("Job {JobId} failed validation: {Message}", jobId, vex.Message);
+            var job = GetJob(jobId);
+            if (job != null)
+            {
+                var failureDetails = new JobFailure
+                {
+                    Stage = job.Stage,
+                    Message = vex.Message,
+                    CorrelationId = job.CorrelationId ?? string.Empty,
+                    FailedAt = DateTime.UtcNow,
+                    ErrorCode = "E400-VALIDATION",
+                    SuggestedActions = new[]
+                    {
+                        "Review the validation errors and adjust your input",
+                        "Try simplifying your brief or reducing the duration",
+                        "Check that all required providers are configured",
+                        "Verify system resources are sufficient"
+                    }
+                };
+                
+                // Add detailed validation errors to logs
+                var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] VALIDATION ERROR: {vex.Message}";
+                var updatedLogs = new List<string>(job.Logs) { errorLog };
+                
+                if (vex.Issues.Any())
+                {
+                    foreach (var issue in vex.Issues)
+                    {
+                        updatedLogs.Add($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}]   - {issue}");
+                    }
+                }
+                
+                UpdateJob(job, 
                     status: JobStatus.Failed, 
-                    errorMessage: "Job was cancelled",
-                    logs: updatedLogs);
+                    errorMessage: vex.Message, 
+                    failureDetails: failureDetails,
+                    logs: updatedLogs,
+                    finishedAt: DateTime.UtcNow);
+                
+                _artifactManager.SaveJob(job);
             }
         }
         catch (Exception ex)
@@ -235,12 +282,24 @@ public class JobRunner
                 
                 // Add error to logs so it's visible in UI
                 var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] ERROR: {GetFriendlyErrorMessage(ex)}";
-                var stackLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Stack Trace: {ex.StackTrace}";
-                var updatedLogs = new List<string>(job.Logs) { errorLog, stackLog };
+                var updatedLogs = new List<string>(job.Logs) { errorLog };
+                
+                // Add inner exception details if available
+                if (ex.InnerException != null)
+                {
+                    updatedLogs.Add($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Inner Exception: {ex.InnerException.Message}");
+                }
+                
+                // Add stack trace for debugging (truncated)
+                var stackLines = ex.StackTrace?.Split('\n').Take(5) ?? Array.Empty<string>();
+                foreach (var line in stackLines)
+                {
+                    updatedLogs.Add($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}]   {line.Trim()}");
+                }
                 
                 UpdateJob(job, 
                     status: JobStatus.Failed, 
-                    errorMessage: ex.Message, 
+                    errorMessage: GetFriendlyErrorMessage(ex), 
                     failureDetails: failureDetails,
                     logs: updatedLogs,
                     finishedAt: DateTime.UtcNow);
@@ -456,39 +515,86 @@ public class JobRunner
         var percent = currentPercent;
         var formattedMessage = message;
 
-        // Parse stage transitions from orchestrator messages
-        if (message.Contains("Generating script", StringComparison.OrdinalIgnoreCase))
+        // Parse stage transitions from orchestrator messages with more granular progress
+        if (message.Contains("Validating system", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Initialization";
+            percent = 2;
+            formattedMessage = "Validating system readiness";
+        }
+        else if (message.Contains("Stage 1/5", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Generating script", StringComparison.OrdinalIgnoreCase))
         {
             stage = "Script";
-            percent = 10;
-            formattedMessage = "Generating video script";
+            percent = 15;
+            formattedMessage = "Generating video script with AI";
         }
-        else if (message.Contains("Generating narration", StringComparison.OrdinalIgnoreCase) || 
+        else if (message.Contains("Stage 2/5", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Parsing scenes", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Script";
+            percent = 25;
+            formattedMessage = "Parsing script into scenes";
+        }
+        else if (message.Contains("Stage 3/5", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Generating narration", StringComparison.OrdinalIgnoreCase) || 
                  message.Contains("voice", StringComparison.OrdinalIgnoreCase))
         {
             stage = "Voice";
-            percent = 30;
+            percent = 40;
             formattedMessage = "Generating voice narration";
         }
-        else if (message.Contains("visual", StringComparison.OrdinalIgnoreCase) ||
-                 message.Contains("image", StringComparison.OrdinalIgnoreCase))
+        else if (message.Contains("Stage 4/5", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Building timeline", StringComparison.OrdinalIgnoreCase))
         {
             stage = "Visuals";
-            percent = 50;
+            percent = 55;
+            formattedMessage = "Preparing visual timeline";
+        }
+        else if (message.Contains("visual", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("image", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("asset", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Visuals";
+            percent = 65;
             formattedMessage = "Generating visual assets";
         }
-        else if (message.Contains("render", StringComparison.OrdinalIgnoreCase) ||
+        else if (message.Contains("Stage 5/5", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("render", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("composing video", StringComparison.OrdinalIgnoreCase))
         {
             stage = "Rendering";
-            percent = 70;
+            percent = 80;
             formattedMessage = "Rendering final video";
         }
-        else if (message.Contains("postprocess", StringComparison.OrdinalIgnoreCase))
+        else if (message.Contains("Rendering:", StringComparison.OrdinalIgnoreCase))
         {
-            stage = "Postprocessing";
-            percent = 90;
-            formattedMessage = "Finalizing video";
+            // Extract percentage from render progress if available
+            stage = "Rendering";
+            // Try to parse "Rendering: X%" from message
+            var percentMatch = System.Text.RegularExpressions.Regex.Match(message, @"(\d+(?:\.\d+)?)\s*%");
+            if (percentMatch.Success && double.TryParse(percentMatch.Groups[1].Value, out double renderPercent))
+            {
+                // Map render progress (0-100%) to overall progress (80-95%)
+                percent = 80 + (int)(renderPercent * 0.15);
+            }
+            else
+            {
+                percent = 85;
+            }
+            formattedMessage = message;
+        }
+        else if (message.Contains("complete", StringComparison.OrdinalIgnoreCase))
+        {
+            stage = "Complete";
+            percent = 100;
+            formattedMessage = "Video generation complete";
+        }
+
+        // Ensure progress never goes backwards
+        if (percent < currentPercent)
+        {
+            percent = currentPercent;
         }
 
         return (stage, percent, formattedMessage);

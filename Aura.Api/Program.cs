@@ -164,6 +164,13 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
 // Register validators
 builder.Services.AddSingleton<Aura.Core.Validation.PreGenerationValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.ScriptValidator>();
+builder.Services.AddSingleton<Aura.Core.Validation.TtsOutputValidator>();
+builder.Services.AddSingleton<Aura.Core.Validation.ImageOutputValidator>();
+builder.Services.AddSingleton<Aura.Core.Validation.LlmOutputValidator>();
+
+// Register pipeline reliability services
+builder.Services.AddSingleton<Aura.Core.Services.ProviderRetryWrapper>();
+builder.Services.AddScoped<Aura.Core.Services.ResourceCleanupManager>();
 
 // Register smart orchestration services
 builder.Services.AddSingleton<Aura.Core.Services.Generation.ResourceMonitor>();
