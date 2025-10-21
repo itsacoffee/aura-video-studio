@@ -23,7 +23,7 @@ import {
   CheckmarkCircle24Filled,
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
-import { apiUrl } from '../../config/api';
+import { API_BASE_URL } from '../../config/api';
 
 const useStyles = makeStyles({
   container: {
@@ -160,7 +160,7 @@ export function SetupWizard() {
   const detectDependencies = async () => {
     setIsDetecting(true);
     try {
-      const response = await fetch(`${apiUrl}/api/setup/detect`);
+      const response = await fetch(`${API_BASE_URL}/api/setup/detect`);
       const data = await response.json();
       setDepStatus(data);
     } catch (error) {
@@ -175,7 +175,7 @@ export function SetupWizard() {
     setInstallProgress({ percentage: 0, status: 'Starting installation...', currentFile: '', bytesDownloaded: 0, totalBytes: 0 });
 
     try {
-      const eventSource = new EventSource(`${apiUrl}/api/setup/install/all`);
+      const eventSource = new EventSource(`${API_BASE_URL}/api/setup/install/all`);
 
       eventSource.addEventListener('progress', (event) => {
         const progress = JSON.parse(event.data);
@@ -204,7 +204,7 @@ export function SetupWizard() {
 
   const saveConfig = async () => {
     try {
-      await fetch(`${apiUrl}/api/setup/save-config`, {
+      await fetch(`${API_BASE_URL}/api/setup/save-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
