@@ -133,7 +133,7 @@ SUGGESTIONS:
         var estimatedReadingTime = TimeSpan.FromMinutes(readingTimeMinutes);
 
         // Calculate complexity score based on average word length and sentence length
-        var avgWordLength = words.Average(w => w.Length);
+        var avgWordLength = words.Length > 0 ? words.Average(w => w.Length) : 0;
         var sentences = Regex.Split(script, @"[.!?]+").Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
         var avgSentenceLength = sentences.Length > 0 ? (double)words.Length / sentences.Length : 0;
         
