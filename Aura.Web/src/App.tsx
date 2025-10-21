@@ -21,6 +21,7 @@ import { LogViewerPage } from './pages/LogViewerPage';
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
+import { SetupWizard } from './pages/Setup/SetupWizard';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { NotificationsToaster, useNotifications } from './components/Notifications/Toasts';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
@@ -126,6 +127,7 @@ function App() {
             <Layout>
               <Routes>
                 <Route path="/" element={<WelcomePage />} />
+                <Route path="/setup" element={<SetupWizard />} />
                 <Route path="/onboarding" element={<FirstRunWizard />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/create" element={<CreateWizard />} />
