@@ -534,6 +534,14 @@ builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.SoundEffectSe
 builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.AudioMixingService>();
 builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.AudioContinuityService>();
 
+// Register Editing Intelligence services
+builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.CutPointDetectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.PacingOptimizationService>();
+builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.TransitionRecommendationService>();
+builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.EngagementOptimizationService>();
+builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.QualityControlService>();
+builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.EditingIntelligenceOrchestrator>();
+
 // Register Job Runner and Artifact Manager
 builder.Services.AddSingleton<Aura.Core.Artifacts.ArtifactManager>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.JobRunner>();
