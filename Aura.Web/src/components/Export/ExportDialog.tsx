@@ -13,14 +13,11 @@ import {
   Option,
   Input,
   Field,
-  Label,
-  Text,
   Divider,
   Accordion,
   AccordionHeader,
   AccordionItem,
   AccordionPanel,
-  ProgressBar,
   Caption1,
   Body1,
   Badge,
@@ -375,7 +372,7 @@ export function ExportDialog({
 
             <div className={styles.section}>
               <div className={styles.estimate}>
-                <Body1 weight="semibold">Export Estimates</Body1>
+                <Body1 style={{ fontWeight: 600 }}>Export Estimates</Body1>
                 <Caption1>Estimated file size: ~{estimatedFileSize} MB</Caption1>
                 <Caption1>Estimated render time: ~{estimatedRenderTime}</Caption1>
               </div>

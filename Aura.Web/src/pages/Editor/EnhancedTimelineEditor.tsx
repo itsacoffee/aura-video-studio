@@ -100,7 +100,7 @@ export function EnhancedTimelineEditor() {
   const navigate = useNavigate();
 
   const [timeline, setTimeline] = useState<EditableTimeline | null>(null);
-  const [selectedSceneIndex, setSelectedSceneIndex] = useState<number | null>(null);
+  const [selectedSceneIndex] = useState<number | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);

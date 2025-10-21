@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -13,7 +13,6 @@ import {
   Body1,
   Body1Strong,
   Caption1,
-  Badge,
   Divider,
   Accordion,
   AccordionHeader,
@@ -181,7 +180,6 @@ export function ExportProgress({
   onExportAnother,
 }: ExportProgressProps) {
   const styles = useStyles();
-  const [showLog, setShowLog] = useState(false);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

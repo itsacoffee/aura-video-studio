@@ -221,7 +221,7 @@ export function ScriptAnalysis({ script, onEnhanceScript, onProceed, onRegenerat
           color={analysis.overallQualityScore >= 80 ? 'success' : analysis.overallQualityScore >= 60 ? 'warning' : 'error'}
         />
         {analysis.overallQualityScore < 70 && (
-          <Badge appearance="tinted" color="warning" style={{ marginTop: tokens.spacingVerticalM }}>
+          <Badge appearance="tint" color="warning" style={{ marginTop: tokens.spacingVerticalM }}>
             Below quality threshold - consider enhancement
           </Badge>
         )}

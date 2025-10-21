@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -22,7 +22,6 @@ import {
   Body1,
   Body1Strong,
   Caption1,
-  Divider,
   Accordion,
   AccordionHeader,
   AccordionItem,

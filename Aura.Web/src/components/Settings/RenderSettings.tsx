@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -73,20 +73,20 @@ const useStyles = makeStyles({
 export function RenderSettings() {
   const styles = useStyles();
   const [hardwareAcceleration, setHardwareAcceleration] = useState(true);
-  const [detectedGpu, setDetectedGpu] = useState('NVIDIA GeForce RTX 3080');
+  const [detectedGpu] = useState('NVIDIA GeForce RTX 3080');
   const [presetQuality, setPresetQuality] = useState(75);
   const [autoPreview, setAutoPreview] = useState(false);
   const [previewQuality, setPreviewQuality] = useState('720p');
   const [smartRendering, setSmartRendering] = useState(true);
-  const [cacheLocation, setCacheLocation] = useState('/Users/username/.aura/render_cache');
-  const [cacheSize, setCacheSize] = useState('2.4 GB in 15 cached renders');
-  const [exportDefaultLocation, setExportDefaultLocation] = useState('/Users/username/Videos/Aura');
+  const [cacheLocation] = useState('/Users/username/.aura/render_cache');
+  const [cacheSize] = useState('2.4 GB in 15 cached renders');
+  const [exportDefaultLocation] = useState('/Users/username/Videos/Aura');
   const [defaultPreset, setDefaultPreset] = useState('YouTube 1080p');
   const [maxParallelExports, setMaxParallelExports] = useState(1);
   const [autoRetry, setAutoRetry] = useState(true);
   const [desktopNotifications, setDesktopNotifications] = useState(true);
 
-  const [encoders, setEncoders] = useState({
+  const [encoders] = useState({
     h264_nvenc: true,
     hevc_nvenc: true,
     h264_amf: false,
@@ -94,8 +94,6 @@ export function RenderSettings() {
     libx264: true,
     libx265: true,
   });
-
-  const qualityLabels = ['Draft', 'Good', 'High', 'Maximum'];
   const getQualityLabel = (value: number) => {
     if (value < 25) return 'Draft';
     if (value < 50) return 'Good';
