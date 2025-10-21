@@ -141,6 +141,16 @@ builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationContex
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ProjectContextManager>();
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationalLlmService>();
 
+// Register Profile Management services
+builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfilePersistence>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Profiles.ProfilePersistence>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var baseDirectory = providerSettings.GetAuraDataDirectory();
+    return new Aura.Core.Services.Profiles.ProfilePersistence(logger, baseDirectory);
+});
+builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfileService>();
+
 // Register Ideation service
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
 
