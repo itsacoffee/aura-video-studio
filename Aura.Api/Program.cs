@@ -246,6 +246,21 @@ builder.Services.AddSingleton<Aura.Core.Services.Content.ScriptEnhancer>(sp =>
     return new Aura.Core.Services.Content.ScriptEnhancer(logger, llmProvider);
 });
 
+// Register Script Enhancement services (for AI Audio Intelligence integration)
+builder.Services.AddSingleton<Aura.Core.Services.ScriptEnhancement.ScriptAnalysisService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.ScriptEnhancement.ScriptAnalysisService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    return new Aura.Core.Services.ScriptEnhancement.ScriptAnalysisService(logger, llmProvider);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.ScriptEnhancement.AdvancedScriptEnhancer>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.ScriptEnhancement.AdvancedScriptEnhancer>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    return new Aura.Core.Services.ScriptEnhancement.AdvancedScriptEnhancer(logger, llmProvider);
+});
+
 builder.Services.AddSingleton<Aura.Core.Services.Content.VisualAssetSuggester>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.VisualAssetSuggester>>();
@@ -509,6 +524,14 @@ builder.Services.AddSingleton<Aura.Api.Services.SseService>();
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
 builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();
 builder.Services.AddSingleton<Aura.Core.Captions.CaptionBuilder>();
+
+// Register Audio Intelligence services
+builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.MusicRecommendationService>();
+builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.BeatDetectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.VoiceDirectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.SoundEffectService>();
+builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.AudioMixingService>();
+builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.AudioContinuityService>();
 
 // Register Job Runner and Artifact Manager
 builder.Services.AddSingleton<Aura.Core.Artifacts.ArtifactManager>();
