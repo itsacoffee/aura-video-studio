@@ -179,6 +179,12 @@ builder.Services.AddSingleton<Aura.Core.Services.Generation.StrategySelector>();
 builder.Services.AddSingleton<Aura.Core.Services.Generation.VideoGenerationOrchestrator>();
 builder.Services.AddSingleton<VideoOrchestrator>();
 
+// Register AI pacing and rhythm optimization services
+builder.Services.AddSingleton<Aura.Core.AI.Pacing.RhythmDetector>();
+builder.Services.AddSingleton<Aura.Core.AI.Pacing.RetentionOptimizer>();
+builder.Services.AddSingleton<Aura.Core.AI.Pacing.PacingAnalyzer>();
+builder.Services.AddSingleton<Aura.Core.Services.Analytics.ViewerRetentionPredictor>();
+
 // Register timeline editor services
 builder.Services.AddSingleton<Aura.Core.Services.Editor.TimelineRenderer>(sp =>
 {
