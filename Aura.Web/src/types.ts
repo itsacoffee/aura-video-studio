@@ -145,3 +145,6 @@ export interface PlannerRecommendations {
   providerUsed?: string;
   explainabilityNotes?: string;
 }
+
+// Re-export Scene from timeline types for backward compatibility
+export type { TimelineScene as Scene } from './types/timeline';

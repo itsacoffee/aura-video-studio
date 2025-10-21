@@ -5,37 +5,33 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-  Box,
   Button,
   Card,
-  CardContent,
-  Typography,
-  Alert,
-  CircularProgress,
-  Chip,
+  makeStyles,
+  tokens,
+  Spinner,
+  Badge,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
-  Stack,
-  LinearProgress,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
+  ProgressBar,
+  Dropdown,
+  Option,
+  Field,
   Accordion,
-  AccordionSummary,
-  AccordionDetails,
-} from '@mui/material';
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Body1,
+  Body1Strong,
+  Caption1,
+  Title3,
+} from '@fluentui/react-components';
 import {
-  ExpandMore,
-  Timeline,
-  Speed,
-  TrendingUp,
-  Warning,
-  CheckCircle,
-  Lightbulb,
-} from '@mui/icons-material';
+  ArrowSync24Regular,
+  Clock24Regular,
+  ChartMultiple24Regular,
+  Warning24Regular,
+  Lightbulb24Regular,
+} from '@fluentui/react-icons';
 import { Scene } from '../../../types';
 import {
   pacingAnalysisService,
@@ -51,11 +47,40 @@ interface PacingSuggestionsProps {
   onApplySuggestion?: (sceneIndex: number, newDuration: string) => void;
 }
 
+const useStyles = makeStyles({
+  container: {
+    width: '100%',
+    padding: tokens.spacingVerticalM,
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: tokens.spacingVerticalM,
+  },
+  section: {
+    marginTop: tokens.spacingVerticalL,
+  },
+  warningBox: {
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorPaletteYellowBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    marginTop: tokens.spacingVerticalM,
+  },
+  sceneCard: {
+    padding: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalS,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+});
+
 const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
   scenes,
   audioPath,
   onApplySuggestion,
 }) => {
+  const styles = useStyles();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<VideoFormat>(VideoFormat.Explainer);
@@ -94,17 +119,17 @@ const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
     }
   }, [scenes, analyzePacing]);
 
-  const getPriorityColor = (priority: Priority): 'error' | 'warning' | 'info' | 'default' => {
+  const getPriorityColor = (priority: Priority): 'danger' | 'warning' | 'informative' | 'subtle' => {
     switch (priority) {
       case Priority.Critical:
       case Priority.High:
-        return 'error';
+        return 'danger';
       case Priority.Medium:
         return 'warning';
       case Priority.Low:
-        return 'info';
+        return 'informative';
       default:
-        return 'default';
+        return 'subtle';
     }
   };
 
@@ -118,255 +143,189 @@ const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
     return `${mins}m ${secs}s`;
   };
 
-  const getEngagementColor = (score: number): string => {
-    if (score >= 80) return '#4caf50';
-    if (score >= 60) return '#ff9800';
-    return '#f44336';
-  };
-
   if (scenes.length === 0) {
     return (
-      <Card>
-        <CardContent>
-          <Typography variant="body2" color="text.secondary">
-            Add scenes to get pacing suggestions
-          </Typography>
-        </CardContent>
+      <Card style={{ padding: tokens.spacingVerticalM }}>
+        <Body1>Add scenes to get pacing suggestions</Body1>
       </Card>
     );
   }
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <div className={styles.container}>
       <Card>
-        <CardContent>
-          <Stack spacing={2}>
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Typography variant="h6" display="flex" alignItems="center" gap={1}>
-                <Timeline />
-                Pacing Optimization
-              </Typography>
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Video Format</InputLabel>
-                <Select
-                  value={selectedFormat}
-                  label="Video Format"
-                  onChange={(e) => setSelectedFormat(e.target.value as VideoFormat)}
-                >
-                  <MenuItem value={VideoFormat.Explainer}>Explainer</MenuItem>
-                  <MenuItem value={VideoFormat.Tutorial}>Tutorial</MenuItem>
-                  <MenuItem value={VideoFormat.Vlog}>Vlog</MenuItem>
-                  <MenuItem value={VideoFormat.Review}>Review</MenuItem>
-                  <MenuItem value={VideoFormat.Educational}>Educational</MenuItem>
-                  <MenuItem value={VideoFormat.Entertainment}>Entertainment</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
+        <div style={{ padding: tokens.spacingVerticalM }}>
+          <div className={styles.header}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+              <Clock24Regular />
+              <Title3>Pacing Optimization</Title3>
+            </div>
+            <Field label="Video Format">
+              <Dropdown
+                value={selectedFormat}
+                selectedOptions={[selectedFormat]}
+                onOptionSelect={(_e, data) => setSelectedFormat(data.optionValue as VideoFormat)}
+              >
+                <Option value={VideoFormat.Explainer}>Explainer</Option>
+                <Option value={VideoFormat.Tutorial}>Tutorial</Option>
+                <Option value={VideoFormat.Vlog}>Vlog</Option>
+                <Option value={VideoFormat.Review}>Review</Option>
+                <Option value={VideoFormat.Educational}>Educational</Option>
+                <Option value={VideoFormat.Entertainment}>Entertainment</Option>
+              </Dropdown>
+            </Field>
+          </div>
 
-            <Button
-              variant="contained"
-              onClick={analyzePacing}
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : <Speed />}
-            >
-              {loading ? 'Analyzing...' : 'Analyze Pacing'}
-            </Button>
+          <Button
+            appearance="primary"
+            onClick={analyzePacing}
+            disabled={loading}
+            icon={loading ? <Spinner size="tiny" /> : <ArrowSync24Regular />}
+          >
+            {loading ? 'Analyzing...' : 'Analyze Pacing'}
+          </Button>
 
-            {error && (
-              <Alert severity="error" onClose={() => setError(null)}>
-                {error}
-              </Alert>
-            )}
+          {error && (
+            <div className={styles.warningBox}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <Warning24Regular />
+                <Body1Strong>{error}</Body1Strong>
+              </div>
+            </div>
+          )}
 
-            {pacingAnalysis && (
-              <>
-                <Divider />
+          {pacingAnalysis && (
+            <>
+              <Divider style={{ marginTop: tokens.spacingVerticalL, marginBottom: tokens.spacingVerticalL }} />
 
-                {/* Engagement Score */}
-                <Box>
-                  <Typography variant="subtitle2" gutterBottom display="flex" alignItems="center" gap={1}>
-                    <TrendingUp />
-                    Engagement Score
-                  </Typography>
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <LinearProgress
-                      variant="determinate"
-                      value={pacingAnalysis.engagementScore}
-                      sx={{
-                        flex: 1,
-                        height: 8,
-                        borderRadius: 4,
-                        bgcolor: 'grey.300',
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: getEngagementColor(pacingAnalysis.engagementScore),
-                        },
-                      }}
-                    />
-                    <Typography variant="h6" fontWeight="bold">
-                      {pacingAnalysis.engagementScore.toFixed(1)}%
-                    </Typography>
-                  </Box>
-                </Box>
+              <div className={styles.section}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalS }}>
+                  <ChartMultiple24Regular />
+                  <Body1Strong>Engagement Score</Body1Strong>
+                </div>
+                <ProgressBar
+                  value={pacingAnalysis.engagementScore / 100}
+                  thickness="large"
+                  style={{ marginBottom: tokens.spacingVerticalS }}
+                />
+                <Body1>{pacingAnalysis.engagementScore.toFixed(1)}%</Body1>
+              </div>
 
-                {/* Optimal Duration */}
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Optimal Duration: <strong>{formatDuration(pacingAnalysis.optimalDuration)}</strong>
-                  </Typography>
-                </Box>
+              <div className={styles.section}>
+                <Caption1>Optimal Duration: {formatDuration(pacingAnalysis.optimalDuration)}</Caption1>
+              </div>
 
-                {/* Narrative Assessment */}
-                <Box>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Narrative Structure
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {pacingAnalysis.narrativeArcAssessment}
-                  </Typography>
-                </Box>
+              <div className={styles.section}>
+                <Body1Strong>Narrative Structure</Body1Strong>
+                <Body1>{pacingAnalysis.narrativeArcAssessment}</Body1>
+              </div>
 
-                {/* Warnings */}
-                {pacingAnalysis.warnings.length > 0 && (
-                  <Alert severity="warning" icon={<Warning />}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Pacing Warnings
-                    </Typography>
-                    <List dense>
-                      {pacingAnalysis.warnings.map((warning, index) => (
-                        <ListItem key={index}>
-                          <ListItemText primary={warning} />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </Alert>
-                )}
+              {pacingAnalysis.warnings.length > 0 && (
+                <div className={styles.warningBox}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalS }}>
+                    <Warning24Regular />
+                    <Body1Strong>Pacing Warnings</Body1Strong>
+                  </div>
+                  {pacingAnalysis.warnings.map((warning, index) => (
+                    <Caption1 key={index} block style={{ marginTop: tokens.spacingVerticalXS }}>
+                      • {warning}
+                    </Caption1>
+                  ))}
+                </div>
+              )}
 
-                {/* Scene Recommendations */}
-                <Accordion defaultExpanded>
-                  <AccordionSummary expandIcon={<ExpandMore />}>
-                    <Typography variant="subtitle2">
-                      Scene Recommendations ({pacingAnalysis.sceneRecommendations.length})
-                    </Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <List>
-                      {pacingAnalysis.sceneRecommendations.map((rec) => (
-                        <ListItem
-                          key={rec.sceneIndex}
-                          sx={{
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            borderRadius: 1,
-                            mb: 1,
-                            flexDirection: 'column',
-                            alignItems: 'flex-start',
-                          }}
-                        >
-                          <Box width="100%" display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                            <Typography variant="subtitle2">
-                              Scene {rec.sceneIndex + 1}
-                            </Typography>
-                            <Stack direction="row" spacing={1}>
-                              <Chip
-                                size="small"
-                                label={`Importance: ${(rec.importanceScore * 100).toFixed(0)}%`}
-                                color="primary"
-                                variant="outlined"
-                              />
-                              <Chip
-                                size="small"
-                                label={`Complexity: ${(rec.complexityScore * 100).toFixed(0)}%`}
-                                color="secondary"
-                                variant="outlined"
-                              />
-                            </Stack>
-                          </Box>
-                          <Typography variant="body2" color="text.secondary" mb={1}>
-                            Current: {formatDuration(rec.currentDuration)} → Recommended:{' '}
-                            {formatDuration(rec.recommendedDuration)}
-                          </Typography>
-                          <Typography variant="body2">{rec.reasoning}</Typography>
-                          {onApplySuggestion && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => onApplySuggestion(rec.sceneIndex, rec.recommendedDuration)}
-                              sx={{ mt: 1 }}
-                            >
-                              Apply
-                            </Button>
-                          )}
-                        </ListItem>
-                      ))}
-                    </List>
-                  </AccordionDetails>
-                </Accordion>
-
-                {/* Retention Analysis */}
-                {retentionAnalysis && (
-                  <Accordion>
-                    <AccordionSummary expandIcon={<ExpandMore />}>
-                      <Typography variant="subtitle2">
-                        Viewer Retention Analysis
-                      </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <Stack spacing={2}>
-                        <Box>
-                          <Typography variant="body2" color="text.secondary">
-                            Overall Retention Score:{' '}
-                            <strong>
-                              {(retentionAnalysis.retentionPrediction.overallRetentionScore * 100).toFixed(1)}%
-                            </strong>
-                          </Typography>
-                        </Box>
-
-                        {retentionAnalysis.recommendations.length > 0 && (
-                          <>
-                            <Typography variant="subtitle2" display="flex" alignItems="center" gap={1}>
-                              <Lightbulb />
-                              Recommendations
-                            </Typography>
-                            <List>
-                              {retentionAnalysis.recommendations.map((rec, index) => (
-                                <ListItem
-                                  key={index}
-                                  sx={{
-                                    border: '1px solid',
-                                    borderColor: 'divider',
-                                    borderRadius: 1,
-                                    mb: 1,
-                                    flexDirection: 'column',
-                                    alignItems: 'flex-start',
-                                  }}
+              {pacingAnalysis.sceneRecommendations.length > 0 && (
+                <div className={styles.section}>
+                  <Accordion collapsible>
+                    <AccordionItem value="recommendations">
+                      <AccordionHeader>
+                        <Body1Strong>Scene Recommendations ({pacingAnalysis.sceneRecommendations.length})</Body1Strong>
+                      </AccordionHeader>
+                      <AccordionPanel>
+                        {pacingAnalysis.sceneRecommendations.map((rec) => (
+                          <div key={rec.sceneIndex} className={styles.sceneCard}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalXS }}>
+                              <Body1Strong>Scene {rec.sceneIndex + 1}</Body1Strong>
+                              <Badge appearance="tint" color="informative">
+                                Complexity: {(rec.complexityScore * 100).toFixed(0)}%
+                              </Badge>
+                            </div>
+                            <Caption1 block>Importance: {(rec.importanceScore * 100).toFixed(0)}%</Caption1>
+                            <Caption1 block style={{ marginTop: tokens.spacingVerticalXS }}>
+                              {rec.reasoning}
+                            </Caption1>
+                            <Caption1 block style={{ marginTop: tokens.spacingVerticalXS }}>
+                              Current: {formatDuration(rec.currentDuration)} → Recommended: {formatDuration(rec.recommendedDuration)}
+                            </Caption1>
+                            {rec.recommendedDuration && (
+                              <div style={{ marginTop: tokens.spacingVerticalS }}>
+                                <Button
+                                  size="small"
+                                  onClick={() => onApplySuggestion?.(rec.sceneIndex, rec.recommendedDuration)}
                                 >
-                                  <Box width="100%" display="flex" justifyContent="space-between" mb={1}>
-                                    <Typography variant="subtitle2">{rec.title}</Typography>
-                                    <Chip
-                                      size="small"
-                                      label={rec.priority}
-                                      color={getPriorityColor(rec.priority)}
-                                    />
-                                  </Box>
-                                  <Typography variant="body2" color="text.secondary" mb={0.5}>
-                                    At {formatDuration(rec.timestamp)}
-                                  </Typography>
-                                  <Typography variant="body2">{rec.description}</Typography>
-                                </ListItem>
-                              ))}
-                            </List>
+                                  Apply Duration: {formatDuration(rec.recommendedDuration)}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </AccordionPanel>
+                    </AccordionItem>
+                  </Accordion>
+                </div>
+              )}
+
+              {retentionAnalysis && (
+                <div className={styles.section}>
+                  <Accordion collapsible>
+                    <AccordionItem value="retention">
+                      <AccordionHeader>
+                        <Body1Strong>Retention Analysis</Body1Strong>
+                      </AccordionHeader>
+                      <AccordionPanel>
+                        <Caption1 block>Overall Retention Score: {retentionAnalysis.retentionPrediction.overallRetentionScore.toFixed(1)}%</Caption1>
+                        <Caption1 block style={{ marginTop: tokens.spacingVerticalXS }}>
+                          Average Engagement: {retentionAnalysis.attentionCurve.averageEngagement.toFixed(1)}%
+                        </Caption1>
+                        {retentionAnalysis.retentionPrediction.highDropRiskPoints.length > 0 && (
+                          <>
+                            <Body1Strong style={{ marginTop: tokens.spacingVerticalM }}>High Risk Drop Points</Body1Strong>
+                            {retentionAnalysis.retentionPrediction.highDropRiskPoints.map((point, index) => (
+                              <Caption1 key={index} block style={{ marginTop: tokens.spacingVerticalXS }}>
+                                • {point}
+                              </Caption1>
+                            ))}
                           </>
                         )}
-                      </Stack>
-                    </AccordionDetails>
+                        {retentionAnalysis.recommendations.length > 0 && (
+                          <>
+                            <Body1Strong style={{ marginTop: tokens.spacingVerticalM }}>
+                              <Lightbulb24Regular style={{ verticalAlign: 'middle', marginRight: tokens.spacingHorizontalXS }} />
+                              Recommendations
+                            </Body1Strong>
+                            {retentionAnalysis.recommendations.map((recommendation, index) => (
+                              <div key={index} style={{ marginTop: tokens.spacingVerticalS }}>
+                                <Body1Strong>{recommendation.title}</Body1Strong>
+                                <Caption1 block style={{ marginTop: tokens.spacingVerticalXS }}>
+                                  {recommendation.description}
+                                </Caption1>
+                                <Badge appearance="tint" color={getPriorityColor(recommendation.priority)} size="small">
+                                  {Priority[recommendation.priority]}
+                                </Badge>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </AccordionPanel>
+                    </AccordionItem>
                   </Accordion>
-                )}
-              </>
-            )}
-          </Stack>
-        </CardContent>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </Card>
-    </Box>
+    </div>
   );
 };
 

@@ -10,7 +10,7 @@ import {
   Badge,
   Image,
 } from '@fluentui/react-components';
-import { ImageAdd24Regular, Search24Regular } from '@fluentui/react-icons';
+import { Search24Regular } from '@fluentui/react-icons';
 import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({
@@ -210,7 +210,7 @@ export function AssetSuggestions({ sceneHeading, sceneScript, onSelectAsset }: A
                     fit="cover"
                   />
                   <div className={styles.thumbnailOverlay}>
-                    <Badge appearance="tinted" color="brand" size="small">
+                    <Badge appearance="tint" color="brand" size="small">
                       {match.relevanceScore.toFixed(0)}% match
                     </Badge>
                   </div>
