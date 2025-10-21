@@ -253,6 +253,12 @@ builder.Services.AddSingleton<Aura.Core.Services.Content.PacingOptimizer>(sp =>
     return new Aura.Core.Services.Content.PacingOptimizer(logger);
 });
 
+// Register analytics services
+builder.Services.AddSingleton<Aura.Core.Analytics.Retention.RetentionPredictor>();
+builder.Services.AddSingleton<Aura.Core.Analytics.Platforms.PlatformOptimizer>();
+builder.Services.AddSingleton<Aura.Core.Analytics.Content.ContentAnalyzer>();
+builder.Services.AddSingleton<Aura.Core.Analytics.Recommendations.ImprovementEngine>();
+
 // Register asset library services
 builder.Services.AddSingleton<Aura.Core.Services.Assets.ThumbnailGenerator>(sp =>
 {
