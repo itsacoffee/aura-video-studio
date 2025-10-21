@@ -15,9 +15,12 @@ import {
   List24Regular,
   Search24Regular,
   ImageAdd24Regular,
+  Image24Regular,
 } from '@fluentui/react-icons';
 import { assetService } from '../../services/assetService';
 import { Asset, AssetType } from '../../types/assets';
+import { StockImageSearch } from '../../components/Assets/StockImageSearch';
+import { CollectionsPanel } from '../../components/Assets/CollectionsPanel';
 
 const useStyles = makeStyles({
   container: {
@@ -134,6 +137,8 @@ export const AssetLibrary: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterType, setFilterType] = useState<AssetType | undefined>();
+  const [showStockSearch, setShowStockSearch] = useState(false);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | undefined>();
 
   useEffect(() => {
     loadAssets();
@@ -195,6 +200,13 @@ export const AssetLibrary: React.FC = () => {
             {viewMode === 'grid' ? 'List' : 'Grid'} View
           </Button>
           <Button
+            appearance="subtle"
+            icon={<Image24Regular />}
+            onClick={() => setShowStockSearch(true)}
+          >
+            Stock Images
+          </Button>
+          <Button
             appearance="primary"
             icon={<ArrowUpload24Regular />}
             onClick={handleUpload}
@@ -240,10 +252,10 @@ export const AssetLibrary: React.FC = () => {
           </div>
 
           <div className={styles.filterSection}>
-            <Text size={400} weight="semibold">Collections</Text>
-            <Button className={styles.filterButton} appearance="subtle">
-              All Assets
-            </Button>
+            <CollectionsPanel
+              selectedCollectionId={selectedCollectionId}
+              onCollectionSelect={setSelectedCollectionId}
+            />
           </div>
         </div>
 
@@ -378,6 +390,12 @@ export const AssetLibrary: React.FC = () => {
           </div>
         )}
       </div>
+
+      <StockImageSearch
+        isOpen={showStockSearch}
+        onClose={() => setShowStockSearch(false)}
+        onImageAdded={loadAssets}
+      />
     </div>
   );
 };
