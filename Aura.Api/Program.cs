@@ -200,6 +200,45 @@ builder.Services.AddSingleton<Aura.Core.Planner.HeuristicRecommendationService>(
 builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
 builder.Services.AddSingleton<Aura.Api.Services.PreflightService>();
 
+// Register content analysis services
+builder.Services.AddSingleton<Aura.Core.Services.Content.ContentAnalyzer>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.ContentAnalyzer>>();
+    // Use the singleton ILlmProvider (RuleBased fallback)
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    return new Aura.Core.Services.Content.ContentAnalyzer(logger, llmProvider);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Content.ScriptEnhancer>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.ScriptEnhancer>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    return new Aura.Core.Services.Content.ScriptEnhancer(logger, llmProvider);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Content.VisualAssetSuggester>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.VisualAssetSuggester>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    // Try to get stock provider if available
+    IStockProvider? stockProvider = null;
+    try
+    {
+        stockProvider = sp.GetService<IStockProvider>();
+    }
+    catch
+    {
+        // Stock provider is optional
+    }
+    return new Aura.Core.Services.Content.VisualAssetSuggester(logger, llmProvider, stockProvider);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Content.PacingOptimizer>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.PacingOptimizer>>();
+    return new Aura.Core.Services.Content.PacingOptimizer(logger);
+});
+
 // Register health check and startup validation services
 builder.Services.AddSingleton<Aura.Api.Services.HealthCheckService>();
 builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
