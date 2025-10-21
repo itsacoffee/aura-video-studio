@@ -258,7 +258,8 @@ builder.Services.AddSingleton<Aura.Core.Services.ScriptEnhancement.AdvancedScrip
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.ScriptEnhancement.AdvancedScriptEnhancer>>();
     var llmProvider = sp.GetRequiredService<ILlmProvider>();
-    return new Aura.Core.Services.ScriptEnhancement.AdvancedScriptEnhancer(logger, llmProvider);
+    var analysisService = sp.GetRequiredService<Aura.Core.Services.ScriptEnhancement.ScriptAnalysisService>();
+    return new Aura.Core.Services.ScriptEnhancement.AdvancedScriptEnhancer(logger, llmProvider, analysisService);
 });
 
 builder.Services.AddSingleton<Aura.Core.Services.Content.VisualAssetSuggester>(sp =>
