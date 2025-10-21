@@ -385,6 +385,10 @@ builder.Services.AddSingleton<Aura.Core.Artifacts.ArtifactManager>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.JobRunner>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.QuickService>();
 
+// Register Provider Health Monitoring services
+builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
+builder.Services.AddSingleton<Aura.Core.Services.Providers.SmartProviderSelector>();
+
 // Configure Kestrel to listen on specific port with environment variable overrides
 var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL") 
     ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") 
@@ -2036,6 +2040,33 @@ lifetime.ApplicationStopping.Register(() =>
     {
         Log.Error(ex, "Error stopping Engine Lifecycle Manager");
     }
+});
+
+// Start Provider Health Monitoring
+var healthMonitor = app.Services.GetRequiredService<Aura.Core.Services.Health.ProviderHealthMonitor>();
+
+lifetime.ApplicationStarted.Register(() =>
+{
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            Log.Information("Starting provider health monitoring...");
+            await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping);
+            Log.Information("Provider health monitoring stopped");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in provider health monitoring");
+            // Restart monitoring after delay
+            await Task.Delay(TimeSpan.FromMinutes(1));
+            if (!lifetime.ApplicationStopping.IsCancellationRequested)
+            {
+                Log.Information("Restarting provider health monitoring after error...");
+                await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping);
+            }
+        }
+    });
 });
 
 app.Run();

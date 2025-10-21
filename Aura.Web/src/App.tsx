@@ -22,6 +22,7 @@ import { ProjectsPage } from './pages/Projects/ProjectsPage';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { SetupWizard } from './pages/Setup/SetupWizard';
+import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { NotificationsToaster, useNotifications } from './components/Notifications/Toasts';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
@@ -138,6 +139,7 @@ function App() {
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/jobs" element={<RecentJobsPage />} />
                 <Route path="/downloads" element={<DownloadsPage />} />
+                <Route path="/health" element={<ProviderHealthDashboard />} />
                 <Route path="/logs" element={<LogViewerPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

@@ -9,7 +9,8 @@ import {
   Timeline24Regular,
   DocumentBulletList24Regular,
   Folder24Regular,
-  TaskListSquareLtr24Regular
+  TaskListSquareLtr24Regular,
+  HeartPulse24Regular
 } from '@fluentui/react-icons';
 
 export interface NavItem {
@@ -29,6 +30,7 @@ export const navItems: NavItem[] = [
   { key: 'publish', name: 'Publish', icon: Share24Regular, path: '/publish' },
   { key: 'jobs', name: 'Recent Jobs', icon: TaskListSquareLtr24Regular, path: '/jobs' },
   { key: 'downloads', name: 'Downloads', icon: CloudArrowDown24Regular, path: '/downloads' },
+  { key: 'health', name: 'Provider Health', icon: HeartPulse24Regular, path: '/health' },
   { key: 'logs', name: 'Logs', icon: DocumentBulletList24Regular, path: '/logs' },
   { key: 'settings', name: 'Settings', icon: Settings24Regular, path: '/settings' },
 ];
