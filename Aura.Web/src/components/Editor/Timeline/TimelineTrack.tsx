@@ -94,7 +94,7 @@ export function TimelineTrack({
   const styles = useStyles();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const trackContentRef = useRef<HTMLDivElement>(null);
-  const [waveformData, setWaveformData] = useState<float[]>([]);
+  const [waveformData, setWaveformData] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [scrubPosition, setScrubPosition] = useState(0);

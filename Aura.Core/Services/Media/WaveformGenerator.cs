@@ -7,7 +7,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Media;
@@ -18,16 +17,15 @@ namespace Aura.Core.Services.Media;
 public class WaveformGenerator
 {
     private readonly ILogger<WaveformGenerator> _logger;
-    private readonly IMemoryCache _cache;
+    private readonly Dictionary<string, string> _waveformCache = new();
+    private readonly Dictionary<string, float[]> _dataCache = new();
     private readonly string _ffmpegPath;
 
     public WaveformGenerator(
         ILogger<WaveformGenerator> logger,
-        IMemoryCache cache,
         string ffmpegPath = "ffmpeg")
     {
         _logger = logger;
-        _cache = cache;
         _ffmpegPath = ffmpegPath;
     }
 
@@ -48,7 +46,7 @@ public class WaveformGenerator
 
         // Check cache
         var cacheKey = $"waveform:{audioFilePath}:{width}:{height}:{trackType}";
-        if (_cache.TryGetValue(cacheKey, out string? cachedPath) && File.Exists(cachedPath))
+        if (_waveformCache.TryGetValue(cacheKey, out string? cachedPath) && File.Exists(cachedPath))
         {
             _logger.LogInformation("Returning cached waveform for {AudioFile}", audioFilePath);
             return cachedPath;
@@ -101,7 +99,7 @@ public class WaveformGenerator
         }
 
         // Cache the result
-        _cache.Set(cacheKey, outputPath, TimeSpan.FromHours(24));
+        _waveformCache[cacheKey] = outputPath;
 
         _logger.LogInformation("Waveform generated successfully: {OutputPath}", outputPath);
         return outputPath;
@@ -122,7 +120,7 @@ public class WaveformGenerator
 
         // Check cache
         var cacheKey = $"waveform-data:{audioFilePath}:{targetSamples}";
-        if (_cache.TryGetValue(cacheKey, out float[]? cachedData))
+        if (_dataCache.TryGetValue(cacheKey, out float[]? cachedData))
         {
             _logger.LogInformation("Returning cached waveform data for {AudioFile}", audioFilePath);
             return cachedData;
@@ -176,7 +174,7 @@ public class WaveformGenerator
             var downsampled = DownsampleAudio(samples.ToArray(), targetSamples);
 
             // Cache the result
-            _cache.Set(cacheKey, downsampled, TimeSpan.FromHours(24));
+            _dataCache[cacheKey] = downsampled;
 
             return downsampled;
         }
@@ -228,7 +226,7 @@ public class WaveformGenerator
     public void ClearCache()
     {
         _logger.LogInformation("Clearing waveform cache");
-        // Note: IMemoryCache doesn't have a clear all method, 
-        // but entries will expire based on their TTL
+        _waveformCache.Clear();
+        _dataCache.Clear();
     }
 }

@@ -87,7 +87,6 @@ export interface SceneBlockProps {
   duration: number;
   zoom: number; // pixels per second
   selected?: boolean;
-  snapEnabled?: boolean;
   onSelect?: () => void;
   onTrim?: (newStart: number, newDuration: number) => void;
   onMove?: (newStart: number) => void;
@@ -100,7 +99,6 @@ export function SceneBlock({
   duration,
   zoom,
   selected = false,
-  snapEnabled = true,
   onSelect,
   onTrim,
   onMove,

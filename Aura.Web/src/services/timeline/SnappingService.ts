@@ -47,16 +47,23 @@ export class SnappingService {
     // Convert threshold to time units
     const thresholdTime = this.snapThreshold / pixelsPerSecond;
 
-    // Find closest snap point within threshold
+    // Find closest snap point within threshold, prioritizing by priority
     let closestPoint: SnapPoint | undefined;
     let closestDistance = Infinity;
 
-    for (const point of snapPoints) {
+    // Sort by priority first, then by distance
+    const sortedPoints = [...snapPoints].sort((a, b) => a.priority - b.priority);
+
+    for (const point of sortedPoints) {
       const distance = Math.abs(point.position - dragPosition);
       
-      if (distance <= thresholdTime && distance < closestDistance) {
-        closestDistance = distance;
-        closestPoint = point;
+      if (distance <= thresholdTime) {
+        // If this point has higher priority (lower number) or same priority but closer
+        if (!closestPoint || point.priority < closestPoint.priority || 
+            (point.priority === closestPoint.priority && distance < closestDistance)) {
+          closestDistance = distance;
+          closestPoint = point;
+        }
       }
     }
 

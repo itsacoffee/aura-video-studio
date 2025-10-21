@@ -2,7 +2,6 @@
  * Audio track controls component with mute/solo/volume
  */
 
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -13,7 +12,7 @@ import {
 import {
   Speaker224Regular,
   SpeakerMute24Regular,
-  Lock24Regular,
+  LockClosed24Regular,
   LockOpen24Regular,
 } from '@fluentui/react-icons';
 
@@ -142,7 +141,7 @@ export function AudioTrackControls({
         <Button
           size="small"
           appearance="subtle"
-          icon={locked ? <Lock24Regular /> : <LockOpen24Regular />}
+          icon={locked ? <LockClosed24Regular /> : <LockOpen24Regular />}
           onClick={onLockToggle}
           className={styles.button}
           title="Lock track"

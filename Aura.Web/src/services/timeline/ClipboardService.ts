@@ -39,17 +39,15 @@ export class ClipboardService {
 
     // Adjust scene timings to start at insert time
     let currentTime = insertTime;
-    const pastedScenes = data.scenes.map((scene, index) => ({
-      ...scene,
-      index: -1, // Will be set by caller
-      start: currentTime,
-      // Update timing
-      ...(() => {
-        const result = { start: currentTime };
-        currentTime += scene.duration;
-        return result;
-      })(),
-    }));
+    const pastedScenes = data.scenes.map((scene) => {
+      const result = {
+        ...scene,
+        index: -1, // Will be set by caller
+        start: currentTime,
+      };
+      currentTime += scene.duration;
+      return result;
+    });
 
     return pastedScenes;
   }

@@ -2,7 +2,6 @@
  * Timeline zoom controls component
  */
 
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -53,7 +52,6 @@ export function TimelineZoomControls({
   zoom,
   minZoom = 10,
   maxZoom = 200,
-  timelineDuration = 60,
   onZoomChange,
   onFitToView,
 }: TimelineZoomControlsProps) {

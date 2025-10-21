@@ -2,7 +2,7 @@
  * Enhanced Timeline component with advanced editing features
  */
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import {
   makeStyles,
   tokens,
@@ -26,11 +26,7 @@ import { useTimelineStore } from '../../../state/timeline';
 import { TimelineZoomControls } from './TimelineZoomControls';
 import { TimelineTrack } from './TimelineTrack';
 import { AudioTrackControls } from './AudioTrackControls';
-import { SceneBlock } from './SceneBlock';
 import { useTimelineKeyboardShortcuts, getKeyboardShortcuts } from '../../../hooks/useTimelineKeyboardShortcuts';
-import { timelineEditor } from '../../../services/timeline/TimelineEditor';
-import { clipboardService } from '../../../services/timeline/ClipboardService';
-import { snappingService } from '../../../services/timeline/SnappingService';
 
 const useStyles = makeStyles({
   container: {
@@ -142,14 +138,10 @@ export function Timeline({ duration = 120, onSave }: TimelineProps) {
     tracks,
     currentTime,
     zoom,
-    snappingEnabled,
     isPlaying,
-    selectedClipId,
     setCurrentTime,
     setZoom,
-    setSnappingEnabled,
     setPlaying,
-    setSelectedClipId,
     updateTrack,
     toggleMute,
     toggleSolo,
