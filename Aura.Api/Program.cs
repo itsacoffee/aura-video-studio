@@ -357,6 +357,24 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyRescanService>(sp
     return new Aura.Core.Dependencies.DependencyRescanService(logger, ffmpegLocator, componentDownloader);
 });
 
+// Register Setup services
+builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyDetector>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Setup.DependencyDetector>>();
+    var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.FfmpegLocator>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    return new Aura.Core.Services.Setup.DependencyDetector(logger, ffmpegLocator, httpClient);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyInstaller>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Setup.DependencyInstaller>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    return new Aura.Core.Services.Setup.DependencyInstaller(logger, httpClient);
+});
+
+builder.Services.AddSingleton<Aura.Api.Services.SseService>();
+
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
 builder.Services.AddSingleton<Aura.Core.Audio.DspChain>();

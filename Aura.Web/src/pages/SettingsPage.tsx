@@ -605,6 +605,15 @@ export function SettingsPage() {
               >
                 Run Hardware Probes
               </Button>
+              <Button
+                onClick={() => {
+                  if (confirm('This will guide you through setup again. Current settings will be preserved. Continue?')) {
+                    window.location.href = '/setup?rerun=true';
+                  }
+                }}
+              >
+                Re-run Setup Wizard
+              </Button>
             </div>
           </div>
         </Card>
