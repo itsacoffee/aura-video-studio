@@ -77,39 +77,10 @@ fi
 
 # Test 3: Submit Quick Demo Request
 print_info "Test 3: Submitting Quick Demo video generation request..."
-JOB_RESPONSE=$(curl -s -X POST "${API_BASE}/api/jobs/quick" \
+JOB_RESPONSE=$(curl -s -X POST "${API_BASE}/api/quick/demo" \
     -H "Content-Type: application/json" \
     -d '{
-        "brief": {
-            "topic": "Pipeline Validation Test",
-            "audience": "Developers",
-            "goal": "Test pipeline",
-            "tone": "Professional",
-            "language": "en-US",
-            "aspect": "Widescreen16x9"
-        },
-        "plan": {
-            "targetDuration": "PT15S",
-            "pacing": 2,
-            "density": 2,
-            "style": "Explainer"
-        },
-        "voice": {
-            "voiceName": "en-US-Standard-A",
-            "rate": 1.0,
-            "pitch": 0.0,
-            "pause": 1
-        },
-        "render": {
-            "res": { "width": 1920, "height": 1080 },
-            "container": "mp4",
-            "videoBitrateK": 5000,
-            "audioBitrateK": 192,
-            "fps": 30,
-            "codec": "H264",
-            "qualityLevel": 75,
-            "enableSceneCut": true
-        }
+        "topic": "Pipeline Validation Test"
     }')
 
 if [ $? -eq 0 ] && [ -n "$JOB_RESPONSE" ]; then
@@ -235,39 +206,10 @@ fi
 
 # Test 10: Job Cancellation (create a new job to test cancellation)
 print_info "Test 10: Testing job cancellation..."
-CANCEL_JOB_RESPONSE=$(curl -s -X POST "${API_BASE}/api/jobs/quick" \
+CANCEL_JOB_RESPONSE=$(curl -s -X POST "${API_BASE}/api/quick/demo" \
     -H "Content-Type: application/json" \
     -d '{
-        "brief": {
-            "topic": "Cancellation Test",
-            "audience": "Test",
-            "goal": "Test cancellation",
-            "tone": "Neutral",
-            "language": "en-US",
-            "aspect": "Widescreen16x9"
-        },
-        "plan": {
-            "targetDuration": "PT30S",
-            "pacing": 2,
-            "density": 2,
-            "style": "Test"
-        },
-        "voice": {
-            "voiceName": "en-US-Standard-A",
-            "rate": 1.0,
-            "pitch": 0.0,
-            "pause": 1
-        },
-        "render": {
-            "res": { "width": 1920, "height": 1080 },
-            "container": "mp4",
-            "videoBitrateK": 5000,
-            "audioBitrateK": 192,
-            "fps": 30,
-            "codec": "H264",
-            "qualityLevel": 75,
-            "enableSceneCut": true
-        }
+        "topic": "Cancellation Test"
     }')
 
 CANCEL_JOB_ID=$(echo "$CANCEL_JOB_RESPONSE" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
