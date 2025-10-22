@@ -152,6 +152,20 @@ builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfilePersistence>(sp
 builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfileService>();
 builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfileContextProvider>();
 
+// Register Learning services
+builder.Services.AddSingleton<Aura.Core.Services.Learning.LearningPersistence>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Learning.LearningPersistence>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var baseDirectory = providerSettings.GetAuraDataDirectory();
+    return new Aura.Core.Services.Learning.LearningPersistence(logger, baseDirectory);
+});
+builder.Services.AddSingleton<Aura.Core.Services.Learning.DecisionAnalysisEngine>();
+builder.Services.AddSingleton<Aura.Core.Services.Learning.PatternRecognitionSystem>();
+builder.Services.AddSingleton<Aura.Core.Services.Learning.PreferenceInferenceEngine>();
+builder.Services.AddSingleton<Aura.Core.Services.Learning.PredictiveSuggestionRanker>();
+builder.Services.AddSingleton<Aura.Core.Services.Learning.LearningService>();
+
 // Register Ideation service
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
 
