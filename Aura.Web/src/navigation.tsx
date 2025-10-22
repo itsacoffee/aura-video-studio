@@ -13,7 +13,8 @@ import {
   HeartPulse24Regular,
   Image24Regular,
   Lightbulb24Regular,
-  DataTrending24Regular
+  DataTrending24Regular,
+  ChannelShare24Regular
 } from '@fluentui/react-icons';
 
 export interface NavItem {
@@ -33,6 +34,7 @@ export const navItems: NavItem[] = [
   { key: 'assets', name: 'Asset Library', icon: Image24Regular, path: '/assets' },
   { key: 'timeline', name: 'Timeline', icon: Timeline24Regular, path: '/timeline' },
   { key: 'render', name: 'Render', icon: Play24Regular, path: '/render' },
+  { key: 'platform', name: 'Platform Optimizer', icon: ChannelShare24Regular, path: '/platform' },
   { key: 'publish', name: 'Publish', icon: Share24Regular, path: '/publish' },
   { key: 'jobs', name: 'Recent Jobs', icon: TaskListSquareLtr24Regular, path: '/jobs' },
   { key: 'downloads', name: 'Downloads', icon: CloudArrowDown24Regular, path: '/downloads' },
