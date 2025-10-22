@@ -189,6 +189,29 @@ if (OperatingSystem.IsWindows())
 // Register TTS provider factory
 builder.Services.AddSingleton<Aura.Core.Providers.TtsProviderFactory>();
 
+// Register Azure TTS provider and voice discovery
+builder.Services.AddSingleton<Aura.Providers.Tts.AzureTtsProvider>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Providers.Tts.AzureTtsProvider>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var apiKey = providerSettings.GetAzureSpeechKey();
+    var region = providerSettings.GetAzureSpeechRegion();
+    var offlineOnly = providerSettings.IsOfflineOnly();
+    
+    return new Aura.Providers.Tts.AzureTtsProvider(logger, apiKey, region, offlineOnly);
+});
+
+builder.Services.AddSingleton<Aura.Providers.Tts.AzureVoiceDiscovery>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Providers.Tts.AzureVoiceDiscovery>>();
+    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var apiKey = providerSettings.GetAzureSpeechKey();
+    var region = providerSettings.GetAzureSpeechRegion();
+    
+    return new Aura.Providers.Tts.AzureVoiceDiscovery(logger, httpClient, region, apiKey);
+});
+
 // Register Image provider factory
 builder.Services.AddSingleton<Aura.Core.Providers.ImageProviderFactory>();
 
@@ -1264,6 +1287,187 @@ apiGroup.MapPost("/captions/generate", async ([FromBody] CaptionsRequest request
 .WithName("GenerateCaptions")
 .WithOpenApi();
 
+// Azure TTS endpoints
+apiGroup.MapGet("/tts/azure/voices", async (
+    [FromServices] Aura.Providers.Tts.AzureVoiceDiscovery voiceDiscovery,
+    string? locale = null,
+    string? gender = null,
+    string? voiceType = null,
+    CancellationToken ct = default) =>
+{
+    try
+    {
+        // Parse optional filters
+        Aura.Core.Models.Voice.VoiceGender? genderFilter = gender?.ToLowerInvariant() switch
+        {
+            "male" => Aura.Core.Models.Voice.VoiceGender.Male,
+            "female" => Aura.Core.Models.Voice.VoiceGender.Female,
+            "neutral" => Aura.Core.Models.Voice.VoiceGender.Neutral,
+            _ => null
+        };
+
+        Aura.Core.Models.Voice.VoiceType? typeFilter = voiceType?.ToLowerInvariant() switch
+        {
+            "neural" => Aura.Core.Models.Voice.VoiceType.Neural,
+            "standard" => Aura.Core.Models.Voice.VoiceType.Standard,
+            _ => null
+        };
+
+        var voices = await voiceDiscovery.GetVoicesAsync(locale, genderFilter, typeFilter, ct);
+
+        // Convert to DTOs
+        var voiceDtos = voices.Select(v => new Aura.Api.Models.ApiModels.V1.AzureVoiceDto(
+            Id: v.Id,
+            Name: v.Name,
+            Locale: v.Locale,
+            Gender: v.Gender.ToString(),
+            VoiceType: v.VoiceType.ToString(),
+            AvailableStyles: v.AvailableStyles,
+            AvailableRoles: v.AvailableRoles,
+            SupportedFeatures: GetFeatureNames(v.SupportedFeatures),
+            Description: v.Description,
+            LocalName: v.LocalName
+        )).ToList();
+
+        return Results.Ok(new { success = true, voices = voiceDtos, count = voiceDtos.Count });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error retrieving Azure voices");
+        return Results.Problem("Error retrieving Azure voices", statusCode: 500);
+    }
+})
+.WithName("GetAzureVoices")
+.WithOpenApi();
+
+apiGroup.MapGet("/tts/azure/voice/{voiceId}/capabilities", async (
+    string voiceId,
+    [FromServices] Aura.Providers.Tts.AzureVoiceDiscovery voiceDiscovery,
+    CancellationToken ct) =>
+{
+    try
+    {
+        var voice = await voiceDiscovery.GetVoiceCapabilitiesAsync(voiceId, ct);
+        
+        if (voice == null)
+        {
+            return Results.NotFound(new { success = false, message = $"Voice '{voiceId}' not found" });
+        }
+
+        // Get style descriptions (hardcoded for now, could be enhanced)
+        var styleDescriptions = GetStyleDescriptions();
+
+        var capabilities = new Aura.Api.Models.ApiModels.V1.AzureVoiceCapabilitiesDto(
+            VoiceId: voice.Id,
+            Name: voice.Name,
+            Locale: voice.Locale,
+            Gender: voice.Gender.ToString(),
+            VoiceType: voice.VoiceType.ToString(),
+            AvailableStyles: voice.AvailableStyles,
+            AvailableRoles: voice.AvailableRoles,
+            StyleDescriptions: styleDescriptions.Where(kvp => voice.AvailableStyles.Contains(kvp.Key))
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
+            SupportedFeatures: GetFeatureNames(voice.SupportedFeatures)
+        );
+
+        return Results.Ok(new { success = true, capabilities });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error retrieving voice capabilities for {VoiceId}", voiceId);
+        return Results.Problem("Error retrieving voice capabilities", statusCode: 500);
+    }
+})
+.WithName("GetAzureVoiceCapabilities")
+.WithOpenApi();
+
+apiGroup.MapPost("/tts/azure/preview", async (
+    [FromBody] Aura.Api.Models.ApiModels.V1.AzureTtsSynthesizeRequest request,
+    [FromServices] Aura.Providers.Tts.AzureTtsProvider azureTtsProvider,
+    CancellationToken ct) =>
+{
+    try
+    {
+        // Limit preview text length
+        var previewText = request.Text.Length > 500 
+            ? request.Text.Substring(0, 500) + "..." 
+            : request.Text;
+
+        // Convert DTO options to core options
+        Aura.Core.Models.Voice.AzureTtsOptions? options = null;
+        if (request.Options != null)
+        {
+            options = new Aura.Core.Models.Voice.AzureTtsOptions
+            {
+                Rate = request.Options.Rate ?? 0.0,
+                Pitch = request.Options.Pitch ?? 0.0,
+                Volume = request.Options.Volume ?? 1.0,
+                Style = request.Options.Style,
+                StyleDegree = request.Options.StyleDegree ?? 1.0,
+                Role = request.Options.Role,
+                AudioEffect = ParseAudioEffect(request.Options.AudioEffect),
+                Emphasis = ParseEmphasis(request.Options.Emphasis)
+            };
+        }
+
+        var audioPath = await azureTtsProvider.SynthesizeWithOptionsAsync(
+            previewText, 
+            request.VoiceId, 
+            options, 
+            ct);
+
+        return Results.Ok(new { success = true, audioPath });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error generating Azure TTS preview");
+        return Results.Problem(ex.Message, statusCode: 500);
+    }
+})
+.WithName("AzureTtsPreview")
+.WithOpenApi();
+
+apiGroup.MapPost("/tts/azure/synthesize", async (
+    [FromBody] Aura.Api.Models.ApiModels.V1.AzureTtsSynthesizeRequest request,
+    [FromServices] Aura.Providers.Tts.AzureTtsProvider azureTtsProvider,
+    CancellationToken ct) =>
+{
+    try
+    {
+        // Convert DTO options to core options
+        Aura.Core.Models.Voice.AzureTtsOptions? options = null;
+        if (request.Options != null)
+        {
+            options = new Aura.Core.Models.Voice.AzureTtsOptions
+            {
+                Rate = request.Options.Rate ?? 0.0,
+                Pitch = request.Options.Pitch ?? 0.0,
+                Volume = request.Options.Volume ?? 1.0,
+                Style = request.Options.Style,
+                StyleDegree = request.Options.StyleDegree ?? 1.0,
+                Role = request.Options.Role,
+                AudioEffect = ParseAudioEffect(request.Options.AudioEffect),
+                Emphasis = ParseEmphasis(request.Options.Emphasis)
+            };
+        }
+
+        var audioPath = await azureTtsProvider.SynthesizeWithOptionsAsync(
+            request.Text, 
+            request.VoiceId, 
+            options, 
+            ct);
+
+        return Results.Ok(new { success = true, audioPath });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error synthesizing Azure TTS audio");
+        return Results.Problem(ex.Message, statusCode: 500);
+    }
+})
+.WithName("AzureTtsSynthesize")
+.WithOpenApi();
+
 // Downloads manifest endpoint
 apiGroup.MapGet("/downloads/manifest", async (Aura.Core.Dependencies.DependencyManager depManager) =>
 {
@@ -2302,6 +2506,100 @@ lifetime.ApplicationStarted.Register(() =>
         }
     });
 });
+
+// Helper methods for Azure TTS endpoints
+static string[] GetFeatureNames(Aura.Core.Models.Voice.VoiceFeatures features)
+{
+    var featureList = new List<string>();
+    
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Rate))
+        featureList.Add("Rate");
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Pitch))
+        featureList.Add("Pitch");
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Volume))
+        featureList.Add("Volume");
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Emphasis))
+        featureList.Add("Emphasis");
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Breaks))
+        featureList.Add("Breaks");
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Prosody))
+        featureList.Add("Prosody");
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.AudioEffects))
+        featureList.Add("AudioEffects");
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Styles))
+        featureList.Add("Styles");
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Roles))
+        featureList.Add("Roles");
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.Phonemes))
+        featureList.Add("Phonemes");
+    if (features.HasFlag(Aura.Core.Models.Voice.VoiceFeatures.SayAs))
+        featureList.Add("SayAs");
+    
+    return featureList.ToArray();
+}
+
+static Dictionary<string, string> GetStyleDescriptions()
+{
+    return new Dictionary<string, string>
+    {
+        { "advertisement_upbeat", "Upbeat and energetic style for advertisements" },
+        { "affectionate", "Warm and affectionate tone" },
+        { "angry", "Angry and upset tone" },
+        { "assistant", "Professional assistant tone" },
+        { "calm", "Calm and composed tone" },
+        { "chat", "Casual conversational tone" },
+        { "cheerful", "Happy and cheerful tone" },
+        { "customerservice", "Professional customer service tone" },
+        { "depressed", "Sad and depressed tone" },
+        { "disgruntled", "Disgruntled and dissatisfied tone" },
+        { "documentary-narration", "Documentary narrator tone" },
+        { "embarrassed", "Embarrassed and shy tone" },
+        { "empathetic", "Empathetic and understanding tone" },
+        { "envious", "Envious and jealous tone" },
+        { "excited", "Excited and enthusiastic tone" },
+        { "fearful", "Fearful and scared tone" },
+        { "friendly", "Friendly and approachable tone" },
+        { "gentle", "Gentle and soft tone" },
+        { "hopeful", "Hopeful and optimistic tone" },
+        { "lyrical", "Musical and lyrical tone" },
+        { "narration-professional", "Professional narration tone" },
+        { "narration-relaxed", "Relaxed narration tone" },
+        { "newscast", "News broadcaster tone" },
+        { "newscast-casual", "Casual news broadcaster tone" },
+        { "newscast-formal", "Formal news broadcaster tone" },
+        { "poetry-reading", "Poetry reading tone" },
+        { "sad", "Sad and melancholic tone" },
+        { "serious", "Serious and stern tone" },
+        { "shouting", "Loud and shouting tone" },
+        { "sports_commentary", "Sports commentary tone" },
+        { "sports_commentary_excited", "Excited sports commentary tone" },
+        { "terrified", "Terrified and very scared tone" },
+        { "unfriendly", "Unfriendly and cold tone" },
+        { "whispering", "Whispering tone" }
+    };
+}
+
+static Aura.Core.Models.Voice.AzureAudioEffect ParseAudioEffect(string? effect)
+{
+    return effect?.ToLowerInvariant() switch
+    {
+        "eq_telecom" => Aura.Core.Models.Voice.AzureAudioEffect.EqTelecom,
+        "eq_car" => Aura.Core.Models.Voice.AzureAudioEffect.EqCar,
+        "reverb" => Aura.Core.Models.Voice.AzureAudioEffect.Reverb,
+        _ => Aura.Core.Models.Voice.AzureAudioEffect.None
+    };
+}
+
+static Aura.Core.Models.Voice.EmphasisLevel ParseEmphasis(string? emphasis)
+{
+    return emphasis?.ToLowerInvariant() switch
+    {
+        "strong" => Aura.Core.Models.Voice.EmphasisLevel.Strong,
+        "moderate" => Aura.Core.Models.Voice.EmphasisLevel.Moderate,
+        "reduced" => Aura.Core.Models.Voice.EmphasisLevel.Reduced,
+        _ => Aura.Core.Models.Voice.EmphasisLevel.None
+    };
+}
 
 app.Run();
 

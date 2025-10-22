@@ -131,3 +131,43 @@ public record AssetGenerateRequest(
     string[]? Keywords = null,
     string? StableDiffusionUrl = null,
     bool BypassHardwareChecks = false);
+
+// Azure TTS DTOs
+public record AzureTtsSynthesizeRequest(
+    string Text,
+    string VoiceId,
+    AzureTtsOptionsDto? Options = null);
+
+public record AzureTtsOptionsDto(
+    double? Rate = null,
+    double? Pitch = null,
+    double? Volume = null,
+    string? Style = null,
+    double? StyleDegree = null,
+    string? Role = null,
+    string? AudioEffect = null,
+    string? Emphasis = null);
+
+public record AzureVoiceDto(
+    string Id,
+    string Name,
+    string Locale,
+    string Gender,
+    string VoiceType,
+    string[] AvailableStyles,
+    string[] AvailableRoles,
+    string[] SupportedFeatures,
+    string? Description,
+    string? LocalName);
+
+public record AzureVoiceCapabilitiesDto(
+    string VoiceId,
+    string Name,
+    string Locale,
+    string Gender,
+    string VoiceType,
+    string[] AvailableStyles,
+    string[] AvailableRoles,
+    Dictionary<string, string> StyleDescriptions,
+    string[] SupportedFeatures);
+
