@@ -369,6 +369,14 @@ builder.Services.AddSingleton<Aura.Core.Services.Assets.AssetUsageTracker>(sp =>
     return new Aura.Core.Services.Assets.AssetUsageTracker(logger);
 });
 
+// Register platform optimization services
+builder.Services.AddSingleton<Aura.Core.Services.Platform.PlatformProfileService>();
+builder.Services.AddSingleton<Aura.Core.Services.Platform.PlatformOptimizationService>();
+builder.Services.AddSingleton<Aura.Core.Services.Platform.MetadataOptimizationService>();
+builder.Services.AddSingleton<Aura.Core.Services.Platform.ThumbnailIntelligenceService>();
+builder.Services.AddSingleton<Aura.Core.Services.Platform.KeywordResearchService>();
+builder.Services.AddSingleton<Aura.Core.Services.Platform.SchedulingOptimizationService>();
+
 // Register health check and startup validation services
 builder.Services.AddSingleton<Aura.Api.Services.HealthCheckService>();
 builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
