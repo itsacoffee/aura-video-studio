@@ -201,7 +201,7 @@ builder.Services.AddSingleton<Aura.Core.Validation.LlmOutputValidator>();
 // Register pipeline reliability services
 builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
 builder.Services.AddSingleton<Aura.Core.Services.ProviderRetryWrapper>();
-builder.Services.AddScoped<Aura.Core.Services.ResourceCleanupManager>();
+builder.Services.AddSingleton<Aura.Core.Services.ResourceCleanupManager>();
 
 // Register resource management services
 builder.Services.AddSingleton<Aura.Core.Services.Resources.TemporaryFileCleanupService>();

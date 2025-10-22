@@ -32,6 +32,50 @@ The project now implements a **web-based UI architecture** as specified:
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for complete details.
 
+## 🔧 Backend Dependencies
+
+### Critical NuGet Packages (.NET 8.0)
+
+**Core Framework:**
+- Microsoft.Extensions.* (9.0.10) - Dependency injection, logging, HTTP client factory
+- System.Management (9.0.10) - Hardware detection and system info
+- System.Text.Json (9.0.10) - JSON serialization
+
+**Web API (Aura.Api):**
+- Microsoft.AspNetCore.OpenApi (8.0.20) - OpenAPI/Swagger support (.NET 8 compatible)
+- Swashbuckle.AspNetCore (9.0.6) - Swagger UI and API documentation
+- Serilog.AspNetCore (9.0.0) - Structured logging
+- Serilog.Sinks.File (7.0.0) - File-based logging
+
+**Testing:**
+- xunit (2.9.3) - Unit testing framework
+- Moq (4.20.72) - Mocking framework
+- Microsoft.AspNetCore.Mvc.Testing (8.0.11) - Integration testing
+- Microsoft.NET.Test.Sdk (18.0.0) - Test execution
+- coverlet.collector (6.0.4) - Code coverage
+
+### Version Requirements
+- **.NET SDK:** 8.0 or later
+- **Target Framework:** net8.0
+- **Windows 11:** For WinUI 3 app (Aura.App)
+- **Linux/macOS:** For backend API development and testing
+
+### Security
+All packages are regularly audited for vulnerabilities using `dotnet list package --vulnerable`. Last audit: 2025-10-22 - **No vulnerabilities found**.
+
+### Package Updates
+To update packages:
+```bash
+# Check for outdated packages
+dotnet list package --outdated
+
+# Check for vulnerable packages
+dotnet list package --vulnerable
+
+# Update specific package
+dotnet add package <PackageName>
+```
+
 ## 📦 Distribution Policy
 
 **Aura Video Studio follows a portable-only distribution model.**
@@ -88,6 +132,53 @@ The smoke test script:
 - Returns exit code 0 on success
 
 See [scripts/smoke/README.md](./scripts/smoke/README.md) for detailed usage.
+
+## 🔧 Troubleshooting
+
+### Build Issues
+
+**Problem: `dotnet build` fails with Aura.App on Linux/macOS**
+- **Cause:** Aura.App is a WinUI 3 application that requires Windows to build.
+- **Solution:** Build backend projects individually:
+  ```bash
+  dotnet build Aura.Api/Aura.Api.csproj
+  dotnet build Aura.Core/Aura.Core.csproj
+  dotnet build Aura.Providers/Aura.Providers.csproj
+  dotnet build Aura.Cli/Aura.Cli.csproj
+  ```
+
+**Problem: Package restore fails**
+- **Solution:** Clear NuGet cache and restore:
+  ```bash
+  dotnet nuget locals all --clear
+  dotnet restore
+  ```
+
+**Problem: API fails to start with DI lifetime errors**
+- **Cause:** Service lifetime mismatch (e.g., singleton consuming scoped service)
+- **Solution:** Check that services are registered with compatible lifetimes. Updated packages may enforce stricter validation.
+
+**Problem: Outdated package warnings**
+- **Solution:** Check for updates:
+  ```bash
+  dotnet list package --outdated
+  ```
+- Note: Only update to versions compatible with .NET 8.0. Some v9.x packages require .NET 9.0.
+
+**Problem: Build warnings about ConfigureAwait**
+- **Info:** These are code analysis warnings (CA2007), not errors. Safe to ignore or suppress in production code.
+- To suppress: Add `<NoWarn>CA2007</NoWarn>` to project file PropertyGroup.
+
+### Runtime Issues
+
+**Problem: API starts but endpoints return 404**
+- **Check:** Verify API is running on correct port (default: http://localhost:5272 in dev)
+- **Check:** Access Swagger UI at `/swagger` to see available endpoints
+- **Check:** Review logs in `Logs/` directory for routing issues
+
+**Problem: Missing FFmpeg or other tools**
+- **Solution:** Download required tools using the Engine Manager in the UI or API
+- **Manual:** Place FFmpeg binaries in `Tools/ffmpeg/` directory
 
 **See detailed documentation:**
 - [PORTABLE_FIRST_RUN.md](./PORTABLE_FIRST_RUN.md) - **🎯 First-time setup guide for portable version**
