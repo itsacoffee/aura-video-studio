@@ -233,6 +233,19 @@ builder.Services.AddSingleton<Aura.Core.AI.Pacing.RetentionOptimizer>();
 builder.Services.AddSingleton<Aura.Core.AI.Pacing.PacingAnalyzer>();
 builder.Services.AddSingleton<Aura.Core.Services.Analytics.ViewerRetentionPredictor>();
 
+// Register Performance Analytics services
+builder.Services.AddSingleton<Aura.Core.Services.PerformanceAnalytics.AnalyticsPersistence>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.PerformanceAnalytics.AnalyticsPersistence>>();
+    var baseDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura");
+    return new Aura.Core.Services.PerformanceAnalytics.AnalyticsPersistence(logger, baseDirectory);
+});
+builder.Services.AddSingleton<Aura.Core.Services.PerformanceAnalytics.AnalyticsImporter>();
+builder.Services.AddSingleton<Aura.Core.Services.PerformanceAnalytics.VideoProjectLinker>();
+builder.Services.AddSingleton<Aura.Core.Services.PerformanceAnalytics.CorrelationAnalyzer>();
+builder.Services.AddSingleton<Aura.Core.Services.PerformanceAnalytics.PerformancePatternDetector>();
+builder.Services.AddSingleton<Aura.Core.Services.PerformanceAnalytics.PerformanceAnalyticsService>();
+
 // Register timeline editor services
 builder.Services.AddSingleton<Aura.Core.Services.Editor.TimelineRenderer>(sp =>
 {
