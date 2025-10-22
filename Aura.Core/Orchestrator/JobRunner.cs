@@ -353,6 +353,10 @@ public class JobRunner
         _activeJobs[job.Id] = updated;
         _artifactManager.SaveJob(updated);
 
+        // Log job state changes for debugging
+        _logger.LogInformation("[Job {JobId}] Updated: Status={Status}, Stage={Stage}, Percent={Percent}%", 
+            updated.Id, updated.Status, updated.Stage, updated.Percent);
+
         // Raise progress event with detailed information
         var eventArgs = new JobProgressEventArgs(
             jobId: updated.Id,

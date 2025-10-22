@@ -1455,109 +1455,13 @@ apiGroup.MapGet("/settings/load", () =>
 .WithName("LoadSettings")
 .WithOpenApi();
 
-// Compose/Render endpoints - stub implementations for UI development
-var renderJobs = new Dictionary<string, RenderJobDto>();
-
-apiGroup.MapPost("/compose", ([FromBody] ComposeRequest request) =>
-{
-    try
-    {
-        var jobId = Guid.NewGuid().ToString();
-        renderJobs[jobId] = new RenderJobDto(
-            Id: jobId,
-            Status: "queued",
-            Progress: 0,
-            OutputPath: null,
-            CreatedAt: DateTime.UtcNow
-        );
-        
-        return Results.Ok(new { success = true, jobId });
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error composing timeline");
-        return Results.Problem("Error composing timeline", statusCode: 500);
-    }
-})
-.WithName("ComposeTimeline")
-.WithOpenApi();
-
-
-apiGroup.MapPost("/render", ([FromBody] RenderRequest request) =>
-{
-    try
-    {
-        var jobId = Guid.NewGuid().ToString();
-        renderJobs[jobId] = new RenderJobDto(
-            Id: jobId,
-            Status: "queued",
-            Progress: 0,
-            OutputPath: null,
-            CreatedAt: DateTime.UtcNow
-        );
-        
-        return Results.Ok(new { success = true, jobId });
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error starting render");
-        return Results.Problem("Error starting render", statusCode: 500);
-    }
-})
-.WithName("StartRender")
-.WithOpenApi();
-
-
-apiGroup.MapGet("/render/{id}/progress", (string id) =>
-{
-    if (!renderJobs.ContainsKey(id))
-    {
-        return Results.NotFound(new { error = "Render job not found" });
-    }
-    
-    var job = renderJobs[id];
-    return Results.Ok(new 
-    { 
-        id = job.Id,
-        status = job.Status,
-        progress = job.Progress,
-        outputPath = job.OutputPath,
-        createdAt = job.CreatedAt
-    });
-})
-.WithName("GetRenderProgress")
-.WithOpenApi();
-
-
-apiGroup.MapPost("/render/{id}/cancel", (string id) =>
-{
-    if (!renderJobs.ContainsKey(id))
-    {
-        return Results.NotFound(new { error = "Render job not found" });
-    }
-    
-    renderJobs[id] = renderJobs[id] with { Status = "cancelled" };
-    return Results.Ok(new { success = true });
-})
-.WithName("CancelRender")
-.WithOpenApi();
-
-
-apiGroup.MapGet("/queue", () =>
-{
-    try
-    {
-        var jobs = renderJobs.Values.OrderByDescending(j => j.CreatedAt).ToList();
-        return Results.Ok(new { jobs });
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error retrieving queue");
-        return Results.Problem("Error retrieving queue", statusCode: 500);
-    }
-})
-.WithName("GetRenderQueue")
-.WithOpenApi();
+// NOTE: Render/Job endpoints moved to JobsController and QuickController
+// These stub endpoints are deprecated and redirect to proper controllers
+// /api/render -> use JobsController POST /api/jobs
+// /api/render/{id}/progress -> use JobsController GET /api/jobs/{id}
+// /api/render/{id}/cancel -> use JobsController POST /api/jobs/{id}/cancel
+// /api/queue -> use JobsController GET /api/jobs
+// /api/quick/demo -> use QuickController POST /api/quick/demo
 
 
 apiGroup.MapGet("/logs/stream", async (HttpContext context) =>
@@ -1582,6 +1486,118 @@ apiGroup.MapGet("/logs/stream", async (HttpContext context) =>
     }
 })
 .WithName("StreamLogs")
+.WithOpenApi();
+
+// SSE endpoint for job progress updates
+apiGroup.MapGet("/jobs/{jobId}/stream", async (
+    string jobId, 
+    HttpContext context,
+    JobRunner jobRunner,
+    CancellationToken ct) =>
+{
+    context.Response.Headers.Append("Content-Type", "text/event-stream");
+    context.Response.Headers.Append("Cache-Control", "no-cache");
+    context.Response.Headers.Append("Connection", "keep-alive");
+    
+    try
+    {
+        Log.Information("SSE stream started for job {JobId}", jobId);
+        
+        // Send initial connection message
+        var connectMsg = $"event: connected\ndata: {{\"jobId\":\"{jobId}\",\"timestamp\":\"{DateTime.UtcNow:O}\"}}\n\n";
+        await context.Response.WriteAsync(connectMsg, ct);
+        await context.Response.Body.FlushAsync(ct);
+        
+        // Poll job status and send updates
+        var lastStatus = "";
+        var lastPercent = -1;
+        var lastStage = "";
+        
+        while (!ct.IsCancellationRequested)
+        {
+            var job = jobRunner.GetJob(jobId);
+            if (job == null)
+            {
+                var errorMsg = $"event: error\ndata: {{\"error\":\"Job not found\"}}\n\n";
+                await context.Response.WriteAsync(errorMsg, ct);
+                await context.Response.Body.FlushAsync(ct);
+                break;
+            }
+            
+            // Send update if status changed
+            if (job.Status.ToString() != lastStatus || job.Percent != lastPercent || job.Stage != lastStage)
+            {
+                lastStatus = job.Status.ToString();
+                lastPercent = job.Percent;
+                lastStage = job.Stage;
+                
+                var statusData = JsonSerializer.Serialize(new
+                {
+                    jobId = job.Id,
+                    status = job.Status.ToString().ToLowerInvariant(),
+                    stage = job.Stage,
+                    percent = job.Percent,
+                    errorMessage = job.ErrorMessage,
+                    timestamp = DateTime.UtcNow
+                });
+                
+                var updateMsg = $"event: progress\ndata: {statusData}\n\n";
+                await context.Response.WriteAsync(updateMsg, ct);
+                await context.Response.Body.FlushAsync(ct);
+                
+                Log.Information("SSE update sent for job {JobId}: {Status} {Percent}% {Stage}", 
+                    jobId, job.Status, job.Percent, job.Stage);
+            }
+            
+            // If job is done/failed/cancelled, send final message and close
+            if (job.Status == JobStatus.Done || job.Status == JobStatus.Failed || job.Status == JobStatus.Canceled)
+            {
+                var completeData = JsonSerializer.Serialize(new
+                {
+                    jobId = job.Id,
+                    status = job.Status.ToString().ToLowerInvariant(),
+                    success = job.Status == JobStatus.Done,
+                    outputPath = job.Artifacts.FirstOrDefault()?.Path,
+                    errorMessage = job.ErrorMessage,
+                    timestamp = DateTime.UtcNow
+                });
+                
+                var completeMsg = $"event: complete\ndata: {completeData}\n\n";
+                await context.Response.WriteAsync(completeMsg, ct);
+                await context.Response.Body.FlushAsync(ct);
+                
+                Log.Information("SSE stream completed for job {JobId}: {Status}", jobId, job.Status);
+                break;
+            }
+            
+            // Send keepalive every 2 seconds
+            await Task.Delay(2000, ct);
+            
+            var keepaliveMsg = $": keepalive\n\n";
+            await context.Response.WriteAsync(keepaliveMsg, ct);
+            await context.Response.Body.FlushAsync(ct);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        Log.Information("SSE stream cancelled for job {JobId}", jobId);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error in SSE stream for job {JobId}", jobId);
+        try
+        {
+            var errorMsg = $"event: error\ndata: {{\"error\":\"{ex.Message.Replace("\"", "\\\"")}\"}}\n\n";
+            await context.Response.WriteAsync(errorMsg, ct);
+            await context.Response.Body.FlushAsync(ct);
+        }
+        catch
+        {
+            // Client may have disconnected
+        }
+    }
+})
+.WithName("StreamJobProgress")
 .WithOpenApi();
 
 

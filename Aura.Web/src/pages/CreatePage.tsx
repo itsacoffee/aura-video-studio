@@ -175,40 +175,76 @@ export function CreatePage() {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
+      console.log('Starting video generation...');
+      
       // Validate and warn about legacy enum values
       validateAndWarnEnums(brief, planSpec);
       
       // Normalize enums to canonical values before sending to API
       const { brief: normalizedBrief, planSpec: normalizedPlanSpec } = normalizeEnumsForApi(brief, planSpec);
       
-      // Call API to generate video
-      const response = await fetch('/api/script', {
+      // Create voice spec with defaults
+      const voiceSpec = {
+        voiceName: 'en-US-Standard-A',
+        rate: 1.0,
+        pitch: 0.0,
+        pause: 'Medium',
+      };
+      
+      // Create render spec with defaults
+      const renderSpec = {
+        res: { width: 1920, height: 1080 },
+        container: 'mp4',
+        videoBitrateK: 5000,
+        audioBitrateK: 192,
+        fps: 30,
+        codec: 'H264',
+        qualityLevel: 75,
+        enableSceneCut: true,
+      };
+      
+      console.log('Creating job with brief:', normalizedBrief);
+      console.log('Plan spec:', normalizedPlanSpec);
+      
+      // Create a full video generation job via JobsController
+      const response = await fetch('/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          topic: normalizedBrief.topic,
-          audience: normalizedBrief.audience,
-          goal: normalizedBrief.goal,
-          tone: normalizedBrief.tone,
-          language: normalizedBrief.language,
-          aspect: normalizedBrief.aspect,
-          targetDurationMinutes: normalizedPlanSpec.targetDurationMinutes,
-          pacing: normalizedPlanSpec.pacing,
-          density: normalizedPlanSpec.density,
-          style: normalizedPlanSpec.style,
+          brief: {
+            topic: normalizedBrief.topic,
+            audience: normalizedBrief.audience || 'General',
+            goal: normalizedBrief.goal || 'Inform',
+            tone: normalizedBrief.tone || 'Informative',
+            language: normalizedBrief.language || 'en-US',
+            aspect: normalizedBrief.aspect || 'Widescreen16x9',
+          },
+          planSpec: {
+            targetDuration: `00:${String(Math.floor(normalizedPlanSpec.targetDurationMinutes || 3)).padStart(2, '0')}:00`,
+            pacing: normalizedPlanSpec.pacing || 'Conversational',
+            density: normalizedPlanSpec.density || 'Balanced',
+            style: normalizedPlanSpec.style || 'Standard',
+          },
+          voiceSpec,
+          renderSpec,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Script generated:', data);
-        alert('Script generated successfully! Check console for details.');
+        console.log('Job created successfully:', data);
+        alert(`Video generation started! Job ID: ${data.jobId}\n\nYou can track progress in the jobs panel.`);
+        
+        // TODO: Navigate to jobs page or open generation panel
+        // For now, just show success message
       } else {
-        alert('Failed to generate script');
+        const errorText = await response.text();
+        console.error('Failed to create job:', response.status, errorText);
+        alert(`Failed to start video generation: ${response.status} ${response.statusText}\n\nCheck console for details.`);
       }
     } catch (error) {
-      console.error('Error generating script:', error);
-      alert('Error generating script');
+      console.error('Error creating video generation job:', error);
+      alert(`Error starting video generation: ${error instanceof Error ? error.message : 'Unknown error'}\n\nCheck console for details.`);
     } finally {
       setGenerating(false);
     }
