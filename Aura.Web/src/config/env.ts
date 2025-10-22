@@ -17,5 +17,6 @@ export const env = {
 
 // Export for debugging purposes (only in development)
 if (env.isDevelopment && env.enableDebug) {
+  // eslint-disable-next-line no-console
   console.log('Environment Configuration:', env);
 }
