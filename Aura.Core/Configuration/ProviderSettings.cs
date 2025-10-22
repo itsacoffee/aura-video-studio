@@ -238,6 +238,86 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Get Azure Speech API key
+    /// </summary>
+    public string? GetAzureSpeechKey()
+    {
+        LoadSettings();
+        return GetStringSetting("azureSpeechKey", "");
+    }
+
+    /// <summary>
+    /// Get Azure Speech region (e.g., "eastus", "westeurope")
+    /// </summary>
+    public string GetAzureSpeechRegion()
+    {
+        LoadSettings();
+        return GetStringSetting("azureSpeechRegion", "eastus");
+    }
+
+    /// <summary>
+    /// Get default Azure voice
+    /// </summary>
+    public string GetAzureDefaultVoice()
+    {
+        LoadSettings();
+        return GetStringSetting("azureDefaultVoice", "en-US-JennyNeural");
+    }
+
+    /// <summary>
+    /// Get default Azure speaking style
+    /// </summary>
+    public string? GetAzureDefaultStyle()
+    {
+        LoadSettings();
+        return GetStringSetting("azureDefaultStyle", "");
+    }
+
+    /// <summary>
+    /// Get default Azure speaking rate
+    /// </summary>
+    public double GetAzureDefaultRate()
+    {
+        LoadSettings();
+        return GetDoubleSetting("azureDefaultRate", 0.0);
+    }
+
+    /// <summary>
+    /// Set Azure Speech configuration
+    /// </summary>
+    public void SetAzureSpeechConfig(string? apiKey, string? region, string? defaultVoice = null, string? defaultStyle = null, double? defaultRate = null)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+
+        if (apiKey != null)
+        {
+            _settings["azureSpeechKey"] = apiKey;
+        }
+        if (region != null)
+        {
+            _settings["azureSpeechRegion"] = region;
+        }
+        if (defaultVoice != null)
+        {
+            _settings["azureDefaultVoice"] = defaultVoice;
+        }
+        if (defaultStyle != null)
+        {
+            _settings["azureDefaultStyle"] = defaultStyle;
+        }
+        if (defaultRate.HasValue)
+        {
+            _settings["azureDefaultRate"] = defaultRate.Value;
+        }
+
+        SaveSettings();
+    }
+
+    /// <summary>
     /// Check if offline-only mode is enabled
     /// </summary>
     public bool IsOfflineOnly()
@@ -294,6 +374,29 @@ public class ProviderSettings
         }
 
         return value?.ToString() ?? defaultValue;
+    }
+
+    private double GetDoubleSetting(string key, double defaultValue)
+    {
+        if (_settings == null || !_settings.TryGetValue(key, out var value))
+        {
+            return defaultValue;
+        }
+
+        if (value is JsonElement jsonElement)
+        {
+            if (jsonElement.TryGetDouble(out var doubleValue))
+            {
+                return doubleValue;
+            }
+        }
+
+        if (double.TryParse(value?.ToString(), out var parsedValue))
+        {
+            return parsedValue;
+        }
+
+        return defaultValue;
     }
 
     /// <summary>
