@@ -301,7 +301,7 @@ public class SmartRenderer
             _logger.LogInformation("Stitching scenes with FFmpeg concat demuxer");
             
             // For now, we'll just copy the first scene as a placeholder
-            if (sceneOutputs.Any() && File.Exists(sceneOutputs.First().Value))
+            if (sceneOutputs.Count > 0 && File.Exists(sceneOutputs.First().Value))
             {
                 File.Copy(sceneOutputs.First().Value, outputPath, overwrite: true);
             }

@@ -214,7 +214,7 @@ public class RetentionOptimizer
         if (CountWords(scene.Script) < 20)
             risks.Add("Low content density");
 
-        return risks.Any() ? string.Join(", ", risks) : "None identified";
+        return risks.Count > 0 ? string.Join(", ", risks) : "None identified";
     }
 
     /// <summary>

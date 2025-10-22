@@ -477,7 +477,7 @@ public class RenderQueue
         // Use average render time from completed items
         var completedItems = items.Where(i => i.Status == QueueItemStatus.Complete && i.RenderTime.HasValue).ToList();
         
-        if (!completedItems.Any())
+        if (completedItems.Count == 0)
         {
             // No data, estimate 5 minutes per item
             return TimeSpan.FromMinutes(items.Count(i => i.Status == QueueItemStatus.Queued) * 5);
