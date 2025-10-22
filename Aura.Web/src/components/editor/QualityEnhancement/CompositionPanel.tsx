@@ -72,10 +72,7 @@ export const CompositionPanel: React.FC<CompositionPanelProps> = ({
   const handleAnalyze = async () => {
     setLoading(true);
     try {
-      const result = await visualAnalysisService.analyzeComposition(
-        imageWidth,
-        imageHeight
-      );
+      const result = await visualAnalysisService.analyzeComposition(imageWidth, imageHeight);
       setAnalysis(result);
     } catch (error) {
       console.error('Failed to analyze composition:', error);
@@ -111,7 +108,14 @@ export const CompositionPanel: React.FC<CompositionPanelProps> = ({
     <div className={styles.container}>
       <Card>
         <div className={styles.section}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalM }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacingHorizontalS,
+              marginBottom: tokens.spacingVerticalM,
+            }}
+          >
             <Grid24Regular />
             <Body1Strong>Composition Analysis</Body1Strong>
           </div>
@@ -135,7 +139,14 @@ export const CompositionPanel: React.FC<CompositionPanelProps> = ({
       {analysis && (
         <Card>
           <div className={styles.resultCard}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalM }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: tokens.spacingVerticalM,
+              }}
+            >
               <Body1Strong>Analysis Results</Body1Strong>
               {analysis.suggestedCrop && (
                 <Button
@@ -150,17 +161,21 @@ export const CompositionPanel: React.FC<CompositionPanelProps> = ({
 
             <div style={{ marginBottom: tokens.spacingVerticalM }}>
               <Caption1 block>Suggested Rule</Caption1>
-              <Badge appearance="tint" color="brand" style={{ marginTop: tokens.spacingVerticalXS }}>
+              <Badge
+                appearance="tint"
+                color="brand"
+                style={{ marginTop: tokens.spacingVerticalXS }}
+              >
                 {analysis.suggestedRule}
               </Badge>
             </div>
 
             <div className={styles.scoreRow}>
               <Caption1>Composition Score</Caption1>
-              <ProgressBar 
-                value={analysis.compositionScore} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={analysis.compositionScore}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(analysis.compositionScore)}
               />
               <Badge appearance="tint" color={getBadgeColor(analysis.compositionScore)}>
@@ -170,10 +185,10 @@ export const CompositionPanel: React.FC<CompositionPanelProps> = ({
 
             <div className={styles.scoreRow}>
               <Caption1>Balance Score</Caption1>
-              <ProgressBar 
-                value={analysis.balanceScore} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={analysis.balanceScore}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(analysis.balanceScore)}
               />
               <Badge appearance="tint" color={getBadgeColor(analysis.balanceScore)}>
@@ -205,10 +220,12 @@ export const CompositionPanel: React.FC<CompositionPanelProps> = ({
               <div style={{ marginTop: tokens.spacingVerticalM }}>
                 <Body1Strong>Suggested Crop</Body1Strong>
                 <Caption1 block style={{ marginTop: tokens.spacingVerticalXS }}>
-                  Position: ({analysis.suggestedCrop.x.toFixed(0)}, {analysis.suggestedCrop.y.toFixed(0)})
+                  Position: ({analysis.suggestedCrop.x.toFixed(0)},{' '}
+                  {analysis.suggestedCrop.y.toFixed(0)})
                 </Caption1>
                 <Caption1 block>
-                  Size: {analysis.suggestedCrop.width.toFixed(0)} × {analysis.suggestedCrop.height.toFixed(0)}
+                  Size: {analysis.suggestedCrop.width.toFixed(0)} ×{' '}
+                  {analysis.suggestedCrop.height.toFixed(0)}
                 </Caption1>
               </div>
             )}

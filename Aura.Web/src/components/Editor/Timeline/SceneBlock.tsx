@@ -119,16 +119,19 @@ export function SceneBlock({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only left click
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 0) return; // Only left click
 
-    e.stopPropagation();
-    onSelect?.();
+      e.stopPropagation();
+      onSelect?.();
 
-    setIsDragging(true);
-    setDragStartX(e.clientX);
-    setOriginalStart(start);
-  }, [start, onSelect]);
+      setIsDragging(true);
+      setDragStartX(e.clientX);
+      setOriginalStart(start);
+    },
+    [start, onSelect]
+  );
 
   const handleTrimMouseDown = useCallback(
     (side: 'left' | 'right', e: React.MouseEvent) => {
@@ -174,7 +177,9 @@ export function SceneBlock({
           newDuration = Math.max(0.1, originalDuration + deltaTime);
         }
 
-        setTooltipText(`${formatDuration(newDuration)} (${deltaTime > 0 ? '+' : ''}${formatDuration(Math.abs(deltaTime))})`);
+        setTooltipText(
+          `${formatDuration(newDuration)} (${deltaTime > 0 ? '+' : ''}${formatDuration(Math.abs(deltaTime))})`
+        );
         setShowTooltip(true);
 
         // Would call onTrim in a throttled manner in production

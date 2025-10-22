@@ -11,11 +11,7 @@ import {
   Input,
   Label,
 } from '@fluentui/react-components';
-import {
-  Subtitles24Regular,
-  ArrowDownload24Regular,
-  Eye24Regular,
-} from '@fluentui/react-icons';
+import { Subtitles24Regular, ArrowDownload24Regular, Eye24Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
 
 const useStyles = makeStyles({
@@ -85,7 +81,7 @@ interface CaptionRenderStyle {
 
 export function CaptionsPanel({ scriptLines = [], onGenerate, onExport }: CaptionsPanelProps) {
   const styles = useStyles();
-  
+
   const [format, setFormat] = useState<'srt' | 'vtt'>('srt');
   const [burnIn, setBurnIn] = useState(false);
   const [style, setStyle] = useState<CaptionRenderStyle>({
@@ -101,7 +97,7 @@ export function CaptionsPanel({ scriptLines = [], onGenerate, onExport }: Captio
     if (onGenerate) {
       onGenerate(format, burnIn, style);
     }
-    
+
     // Generate preview
     const previewText = generatePreview(scriptLines, format);
     setPreview(previewText);
@@ -137,7 +133,7 @@ export function CaptionsPanel({ scriptLines = [], onGenerate, onExport }: Captio
     };
 
     let result = '';
-    
+
     if (captionFormat === 'vtt') {
       result = 'WEBVTT\n\n';
     }
@@ -176,7 +172,7 @@ export function CaptionsPanel({ scriptLines = [], onGenerate, onExport }: Captio
       <Card>
         <div className={styles.section}>
           <Text weight="semibold">Caption Settings</Text>
-          
+
           <div className={styles.settingsGrid}>
             <div className={styles.field}>
               <Label htmlFor="format-select">Format</Label>

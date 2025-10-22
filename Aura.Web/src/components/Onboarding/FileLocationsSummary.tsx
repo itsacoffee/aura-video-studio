@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
-import {
-  Card,
-  Button,
-  Text,
-  makeStyles,
-  tokens,
-  Spinner,
-} from '@fluentui/react-components';
+import { Card, Button, Text, makeStyles, tokens, Spinner } from '@fluentui/react-components';
 import { Folder24Regular, Globe24Regular, Copy24Regular } from '@fluentui/react-icons';
 import { useNotifications } from '../Notifications/Toasts';
 
@@ -71,14 +64,16 @@ export function FileLocationsSummary() {
     setIsLoading(true);
     try {
       // Fetch engine instances to get install paths
-      const response = await fetch(apiUrl('/api/engines/instances'))
+      const response = await fetch(apiUrl('/api/engines/instances'));
       if (response.ok) {
         const data = await response.json();
         const engineInfo: EngineInfo[] = data.instances.map((instance: any) => ({
           id: instance.engineId,
           name: instance.engineName || instance.engineId,
           installPath: instance.installPath,
-          hasWebUI: ['stable-diffusion-webui', 'comfyui', 'sd-webui'].includes(instance.engineId.toLowerCase()),
+          hasWebUI: ['stable-diffusion-webui', 'comfyui', 'sd-webui'].includes(
+            instance.engineId.toLowerCase()
+          ),
           webUIUrl: instance.port ? `http://localhost:${instance.port}` : undefined,
         }));
         setEngines(engineInfo);
@@ -97,7 +92,7 @@ export function FileLocationsSummary() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to open folder');
       }
@@ -117,7 +112,7 @@ export function FileLocationsSummary() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.url) {
@@ -159,8 +154,8 @@ export function FileLocationsSummary() {
           📂 Where are my files?
         </Text>
         <Text style={{ marginBottom: tokens.spacingVerticalL }}>
-          Here's where Aura stores your installed engines and tools. You can open these folders to add models, 
-          configure settings, or access generated files.
+          Here&apos;s where Aura stores your installed engines and tools. You can open these folders to
+          add models, configure settings, or access generated files.
         </Text>
 
         {engines.map((engine) => (
@@ -169,9 +164,7 @@ export function FileLocationsSummary() {
               <Text weight="semibold">{engine.name}</Text>
               {engine.installPath ? (
                 <>
-                  <Text className={styles.pathText}>
-                    📁 {engine.installPath}
-                  </Text>
+                  <Text className={styles.pathText}>📁 {engine.installPath}</Text>
                   <div className={styles.actions}>
                     <Button
                       size="small"
@@ -213,9 +206,10 @@ export function FileLocationsSummary() {
 
       <Card style={{ padding: tokens.spacingVerticalM }}>
         <Text size={200}>
-          💡 <strong>Tip:</strong> You can manage engines, add models, and configure settings from the{' '}
-          <strong>Downloads</strong> page. To add your own models to Stable Diffusion, place them in the{' '}
-          <code>models/Stable-diffusion</code> folder inside the SD installation directory.
+          💡 <strong>Tip:</strong> You can manage engines, add models, and configure settings from
+          the <strong>Downloads</strong> page. To add your own models to Stable Diffusion, place
+          them in the <code>models/Stable-diffusion</code> folder inside the SD installation
+          directory.
         </Text>
       </Card>
     </div>

@@ -20,35 +20,31 @@ export const validationSchemas = {
  * Validation helpers
  */
 export const validators = {
-  required: (message = 'This field is required') =>
-    z.string().min(1, message),
-  
+  required: (message = 'This field is required') => z.string().min(1, message),
+
   minLength: (length: number, message?: string) =>
     z.string().min(length, message || `Must be at least ${length} characters`),
-  
+
   maxLength: (length: number, message?: string) =>
     z.string().max(length, message || `Must be no more than ${length} characters`),
-  
-  email: (message = 'Invalid email address') =>
-    z.string().email(message),
-  
-  url: (message = 'Invalid URL') =>
-    z.string().url(message),
-  
-  number: (message = 'Must be a number') =>
-    z.number({ invalid_type_error: message }),
-  
-  positiveNumber: (message = 'Must be a positive number') =>
-    z.number().positive(message),
-  
+
+  email: (message = 'Invalid email address') => z.string().email(message),
+
+  url: (message = 'Invalid URL') => z.string().url(message),
+
+  number: (message = 'Must be a number') => z.number({ invalid_type_error: message }),
+
+  positiveNumber: (message = 'Must be a positive number') => z.number().positive(message),
+
   range: (min: number, max: number, message?: string) =>
-    z.number()
+    z
+      .number()
       .min(min, message || `Must be at least ${min}`)
       .max(max, message || `Must be no more than ${max}`),
-  
+
   phone: (message = 'Invalid phone number') =>
     z.string().regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/, message),
-  
+
   alphanumeric: (message = 'Must contain only letters and numbers') =>
     z.string().regex(/^[a-zA-Z0-9]+$/, message),
 };
@@ -60,7 +56,10 @@ export function createFormSchema<T extends z.ZodRawShape>(shape: T) {
   return z.object(shape);
 }
 
-export function validateField<T>(schema: z.ZodType<T>, value: unknown): { valid: boolean; error?: string } {
+export function validateField<T>(
+  schema: z.ZodType<T>,
+  value: unknown
+): { valid: boolean; error?: string } {
   try {
     schema.parse(value);
     return { valid: true };

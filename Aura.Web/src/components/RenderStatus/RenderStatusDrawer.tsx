@@ -25,14 +25,14 @@ import {
   ArrowClockwise24Regular,
   Copy24Regular,
 } from '@fluentui/react-icons';
-import { 
-  JobResponse, 
-  JobStep, 
+import {
+  JobResponse,
+  JobStep,
   JobEvent,
   subscribeToJobEvents,
   getJob,
   cancelJob,
-  retryJob
+  retryJob,
 } from '../../features/render/api/jobs';
 
 const useStyles = makeStyles({
@@ -148,9 +148,7 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
 
             case 'step-status':
               updated.steps = updated.steps.map((step) =>
-                step.name === event.data.step
-                  ? { ...step, status: event.data.status }
-                  : step
+                step.name === event.data.step ? { ...step, status: event.data.status } : step
               );
               break;
 
@@ -278,7 +276,11 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
         Canceled: 'subtle',
       }[step.status] as 'success' | 'danger' | 'warning' | 'informative' | 'subtle';
 
-      return <Badge appearance={appearance} color={color}>{step.status}</Badge>;
+      return (
+        <Badge appearance={appearance} color={color}>
+          {step.status}
+        </Badge>
+      );
     };
 
     return (
@@ -303,29 +305,17 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
                 <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
                   {error.remediation}
                 </Text>
-                
+
                 <div className={styles.errorActions}>
                   {error.code.startsWith('MissingApiKey:') && (
-                    <Button
-                      size="small"
-                      icon={<Settings24Regular />}
-                      onClick={handleOpenSettings}
-                    >
+                    <Button size="small" icon={<Settings24Regular />} onClick={handleOpenSettings}>
                       Open Settings
                     </Button>
                   )}
-                  <Button
-                    size="small"
-                    icon={<Settings24Regular />}
-                    onClick={handleOpenSystemCheck}
-                  >
+                  <Button size="small" icon={<Settings24Regular />} onClick={handleOpenSystemCheck}>
                     System Check
                   </Button>
-                  <Button
-                    size="small"
-                    icon={<ArrowClockwise24Regular />}
-                    onClick={handleRetry}
-                  >
+                  <Button size="small" icon={<ArrowClockwise24Regular />} onClick={handleRetry}>
                     Retry
                   </Button>
                 </div>
@@ -340,7 +330,9 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
                       <Button
                         size="small"
                         icon={<Copy24Regular />}
-                        onClick={() => handleCopyTechDetails(JSON.stringify(error.details, null, 2))}
+                        onClick={() =>
+                          handleCopyTechDetails(JSON.stringify(error.details, null, 2))
+                        }
                         style={{ marginTop: tokens.spacingVerticalS }}
                       >
                         Copy
@@ -376,11 +368,7 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
               </Text>
             )}
           </div>
-          <Button
-            appearance="subtle"
-            icon={<Dismiss24Regular />}
-            onClick={onClose}
-          />
+          <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />
         </div>
       </DrawerHeader>
 
@@ -393,19 +381,22 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
 
             {job.status === 'Succeeded' && job.output && (
               <div className={styles.successCard}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   <CheckmarkCircle24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
                   <Text weight="semibold">Video rendered successfully!</Text>
                 </div>
                 <div className={styles.successInfo}>
-                  <Text size={200}>
-                    Size: {(job.output.sizeBytes / 1024 / 1024).toFixed(2)} MB
-                  </Text>
+                  <Text size={200}>Size: {(job.output.sizeBytes / 1024 / 1024).toFixed(2)} MB</Text>
                   {job.startedUtc && job.endedUtc && (
                     <Text size={200}>
-                      Duration: {Math.round(
-                        (new Date(job.endedUtc).getTime() - new Date(job.startedUtc).getTime()) / 1000
-                      )}s
+                      Duration:{' '}
+                      {Math.round(
+                        (new Date(job.endedUtc).getTime() - new Date(job.startedUtc).getTime()) /
+                          1000
+                      )}
+                      s
                     </Text>
                   )}
                   <Button
@@ -422,14 +413,19 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
 
             {job.status === 'Failed' && job.errors.length > 0 && (
               <div className={styles.errorCard}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   <ErrorCircle24Filled style={{ color: tokens.colorPaletteRedForeground1 }} />
                   <Text weight="semibold">Render failed</Text>
                 </div>
                 {job.errors.map((error, idx) => (
                   <div key={idx} style={{ marginTop: tokens.spacingVerticalS }}>
                     <Text>{error.message}</Text>
-                    <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
+                    <Text
+                      size={200}
+                      style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}
+                    >
                       {error.remediation}
                     </Text>
                   </div>
@@ -446,9 +442,7 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
               </div>
             )}
 
-            {job.status === 'Running' && (
-              <Button onClick={handleCancel}>Cancel</Button>
-            )}
+            {job.status === 'Running' && <Button onClick={handleCancel}>Cancel</Button>}
           </div>
         )}
       </DrawerBody>

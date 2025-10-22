@@ -142,14 +142,19 @@ export const VisualCoherencePanel: React.FC<VisualCoherencePanelProps> = ({
     <div className={styles.container}>
       <Card>
         <div className={styles.section}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalM }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacingHorizontalS,
+              marginBottom: tokens.spacingVerticalM,
+            }}
+          >
             <Video24Regular />
             <Body1Strong>Visual Coherence Analysis</Body1Strong>
           </div>
 
-          <Body1>
-            Ensure visual consistency and coherence across all scenes in your video.
-          </Body1>
+          <Body1>Ensure visual consistency and coherence across all scenes in your video.</Body1>
 
           <Button
             appearance="primary"
@@ -177,7 +182,14 @@ export const VisualCoherencePanel: React.FC<VisualCoherencePanelProps> = ({
       {report && (
         <Card>
           <div className={styles.resultCard}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalM }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: tokens.spacingVerticalM,
+              }}
+            >
               <Body1Strong>Coherence Report</Body1Strong>
               {report.recommendations.length > 0 && (
                 <Button
@@ -192,10 +204,10 @@ export const VisualCoherencePanel: React.FC<VisualCoherencePanelProps> = ({
 
             <div className={styles.scoreRow}>
               <Caption1>Overall Coherence</Caption1>
-              <ProgressBar 
-                value={report.overallCoherenceScore} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={report.overallCoherenceScore}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(report.overallCoherenceScore)}
               />
               <Badge appearance="tint" color={getBadgeColor(report.overallCoherenceScore)}>
@@ -205,10 +217,10 @@ export const VisualCoherencePanel: React.FC<VisualCoherencePanelProps> = ({
 
             <div className={styles.scoreRow}>
               <Caption1>Style Consistency</Caption1>
-              <ProgressBar 
-                value={report.styleConsistencyScore} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={report.styleConsistencyScore}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(report.styleConsistencyScore)}
               />
               <Badge appearance="tint" color={getBadgeColor(report.styleConsistencyScore)}>
@@ -218,10 +230,10 @@ export const VisualCoherencePanel: React.FC<VisualCoherencePanelProps> = ({
 
             <div className={styles.scoreRow}>
               <Caption1>Color Consistency</Caption1>
-              <ProgressBar 
-                value={report.colorConsistencyScore} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={report.colorConsistencyScore}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(report.colorConsistencyScore)}
               />
               <Badge appearance="tint" color={getBadgeColor(report.colorConsistencyScore)}>
@@ -231,10 +243,10 @@ export const VisualCoherencePanel: React.FC<VisualCoherencePanelProps> = ({
 
             <div className={styles.scoreRow}>
               <Caption1>Lighting Consistency</Caption1>
-              <ProgressBar 
-                value={report.lightingConsistencyScore} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={report.lightingConsistencyScore}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(report.lightingConsistencyScore)}
               />
               <Badge appearance="tint" color={getBadgeColor(report.lightingConsistencyScore)}>

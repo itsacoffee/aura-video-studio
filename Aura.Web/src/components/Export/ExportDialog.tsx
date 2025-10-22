@@ -138,7 +138,7 @@ const PRESETS = {
     aspectRatio: '9:16',
     platform: 'Instagram',
   },
-  'TikTok': {
+  TikTok: {
     description: 'Vertical format optimized for TikTok',
     resolution: '1080x1920',
     codec: 'H.264',
@@ -146,7 +146,7 @@ const PRESETS = {
     aspectRatio: '9:16',
     platform: 'TikTok',
   },
-  'Facebook': {
+  Facebook: {
     description: 'Optimized for Facebook video posts',
     resolution: '1280x720',
     codec: 'H.264',
@@ -154,7 +154,7 @@ const PRESETS = {
     aspectRatio: '16:9',
     platform: 'Facebook',
   },
-  'Twitter': {
+  Twitter: {
     description: 'Optimized for Twitter video posts',
     resolution: '1280x720',
     codec: 'H.264',
@@ -162,7 +162,7 @@ const PRESETS = {
     aspectRatio: '16:9',
     platform: 'Twitter',
   },
-  'LinkedIn': {
+  LinkedIn: {
     description: 'Professional quality for LinkedIn posts',
     resolution: '1920x1080',
     codec: 'H.264',
@@ -224,7 +224,7 @@ export function ExportDialog({
   const estimatedRenderTime = useMemo(() => {
     // Base render time (seconds)
     let baseTime = timelineDuration * 0.5; // 0.5x realtime for software
-    
+
     // Apply hardware acceleration speedup
     if (hardwareAccelerationAvailable) {
       baseTime = baseTime / 5; // 5x speedup
@@ -304,7 +304,11 @@ export function ExportDialog({
                 >
                   {Object.entries(groupedPresets).map(([platform, presets]) => (
                     <div key={platform}>
-                      <Option text={platform} disabled style={{ fontWeight: 'bold', color: tokens.colorNeutralForeground3 }}>
+                      <Option
+                        text={platform}
+                        disabled
+                        style={{ fontWeight: 'bold', color: tokens.colorNeutralForeground3 }}
+                      >
                         {platform}
                       </Option>
                       {presets.map((preset) => (
@@ -380,10 +384,10 @@ export function ExportDialog({
               <div className={styles.hardwareStatus}>
                 {hardwareAccelerationAvailable ? (
                   <>
-                    <CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
-                    <Badge color="success">
-                      GPU acceleration enabled ({hardwareType})
-                    </Badge>
+                    <CheckmarkCircle24Regular
+                      style={{ color: tokens.colorPaletteGreenForeground1 }}
+                    />
+                    <Badge color="success">GPU acceleration enabled ({hardwareType})</Badge>
                   </>
                 ) : (
                   <>
@@ -406,11 +410,7 @@ export function ExportDialog({
               >
                 Add to Queue
               </Button>
-              <Button
-                appearance="primary"
-                icon={<ArrowExport24Regular />}
-                onClick={handleExport}
-              >
+              <Button appearance="primary" icon={<ArrowExport24Regular />} onClick={handleExport}>
                 Export Now
               </Button>
             </div>

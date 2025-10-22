@@ -52,9 +52,13 @@ const useStyles = makeStyles({
   },
 });
 
-function ErrorFallback({ error, errorInfo, onReset }: { 
-  error: Error; 
-  errorInfo: ErrorInfo; 
+function ErrorFallback({
+  error,
+  errorInfo,
+  onReset,
+}: {
+  error: Error;
+  errorInfo: ErrorInfo;
   onReset: () => void;
 }) {
   const styles = useStyles();
@@ -65,20 +69,13 @@ function ErrorFallback({ error, errorInfo, onReset }: {
       <ErrorCircle24Regular className={styles.icon} />
       <Title1 className={styles.title}>Something went wrong</Title1>
       <Body1 className={styles.message}>
-        We're sorry, but an unexpected error occurred. Please try refreshing the page.
+        We&apos;re sorry, but an unexpected error occurred. Please try refreshing the page.
       </Body1>
       <div className={styles.actions}>
-        <Button
-          appearance="primary"
-          icon={<ArrowClockwise24Regular />}
-          onClick={onReset}
-        >
+        <Button appearance="primary" icon={<ArrowClockwise24Regular />} onClick={onReset}>
           Try Again
         </Button>
-        <Button
-          appearance="secondary"
-          onClick={() => setShowDetails(!showDetails)}
-        >
+        <Button appearance="secondary" onClick={() => setShowDetails(!showDetails)}>
           {showDetails ? 'Hide Details' : 'Show Details'}
         </Button>
       </div>
@@ -112,7 +109,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     // Log error to localStorage for debugging
     try {
       const errorLog = {
@@ -123,16 +120,16 @@ export class ErrorBoundary extends Component<Props, State> {
         },
         componentStack: errorInfo.componentStack,
       };
-      
+
       const existingLogs = localStorage.getItem('error_logs');
       const logs = existingLogs ? JSON.parse(existingLogs) : [];
       logs.push(errorLog);
-      
+
       // Keep only last 10 errors
       if (logs.length > 10) {
         logs.shift();
       }
-      
+
       localStorage.setItem('error_logs', JSON.stringify(logs));
     } catch (e) {
       console.error('Failed to log error to localStorage:', e);
@@ -157,7 +154,7 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) {
         return this.props.fallback;
       }
-      
+
       return (
         <ErrorFallback
           error={this.state.error}

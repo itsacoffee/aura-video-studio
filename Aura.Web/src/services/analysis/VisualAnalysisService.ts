@@ -166,9 +166,7 @@ class VisualAnalysisService {
   /**
    * Enforces color consistency across scenes
    */
-  async enforceColorConsistency(
-    scenes: SceneVisualContext[]
-  ): Promise<ColorGradingProfile[]> {
+  async enforceColorConsistency(scenes: SceneVisualContext[]): Promise<ColorGradingProfile[]> {
     const response = await fetch(`${API_BASE}/color-grading/consistency`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

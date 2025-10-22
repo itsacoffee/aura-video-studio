@@ -5,10 +5,10 @@ describe('Engine Installation Workflows', () => {
     const validPaths = [
       'C:\\Users\\Test\\AppData\\Local\\Aura\\Tools\\piper',
       '/home/user/.local/share/aura/tools/piper',
-      'C:\\Program Files\\Aura\\Tools\\piper'
+      'C:\\Program Files\\Aura\\Tools\\piper',
     ];
 
-    validPaths.forEach(path => {
+    validPaths.forEach((path) => {
       // Basic path validation - should contain 'piper'
       expect(path.toLowerCase()).toContain('piper');
       expect(path.length).toBeGreaterThan(0);
@@ -21,7 +21,7 @@ describe('Engine Installation Workflows', () => {
       '/home/user/.local/share/aura/tools/mimic3',
     ];
 
-    validPaths.forEach(path => {
+    validPaths.forEach((path) => {
       expect(path.toLowerCase()).toContain('mimic3');
       expect(path.length).toBeGreaterThan(0);
     });
@@ -33,7 +33,7 @@ describe('Engine Installation Workflows', () => {
       '/home/user/.local/share/aura/tools/stable-diffusion-webui',
     ];
 
-    validPaths.forEach(path => {
+    validPaths.forEach((path) => {
       expect(path.toLowerCase()).toContain('stable-diffusion');
       expect(path.length).toBeGreaterThan(0);
     });
@@ -42,7 +42,7 @@ describe('Engine Installation Workflows', () => {
   it('should validate engine status responses', () => {
     const validStatuses = ['NotInstalled', 'Installing', 'Ready', 'Error', 'Running', 'Stopped'];
 
-    validStatuses.forEach(status => {
+    validStatuses.forEach((status) => {
       expect(status).toBeTruthy();
       expect(typeof status).toBe('string');
     });
@@ -56,7 +56,7 @@ describe('Engine Installation Workflows', () => {
       { status: 'Running', canInstall: false, canStart: false },
     ];
 
-    engineStates.forEach(state => {
+    engineStates.forEach((state) => {
       // Verify state transitions are logical
       if (state.status === 'NotInstalled') {
         expect(state.canInstall).toBe(true);
@@ -82,7 +82,7 @@ describe('Engine Installation Workflows', () => {
 
     const minVram = 6144; // 6GB minimum for SD
 
-    gpuConfigs.forEach(config => {
+    gpuConfigs.forEach((config) => {
       const expected = config.vramMb >= minVram;
       expect(config.canRunSD).toBe(expected);
     });
@@ -93,16 +93,16 @@ describe('Engine Installation Workflows', () => {
       {
         endpoint: 'http://127.0.0.1:7860/internal/ping',
         expectedStatus: 200,
-        timeout: 5000
+        timeout: 5000,
       },
       {
         endpoint: 'http://127.0.0.1:59125/api/voices',
         expectedStatus: 200,
-        timeout: 5000
-      }
+        timeout: 5000,
+      },
     ];
 
-    healthChecks.forEach(check => {
+    healthChecks.forEach((check) => {
       expect(check.endpoint).toMatch(/^http:\/\//);
       expect(check.expectedStatus).toBe(200);
       expect(check.timeout).toBeGreaterThan(0);
@@ -119,7 +119,7 @@ describe('Engine Installation Workflows', () => {
 
     const validCategories = ['TTS', 'Visuals', 'Script'];
 
-    engines.forEach(engine => {
+    engines.forEach((engine) => {
       expect(validCategories).toContain(engine.category);
     });
   });
@@ -131,7 +131,7 @@ describe('Engine Installation Workflows', () => {
       { engine: 'sd-webui', bytes: 2147483648, gb: 2 },
     ];
 
-    downloadSizes.forEach(size => {
+    downloadSizes.forEach((size) => {
       expect(size.bytes).toBeGreaterThan(0);
       if (size.mb) {
         expect(Math.abs(size.bytes / (1024 * 1024) - size.mb)).toBeLessThan(1);
@@ -152,7 +152,7 @@ describe('Engine Validation Workflows', () => {
       { hasExecutable: false, hasVoices: false, isValid: false },
     ];
 
-    validationResults.forEach(result => {
+    validationResults.forEach((result) => {
       const expected = result.hasExecutable && result.hasVoices;
       expect(result.isValid).toBe(expected);
     });
@@ -165,7 +165,7 @@ describe('Engine Validation Workflows', () => {
       { canConnect: false, hasVoices: false, isValid: false },
     ];
 
-    connectivityTests.forEach(test => {
+    connectivityTests.forEach((test) => {
       const expected = test.canConnect && test.hasVoices;
       expect(test.isValid).toBe(expected);
     });
@@ -179,7 +179,7 @@ describe('Engine Validation Workflows', () => {
       '/sdapi/v1/sd-models',
     ];
 
-    endpoints.forEach(endpoint => {
+    endpoints.forEach((endpoint) => {
       expect(endpoint).toMatch(/^\//);
       expect(endpoint.length).toBeGreaterThan(1);
     });
@@ -193,7 +193,7 @@ describe('Engine Validation Workflows', () => {
       { code: 'VOICE_NOT_FOUND', severity: 'Warning' },
     ];
 
-    errors.forEach(error => {
+    errors.forEach((error) => {
       expect(error.code).toBeTruthy();
       expect(['Error', 'Warning', 'Info']).toContain(error.severity);
     });
@@ -256,11 +256,11 @@ describe('Engine Validation Workflows', () => {
       },
     ];
 
-    fallbackChains.forEach(chain => {
+    fallbackChains.forEach((chain) => {
       expect(chain.primary).toBeTruthy();
       expect(chain.fallback).toBeTruthy();
       expect(chain.tertiary).toBeTruthy();
-      
+
       // Each level should be different
       expect(chain.primary).not.toBe(chain.fallback);
       expect(chain.fallback).not.toBe(chain.tertiary);
@@ -279,7 +279,7 @@ describe('Engine Validation Workflows', () => {
       { name: 'LocalStock', requiresInternet: false, offlineCapable: true },
     ];
 
-    providers.forEach(provider => {
+    providers.forEach((provider) => {
       expect(provider.offlineCapable).toBe(!provider.requiresInternet);
     });
   });
@@ -298,7 +298,7 @@ describe('Engine State Management', () => {
       'Error',
     ];
 
-    lifecycle.forEach(state => {
+    lifecycle.forEach((state) => {
       expect(state).toBeTruthy();
       expect(typeof state).toBe('string');
     });
@@ -316,7 +316,7 @@ describe('Engine State Management', () => {
       { from: 'Installing', to: 'Running', valid: false },
     ];
 
-    validTransitions.forEach(transition => {
+    validTransitions.forEach((transition) => {
       if (transition.valid) {
         expect(transition.from).not.toBe(transition.to);
       }
@@ -330,7 +330,7 @@ describe('Engine State Management', () => {
       { engineId: 'mimic3', autoStart: true, enabled: true },
     ];
 
-    autoStartConfigs.forEach(config => {
+    autoStartConfigs.forEach((config) => {
       expect(config).toHaveProperty('engineId');
       expect(config).toHaveProperty('autoStart');
       expect(typeof config.autoStart).toBe('boolean');
@@ -344,7 +344,7 @@ describe('Engine State Management', () => {
       { engine: 'stable-diffusion-webui', port: 7861, isDefault: false },
     ];
 
-    portConfigs.forEach(config => {
+    portConfigs.forEach((config) => {
       expect(config.port).toBeGreaterThan(1024);
       expect(config.port).toBeLessThan(65536);
     });

@@ -19,7 +19,11 @@ import {
   ChartMultiple24Regular,
   Lightbulb24Regular,
 } from '@fluentui/react-icons';
-import { performanceAnalyticsService, type PerformanceInsights, type VideoPerformance } from '../../services/analytics/PerformanceAnalyticsService';
+import {
+  performanceAnalyticsService,
+  type PerformanceInsights,
+  type VideoPerformance,
+} from '../../services/analytics/PerformanceAnalyticsService';
 
 const useStyles = makeStyles({
   container: {
@@ -153,7 +157,9 @@ const useStyles = makeStyles({
 
 export function AnalyticsDashboard() {
   const styles = useStyles();
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'videos' | 'insights' | 'patterns'>('overview');
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'videos' | 'insights' | 'patterns'>(
+    'overview'
+  );
   const [loading, setLoading] = useState(true);
   const [insights, setInsights] = useState<PerformanceInsights | null>(null);
   const [videos, setVideos] = useState<VideoPerformance[]>([]);
@@ -223,10 +229,18 @@ export function AnalyticsDashboard() {
         selectedValue={selectedTab}
         onTabSelect={(_, data) => setSelectedTab(data.value as any)}
       >
-        <Tab value="overview" icon={<ChartMultiple24Regular />}>Overview</Tab>
-        <Tab value="videos" icon={<VideoClip24Regular />}>Videos</Tab>
-        <Tab value="insights" icon={<Lightbulb24Regular />}>Insights</Tab>
-        <Tab value="patterns" icon={<ChartMultiple24Regular />}>Patterns</Tab>
+        <Tab value="overview" icon={<ChartMultiple24Regular />}>
+          Overview
+        </Tab>
+        <Tab value="videos" icon={<VideoClip24Regular />}>
+          Videos
+        </Tab>
+        <Tab value="insights" icon={<Lightbulb24Regular />}>
+          Insights
+        </Tab>
+        <Tab value="patterns" icon={<ChartMultiple24Regular />}>
+          Patterns
+        </Tab>
       </TabList>
 
       {selectedTab === 'overview' && (
@@ -243,18 +257,29 @@ export function AnalyticsDashboard() {
                   <div className={styles.statLabel}>Avg Views</div>
                 </Card>
                 <Card className={styles.statCard}>
-                  <div className={styles.statValue}>{formatPercentage(insights.averageEngagementRate)}</div>
+                  <div className={styles.statValue}>
+                    {formatPercentage(insights.averageEngagementRate)}
+                  </div>
                   <div className={styles.statLabel}>Avg Engagement</div>
                 </Card>
                 <Card className={styles.statCard}>
                   <div className={styles.statValue}>
-                    <Badge appearance={
-                      insights.overallTrend === 'improving' ? 'filled' :
-                      insights.overallTrend === 'declining' ? 'tint' : 'outline'
-                    } color={
-                      insights.overallTrend === 'improving' ? 'success' :
-                      insights.overallTrend === 'declining' ? 'danger' : 'brand'
-                    }>
+                    <Badge
+                      appearance={
+                        insights.overallTrend === 'improving'
+                          ? 'filled'
+                          : insights.overallTrend === 'declining'
+                            ? 'tint'
+                            : 'outline'
+                      }
+                      color={
+                        insights.overallTrend === 'improving'
+                          ? 'success'
+                          : insights.overallTrend === 'declining'
+                            ? 'danger'
+                            : 'brand'
+                      }
+                    >
                       {insights.overallTrend.replace('_', ' ').toUpperCase()}
                     </Badge>
                   </div>
@@ -275,11 +300,15 @@ export function AnalyticsDashboard() {
             </>
           ) : (
             <Card className={styles.importSection}>
-              <ArrowUpload24Regular style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalL }} />
+              <ArrowUpload24Regular
+                style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalL }}
+              />
               <Title2>Import Your Analytics</Title2>
               <Text>Get started by importing your video performance data</Text>
               <div className={styles.importButtons}>
-                <Button appearance="primary" onClick={handleImportCSV}>Import from CSV</Button>
+                <Button appearance="primary" onClick={handleImportCSV}>
+                  Import from CSV
+                </Button>
                 <Button onClick={handleImportJSON}>Import from JSON</Button>
               </div>
             </Card>
@@ -289,7 +318,14 @@ export function AnalyticsDashboard() {
 
       {selectedTab === 'videos' && (
         <div className={styles.section}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalL }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: tokens.spacingVerticalL,
+            }}
+          >
             <Title2>Your Videos</Title2>
             <Button appearance="primary" icon={<ArrowUpload24Regular />} onClick={handleImportCSV}>
               Import More
@@ -301,35 +337,45 @@ export function AnalyticsDashboard() {
                 <Card key={video.videoId} className={styles.videoCard}>
                   <div className={styles.videoInfo}>
                     <div className={styles.videoTitle}>{video.title}</div>
-                    <Text size={200}>{video.platform} • {new Date(video.publishedAt).toLocaleDateString()}</Text>
+                    <Text size={200}>
+                      {video.platform} • {new Date(video.publishedAt).toLocaleDateString()}
+                    </Text>
                     <div className={styles.videoMetrics}>
                       <div className={styles.metric}>
-                        <span className={styles.metricValue}>{formatNumber(video.metrics.views)}</span>
+                        <span className={styles.metricValue}>
+                          {formatNumber(video.metrics.views)}
+                        </span>
                         <span className={styles.metricLabel}>Views</span>
                       </div>
                       <div className={styles.metric}>
-                        <span className={styles.metricValue}>{formatNumber(video.metrics.engagement.likes)}</span>
+                        <span className={styles.metricValue}>
+                          {formatNumber(video.metrics.engagement.likes)}
+                        </span>
                         <span className={styles.metricLabel}>Likes</span>
                       </div>
                       <div className={styles.metric}>
-                        <span className={styles.metricValue}>{formatNumber(video.metrics.engagement.comments)}</span>
+                        <span className={styles.metricValue}>
+                          {formatNumber(video.metrics.engagement.comments)}
+                        </span>
                         <span className={styles.metricLabel}>Comments</span>
                       </div>
                       <div className={styles.metric}>
-                        <span className={styles.metricValue}>{formatPercentage(video.metrics.engagement.engagementRate)}</span>
+                        <span className={styles.metricValue}>
+                          {formatPercentage(video.metrics.engagement.engagementRate)}
+                        </span>
                         <span className={styles.metricLabel}>Engagement</span>
                       </div>
                     </div>
                   </div>
-                  {video.projectId && (
-                    <Badge color="brand">Linked to Project</Badge>
-                  )}
+                  {video.projectId && <Badge color="brand">Linked to Project</Badge>}
                 </Card>
               ))}
             </div>
           ) : (
             <div className={styles.emptyState}>
-              <VideoClip24Regular style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalL }} />
+              <VideoClip24Regular
+                style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalL }}
+              />
               <Title3>No Videos Yet</Title3>
               <Text>Import your analytics to see your videos here</Text>
             </div>
@@ -356,7 +402,10 @@ export function AnalyticsDashboard() {
           <Title2>Success Patterns</Title2>
           <div className={styles.patterns}>
             {insights.topSuccessPatterns.map((pattern) => (
-              <Card key={pattern.patternId} className={`${styles.patternCard} ${styles.successPattern}`}>
+              <Card
+                key={pattern.patternId}
+                className={`${styles.patternCard} ${styles.successPattern}`}
+              >
                 <div className={styles.patternHeader}>
                   <Title3>{pattern.patternType.replace('_', ' ').toUpperCase()}</Title3>
                   <Badge color="success">{(pattern.strength * 100).toFixed(0)}% confidence</Badge>
@@ -374,7 +423,10 @@ export function AnalyticsDashboard() {
           <Title2 style={{ marginTop: tokens.spacingVerticalXXL }}>Areas to Improve</Title2>
           <div className={styles.patterns}>
             {insights.topFailurePatterns.map((pattern) => (
-              <Card key={pattern.patternId} className={`${styles.patternCard} ${styles.failurePattern}`}>
+              <Card
+                key={pattern.patternId}
+                className={`${styles.patternCard} ${styles.failurePattern}`}
+              >
                 <div className={styles.patternHeader}>
                   <Title3>{pattern.patternType.replace('_', ' ').toUpperCase()}</Title3>
                   <Badge color="danger">{(pattern.strength * 100).toFixed(0)}% confidence</Badge>

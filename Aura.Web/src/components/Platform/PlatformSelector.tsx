@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Card,
-  Title3,
-  Body1,
-  Button,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
-import {
-  CheckmarkCircle24Regular,
-  Circle24Regular,
-} from '@fluentui/react-icons';
+import { Card, Title3, Body1, Button, makeStyles, tokens } from '@fluentui/react-components';
+import { CheckmarkCircle24Regular, Circle24Regular } from '@fluentui/react-icons';
 import type { PlatformProfile, SupportedPlatform } from '../../types/platform';
 import { PLATFORM_ICONS } from '../../types/platform';
 import platformService from '../../services/platform/platformService';
@@ -107,7 +97,7 @@ export const PlatformSelector: React.FC<PlatformSelectorProps> = ({
 
   const handlePlatformClick = (platformId: string) => {
     const newSelected = new Set(selected);
-    
+
     if (singleSelect) {
       newSelected.clear();
       newSelected.add(platformId);
@@ -124,7 +114,7 @@ export const PlatformSelector: React.FC<PlatformSelectorProps> = ({
   };
 
   const selectAll = () => {
-    const allPlatformIds = platforms.map(p => p.platformId);
+    const allPlatformIds = platforms.map((p) => p.platformId);
     setSelected(new Set(allPlatformIds));
     onPlatformsSelected?.(allPlatformIds);
   };
@@ -150,7 +140,7 @@ export const PlatformSelector: React.FC<PlatformSelectorProps> = ({
       </div>
 
       <div className={styles.platformGrid}>
-        {platforms.map(platform => {
+        {platforms.map((platform) => {
           const isSelected = selected.has(platform.platformId);
           const icon = PLATFORM_ICONS[platform.platformId as SupportedPlatform] || '📱';
 
@@ -186,8 +176,8 @@ export const PlatformSelector: React.FC<PlatformSelectorProps> = ({
                   <span>Aspect Ratio:</span>
                   <span>
                     {platform.requirements.supportedAspectRatios
-                      .filter(ar => ar.isPreferred)
-                      .map(ar => ar.ratio)
+                      .filter((ar) => ar.isPreferred)
+                      .map((ar) => ar.ratio)
                       .join(', ')}
                   </span>
                 </div>

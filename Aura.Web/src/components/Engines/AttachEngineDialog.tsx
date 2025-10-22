@@ -45,7 +45,7 @@ export function AttachEngineDialog({ engineId, engineName }: AttachEngineDialogP
 
   const handleSubmit = async () => {
     setError(null);
-    
+
     if (!installPath.trim()) {
       setError('Install path is required');
       return;
@@ -61,7 +61,7 @@ export function AttachEngineDialog({ engineId, engineName }: AttachEngineDialogP
         healthCheckUrl: healthCheckUrl.trim() || undefined,
         notes: notes.trim() || undefined,
       });
-      
+
       // Reset form and close
       setInstallPath('');
       setExecutablePath('');
@@ -95,7 +95,10 @@ export function AttachEngineDialog({ engineId, engineName }: AttachEngineDialogP
               />
             </Field>
 
-            <Field label="Executable Path (optional)" hint="Path to the main executable or start script">
+            <Field
+              label="Executable Path (optional)"
+              hint="Path to the main executable or start script"
+            >
               <Input
                 value={executablePath}
                 onChange={(e) => setExecutablePath(e.target.value)}
@@ -129,11 +132,7 @@ export function AttachEngineDialog({ engineId, engineName }: AttachEngineDialogP
               />
             </Field>
 
-            {error && (
-              <div style={{ color: tokens.colorPaletteRedForeground1 }}>
-                {error}
-              </div>
-            )}
+            {error && <div style={{ color: tokens.colorPaletteRedForeground1 }}>{error}</div>}
           </DialogContent>
           <DialogActions>
             <Button appearance="secondary" onClick={() => setOpen(false)} disabled={isSubmitting}>

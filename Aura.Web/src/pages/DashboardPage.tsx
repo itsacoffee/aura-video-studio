@@ -1,12 +1,4 @@
-import {
-  makeStyles,
-  tokens,
-  Title1,
-  Title2,
-  Text,
-  Button,
-  Card,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Title1, Title2, Text, Button, Card } from '@fluentui/react-components';
 import { Add24Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
 
@@ -50,11 +42,9 @@ export function DashboardPage() {
       <div className={styles.header}>
         <div className={styles.headerContent}>
           <Title1>Project Dashboard</Title1>
-          <Text className={styles.subtitle}>
-            Manage all your video projects in one place
-          </Text>
+          <Text className={styles.subtitle}>Manage all your video projects in one place</Text>
         </div>
-        <Button 
+        <Button
           appearance="primary"
           icon={<Add24Regular />}
           onClick={() => navigate('/create')}
@@ -67,11 +57,7 @@ export function DashboardPage() {
       <Card className={styles.emptyState}>
         <Title2>No projects yet</Title2>
         <Text>Create your first video project to get started with Aura Studio</Text>
-        <Button 
-          appearance="primary"
-          onClick={() => navigate('/create')}
-          size="large"
-        >
+        <Button appearance="primary" onClick={() => navigate('/create')} size="large">
           Create Your First Project
         </Button>
       </Card>

@@ -2,13 +2,7 @@
  * Audio track controls component with mute/solo/volume
  */
 
-import {
-  makeStyles,
-  tokens,
-  Button,
-  Slider,
-  Label,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Button, Slider, Label } from '@fluentui/react-components';
 import {
   Speaker224Regular,
   SpeakerMute24Regular,

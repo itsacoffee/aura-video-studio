@@ -6,10 +6,7 @@ interface InsightCardProps {
   onAction?: (insight: LearningInsight) => void;
 }
 
-export const InsightCard: React.FC<InsightCardProps> = ({
-  insight,
-  onAction,
-}) => {
+export const InsightCard: React.FC<InsightCardProps> = ({ insight, onAction }) => {
   const getInsightIcon = (type: string): string => {
     switch (type) {
       case 'preference':
@@ -40,13 +37,9 @@ export const InsightCard: React.FC<InsightCardProps> = ({
         <div className="flex-1">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-sm font-medium text-gray-900">
-                {insight.description}
-              </p>
+              <p className="text-sm font-medium text-gray-900">{insight.description}</p>
               <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs text-gray-500 capitalize">
-                  {insight.category}
-                </span>
+                <span className="text-xs text-gray-500 capitalize">{insight.category}</span>
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${getConfidenceBadgeColor(
                     insight.confidence

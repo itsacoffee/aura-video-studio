@@ -61,7 +61,12 @@ interface InstallItemCardProps {
   onSkip?: () => void;
 }
 
-export function InstallItemCard({ item, onInstall, onAttachExisting, onSkip }: InstallItemCardProps) {
+export function InstallItemCard({
+  item,
+  onInstall,
+  onAttachExisting,
+  onSkip,
+}: InstallItemCardProps) {
   const styles = useStyles();
   const [showAttachDialog, setShowAttachDialog] = useState(false);
   const [installPath, setInstallPath] = useState('');
@@ -96,49 +101,67 @@ export function InstallItemCard({ item, onInstall, onAttachExisting, onSkip }: I
             <Spinner size="tiny" />
           ) : null}
         </div>
-        
+
         <div className={styles.content}>
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
             <Text weight="semibold">{item.name}</Text>
-            {item.required && <Badge size="small" color="danger">Required</Badge>}
-            {item.installed && <Badge size="small" color="success">Installed</Badge>}
+            {item.required && (
+              <Badge size="small" color="danger">
+                Required
+              </Badge>
+            )}
+            {item.installed && (
+              <Badge size="small" color="success">
+                Installed
+              </Badge>
+            )}
           </div>
-          
+
           {item.description && (
-            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
+            <Text
+              size={200}
+              style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}
+            >
               {item.description}
             </Text>
           )}
-          
+
           {item.installing && (
-            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorBrandForeground1 }}>
+            <Text
+              size={200}
+              style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorBrandForeground1 }}
+            >
               ⏳ Installing... This may take a few minutes.
             </Text>
           )}
-          
+
           {item.defaultPath && !item.installing && (
-            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
-              📁 Default install location: <code style={{ 
-                backgroundColor: tokens.colorNeutralBackground3, 
-                padding: '2px 6px', 
-                borderRadius: '4px',
-                fontFamily: 'monospace',
-                fontSize: tokens.fontSizeBase200
-              }}>{item.defaultPath}</code>
+            <Text
+              size={200}
+              style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}
+            >
+              📁 Default install location:{' '}
+              <code
+                style={{
+                  backgroundColor: tokens.colorNeutralBackground3,
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  fontFamily: 'monospace',
+                  fontSize: tokens.fontSizeBase200,
+                }}
+              >
+                {item.defaultPath}
+              </code>
             </Text>
           )}
         </div>
 
         {!item.installed && !item.installing && (
           <div className={styles.actions}>
-            <Button
-              size="small"
-              appearance="primary"
-              onClick={onInstall}
-            >
+            <Button size="small" appearance="primary" onClick={onInstall}>
               Install
             </Button>
-            
+
             {onAttachExisting && (
               <Button
                 size="small"
@@ -149,13 +172,9 @@ export function InstallItemCard({ item, onInstall, onAttachExisting, onSkip }: I
                 Use Existing
               </Button>
             )}
-            
+
             {!item.required && onSkip && (
-              <Button
-                size="small"
-                appearance="subtle"
-                onClick={onSkip}
-              >
+              <Button size="small" appearance="subtle" onClick={onSkip}>
                 Skip
               </Button>
             )}
@@ -170,18 +189,26 @@ export function InstallItemCard({ item, onInstall, onAttachExisting, onSkip }: I
             <DialogTitle>Use Existing {item.name}</DialogTitle>
             <DialogContent className={styles.dialogContent}>
               <Text>
-                Point Aura to your existing installation of {item.name}. The path will be validated before proceeding.
+                Point Aura to your existing installation of {item.name}. The path will be validated
+                before proceeding.
               </Text>
 
               <Field label="Install Path" required hint="Full path to the installation directory">
                 <Input
                   value={installPath}
                   onChange={(e) => setInstallPath(e.target.value)}
-                  placeholder={item.defaultPath ? `e.g., ${item.defaultPath.replace('%LOCALAPPDATA%', 'C:\\Users\\YourName\\AppData\\Local')}` : "e.g., C:\\Tools\\ffmpeg or /usr/local/bin"}
+                  placeholder={
+                    item.defaultPath
+                      ? `e.g., ${item.defaultPath.replace('%LOCALAPPDATA%', 'C:\\Users\\YourName\\AppData\\Local')}`
+                      : 'e.g., C:\\Tools\\ffmpeg or /usr/local/bin'
+                  }
                 />
               </Field>
 
-              <Field label="Executable Path (optional)" hint="Path to the main executable (if not in standard location)">
+              <Field
+                label="Executable Path (optional)"
+                hint="Path to the main executable (if not in standard location)"
+              >
                 <Input
                   value={executablePath}
                   onChange={(e) => setExecutablePath(e.target.value)}
@@ -190,9 +217,7 @@ export function InstallItemCard({ item, onInstall, onAttachExisting, onSkip }: I
               </Field>
 
               {attachError && (
-                <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
-                  {attachError}
-                </Text>
+                <Text style={{ color: tokens.colorPaletteRedForeground1 }}>{attachError}</Text>
               )}
 
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>

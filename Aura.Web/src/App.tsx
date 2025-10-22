@@ -1,6 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
-import { 
-  FluentProvider, 
+import {
+  FluentProvider,
   webLightTheme,
   webDarkTheme,
   makeStyles,
@@ -63,7 +63,7 @@ function App() {
   });
   const [showShortcuts, setShowShortcuts] = useState(false);
   const { toasterId } = useNotifications();
-  
+
   // Job state for status bar
   const { currentJobId, status, progress, message } = useJobState();
   const [showDrawer, setShowDrawer] = useState(false);
@@ -71,7 +71,7 @@ function App() {
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
-  
+
   // Poll job progress when a job is active
   useEffect(() => {
     if (!currentJobId || status === 'completed' || status === 'failed') {
@@ -84,7 +84,7 @@ function App() {
         if (response.ok) {
           const data = await response.json();
           useJobState.getState().updateProgress(data.progress, data.currentStage);
-          
+
           if (data.status === 'completed') {
             useJobState.getState().setStatus('completed');
             useJobState.getState().updateProgress(100, 'Video generation complete!');
@@ -156,12 +156,9 @@ function App() {
               </Routes>
             </Layout>
           </BrowserRouter>
-          <KeyboardShortcutsModal 
-            isOpen={showShortcuts} 
-            onClose={() => setShowShortcuts(false)} 
-          />
+          <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
           <NotificationsToaster toasterId={toasterId} />
-          
+
           {/* Job progress drawer */}
           <JobProgressDrawer
             isOpen={showDrawer}

@@ -7,14 +7,14 @@ import { apiUrl } from '../config/api';
  * Wizard validation status - deterministic state machine
  * Idle → Validating → Valid/Invalid → Installing → Installed → Ready
  */
-export type WizardStatus = 
-  | 'idle'           // Initial state, waiting for user to click Validate
-  | 'validating'     // Running preflight checks
-  | 'valid'          // Validation passed, ready to advance
-  | 'invalid'        // Validation failed, showing fix actions
-  | 'installing'     // Installing dependencies/engines
-  | 'installed'      // Installation complete
-  | 'ready';         // All set, wizard complete
+export type WizardStatus =
+  | 'idle' // Initial state, waiting for user to click Validate
+  | 'validating' // Running preflight checks
+  | 'valid' // Validation passed, ready to advance
+  | 'invalid' // Validation failed, showing fix actions
+  | 'installing' // Installing dependencies/engines
+  | 'installed' // Installation complete
+  | 'ready'; // All set, wizard complete
 
 export type WizardMode = 'free' | 'local' | 'pro';
 
@@ -58,32 +58,34 @@ export const initialOnboardingState: OnboardingState = {
   isDetectingHardware: false,
   hardware: null,
   installItems: [
-    { 
-      id: 'ffmpeg', 
-      name: 'FFmpeg (Video encoding)', 
-      description: 'Essential video and audio processing toolkit. Required for all video generation.',
+    {
+      id: 'ffmpeg',
+      name: 'FFmpeg (Video encoding)',
+      description:
+        'Essential video and audio processing toolkit. Required for all video generation.',
       defaultPath: '%LOCALAPPDATA%\\Aura\\Tools\\ffmpeg',
-      required: true, 
-      installed: false, 
-      installing: false 
+      required: true,
+      installed: false,
+      installing: false,
     },
-    { 
-      id: 'ollama', 
-      name: 'Ollama (Local AI)', 
-      description: 'Run AI models locally for script generation. Privacy-focused alternative to cloud APIs.',
+    {
+      id: 'ollama',
+      name: 'Ollama (Local AI)',
+      description:
+        'Run AI models locally for script generation. Privacy-focused alternative to cloud APIs.',
       defaultPath: '%LOCALAPPDATA%\\Aura\\Tools\\ollama',
-      required: false, 
-      installed: false, 
-      installing: false 
+      required: false,
+      installed: false,
+      installing: false,
     },
-    { 
-      id: 'stable-diffusion', 
-      name: 'Stable Diffusion WebUI', 
+    {
+      id: 'stable-diffusion',
+      name: 'Stable Diffusion WebUI',
       description: 'Generate custom images locally. Requires NVIDIA GPU with 6GB+ VRAM.',
       defaultPath: '%LOCALAPPDATA%\\Aura\\Tools\\stable-diffusion-webui',
-      required: false, 
-      installed: false, 
-      installing: false 
+      required: false,
+      installed: false,
+      installing: false,
     },
   ],
 };
@@ -106,7 +108,10 @@ export type OnboardingAction =
   | { type: 'RESET_VALIDATION' };
 
 // Reducer
-export function onboardingReducer(state: OnboardingState, action: OnboardingAction): OnboardingState {
+export function onboardingReducer(
+  state: OnboardingState,
+  action: OnboardingAction
+): OnboardingState {
   switch (action.type) {
     case 'SET_STEP':
       return { ...state, step: action.payload };
@@ -146,11 +151,11 @@ export function onboardingReducer(state: OnboardingState, action: OnboardingActi
           correlationId: action.payload.correlationId,
           timestamp: new Date(),
           report: action.payload.report,
-          failedStages: action.payload.report.stages.filter(s => s.status === 'fail'),
+          failedStages: action.payload.report.stages.filter((s) => s.status === 'fail'),
         },
         errors: action.payload.report.stages
-          .filter(s => s.status === 'fail')
-          .map(s => s.message),
+          .filter((s) => s.status === 'fail')
+          .map((s) => s.message),
       };
 
     case 'START_HARDWARE_DETECTION':
@@ -173,7 +178,9 @@ export function onboardingReducer(state: OnboardingState, action: OnboardingActi
         isDetectingHardware: false,
         hardware: {
           canRunSD: false,
-          recommendation: action.payload || 'Could not detect hardware. We recommend starting with Free-only mode using Stock images.',
+          recommendation:
+            action.payload ||
+            'Could not detect hardware. We recommend starting with Free-only mode using Stock images.',
         },
       };
 
@@ -181,7 +188,7 @@ export function onboardingReducer(state: OnboardingState, action: OnboardingActi
       return {
         ...state,
         status: 'installing',
-        installItems: state.installItems.map(item =>
+        installItems: state.installItems.map((item) =>
           item.id === action.payload ? { ...item, installing: true } : item
         ),
       };
@@ -190,7 +197,7 @@ export function onboardingReducer(state: OnboardingState, action: OnboardingActi
       return {
         ...state,
         status: 'installed',
-        installItems: state.installItems.map(item =>
+        installItems: state.installItems.map((item) =>
           item.id === action.payload ? { ...item, installing: false, installed: true } : item
         ),
       };
@@ -199,10 +206,13 @@ export function onboardingReducer(state: OnboardingState, action: OnboardingActi
       return {
         ...state,
         status: 'idle',
-        installItems: state.installItems.map(item =>
+        installItems: state.installItems.map((item) =>
           item.id === action.payload.itemId ? { ...item, installing: false } : item
         ),
-        errors: [...state.errors, `Failed to install ${action.payload.itemId}: ${action.payload.error}`],
+        errors: [
+          ...state.errors,
+          `Failed to install ${action.payload.itemId}: ${action.payload.error}`,
+        ],
       };
 
     case 'MARK_READY':
@@ -239,7 +249,9 @@ export async function runValidationThunk(
     };
 
     const correlationId = `validation-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const response = await fetch(`/api/preflight?profile=${profileMap[state.mode]}&correlationId=${correlationId}`);
+    const response = await fetch(
+      `/api/preflight?profile=${profileMap[state.mode]}&correlationId=${correlationId}`
+    );
 
     if (!response.ok) {
       throw new Error(`Preflight check failed: ${response.statusText}`);
@@ -257,20 +269,22 @@ export async function runValidationThunk(
     // Create a synthetic failed report
     const syntheticReport: PreflightReport = {
       ok: false,
-      stages: [{
-        stage: 'System',
-        status: 'fail',
-        provider: 'Network',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        hint: 'Check your network connection and try again',
-      }],
+      stages: [
+        {
+          stage: 'System',
+          status: 'fail',
+          provider: 'Network',
+          message: error instanceof Error ? error.message : 'Unknown error',
+          hint: 'Check your network connection and try again',
+        },
+      ],
     };
-    dispatch({ 
-      type: 'VALIDATION_FAILED', 
-      payload: { 
-        report: syntheticReport, 
-        correlationId: `error-${Date.now()}` 
-      } 
+    dispatch({
+      type: 'VALIDATION_FAILED',
+      payload: {
+        report: syntheticReport,
+        correlationId: `error-${Date.now()}`,
+      },
     });
   }
 }
@@ -306,16 +320,18 @@ export async function detectHardwareThunk(
         },
       });
     } else {
-      dispatch({ 
-        type: 'HARDWARE_DETECTION_FAILED', 
-        payload: 'Could not detect hardware. We recommend starting with Free-only mode using Stock images.' 
+      dispatch({
+        type: 'HARDWARE_DETECTION_FAILED',
+        payload:
+          'Could not detect hardware. We recommend starting with Free-only mode using Stock images.',
       });
     }
   } catch (error) {
     console.error('Hardware detection failed:', error);
-    dispatch({ 
-      type: 'HARDWARE_DETECTION_FAILED', 
-      payload: 'Could not detect hardware. We recommend starting with Free-only mode using Stock images.' 
+    dispatch({
+      type: 'HARDWARE_DETECTION_FAILED',
+      payload:
+        'Could not detect hardware. We recommend starting with Free-only mode using Stock images.',
     });
   }
 }
@@ -331,7 +347,7 @@ export async function installItemThunk(
     let apiEndpoint: string;
     let statusEndpoint: string;
     let requestBody: any;
-    
+
     switch (itemId) {
       case 'ffmpeg':
         apiEndpoint = apiUrl('/api/downloads/ffmpeg/install');
@@ -342,7 +358,9 @@ export async function installItemThunk(
       case 'stable-diffusion':
         // For other engines, we'll use the attach or skip for now
         // These could be implemented in the future with proper download endpoints
-        console.log(`Installation for ${itemId} not yet implemented via API. Please use Download Center.`);
+        console.log(
+          `Installation for ${itemId} not yet implemented via API. Please use Download Center.`
+        );
         dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
         return;
       default:
@@ -362,7 +380,7 @@ export async function installItemThunk(
     }
 
     const result = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || 'Installation failed');
     }
@@ -382,12 +400,12 @@ export async function installItemThunk(
     dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
   } catch (error) {
     console.error(`Installation of ${itemId} failed:`, error);
-    dispatch({ 
-      type: 'INSTALL_FAILED', 
-      payload: { 
-        itemId, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      } 
+    dispatch({
+      type: 'INSTALL_FAILED',
+      payload: {
+        itemId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
     });
   }
 }
@@ -416,11 +434,7 @@ export function getButtonLabel(status: WizardStatus, isLastStep: boolean): strin
 
 // Button disabled helper
 export function isButtonDisabled(status: WizardStatus, isDetectingHardware: boolean): boolean {
-  return (
-    status === 'validating' ||
-    status === 'installing' ||
-    isDetectingHardware
-  );
+  return status === 'validating' || status === 'installing' || isDetectingHardware;
 }
 
 // Check if can advance to next step
@@ -435,7 +449,7 @@ export async function checkInstallationStatusThunk(
 ): Promise<void> {
   try {
     let statusEndpoint: string;
-    
+
     switch (itemId) {
       case 'ffmpeg':
         statusEndpoint = apiUrl('/api/downloads/ffmpeg/status');

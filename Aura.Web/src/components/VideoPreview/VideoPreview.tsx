@@ -1,12 +1,4 @@
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Button,
-  Card,
-  Badge,
-  Divider,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Button, Card, Badge, Divider } from '@fluentui/react-components';
 import {
   Folder24Regular,
   Share24Regular,
@@ -94,8 +86,6 @@ export function VideoPreview({
 }: VideoPreviewProps) {
   const styles = useStyles();
 
-
-
   const handleOpenFolder = () => {
     if (onOpenFolder) {
       onOpenFolder();
@@ -119,31 +109,19 @@ export function VideoPreview({
     <div className={styles.container}>
       <Card className={styles.videoCard}>
         <div className={styles.videoContainer}>
-          <video
-            className={styles.video}
-            src={videoPath}
-            controls
-            preload="metadata"
-          >
+          <video className={styles.video} src={videoPath} controls preload="metadata">
+            <track kind="captions" />
             Your browser does not support the video tag.
           </video>
         </div>
         <div className={styles.videoControls}>
           {onOpenFolder && (
-            <Button
-              appearance="primary"
-              icon={<Folder24Regular />}
-              onClick={handleOpenFolder}
-            >
+            <Button appearance="primary" icon={<Folder24Regular />} onClick={handleOpenFolder}>
               Open Output Folder
             </Button>
           )}
           {onShare && (
-            <Button
-              appearance="subtle"
-              icon={<Share24Regular />}
-              onClick={handleShare}
-            >
+            <Button appearance="subtle" icon={<Share24Regular />} onClick={handleShare}>
               Share
             </Button>
           )}
@@ -222,7 +200,13 @@ export function VideoPreview({
           {(jobId || correlationId) && (
             <>
               <Divider style={{ marginTop: tokens.spacingVerticalM }} />
-              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, marginTop: tokens.spacingVerticalM }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: tokens.spacingHorizontalM,
+                  marginTop: tokens.spacingVerticalM,
+                }}
+              >
                 {jobId && (
                   <div className={styles.metadataItem}>
                     <Text className={styles.metadataLabel}>Job ID</Text>

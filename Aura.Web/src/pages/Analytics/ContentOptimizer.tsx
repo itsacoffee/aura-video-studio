@@ -18,7 +18,11 @@ import {
   Tab,
   TabList,
 } from '@fluentui/react-components';
-import { analyticsService, type ImprovementRoadmap, type PlatformOptimization } from '../../services/analytics/PlatformService';
+import {
+  analyticsService,
+  type ImprovementRoadmap,
+  type PlatformOptimization,
+} from '../../services/analytics/PlatformService';
 
 const useStyles = makeStyles({
   container: {
@@ -96,7 +100,9 @@ export function ContentOptimizer() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['youtube']);
   const [loading, setLoading] = useState(false);
   const [roadmap, setRoadmap] = useState<ImprovementRoadmap | null>(null);
-  const [platformOptimizations, setPlatformOptimizations] = useState<Record<string, PlatformOptimization>>({});
+  const [platformOptimizations, setPlatformOptimizations] = useState<
+    Record<string, PlatformOptimization>
+  >({});
   const [error, setError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<string>('roadmap');
 
@@ -111,7 +117,7 @@ export function ContentOptimizer() {
     if (checked) {
       setSelectedPlatforms([...selectedPlatforms, platform]);
     } else {
-      setSelectedPlatforms(selectedPlatforms.filter(p => p !== platform));
+      setSelectedPlatforms(selectedPlatforms.filter((p) => p !== platform));
     }
   };
 
@@ -243,9 +249,7 @@ export function ContentOptimizer() {
           {loading ? <Spinner size="tiny" /> : 'Optimize Content'}
         </Button>
 
-        {error && (
-          <Text style={{ color: tokens.colorPaletteRedForeground1 }}>{error}</Text>
-        )}
+        {error && <Text style={{ color: tokens.colorPaletteRedForeground1 }}>{error}</Text>}
       </Card>
 
       {roadmap && (
@@ -267,7 +271,10 @@ export function ContentOptimizer() {
             </div>
           </Card>
 
-          <TabList selectedValue={selectedTab} onTabSelect={(_, data) => setSelectedTab(data.value as string)}>
+          <TabList
+            selectedValue={selectedTab}
+            onTabSelect={(_, data) => setSelectedTab(data.value as string)}
+          >
             <Tab value="roadmap">Improvement Roadmap</Tab>
             <Tab value="quickwins">Quick Wins</Tab>
             <Tab value="platforms">Platform Optimizations</Tab>
@@ -328,7 +335,9 @@ export function ContentOptimizer() {
                   <div>
                     <Text weight="semibold">Recommendations:</Text>
                     {optimization.recommendations.map((rec, index) => (
-                      <Text key={index} size={200}>• {rec}</Text>
+                      <Text key={index} size={200}>
+                        • {rec}
+                      </Text>
                     ))}
                   </div>
                   <div>

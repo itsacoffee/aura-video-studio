@@ -1,6 +1,6 @@
 /**
  * API configuration - centralized API base URL management
- * 
+ *
  * This allows the frontend to connect to the backend API regardless of port.
  * The API URL can be configured via environment variables or auto-detected.
  */
@@ -39,10 +39,7 @@ export function apiUrl(path: string): string {
 /**
  * Helper to make API calls with proper error handling
  */
-export async function apiFetch<T = unknown>(
-  path: string,
-  options?: RequestInit
-): Promise<T> {
+export async function apiFetch<T = unknown>(path: string, options?: RequestInit): Promise<T> {
   const url = apiUrl(path);
   const response = await fetch(url, {
     ...options,
@@ -54,9 +51,7 @@ export async function apiFetch<T = unknown>(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(
-      `API request failed: ${response.status} ${response.statusText}\n${errorText}`
-    );
+    throw new Error(`API request failed: ${response.status} ${response.statusText}\n${errorText}`);
   }
 
   // Handle empty responses

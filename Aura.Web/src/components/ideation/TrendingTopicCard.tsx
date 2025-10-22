@@ -68,10 +68,7 @@ interface TrendingTopicCardProps {
   onSelect?: (topic: TrendingTopic) => void;
 }
 
-export const TrendingTopicCard: React.FC<TrendingTopicCardProps> = ({
-  topic,
-  onSelect,
-}) => {
+export const TrendingTopicCard: React.FC<TrendingTopicCardProps> = ({ topic, onSelect }) => {
   const styles = useStyles();
 
   const handleClick = () => {

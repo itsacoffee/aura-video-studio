@@ -12,7 +12,12 @@ import {
   Divider,
   Tooltip,
 } from '@fluentui/react-components';
-import { Folder24Regular, Globe24Regular, Copy24Regular, Info24Regular } from '@fluentui/react-icons';
+import {
+  Folder24Regular,
+  Globe24Regular,
+  Copy24Regular,
+  Info24Regular,
+} from '@fluentui/react-icons';
 import { EngineCard } from './EngineCard';
 import { FFmpegCard } from './FFmpegCard';
 import { useEnginesStore } from '../../state/engines';
@@ -91,7 +96,16 @@ const useStyles = makeStyles({
 
 export function EnginesTab() {
   const styles = useStyles();
-  const { engines, instances, isLoading, error, fetchEngines, fetchInstances, openFolder, openWebUI } = useEnginesStore();
+  const {
+    engines,
+    instances,
+    isLoading,
+    error,
+    fetchEngines,
+    fetchInstances,
+    openFolder,
+    openWebUI,
+  } = useEnginesStore();
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
 
   useEffect(() => {
@@ -120,10 +134,12 @@ export function EnginesTab() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Text size={600} weight="semibold">Local Engines</Text>
+        <Text size={600} weight="semibold">
+          Local Engines
+        </Text>
         <Text className={styles.subtitle}>
-          Install and manage local AI engines for offline image generation and text-to-speech.
-          All engines are installed to your local system without admin privileges.
+          Install and manage local AI engines for offline image generation and text-to-speech. All
+          engines are installed to your local system without admin privileges.
         </Text>
       </div>
 
@@ -137,12 +153,14 @@ export function EnginesTab() {
       {instances.length > 0 && (
         <>
           <div className={styles.header}>
-            <Text size={500} weight="semibold">Engine Instances</Text>
+            <Text size={500} weight="semibold">
+              Engine Instances
+            </Text>
             <Text className={styles.subtitle}>
               Manage your engine installations (both app-managed and external)
             </Text>
           </div>
-          
+
           <div className={styles.enginesList}>
             {instances.map((instance) => (
               <Card key={instance.id} className={styles.instanceCard}>
@@ -157,8 +175,8 @@ export function EnginesTab() {
                       }
                       relationship="description"
                     >
-                      <Badge 
-                        appearance="filled" 
+                      <Badge
+                        appearance="filled"
                         color={instance.mode === 'Managed' ? 'brand' : 'success'}
                         className={styles.modeTooltip}
                         icon={<Info24Regular />}
@@ -166,10 +184,7 @@ export function EnginesTab() {
                         {instance.mode}
                       </Badge>
                     </Tooltip>
-                    <Badge 
-                      appearance="outline" 
-                      color={instance.isRunning ? 'success' : 'subtle'}
-                    >
+                    <Badge appearance="outline" color={instance.isRunning ? 'success' : 'subtle'}>
                       {instance.status}
                     </Badge>
                     {instance.isHealthy && instance.isRunning && (
@@ -204,10 +219,12 @@ export function EnginesTab() {
                   <div className={styles.instancePath}>
                     <Text>Path: {instance.installPath}</Text>
                     <Tooltip
-                      content={copiedPath === `path-${instance.id}` ? 'Copied!' : 'Copy to clipboard'}
+                      content={
+                        copiedPath === `path-${instance.id}` ? 'Copied!' : 'Copy to clipboard'
+                      }
                       relationship="label"
                     >
-                      <Copy24Regular 
+                      <Copy24Regular
                         className={styles.copyButton}
                         onClick={() => copyToClipboard(instance.installPath, `path-${instance.id}`)}
                       />
@@ -217,12 +234,16 @@ export function EnginesTab() {
                     <div className={styles.instancePath}>
                       <Text>Port: {instance.port}</Text>
                       <Tooltip
-                        content={copiedPath === `port-${instance.id}` ? 'Copied!' : 'Copy to clipboard'}
+                        content={
+                          copiedPath === `port-${instance.id}` ? 'Copied!' : 'Copy to clipboard'
+                        }
                         relationship="label"
                       >
-                        <Copy24Regular 
+                        <Copy24Regular
                           className={styles.copyButton}
-                          onClick={() => copyToClipboard(instance.port?.toString() || '', `port-${instance.id}`)}
+                          onClick={() =>
+                            copyToClipboard(instance.port?.toString() || '', `port-${instance.id}`)
+                          }
                         />
                       </Tooltip>
                     </div>
@@ -231,33 +252,37 @@ export function EnginesTab() {
                     <div className={styles.instancePath}>
                       <Text>Executable: {instance.executablePath}</Text>
                       <Tooltip
-                        content={copiedPath === `exe-${instance.id}` ? 'Copied!' : 'Copy to clipboard'}
+                        content={
+                          copiedPath === `exe-${instance.id}` ? 'Copied!' : 'Copy to clipboard'
+                        }
                         relationship="label"
                       >
-                        <Copy24Regular 
+                        <Copy24Regular
                           className={styles.copyButton}
-                          onClick={() => copyToClipboard(instance.executablePath || '', `exe-${instance.id}`)}
+                          onClick={() =>
+                            copyToClipboard(instance.executablePath || '', `exe-${instance.id}`)
+                          }
                         />
                       </Tooltip>
                     </div>
                   )}
                   {instance.notes && (
-                    <Text className={styles.instancePath}>
-                      Notes: {instance.notes}
-                    </Text>
+                    <Text className={styles.instancePath}>Notes: {instance.notes}</Text>
                   )}
                 </div>
               </Card>
             ))}
           </div>
-          
+
           <Divider />
         </>
       )}
 
       {/* Available Engines Section */}
       <div className={styles.header}>
-        <Text size={500} weight="semibold">Available Engines</Text>
+        <Text size={500} weight="semibold">
+          Available Engines
+        </Text>
         <Text className={styles.subtitle}>
           Install new engines or attach existing installations
         </Text>

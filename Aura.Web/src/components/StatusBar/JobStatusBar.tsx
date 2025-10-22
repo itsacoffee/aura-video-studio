@@ -1,9 +1,4 @@
-import {
-  makeStyles,
-  Spinner,
-  Text,
-  Button,
-} from '@fluentui/react-components';
+import { makeStyles, Spinner, Text, Button } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Regular,
   ErrorCircle24Regular,
@@ -51,12 +46,7 @@ export interface JobStatusBarProps {
   onViewDetails?: () => void;
 }
 
-export function JobStatusBar({ 
-  status, 
-  progress, 
-  message, 
-  onViewDetails 
-}: JobStatusBarProps) {
+export function JobStatusBar({ status, progress, message, onViewDetails }: JobStatusBarProps) {
   const styles = useStyles();
 
   if (status === 'idle') {
@@ -93,9 +83,7 @@ export function JobStatusBar({
     <div className={`${styles.statusBar} ${getBackgroundClass()}`}>
       <div className={styles.leftSection}>
         {getIcon()}
-        {status === 'running' && (
-          <Text className={styles.progressText}>{progress}%</Text>
-        )}
+        {status === 'running' && <Text className={styles.progressText}>{progress}%</Text>}
         <Text className={styles.messageText}>{message}</Text>
       </div>
       {onViewDetails && (

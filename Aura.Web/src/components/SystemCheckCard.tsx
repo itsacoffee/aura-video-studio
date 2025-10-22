@@ -89,10 +89,10 @@ interface SystemCheckCardProps {
   retryInterval?: number; // milliseconds
 }
 
-export function SystemCheckCard({ 
-  onDismiss, 
+export function SystemCheckCard({
+  onDismiss,
   autoRetry = true,
-  retryInterval = 30000 
+  retryInterval = 30000,
 }: SystemCheckCardProps) {
   const styles = useStyles();
   const [healthStatus, setHealthStatus] = useState<HealthCheckResult | null>(null);
@@ -155,11 +155,7 @@ export function SystemCheckCard({
           }
           description={<Text size={200}>{error}</Text>}
           action={
-            <Button
-              appearance="subtle"
-              icon={<ArrowClockwise24Regular />}
-              onClick={checkHealth}
-            >
+            <Button appearance="subtle" icon={<ArrowClockwise24Regular />} onClick={checkHealth}>
               Retry
             </Button>
           }
@@ -172,7 +168,7 @@ export function SystemCheckCard({
     return null;
   }
 
-  // Don't show card if everything is healthy and user can dismiss
+  // Don&apos;t show card if everything is healthy and user can dismiss
   if (healthStatus.status === 'healthy' && onDismiss) {
     return null;
   }
@@ -180,11 +176,23 @@ export function SystemCheckCard({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <Badge color="success" appearance="filled">Healthy</Badge>;
+        return (
+          <Badge color="success" appearance="filled">
+            Healthy
+          </Badge>
+        );
       case 'degraded':
-        return <Badge color="warning" appearance="filled">Degraded</Badge>;
+        return (
+          <Badge color="warning" appearance="filled">
+            Degraded
+          </Badge>
+        );
       case 'unhealthy':
-        return <Badge color="danger" appearance="filled">Unhealthy</Badge>;
+        return (
+          <Badge color="danger" appearance="filled">
+            Unhealthy
+          </Badge>
+        );
       default:
         return <Badge color="subtle">Unknown</Badge>;
     }
@@ -193,17 +201,32 @@ export function SystemCheckCard({
   const getCheckIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <Checkmark24Regular className={styles.checkIcon} color={tokens.colorPaletteGreenForeground1} />;
+        return (
+          <Checkmark24Regular
+            className={styles.checkIcon}
+            color={tokens.colorPaletteGreenForeground1}
+          />
+        );
       case 'degraded':
-        return <Warning24Regular className={styles.checkIcon} color={tokens.colorPaletteYellowForeground1} />;
+        return (
+          <Warning24Regular
+            className={styles.checkIcon}
+            color={tokens.colorPaletteYellowForeground1}
+          />
+        );
       case 'unhealthy':
-        return <Warning24Regular className={styles.checkIcon} color={tokens.colorPaletteRedForeground1} />;
+        return (
+          <Warning24Regular
+            className={styles.checkIcon}
+            color={tokens.colorPaletteRedForeground1}
+          />
+        );
       default:
         return null;
     }
   };
 
-  const failedChecks = healthStatus.checks.filter(c => c.status !== 'healthy');
+  const failedChecks = healthStatus.checks.filter((c) => c.status !== 'healthy');
   const showDetails = healthStatus.status !== 'healthy';
 
   return (
@@ -211,17 +234,15 @@ export function SystemCheckCard({
       <CardHeader
         header={
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
-            {healthStatus.status === 'unhealthy' && <Warning24Regular color={tokens.colorPaletteRedForeground1} />}
+            {healthStatus.status === 'unhealthy' && (
+              <Warning24Regular color={tokens.colorPaletteRedForeground1} />
+            )}
             <Text weight="semibold">System Health</Text>
             {getStatusBadge(healthStatus.status)}
           </div>
         }
         description={
-          lastChecked && (
-            <Text size={200}>
-              Last checked: {lastChecked.toLocaleTimeString()}
-            </Text>
-          )
+          lastChecked && <Text size={200}>Last checked: {lastChecked.toLocaleTimeString()}</Text>
         }
         action={
           <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
@@ -234,11 +255,7 @@ export function SystemCheckCard({
               {loading ? 'Checking...' : 'Refresh'}
             </Button>
             {onDismiss && healthStatus.status === 'degraded' && (
-              <Button
-                appearance="subtle"
-                icon={<Dismiss24Regular />}
-                onClick={onDismiss}
-              >
+              <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onDismiss}>
                 Dismiss
               </Button>
             )}
@@ -269,26 +286,32 @@ export function SystemCheckCard({
               >
                 {getCheckIcon(check.status)}
                 <div className={styles.checkDetails}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: tokens.spacingHorizontalS,
+                    }}
+                  >
                     <Text className={styles.checkName}>{check.name}</Text>
                     {getStatusBadge(check.status)}
                   </div>
-                  {check.message && (
-                    <Text className={styles.checkMessage}>{check.message}</Text>
-                  )}
+                  {check.message && <Text className={styles.checkMessage}>{check.message}</Text>}
                   {check.details && Object.keys(check.details).length > 0 && (
                     <details style={{ marginTop: tokens.spacingVerticalXS }}>
                       <summary style={{ cursor: 'pointer', fontSize: tokens.fontSizeBase200 }}>
                         <Text size={200}>View details</Text>
                       </summary>
-                      <pre style={{ 
-                        fontSize: tokens.fontSizeBase200, 
-                        marginTop: tokens.spacingVerticalXS,
-                        padding: tokens.spacingVerticalS,
-                        backgroundColor: tokens.colorNeutralBackground1,
-                        borderRadius: tokens.borderRadiusSmall,
-                        overflow: 'auto'
-                      }}>
+                      <pre
+                        style={{
+                          fontSize: tokens.fontSizeBase200,
+                          marginTop: tokens.spacingVerticalXS,
+                          padding: tokens.spacingVerticalS,
+                          backgroundColor: tokens.colorNeutralBackground1,
+                          borderRadius: tokens.borderRadiusSmall,
+                          overflow: 'auto',
+                        }}
+                      >
                         {JSON.stringify(check.details, null, 2)}
                       </pre>
                     </details>
@@ -300,16 +323,10 @@ export function SystemCheckCard({
 
           {healthStatus.status === 'unhealthy' && (
             <div className={styles.actions}>
-              <Button
-                appearance="primary"
-                onClick={() => window.open('/downloads', '_self')}
-              >
+              <Button appearance="primary" onClick={() => window.open('/downloads', '_self')}>
                 Fix Issues
               </Button>
-              <Button
-                appearance="secondary"
-                onClick={() => window.open('/settings', '_self')}
-              >
+              <Button appearance="secondary" onClick={() => window.open('/settings', '_self')}>
                 Settings
               </Button>
             </div>

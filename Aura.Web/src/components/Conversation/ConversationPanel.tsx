@@ -6,10 +6,7 @@ interface ConversationPanelProps {
   onClose?: () => void;
 }
 
-export const ConversationPanel: React.FC<ConversationPanelProps> = ({
-  projectId,
-  onClose,
-}) => {
+export const ConversationPanel: React.FC<ConversationPanelProps> = ({ projectId, onClose }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -59,10 +56,7 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
       setMessages((prev) => [...prev, tempUserMessage]);
 
       // Send message and get response
-      const response = await conversationService.sendMessage(
-        projectId,
-        userMessage
-      );
+      const response = await conversationService.sendMessage(projectId, userMessage);
 
       // Add assistant response
       const assistantMessage: Message = {
@@ -142,10 +136,7 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({
         )}
 
         {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`message message-${message.role}`}
-          >
+          <div key={index} className={`message message-${message.role}`}>
             <div className="message-header">
               <span className="message-role">
                 {message.role === 'user' ? 'You' : 'AI Assistant'}

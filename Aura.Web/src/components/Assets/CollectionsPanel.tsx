@@ -132,10 +132,7 @@ export const CollectionsPanel: React.FC<CollectionsPanelProps> = ({
         ))}
       </div>
 
-      <Dialog
-        open={showCreateDialog}
-        onOpenChange={(_, data) => setShowCreateDialog(data.open)}
-      >
+      <Dialog open={showCreateDialog} onOpenChange={(_, data) => setShowCreateDialog(data.open)}>
         <DialogSurface>
           <DialogTitle>Create Collection</DialogTitle>
           <DialogBody>

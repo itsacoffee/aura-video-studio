@@ -218,7 +218,9 @@ export const pacingAnalysisService = {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Failed to generate attention curve' }));
+      const error = await response
+        .json()
+        .catch(() => ({ error: 'Failed to generate attention curve' }));
       throw new Error(error.error || 'Failed to generate attention curve');
     }
 

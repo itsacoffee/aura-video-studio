@@ -1,18 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Input,
-  Button,
-  Spinner,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Input, Button, Spinner } from '@fluentui/react-components';
 import { DataTrendingRegular, SearchRegular } from '@fluentui/react-icons';
 import { TrendingTopicCard } from '../../components/ideation/TrendingTopicCard';
-import {
-  ideationService,
-  type TrendingTopic,
-} from '../../services/ideationService';
+import { ideationService, type TrendingTopic } from '../../services/ideationService';
 
 const useStyles = makeStyles({
   container: {
@@ -87,9 +77,7 @@ export const TrendingTopicsExplorer: React.FC = () => {
       const response = await ideationService.getTrending(nicheFilter, 10);
       setTopics(response.topics);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to load trending topics'
-      );
+      setError(err instanceof Error ? err.message : 'Failed to load trending topics');
     } finally {
       setLoading(false);
     }
@@ -113,8 +101,8 @@ export const TrendingTopicsExplorer: React.FC = () => {
           </Text>
         </div>
         <Text className={styles.subtitle} size={400}>
-          Discover popular and rising topics in your niche. Find content
-          opportunities with high search volume and manageable competition.
+          Discover popular and rising topics in your niche. Find content opportunities with high
+          search volume and manageable competition.
         </Text>
       </div>
 
@@ -130,11 +118,7 @@ export const TrendingTopicsExplorer: React.FC = () => {
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
         </div>
-        <Button
-          appearance="primary"
-          icon={<SearchRegular />}
-          onClick={handleSearch}
-        >
+        <Button appearance="primary" icon={<SearchRegular />} onClick={handleSearch}>
           Search
         </Button>
       </div>
@@ -156,11 +140,7 @@ export const TrendingTopicsExplorer: React.FC = () => {
       ) : (
         <div className={styles.topicsGrid}>
           {topics.map((topic) => (
-            <TrendingTopicCard
-              key={topic.topicId}
-              topic={topic}
-              onSelect={handleSelectTopic}
-            />
+            <TrendingTopicCard key={topic.topicId} topic={topic} onSelect={handleSelectTopic} />
           ))}
         </div>
       )}

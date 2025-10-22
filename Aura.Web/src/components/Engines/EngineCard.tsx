@@ -143,9 +143,11 @@ export function EngineCard({ engine }: EngineCardProps) {
   const [localFilePath, setLocalFilePath] = useState('');
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [isLoadingUrl, setIsLoadingUrl] = useState(false);
-  const [urlVerificationStatus, setUrlVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
+  const [urlVerificationStatus, setUrlVerificationStatus] = useState<
+    'idle' | 'verifying' | 'success' | 'error'
+  >('idle');
   const [urlVerificationMessage, setUrlVerificationMessage] = useState<string>('');
-  
+
   const {
     installEngine,
     verifyEngine,
@@ -166,7 +168,7 @@ export function EngineCard({ engine }: EngineCardProps) {
 
   const loadResolvedUrl = async () => {
     if (!engine.githubRepo || isInstalled) {
-      return; // Don't fetch URL if already installed or no GitHub repo
+      return; // Don&apos;t fetch URL if already installed or no GitHub repo
     }
     setIsLoadingUrl(true);
     try {
@@ -184,33 +186,37 @@ export function EngineCard({ engine }: EngineCardProps) {
 
   const handleVerifyUrl = async () => {
     if (!resolvedUrl) return;
-    
+
     setUrlVerificationStatus('verifying');
     setUrlVerificationMessage('');
-    
+
     try {
-      // Try HEAD request first (faster, doesn't download the file)
-      await fetch(resolvedUrl, { 
+      // Try HEAD request first (faster, doesn&apos;t download the file)
+      await fetch(resolvedUrl, {
         method: 'HEAD',
-        mode: 'no-cors', // Avoid CORS issues, but won't get response details
+        mode: 'no-cors', // Avoid CORS issues, but won&apos;t get response details
       });
-      
-      // Since we're using no-cors mode, we can't check response.ok
-      // Instead, we'll attempt a GET with range header to check if the URL is accessible
+
+      // Since we&apos;re using no-cors mode, we can&apos;t check response.ok
+      // Instead, we&apos;ll attempt a GET with range header to check if the URL is accessible
       const testResponse = await fetch(resolvedUrl, {
         method: 'GET',
         headers: {
-          'Range': 'bytes=0-0', // Request only 1 byte
+          Range: 'bytes=0-0', // Request only 1 byte
         },
         mode: 'cors',
       });
-      
+
       if (testResponse.ok || testResponse.status === 206) {
         setUrlVerificationStatus('success');
-        setUrlVerificationMessage(`URL verified! Status: ${testResponse.status} (${testResponse.statusText || 'OK'})`);
+        setUrlVerificationMessage(
+          `URL verified! Status: ${testResponse.status} (${testResponse.statusText || 'OK'})`
+        );
       } else {
         setUrlVerificationStatus('error');
-        setUrlVerificationMessage(`URL returned status: ${testResponse.status} (${testResponse.statusText})`);
+        setUrlVerificationMessage(
+          `URL returned status: ${testResponse.status} (${testResponse.statusText})`
+        );
       }
     } catch (error) {
       // If CORS fails, try a simple proxy check via backend
@@ -220,7 +226,7 @@ export function EngineCard({ engine }: EngineCardProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: resolvedUrl }),
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           if (data.accessible) {
@@ -236,7 +242,9 @@ export function EngineCard({ engine }: EngineCardProps) {
       } catch (proxyError) {
         // Fallback: just report that we couldn't verify due to CORS/network
         setUrlVerificationStatus('error');
-        setUrlVerificationMessage('Could not verify URL due to CORS restrictions or network issues. Try opening in browser to check manually.');
+        setUrlVerificationMessage(
+          'Could not verify URL due to CORS restrictions or network issues. Try opening in browser to check manually.'
+        );
         console.error('URL verification failed:', error, proxyError);
       }
     }
@@ -287,12 +295,12 @@ export function EngineCard({ engine }: EngineCardProps) {
           customUrl: customUrl.trim(),
         }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Installation failed');
       }
-      
+
       await loadStatus();
       showSuccessToast({
         title: 'Installation Complete',
@@ -330,12 +338,12 @@ export function EngineCard({ engine }: EngineCardProps) {
           localFilePath: localFilePath.trim(),
         }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Installation failed');
       }
-      
+
       await loadStatus();
       showSuccessToast({
         title: 'Installation Complete',
@@ -436,12 +444,12 @@ export function EngineCard({ engine }: EngineCardProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId: engine.id }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to open folder');
       }
-      
+
       await response.json();
       // Folder opened successfully
     } catch (error) {
@@ -476,7 +484,11 @@ export function EngineCard({ engine }: EngineCardProps) {
   };
 
   const handleRepairWithRetry = async () => {
-    if (!confirm(`Repair ${engine.name}? This will clean up partial downloads, re-verify checksums, and reinstall if needed.`)) {
+    if (
+      !confirm(
+        `Repair ${engine.name}? This will clean up partial downloads, re-verify checksums, and reinstall if needed.`
+      )
+    ) {
       return;
     }
     setIsProcessing(true);
@@ -524,7 +536,11 @@ export function EngineCard({ engine }: EngineCardProps) {
           </Badge>
         );
       case 'installed':
-        return <Badge appearance="filled" color="informative">Installed</Badge>;
+        return (
+          <Badge appearance="filled" color="informative">
+            Installed
+          </Badge>
+        );
       case 'not_installed':
         return <Badge appearance="outline">Not Installed</Badge>;
       default:
@@ -542,7 +558,9 @@ export function EngineCard({ engine }: EngineCardProps) {
           <div className={styles.header}>
             <div className={styles.title}>
               {engine.icon && <span>{engine.icon}</span>}
-              <Text weight="semibold" size={500}>{engine.name}</Text>
+              <Text weight="semibold" size={500}>
+                {engine.name}
+              </Text>
               {getStatusBadge()}
             </div>
           </div>
@@ -555,17 +573,28 @@ export function EngineCard({ engine }: EngineCardProps) {
               {engine.requiredVRAMGB && ` • Requires: ${engine.requiredVRAMGB}GB VRAM`}
             </Text>
             {engine.description && (
-              <Text className={styles.metadata} block>{engine.description}</Text>
+              <Text className={styles.metadata} block>
+                {engine.description}
+              </Text>
             )}
             {engine.gatingReason && (
-              <Text className={styles.metadata} block style={{ color: tokens.colorPaletteYellowForeground1 }}>
+              <Text
+                className={styles.metadata}
+                block
+                style={{ color: tokens.colorPaletteYellowForeground1 }}
+              >
                 ⚠️ {engine.gatingReason}
                 {engine.vramTooltip && ` • ${engine.vramTooltip}`}
               </Text>
             )}
             {engine.isGated && !engine.canAutoStart && (
-              <Text className={styles.metadata} block style={{ color: tokens.colorNeutralForeground3 }}>
-                💡 You can still install this engine for future use. It won't auto-start without meeting hardware requirements.
+              <Text
+                className={styles.metadata}
+                block
+                style={{ color: tokens.colorNeutralForeground3 }}
+              >
+                💡 You can still install this engine for future use. It won&apos;t auto-start without
+                meeting hardware requirements.
               </Text>
             )}
           </div>
@@ -581,18 +610,22 @@ export function EngineCard({ engine }: EngineCardProps) {
                 Download Information
               </AccordionHeader>
               <AccordionPanel>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}>
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS }}
+                >
                   <div>
                     <Label weight="semibold">Resolved Download URL:</Label>
-                    <div style={{ 
-                      display: 'flex', 
-                      gap: tokens.spacingHorizontalS, 
-                      alignItems: 'center',
-                      marginTop: tokens.spacingVerticalXXS 
-                    }}>
-                      <Input 
-                        value={resolvedUrl} 
-                        readOnly 
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: tokens.spacingHorizontalS,
+                        alignItems: 'center',
+                        marginTop: tokens.spacingVerticalXXS,
+                      }}
+                    >
+                      <Input
+                        value={resolvedUrl}
+                        readOnly
                         style={{ flex: 1, fontFamily: 'monospace', fontSize: '12px' }}
                       />
                       <Button
@@ -624,28 +657,36 @@ export function EngineCard({ engine }: EngineCardProps) {
                         disabled={urlVerificationStatus === 'verifying'}
                         title="Verify that the URL is accessible and returns HTTP 200"
                       >
-                        {urlVerificationStatus === 'verifying' ? <Spinner size="tiny" /> : 'Verify URL'}
+                        {urlVerificationStatus === 'verifying' ? (
+                          <Spinner size="tiny" />
+                        ) : (
+                          'Verify URL'
+                        )}
                       </Button>
                     </div>
                   </div>
                   {urlVerificationStatus !== 'idle' && (
-                    <div style={{ 
-                      padding: tokens.spacingVerticalS,
-                      borderRadius: tokens.borderRadiusMedium,
-                      backgroundColor: urlVerificationStatus === 'success' 
-                        ? tokens.colorPaletteGreenBackground1 
-                        : urlVerificationStatus === 'error'
-                        ? tokens.colorPaletteRedBackground1
-                        : tokens.colorNeutralBackground3,
-                    }}>
-                      <Text 
-                        size={200} 
-                        style={{ 
-                          color: urlVerificationStatus === 'success' 
-                            ? tokens.colorPaletteGreenForeground1 
+                    <div
+                      style={{
+                        padding: tokens.spacingVerticalS,
+                        borderRadius: tokens.borderRadiusMedium,
+                        backgroundColor:
+                          urlVerificationStatus === 'success'
+                            ? tokens.colorPaletteGreenBackground1
                             : urlVerificationStatus === 'error'
-                            ? tokens.colorPaletteRedForeground1
-                            : tokens.colorNeutralForeground1,
+                              ? tokens.colorPaletteRedBackground1
+                              : tokens.colorNeutralBackground3,
+                      }}
+                    >
+                      <Text
+                        size={200}
+                        style={{
+                          color:
+                            urlVerificationStatus === 'success'
+                              ? tokens.colorPaletteGreenForeground1
+                              : urlVerificationStatus === 'error'
+                                ? tokens.colorPaletteRedForeground1
+                                : tokens.colorNeutralForeground1,
                         }}
                       >
                         {urlVerificationStatus === 'verifying' && '🔄 Verifying URL...'}
@@ -655,22 +696,22 @@ export function EngineCard({ engine }: EngineCardProps) {
                     </div>
                   )}
                   <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    This URL was resolved from the latest GitHub release for {engine.name}.
-                    You can download manually or use the Install button below.
+                    This URL was resolved from the latest GitHub release for {engine.name}. You can
+                    download manually or use the Install button below.
                   </Text>
                 </div>
               </AccordionPanel>
             </AccordionItem>
           </Accordion>
         )}
-        
+
         {!isInstalled && isLoadingUrl && (
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
             <Spinner size="tiny" />
             <Text size={200}>Resolving download URL from GitHub...</Text>
           </div>
         )}
-        
+
         <div className={styles.row}>
           <div className={styles.actions}>
             {!isInstalled && (
@@ -683,7 +724,13 @@ export function EngineCard({ engine }: EngineCardProps) {
                       disabled={isProcessing}
                       title={engine.gatingReason || undefined}
                     >
-                      {isProcessing ? <Spinner size="tiny" /> : engine.isGated && !engine.canAutoStart ? 'Install (for later)' : 'Install'}
+                      {isProcessing ? (
+                        <Spinner size="tiny" />
+                      ) : engine.isGated && !engine.canAutoStart ? (
+                        'Install (for later)'
+                      ) : (
+                        'Install'
+                      )}
                       <ChevronDown24Regular style={{ marginLeft: '4px' }} />
                     </Button>
                   </MenuTrigger>
@@ -695,7 +742,10 @@ export function EngineCard({ engine }: EngineCardProps) {
                       <MenuItem icon={<LinkRegular />} onClick={() => setShowCustomUrlDialog(true)}>
                         Custom URL...
                       </MenuItem>
-                      <MenuItem icon={<DocumentRegular />} onClick={() => setShowLocalFileDialog(true)}>
+                      <MenuItem
+                        icon={<DocumentRegular />}
+                        onClick={() => setShowLocalFileDialog(true)}
+                      >
                         Install from Local File...
                       </MenuItem>
                     </MenuList>
@@ -705,19 +755,23 @@ export function EngineCard({ engine }: EngineCardProps) {
                 <AttachEngineDialog engineId={engine.id} engineName={engine.name} />
               </>
             )}
-            
+
             {isInstalled && !isRunning && (
               <Button
                 appearance="primary"
                 icon={<Play24Regular />}
                 onClick={handleStart}
                 disabled={isProcessing || (engine.isGated && !engine.canAutoStart)}
-                title={engine.isGated && !engine.canAutoStart ? 'Cannot start: hardware requirements not met' : undefined}
+                title={
+                  engine.isGated && !engine.canAutoStart
+                    ? 'Cannot start: hardware requirements not met'
+                    : undefined
+                }
               >
                 Start
               </Button>
             )}
-            
+
             {isInstalled && isRunning && (
               <Button
                 appearance="secondary"
@@ -786,23 +840,38 @@ export function EngineCard({ engine }: EngineCardProps) {
         )}
 
         {isInstalled && (status?.installPath || engine.installPath) && (
-          <div style={{ marginTop: tokens.spacingVerticalS, padding: tokens.spacingVerticalS, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
+          <div
+            style={{
+              marginTop: tokens.spacingVerticalS,
+              padding: tokens.spacingVerticalS,
+              backgroundColor: tokens.colorNeutralBackground2,
+              borderRadius: tokens.borderRadiusMedium,
+            }}
+          >
             <Text weight="semibold" block style={{ marginBottom: tokens.spacingVerticalXXS }}>
               Install Location:
             </Text>
             <Text style={{ fontFamily: 'monospace', fontSize: '13px' }} block>
               {status?.installPath || engine.installPath}
             </Text>
-            <div style={{ marginTop: tokens.spacingVerticalXS, display: 'flex', gap: tokens.spacingHorizontalS }}>
-              <Button 
-                size="small" 
+            <div
+              style={{
+                marginTop: tokens.spacingVerticalXS,
+                display: 'flex',
+                gap: tokens.spacingHorizontalS,
+              }}
+            >
+              <Button
+                size="small"
                 appearance="subtle"
-                onClick={() => navigator.clipboard.writeText(status?.installPath || engine.installPath || '')}
+                onClick={() =>
+                  navigator.clipboard.writeText(status?.installPath || engine.installPath || '')
+                }
               >
                 Copy Path
               </Button>
-              <Button 
-                size="small" 
+              <Button
+                size="small"
                 appearance="subtle"
                 icon={<Folder24Regular />}
                 onClick={handleOpenFolder}
@@ -814,28 +883,36 @@ export function EngineCard({ engine }: EngineCardProps) {
         )}
 
         {/* Models & Voices Manager */}
-        {isInstalled && (engine.id === 'stable-diffusion-webui' || engine.id === 'comfyui' || engine.id === 'piper' || engine.id === 'mimic3') && (
-          <Accordion style={{ marginTop: tokens.spacingVerticalM }} collapsible>
-            <AccordionItem value="models">
-              <AccordionHeader>
-                <Text weight="semibold">Models & Voices</Text>
-              </AccordionHeader>
-              <AccordionPanel>
-                <ModelManager engineId={engine.id} engineName={engine.name} />
-              </AccordionPanel>
-            </AccordionItem>
-          </Accordion>
-        )}
+        {isInstalled &&
+          (engine.id === 'stable-diffusion-webui' ||
+            engine.id === 'comfyui' ||
+            engine.id === 'piper' ||
+            engine.id === 'mimic3') && (
+            <Accordion style={{ marginTop: tokens.spacingVerticalM }} collapsible>
+              <AccordionItem value="models">
+                <AccordionHeader>
+                  <Text weight="semibold">Models & Voices</Text>
+                </AccordionHeader>
+                <AccordionPanel>
+                  <ModelManager engineId={engine.id} engineName={engine.name} />
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
+          )}
       </CardPreview>
 
       {/* Custom URL Dialog */}
-      <Dialog open={showCustomUrlDialog} onOpenChange={(_, data) => setShowCustomUrlDialog(data.open)}>
+      <Dialog
+        open={showCustomUrlDialog}
+        onOpenChange={(_, data) => setShowCustomUrlDialog(data.open)}
+      >
         <DialogSurface>
           <DialogBody>
             <DialogTitle>Install from Custom URL</DialogTitle>
             <DialogContent>
               <Text block style={{ marginBottom: tokens.spacingVerticalM }}>
-                Enter a direct download URL for {engine.name}. The file will be verified against the expected checksum if available.
+                Enter a direct download URL for {engine.name}. The file will be verified against the
+                expected checksum if available.
               </Text>
               <Label htmlFor="customUrl">Download URL:</Label>
               <Input
@@ -845,13 +922,20 @@ export function EngineCard({ engine }: EngineCardProps) {
                 placeholder="https://example.com/engine.zip"
                 style={{ width: '100%' }}
               />
-              <Text block style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 }}>
+              <Text
+                block
+                style={{
+                  marginTop: tokens.spacingVerticalS,
+                  color: tokens.colorNeutralForeground3,
+                  fontSize: tokens.fontSizeBase200,
+                }}
+              >
                 ⚠️ Only use trusted sources. Files will be verified if a checksum is available.
               </Text>
             </DialogContent>
             <DialogActions>
-              <Button 
-                appearance="primary" 
+              <Button
+                appearance="primary"
                 onClick={handleCustomUrlInstall}
                 disabled={!customUrl.trim()}
               >
@@ -866,13 +950,17 @@ export function EngineCard({ engine }: EngineCardProps) {
       </Dialog>
 
       {/* Local File Dialog */}
-      <Dialog open={showLocalFileDialog} onOpenChange={(_, data) => setShowLocalFileDialog(data.open)}>
+      <Dialog
+        open={showLocalFileDialog}
+        onOpenChange={(_, data) => setShowLocalFileDialog(data.open)}
+      >
         <DialogSurface>
           <DialogBody>
             <DialogTitle>Install from Local File</DialogTitle>
             <DialogContent>
               <Text block style={{ marginBottom: tokens.spacingVerticalM }}>
-                Enter the full path to a local archive file for {engine.name}. The file will be verified against the expected checksum if available.
+                Enter the full path to a local archive file for {engine.name}. The file will be
+                verified against the expected checksum if available.
               </Text>
               <Label htmlFor="localFilePath">File Path:</Label>
               <Input
@@ -882,14 +970,21 @@ export function EngineCard({ engine }: EngineCardProps) {
                 placeholder="C:\Downloads\engine.zip or /home/user/downloads/engine.zip"
                 style={{ width: '100%' }}
               />
-              <Text block style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 }}>
-                💡 You can download the archive manually if official servers are down.
-                Files will be verified if a checksum is available.
+              <Text
+                block
+                style={{
+                  marginTop: tokens.spacingVerticalS,
+                  color: tokens.colorNeutralForeground3,
+                  fontSize: tokens.fontSizeBase200,
+                }}
+              >
+                💡 You can download the archive manually if official servers are down. Files will be
+                verified if a checksum is available.
               </Text>
             </DialogContent>
             <DialogActions>
-              <Button 
-                appearance="primary" 
+              <Button
+                appearance="primary"
                 onClick={handleLocalFileInstall}
                 disabled={!localFilePath.trim()}
               >
@@ -921,74 +1016,100 @@ export function EngineCard({ engine }: EngineCardProps) {
                     <Text className={styles.diagnosticsLabel}>Install Path:</Text>
                     <Text>{diagnosticsData.installPath}</Text>
                   </div>
-                  
+
                   <div className={styles.diagnosticsItem}>
                     <Text className={styles.diagnosticsLabel}>Is Installed:</Text>
-                    <Badge appearance="filled" color={diagnosticsData.isInstalled ? 'success' : 'warning'}>
+                    <Badge
+                      appearance="filled"
+                      color={diagnosticsData.isInstalled ? 'success' : 'warning'}
+                    >
                       {diagnosticsData.isInstalled ? 'Yes' : 'No'}
                     </Badge>
                   </div>
-                  
+
                   <div className={styles.diagnosticsItem}>
                     <Text className={styles.diagnosticsLabel}>Path Exists:</Text>
-                    <Badge appearance="filled" color={diagnosticsData.pathExists ? 'success' : 'danger'}>
+                    <Badge
+                      appearance="filled"
+                      color={diagnosticsData.pathExists ? 'success' : 'danger'}
+                    >
                       {diagnosticsData.pathExists ? 'Yes' : 'No'}
                     </Badge>
                   </div>
-                  
+
                   <div className={styles.diagnosticsItem}>
                     <Text className={styles.diagnosticsLabel}>Path Writable:</Text>
-                    <Badge appearance="filled" color={diagnosticsData.pathWritable ? 'success' : 'danger'}>
+                    <Badge
+                      appearance="filled"
+                      color={diagnosticsData.pathWritable ? 'success' : 'danger'}
+                    >
                       {diagnosticsData.pathWritable ? 'Yes' : 'No'}
                     </Badge>
                   </div>
-                  
+
                   <div className={styles.diagnosticsItem}>
                     <Text className={styles.diagnosticsLabel}>Available Disk Space:</Text>
                     <Text>{formatBytes(diagnosticsData.availableDiskSpaceBytes)}</Text>
                   </div>
-                  
+
                   {diagnosticsData.checksumStatus && (
                     <div className={styles.diagnosticsItem}>
                       <Text className={styles.diagnosticsLabel}>Checksum Status:</Text>
-                      <Badge appearance="filled" color={diagnosticsData.checksumStatus === 'Valid' ? 'success' : 'danger'}>
+                      <Badge
+                        appearance="filled"
+                        color={diagnosticsData.checksumStatus === 'Valid' ? 'success' : 'danger'}
+                      >
                         {diagnosticsData.checksumStatus}
                       </Badge>
                     </div>
                   )}
-                  
+
                   {diagnosticsData.expectedSha256 && (
                     <div className={styles.diagnosticsItem}>
                       <Text className={styles.diagnosticsLabel}>Expected SHA256:</Text>
-                      <Text style={{ fontFamily: 'monospace', fontSize: '12px', wordBreak: 'break-all' }}>
+                      <Text
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '12px',
+                          wordBreak: 'break-all',
+                        }}
+                      >
                         {diagnosticsData.expectedSha256}
                       </Text>
                     </div>
                   )}
-                  
+
                   {diagnosticsData.actualSha256 && (
                     <div className={styles.diagnosticsItem}>
                       <Text className={styles.diagnosticsLabel}>Actual SHA256:</Text>
-                      <Text style={{ 
-                        fontFamily: 'monospace', 
-                        fontSize: '12px', 
-                        wordBreak: 'break-all',
-                        color: tokens.colorPaletteRedForeground1 
-                      }}>
+                      <Text
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '12px',
+                          wordBreak: 'break-all',
+                          color: tokens.colorPaletteRedForeground1,
+                        }}
+                      >
                         {diagnosticsData.actualSha256}
                       </Text>
                     </div>
                   )}
-                  
+
                   {diagnosticsData.failedUrl && (
                     <div className={styles.diagnosticsItem}>
                       <Text className={styles.diagnosticsLabel}>Download URL:</Text>
-                      <Text style={{ fontFamily: 'monospace', fontSize: '12px', wordBreak: 'break-all' }}>
+                      <Text
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '12px',
+                          wordBreak: 'break-all',
+                        }}
+                      >
                         {diagnosticsData.failedUrl}
                       </Text>
                     </div>
                   )}
-                  
+
                   {diagnosticsData.lastError && (
                     <div className={styles.diagnosticsItem}>
                       <Text className={styles.diagnosticsLabel}>Last Error:</Text>
@@ -997,10 +1118,14 @@ export function EngineCard({ engine }: EngineCardProps) {
                       </Text>
                     </div>
                   )}
-                  
+
                   {diagnosticsData.issues && diagnosticsData.issues.length > 0 && (
                     <div className={styles.diagnosticsIssues}>
-                      <Text weight="semibold" block style={{ marginBottom: tokens.spacingVerticalXS }}>
+                      <Text
+                        weight="semibold"
+                        block
+                        style={{ marginBottom: tokens.spacingVerticalXS }}
+                      >
                         Issues Found:
                       </Text>
                       {diagnosticsData.issues.map((issue: string, idx: number) => (
@@ -1014,16 +1139,19 @@ export function EngineCard({ engine }: EngineCardProps) {
               ) : null}
             </DialogContent>
             <DialogActions>
-              {diagnosticsData && !diagnosticsData.error && diagnosticsData.issues && diagnosticsData.issues.length > 0 && (
-                <Button 
-                  appearance="primary" 
-                  icon={<Wrench24Regular />}
-                  onClick={handleRepairWithRetry}
-                  disabled={isProcessing}
-                >
-                  Retry with Repair
-                </Button>
-              )}
+              {diagnosticsData &&
+                !diagnosticsData.error &&
+                diagnosticsData.issues &&
+                diagnosticsData.issues.length > 0 && (
+                  <Button
+                    appearance="primary"
+                    icon={<Wrench24Regular />}
+                    onClick={handleRepairWithRetry}
+                    disabled={isProcessing}
+                  >
+                    Retry with Repair
+                  </Button>
+                )}
               <Button appearance="secondary" onClick={() => setShowDiagnostics(false)}>
                 Close
               </Button>

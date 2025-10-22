@@ -156,7 +156,7 @@ const SETTINGS_STORAGE_KEY = 'aura-wizard-settings';
 export function CreateWizard() {
   const styles = useStyles();
   const [currentStep, setCurrentStep] = useState(1);
-  
+
   // Load settings from localStorage or use defaults
   const loadSettings = (): WizardSettings => {
     try {
@@ -184,7 +184,7 @@ export function CreateWizard() {
   const [isRunningPreflight, setIsRunningPreflight] = useState(false);
   const [overridePreflightGate, setOverridePreflightGate] = useState(false);
   const [perStageSelection, setPerStageSelection] = useState<PerStageProviderSelection>({});
-  
+
   // Generation panel state
   const [showGenerationPanel, setShowGenerationPanel] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -284,7 +284,7 @@ export function CreateWizard() {
     setIsRunningPreflight(true);
     try {
       const response = await fetch(`/api/preflight?profile=${encodeURIComponent(selectedProfile)}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         setPreflightReport(data);
@@ -302,10 +302,10 @@ export function CreateWizard() {
   const handleApplySafeDefaults = async () => {
     try {
       const response = await fetch(apiUrl('/api/preflight/safe-defaults'));
-      
+
       if (response.ok) {
         await response.json(); // Acknowledge the response
-        
+
         // Apply safe defaults to the selection
         setSelectedProfile('Free-Only');
         setPerStageSelection({
@@ -314,11 +314,13 @@ export function CreateWizard() {
           visuals: 'Stock',
           upload: 'Off',
         });
-        
+
         // Re-run preflight check with safe defaults
         await handleRunPreflight();
-        
-        alert('Applied safe defaults: Free-Only mode with RuleBased script, Windows TTS, and Stock images.');
+
+        alert(
+          'Applied safe defaults: Free-Only mode with RuleBased script, Windows TTS, and Stock images.'
+        );
       } else {
         alert('Failed to get safe defaults');
       }
@@ -385,11 +387,11 @@ export function CreateWizard() {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Set job in global state for status bar
         useJobState.getState().setJob(data.jobId);
         useJobState.getState().updateProgress(0, 'Starting video generation...');
-        
+
         setActiveJobId(data.jobId);
         setShowGenerationPanel(true);
       } else {
@@ -457,17 +459,17 @@ export function CreateWizard() {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Set job in global state for status bar
         useJobState.getState().setJob(data.jobId);
         useJobState.getState().updateProgress(0, 'Starting quick demo...');
-        
+
         // Show success toast
         showSuccessToast({
           title: 'Quick Demo Started',
           message: `Job ID: ${data.jobId}`,
         });
-        
+
         setActiveJobId(data.jobId);
         setShowGenerationPanel(true);
       } else {
@@ -518,7 +520,10 @@ export function CreateWizard() {
                 label={
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     Topic
-                    <Tooltip content={<TooltipWithLink content={TooltipContent.topic} />} relationship="label">
+                    <Tooltip
+                      content={<TooltipWithLink content={TooltipContent.topic} />}
+                      relationship="label"
+                    >
                       <Info24Regular className={styles.infoIcon} />
                     </Tooltip>
                   </div>
@@ -537,7 +542,10 @@ export function CreateWizard() {
                 label={
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     Audience
-                    <Tooltip content={<TooltipWithLink content={TooltipContent.audience} />} relationship="label">
+                    <Tooltip
+                      content={<TooltipWithLink content={TooltipContent.audience} />}
+                      relationship="label"
+                    >
                       <Info24Regular className={styles.infoIcon} />
                     </Tooltip>
                   </div>
@@ -561,7 +569,10 @@ export function CreateWizard() {
                 label={
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     Tone
-                    <Tooltip content={<TooltipWithLink content={TooltipContent.tone} />} relationship="label">
+                    <Tooltip
+                      content={<TooltipWithLink content={TooltipContent.tone} />}
+                      relationship="label"
+                    >
                       <Info24Regular className={styles.infoIcon} />
                     </Tooltip>
                   </div>
@@ -585,7 +596,10 @@ export function CreateWizard() {
                 label={
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     Aspect Ratio
-                    <Tooltip content={<TooltipWithLink content={TooltipContent.aspect} />} relationship="label">
+                    <Tooltip
+                      content={<TooltipWithLink content={TooltipContent.aspect} />}
+                      relationship="label"
+                    >
                       <Info24Regular className={styles.infoIcon} />
                     </Tooltip>
                   </div>
@@ -604,15 +618,15 @@ export function CreateWizard() {
             </div>
 
             {/* Quick Demo Button */}
-            <div style={{ 
-              marginTop: tokens.spacingVerticalXXL, 
-              padding: tokens.spacingVerticalL,
-              borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
-              textAlign: 'center'
-            }}>
-              <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
-                New to Aura?
-              </Title3>
+            <div
+              style={{
+                marginTop: tokens.spacingVerticalXXL,
+                padding: tokens.spacingVerticalL,
+                borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+                textAlign: 'center',
+              }}
+            >
+              <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>New to Aura?</Title3>
               <Text size={300} style={{ display: 'block', marginBottom: tokens.spacingVerticalL }}>
                 Try a Quick Demo - No setup required!
               </Text>
@@ -626,11 +640,14 @@ export function CreateWizard() {
               >
                 {generating ? 'Starting...' : 'Quick Demo (Safe)'}
               </Button>
-              <Text size={200} style={{ 
-                display: 'block', 
-                marginTop: tokens.spacingVerticalM,
-                color: tokens.colorNeutralForeground3
-              }}>
+              <Text
+                size={200}
+                style={{
+                  display: 'block',
+                  marginTop: tokens.spacingVerticalM,
+                  color: tokens.colorNeutralForeground3,
+                }}
+              >
                 Generates a 10-15 second demo video with safe defaults
               </Text>
             </div>
@@ -650,7 +667,10 @@ export function CreateWizard() {
                   label={
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       Duration: {settings.planSpec.targetDurationMinutes} minutes
-                      <Tooltip content={<TooltipWithLink content={TooltipContent.duration} />} relationship="label">
+                      <Tooltip
+                        content={<TooltipWithLink content={TooltipContent.duration} />}
+                        relationship="label"
+                      >
                         <Info24Regular className={styles.infoIcon} />
                       </Tooltip>
                     </div>
@@ -670,7 +690,10 @@ export function CreateWizard() {
                   label={
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       Pacing
-                      <Tooltip content={<TooltipWithLink content={TooltipContent.pacing} />} relationship="label">
+                      <Tooltip
+                        content={<TooltipWithLink content={TooltipContent.pacing} />}
+                        relationship="label"
+                      >
                         <Info24Regular className={styles.infoIcon} />
                       </Tooltip>
                     </div>
@@ -691,7 +714,10 @@ export function CreateWizard() {
                   label={
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       Density
-                      <Tooltip content={<TooltipWithLink content={TooltipContent.density} />} relationship="label">
+                      <Tooltip
+                        content={<TooltipWithLink content={TooltipContent.density} />}
+                        relationship="label"
+                      >
                         <Info24Regular className={styles.infoIcon} />
                       </Tooltip>
                     </div>
@@ -700,7 +726,9 @@ export function CreateWizard() {
                 >
                   <Dropdown
                     value={settings.planSpec.density}
-                    onOptionSelect={(_, data) => updatePlanSpec({ density: data.optionText as any })}
+                    onOptionSelect={(_, data) =>
+                      updatePlanSpec({ density: data.optionText as any })
+                    }
                   >
                     <Option>Sparse</Option>
                     <Option>Balanced</Option>
@@ -731,7 +759,10 @@ export function CreateWizard() {
             <Card className={styles.section}>
               <Title3>
                 Brand Kit
-                <Tooltip content={<TooltipWithLink content={TooltipContent.brandKit} />} relationship="label">
+                <Tooltip
+                  content={<TooltipWithLink content={TooltipContent.brandKit} />}
+                  relationship="label"
+                >
                   <Info24Regular className={styles.infoIcon} />
                 </Tooltip>
               </Title3>
@@ -743,7 +774,10 @@ export function CreateWizard() {
                   label={
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       Watermark/Logo
-                      <Tooltip content={<TooltipWithLink content={TooltipContent.watermark} />} relationship="label">
+                      <Tooltip
+                        content={<TooltipWithLink content={TooltipContent.watermark} />}
+                        relationship="label"
+                      >
                         <Info24Regular className={styles.infoIcon} />
                       </Tooltip>
                     </div>
@@ -762,7 +796,9 @@ export function CreateWizard() {
                   <Field label="Watermark Position">
                     <Dropdown
                       value={settings.brandKit.watermarkPosition || 'bottom-right'}
-                      onOptionSelect={(_, data) => updateBrandKit({ watermarkPosition: data.optionValue as string })}
+                      onOptionSelect={(_, data) =>
+                        updateBrandKit({ watermarkPosition: data.optionValue as string })
+                      }
                     >
                       <Option value="top-left">Top Left</Option>
                       <Option value="top-right">Top Right</Option>
@@ -771,7 +807,9 @@ export function CreateWizard() {
                     </Dropdown>
                   </Field>
 
-                  <Field label={`Opacity: ${(settings.brandKit.watermarkOpacity * 100).toFixed(0)}%`}>
+                  <Field
+                    label={`Opacity: ${(settings.brandKit.watermarkOpacity * 100).toFixed(0)}%`}
+                  >
                     <Slider
                       min={0}
                       max={1}
@@ -787,7 +825,10 @@ export function CreateWizard() {
                     label={
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         Brand Color
-                        <Tooltip content={<TooltipWithLink content={TooltipContent.brandColor} />} relationship="label">
+                        <Tooltip
+                          content={<TooltipWithLink content={TooltipContent.brandColor} />}
+                          relationship="label"
+                        >
                           <Info24Regular className={styles.infoIcon} />
                         </Tooltip>
                       </div>
@@ -806,7 +847,10 @@ export function CreateWizard() {
                     label={
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         Accent Color
-                        <Tooltip content={<TooltipWithLink content={TooltipContent.accentColor} />} relationship="label">
+                        <Tooltip
+                          content={<TooltipWithLink content={TooltipContent.accentColor} />}
+                          relationship="label"
+                        >
                           <Info24Regular className={styles.infoIcon} />
                         </Tooltip>
                       </div>
@@ -828,7 +872,10 @@ export function CreateWizard() {
             <Card className={styles.section}>
               <Title3>
                 Captions
-                <Tooltip content={<TooltipWithLink content={TooltipContent.captionsStyle} />} relationship="label">
+                <Tooltip
+                  content={<TooltipWithLink content={TooltipContent.captionsStyle} />}
+                  relationship="label"
+                >
                   <Info24Regular className={styles.infoIcon} />
                 </Tooltip>
               </Title3>
@@ -851,7 +898,10 @@ export function CreateWizard() {
                         label={
                           <div style={{ display: 'flex', alignItems: 'center' }}>
                             Format
-                            <Tooltip content={<TooltipWithLink content={TooltipContent.captionsFormat} />} relationship="label">
+                            <Tooltip
+                              content={<TooltipWithLink content={TooltipContent.captionsFormat} />}
+                              relationship="label"
+                            >
                               <Info24Regular className={styles.infoIcon} />
                             </Tooltip>
                           </div>
@@ -859,7 +909,9 @@ export function CreateWizard() {
                       >
                         <Dropdown
                           value={settings.captions.format.toUpperCase()}
-                          onOptionSelect={(_, data) => updateCaptions({ format: data.optionValue as 'srt' | 'vtt' })}
+                          onOptionSelect={(_, data) =>
+                            updateCaptions({ format: data.optionValue as 'srt' | 'vtt' })
+                          }
                         >
                           <Option value="srt">SRT (SubRip)</Option>
                           <Option value="vtt">VTT (WebVTT)</Option>
@@ -870,7 +922,10 @@ export function CreateWizard() {
                         label={
                           <div style={{ display: 'flex', alignItems: 'center' }}>
                             Burn-in
-                            <Tooltip content={<TooltipWithLink content={TooltipContent.captionsBurnIn} />} relationship="label">
+                            <Tooltip
+                              content={<TooltipWithLink content={TooltipContent.captionsBurnIn} />}
+                              relationship="label"
+                            >
                               <Info24Regular className={styles.infoIcon} />
                             </Tooltip>
                           </div>
@@ -889,7 +944,9 @@ export function CreateWizard() {
                         <Field label="Font">
                           <Dropdown
                             value={settings.captions.fontName}
-                            onOptionSelect={(_, data) => updateCaptions({ fontName: data.optionValue as string })}
+                            onOptionSelect={(_, data) =>
+                              updateCaptions({ fontName: data.optionValue as string })
+                            }
                           >
                             <Option value="Arial">Arial</Option>
                             <Option value="Helvetica">Helvetica</Option>
@@ -902,7 +959,9 @@ export function CreateWizard() {
                           <Input
                             type="number"
                             value={settings.captions.fontSize.toString()}
-                            onChange={(_, data) => updateCaptions({ fontSize: parseInt(data.value) || 24 })}
+                            onChange={(_, data) =>
+                              updateCaptions({ fontSize: parseInt(data.value) || 24 })
+                            }
                           />
                         </Field>
                       </div>
@@ -916,7 +975,10 @@ export function CreateWizard() {
             <Card className={styles.section}>
               <Title3>
                 Stock Sources
-                <Tooltip content={<TooltipWithLink content={TooltipContent.stockSources} />} relationship="label">
+                <Tooltip
+                  content={<TooltipWithLink content={TooltipContent.stockSources} />}
+                  relationship="label"
+                >
                   <Info24Regular className={styles.infoIcon} />
                 </Tooltip>
               </Title3>
@@ -928,7 +990,10 @@ export function CreateWizard() {
                   label={
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       Pexels
-                      <Tooltip content={<TooltipWithLink content={TooltipContent.pexels} />} relationship="label">
+                      <Tooltip
+                        content={<TooltipWithLink content={TooltipContent.pexels} />}
+                        relationship="label"
+                      >
                         <Info24Regular className={styles.infoIcon} />
                       </Tooltip>
                     </div>
@@ -945,7 +1010,10 @@ export function CreateWizard() {
                   label={
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       Pixabay
-                      <Tooltip content={<TooltipWithLink content={TooltipContent.pixabay} />} relationship="label">
+                      <Tooltip
+                        content={<TooltipWithLink content={TooltipContent.pixabay} />}
+                        relationship="label"
+                      >
                         <Info24Regular className={styles.infoIcon} />
                       </Tooltip>
                     </div>
@@ -962,7 +1030,10 @@ export function CreateWizard() {
                   label={
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       Unsplash
-                      <Tooltip content={<TooltipWithLink content={TooltipContent.unsplash} />} relationship="label">
+                      <Tooltip
+                        content={<TooltipWithLink content={TooltipContent.unsplash} />}
+                        relationship="label"
+                      >
                         <Info24Regular className={styles.infoIcon} />
                       </Tooltip>
                     </div>
@@ -979,7 +1050,10 @@ export function CreateWizard() {
                   label={
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       Local Assets
-                      <Tooltip content={<TooltipWithLink content={TooltipContent.localAssets} />} relationship="label">
+                      <Tooltip
+                        content={<TooltipWithLink content={TooltipContent.localAssets} />}
+                        relationship="label"
+                      >
                         <Info24Regular className={styles.infoIcon} />
                       </Tooltip>
                     </div>
@@ -998,7 +1072,9 @@ export function CreateWizard() {
                       type="text"
                       placeholder="C:\path\to\assets"
                       value={settings.stockSources.localAssetsDirectory || ''}
-                      onChange={(_, data) => updateStockSources({ localAssetsDirectory: data.value })}
+                      onChange={(_, data) =>
+                        updateStockSources({ localAssetsDirectory: data.value })
+                      }
                     />
                   </Field>
                 )}
@@ -1009,7 +1085,10 @@ export function CreateWizard() {
             <Card className={styles.section}>
               <Title3>
                 Offline Mode
-                <Tooltip content={<TooltipWithLink content={TooltipContent.offline} />} relationship="label">
+                <Tooltip
+                  content={<TooltipWithLink content={TooltipContent.offline} />}
+                  relationship="label"
+                >
                   <Info24Regular className={styles.infoIcon} />
                 </Tooltip>
               </Title3>
@@ -1029,13 +1108,13 @@ export function CreateWizard() {
             <Card className={styles.section}>
               <Accordion collapsible>
                 <AccordionItem value="advanced">
-                  <AccordionHeader
-                    icon={<ChevronDown24Regular />}
-                    expandIconPosition="end"
-                  >
+                  <AccordionHeader icon={<ChevronDown24Regular />} expandIconPosition="end">
                     <Title3>
                       Advanced Settings
-                      <Tooltip content={<TooltipWithLink content={TooltipContent.advanced} />} relationship="label">
+                      <Tooltip
+                        content={<TooltipWithLink content={TooltipContent.advanced} />}
+                        relationship="label"
+                      >
                         <Info24Regular className={styles.infoIcon} />
                       </Tooltip>
                     </Title3>
@@ -1049,7 +1128,9 @@ export function CreateWizard() {
                       <Field label="Visual Style">
                         <Dropdown
                           value={settings.planSpec.style}
-                          onOptionSelect={(_, data) => updatePlanSpec({ style: data.optionText || 'Standard' })}
+                          onOptionSelect={(_, data) =>
+                            updatePlanSpec({ style: data.optionText || 'Standard' })
+                          }
                         >
                           <Option>Standard</Option>
                           <Option>Educational</Option>
@@ -1064,7 +1145,10 @@ export function CreateWizard() {
                           label={
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                               Stable Diffusion URL
-                              <Tooltip content={<TooltipWithLink content={TooltipContent.sdParams} />} relationship="label">
+                              <Tooltip
+                                content={<TooltipWithLink content={TooltipContent.sdParams} />}
+                                relationship="label"
+                              >
                                 <Info24Regular className={styles.infoIcon} />
                               </Tooltip>
                             </div>
@@ -1074,7 +1158,9 @@ export function CreateWizard() {
                             type="text"
                             placeholder="http://127.0.0.1:7860"
                             value={settings.stockSources.stableDiffusionUrl || ''}
-                            onChange={(_, data) => updateStockSources({ stableDiffusionUrl: data.value })}
+                            onChange={(_, data) =>
+                              updateStockSources({ stableDiffusionUrl: data.value })
+                            }
                           />
                         </Field>
                       )}
@@ -1095,8 +1181,18 @@ export function CreateWizard() {
 
             {/* AI Recommendations */}
             {showRecommendations && recommendations && (
-              <Card className={styles.section} style={{ backgroundColor: tokens.colorNeutralBackground2 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalM }}>
+              <Card
+                className={styles.section}
+                style={{ backgroundColor: tokens.colorNeutralBackground2 }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: tokens.spacingVerticalM,
+                  }}
+                >
                   <Title3>AI Recommendations</Title3>
                   <Button
                     appearance="primary"
@@ -1107,25 +1203,35 @@ export function CreateWizard() {
                   </Button>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}
+                >
                   <div>
                     <Text weight="semibold">Scene Count:</Text>{' '}
-                    <Badge appearance="tint" color="informative">{recommendations.sceneCount} scenes</Badge>
+                    <Badge appearance="tint" color="informative">
+                      {recommendations.sceneCount} scenes
+                    </Badge>
                   </div>
 
                   <div>
                     <Text weight="semibold">Shots per Scene:</Text>{' '}
-                    <Badge appearance="tint" color="informative">{recommendations.shotsPerScene} shots</Badge>
+                    <Badge appearance="tint" color="informative">
+                      {recommendations.shotsPerScene} shots
+                    </Badge>
                   </div>
 
                   <div>
                     <Text weight="semibold">B-Roll:</Text>{' '}
-                    <Badge appearance="tint" color="informative">{recommendations.bRollPercentage}%</Badge>
+                    <Badge appearance="tint" color="informative">
+                      {recommendations.bRollPercentage}%
+                    </Badge>
                   </div>
 
                   <div>
                     <Text weight="semibold">Voice:</Text>{' '}
-                    <Text>Rate: {recommendations.voice.rate}x, Pitch: {recommendations.voice.pitch}x</Text>
+                    <Text>
+                      Rate: {recommendations.voice.rate}x, Pitch: {recommendations.voice.pitch}x
+                    </Text>
                   </div>
 
                   <div>
@@ -1146,7 +1252,14 @@ export function CreateWizard() {
               <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
                 Review your settings before generating your video
               </Text>
-              <div style={{ marginTop: tokens.spacingVerticalL, display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+              <div
+                style={{
+                  marginTop: tokens.spacingVerticalL,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: tokens.spacingVerticalM,
+                }}
+              >
                 <div>
                   <Text weight="semibold">Topic:</Text> <Text>{settings.brief.topic}</Text>
                 </div>
@@ -1154,7 +1267,8 @@ export function CreateWizard() {
                   <Text weight="semibold">Audience:</Text> <Text>{settings.brief.audience}</Text>
                 </div>
                 <div>
-                  <Text weight="semibold">Duration:</Text> <Text>{settings.planSpec.targetDurationMinutes} minutes</Text>
+                  <Text weight="semibold">Duration:</Text>{' '}
+                  <Text>{settings.planSpec.targetDurationMinutes} minutes</Text>
                 </div>
                 <div>
                   <Text weight="semibold">Pacing:</Text> <Text>{settings.planSpec.pacing}</Text>
@@ -1175,7 +1289,9 @@ export function CreateWizard() {
                 <div>
                   <Text weight="semibold">Captions:</Text>{' '}
                   <Badge color={settings.captions.enabled ? 'success' : 'subtle'}>
-                    {settings.captions.enabled ? `${settings.captions.format.toUpperCase()}` : 'Disabled'}
+                    {settings.captions.enabled
+                      ? `${settings.captions.format.toUpperCase()}`
+                      : 'Disabled'}
                   </Badge>
                 </div>
               </div>
@@ -1220,7 +1336,10 @@ export function CreateWizard() {
                     checked={overridePreflightGate}
                     onChange={(_, data) => setOverridePreflightGate(data.checked === true)}
                     label={
-                      <Tooltip content="Some preflight checks failed, but you can still proceed at your own risk" relationship="label">
+                      <Tooltip
+                        content="Some preflight checks failed, but you can still proceed at your own risk"
+                        relationship="label"
+                      >
                         <Text>Override and proceed anyway</Text>
                       </Tooltip>
                     }
@@ -1234,9 +1353,7 @@ export function CreateWizard() {
         {/* Navigation Actions */}
         <div className={styles.actions}>
           {currentStep > 1 && (
-            <Button onClick={() => setCurrentStep(currentStep - 1)}>
-              Previous
-            </Button>
+            <Button onClick={() => setCurrentStep(currentStep - 1)}>Previous</Button>
           )}
           {currentStep < 3 ? (
             <Button
@@ -1252,8 +1369,8 @@ export function CreateWizard() {
                 !preflightReport
                   ? 'Run preflight check before generating'
                   : !preflightReport.ok && !overridePreflightGate
-                  ? 'Preflight checks failed. Enable override to proceed anyway.'
-                  : ''
+                    ? 'Preflight checks failed. Enable override to proceed anyway.'
+                    : ''
               }
               relationship="label"
             >
@@ -1261,7 +1378,9 @@ export function CreateWizard() {
                 appearance="primary"
                 icon={<Play24Regular />}
                 onClick={handleGenerate}
-                disabled={generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate)}
+                disabled={
+                  generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate)
+                }
               >
                 {generating ? 'Generating...' : 'Generate Video'}
               </Button>
@@ -1269,7 +1388,7 @@ export function CreateWizard() {
           )}
         </div>
       </div>
-      
+
       {/* Generation Panel */}
       {showGenerationPanel && activeJobId && (
         <GenerationPanel

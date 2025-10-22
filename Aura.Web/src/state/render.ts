@@ -31,10 +31,10 @@ export interface QueueItem {
 interface RenderState {
   // Current settings
   settings: RenderSettings;
-  
+
   // Queue
   queue: QueueItem[];
-  
+
   // Actions
   updateSettings: (settings: Partial<RenderSettings>) => void;
   setPreset: (preset: string) => void;
@@ -138,14 +138,14 @@ export const useRenderStore = create<RenderState>((set, get) => ({
       createdAt: new Date(),
       retryCount: 0,
     };
-    
+
     set((state) => ({
       queue: [...state.queue, item],
     }));
-    
+
     // Start processing if not already processing
     setTimeout(() => get().processQueue(), 0);
-    
+
     return id;
   },
 
@@ -157,32 +157,30 @@ export const useRenderStore = create<RenderState>((set, get) => ({
 
   updateQueueItem: (id, updates) => {
     set((state) => ({
-      queue: state.queue.map((item) =>
-        item.id === id ? { ...item, ...updates } : item
-      ),
+      queue: state.queue.map((item) => (item.id === id ? { ...item, ...updates } : item)),
     }));
   },
 
   processQueue: async () => {
     const { queue, updateQueueItem } = get();
-    
+
     // Find next queued item (parallelism of 1)
     const processing = queue.filter((item) => item.status === 'processing');
     if (processing.length > 0) {
       return; // Already processing
     }
-    
+
     const nextItem = queue.find((item) => item.status === 'queued');
     if (!nextItem) {
       return; // Nothing to process
     }
-    
+
     // Start processing
     updateQueueItem(nextItem.id, {
       status: 'processing',
       startedAt: new Date(),
     });
-    
+
     try {
       // Send render request to API
       const response = await fetch('/api/render', {
@@ -194,14 +192,14 @@ export const useRenderStore = create<RenderState>((set, get) => ({
           settings: nextItem.settings,
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Render request failed: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       const jobId = data.jobId;
-      
+
       // Poll for progress
       const pollInterval = setInterval(async () => {
         try {
@@ -209,14 +207,14 @@ export const useRenderStore = create<RenderState>((set, get) => ({
           if (!progressResponse.ok) {
             throw new Error('Failed to get progress');
           }
-          
+
           const progressData = await progressResponse.json();
-          
+
           updateQueueItem(nextItem.id, {
             progress: progressData.progress,
             estimatedTimeRemaining: progressData.estimatedTimeRemaining,
           });
-          
+
           if (progressData.status === 'completed') {
             clearInterval(pollInterval);
             updateQueueItem(nextItem.id, {
@@ -225,12 +223,12 @@ export const useRenderStore = create<RenderState>((set, get) => ({
               outputPath: progressData.outputPath,
               completedAt: new Date(),
             });
-            
+
             // Process next item
             setTimeout(() => get().processQueue(), 100);
           } else if (progressData.status === 'failed') {
             clearInterval(pollInterval);
-            
+
             // Retry once
             if (nextItem.retryCount < 1) {
               updateQueueItem(nextItem.id, {
@@ -244,7 +242,7 @@ export const useRenderStore = create<RenderState>((set, get) => ({
                 error: progressData.error || 'Render failed',
                 completedAt: new Date(),
               });
-              
+
               // Process next item
               setTimeout(() => get().processQueue(), 100);
             }
@@ -253,10 +251,9 @@ export const useRenderStore = create<RenderState>((set, get) => ({
           console.error('Error polling render progress:', error);
         }
       }, 2000); // Poll every 2 seconds
-      
     } catch (error) {
       console.error('Error starting render:', error);
-      
+
       // Retry once
       if (nextItem.retryCount < 1) {
         updateQueueItem(nextItem.id, {
@@ -270,7 +267,7 @@ export const useRenderStore = create<RenderState>((set, get) => ({
           error: error instanceof Error ? error.message : 'Unknown error',
           completedAt: new Date(),
         });
-        
+
         // Process next item
         setTimeout(() => get().processQueue(), 100);
       }

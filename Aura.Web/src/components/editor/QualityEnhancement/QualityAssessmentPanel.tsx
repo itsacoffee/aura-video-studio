@@ -88,7 +88,7 @@ export const QualityAssessmentPanel: React.FC<QualityAssessmentPanelProps> = ({
         resolutionHeight,
         0.75, // sharpness
         0.15, // noise level
-        0.8   // compression quality
+        0.8 // compression quality
       );
 
       setMetrics(qualityMetrics);
@@ -146,14 +146,19 @@ export const QualityAssessmentPanel: React.FC<QualityAssessmentPanelProps> = ({
     <div className={styles.container}>
       <Card>
         <div className={styles.section}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalM }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacingHorizontalS,
+              marginBottom: tokens.spacingVerticalM,
+            }}
+          >
             <Eye24Regular />
             <Body1Strong>Quality Assessment</Body1Strong>
           </div>
 
-          <Body1>
-            Assess technical quality and get AI-powered enhancement suggestions.
-          </Body1>
+          <Body1>Assess technical quality and get AI-powered enhancement suggestions.</Body1>
 
           <Button
             appearance="primary"
@@ -170,7 +175,14 @@ export const QualityAssessmentPanel: React.FC<QualityAssessmentPanelProps> = ({
       {metrics && (
         <Card>
           <div className={styles.resultCard}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalM }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: tokens.spacingVerticalM,
+              }}
+            >
               <div>
                 <Body1Strong>Quality Metrics</Body1Strong>
                 <div style={{ marginTop: tokens.spacingVerticalXS }}>
@@ -192,10 +204,10 @@ export const QualityAssessmentPanel: React.FC<QualityAssessmentPanelProps> = ({
 
             <div className={styles.metricRow}>
               <Caption1>Resolution</Caption1>
-              <ProgressBar 
-                value={metrics.resolution} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={metrics.resolution}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(metrics.resolution)}
               />
               <Badge appearance="tint" color={getBadgeColor(metrics.resolution)}>
@@ -205,10 +217,10 @@ export const QualityAssessmentPanel: React.FC<QualityAssessmentPanelProps> = ({
 
             <div className={styles.metricRow}>
               <Caption1>Sharpness</Caption1>
-              <ProgressBar 
-                value={metrics.sharpness} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={metrics.sharpness}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(metrics.sharpness)}
               />
               <Badge appearance="tint" color={getBadgeColor(metrics.sharpness)}>
@@ -218,10 +230,10 @@ export const QualityAssessmentPanel: React.FC<QualityAssessmentPanelProps> = ({
 
             <div className={styles.metricRow}>
               <Caption1>Noise Level</Caption1>
-              <ProgressBar 
-                value={metrics.noiseLevel} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={metrics.noiseLevel}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(metrics.noiseLevel, true)}
               />
               <Badge appearance="tint" color={getBadgeColor(metrics.noiseLevel, true)}>
@@ -231,10 +243,10 @@ export const QualityAssessmentPanel: React.FC<QualityAssessmentPanelProps> = ({
 
             <div className={styles.metricRow}>
               <Caption1>Compression Quality</Caption1>
-              <ProgressBar 
-                value={metrics.compressionQuality} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={metrics.compressionQuality}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(metrics.compressionQuality)}
               />
               <Badge appearance="tint" color={getBadgeColor(metrics.compressionQuality)}>
@@ -244,10 +256,10 @@ export const QualityAssessmentPanel: React.FC<QualityAssessmentPanelProps> = ({
 
             <div className={styles.metricRow}>
               <Caption1>Color Accuracy</Caption1>
-              <ProgressBar 
-                value={metrics.colorAccuracy} 
-                thickness="large" 
-                style={{ width: 120 }} 
+              <ProgressBar
+                value={metrics.colorAccuracy}
+                thickness="large"
+                style={{ width: 120 }}
                 color={getProgressColor(metrics.colorAccuracy)}
               />
               <Badge appearance="tint" color={getBadgeColor(metrics.colorAccuracy)}>
@@ -272,7 +284,13 @@ export const QualityAssessmentPanel: React.FC<QualityAssessmentPanelProps> = ({
                 <Body1Strong>Suggested Enhancements</Body1Strong>
                 {Object.entries(enhancements).map(([key, value]) => (
                   <div key={key} className={styles.enhancementItem}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
                       <Caption1>{key.charAt(0).toUpperCase() + key.slice(1)}</Caption1>
                       <Badge appearance="tint" color="brand">
                         {value.toFixed(2)}

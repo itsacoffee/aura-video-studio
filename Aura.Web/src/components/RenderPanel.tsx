@@ -94,10 +94,21 @@ const PRESET_OPTIONS = [
 
 export function RenderPanel() {
   const styles = useStyles();
-  const { settings, queue, updateSettings, setPreset, addToQueue, removeFromQueue, updateQueueItem } = useRenderStore();
+  const {
+    settings,
+    queue,
+    updateSettings,
+    setPreset,
+    addToQueue,
+    removeFromQueue,
+    updateQueueItem,
+  } = useRenderStore();
   const [selectedPreset, setSelectedPreset] = useState('YouTube 1080p');
 
-  const handlePresetChange = (_event: unknown, data: { optionValue?: string; optionText?: string }) => {
+  const handlePresetChange = (
+    _event: unknown,
+    data: { optionValue?: string; optionText?: string }
+  ) => {
     if (data.optionValue) {
       setSelectedPreset(data.optionValue);
       setPreset(data.optionValue);
@@ -120,13 +131,33 @@ export function RenderPanel() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Checkmark24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteGreenForeground1 }} />;
+        return (
+          <Checkmark24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorPaletteGreenForeground1 }}
+          />
+        );
       case 'failed':
-        return <ErrorCircle24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteRedForeground1 }} />;
+        return (
+          <ErrorCircle24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorPaletteRedForeground1 }}
+          />
+        );
       case 'cancelled':
-        return <Dismiss24Regular className={styles.statusIcon} style={{ color: tokens.colorNeutralForeground3 }} />;
+        return (
+          <Dismiss24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorNeutralForeground3 }}
+          />
+        );
       default:
-        return <Play24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteBlueForeground2 }} />;
+        return (
+          <Play24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorPaletteBlueForeground2 }}
+          />
+        );
     }
   };
 
@@ -249,7 +280,13 @@ export function RenderPanel() {
             label={
               <Label>
                 Quality Level: {settings.qualityLevel}
-                <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginLeft: tokens.spacingHorizontalS }}>
+                <Text
+                  size={200}
+                  style={{
+                    color: tokens.colorNeutralForeground3,
+                    marginLeft: tokens.spacingHorizontalS,
+                  }}
+                >
                   (0 = fastest/lower quality, 100 = slowest/highest quality)
                 </Text>
               </Label>
@@ -279,9 +316,7 @@ export function RenderPanel() {
               <Input
                 type="number"
                 value={settings.audioBitrateK.toString()}
-                onChange={(e) =>
-                  updateSettings({ audioBitrateK: parseInt(e.target.value) || 256 })
-                }
+                onChange={(e) => updateSettings({ audioBitrateK: parseInt(e.target.value) || 256 })}
               />
             </Field>
           </div>
@@ -314,11 +349,18 @@ export function RenderPanel() {
             queue.map((item) => (
               <div key={item.id} className={styles.queueItem}>
                 {getStatusIcon(item.status)}
-                
+
                 <div className={styles.queueItemInfo}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
                     <Text weight="semibold">
-                      {item.settings.resolution.width}×{item.settings.resolution.height} @{item.settings.fps}fps
+                      {item.settings.resolution.width}×{item.settings.resolution.height} @
+                      {item.settings.fps}fps
                     </Text>
                     <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                       {item.status === 'processing' && item.estimatedTimeRemaining
@@ -326,15 +368,16 @@ export function RenderPanel() {
                         : item.status}
                     </Text>
                   </div>
-                  
+
                   <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    {item.settings.codec} • {item.settings.container.toUpperCase()} • Quality: {item.settings.qualityLevel}
+                    {item.settings.codec} • {item.settings.container.toUpperCase()} • Quality:{' '}
+                    {item.settings.qualityLevel}
                   </Text>
-                  
+
                   {(item.status === 'processing' || item.status === 'queued') && (
                     <ProgressBar value={item.progress / 100} />
                   )}
-                  
+
                   {item.error && (
                     <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
                       Error: {item.error}
@@ -352,7 +395,9 @@ export function RenderPanel() {
                       Cancel
                     </Button>
                   )}
-                  {(item.status === 'completed' || item.status === 'failed' || item.status === 'cancelled') && (
+                  {(item.status === 'completed' ||
+                    item.status === 'failed' ||
+                    item.status === 'cancelled') && (
                     <Button
                       appearance="subtle"
                       icon={<Dismiss24Regular />}

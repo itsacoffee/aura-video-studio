@@ -1,4 +1,4 @@
-import { 
+import {
   Home24Regular,
   VideoClip24Regular,
   Settings24Regular,
@@ -14,7 +14,7 @@ import {
   Image24Regular,
   Lightbulb24Regular,
   DataTrending24Regular,
-  ChannelShare24Regular
+  ChannelShare24Regular,
 } from '@fluentui/react-icons';
 
 export interface NavItem {

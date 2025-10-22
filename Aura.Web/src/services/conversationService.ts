@@ -90,10 +90,7 @@ export const conversationService = {
   /**
    * Send a message with full context
    */
-  async sendMessage(
-    projectId: string,
-    message: string
-  ): Promise<SendMessageResponse> {
+  async sendMessage(projectId: string, message: string): Promise<SendMessageResponse> {
     const response = await fetch(`${API_BASE}/${projectId}/message`, {
       method: 'POST',
       headers: {
@@ -112,18 +109,13 @@ export const conversationService = {
   /**
    * Get conversation history with optional pagination
    */
-  async getHistory(
-    projectId: string,
-    maxMessages?: number
-  ): Promise<GetHistoryResponse> {
+  async getHistory(projectId: string, maxMessages?: number): Promise<GetHistoryResponse> {
     const params = new URLSearchParams();
     if (maxMessages) {
       params.append('maxMessages', maxMessages.toString());
     }
 
-    const response = await fetch(
-      `${API_BASE}/${projectId}/history?${params}`
-    );
+    const response = await fetch(`${API_BASE}/${projectId}/history?${params}`);
 
     if (!response.ok) {
       throw new Error('Failed to get conversation history');
@@ -161,10 +153,7 @@ export const conversationService = {
   /**
    * Update project metadata
    */
-  async updateContext(
-    projectId: string,
-    metadata: UpdateContextRequest
-  ): Promise<void> {
+  async updateContext(projectId: string, metadata: UpdateContextRequest): Promise<void> {
     const response = await fetch(`${API_BASE}/${projectId}/context`, {
       method: 'PUT',
       headers: {
@@ -181,10 +170,7 @@ export const conversationService = {
   /**
    * Record AI decision and user response
    */
-  async recordDecision(
-    projectId: string,
-    decision: RecordDecisionRequest
-  ): Promise<void> {
+  async recordDecision(projectId: string, decision: RecordDecisionRequest): Promise<void> {
     const response = await fetch(`${API_BASE}/${projectId}/decision`, {
       method: 'POST',
       headers: {

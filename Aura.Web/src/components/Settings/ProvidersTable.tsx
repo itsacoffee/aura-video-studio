@@ -14,7 +14,11 @@ import {
   Text,
   Spinner,
 } from '@fluentui/react-components';
-import { CheckmarkCircle20Regular, DismissCircle20Regular, Info20Regular } from '@fluentui/react-icons';
+import {
+  CheckmarkCircle20Regular,
+  DismissCircle20Regular,
+  Info20Regular,
+} from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   container: {
@@ -63,10 +67,10 @@ interface ProviderRequirements {
 }
 
 const reasonCodeDescriptions: Record<string, string> = {
-  'RequiresNvidiaGPU': 'This provider requires an NVIDIA GPU',
+  RequiresNvidiaGPU: 'This provider requires an NVIDIA GPU',
   'MissingApiKey:STABLE_KEY': 'STABLE_KEY API key is not configured. Add it in the API Keys tab.',
-  'InsufficientVRAM': 'GPU does not meet minimum VRAM requirement',
-  'UnsupportedOS': 'Operating system is not supported by this provider',
+  InsufficientVRAM: 'GPU does not meet minimum VRAM requirement',
+  UnsupportedOS: 'Operating system is not supported by this provider',
 };
 
 const getReasonCodeDescription = (code: string): string => {
@@ -83,24 +87,26 @@ const getReasonCodeDescription = (code: string): string => {
 
 const formatRequirements = (requirements: ProviderRequirements): string => {
   const parts: string[] = [];
-  
+
   if (requirements.needsKey && requirements.needsKey.length > 0) {
     parts.push(`API Keys: ${requirements.needsKey.join(', ')}`);
   }
-  
+
   if (requirements.needsGPU) {
     parts.push(`GPU: ${requirements.needsGPU.toUpperCase()}`);
   }
-  
+
   if (requirements.minVRAMMB) {
     const vramGB = (requirements.minVRAMMB / 1024).toFixed(0);
     parts.push(`Min VRAM: ${vramGB}GB`);
   }
-  
+
   if (requirements.os && requirements.os.length > 0) {
-    parts.push(`OS: ${requirements.os.map(o => o.charAt(0).toUpperCase() + o.slice(1)).join(', ')}`);
+    parts.push(
+      `OS: ${requirements.os.map((o) => o.charAt(0).toUpperCase() + o.slice(1)).join(', ')}`
+    );
   }
-  
+
   return parts.join(' • ');
 };
 
@@ -117,13 +123,13 @@ export function ProvidersTable() {
   const fetchCapabilities = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch('/api/providers/capabilities');
       if (!response.ok) {
         throw new Error('Failed to fetch provider capabilities');
       }
-      
+
       const data = await response.json();
       setCapabilities(data);
     } catch (err) {
@@ -145,9 +151,7 @@ export function ProvidersTable() {
   if (error) {
     return (
       <div className={styles.container}>
-        <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
-          Error: {error}
-        </Text>
+        <Text style={{ color: tokens.colorPaletteRedForeground1 }}>Error: {error}</Text>
       </div>
     );
   }
@@ -174,11 +178,7 @@ export function ProvidersTable() {
               <TableCell>
                 <TableCellLayout>
                   {provider.available ? (
-                    <Badge
-                      appearance="filled"
-                      color="success"
-                      icon={<CheckmarkCircle20Regular />}
-                    >
+                    <Badge appearance="filled" color="success" icon={<CheckmarkCircle20Regular />}>
                       Available
                     </Badge>
                   ) : (
@@ -195,11 +195,7 @@ export function ProvidersTable() {
                       }
                       relationship="description"
                     >
-                      <Badge
-                        appearance="outline"
-                        color="danger"
-                        icon={<DismissCircle20Regular />}
-                      >
+                      <Badge appearance="outline" color="danger" icon={<DismissCircle20Regular />}>
                         Unavailable
                       </Badge>
                     </Tooltip>
@@ -223,13 +219,13 @@ export function ProvidersTable() {
                           <ul className={styles.reasonsList}>
                             {provider.reasonCodes.map((code, idx) => (
                               <li key={idx}>
-                                {code.includes('ApiKey') 
+                                {code.includes('ApiKey')
                                   ? 'Add the required API key in the API Keys tab above'
                                   : code.includes('GPU')
-                                  ? 'Use a system with an NVIDIA GPU or select alternative providers'
-                                  : code.includes('VRAM')
-                                  ? 'Use a GPU with more VRAM or reduce quality settings'
-                                  : 'Check system requirements'}
+                                    ? 'Use a system with an NVIDIA GPU or select alternative providers'
+                                    : code.includes('VRAM')
+                                      ? 'Use a GPU with more VRAM or reduce quality settings'
+                                      : 'Check system requirements'}
                               </li>
                             ))}
                           </ul>

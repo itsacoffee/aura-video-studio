@@ -83,8 +83,8 @@ export function RescanPanel() {
     setError(null);
 
     try {
-      const response = await fetch(apiUrl('/api/dependencies/rescan'))
-      
+      const response = await fetch(apiUrl('/api/dependencies/rescan'));
+
       if (response.ok) {
         const data = await response.json();
         setReport(data);
@@ -105,31 +105,19 @@ export function RescanPanel() {
     switch (status) {
       case 'Installed':
         return (
-          <Badge
-            appearance="filled"
-            color="success"
-            icon={<CheckmarkCircle24Filled />}
-          >
+          <Badge appearance="filled" color="success" icon={<CheckmarkCircle24Filled />}>
             Installed
           </Badge>
         );
       case 'Missing':
         return (
-          <Badge
-            appearance="filled"
-            color="danger"
-            icon={<ErrorCircle24Filled />}
-          >
+          <Badge appearance="filled" color="danger" icon={<ErrorCircle24Filled />}>
             Missing
           </Badge>
         );
       case 'PartiallyInstalled':
         return (
-          <Badge
-            appearance="filled"
-            color="warning"
-            icon={<Warning24Filled />}
-          >
+          <Badge appearance="filled" color="warning" icon={<Warning24Filled />}>
             Partially Installed
           </Badge>
         );
@@ -147,27 +135,16 @@ export function RescanPanel() {
       <div className={styles.actions}>
         {dep.status === 'Missing' && (
           <>
-            <Button
-              appearance="primary"
-              icon={<ArrowDownload24Regular />}
-              size="small"
-            >
+            <Button appearance="primary" icon={<ArrowDownload24Regular />} size="small">
               Install
             </Button>
-            <Button
-              appearance="secondary"
-              icon={<Link24Regular />}
-              size="small"
-            >
+            <Button appearance="secondary" icon={<Link24Regular />} size="small">
               Attach
             </Button>
           </>
         )}
         {dep.status === 'PartiallyInstalled' && (
-          <Button
-            appearance="primary"
-            size="small"
-          >
+          <Button appearance="primary" size="small">
             Repair
           </Button>
         )}
@@ -204,7 +181,12 @@ export function RescanPanel() {
       </div>
 
       {error && (
-        <Text style={{ color: tokens.colorPaletteRedForeground1, marginBottom: tokens.spacingVerticalM }}>
+        <Text
+          style={{
+            color: tokens.colorPaletteRedForeground1,
+            marginBottom: tokens.spacingVerticalM,
+          }}
+        >
           Error: {error}
         </Text>
       )}
@@ -212,7 +194,8 @@ export function RescanPanel() {
       {report && (
         <>
           <Text style={{ marginBottom: tokens.spacingVerticalM }}>
-            Found {report.dependencies.filter(d => d.status === 'Installed').length} of {report.dependencies.length} dependencies installed
+            Found {report.dependencies.filter((d) => d.status === 'Installed').length} of{' '}
+            {report.dependencies.length} dependencies installed
           </Text>
 
           <Table>
@@ -238,9 +221,7 @@ export function RescanPanel() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className={styles.statusCell}>
-                      {getStatusBadge(dep.status)}
-                    </div>
+                    <div className={styles.statusCell}>{getStatusBadge(dep.status)}</div>
                   </TableCell>
                   <TableCell>
                     {dep.path && (
@@ -259,9 +240,7 @@ export function RescanPanel() {
                       </Text>
                     )}
                   </TableCell>
-                  <TableCell>
-                    {getActionButtons(dep)}
-                  </TableCell>
+                  <TableCell>{getActionButtons(dep)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -270,7 +249,10 @@ export function RescanPanel() {
       )}
 
       {!report && !isScanning && (
-        <Text>Click "Rescan All Dependencies" to check the status of all dependencies.</Text>
+        <Text>
+          Click &quot;Rescan All Dependencies&quot; to check the status of all
+          dependencies.
+        </Text>
       )}
     </Card>
   );

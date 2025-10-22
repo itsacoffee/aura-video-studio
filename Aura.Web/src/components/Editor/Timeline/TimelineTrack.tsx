@@ -101,11 +101,12 @@ export function TimelineTrack({
   const [scrubTime, setScrubTime] = useState(0);
 
   // Track color based on type
-  const trackColor = type === 'narration' 
-    ? 'rgba(68, 114, 196, 0.8)'  // Blue
-    : type === 'music'
-    ? 'rgba(112, 173, 71, 0.8)'  // Green
-    : 'rgba(237, 125, 49, 0.8)';  // Orange
+  const trackColor =
+    type === 'narration'
+      ? 'rgba(68, 114, 196, 0.8)' // Blue
+      : type === 'music'
+        ? 'rgba(112, 173, 71, 0.8)' // Green
+        : 'rgba(237, 125, 49, 0.8)'; // Orange
 
   // Load waveform data
   useEffect(() => {
@@ -170,30 +171,36 @@ export function TimelineTrack({
   }, [waveformData, muted, selected, trackColor]);
 
   // Handle scrubbing
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!trackContentRef.current || !onSeek) return;
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!trackContentRef.current || !onSeek) return;
 
-    setIsScrubbing(true);
-    const rect = trackContentRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const time = x / zoom;
+      setIsScrubbing(true);
+      const rect = trackContentRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const time = x / zoom;
 
-    setScrubPosition(x);
-    setScrubTime(time);
-    onSeek(time);
-  }, [zoom, onSeek]);
+      setScrubPosition(x);
+      setScrubTime(time);
+      onSeek(time);
+    },
+    [zoom, onSeek]
+  );
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isScrubbing || !trackContentRef.current || !onSeek) return;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isScrubbing || !trackContentRef.current || !onSeek) return;
 
-    const rect = trackContentRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    const time = x / zoom;
+      const rect = trackContentRef.current.getBoundingClientRect();
+      const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+      const time = x / zoom;
 
-    setScrubPosition(x);
-    setScrubTime(time);
-    onSeek(time);
-  }, [isScrubbing, zoom, onSeek]);
+      setScrubPosition(x);
+      setScrubTime(time);
+      onSeek(time);
+    },
+    [isScrubbing, zoom, onSeek]
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsScrubbing(false);
@@ -226,17 +233,8 @@ export function TimelineTrack({
           {type}
         </div>
       </div>
-      <div
-        ref={trackContentRef}
-        className={styles.trackContent}
-        onMouseDown={handleMouseDown}
-      >
-        <canvas
-          ref={canvasRef}
-          className={styles.canvas}
-          width={duration * zoom}
-          height={80}
-        />
+      <div ref={trackContentRef} className={styles.trackContent} onMouseDown={handleMouseDown}>
+        <canvas ref={canvasRef} className={styles.canvas} width={duration * zoom} height={80} />
         {isLoading && (
           <div className={styles.loadingOverlay}>
             <Spinner size="small" label="Loading waveform..." />

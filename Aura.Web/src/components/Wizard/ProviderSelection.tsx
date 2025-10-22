@@ -13,7 +13,12 @@ import {
   Spinner,
   Badge,
 } from '@fluentui/react-components';
-import { Info24Regular, CheckmarkCircle20Filled, Warning20Filled, ArrowDownload20Regular } from '@fluentui/react-icons';
+import {
+  Info24Regular,
+  CheckmarkCircle20Filled,
+  Warning20Filled,
+  ArrowDownload20Regular,
+} from '@fluentui/react-icons';
 import type { PerStageProviderSelection } from '../../state/providers';
 import {
   ScriptProviders,
@@ -61,7 +66,8 @@ interface ProviderSelectionProps {
 export function ProviderSelection({ selection, onSelectionChange }: ProviderSelectionProps) {
   const styles = useStyles();
   const { showFailureToast } = useNotifications();
-  const { engineStatuses, fetchEngines, fetchEngineStatus, installEngine, isLoading } = useEnginesStore();
+  const { engineStatuses, fetchEngines, fetchEngineStatus, installEngine, isLoading } =
+    useEnginesStore();
   const [installing, setInstalling] = useState<string | null>(null);
 
   // Fetch engines on mount
@@ -71,10 +77,10 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
 
   // Map provider values to engine IDs
   const providerToEngineMap: Record<string, string> = {
-    'LocalSD': 'stable-diffusion',
-    'ComfyUI': 'comfyui',
-    'Piper': 'piper',
-    'Mimic3': 'mimic3',
+    LocalSD: 'stable-diffusion',
+    ComfyUI: 'comfyui',
+    Piper: 'piper',
+    Mimic3: 'mimic3',
   };
 
   const updateSelection = (stage: keyof PerStageProviderSelection, value: string) => {
@@ -87,14 +93,14 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
   const getEngineStatus = (providerValue: string) => {
     const engineId = providerToEngineMap[providerValue];
     if (!engineId) return null;
-    
+
     return engineStatuses.get(engineId);
   };
 
   const isEngineInstalled = (providerValue: string): boolean => {
     const engineId = providerToEngineMap[providerValue];
     if (!engineId) return true; // Non-engine providers are always "available"
-    
+
     const status = engineStatuses.get(engineId);
     return status?.isInstalled ?? false;
   };
@@ -168,7 +174,9 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
 
     return (
       <div className={styles.engineStatus}>
-        <Badge appearance="tint" color="success">Installed</Badge>
+        <Badge appearance="tint" color="success">
+          Installed
+        </Badge>
         <Text size={200}>Ready to use</Text>
       </div>
     );
@@ -178,14 +186,17 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
     <Card className={styles.section}>
       <Title3>
         Provider Selection (Per-Stage)
-        <Tooltip content="Choose which provider to use for each stage of video generation" relationship="label">
+        <Tooltip
+          content="Choose which provider to use for each stage of video generation"
+          relationship="label"
+        >
           <Info24Regular className={styles.infoIcon} />
         </Tooltip>
       </Title3>
       <Text size={200} style={{ marginBottom: tokens.spacingVerticalM }}>
         Override the profile defaults by selecting specific providers for each stage
       </Text>
-      
+
       <div className={styles.fieldGroup}>
         <Field
           label={
@@ -214,7 +225,10 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
           label={
             <div style={{ display: 'flex', alignItems: 'center' }}>
               TTS Provider
-              <Tooltip content="Which text-to-speech engine to use for voice narration" relationship="label">
+              <Tooltip
+                content="Which text-to-speech engine to use for voice narration"
+                relationship="label"
+              >
                 <Info24Regular className={styles.infoIcon} />
               </Tooltip>
             </div>
@@ -231,7 +245,7 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
               </Option>
             ))}
           </Dropdown>
-          {(selection.tts === 'Piper' || selection.tts === 'Mimic3') && 
+          {(selection.tts === 'Piper' || selection.tts === 'Mimic3') &&
             renderEngineStatus(selection.tts, selection.tts)}
         </Field>
 
@@ -239,7 +253,10 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
           label={
             <div style={{ display: 'flex', alignItems: 'center' }}>
               Visuals Provider
-              <Tooltip content="Which image provider to use for generating/sourcing visuals" relationship="label">
+              <Tooltip
+                content="Which image provider to use for generating/sourcing visuals"
+                relationship="label"
+              >
                 <Info24Regular className={styles.infoIcon} />
               </Tooltip>
             </div>
@@ -256,7 +273,7 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
               </Option>
             ))}
           </Dropdown>
-          {(selection.visuals === 'LocalSD' || selection.visuals === 'ComfyUI') && 
+          {(selection.visuals === 'LocalSD' || selection.visuals === 'ComfyUI') &&
             renderEngineStatus(selection.visuals, selection.visuals)}
         </Field>
 
@@ -264,7 +281,10 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
           label={
             <div style={{ display: 'flex', alignItems: 'center' }}>
               Upload Provider
-              <Tooltip content="Whether to automatically upload the finished video" relationship="label">
+              <Tooltip
+                content="Whether to automatically upload the finished video"
+                relationship="label"
+              >
                 <Info24Regular className={styles.infoIcon} />
               </Tooltip>
             </div>

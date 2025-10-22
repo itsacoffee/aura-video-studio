@@ -11,17 +11,17 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('Toasts - Error UX', () => {
   it('should support Retry button in failure toasts', () => {
     const { result } = renderHook(() => useNotifications(), { wrapper });
-    
+
     expect(result.current.showFailureToast).toBeDefined();
     expect(typeof result.current.showFailureToast).toBe('function');
   });
 
   it('should support Open Logs button in failure toasts', () => {
     const { result } = renderHook(() => useNotifications(), { wrapper });
-    
+
     const mockOnRetry = vi.fn();
     const mockOnOpenLogs = vi.fn();
-    
+
     const options: FailureToastOptions = {
       title: 'Test Error',
       message: 'Test error message',
@@ -29,14 +29,14 @@ describe('Toasts - Error UX', () => {
       onOpenLogs: mockOnOpenLogs,
     };
 
-    // This will create the toast but we can't easily assert the UI without full component rendering
-    // We're verifying the API shape is correct
+    // This will create the toast but we can&apos;t easily assert the UI without full component rendering
+    // We&apos;re verifying the API shape is correct
     expect(() => result.current.showFailureToast(options)).not.toThrow();
   });
 
   it('should accept correlationId in failure toast options', () => {
     const { result } = renderHook(() => useNotifications(), { wrapper });
-    
+
     const options: FailureToastOptions = {
       title: 'Test Error',
       message: 'Test error message',
@@ -52,7 +52,7 @@ describe('Toasts - Error UX', () => {
 
   it('should work without optional callbacks', () => {
     const { result } = renderHook(() => useNotifications(), { wrapper });
-    
+
     const options: FailureToastOptions = {
       title: 'Test Error',
       message: 'Test error message',
@@ -63,7 +63,7 @@ describe('Toasts - Error UX', () => {
 
   it('should return toasterId for Toaster component', () => {
     const { result } = renderHook(() => useNotifications(), { wrapper });
-    
+
     expect(result.current.toasterId).toBeDefined();
     expect(typeof result.current.toasterId).toBe('string');
   });

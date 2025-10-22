@@ -8,11 +8,7 @@ import {
   Label,
   Card,
 } from '@fluentui/react-components';
-import {
-  Play24Regular,
-  Pause24Regular,
-  Cut24Regular,
-} from '@fluentui/react-icons';
+import { Play24Regular, Pause24Regular, Cut24Regular } from '@fluentui/react-icons';
 import { useTimelineStore } from '../../state/timeline';
 
 const useStyles = makeStyles({
@@ -191,9 +187,7 @@ export function TimelineView() {
   };
 
   const maxDuration = Math.max(
-    ...tracks.flatMap((t) =>
-      t.clips.map((c) => c.timelineStart + (c.sourceOut - c.sourceIn))
-    ),
+    ...tracks.flatMap((t) => t.clips.map((c) => c.timelineStart + (c.sourceOut - c.sourceIn))),
     currentTime + 10
   );
 
@@ -208,21 +202,22 @@ export function TimelineView() {
             Pause
           </Button>
         </div>
-        
+
         <div className={styles.controls}>
-          <Button
-            icon={<Cut24Regular />}
-            onClick={handleSplitClick}
-            disabled={!selectedClipId}
-          >
+          <Button icon={<Cut24Regular />} onClick={handleSplitClick} disabled={!selectedClipId}>
             Split (S)
           </Button>
-          <Button onClick={handleAddMarker}>
-            Add Marker
-          </Button>
+          <Button onClick={handleAddMarker}>Add Marker</Button>
         </div>
 
-        <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center', marginLeft: 'auto' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: tokens.spacingHorizontalM,
+            alignItems: 'center',
+            marginLeft: 'auto',
+          }}
+        >
           <Label>Snapping</Label>
           <Switch
             checked={snappingEnabled}
@@ -303,13 +298,17 @@ export function TimelineView() {
       </div>
 
       <Card style={{ padding: tokens.spacingVerticalM }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: tokens.fontSizeBase200 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: tokens.fontSizeBase200,
+          }}
+        >
           <span>Time: {currentTime.toFixed(2)}s</span>
           <span>Zoom: {(zoom * 100).toFixed(0)}%</span>
           <span>Snapping: {snappingEnabled ? 'On' : 'Off'}</span>
-          <span>
-            Shortcuts: Space (Play/Pause) | S (Split) | Q/W (Seek) | +/- (Zoom)
-          </span>
+          <span>Shortcuts: Space (Play/Pause) | S (Split) | Q/W (Seek) | +/- (Zoom)</span>
         </div>
       </Card>
     </div>

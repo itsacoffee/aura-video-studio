@@ -223,7 +223,9 @@ export function RenderQueue() {
   const handleRetryItem = (id: string) => {
     setQueueItems(
       queueItems.map((item) =>
-        item.id === id ? { ...item, status: 'queued' as const, progress: 0, error: undefined } : item
+        item.id === id
+          ? { ...item, status: 'queued' as const, progress: 0, error: undefined }
+          : item
       )
     );
   };
@@ -288,7 +290,11 @@ export function RenderQueue() {
         <Caption1>
           {completedCount} of {queueItems.length} exports complete, {overallProgress}% overall
         </Caption1>
-        <ProgressBar value={overallProgress} max={100} style={{ marginTop: tokens.spacingVerticalM }} />
+        <ProgressBar
+          value={overallProgress}
+          max={100}
+          style={{ marginTop: tokens.spacingVerticalM }}
+        />
         <div className={styles.progressStats}>
           <div className={styles.stat}>
             <Caption1>Queued</Caption1>
@@ -320,7 +326,9 @@ export function RenderQueue() {
             <ProgressBar value={currentRender.progress} max={100} />
             <div className={styles.detailRow}>
               <Caption1>Progress: {currentRender.progress}%</Caption1>
-              <Caption1>Time remaining: {formatTime(currentRender.estimatedTimeRemaining)}</Caption1>
+              <Caption1>
+                Time remaining: {formatTime(currentRender.estimatedTimeRemaining)}
+              </Caption1>
             </div>
 
             <Accordion collapsible>
@@ -330,7 +338,8 @@ export function RenderQueue() {
                   <Caption1>Scene 3/10: 45%</Caption1>
                   <Caption1>Encoding speed: 120 FPS (4.2x realtime)</Caption1>
                   <div className={styles.logViewer} style={{ marginTop: tokens.spacingVerticalM }}>
-                    frame= 1234 fps=120 q=28.0 size= 12288kB time=00:00:41.13 bitrate=2446.2kbits/s speed=4.2x
+                    frame= 1234 fps=120 q=28.0 size= 12288kB time=00:00:41.13 bitrate=2446.2kbits/s
+                    speed=4.2x
                   </div>
                 </AccordionPanel>
               </AccordionItem>

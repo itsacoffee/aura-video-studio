@@ -49,9 +49,7 @@ const getIssueLabel = (issueType?: string): string => {
   return issueType.replace(/([A-Z])/g, ' $1').trim();
 };
 
-export const PacingPanel: React.FC<PacingPanelProps> = ({
-  analysis,
-}) => {
+export const PacingPanel: React.FC<PacingPanelProps> = ({ analysis }) => {
   const styles = useStyles();
 
   if (!analysis) {
@@ -66,11 +64,7 @@ export const PacingPanel: React.FC<PacingPanelProps> = ({
           <Body1>Engagement Score:</Body1>
           <Body1Strong>{Math.round(analysis.overallEngagementScore * 100)}%</Body1Strong>
         </div>
-        <ProgressBar
-          value={analysis.overallEngagementScore}
-          max={1}
-          thickness="large"
-        />
+        <ProgressBar value={analysis.overallEngagementScore} max={1} thickness="large" />
         <div className={styles.metric}>
           <Body1>Content Density:</Body1>
           <Body1Strong>{analysis.contentDensity.toFixed(1)} words/sec</Body1Strong>
@@ -83,21 +77,15 @@ export const PacingPanel: React.FC<PacingPanelProps> = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Body1Strong>Scene {rec.sceneIndex + 1}</Body1Strong>
             {rec.issueType && (
-              <Caption1 className={styles.issueWarning}>
-                {getIssueLabel(rec.issueType)}
-              </Caption1>
+              <Caption1 className={styles.issueWarning}>{getIssueLabel(rec.issueType)}</Caption1>
             )}
           </div>
-          
+
           <div className={styles.metric}>
             <Body1>Engagement:</Body1>
             <Body1Strong>{Math.round(rec.engagementScore * 100)}%</Body1Strong>
           </div>
-          <ProgressBar
-            value={rec.engagementScore}
-            max={1}
-            thickness="medium"
-          />
+          <ProgressBar value={rec.engagementScore} max={1} thickness="medium" />
 
           <div className={styles.metric}>
             <Caption1>Current Duration:</Caption1>
@@ -108,9 +96,7 @@ export const PacingPanel: React.FC<PacingPanelProps> = ({
             <Caption1>{rec.recommendedDuration}</Caption1>
           </div>
 
-          <Body1 style={{ marginTop: tokens.spacingVerticalS }}>
-            {rec.reasoning}
-          </Body1>
+          <Body1 style={{ marginTop: tokens.spacingVerticalS }}>{rec.reasoning}</Body1>
         </Card>
       ))}
     </div>

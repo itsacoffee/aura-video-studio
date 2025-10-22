@@ -169,10 +169,9 @@ export const assetService = {
    * Add asset to collection
    */
   async addToCollection(collectionId: string, assetId: string): Promise<void> {
-    const response = await fetch(
-      `${API_BASE}/collections/${collectionId}/assets/${assetId}`,
-      { method: 'POST' }
-    );
+    const response = await fetch(`${API_BASE}/collections/${collectionId}/assets/${assetId}`, {
+      method: 'POST',
+    });
 
     if (!response.ok) throw new Error('Failed to add asset to collection');
   },

@@ -127,12 +127,13 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
     if (!activeJob || notificationShown) return;
 
     if (activeJob.status === 'Done') {
-      const duration = activeJob.finishedAt && activeJob.startedAt
-        ? formatDuration(activeJob.startedAt, activeJob.finishedAt)
-        : '';
-      
+      const duration =
+        activeJob.finishedAt && activeJob.startedAt
+          ? formatDuration(activeJob.startedAt, activeJob.finishedAt)
+          : '';
+
       const firstArtifact = activeJob.artifacts[0];
-      
+
       showSuccessToast({
         title: 'Render complete',
         message: `Your video has been generated successfully!`,
@@ -141,9 +142,11 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
           navigate('/projects');
           onClose();
         },
-        onOpenFolder: firstArtifact ? () => {
-          openFolder(firstArtifact.path);
-        } : undefined,
+        onOpenFolder: firstArtifact
+          ? () => {
+              openFolder(firstArtifact.path);
+            }
+          : undefined,
       });
       setNotificationShown(true);
     } else if (activeJob.status === 'Failed') {
@@ -167,7 +170,15 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
       });
       setNotificationShown(true);
     }
-  }, [activeJob, notificationShown, showSuccessToast, showFailureToast, navigate, onClose, getFailureDetails]);
+  }, [
+    activeJob,
+    notificationShown,
+    showSuccessToast,
+    showFailureToast,
+    navigate,
+    onClose,
+    getFailureDetails,
+  ]);
 
   const formatDuration = (startedAt: string, finishedAt: string) => {
     const start = new Date(startedAt);
@@ -203,11 +214,7 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
     <div className={styles.panel}>
       <div className={styles.header}>
         <Title2>Video Generation</Title2>
-        <Button
-          appearance="subtle"
-          icon={<Dismiss24Regular />}
-          onClick={onClose}
-        />
+        <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />
       </div>
 
       <div className={styles.content}>
@@ -247,10 +254,10 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
                       isFailed
                         ? styles.stepIconFailed
                         : isDone
-                        ? styles.stepIconDone
-                        : isActive
-                        ? styles.stepIconActive
-                        : ''
+                          ? styles.stepIconDone
+                          : isActive
+                            ? styles.stepIconActive
+                            : ''
                     }`}
                   >
                     {isFailed ? (
@@ -284,16 +291,11 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
         {activeJob.logs.length > 0 && (
           <Card>
             <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
-              <Button
-                appearance="transparent"
-                onClick={() => setShowLogs(!showLogs)}
-              >
+              <Button appearance="transparent" onClick={() => setShowLogs(!showLogs)}>
                 {showLogs ? 'Hide' : 'Show'} Logs ({activeJob.logs.length})
               </Button>
               {showLogs && (
-                <div className={styles.logs}>
-                  {activeJob.logs.slice(-20).join('\n')}
-                </div>
+                <div className={styles.logs}>{activeJob.logs.slice(-20).join('\n')}</div>
               )}
             </div>
           </Card>
@@ -337,11 +339,7 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
 
       <div className={styles.actions}>
         {activeJob.status === 'Done' && (
-          <Button
-            appearance="primary"
-            icon={<ArrowRight24Regular />}
-            onClick={onClose}
-          >
+          <Button appearance="primary" icon={<ArrowRight24Regular />} onClick={onClose}>
             Done
           </Button>
         )}

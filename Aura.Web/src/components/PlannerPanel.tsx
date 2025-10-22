@@ -206,11 +206,7 @@ export const PlannerPanel: React.FC<PlannerPanelProps> = ({
             )}
           </div>
           {!isEditing && (
-            <Button
-              appearance="subtle"
-              icon={<Edit24Regular />}
-              onClick={handleEdit}
-            >
+            <Button appearance="subtle" icon={<Edit24Regular />} onClick={handleEdit}>
               Edit
             </Button>
           )}
@@ -230,11 +226,7 @@ export const PlannerPanel: React.FC<PlannerPanelProps> = ({
               <Button appearance="secondary" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button
-                appearance="primary"
-                icon={<Checkmark24Regular />}
-                onClick={handleSave}
-              >
+              <Button appearance="primary" icon={<Checkmark24Regular />} onClick={handleSave}>
                 Save Changes
               </Button>
             </div>
@@ -246,7 +238,9 @@ export const PlannerPanel: React.FC<PlannerPanelProps> = ({
         {recommendations.explainabilityNotes && (
           <div className={styles.explainability}>
             <Text size={200}>
-              <Info24Regular style={{ verticalAlign: 'middle', marginRight: tokens.spacingHorizontalXS }} />
+              <Info24Regular
+                style={{ verticalAlign: 'middle', marginRight: tokens.spacingHorizontalXS }}
+              />
               {recommendations.explainabilityNotes}
             </Text>
           </div>
@@ -267,7 +261,9 @@ export const PlannerPanel: React.FC<PlannerPanelProps> = ({
           </div>
           <div className={styles.metricItem}>
             <Text className={styles.metricLabel}>B-Roll %</Text>
-            <Text className={styles.metricValue}>{recommendations.bRollPercentage.toFixed(0)}%</Text>
+            <Text className={styles.metricValue}>
+              {recommendations.bRollPercentage.toFixed(0)}%
+            </Text>
           </div>
           <div className={styles.metricItem}>
             <Text className={styles.metricLabel}>Reading Level</Text>

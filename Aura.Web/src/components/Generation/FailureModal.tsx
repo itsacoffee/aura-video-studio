@@ -134,20 +134,14 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
     window.location.href = '/dependencies';
   };
 
-  const isFFmpegError = failure.errorCode?.includes('FFMPEG') || 
-                        failure.message.toLowerCase().includes('ffmpeg');
+  const isFFmpegError =
+    failure.errorCode?.includes('FFMPEG') || failure.message.toLowerCase().includes('ffmpeg');
 
   return (
     <Dialog open={open} onOpenChange={(_, data) => data.open || onClose()}>
       <DialogSurface style={{ maxWidth: '600px' }}>
         <DialogTitle
-          action={
-            <Button
-              appearance="subtle"
-              icon={<Dismiss24Regular />}
-              onClick={onClose}
-            />
-          }
+          action={<Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />}
         >
           Generation Failed
         </DialogTitle>
@@ -167,7 +161,9 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
             {/* Correlation ID */}
             <div className={styles.section}>
               <Title3>Correlation ID</Title3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+              >
                 <span className={styles.correlationId}>{failure.correlationId}</span>
                 <Button
                   size="small"
@@ -212,11 +208,7 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
           </DialogContent>
         </DialogBody>
         <DialogActions>
-          <Button
-            appearance="secondary"
-            icon={<Folder24Regular />}
-            onClick={handleViewFullLog}
-          >
+          <Button appearance="secondary" icon={<Folder24Regular />} onClick={handleViewFullLog}>
             View Full Log
           </Button>
           {isFFmpegError && (
@@ -238,11 +230,7 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
               </Button>
             </>
           )}
-          <Button
-            appearance="primary"
-            icon={<ArrowClockwise24Regular />}
-            onClick={handleRetry}
-          >
+          <Button appearance="primary" icon={<ArrowClockwise24Regular />} onClick={handleRetry}>
             Close & Retry
           </Button>
         </DialogActions>

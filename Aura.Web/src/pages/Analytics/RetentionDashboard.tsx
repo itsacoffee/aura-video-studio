@@ -14,7 +14,10 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { analyticsService, type RetentionPrediction } from '../../services/analytics/PlatformService';
+import {
+  analyticsService,
+  type RetentionPrediction,
+} from '../../services/analytics/PlatformService';
 
 const useStyles = makeStyles({
   container: {
@@ -159,17 +162,11 @@ export function RetentionDashboard() {
           />
         </Field>
 
-        <Button
-          appearance="primary"
-          onClick={handleAnalyze}
-          disabled={loading || !content.trim()}
-        >
+        <Button appearance="primary" onClick={handleAnalyze} disabled={loading || !content.trim()}>
           {loading ? <Spinner size="tiny" /> : 'Analyze Retention'}
         </Button>
 
-        {error && (
-          <Text style={{ color: tokens.colorPaletteRedForeground1 }}>{error}</Text>
-        )}
+        {error && <Text style={{ color: tokens.colorPaletteRedForeground1 }}>{error}</Text>}
       </Card>
 
       {prediction && (

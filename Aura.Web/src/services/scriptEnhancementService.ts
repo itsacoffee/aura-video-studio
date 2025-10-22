@@ -285,9 +285,7 @@ export const scriptEnhancementService = {
   /**
    * Analyze script structure and quality
    */
-  async analyzeScript(
-    request: ScriptAnalysisRequest
-  ): Promise<ScriptAnalysisResponse> {
+  async analyzeScript(request: ScriptAnalysisRequest): Promise<ScriptAnalysisResponse> {
     const response = await fetch(`${API_BASE}/analyze`, {
       method: 'POST',
       headers: {
@@ -306,9 +304,7 @@ export const scriptEnhancementService = {
   /**
    * Apply comprehensive enhancements to a script
    */
-  async enhanceScript(
-    request: ScriptEnhanceRequest
-  ): Promise<ScriptEnhanceResponse> {
+  async enhanceScript(request: ScriptEnhanceRequest): Promise<ScriptEnhanceResponse> {
     const response = await fetch(`${API_BASE}/enhance`, {
       method: 'POST',
       headers: {
@@ -327,9 +323,7 @@ export const scriptEnhancementService = {
   /**
    * Optimize the opening hook (first 15 seconds)
    */
-  async optimizeHook(
-    request: OptimizeHookRequest
-  ): Promise<OptimizeHookResponse> {
+  async optimizeHook(request: OptimizeHookRequest): Promise<OptimizeHookResponse> {
     const response = await fetch(`${API_BASE}/optimize-hook`, {
       method: 'POST',
       headers: {
@@ -348,9 +342,7 @@ export const scriptEnhancementService = {
   /**
    * Analyze and optimize emotional arc
    */
-  async analyzeEmotionalArc(
-    request: EmotionalArcRequest
-  ): Promise<EmotionalArcResponse> {
+  async analyzeEmotionalArc(request: EmotionalArcRequest): Promise<EmotionalArcResponse> {
     const response = await fetch(`${API_BASE}/emotional-arc`, {
       method: 'POST',
       headers: {
@@ -428,9 +420,7 @@ export const scriptEnhancementService = {
   /**
    * Apply specific storytelling framework
    */
-  async applyFramework(
-    request: ApplyFrameworkRequest
-  ): Promise<ApplyFrameworkResponse> {
+  async applyFramework(request: ApplyFrameworkRequest): Promise<ApplyFrameworkResponse> {
     const response = await fetch(`${API_BASE}/apply-framework`, {
       method: 'POST',
       headers: {
@@ -449,9 +439,7 @@ export const scriptEnhancementService = {
   /**
    * Get individual enhancement suggestions
    */
-  async getSuggestions(
-    request: GetSuggestionsRequest
-  ): Promise<GetSuggestionsResponse> {
+  async getSuggestions(request: GetSuggestionsRequest): Promise<GetSuggestionsResponse> {
     const response = await fetch(`${API_BASE}/suggestions`, {
       method: 'POST',
       headers: {
@@ -470,9 +458,7 @@ export const scriptEnhancementService = {
   /**
    * Compare two script versions
    */
-  async compareVersions(
-    request: CompareVersionsRequest
-  ): Promise<CompareVersionsResponse> {
+  async compareVersions(request: CompareVersionsRequest): Promise<CompareVersionsResponse> {
     const response = await fetch(`${API_BASE}/compare-versions`, {
       method: 'POST',
       headers: {
@@ -537,20 +523,15 @@ export const scriptEnhancementService = {
     const descriptions: Record<StoryFrameworkType, string> = {
       [StoryFrameworkType.HeroJourney]:
         "Hero's Journey - Classic narrative structure following a protagonist's transformation",
-      [StoryFrameworkType.ThreeAct]:
-        'Three-Act Structure - Setup, confrontation, and resolution',
+      [StoryFrameworkType.ThreeAct]: 'Three-Act Structure - Setup, confrontation, and resolution',
       [StoryFrameworkType.ProblemSolution]:
         'Problem-Solution - Identify problem, explore impact, present solution',
-      [StoryFrameworkType.AIDA]:
-        'AIDA - Attention, Interest, Desire, Action marketing framework',
+      [StoryFrameworkType.AIDA]: 'AIDA - Attention, Interest, Desire, Action marketing framework',
       [StoryFrameworkType.BeforeAfter]:
         'Before-After-Bridge - Show transformation and how to achieve it',
-      [StoryFrameworkType.Comparison]:
-        'Comparison - Compare and contrast different options',
-      [StoryFrameworkType.Chronological]:
-        'Chronological - Time-based narrative sequence',
-      [StoryFrameworkType.CauseEffect]:
-        'Cause-Effect - Explain causal relationships',
+      [StoryFrameworkType.Comparison]: 'Comparison - Compare and contrast different options',
+      [StoryFrameworkType.Chronological]: 'Chronological - Time-based narrative sequence',
+      [StoryFrameworkType.CauseEffect]: 'Cause-Effect - Explain causal relationships',
     };
     return descriptions[framework];
   },

@@ -43,9 +43,7 @@ export const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({
     <div className="w-full">
       {label && (
         <div className="flex justify-between items-center mb-1">
-          <span className={`font-medium ${sizeClasses[size].text}`}>
-            {label}
-          </span>
+          <span className={`font-medium ${sizeClasses[size].text}`}>{label}</span>
           {showPercentage && (
             <span className={`${getTextColor(confidence)} ${sizeClasses[size].text}`}>
               {percentage}% {getConfidenceLevel(confidence)}

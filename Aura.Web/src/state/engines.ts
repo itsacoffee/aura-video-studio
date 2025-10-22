@@ -1,5 +1,11 @@
 import { create } from 'zustand';
-import type { EngineManifestEntry, EngineStatus, EngineInstance, AttachEngineRequest, ReconfigureEngineRequest } from '../types/engines';
+import type {
+  EngineManifestEntry,
+  EngineStatus,
+  EngineInstance,
+  AttachEngineRequest,
+  ReconfigureEngineRequest,
+} from '../types/engines';
 import { apiUrl } from '../config/api';
 
 interface EnginesState {
@@ -8,7 +14,7 @@ interface EnginesState {
   instances: EngineInstance[];
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   fetchEngines: () => Promise<void>;
   fetchEngineStatus: (engineId: string) => Promise<void>;
@@ -44,9 +50,9 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
       const data = await response.json();
       set({ engines: data.engines, isLoading: false });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Failed to fetch engines',
-        isLoading: false 
+        isLoading: false,
       });
     }
   },
@@ -58,7 +64,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         throw new Error(`Failed to fetch status: ${response.statusText}`);
       }
       const data = await response.json();
-      
+
       // Transform API response to match EngineStatus interface
       const status: EngineStatus = {
         engineId: data.engineId,
@@ -74,7 +80,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         logsPath: data.logsPath,
         messages: data.messages || [],
       };
-      
+
       const newStatuses = new Map(get().engineStatuses);
       newStatuses.set(engineId, status);
       set({ engineStatuses: newStatuses });
@@ -91,19 +97,19 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId, version, port }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Installation failed');
       }
-      
+
       await get().fetchEngines();
       await get().fetchEngineStatus(engineId);
       set({ isLoading: false });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Installation failed',
-        isLoading: false 
+        isLoading: false,
       });
       throw error;
     }
@@ -116,12 +122,12 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Verification failed');
       }
-      
+
       const result = await response.json();
       return result;
     } catch (error) {
@@ -138,19 +144,19 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Repair failed');
       }
-      
+
       await get().fetchEngines();
       await get().fetchEngineStatus(engineId);
       set({ isLoading: false });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Repair failed',
-        isLoading: false 
+        isLoading: false,
       });
       throw error;
     }
@@ -164,20 +170,20 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Removal failed');
       }
-      
+
       await get().fetchEngines();
       const newStatuses = new Map(get().engineStatuses);
       newStatuses.delete(engineId);
       set({ engineStatuses: newStatuses, isLoading: false });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Removal failed',
-        isLoading: false 
+        isLoading: false,
       });
       throw error;
     }
@@ -191,18 +197,18 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId, port, args }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to start engine');
       }
-      
+
       await get().fetchEngineStatus(engineId);
       set({ isLoading: false });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Failed to start engine',
-        isLoading: false 
+        isLoading: false,
       });
       throw error;
     }
@@ -216,18 +222,18 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to stop engine');
       }
-      
+
       await get().fetchEngineStatus(engineId);
       set({ isLoading: false });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Failed to stop engine',
-        isLoading: false 
+        isLoading: false,
       });
       throw error;
     }
@@ -240,12 +246,12 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
   getDiagnostics: async (engineId: string) => {
     try {
       const response = await fetch(apiUrl(`/api/engines/diagnostics/engine?engineId=${engineId}`));
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to get diagnostics');
       }
-      
+
       const result = await response.json();
       return result;
     } catch (error) {
@@ -276,18 +282,18 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to attach engine');
       }
-      
+
       await get().fetchInstances();
       set({ isLoading: false });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Failed to attach engine',
-        isLoading: false 
+        isLoading: false,
       });
       throw error;
     }
@@ -301,18 +307,18 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to reconfigure engine');
       }
-      
+
       await get().fetchInstances();
       set({ isLoading: false });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Failed to reconfigure engine',
-        isLoading: false 
+        isLoading: false,
       });
       throw error;
     }
@@ -325,7 +331,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to open folder');
@@ -343,12 +349,12 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ engineId }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to get web UI URL');
       }
-      
+
       const data = await response.json();
       return data.url;
     } catch (error) {

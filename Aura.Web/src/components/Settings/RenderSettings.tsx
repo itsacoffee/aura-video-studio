@@ -106,7 +106,11 @@ export function RenderSettings() {
   };
 
   const handleClearCache = () => {
-    if (confirm('Are you sure you want to clear the render cache? This will remove all cached renders.')) {
+    if (
+      confirm(
+        'Are you sure you want to clear the render cache? This will remove all cached renders.'
+      )
+    ) {
       // TODO: Clear cache via API
     }
   };
@@ -136,7 +140,8 @@ export function RenderSettings() {
             />
           </Field>
           <Caption1>
-            Use GPU for video encoding for 5-10x faster rendering. Automatically detects available hardware encoders.
+            Use GPU for video encoding for 5-10x faster rendering. Automatically detects available
+            hardware encoders.
           </Caption1>
 
           {detectedGpu && (
@@ -180,7 +185,8 @@ export function RenderSettings() {
             />
           </Field>
           <Caption1>
-            Default quality level for all exports. Higher quality means slower rendering but better output.
+            Default quality level for all exports. Higher quality means slower rendering but better
+            output.
           </Caption1>
 
           <Field label="Default Export Preset">
@@ -212,7 +218,8 @@ export function RenderSettings() {
             />
           </Field>
           <Caption1>
-            Automatically generate low-resolution preview after every major timeline change for quick review.
+            Automatically generate low-resolution preview after every major timeline change for
+            quick review.
           </Caption1>
 
           {autoPreview && (
@@ -241,16 +248,15 @@ export function RenderSettings() {
             />
           </Field>
           <Caption1>
-            Only re-render modified scenes when exporting, saving significant time on minor edits. Caches rendered scenes for reuse.
+            Only re-render modified scenes when exporting, saving significant time on minor edits.
+            Caches rendered scenes for reuse.
           </Caption1>
 
           {smartRendering && (
             <>
               <Field label="Render Cache Location">
                 <div className={styles.pathField}>
-                  <Text style={{ flex: 1, padding: tokens.spacingVerticalS }}>
-                    {cacheLocation}
-                  </Text>
+                  <Text style={{ flex: 1, padding: tokens.spacingVerticalS }}>{cacheLocation}</Text>
                   <Button
                     appearance="secondary"
                     icon={<FolderOpen24Regular />}
@@ -306,7 +312,9 @@ export function RenderSettings() {
           <Field label="Max Parallel Exports">
             <Dropdown
               value={maxParallelExports.toString()}
-              onOptionSelect={(_, data) => setMaxParallelExports(parseInt(data.optionValue as string))}
+              onOptionSelect={(_, data) =>
+                setMaxParallelExports(parseInt(data.optionValue as string))
+              }
             >
               <Option value="1">1 (Recommended)</Option>
               <Option value="2">2</Option>
@@ -315,7 +323,8 @@ export function RenderSettings() {
             </Dropdown>
           </Field>
           <Caption1>
-            Number of exports to process simultaneously. Higher values may cause resource exhaustion.
+            Number of exports to process simultaneously. Higher values may cause resource
+            exhaustion.
           </Caption1>
 
           <Field label="Auto-Retry Failed Exports">
@@ -333,9 +342,7 @@ export function RenderSettings() {
               label={desktopNotifications ? 'Enabled' : 'Disabled'}
             />
           </Field>
-          <Caption1>
-            Show desktop notification when exports complete.
-          </Caption1>
+          <Caption1>Show desktop notification when exports complete.</Caption1>
         </Card>
       </div>
 
@@ -349,9 +356,7 @@ export function RenderSettings() {
           >
             Show FFmpeg Log
           </Button>
-          <Caption1>
-            View FFmpeg output logs for troubleshooting encoding issues.
-          </Caption1>
+          <Caption1>View FFmpeg output logs for troubleshooting encoding issues.</Caption1>
         </Card>
       </div>
 

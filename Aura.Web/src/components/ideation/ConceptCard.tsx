@@ -8,11 +8,7 @@ import {
   Badge,
   Button,
 } from '@fluentui/react-components';
-import {
-  ThumbLikeRegular,
-  ThumbDislikeRegular,
-  ArrowExpandRegular,
-} from '@fluentui/react-icons';
+import { ThumbLikeRegular, ThumbDislikeRegular, ArrowExpandRegular } from '@fluentui/react-icons';
 import type { ConceptIdea } from '../../services/ideationService';
 import { ideationService } from '../../services/ideationService';
 
@@ -85,11 +81,7 @@ interface ConceptCardProps {
   onExpand?: (concept: ConceptIdea) => void;
 }
 
-export const ConceptCard: React.FC<ConceptCardProps> = ({
-  concept,
-  onSelect,
-  onExpand,
-}) => {
+export const ConceptCard: React.FC<ConceptCardProps> = ({ concept, onSelect, onExpand }) => {
   const styles = useStyles();
   const scoreColor = ideationService.getAppealScoreColor(concept.appealScore);
   const scoreText = ideationService.formatAppealScore(concept.appealScore);
@@ -135,9 +127,7 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({
         {concept.hook && (
           <div className={styles.section}>
             <Text className={styles.sectionTitle}>Hook:</Text>
-            <Text style={{ color: tokens.colorBrandForeground1 }}>
-              "{concept.hook}"
-            </Text>
+            <Text style={{ color: tokens.colorBrandForeground1 }}>&quot;{concept.hook}&quot;</Text>
           </div>
         )}
 
@@ -168,20 +158,13 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({
         <div className={styles.footer}>
           <div className={styles.scoreContainer}>
             <Text className={styles.scoreLabel}>Appeal:</Text>
-            <Badge
-              appearance="filled"
-              style={{ backgroundColor: scoreColor, color: 'white' }}
-            >
+            <Badge appearance="filled" style={{ backgroundColor: scoreColor, color: 'white' }}>
               {scoreText} ({concept.appealScore})
             </Badge>
           </div>
 
           <div className={styles.actions}>
-            <Button
-              appearance="subtle"
-              icon={<ArrowExpandRegular />}
-              onClick={handleExpand}
-            >
+            <Button appearance="subtle" icon={<ArrowExpandRegular />} onClick={handleExpand}>
               Expand
             </Button>
           </div>

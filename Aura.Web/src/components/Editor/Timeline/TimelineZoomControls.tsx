@@ -2,18 +2,8 @@
  * Timeline zoom controls component
  */
 
-import {
-  makeStyles,
-  tokens,
-  Button,
-  Slider,
-  Label,
-} from '@fluentui/react-components';
-import {
-  ZoomIn24Regular,
-  ZoomOut24Regular,
-  ZoomFit24Regular,
-} from '@fluentui/react-icons';
+import { makeStyles, tokens, Button, Slider, Label } from '@fluentui/react-components';
+import { ZoomIn24Regular, ZoomOut24Regular, ZoomFit24Regular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   container: {
@@ -59,7 +49,7 @@ export function TimelineZoomControls({
 
   // Convert zoom to logarithmic scale for natural feel
   const zoomToSlider = (z: number): number => {
-    return Math.log(z / minZoom) / Math.log(maxZoom / minZoom) * 100;
+    return (Math.log(z / minZoom) / Math.log(maxZoom / minZoom)) * 100;
   };
 
   const sliderToZoom = (value: number): number => {

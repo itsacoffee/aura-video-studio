@@ -16,11 +16,7 @@ import {
   MessageBarBody,
   MessageBarTitle,
 } from '@fluentui/react-components';
-import {
-  Warning24Regular,
-  Info24Regular,
-  ErrorCircle24Regular,
-} from '@fluentui/react-icons';
+import { Warning24Regular, Info24Regular, ErrorCircle24Regular } from '@fluentui/react-icons';
 import { QualityIssue } from '../../../services/editingIntelligenceService';
 
 interface QualityPanelProps {
@@ -55,11 +51,16 @@ const useStyles = makeStyles({
 
 const getSeverityColor = (severity: string): 'danger' | 'warning' | 'informative' | 'success' => {
   switch (severity) {
-    case 'Critical': return 'danger';
-    case 'Error': return 'danger';
-    case 'Warning': return 'warning';
-    case 'Info': return 'informative';
-    default: return 'informative';
+    case 'Critical':
+      return 'danger';
+    case 'Error':
+      return 'danger';
+    case 'Warning':
+      return 'warning';
+    case 'Info':
+      return 'informative';
+    default:
+      return 'informative';
   }
 };
 
@@ -82,9 +83,9 @@ const getIssueTypeLabel = (type: string): string => {
 export const QualityPanel: React.FC<QualityPanelProps> = ({ issues }) => {
   const styles = useStyles();
 
-  const criticalIssues = issues.filter(i => i.severity === 'Critical');
-  const errorIssues = issues.filter(i => i.severity === 'Error');
-  const warningIssues = issues.filter(i => i.severity === 'Warning');
+  const criticalIssues = issues.filter((i) => i.severity === 'Critical');
+  const errorIssues = issues.filter((i) => i.severity === 'Error');
+  const warningIssues = issues.filter((i) => i.severity === 'Warning');
 
   if (issues.length === 0) {
     return (
@@ -130,7 +131,9 @@ export const QualityPanel: React.FC<QualityPanelProps> = ({ issues }) => {
 
           {issue.fixSuggestion && (
             <div className={styles.fixSuggestion}>
-              <Caption1><strong>Fix:</strong> {issue.fixSuggestion}</Caption1>
+              <Caption1>
+                <strong>Fix:</strong> {issue.fixSuggestion}
+              </Caption1>
             </div>
           )}
         </Card>
@@ -139,9 +142,9 @@ export const QualityPanel: React.FC<QualityPanelProps> = ({ issues }) => {
       <Card className={styles.issueCard}>
         <Body1Strong>Summary</Body1Strong>
         <Body1 style={{ marginTop: tokens.spacingVerticalS }}>
-          • {criticalIssues.length} Critical Issues<br />
-          • {errorIssues.length} Errors<br />
-          • {warningIssues.length} Warnings
+          • {criticalIssues.length} Critical Issues
+          <br />• {errorIssues.length} Errors
+          <br />• {warningIssues.length} Warnings
         </Body1>
       </Card>
     </div>

@@ -136,7 +136,7 @@ export function CreatePage() {
     setIsRunningPreflight(true);
     try {
       const response = await fetch(`/api/preflight?profile=${encodeURIComponent(selectedProfile)}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         setPreflightReport(data);
@@ -154,14 +154,14 @@ export function CreatePage() {
   const handleApplySafeDefaults = async () => {
     try {
       const response = await fetch(apiUrl('/api/preflight/safe-defaults'));
-      
+
       if (response.ok) {
         // Apply safe defaults
         setSelectedProfile('Free-Only');
-        
+
         // Re-run preflight check
         await handleRunPreflight();
-        
+
         alert('Applied safe defaults: Free-Only mode.');
       } else {
         alert('Failed to get safe defaults');
@@ -176,13 +176,16 @@ export function CreatePage() {
     setGenerating(true);
     try {
       console.log('Starting video generation...');
-      
+
       // Validate and warn about legacy enum values
       validateAndWarnEnums(brief, planSpec);
-      
+
       // Normalize enums to canonical values before sending to API
-      const { brief: normalizedBrief, planSpec: normalizedPlanSpec } = normalizeEnumsForApi(brief, planSpec);
-      
+      const { brief: normalizedBrief, planSpec: normalizedPlanSpec } = normalizeEnumsForApi(
+        brief,
+        planSpec
+      );
+
       // Create voice spec with defaults
       const voiceSpec = {
         voiceName: 'en-US-Standard-A',
@@ -190,7 +193,7 @@ export function CreatePage() {
         pitch: 0.0,
         pause: 'Medium',
       };
-      
+
       // Create render spec with defaults
       const renderSpec = {
         res: { width: 1920, height: 1080 },
@@ -202,10 +205,10 @@ export function CreatePage() {
         qualityLevel: 75,
         enableSceneCut: true,
       };
-      
+
       console.log('Creating job with brief:', normalizedBrief);
       console.log('Plan spec:', normalizedPlanSpec);
-      
+
       // Create a full video generation job via JobsController
       const response = await fetch('/api/jobs', {
         method: 'POST',
@@ -233,18 +236,24 @@ export function CreatePage() {
       if (response.ok) {
         const data = await response.json();
         console.log('Job created successfully:', data);
-        alert(`Video generation started! Job ID: ${data.jobId}\n\nYou can track progress in the jobs panel.`);
-        
+        alert(
+          `Video generation started! Job ID: ${data.jobId}\n\nYou can track progress in the jobs panel.`
+        );
+
         // TODO: Navigate to jobs page or open generation panel
         // For now, just show success message
       } else {
         const errorText = await response.text();
         console.error('Failed to create job:', response.status, errorText);
-        alert(`Failed to start video generation: ${response.status} ${response.statusText}\n\nCheck console for details.`);
+        alert(
+          `Failed to start video generation: ${response.status} ${response.statusText}\n\nCheck console for details.`
+        );
       }
     } catch (error) {
       console.error('Error creating video generation job:', error);
-      alert(`Error starting video generation: ${error instanceof Error ? error.message : 'Unknown error'}\n\nCheck console for details.`);
+      alert(
+        `Error starting video generation: ${error instanceof Error ? error.message : 'Unknown error'}\n\nCheck console for details.`
+      );
     } finally {
       setGenerating(false);
     }
@@ -300,7 +309,9 @@ export function CreatePage() {
               <Field label="Aspect Ratio" hint="Video dimensions">
                 <Dropdown
                   value={brief.aspect}
-                  onOptionSelect={(_, data) => setBrief({ ...brief, aspect: data.optionValue as any })}
+                  onOptionSelect={(_, data) =>
+                    setBrief({ ...brief, aspect: data.optionValue as any })
+                  }
                 >
                   <Option value="Widescreen16x9">16:9 Widescreen</Option>
                   <Option value="Vertical9x16">9:16 Vertical</Option>
@@ -319,7 +330,10 @@ export function CreatePage() {
                 Configure the duration and pacing of your video
               </Text>
               <div className={styles.fieldGroup}>
-                <Field label={`Duration: ${planSpec.targetDurationMinutes} minutes`} hint="How long should the video be?">
+                <Field
+                  label={`Duration: ${planSpec.targetDurationMinutes} minutes`}
+                  hint="How long should the video be?"
+                >
                   <Slider
                     min={0.5}
                     max={20}
@@ -334,7 +348,9 @@ export function CreatePage() {
                 <Field label="Pacing" hint="How fast should the narration be?">
                   <Dropdown
                     value={planSpec.pacing}
-                    onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, pacing: data.optionText as any })}
+                    onOptionSelect={(_, data) =>
+                      setPlanSpec({ ...planSpec, pacing: data.optionText as any })
+                    }
                   >
                     <Option>Chill</Option>
                     <Option>Conversational</Option>
@@ -345,7 +361,9 @@ export function CreatePage() {
                 <Field label="Density" hint="How much content per minute?">
                   <Dropdown
                     value={planSpec.density}
-                    onOptionSelect={(_, data) => setPlanSpec({ ...planSpec, density: data.optionText as any })}
+                    onOptionSelect={(_, data) =>
+                      setPlanSpec({ ...planSpec, density: data.optionText as any })
+                    }
                   >
                     <Option>Sparse</Option>
                     <Option>Balanced</Option>
@@ -373,8 +391,18 @@ export function CreatePage() {
             </Card>
 
             {showRecommendations && recommendations && (
-              <Card className={styles.section} style={{ backgroundColor: tokens.colorNeutralBackground2 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalM }}>
+              <Card
+                className={styles.section}
+                style={{ backgroundColor: tokens.colorNeutralBackground2 }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: tokens.spacingVerticalM,
+                  }}
+                >
                   <Title3>AI Recommendations</Title3>
                   <Button
                     appearance="primary"
@@ -385,45 +413,64 @@ export function CreatePage() {
                   </Button>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}
+                >
                   <div>
                     <Text weight="semibold">Scene Count:</Text>{' '}
-                    <Badge appearance="tint" color="informative">{recommendations.sceneCount} scenes</Badge>
+                    <Badge appearance="tint" color="informative">
+                      {recommendations.sceneCount} scenes
+                    </Badge>
                   </div>
 
                   <div>
                     <Text weight="semibold">Shots per Scene:</Text>{' '}
-                    <Badge appearance="tint" color="informative">{recommendations.shotsPerScene} shots</Badge>
+                    <Badge appearance="tint" color="informative">
+                      {recommendations.shotsPerScene} shots
+                    </Badge>
                   </div>
 
                   <div>
                     <Text weight="semibold">B-Roll:</Text>{' '}
-                    <Badge appearance="tint" color="informative">{recommendations.bRollPercentage}%</Badge>
+                    <Badge appearance="tint" color="informative">
+                      {recommendations.bRollPercentage}%
+                    </Badge>
                   </div>
 
                   <div>
                     <Text weight="semibold">Overlay Density:</Text>{' '}
-                    <Badge appearance="tint" color="informative">{recommendations.overlayDensity} overlays/scene</Badge>
+                    <Badge appearance="tint" color="informative">
+                      {recommendations.overlayDensity} overlays/scene
+                    </Badge>
                   </div>
 
                   <div>
                     <Text weight="semibold">Reading Level:</Text>{' '}
-                    <Badge appearance="tint" color="informative">Grade {recommendations.readingLevel}</Badge>
+                    <Badge appearance="tint" color="informative">
+                      Grade {recommendations.readingLevel}
+                    </Badge>
                   </div>
 
                   <div>
                     <Text weight="semibold">Voice:</Text>{' '}
-                    <Text>Rate: {recommendations.voice.rate}x, Pitch: {recommendations.voice.pitch}x, Style: {recommendations.voice.style}</Text>
+                    <Text>
+                      Rate: {recommendations.voice.rate}x, Pitch: {recommendations.voice.pitch}x,
+                      Style: {recommendations.voice.style}
+                    </Text>
                   </div>
 
                   <div>
                     <Text weight="semibold">Music:</Text>{' '}
-                    <Text>{recommendations.music.genre} - {recommendations.music.tempo}</Text>
+                    <Text>
+                      {recommendations.music.genre} - {recommendations.music.tempo}
+                    </Text>
                   </div>
 
                   <div>
                     <Text weight="semibold">Captions:</Text>{' '}
-                    <Text>{recommendations.captions.position}, {recommendations.captions.fontSize}</Text>
+                    <Text>
+                      {recommendations.captions.position}, {recommendations.captions.fontSize}
+                    </Text>
                   </div>
 
                   <div>
@@ -438,26 +485,32 @@ export function CreatePage() {
 
                   <div>
                     <Text weight="semibold">Thumbnail Prompt:</Text>
-                    <div style={{ 
-                      marginTop: tokens.spacingVerticalXS, 
-                      padding: tokens.spacingVerticalM,
-                      backgroundColor: tokens.colorNeutralBackground1,
-                      borderRadius: tokens.borderRadiusMedium
-                    }}>
+                    <div
+                      style={{
+                        marginTop: tokens.spacingVerticalXS,
+                        padding: tokens.spacingVerticalM,
+                        backgroundColor: tokens.colorNeutralBackground1,
+                        borderRadius: tokens.borderRadiusMedium,
+                      }}
+                    >
                       <Text size={200}>{recommendations.thumbnailPrompt}</Text>
                     </div>
                   </div>
 
                   <div>
                     <Text weight="semibold">Outline:</Text>
-                    <div style={{ 
-                      marginTop: tokens.spacingVerticalXS, 
-                      padding: tokens.spacingVerticalM,
-                      backgroundColor: tokens.colorNeutralBackground1,
-                      borderRadius: tokens.borderRadiusMedium,
-                      whiteSpace: 'pre-wrap'
-                    }}>
-                      <Text size={200} style={{ fontFamily: 'monospace' }}>{recommendations.outline}</Text>
+                    <div
+                      style={{
+                        marginTop: tokens.spacingVerticalXS,
+                        padding: tokens.spacingVerticalM,
+                        backgroundColor: tokens.colorNeutralBackground1,
+                        borderRadius: tokens.borderRadiusMedium,
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      <Text size={200} style={{ fontFamily: 'monospace' }}>
+                        {recommendations.outline}
+                      </Text>
                     </div>
                   </div>
                 </div>
@@ -473,7 +526,14 @@ export function CreatePage() {
               <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
                 Review your settings before generating your video
               </Text>
-              <div style={{ marginTop: tokens.spacingVerticalL, display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+              <div
+                style={{
+                  marginTop: tokens.spacingVerticalL,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: tokens.spacingVerticalM,
+                }}
+              >
                 <div>
                   <Text weight="semibold">Topic:</Text> <Text>{brief.topic}</Text>
                 </div>
@@ -481,7 +541,8 @@ export function CreatePage() {
                   <Text weight="semibold">Audience:</Text> <Text>{brief.audience}</Text>
                 </div>
                 <div>
-                  <Text weight="semibold">Duration:</Text> <Text>{planSpec.targetDurationMinutes} minutes</Text>
+                  <Text weight="semibold">Duration:</Text>{' '}
+                  <Text>{planSpec.targetDurationMinutes} minutes</Text>
                 </div>
                 <div>
                   <Text weight="semibold">Pacing:</Text> <Text>{planSpec.pacing}</Text>
@@ -526,7 +587,10 @@ export function CreatePage() {
                     checked={overridePreflightGate}
                     onChange={(_, data) => setOverridePreflightGate(data.checked === true)}
                     label={
-                      <Tooltip content="Some preflight checks failed, but you can still proceed at your own risk" relationship="label">
+                      <Tooltip
+                        content="Some preflight checks failed, but you can still proceed at your own risk"
+                        relationship="label"
+                      >
                         <Text>Override and proceed anyway</Text>
                       </Tooltip>
                     }
@@ -539,13 +603,11 @@ export function CreatePage() {
 
         <div className={styles.actions}>
           {currentStep > 1 && (
-            <Button onClick={() => setCurrentStep(currentStep - 1)}>
-              Previous
-            </Button>
+            <Button onClick={() => setCurrentStep(currentStep - 1)}>Previous</Button>
           )}
           {currentStep < 3 ? (
-            <Button 
-              appearance="primary" 
+            <Button
+              appearance="primary"
               onClick={() => setCurrentStep(currentStep + 1)}
               disabled={currentStep === 1 && !brief.topic}
             >
@@ -557,8 +619,8 @@ export function CreatePage() {
                 !preflightReport
                   ? 'Run preflight check before generating'
                   : !preflightReport.ok && !overridePreflightGate
-                  ? 'Preflight checks failed. Enable override to proceed anyway.'
-                  : ''
+                    ? 'Preflight checks failed. Enable override to proceed anyway.'
+                    : ''
               }
               relationship="label"
             >
@@ -566,7 +628,9 @@ export function CreatePage() {
                 appearance="primary"
                 icon={<Play24Regular />}
                 onClick={handleGenerate}
-                disabled={generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate)}
+                disabled={
+                  generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate)
+                }
               >
                 {generating ? 'Generating...' : 'Generate Video'}
               </Button>

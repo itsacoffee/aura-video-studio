@@ -35,7 +35,7 @@ describe('InstallItemCard', () => {
   it('should show Use Existing button when onAttachExisting is provided', () => {
     const mockOnInstall = vi.fn();
     const mockOnAttachExisting = vi.fn();
-    
+
     render(
       <InstallItemCard
         item={mockItem}
@@ -51,14 +51,8 @@ describe('InstallItemCard', () => {
     const mockOnInstall = vi.fn();
     const mockOnSkip = vi.fn();
     const optionalItem = { ...mockItem, required: false };
-    
-    render(
-      <InstallItemCard
-        item={optionalItem}
-        onInstall={mockOnInstall}
-        onSkip={mockOnSkip}
-      />
-    );
+
+    render(<InstallItemCard item={optionalItem} onInstall={mockOnInstall} onSkip={mockOnSkip} />);
 
     expect(screen.getByRole('button', { name: /skip/i })).toBeInTheDocument();
   });
@@ -66,14 +60,8 @@ describe('InstallItemCard', () => {
   it('should not show Skip button for required items', () => {
     const mockOnInstall = vi.fn();
     const mockOnSkip = vi.fn();
-    
-    render(
-      <InstallItemCard
-        item={mockItem}
-        onInstall={mockOnInstall}
-        onSkip={mockOnSkip}
-      />
-    );
+
+    render(<InstallItemCard item={mockItem} onInstall={mockOnInstall} onSkip={mockOnSkip} />);
 
     expect(screen.queryByRole('button', { name: /skip/i })).not.toBeInTheDocument();
   });
@@ -81,7 +69,7 @@ describe('InstallItemCard', () => {
   it('should show checkmark when installed', () => {
     const mockOnInstall = vi.fn();
     const installedItem = { ...mockItem, installed: true };
-    
+
     render(<InstallItemCard item={installedItem} onInstall={mockOnInstall} />);
 
     // Button should not be visible when installed
@@ -91,7 +79,7 @@ describe('InstallItemCard', () => {
   it('should show spinner when installing', () => {
     const mockOnInstall = vi.fn();
     const installingItem = { ...mockItem, installing: true };
-    
+
     render(<InstallItemCard item={installingItem} onInstall={mockOnInstall} />);
 
     // Button should not be visible when installing
@@ -112,14 +100,8 @@ describe('InstallItemCard', () => {
     const mockOnInstall = vi.fn();
     const mockOnSkip = vi.fn();
     const optionalItem = { ...mockItem, required: false };
-    
-    render(
-      <InstallItemCard
-        item={optionalItem}
-        onInstall={mockOnInstall}
-        onSkip={mockOnSkip}
-      />
-    );
+
+    render(<InstallItemCard item={optionalItem} onInstall={mockOnInstall} onSkip={mockOnSkip} />);
 
     const skipButton = screen.getByRole('button', { name: /skip/i });
     fireEvent.click(skipButton);
@@ -130,7 +112,7 @@ describe('InstallItemCard', () => {
   it('should open attach dialog when Use Existing button is clicked', async () => {
     const mockOnInstall = vi.fn();
     const mockOnAttachExisting = vi.fn();
-    
+
     render(
       <InstallItemCard
         item={mockItem}
@@ -150,7 +132,7 @@ describe('InstallItemCard', () => {
   it('should require install path in attach dialog', async () => {
     const mockOnInstall = vi.fn();
     const mockOnAttachExisting = vi.fn();
-    
+
     render(
       <InstallItemCard
         item={mockItem}
@@ -175,7 +157,7 @@ describe('InstallItemCard', () => {
   it('should call onAttachExisting with paths when submitted', async () => {
     const mockOnInstall = vi.fn();
     const mockOnAttachExisting = vi.fn().mockResolvedValue(undefined);
-    
+
     render(
       <InstallItemCard
         item={mockItem}
@@ -198,14 +180,19 @@ describe('InstallItemCard', () => {
 
     // Fill in executable path
     const executablePathInput = screen.getByLabelText(/executable path/i);
-    fireEvent.change(executablePathInput, { target: { value: 'C:\\Tools\\ffmpeg\\bin\\ffmpeg.exe' } });
+    fireEvent.change(executablePathInput, {
+      target: { value: 'C:\\Tools\\ffmpeg\\bin\\ffmpeg.exe' },
+    });
 
     // Submit
     const attachButton = screen.getByRole('button', { name: /attach & validate/i });
     fireEvent.click(attachButton);
 
     await waitFor(() => {
-      expect(mockOnAttachExisting).toHaveBeenCalledWith('C:\\Tools\\ffmpeg', 'C:\\Tools\\ffmpeg\\bin\\ffmpeg.exe');
+      expect(mockOnAttachExisting).toHaveBeenCalledWith(
+        'C:\\Tools\\ffmpeg',
+        'C:\\Tools\\ffmpeg\\bin\\ffmpeg.exe'
+      );
     });
   });
 });

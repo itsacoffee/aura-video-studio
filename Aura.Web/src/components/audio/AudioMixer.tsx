@@ -135,10 +135,7 @@ export const AudioMixer: React.FC<AudioMixerProps> = ({
     }
   };
 
-  const handleVolumeChange = (
-    type: 'music' | 'narration' | 'soundEffects',
-    value: number
-  ) => {
+  const handleVolumeChange = (type: 'music' | 'narration' | 'soundEffects', value: number) => {
     if (!mixing) return;
 
     const updatedMixing = {
@@ -237,9 +234,7 @@ export const AudioMixer: React.FC<AudioMixerProps> = ({
                 value={mixing.soundEffectsVolume}
                 onChange={(_, data) => handleVolumeChange('soundEffects', data.value)}
               />
-              <Text className={styles.valueDisplay}>
-                {Math.round(mixing.soundEffectsVolume)}
-              </Text>
+              <Text className={styles.valueDisplay}>{Math.round(mixing.soundEffectsVolume)}</Text>
             </div>
           </div>
         )}

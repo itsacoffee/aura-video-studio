@@ -18,7 +18,7 @@ export const useJobState = create<JobState>((set) => ({
   status: 'idle',
   progress: 0,
   message: '',
-  
+
   setJob: (jobId: string) => {
     set({
       currentJobId: jobId,
@@ -27,15 +27,15 @@ export const useJobState = create<JobState>((set) => ({
       message: 'Starting job...',
     });
   },
-  
+
   updateProgress: (progress: number, message: string) => {
     set({ progress, message });
   },
-  
+
   setStatus: (status: JobStatus) => {
     set({ status });
   },
-  
+
   clearJob: () => {
     set({
       currentJobId: null,

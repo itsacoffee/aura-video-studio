@@ -50,10 +50,7 @@ const useStyles = makeStyles({
   },
 });
 
-export const TransitionPanel: React.FC<TransitionPanelProps> = ({
-  jobId,
-  onApply,
-}) => {
+export const TransitionPanel: React.FC<TransitionPanelProps> = ({ jobId, onApply }) => {
   const styles = useStyles();
   const [loading, setLoading] = useState(false);
   const [transitions, setTransitions] = useState<TransitionSuggestion[]>([]);
@@ -61,7 +58,7 @@ export const TransitionPanel: React.FC<TransitionPanelProps> = ({
   useEffect(() => {
     const loadTransitions = async () => {
       if (!jobId) return;
-      
+
       setLoading(true);
       try {
         const result = await recommendTransitions(jobId);
@@ -99,9 +96,7 @@ export const TransitionPanel: React.FC<TransitionPanelProps> = ({
             <Caption1>{transition.type}</Caption1>
           </div>
 
-          <Body1 style={{ marginTop: tokens.spacingVerticalM }}>
-            {transition.reasoning}
-          </Body1>
+          <Body1 style={{ marginTop: tokens.spacingVerticalM }}>{transition.reasoning}</Body1>
 
           <Caption1 style={{ marginTop: tokens.spacingVerticalS }}>
             Duration: {transition.duration}

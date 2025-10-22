@@ -12,15 +12,8 @@ import {
   tokens,
   Badge,
 } from '@fluentui/react-components';
-import {
-  Sparkle24Regular,
-  Copy24Regular,
-  CheckmarkCircle24Regular,
-} from '@fluentui/react-icons';
-import type {
-  MetadataGenerationRequest,
-  OptimizedMetadata,
-} from '../../types/platform';
+import { Sparkle24Regular, Copy24Regular, CheckmarkCircle24Regular } from '@fluentui/react-icons';
+import type { MetadataGenerationRequest, OptimizedMetadata } from '../../types/platform';
 import platformService from '../../services/platform/platformService';
 import { PlatformSelector } from './PlatformSelector';
 
@@ -83,7 +76,10 @@ export const MetadataGenerator: React.FC = () => {
         platform: selectedPlatform,
         videoTitle,
         videoDescription,
-        keywords: keywords.split(',').map(k => k.trim()).filter(k => k),
+        keywords: keywords
+          .split(',')
+          .map((k) => k.trim())
+          .filter((k) => k),
         targetAudience,
         contentType,
       };
@@ -116,7 +112,7 @@ export const MetadataGenerator: React.FC = () => {
 
       <PlatformSelector
         selectedPlatforms={selectedPlatform ? [selectedPlatform] : []}
-        onPlatformsSelected={platforms => setSelectedPlatform(platforms[0] || '')}
+        onPlatformsSelected={(platforms) => setSelectedPlatform(platforms[0] || '')}
         singleSelect
       />
 
@@ -187,13 +183,7 @@ export const MetadataGenerator: React.FC = () => {
                 <Input value={metadata.title} readOnly style={{ flex: 1 }} />
                 <Button
                   className={styles.copyButton}
-                  icon={
-                    copiedField === 'title' ? (
-                      <CheckmarkCircle24Regular />
-                    ) : (
-                      <Copy24Regular />
-                    )
-                  }
+                  icon={copiedField === 'title' ? <CheckmarkCircle24Regular /> : <Copy24Regular />}
                   onClick={() => copyToClipboard(metadata.title, 'title')}
                 />
               </div>
@@ -206,11 +196,7 @@ export const MetadataGenerator: React.FC = () => {
               <Button
                 className={styles.copyButton}
                 icon={
-                  copiedField === 'description' ? (
-                    <CheckmarkCircle24Regular />
-                  ) : (
-                    <Copy24Regular />
-                  )
+                  copiedField === 'description' ? <CheckmarkCircle24Regular /> : <Copy24Regular />
                 }
                 onClick={() => copyToClipboard(metadata.description, 'description')}
               >
@@ -231,13 +217,7 @@ export const MetadataGenerator: React.FC = () => {
                 </div>
                 <Button
                   className={styles.copyButton}
-                  icon={
-                    copiedField === 'tags' ? (
-                      <CheckmarkCircle24Regular />
-                    ) : (
-                      <Copy24Regular />
-                    )
-                  }
+                  icon={copiedField === 'tags' ? <CheckmarkCircle24Regular /> : <Copy24Regular />}
                   onClick={() => copyToClipboard(metadata.tags.join(', '), 'tags')}
                 >
                   Copy All Tags
@@ -259,17 +239,10 @@ export const MetadataGenerator: React.FC = () => {
                 <Button
                   className={styles.copyButton}
                   icon={
-                    copiedField === 'hashtags' ? (
-                      <CheckmarkCircle24Regular />
-                    ) : (
-                      <Copy24Regular />
-                    )
+                    copiedField === 'hashtags' ? <CheckmarkCircle24Regular /> : <Copy24Regular />
                   }
                   onClick={() =>
-                    copyToClipboard(
-                      metadata.hashtags.map(h => `#${h}`).join(' '),
-                      'hashtags'
-                    )
+                    copyToClipboard(metadata.hashtags.map((h) => `#${h}`).join(' '), 'hashtags')
                   }
                 >
                   Copy All Hashtags

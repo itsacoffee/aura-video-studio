@@ -1,6 +1,6 @@
 /**
  * API V1 Type Definitions
- * 
+ *
  * These types match Aura.Api.Models.ApiModels.V1 exactly.
  * Keep in sync with backend types when making changes.
  */
@@ -14,9 +14,9 @@
  * Canonical values: "Chill", "Conversational", "Fast"
  */
 export enum Pacing {
-  Chill = "Chill",
-  Conversational = "Conversational",
-  Fast = "Fast"
+  Chill = 'Chill',
+  Conversational = 'Conversational',
+  Fast = 'Fast',
 }
 
 /**
@@ -25,9 +25,9 @@ export enum Pacing {
  * Legacy alias: "Normal" -> "Balanced"
  */
 export enum Density {
-  Sparse = "Sparse",
-  Balanced = "Balanced",
-  Dense = "Dense"
+  Sparse = 'Sparse',
+  Balanced = 'Balanced',
+  Dense = 'Dense',
 }
 
 /**
@@ -36,9 +36,9 @@ export enum Density {
  * Legacy aliases: "16:9" -> "Widescreen16x9", "9:16" -> "Vertical9x16", "1:1" -> "Square1x1"
  */
 export enum Aspect {
-  Widescreen16x9 = "Widescreen16x9",
-  Vertical9x16 = "Vertical9x16",
-  Square1x1 = "Square1x1"
+  Widescreen16x9 = 'Widescreen16x9',
+  Vertical9x16 = 'Vertical9x16',
+  Square1x1 = 'Square1x1',
 }
 
 /**
@@ -46,28 +46,28 @@ export enum Aspect {
  * Canonical values: "Natural", "Short", "Long", "Dramatic"
  */
 export enum PauseStyle {
-  Natural = "Natural",
-  Short = "Short",
-  Long = "Long",
-  Dramatic = "Dramatic"
+  Natural = 'Natural',
+  Short = 'Short',
+  Long = 'Long',
+  Dramatic = 'Dramatic',
 }
 
 /**
  * Provider mode selection
  */
 export enum ProviderMode {
-  Free = "Free",
-  Pro = "Pro"
+  Free = 'Free',
+  Pro = 'Pro',
 }
 
 /**
  * Hardware tier classification
  */
 export enum HardwareTier {
-  A = "A", // High (≥12GB VRAM or NVIDIA 40/50-series)
-  B = "B", // Upper-mid (8-12GB VRAM)
-  C = "C", // Mid (6-8GB VRAM)
-  D = "D"  // Entry (≤4-6GB VRAM or no GPU)
+  A = 'A', // High (≥12GB VRAM or NVIDIA 40/50-series)
+  B = 'B', // Upper-mid (8-12GB VRAM)
+  C = 'C', // Mid (6-8GB VRAM)
+  D = 'D', // Entry (≤4-6GB VRAM or no GPU)
 }
 
 // ============================================================================

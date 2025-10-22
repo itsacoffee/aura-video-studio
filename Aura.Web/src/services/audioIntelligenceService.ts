@@ -352,9 +352,7 @@ class AudioIntelligenceService {
   /**
    * Detect beats in a music file
    */
-  async detectBeats(
-    request: DetectBeatsRequest
-  ): Promise<{
+  async detectBeats(request: DetectBeatsRequest): Promise<{
     beats: BeatMarker[];
     bpm: number;
     phrases: Array<{ phraseNumber: number; start: string; end: string }>;

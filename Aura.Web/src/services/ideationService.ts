@@ -194,9 +194,7 @@ export const ideationService = {
   /**
    * Expand brief with AI clarifying questions
    */
-  async expandBrief(
-    request: ExpandBriefRequest
-  ): Promise<ExpandBriefResponse> {
+  async expandBrief(request: ExpandBriefRequest): Promise<ExpandBriefResponse> {
     const response = await fetch(`${API_BASE}/expand-brief`, {
       method: 'POST',
       headers: {
@@ -215,10 +213,7 @@ export const ideationService = {
   /**
    * Get trending topics for a niche
    */
-  async getTrending(
-    niche?: string,
-    maxResults?: number
-  ): Promise<TrendingTopicsResponse> {
+  async getTrending(niche?: string, maxResults?: number): Promise<TrendingTopicsResponse> {
     const params = new URLSearchParams();
     if (niche) {
       params.append('niche', niche);
@@ -239,9 +234,7 @@ export const ideationService = {
   /**
    * Analyze content gaps and opportunities
    */
-  async analyzeGaps(
-    request: GapAnalysisRequest
-  ): Promise<GapAnalysisResponse> {
+  async analyzeGaps(request: GapAnalysisRequest): Promise<GapAnalysisResponse> {
     const response = await fetch(`${API_BASE}/gap-analysis`, {
       method: 'POST',
       headers: {
@@ -279,9 +272,7 @@ export const ideationService = {
   /**
    * Generate visual storyboard for a concept
    */
-  async generateStoryboard(
-    request: StoryboardRequest
-  ): Promise<StoryboardResponse> {
+  async generateStoryboard(request: StoryboardRequest): Promise<StoryboardResponse> {
     const response = await fetch(`${API_BASE}/storyboard`, {
       method: 'POST',
       headers: {
@@ -300,9 +291,7 @@ export const ideationService = {
   /**
    * Refine a selected concept
    */
-  async refineConcept(
-    request: RefineConceptRequest
-  ): Promise<RefineConceptResponse> {
+  async refineConcept(request: RefineConceptRequest): Promise<RefineConceptResponse> {
     const response = await fetch(`${API_BASE}/refine`, {
       method: 'POST',
       headers: {

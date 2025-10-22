@@ -172,7 +172,13 @@ export function SetupWizard() {
 
   const installAll = async () => {
     setIsInstalling(true);
-    setInstallProgress({ percentage: 0, status: 'Starting installation...', currentFile: '', bytesDownloaded: 0, totalBytes: 0 });
+    setInstallProgress({
+      percentage: 0,
+      status: 'Starting installation...',
+      currentFile: '',
+      bytesDownloaded: 0,
+      totalBytes: 0,
+    });
 
     try {
       const eventSource = new EventSource(`${API_BASE_URL}/api/setup/install/all`);
@@ -243,7 +249,8 @@ export function SetupWizard() {
     <>
       <Title2>Welcome to Aura Video Studio!</Title2>
       <Text>
-        Create professional videos with AI-powered script generation, text-to-speech, and automated video composition.
+        Create professional videos with AI-powered script generation, text-to-speech, and automated
+        video composition.
       </Text>
       <Card>
         <Title3>System Requirements</Title3>
@@ -252,9 +259,7 @@ export function SetupWizard() {
           <li>4GB RAM (recommended)</li>
           <li>2 CPU cores (minimum)</li>
         </ul>
-        <Text>
-          Operating System: {navigator.platform}
-        </Text>
+        <Text>Operating System: {navigator.platform}</Text>
       </Card>
     </>
   );
@@ -277,7 +282,9 @@ export function SetupWizard() {
             <li>Stock images from Pexels/Unsplash</li>
             <li>FFmpeg only (auto-install available)</li>
           </ul>
-          <Badge appearance="filled" color="success">0 GB disk space</Badge>
+          <Badge appearance="filled" color="success">
+            0 GB disk space
+          </Badge>
           <Badge appearance="outline">Fast processing</Badge>
         </Text>
       </Card>
@@ -295,7 +302,9 @@ export function SetupWizard() {
             <li>Stock images</li>
             <li>FFmpeg (auto-install available)</li>
           </ul>
-          <Badge appearance="filled" color="warning">~8 GB disk space</Badge>
+          <Badge appearance="filled" color="warning">
+            ~8 GB disk space
+          </Badge>
           <Badge appearance="outline">Medium processing</Badge>
         </Text>
       </Card>
@@ -313,7 +322,9 @@ export function SetupWizard() {
             <li>Stable Diffusion for custom images</li>
             <li>FFmpeg (auto-install available)</li>
           </ul>
-          <Badge appearance="filled" color="danger">API keys required</Badge>
+          <Badge appearance="filled" color="danger">
+            API keys required
+          </Badge>
           <Badge appearance="outline">Fastest processing</Badge>
         </Text>
       </Card>
@@ -337,7 +348,11 @@ export function SetupWizard() {
             )}
             <div style={{ flex: 1 }}>
               <Text weight="semibold">FFmpeg (Required)</Text>
-              <Text size={200}>{depStatus.ffmpegInstalled ? `Installed: ${depStatus.ffmpegVersion}` : 'Not installed'}</Text>
+              <Text size={200}>
+                {depStatus.ffmpegInstalled
+                  ? `Installed: ${depStatus.ffmpegVersion}`
+                  : 'Not installed'}
+              </Text>
             </div>
           </div>
 
@@ -351,7 +366,11 @@ export function SetupWizard() {
                 )}
                 <div style={{ flex: 1 }}>
                   <Text weight="semibold">Piper TTS (Recommended)</Text>
-                  <Text size={200}>{depStatus.piperTtsInstalled ? `Installed: ${depStatus.piperTtsPath}` : 'Not installed'}</Text>
+                  <Text size={200}>
+                    {depStatus.piperTtsInstalled
+                      ? `Installed: ${depStatus.piperTtsPath}`
+                      : 'Not installed'}
+                  </Text>
                 </div>
               </div>
 
@@ -363,7 +382,11 @@ export function SetupWizard() {
                 )}
                 <div style={{ flex: 1 }}>
                   <Text weight="semibold">Ollama (Recommended)</Text>
-                  <Text size={200}>{depStatus.ollamaInstalled ? `Installed: ${depStatus.ollamaVersion}` : 'Not installed - please install separately from ollama.ai'}</Text>
+                  <Text size={200}>
+                    {depStatus.ollamaInstalled
+                      ? `Installed: ${depStatus.ollamaVersion}`
+                      : 'Not installed - please install separately from ollama.ai'}
+                  </Text>
                 </div>
               </div>
             </>
@@ -395,11 +418,13 @@ export function SetupWizard() {
         </Button>
       )}
 
-      {depStatus && (depStatus.ffmpegInstallationRequired || (tier === 'balanced' && depStatus.piperTtsInstallationRequired)) && (
-        <Button appearance="primary" onClick={installAll} disabled={isInstalling}>
-          {isInstalling ? 'Installing...' : 'Install All Missing Dependencies'}
-        </Button>
-      )}
+      {depStatus &&
+        (depStatus.ffmpegInstallationRequired ||
+          (tier === 'balanced' && depStatus.piperTtsInstallationRequired)) && (
+          <Button appearance="primary" onClick={installAll} disabled={isInstalling}>
+            {isInstalling ? 'Installing...' : 'Install All Missing Dependencies'}
+          </Button>
+        )}
     </>
   );
 
@@ -410,16 +435,21 @@ export function SetupWizard() {
         <div>
           <ProgressBar value={installProgress.percentage / 100} />
           <Text>{installProgress.status}</Text>
-          {installProgress.currentFile && <Text size={200}>File: {installProgress.currentFile}</Text>}
+          {installProgress.currentFile && (
+            <Text size={200}>File: {installProgress.currentFile}</Text>
+          )}
           {installProgress.totalBytes > 0 && (
             <Text size={200}>
-              {(installProgress.bytesDownloaded / 1024 / 1024).toFixed(2)} MB / {(installProgress.totalBytes / 1024 / 1024).toFixed(2)} MB
+              {(installProgress.bytesDownloaded / 1024 / 1024).toFixed(2)} MB /{' '}
+              {(installProgress.totalBytes / 1024 / 1024).toFixed(2)} MB
             </Text>
           )}
         </div>
       ) : (
         <div style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL }}>
-          <CheckmarkCircle24Filled style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }} />
+          <CheckmarkCircle24Filled
+            style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }}
+          />
           <Title3>Installation Complete!</Title3>
           <Text>All required dependencies have been installed successfully.</Text>
         </div>
@@ -430,7 +460,9 @@ export function SetupWizard() {
   const renderStep4Pro = () => (
     <>
       <Title2>API Keys (Optional)</Title2>
-      <Text>Enter your API keys for cloud services. You can skip this and add them later in Settings.</Text>
+      <Text>
+        Enter your API keys for cloud services. You can skip this and add them later in Settings.
+      </Text>
 
       <div className={styles.apiKeyInput}>
         <Text weight="semibold">OpenAI API Key</Text>
@@ -477,9 +509,11 @@ export function SetupWizard() {
   const renderStep5 = () => (
     <>
       <div style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL }}>
-        <CheckmarkCircle24Filled style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }} />
+        <CheckmarkCircle24Filled
+          style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }}
+        />
         <Title2>Setup Complete!</Title2>
-        <Text>You're all set to start creating videos with Aura Video Studio.</Text>
+        <Text>You&apos;re all set to start creating videos with Aura Video Studio.</Text>
 
         {depStatus && (
           <Card style={{ marginTop: tokens.spacingVerticalL, textAlign: 'left' }}>
@@ -492,13 +526,18 @@ export function SetupWizard() {
           </Card>
         )}
 
-        <div style={{ marginTop: tokens.spacingVerticalXL, display: 'flex', gap: tokens.spacingHorizontalM, justifyContent: 'center' }}>
+        <div
+          style={{
+            marginTop: tokens.spacingVerticalXL,
+            display: 'flex',
+            gap: tokens.spacingHorizontalM,
+            justifyContent: 'center',
+          }}
+        >
           <Button appearance="primary" onClick={() => navigate('/create')}>
             Create Your First Video
           </Button>
-          <Button onClick={() => navigate('/')}>
-            Go to Dashboard
-          </Button>
+          <Button onClick={() => navigate('/')}>Go to Dashboard</Button>
         </div>
       </div>
     </>
@@ -507,22 +546,35 @@ export function SetupWizard() {
   const renderCurrentStep = () => {
     if (tier === 'pro') {
       switch (step) {
-        case 0: return renderStep0();
-        case 1: return renderStep1();
-        case 2: return renderStep2();
-        case 3: return renderStep3();
-        case 4: return renderStep4Pro();
-        case 5: return renderStep5();
-        default: return null;
+        case 0:
+          return renderStep0();
+        case 1:
+          return renderStep1();
+        case 2:
+          return renderStep2();
+        case 3:
+          return renderStep3();
+        case 4:
+          return renderStep4Pro();
+        case 5:
+          return renderStep5();
+        default:
+          return null;
       }
     } else {
       switch (step) {
-        case 0: return renderStep0();
-        case 1: return renderStep1();
-        case 2: return renderStep2();
-        case 3: return renderStep3();
-        case 4: return renderStep5();
-        default: return null;
+        case 0:
+          return renderStep0();
+        case 1:
+          return renderStep1();
+        case 2:
+          return renderStep2();
+        case 3:
+          return renderStep3();
+        case 4:
+          return renderStep5();
+        default:
+          return null;
       }
     }
   };
@@ -533,36 +585,26 @@ export function SetupWizard() {
         <Title1>Aura Video Studio Setup</Title1>
         <div className={styles.steps}>
           {Array.from({ length: totalSteps }).map((_, i) => (
-            <div
-              key={i}
-              className={`${styles.step} ${i <= step ? styles.stepActive : ''}`}
-            />
+            <div key={i} className={`${styles.step} ${i <= step ? styles.stepActive : ''}`} />
           ))}
         </div>
       </div>
 
-      <div className={styles.content}>
-        {renderCurrentStep()}
-      </div>
+      <div className={styles.content}>{renderCurrentStep()}</div>
 
       <div className={styles.footer}>
-        <Button
-          icon={<ChevronLeft24Regular />}
-          onClick={handleBack}
-          disabled={step === 0}
-        >
+        <Button icon={<ChevronLeft24Regular />} onClick={handleBack} disabled={step === 0}>
           Back
         </Button>
-        <Text>{step + 1} / {totalSteps}</Text>
+        <Text>
+          {step + 1} / {totalSteps}
+        </Text>
         <Button
           appearance="primary"
           icon={step === totalSteps - 1 ? <Checkmark24Regular /> : <ChevronRight24Regular />}
           iconPosition="after"
           onClick={handleNext}
-          disabled={
-            (step === 2 && !depStatus) ||
-            (step === 3 && isInstalling)
-          }
+          disabled={(step === 2 && !depStatus) || (step === 3 && isInstalling)}
         >
           {step === totalSteps - 1 ? 'Finish' : 'Next'}
         </Button>

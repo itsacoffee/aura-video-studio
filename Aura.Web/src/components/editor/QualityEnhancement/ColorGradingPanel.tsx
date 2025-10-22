@@ -12,7 +12,6 @@ import {
   Dropdown,
   Option,
   Field,
-
   Body1Strong,
   Caption1,
   ProgressBar,
@@ -78,7 +77,7 @@ export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
         green: 0.28,
         brightness: 0.6,
       };
-      
+
       const timeOfDay = await visualAnalysisService.detectTimeOfDay(colorHistogram);
       setDetectedTime(timeOfDay);
 
@@ -88,7 +87,7 @@ export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
         sentiment,
         timeOfDay
       );
-      
+
       setProfile(gradingProfile);
     } catch (error) {
       console.error('Failed to analyze color grading:', error);
@@ -111,7 +110,14 @@ export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
     <div className={styles.container}>
       <Card>
         <div className={styles.section}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalM }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacingHorizontalS,
+              marginBottom: tokens.spacingVerticalM,
+            }}
+          >
             <Color24Regular />
             <Body1Strong>Mood-Based Color Grading</Body1Strong>
           </div>
@@ -163,7 +169,9 @@ export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
             <Body1Strong>Detected Conditions</Body1Strong>
             <div style={{ marginTop: tokens.spacingVerticalS }}>
               <Caption1>Time of Day: </Caption1>
-              <Badge appearance="tint" color="brand">{detectedTime}</Badge>
+              <Badge appearance="tint" color="brand">
+                {detectedTime}
+              </Badge>
             </div>
           </div>
         </Card>
@@ -172,7 +180,14 @@ export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
       {profile && (
         <Card>
           <div className={styles.profileCard}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalM }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: tokens.spacingVerticalM,
+              }}
+            >
               <div>
                 <Body1Strong>{profile.name} Profile</Body1Strong>
                 <Caption1 block>Mood: {profile.mood}</Caption1>
@@ -188,7 +203,7 @@ export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
 
             <div style={{ marginTop: tokens.spacingVerticalM }}>
               <Caption1 block>Adjustments</Caption1>
-              
+
               <div className={styles.adjustmentRow}>
                 <Caption1>Saturation</Caption1>
                 <ProgressBar value={profile.saturation} thickness="large" style={{ width: 120 }} />
@@ -209,10 +224,10 @@ export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({
 
               <div className={styles.adjustmentRow}>
                 <Caption1>Temperature</Caption1>
-                <ProgressBar 
-                  value={(profile.temperature + 0.5) / 1} 
-                  thickness="large" 
-                  style={{ width: 120 }} 
+                <ProgressBar
+                  value={(profile.temperature + 0.5) / 1}
+                  thickness="large"
+                  style={{ width: 120 }}
                 />
                 <Caption1>{profile.temperature.toFixed(2)}</Caption1>
               </div>

@@ -88,10 +88,7 @@ const useStyles = makeStyles({
   },
 });
 
-export const EditingAssistant: React.FC<EditingAssistantProps> = ({
-  jobId,
-  onApplySuggestion,
-}) => {
+export const EditingAssistant: React.FC<EditingAssistantProps> = ({ jobId, onApplySuggestion }) => {
   const styles = useStyles();
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<TimelineAnalysisResult | null>(null);
@@ -125,13 +122,14 @@ export const EditingAssistant: React.FC<EditingAssistantProps> = ({
 
     const cutPointCount = analysis.cutPoints?.length || 0;
     const qualityIssueCount = analysis.qualityIssues?.length || 0;
-    const criticalIssues = analysis.qualityIssues?.filter(i => i.severity === 'Critical').length || 0;
+    const criticalIssues =
+      analysis.qualityIssues?.filter((i) => i.severity === 'Critical').length || 0;
 
     return (
       <div>
         <Card className={styles.analysisCard}>
           <Title3>Analysis Overview</Title3>
-          
+
           <div className={styles.scoreContainer}>
             <div className={styles.scoreCard}>
               <Sparkle24Regular />
@@ -140,13 +138,13 @@ export const EditingAssistant: React.FC<EditingAssistantProps> = ({
               </Body1Strong>
               <Caption1>Engagement Score</Caption1>
             </div>
-            
+
             <div className={styles.scoreCard}>
               <Cut24Regular />
               <Body1Strong>{cutPointCount}</Body1Strong>
               <Caption1>Cut Suggestions</Caption1>
             </div>
-            
+
             <div className={styles.scoreCard}>
               <Shield24Regular />
               <Body1Strong>{qualityIssueCount}</Body1Strong>
@@ -205,45 +203,44 @@ export const EditingAssistant: React.FC<EditingAssistantProps> = ({
 
       {!loading && analysis && (
         <>
-          <TabList selectedValue={selectedTab} onTabSelect={(_, data) => setSelectedTab(data.value)}>
-            <Tab icon={<DocumentBulletList24Regular />} value="overview">Overview</Tab>
-            <Tab icon={<Cut24Regular />} value="cuts">Cut Points</Tab>
-            <Tab icon={<DocumentBulletList24Regular />} value="pacing">Pacing</Tab>
-            <Tab icon={<SlideTransition24Regular />} value="transitions">Transitions</Tab>
-            <Tab icon={<Eye24Regular />} value="engagement">Engagement</Tab>
-            <Tab icon={<Shield24Regular />} value="quality">Quality</Tab>
+          <TabList
+            selectedValue={selectedTab}
+            onTabSelect={(_, data) => setSelectedTab(data.value)}
+          >
+            <Tab icon={<DocumentBulletList24Regular />} value="overview">
+              Overview
+            </Tab>
+            <Tab icon={<Cut24Regular />} value="cuts">
+              Cut Points
+            </Tab>
+            <Tab icon={<DocumentBulletList24Regular />} value="pacing">
+              Pacing
+            </Tab>
+            <Tab icon={<SlideTransition24Regular />} value="transitions">
+              Transitions
+            </Tab>
+            <Tab icon={<Eye24Regular />} value="engagement">
+              Engagement
+            </Tab>
+            <Tab icon={<Shield24Regular />} value="quality">
+              Quality
+            </Tab>
           </TabList>
 
           <div className={styles.content}>
             {selectedTab === 'overview' && renderOverview()}
             {selectedTab === 'cuts' && (
-              <CutPointPanel
-                cutPoints={analysis.cutPoints || []}
-                onApply={onApplySuggestion}
-              />
+              <CutPointPanel cutPoints={analysis.cutPoints || []} onApply={onApplySuggestion} />
             )}
-            {selectedTab === 'pacing' && (
-              <PacingPanel
-                analysis={analysis.pacingAnalysis}
-              />
-            )}
+            {selectedTab === 'pacing' && <PacingPanel analysis={analysis.pacingAnalysis} />}
             {selectedTab === 'transitions' && (
-              <TransitionPanel
-                jobId={jobId}
-                onApply={onApplySuggestion}
-              />
+              <TransitionPanel jobId={jobId} onApply={onApplySuggestion} />
             )}
             {selectedTab === 'engagement' && (
-              <EngagementPanel
-                curve={analysis.engagementAnalysis}
-                jobId={jobId}
-              />
+              <EngagementPanel curve={analysis.engagementAnalysis} jobId={jobId} />
             )}
             {selectedTab === 'quality' && (
-              <QualityPanel
-                issues={analysis.qualityIssues || []}
-                jobId={jobId}
-              />
+              <QualityPanel issues={analysis.qualityIssues || []} jobId={jobId} />
             )}
           </div>
         </>

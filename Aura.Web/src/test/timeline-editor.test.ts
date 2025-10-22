@@ -46,7 +46,7 @@ describe('TimelineEditor', () => {
   describe('spliceAtPlayhead', () => {
     it('should split scene at playhead position', () => {
       const result = editor.spliceAtPlayhead(mockScenes, 1, 15);
-      
+
       expect(result).toHaveLength(4);
       expect(result[1].duration).toBe(5); // First half
       expect(result[2].duration).toBe(10); // Second half
@@ -67,7 +67,7 @@ describe('TimelineEditor', () => {
   describe('rippleDelete', () => {
     it('should delete scene and shift following scenes', () => {
       const result = editor.rippleDelete(mockScenes, 1);
-      
+
       expect(result).toHaveLength(2);
       expect(result[1].start).toBe(10); // Scene 3 shifted to where Scene 2 was
       expect(result[1].heading).toBe('Scene 3');
@@ -83,7 +83,7 @@ describe('TimelineEditor', () => {
   describe('deleteScene', () => {
     it('should delete scene without shifting others', () => {
       const result = editor.deleteScene(mockScenes, 1);
-      
+
       expect(result).toHaveLength(2);
       expect(result[1].start).toBe(25); // Scene 3 not shifted
     });
@@ -99,7 +99,7 @@ describe('TimelineEditor', () => {
       ];
 
       const result = editor.closeGaps(scenesWithGaps);
-      
+
       expect(result[0].start).toBe(0);
       expect(result[1].start).toBe(10); // No gap
       expect(result[2].start).toBe(20); // No gap
@@ -110,7 +110,7 @@ describe('TimelineEditor', () => {
     it('should undo last operation', () => {
       const modified = editor.rippleDelete(mockScenes, 1);
       const undone = editor.undo();
-      
+
       expect(undone).toEqual(mockScenes);
     });
 
@@ -118,7 +118,7 @@ describe('TimelineEditor', () => {
       const modified = editor.rippleDelete(mockScenes, 1);
       editor.undo();
       const redone = editor.redo();
-      
+
       expect(redone).toEqual(modified);
     });
 
@@ -134,7 +134,7 @@ describe('TimelineEditor', () => {
       editor.rippleDelete(mockScenes, 1);
       editor.undo();
       expect(editor.canRedo()).toBe(true);
-      
+
       editor.spliceAtPlayhead(mockScenes, 0, 5);
       expect(editor.canRedo()).toBe(false);
     });

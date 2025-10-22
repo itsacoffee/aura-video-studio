@@ -107,7 +107,8 @@ const LOCAL_ENGINES: LocalEngineConfig[] = [
   {
     id: 'stable-diffusion',
     name: 'Stable Diffusion WebUI',
-    description: 'Local image generation using Stable Diffusion. Managed mode with automatic setup.',
+    description:
+      'Local image generation using Stable Diffusion. Managed mode with automatic setup.',
     defaultPort: 7860,
     requiresNvidia: true,
     minVRAM: 6,
@@ -138,16 +139,12 @@ const LOCAL_ENGINES: LocalEngineConfig[] = [
 export function LocalEngines() {
   const styles = useStyles();
   const { showSuccessToast, showFailureToast } = useNotifications();
-  const {
-    engineStatuses,
-    fetchEngines,
-    fetchEngineStatus,
-    startEngine,
-    stopEngine,
-    isLoading,
-  } = useEnginesStore();
+  const { engineStatuses, fetchEngines, fetchEngineStatus, startEngine, stopEngine, isLoading } =
+    useEnginesStore();
 
-  const [engineConfigs, setEngineConfigs] = useState<Record<string, { port?: number; autoStart: boolean }>>({});
+  const [engineConfigs, setEngineConfigs] = useState<
+    Record<string, { port?: number; autoStart: boolean }>
+  >({});
   const [hasChanges, setHasChanges] = useState(false);
   const [diagnostics, setDiagnostics] = useState<any>(null);
   const [logs, setLogs] = useState<string>('');
@@ -158,13 +155,17 @@ export function LocalEngines() {
   useEffect(() => {
     fetchEngines();
     // Fetch status for all local engines
-    LOCAL_ENGINES.forEach(engine => {
+    LOCAL_ENGINES.forEach((engine) => {
       fetchEngineStatus(engine.id);
     });
   }, [fetchEngines, fetchEngineStatus]);
 
-  const updateEngineConfig = (engineId: string, key: 'port' | 'autoStart', value: number | boolean) => {
-    setEngineConfigs(prev => ({
+  const updateEngineConfig = (
+    engineId: string,
+    key: 'port' | 'autoStart',
+    value: number | boolean
+  ) => {
+    setEngineConfigs((prev) => ({
       ...prev,
       [engineId]: {
         ...prev[engineId],
@@ -257,7 +258,7 @@ export function LocalEngines() {
 
   const handleRunDiagnostics = async () => {
     try {
-      const response = await fetch(apiUrl('/api/engines/diagnostics'))
+      const response = await fetch(apiUrl('/api/engines/diagnostics'));
       if (response.ok) {
         const data = await response.json();
         setDiagnostics(data);
@@ -316,7 +317,9 @@ export function LocalEngines() {
       return (
         <div className={styles.statusBadge}>
           <Warning20Filled color={tokens.colorPaletteYellowForeground1} />
-          <Badge appearance="outline" color="warning">Not Installed</Badge>
+          <Badge appearance="outline" color="warning">
+            Not Installed
+          </Badge>
         </div>
       );
     }
@@ -326,14 +329,18 @@ export function LocalEngines() {
         return (
           <div className={styles.statusBadge}>
             <CheckmarkCircle20Filled color={tokens.colorPaletteGreenForeground1} />
-            <Badge appearance="filled" color="success">Running (Healthy)</Badge>
+            <Badge appearance="filled" color="success">
+              Running (Healthy)
+            </Badge>
           </div>
         );
       } else {
         return (
           <div className={styles.statusBadge}>
             <Warning20Filled color={tokens.colorPaletteYellowForeground1} />
-            <Badge appearance="outline" color="warning">Running (Unreachable)</Badge>
+            <Badge appearance="outline" color="warning">
+              Running (Unreachable)
+            </Badge>
           </div>
         );
       }
@@ -341,7 +348,9 @@ export function LocalEngines() {
 
     return (
       <div className={styles.statusBadge}>
-        <Badge appearance="tint" color="informative">Installed</Badge>
+        <Badge appearance="tint" color="informative">
+          Installed
+        </Badge>
         <Text size={200}>Ready to start</Text>
       </div>
     );
@@ -349,13 +358,16 @@ export function LocalEngines() {
 
   return (
     <div className={styles.container}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalM }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: tokens.spacingVerticalM,
+        }}
+      >
         <Title2>Local Engines</Title2>
-        <Button 
-          appearance="primary" 
-          icon={<Warning20Regular />}
-          onClick={handleRunDiagnostics}
-        >
+        <Button appearance="primary" icon={<Warning20Regular />} onClick={handleRunDiagnostics}>
           Run Diagnostics
         </Button>
       </div>
@@ -366,8 +378,9 @@ export function LocalEngines() {
           <div>
             <Text weight="semibold">Local Engines Configuration</Text>
             <Text size={200} className={styles.helpText}>
-              Configure local AI engines for offline use. Install engines from the Downloads page, 
-              then configure their settings here. Engines can be started/stopped manually or set to auto-start.
+              Configure local AI engines for offline use. Install engines from the Downloads page,
+              then configure their settings here. Engines can be started/stopped manually or set to
+              auto-start.
             </Text>
           </div>
         </div>
@@ -387,7 +400,11 @@ export function LocalEngines() {
                     {engineConfig.description}
                   </Text>
                   {engineConfig.requiresNvidia && (
-                    <Text size={200} className={styles.helpText} style={{ color: tokens.colorPaletteYellowForeground1 }}>
+                    <Text
+                      size={200}
+                      className={styles.helpText}
+                      style={{ color: tokens.colorPaletteYellowForeground1 }}
+                    >
                       ⚠️ Requires NVIDIA GPU with {engineConfig.minVRAM}GB+ VRAM
                     </Text>
                   )}
@@ -398,10 +415,7 @@ export function LocalEngines() {
 
             <div className={styles.engineForm}>
               {engineConfig.defaultPort && (
-                <Field
-                  label="Port"
-                  hint={`Default: ${engineConfig.defaultPort}`}
-                >
+                <Field label="Port" hint={`Default: ${engineConfig.defaultPort}`}>
                   <Input
                     type="number"
                     value={config.port?.toString() || engineConfig.defaultPort?.toString() || ''}
@@ -421,7 +435,9 @@ export function LocalEngines() {
               <Field label="Auto-start on app launch">
                 <Switch
                   checked={config.autoStart || false}
-                  onChange={(_, data) => updateEngineConfig(engineConfig.id, 'autoStart', data.checked)}
+                  onChange={(_, data) =>
+                    updateEngineConfig(engineConfig.id, 'autoStart', data.checked)
+                  }
                 />
               </Field>
 
@@ -480,7 +496,12 @@ export function LocalEngines() {
       })}
 
       {hasChanges && (
-        <Card style={{ padding: tokens.spacingVerticalM, backgroundColor: tokens.colorPaletteYellowBackground1 }}>
+        <Card
+          style={{
+            padding: tokens.spacingVerticalM,
+            backgroundColor: tokens.colorPaletteYellowBackground1,
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text weight="semibold">⚠️ You have unsaved changes</Text>
             <Button appearance="primary" onClick={saveEnginePreferences}>
@@ -505,7 +526,8 @@ export function LocalEngines() {
                   <Text>Running: {diagnostics.runningEngines}</Text>
                   <br />
                   <Text>Healthy: {diagnostics.healthyEngines}</Text>
-                  <br /><br />
+                  <br />
+                  <br />
                   <div className={styles.logViewer}>
                     {JSON.stringify(diagnostics.engines, null, 2)}
                   </div>
@@ -513,7 +535,9 @@ export function LocalEngines() {
               )}
             </DialogContent>
             <DialogActions>
-              <Button appearance="secondary" onClick={() => setShowDiagnostics(false)}>Close</Button>
+              <Button appearance="secondary" onClick={() => setShowDiagnostics(false)}>
+                Close
+              </Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>
@@ -525,12 +549,12 @@ export function LocalEngines() {
           <DialogBody>
             <DialogTitle>Engine Logs - {selectedEngineForLogs}</DialogTitle>
             <DialogContent>
-              <div className={styles.logViewer}>
-                {logs}
-              </div>
+              <div className={styles.logViewer}>{logs}</div>
             </DialogContent>
             <DialogActions>
-              <Button appearance="secondary" onClick={() => setShowLogs(false)}>Close</Button>
+              <Button appearance="secondary" onClick={() => setShowLogs(false)}>
+                Close
+              </Button>
             </DialogActions>
           </DialogBody>
         </DialogSurface>

@@ -10,8 +10,8 @@ import {
   useToastController,
   useId,
 } from '@fluentui/react-components';
-import { 
-  CheckmarkCircle24Regular, 
+import {
+  CheckmarkCircle24Regular,
   ErrorCircle24Regular,
   Folder24Regular,
   Open24Regular,
@@ -58,7 +58,11 @@ export function useNotifications() {
 
     dispatchToast(
       <Toast>
-        <ToastTitle action={<CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />}>
+        <ToastTitle
+          action={
+            <CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
+          }
+        >
           {title}
         </ToastTitle>
         <ToastBody>
@@ -105,7 +109,9 @@ export function useNotifications() {
 
     dispatchToast(
       <Toast>
-        <ToastTitle action={<ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />}>
+        <ToastTitle
+          action={<ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />}
+        >
           {title}
         </ToastTitle>
         <ToastBody>
@@ -117,7 +123,14 @@ export function useNotifications() {
               </div>
             )}
             {correlationId && (
-              <div style={{ marginTop: tokens.spacingVerticalXS, fontSize: '11px', opacity: 0.7, fontFamily: 'monospace' }}>
+              <div
+                style={{
+                  marginTop: tokens.spacingVerticalXS,
+                  fontSize: '11px',
+                  opacity: 0.7,
+                  fontFamily: 'monospace',
+                }}
+              >
                 Correlation ID: {correlationId}
               </div>
             )}
@@ -131,27 +144,19 @@ export function useNotifications() {
         {(onRetry || onOpenLogs) && (
           <ToastFooter className={styles.toastFooter}>
             {onRetry && (
-              <Button
-                size="small"
-                appearance="primary"
-                onClick={onRetry}
-              >
+              <Button size="small" appearance="primary" onClick={onRetry}>
                 Retry
               </Button>
             )}
             {onOpenLogs && (
-              <Button
-                size="small"
-                appearance="subtle"
-                onClick={onOpenLogs}
-              >
+              <Button size="small" appearance="subtle" onClick={onOpenLogs}>
                 Open Logs
               </Button>
             )}
           </ToastFooter>
         )}
       </Toast>,
-      { intent: 'error', timeout: -1 } // Don't auto-dismiss error toasts
+      { intent: 'error', timeout: -1 } // Don&apos;t auto-dismiss error toasts
     );
   };
 

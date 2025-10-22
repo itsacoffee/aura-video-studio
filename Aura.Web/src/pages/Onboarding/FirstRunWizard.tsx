@@ -167,7 +167,7 @@ export function FirstRunWizard() {
 
     if (state.step === 2) {
       // Install required items
-      const requiredItems = state.installItems.filter(item => item.required && !item.installed);
+      const requiredItems = state.installItems.filter((item) => item.required && !item.installed);
       for (const item of requiredItems) {
         await installItemThunk(item.id, dispatch);
       }
@@ -177,13 +177,13 @@ export function FirstRunWizard() {
       // Run validation only if not already valid
       if (state.status === 'idle' || state.status === 'installed') {
         await runValidationThunk(state, dispatch);
-        return; // Don't advance yet, wait for validation result
+        return; // Don&apos;t advance yet, wait for validation result
       } else if (state.status === 'valid' || state.status === 'ready') {
         // Already validated, complete onboarding
         completeOnboarding();
         return;
       } else if (state.status === 'invalid') {
-        // Show fix actions, don't advance
+        // Show fix actions, don&apos;t advance
         return;
       }
     }
@@ -241,7 +241,11 @@ export function FirstRunWizard() {
     }
   };
 
-  const handleAttachExisting = async (itemId: string, installPath: string, executablePath?: string) => {
+  const handleAttachExisting = async (
+    itemId: string,
+    installPath: string,
+    executablePath?: string
+  ) => {
     try {
       // Call attach engine API
       await attachEngine({
@@ -249,17 +253,17 @@ export function FirstRunWizard() {
         installPath,
         executablePath,
       });
-      
+
       // Mark item as installed in state
       dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
     } catch (error) {
       console.error(`Failed to attach ${itemId}:`, error);
-      dispatch({ 
-        type: 'INSTALL_FAILED', 
-        payload: { 
-          itemId, 
-          error: error instanceof Error ? error.message : 'Failed to attach existing installation' 
-        } 
+      dispatch({
+        type: 'INSTALL_FAILED',
+        payload: {
+          itemId,
+          error: error instanceof Error ? error.message : 'Failed to attach existing installation',
+        },
       });
       throw error;
     }
@@ -273,17 +277,21 @@ export function FirstRunWizard() {
   const renderStep0 = () => (
     <>
       <Title2>Welcome to Aura Video Studio!</Title2>
-      <Text>Let's get you set up in just a few steps. Choose your preferred mode:</Text>
-      
+      <Text>Let&apos;s get you set up in just a few steps. Choose your preferred mode:</Text>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
         <Card
           className={styles.modeCard}
           onClick={() => dispatch({ type: 'SET_MODE', payload: 'free' })}
-          style={state.mode === 'free' ? { 
-            borderColor: tokens.colorBrandBackground, 
-            borderWidth: '2px',
-            borderStyle: 'solid'
-          } : {}}
+          style={
+            state.mode === 'free'
+              ? {
+                  borderColor: tokens.colorBrandBackground,
+                  borderWidth: '2px',
+                  borderStyle: 'solid',
+                }
+              : {}
+          }
         >
           <Title3>🆓 Free-Only Mode</Title3>
           <Text>
@@ -300,11 +308,15 @@ export function FirstRunWizard() {
         <Card
           className={styles.modeCard}
           onClick={() => dispatch({ type: 'SET_MODE', payload: 'local' })}
-          style={state.mode === 'local' ? { 
-            borderColor: tokens.colorBrandBackground, 
-            borderWidth: '2px',
-            borderStyle: 'solid'
-          } : {}}
+          style={
+            state.mode === 'local'
+              ? {
+                  borderColor: tokens.colorBrandBackground,
+                  borderWidth: '2px',
+                  borderStyle: 'solid',
+                }
+              : {}
+          }
         >
           <Title3>💻 Local Mode</Title3>
           <Text>
@@ -321,11 +333,15 @@ export function FirstRunWizard() {
         <Card
           className={styles.modeCard}
           onClick={() => dispatch({ type: 'SET_MODE', payload: 'pro' })}
-          style={state.mode === 'pro' ? { 
-            borderColor: tokens.colorBrandBackground, 
-            borderWidth: '2px',
-            borderStyle: 'solid'
-          } : {}}
+          style={
+            state.mode === 'pro'
+              ? {
+                  borderColor: tokens.colorBrandBackground,
+                  borderWidth: '2px',
+                  borderStyle: 'solid',
+                }
+              : {}
+          }
         >
           <Title3>⭐ Pro Mode</Title3>
           <Text>
@@ -345,7 +361,7 @@ export function FirstRunWizard() {
   const renderStep1 = () => (
     <>
       <Title2>Hardware Detection</Title2>
-      
+
       {state.isDetectingHardware ? (
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
@@ -366,10 +382,12 @@ export function FirstRunWizard() {
 
           {!state.hardware.canRunSD && state.mode === 'local' && (
             <Card>
-              <Badge appearance="filled" color="warning">⚠ Note</Badge>
+              <Badge appearance="filled" color="warning">
+                ⚠ Note
+              </Badge>
               <Text style={{ marginTop: tokens.spacingVerticalS }}>
-                Your system doesn't meet the requirements for local Stable Diffusion. 
-                We'll use Stock images as a fallback, or you can add cloud Pro providers later.
+                Your system doesn&apos;t meet the requirements for local Stable Diffusion. We&apos;ll use
+                Stock images as a fallback, or you can add cloud Pro providers later.
               </Text>
             </Card>
           )}
@@ -385,10 +403,10 @@ export function FirstRunWizard() {
   const renderStep2 = () => (
     <>
       <Title2>Install Required Components</Title2>
-      <Text>We'll help you install the necessary tools for your chosen mode.</Text>
+      <Text>We&apos;ll help you install the necessary tools for your chosen mode.</Text>
 
       <div className={styles.installList}>
-        {state.installItems.map(item => (
+        {state.installItems.map((item) => (
           <InstallItemCard
             key={item.id}
             item={item}
@@ -410,24 +428,52 @@ export function FirstRunWizard() {
         </Text>
         <ul style={{ marginLeft: tokens.spacingHorizontalL, marginBottom: 0 }}>
           <li>
-            <Text><strong>Install:</strong> Automatically download and install to the default location shown above</Text>
+            <Text>
+              <strong>Install:</strong> Automatically download and install to the default location
+              shown above
+            </Text>
           </li>
           <li>
-            <Text><strong>Use Existing:</strong> If you already have it installed, point Aura to its location</Text>
+            <Text>
+              <strong>Use Existing:</strong> If you already have it installed, point Aura to its
+              location
+            </Text>
           </li>
           <li>
-            <Text><strong>Skip:</strong> Skip optional components (you can install them later from the Downloads page)</Text>
+            <Text>
+              <strong>Skip:</strong> Skip optional components (you can install them later from the
+              Downloads page)
+            </Text>
           </li>
         </ul>
       </Card>
 
       {state.errors.length > 0 && (
-        <Card style={{ backgroundColor: tokens.colorPaletteRedBackground1, padding: tokens.spacingVerticalM }}>
-          <Text weight="semibold" style={{ color: tokens.colorPaletteRedForeground1, marginBottom: tokens.spacingVerticalS }}>
+        <Card
+          style={{
+            backgroundColor: tokens.colorPaletteRedBackground1,
+            padding: tokens.spacingVerticalM,
+          }}
+        >
+          <Text
+            weight="semibold"
+            style={{
+              color: tokens.colorPaletteRedForeground1,
+              marginBottom: tokens.spacingVerticalS,
+            }}
+          >
             ⚠️ Installation Errors
           </Text>
           {state.errors.map((error, index) => (
-            <Text key={index} size={200} style={{ color: tokens.colorPaletteRedForeground1, display: 'block', marginTop: tokens.spacingVerticalXS }}>
+            <Text
+              key={index}
+              size={200}
+              style={{
+                color: tokens.colorPaletteRedForeground1,
+                display: 'block',
+                marginTop: tokens.spacingVerticalXS,
+              }}
+            >
               • {error}
             </Text>
           ))}
@@ -445,7 +491,7 @@ export function FirstRunWizard() {
   const renderStep3 = () => (
     <>
       <Title2>Validation & Demo</Title2>
-      
+
       {state.status === 'validating' ? (
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
@@ -456,12 +502,21 @@ export function FirstRunWizard() {
       ) : state.status === 'valid' || state.status === 'ready' ? (
         <>
           <div className={styles.successCard}>
-            <Checkmark24Regular style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }} />
+            <Checkmark24Regular
+              style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }}
+            />
             <Title1 style={{ marginTop: tokens.spacingVerticalL }}>All Set!</Title1>
             <Text style={{ marginTop: tokens.spacingVerticalM }}>
-              Your system is ready to create amazing videos. Let's create your first project!
+              Your system is ready to create amazing videos. Let&apos;s create your first project!
             </Text>
-            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, justifyContent: 'center', marginTop: tokens.spacingVerticalXL }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: tokens.spacingHorizontalM,
+                justifyContent: 'center',
+                marginTop: tokens.spacingVerticalXL,
+              }}
+            >
               <Button
                 appearance="primary"
                 size="large"
@@ -483,7 +538,7 @@ export function FirstRunWizard() {
               </Button>
             </div>
           </div>
-          
+
           {/* Show file locations summary */}
           <FileLocationsSummary />
         </>
@@ -491,10 +546,14 @@ export function FirstRunWizard() {
         <>
           <Card className={styles.errorCard}>
             <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-              <Warning24Regular style={{ fontSize: '32px', color: tokens.colorPaletteRedForeground1 }} />
+              <Warning24Regular
+                style={{ fontSize: '32px', color: tokens.colorPaletteRedForeground1 }}
+              />
               <div>
                 <Title3>Validation Failed</Title3>
-                <Text>Some providers are not available. Please fix the issues below to continue.</Text>
+                <Text>
+                  Some providers are not available. Please fix the issues below to continue.
+                </Text>
               </div>
             </div>
           </Card>
@@ -502,20 +561,26 @@ export function FirstRunWizard() {
           {state.lastValidation.failedStages.map((stage, index) => (
             <Card key={index}>
               <Title3>{stage.stage} Stage</Title3>
-              <Text><strong>Provider:</strong> {stage.provider}</Text>
-              <Text><strong>Issue:</strong> {stage.message}</Text>
+              <Text>
+                <strong>Provider:</strong> {stage.provider}
+              </Text>
+              <Text>
+                <strong>Issue:</strong> {stage.message}
+              </Text>
               {stage.hint && (
                 <Text style={{ marginTop: tokens.spacingVerticalS, fontStyle: 'italic' }}>
                   💡 {stage.hint}
                 </Text>
               )}
-              
+
               {stage.suggestions && stage.suggestions.length > 0 && (
                 <div style={{ marginTop: tokens.spacingVerticalM }}>
                   <Text weight="semibold">Suggestions:</Text>
                   <ul style={{ marginTop: tokens.spacingVerticalXS }}>
                     {stage.suggestions.map((suggestion, i) => (
-                      <li key={i}><Text size={200}>{suggestion}</Text></li>
+                      <li key={i}>
+                        <Text size={200}>{suggestion}</Text>
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -545,7 +610,9 @@ export function FirstRunWizard() {
         </>
       ) : (
         <Card>
-          <Text>Click Validate to check your setup and ensure all providers are working correctly.</Text>
+          <Text>
+            Click Validate to check your setup and ensure all providers are working correctly.
+          </Text>
         </Card>
       )}
     </>
@@ -584,16 +651,11 @@ export function FirstRunWizard() {
         </div>
       </div>
 
-      <div className={styles.content}>
-        {renderStepContent()}
-      </div>
+      <div className={styles.content}>{renderStepContent()}</div>
 
       {state.status !== 'ready' && (
         <div className={styles.footer}>
-          <Button
-            appearance="subtle"
-            onClick={handleSkip}
-          >
+          <Button appearance="subtle" onClick={handleSkip}>
             Skip Setup
           </Button>
 
