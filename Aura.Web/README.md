@@ -7,10 +7,10 @@ Aura.Web is the React-based frontend for Aura Video Studio. It provides a modern
 ## Technology Stack
 
 ### Core
-- **React 18** - UI library with hooks and concurrent features
-- **TypeScript 5** - Type-safe JavaScript with strict mode enabled
-- **Vite 5** - Fast build tool and dev server with HMR
-- **Fluent UI React** - Microsoft's design system for Windows 11
+- **React 18.3.1** - UI library with hooks and concurrent features
+- **TypeScript 5.9.3** - Type-safe JavaScript with strict mode enabled
+- **Vite 6.4.1** - Fast build tool and dev server with HMR
+- **Fluent UI React 9.72.1** - Microsoft's design system for Windows 11
 
 ### State & Data
 - **Zustand** - Lightweight state management
@@ -28,6 +28,76 @@ Aura.Web is the React-based frontend for Aura Video Studio. It provides a modern
 - **Prettier** - Code formatting
 - **Vitest** - Unit testing framework
 - **Playwright** - E2E testing
+
+## Critical Dependencies
+
+This section documents all critical npm packages used in the project.
+
+### Production Dependencies
+
+| Package | Version | Purpose | Documentation |
+|---------|---------|---------|---------------|
+| react | ^18.3.1 | Core UI library with hooks and concurrent features | [React Docs](https://react.dev/) |
+| react-dom | ^18.3.1 | React renderer for web browsers | [React DOM Docs](https://react.dev/reference/react-dom) |
+| react-router-dom | ^6.21.0 | Client-side routing and navigation | [React Router Docs](https://reactrouter.com/) |
+| @fluentui/react-components | ^9.72.1 | Microsoft Fluent UI design system components | [Fluent UI Docs](https://react.fluentui.dev/) |
+| @fluentui/react-icons | ^2.0.239 | Fluent UI icon library | [Fluent Icons](https://react.fluentui.dev/?path=/docs/icons-icons--page) |
+| zustand | ^5.0.8 | Lightweight state management without boilerplate | [Zustand Docs](https://zustand.docs.pmnd.rs/) |
+| axios | ^1.6.5 | Promise-based HTTP client with interceptors | [Axios Docs](https://axios-http.com/) |
+| react-hook-form | ^7.49.3 | Performant form state management | [React Hook Form](https://react-hook-form.com/) |
+| zod | ^3.22.4 | TypeScript-first schema validation | [Zod Docs](https://zod.dev/) |
+
+### Development Dependencies
+
+| Package | Version | Purpose | Documentation |
+|---------|---------|---------|---------------|
+| vite | ^6.4.1 | Fast build tool and dev server with HMR | [Vite Docs](https://vite.dev/) |
+| typescript | ^5.9.3 | TypeScript compiler for type-safe JavaScript | [TypeScript Docs](https://www.typescriptlang.org/) |
+| @vitejs/plugin-react | ^4.7.0 | Vite plugin for React Fast Refresh | [Plugin Docs](https://github.com/vitejs/vite-plugin-react) |
+| @types/react | ^18.3.26 | TypeScript type definitions for React | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
+| @types/react-dom | ^18.3.7 | TypeScript type definitions for React DOM | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
+| tailwindcss | ^3.4.1 | Utility-first CSS framework | [Tailwind CSS](https://tailwindcss.com/) |
+| postcss | ^8.4.33 | CSS processing tool | [PostCSS Docs](https://postcss.org/) |
+| autoprefixer | ^10.4.16 | PostCSS plugin to add vendor prefixes | [Autoprefixer](https://github.com/postcss/autoprefixer) |
+| eslint | ^8.57.1 | JavaScript/TypeScript linter | [ESLint Docs](https://eslint.org/) |
+| @typescript-eslint/parser | ^6.18.1 | ESLint parser for TypeScript | [TypeScript ESLint](https://typescript-eslint.io/) |
+| @typescript-eslint/eslint-plugin | ^6.18.1 | ESLint rules for TypeScript | [TypeScript ESLint](https://typescript-eslint.io/) |
+| eslint-plugin-react | ^7.33.2 | React-specific linting rules | [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) |
+| eslint-plugin-react-hooks | ^4.6.0 | ESLint rules for React Hooks | [Rules of Hooks](https://react.dev/warnings/invalid-hook-call-warning) |
+| eslint-plugin-react-refresh | ^0.4.5 | ESLint plugin for React Fast Refresh | [Plugin Docs](https://github.com/ArnaudBarre/eslint-plugin-react-refresh) |
+| eslint-plugin-jsx-a11y | ^6.8.0 | Accessibility linting for JSX | [jsx-a11y](https://github.com/jsx-eslint/eslint-plugin-jsx-a11y) |
+| prettier | ^3.1.1 | Opinionated code formatter | [Prettier Docs](https://prettier.io/) |
+| vitest | ^3.2.4 | Fast unit testing framework powered by Vite | [Vitest Docs](https://vitest.dev/) |
+| @vitest/ui | ^3.2.4 | UI for Vitest test runner | [Vitest UI](https://vitest.dev/guide/ui.html) |
+| @vitest/coverage-v8 | ^3.2.4 | Code coverage provider for Vitest | [Coverage Docs](https://vitest.dev/guide/coverage.html) |
+| @testing-library/react | ^16.3.0 | React testing utilities | [Testing Library](https://testing-library.com/react) |
+| @testing-library/jest-dom | ^6.9.1 | Custom Jest matchers for DOM | [jest-dom](https://github.com/testing-library/jest-dom) |
+| @testing-library/user-event | ^14.6.1 | User interaction simulation for tests | [user-event](https://testing-library.com/docs/user-event/intro/) |
+| @playwright/test | ^1.56.0 | End-to-end testing framework | [Playwright Docs](https://playwright.dev/) |
+| jsdom | ^27.0.0 | JavaScript DOM implementation for testing | [jsdom](https://github.com/jsdom/jsdom) |
+
+### Version Requirements
+
+The following minimum versions are required for compatibility:
+- **Node.js**: >= 18.x (LTS recommended)
+- **npm**: >= 9.x
+- **React**: >= 18.2.0
+- **TypeScript**: >= 5.0.0
+- **Vite**: >= 5.0.0
+
+Current versions used:
+- React: 18.3.1 ✅
+- TypeScript: 5.9.3 ✅
+- Vite: 6.4.1 ✅
+
+### Security & Updates
+
+- Run `npm audit` regularly to check for security vulnerabilities
+- Run `npm audit fix` to automatically fix vulnerabilities when possible
+- Keep dependencies up to date with `npm update` or `npm outdated`
+- All dependencies are regularly reviewed for security and compatibility
+
+Last security audit: Zero vulnerabilities ✅ (as of Vite 6.4.1 update)
 
 ## Quick Start
 
