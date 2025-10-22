@@ -103,29 +103,24 @@ export function RenderSettings() {
 
   const handleSave = () => {
     // TODO: Save settings to API
-    console.log('Saving render settings...');
   };
 
   const handleClearCache = () => {
     if (confirm('Are you sure you want to clear the render cache? This will remove all cached renders.')) {
       // TODO: Clear cache via API
-      console.log('Clearing render cache...');
     }
   };
 
   const handleBrowseCacheLocation = () => {
     // TODO: Open folder browser
-    console.log('Browse for cache location...');
   };
 
   const handleBrowseExportLocation = () => {
     // TODO: Open folder browser
-    console.log('Browse for export location...');
   };
 
   const handleShowFFmpegLog = () => {
     // TODO: Show FFmpeg log viewer
-    console.log('Show FFmpeg log...');
   };
 
   return (

@@ -100,8 +100,7 @@ export const TrendingTopicsExplorer: React.FC = () => {
   };
 
   const handleSelectTopic = (topic: TrendingTopic) => {
-    console.log('Selected topic:', topic);
-    // Could navigate to brainstorming with this topic pre-filled
+    // TODO: Navigate to brainstorming with this topic pre-filled
   };
 
   return (

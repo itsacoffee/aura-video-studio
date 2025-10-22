@@ -207,7 +207,7 @@ public class RetentionPredictor
         var suggestions = new List<string>();
         
         var lowScores = scores.Where(s => s.EngagementScore < 0.5).ToList();
-        if (lowScores.Any())
+        if (lowScores.Count > 0)
         {
             suggestions.Add($"Improve {lowScores.Count} low-engagement segments with more dynamic content");
         }

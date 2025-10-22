@@ -236,7 +236,7 @@ public class ImprovementEngine
         // Platform-specific
         foreach (var platform in platforms)
         {
-            if (platform.Recommendations.Any())
+            if (platform.Recommendations.Count > 0)
             {
                 actions.Add(new ActionItem(
                     Title: $"Optimize for {platform.Platform}",
@@ -335,7 +335,7 @@ public class ImprovementEngine
             severity = "Medium";
         }
 
-        var improvement = issues.Any() 
+        var improvement = issues.Count > 0 
             ? "Add visual interest or break into smaller segments"
             : "Consider adding a transition element";
 

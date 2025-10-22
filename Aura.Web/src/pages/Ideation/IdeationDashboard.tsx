@@ -108,13 +108,11 @@ export const IdeationDashboard: React.FC = () => {
   };
 
   const handleSelectConcept = (concept: ConceptIdea) => {
-    console.log('Selected concept:', concept);
-    // Navigate to concept explorer or show detail modal
+    // TODO: Navigate to concept explorer or show detail modal
   };
 
   const handleExpandConcept = (concept: ConceptIdea) => {
-    console.log('Expand concept:', concept);
-    // Navigate to detailed view or show modal
+    // TODO: Navigate to detailed view or show modal
   };
 
   const handleRefresh = () => {

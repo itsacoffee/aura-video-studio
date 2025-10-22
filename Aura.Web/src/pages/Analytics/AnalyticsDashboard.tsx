@@ -181,12 +181,10 @@ export function AnalyticsDashboard() {
 
   const handleImportCSV = () => {
     // TODO: Implement file picker and CSV import
-    console.log('Import CSV');
   };
 
   const handleImportJSON = () => {
     // TODO: Implement file picker and JSON import
-    console.log('Import JSON');
   };
 
   const formatNumber = (num: number) => {

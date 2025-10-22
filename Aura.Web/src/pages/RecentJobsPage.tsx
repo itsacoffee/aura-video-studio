@@ -186,8 +186,7 @@ export function RecentJobsPage() {
   };
 
   const openFolder = (path: string) => {
-    // This would need to be implemented via an API call to open the folder
-    console.log('Open folder:', path);
+    // TODO: Implement via an API call to open the folder
   };
 
   const filteredJobs = jobs.filter(job => {

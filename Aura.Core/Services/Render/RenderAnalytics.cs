@@ -189,7 +189,7 @@ public class RenderAnalytics
         var hwMetrics = _metrics.Where(m => m.IsHardwareAccelerated && m.Success).ToList();
         var swMetrics = _metrics.Where(m => !m.IsHardwareAccelerated && m.Success).ToList();
 
-        if (!hwMetrics.Any() || !swMetrics.Any())
+        if (hwMetrics.Count == 0 || swMetrics.Count == 0)
         {
             return (0, 0, 0);
         }

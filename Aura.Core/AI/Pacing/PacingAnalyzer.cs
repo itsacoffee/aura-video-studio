@@ -299,7 +299,7 @@ public class PacingAnalyzer
 
         // Check buildup (middle sections)
         var middleScenes = scenes.Skip(1).Take(Math.Max(0, scenes.Count - 2)).ToList();
-        if (middleScenes.Any())
+        if (middleScenes.Count > 0)
         {
             var avgMiddleDuration = middleScenes.Average(s => s.Duration.TotalSeconds);
             if (avgMiddleDuration >= 15 && avgMiddleDuration <= 30)
@@ -380,7 +380,7 @@ public class PacingAnalyzer
 
         // Check for overly long scenes
         var longScenes = recommendations.Where(r => r.RecommendedDuration.TotalSeconds > parameters.MaxSceneDuration).ToList();
-        if (longScenes.Any())
+        if (longScenes.Count > 0)
         {
             warnings.Add($"{longScenes.Count} scene(s) exceed maximum duration - consider breaking into smaller segments");
         }
