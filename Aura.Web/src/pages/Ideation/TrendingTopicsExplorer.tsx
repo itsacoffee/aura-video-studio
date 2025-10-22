@@ -99,7 +99,7 @@ export const TrendingTopicsExplorer: React.FC = () => {
     loadTrendingTopics(niche || undefined);
   };
 
-  const handleSelectTopic = (topic: TrendingTopic) => {
+  const handleSelectTopic = (_topic: TrendingTopic) => {
     // TODO: Navigate to brainstorming with this topic pre-filled
   };
 

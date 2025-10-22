@@ -157,7 +157,7 @@ export const PlatformDashboard: React.FC = () => {
 
         {selectedTab === 'platforms' && (
           <PlatformSelector
-            onPlatformsSelected={platforms => {
+            onPlatformsSelected={_platforms => {
               // TODO: Handle platform selection
             }}
           />

@@ -442,7 +442,7 @@ export function EngineCard({ engine }: EngineCardProps) {
         throw new Error(error.error || 'Failed to open folder');
       }
       
-      const result = await response.json();
+      await response.json();
       // Folder opened successfully
     } catch (error) {
       console.error('Failed to open folder:', error);
