@@ -1,4 +1,4 @@
-# Pipeline Validation Guide (PR 32)
+# Pipeline Validation Guide (Pull #188 / PR 32)
 
 This guide provides instructions for validating the complete video generation pipeline from brief submission to downloadable video.
 

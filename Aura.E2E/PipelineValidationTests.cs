@@ -22,7 +22,7 @@ using Xunit.Abstractions;
 namespace Aura.E2E;
 
 /// <summary>
-/// Comprehensive pipeline validation tests for PR 32
+/// Comprehensive pipeline validation tests for Pull #188 (PR 32)
 /// Tests complete video generation pipeline from brief to downloadable video
 /// </summary>
 public class PipelineValidationTests
