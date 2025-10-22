@@ -107,11 +107,11 @@ export const IdeationDashboard: React.FC = () => {
     }
   };
 
-  const handleSelectConcept = (concept: ConceptIdea) => {
+  const handleSelectConcept = (_concept: ConceptIdea) => {
     // TODO: Navigate to concept explorer or show detail modal
   };
 
-  const handleExpandConcept = (concept: ConceptIdea) => {
+  const handleExpandConcept = (_concept: ConceptIdea) => {
     // TODO: Navigate to detailed view or show modal
   };
 

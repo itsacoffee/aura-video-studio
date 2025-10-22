@@ -185,7 +185,7 @@ export function RecentJobsPage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const openFolder = (path: string) => {
+  const openFolder = (_path: string) => {
     // TODO: Implement via an API call to open the folder
   };
 

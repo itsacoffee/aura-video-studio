@@ -537,7 +537,7 @@ export function SettingsPage() {
         method: 'POST',
       });
       if (response.ok) {
-        const data = await response.json();
+        await response.json();
         // Folder opened successfully
       } else {
         alert('Error opening tools folder');
