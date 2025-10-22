@@ -6,17 +6,35 @@ Aura.Web is the React-based frontend for Aura Video Studio. It provides a modern
 
 ## Technology Stack
 
-- **React 18** - UI library
-- **TypeScript** - Type-safe JavaScript
-- **Vite** - Fast build tool and dev server
+### Core
+- **React 18** - UI library with hooks and concurrent features
+- **TypeScript 5** - Type-safe JavaScript with strict mode enabled
+- **Vite 5** - Fast build tool and dev server with HMR
 - **Fluent UI React** - Microsoft's design system for Windows 11
-- **ESLint** - Code linting (optional)
+
+### State & Data
+- **Zustand** - Lightweight state management
+- **React Router 6** - Client-side routing
+- **Axios** - HTTP client with interceptors
+- **React Hook Form** - Form state management
+- **Zod** - Schema validation
+
+### Styling
+- **Tailwind CSS 3** - Utility-first CSS framework
+- **PostCSS** - CSS processing with autoprefixer
+
+### Code Quality
+- **ESLint** - Code linting with TypeScript and React rules
+- **Prettier** - Code formatting
+- **Vitest** - Unit testing framework
+- **Playwright** - E2E testing
 
 ## Quick Start
 
 ### Prerequisites
-- Node.js 20.x or later
-- npm or yarn
+- Node.js 18.x or later (LTS recommended)
+- npm 9.x or later
+- Git for version control
 
 ### Installation
 
@@ -24,26 +42,33 @@ Aura.Web is the React-based frontend for Aura Video Studio. It provides a modern
 # Install dependencies
 npm install
 
-# Or with yarn
-yarn install
+# Note: If you encounter issues, try:
+npm ci  # Clean install from package-lock.json
 ```
 
 ### Development
 
 ```bash
-# Start development server
+# Start development server (opens browser automatically)
 npm run dev
 
 # The app will be available at http://localhost:5173
+# Hot Module Replacement (HMR) is enabled for instant updates
 ```
 
 ### Build for Production
 
 ```bash
+# Type check first
+npm run type-check
+
 # Build optimized production bundle
 npm run build
 
 # Output will be in dist/
+# - Code splitting for better performance
+# - Source maps enabled for debugging
+# - Assets optimized and minified
 ```
 
 ### Preview Production Build
@@ -116,6 +141,113 @@ Two TypeScript configs:
 2. `tsconfig.node.json` - Configuration for Vite config file
 
 Strict mode is enabled for type safety.
+
+### Environment Variables
+
+Environment variables are managed through `.env` files. Create a `.env` file based on `.env.example`:
+
+```bash
+# Copy the example file
+cp .env.example .env
+```
+
+Available environment variables:
+
+- `VITE_API_BASE_URL` - Backend API URL (default: http://localhost:5272)
+- `VITE_APP_VERSION` - Application version
+- `VITE_APP_NAME` - Application name
+- `VITE_ENV` - Environment (development/production)
+- `VITE_ENABLE_ANALYTICS` - Enable analytics (true/false)
+- `VITE_ENABLE_DEBUG` - Enable debug logging (true/false)
+
+Access environment variables in code:
+
+```typescript
+import { env } from './config/env';
+
+console.log(env.apiBaseUrl);  // Type-safe access
+console.log(env.isDevelopment);
+```
+
+### Code Quality Tools
+
+#### ESLint
+
+```bash
+# Run linter
+npm run lint
+
+# Auto-fix issues
+npm run lint:fix
+```
+
+Configuration: `.eslintrc.cjs`
+- TypeScript and React rules enabled
+- Accessibility checks with jsx-a11y
+- React Hooks rules
+- Warnings for console statements (except warn/error)
+
+#### Prettier
+
+```bash
+# Format code
+npm run format
+
+# Check formatting
+npm run format:check
+```
+
+Configuration: `.prettierrc`
+- Single quotes
+- 100 character line width
+- Trailing commas (ES5)
+- 2 space indentation
+
+#### Path Aliases
+
+TypeScript and Vite are configured with `@` alias for `src/`:
+
+```typescript
+// Instead of:
+import { Component } from '../../../components/Component';
+
+// Use:
+import { Component } from '@/components/Component';
+```
+
+### Tailwind CSS
+
+Tailwind CSS is configured with a custom theme including:
+- Custom color palette (primary, secondary, success, warning, error)
+- Extended spacing scale (4px base unit)
+- Custom animations (fade-in, slide-in)
+- Dark mode support with class strategy
+
+Use Tailwind utilities in your components:
+
+```tsx
+<div className="flex items-center gap-4 p-4 bg-primary-500 rounded-lg">
+  <Button className="px-6 py-2 bg-white text-primary-700 hover:bg-gray-100">
+    Click me
+  </Button>
+</div>
+```
+
+### VS Code Setup
+
+Recommended VS Code extensions (`.vscode/extensions.json`):
+- ESLint
+- Prettier
+- Tailwind CSS IntelliSense
+- TypeScript and JavaScript Language Features
+- Path Intellisense
+- Playwright Test
+- Vitest Explorer
+
+Workspace settings (`.vscode/settings.json`):
+- Format on save enabled
+- ESLint auto-fix on save
+- Prettier as default formatter
 
 ## Features
 
