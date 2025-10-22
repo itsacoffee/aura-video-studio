@@ -2,7 +2,7 @@
  * Tests for ClipboardService
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ClipboardService } from '../services/timeline/ClipboardService';
 import type { TimelineScene } from '../types/timeline';
 

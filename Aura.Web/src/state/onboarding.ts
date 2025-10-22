@@ -358,9 +358,7 @@ export async function installItemThunk(
       case 'stable-diffusion':
         // For other engines, we'll use the attach or skip for now
         // These could be implemented in the future with proper download endpoints
-        console.log(
-          `Installation for ${itemId} not yet implemented via API. Please use Download Center.`
-        );
+        // Installation not yet implemented via API - use Download Center
         dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
         return;
       default:
@@ -390,7 +388,8 @@ export async function installItemThunk(
       const statusResponse = await fetch(statusEndpoint);
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
-        console.log(`${itemId} installation verified:`, statusData);
+        // Installation verified successfully
+        void statusData; // Acknowledge the data was received
       }
     } catch (statusError) {
       console.warn(`Failed to verify ${itemId} status after installation:`, statusError);

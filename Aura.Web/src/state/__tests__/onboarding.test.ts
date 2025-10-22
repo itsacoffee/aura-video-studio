@@ -5,7 +5,6 @@ import {
   getButtonLabel,
   isButtonDisabled,
   canAdvanceStep,
-  type WizardStatus,
 } from '../onboarding';
 import type { PreflightReport } from '../providers';
 

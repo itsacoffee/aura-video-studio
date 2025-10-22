@@ -108,7 +108,7 @@ describe('TimelineEditor', () => {
 
   describe('undo/redo', () => {
     it('should undo last operation', () => {
-      const modified = editor.rippleDelete(mockScenes, 1);
+      editor.rippleDelete(mockScenes, 1);
       const undone = editor.undo();
 
       expect(undone).toEqual(mockScenes);

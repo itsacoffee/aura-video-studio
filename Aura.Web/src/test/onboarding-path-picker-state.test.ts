@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { onboardingReducer, initialOnboardingState } from '../state/onboarding';
-import type { OnboardingState, OnboardingAction } from '../state/onboarding';
+import type { OnboardingState } from '../state/onboarding';
 
 describe('Onboarding State Machine with Path Pickers', () => {
   it('should handle attach existing engine flow', () => {
