@@ -198,43 +198,35 @@ export function Timeline({ duration = 120, onSave }: TimelineProps) {
     }, [duration, setCurrentTime]),
     
     onSplice: useCallback(() => {
-      // Would implement splice logic here
-      console.log('Splice at playhead');
+      // TODO: Implement splice logic here
     }, []),
     
     onRippleDelete: useCallback(() => {
-      // Would implement ripple delete here
-      console.log('Ripple delete');
+      // TODO: Implement ripple delete here
     }, []),
     
     onDelete: useCallback(() => {
-      // Would implement delete here
-      console.log('Delete');
+      // TODO: Implement delete here
     }, []),
     
     onCopy: useCallback(() => {
-      // Would implement copy here
-      console.log('Copy');
+      // TODO: Implement copy here
     }, []),
     
     onPaste: useCallback(() => {
-      // Would implement paste here
-      console.log('Paste');
+      // TODO: Implement paste here
     }, []),
     
     onDuplicate: useCallback(() => {
-      // Would implement duplicate here
-      console.log('Duplicate');
+      // TODO: Implement duplicate here
     }, []),
     
     onUndo: useCallback(() => {
-      // Would implement undo here
-      console.log('Undo');
+      // TODO: Implement undo here
     }, []),
     
     onRedo: useCallback(() => {
-      // Would implement redo here
-      console.log('Redo');
+      // TODO: Implement redo here
     }, []),
     
     onZoomIn: useCallback(() => {

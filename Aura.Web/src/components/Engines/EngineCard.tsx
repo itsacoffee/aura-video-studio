@@ -443,7 +443,7 @@ export function EngineCard({ engine }: EngineCardProps) {
       }
       
       const result = await response.json();
-      console.log('Opened folder:', result.path);
+      // Folder opened successfully
     } catch (error) {
       console.error('Failed to open folder:', error);
       // Fallback: show the path
