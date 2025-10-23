@@ -332,7 +332,7 @@ export function CreateWizard() {
 
   const handleGenerate = async () => {
     console.log('[GENERATE VIDEO] Button clicked');
-    console.log('[GENERATE VIDEO] Form data:', { settings, selectedProviders, preflightReport });
+    console.log('[GENERATE VIDEO] Form data:', { settings, perStageSelection, preflightReport });
     
     setGenerating(true);
     try {
