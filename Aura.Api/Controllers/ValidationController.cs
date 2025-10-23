@@ -32,6 +32,10 @@ public class ValidationController : ControllerBase
     {
         try
         {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] POST /api/validation/brief endpoint called", correlationId);
+            Log.Information("[{CorrelationId}] Validating brief for topic: {Topic}", correlationId, request.Topic ?? "(null)");
+            
             // Create Brief from request
             var brief = new Brief(
                 Topic: request.Topic ?? string.Empty,
@@ -52,6 +56,9 @@ public class ValidationController : ControllerBase
 
             // Validate
             var result = await _validator.ValidateSystemReadyAsync(brief, planSpec, ct);
+
+            Log.Information("[{CorrelationId}] Validation result: IsValid={IsValid}, Issues={IssueCount}", 
+                correlationId, result.IsValid, result.Issues.Count);
 
             return Ok(new
             {

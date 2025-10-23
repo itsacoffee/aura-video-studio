@@ -50,9 +50,12 @@ public class JobRunner
         string? correlationId = null,
         CancellationToken ct = default)
     {
+        var jobId = Guid.NewGuid().ToString();
+        _logger.LogInformation("Creating new job with ID: {JobId}, Topic: {Topic}", jobId, brief.Topic);
+        
         var job = new Job
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = jobId,
             Stage = "Script",
             Status = JobStatus.Queued,
             CorrelationId = correlationId ?? Guid.NewGuid().ToString(),
@@ -64,11 +67,15 @@ public class JobRunner
 
         _activeJobs[job.Id] = job;
         _artifactManager.SaveJob(job);
+        
+        _logger.LogInformation("Job {JobId} saved to active jobs and artifact storage", jobId);
 
         // Create a linked cancellation token source that responds to both the provided token and manual cancellation
         var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _jobCancellationTokens[job.Id] = linkedCts;
 
+        _logger.LogInformation("Starting background execution for job {JobId}", jobId);
+        
         // Start execution in background
         _ = Task.Run(async () => await ExecuteJobAsync(job.Id, linkedCts.Token), linkedCts.Token);
 

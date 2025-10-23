@@ -36,6 +36,7 @@ public class QuickController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] POST /api/quick/demo endpoint called", correlationId);
             Log.Information("[{CorrelationId}] Quick Demo requested with topic: {Topic}", correlationId, request?.Topic ?? "(default)");
 
             var result = await _quickService.CreateQuickDemoAsync(request?.Topic, ct);
