@@ -610,6 +610,13 @@ builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.SoundEffectSe
 builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.AudioMixingService>();
 builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.AudioContinuityService>();
 
+// Register Quality Validation services
+builder.Services.AddSingleton<Aura.Api.Services.QualityValidation.ResolutionValidationService>();
+builder.Services.AddSingleton<Aura.Api.Services.QualityValidation.AudioQualityService>();
+builder.Services.AddSingleton<Aura.Api.Services.QualityValidation.FrameRateService>();
+builder.Services.AddSingleton<Aura.Api.Services.QualityValidation.ConsistencyAnalysisService>();
+builder.Services.AddSingleton<Aura.Api.Services.QualityValidation.PlatformRequirementsService>();
+
 // Register Editing Intelligence services
 builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.CutPointDetectionService>();
 builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.PacingOptimizationService>();
