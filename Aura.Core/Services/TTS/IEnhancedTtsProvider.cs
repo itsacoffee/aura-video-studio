@@ -142,9 +142,9 @@ public record TtsCapabilities
     public bool SupportsVoiceCloning { get; init; }
 
     /// <summary>
-    /// Maximum characters per request (-1 for unlimited)
+    /// Maximum characters per request (null for unlimited)
     /// </summary>
-    public int MaxCharactersPerRequest { get; init; } = -1;
+    public int? MaxCharactersPerRequest { get; init; }
 
     /// <summary>
     /// Supports streaming synthesis
