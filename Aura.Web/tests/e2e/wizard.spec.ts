@@ -115,6 +115,18 @@ test.describe('Wizard E2E - Free Profile', () => {
   });
 
   test('should start quick demo with one click', async ({ page }) => {
+    // Mock Validation API
+    await page.route('**/api/validation/brief', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ 
+          isValid: true,
+          issues: []
+        })
+      });
+    });
+
     // Mock Quick Demo API
     await page.route('**/api/quick/demo', (route) => {
       route.fulfill({
@@ -171,6 +183,18 @@ test.describe('Wizard E2E - Free Profile', () => {
   });
 
   test('quick demo should work without filling topic', async ({ page }) => {
+    // Mock Validation API
+    await page.route('**/api/validation/brief', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ 
+          isValid: true,
+          issues: []
+        })
+      });
+    });
+
     // Mock Quick Demo API
     await page.route('**/api/quick/demo', (route) => {
       route.fulfill({
@@ -279,5 +303,52 @@ test.describe('Wizard E2E - Free Profile', () => {
     if (await downloadButton.isVisible({ timeout: 2000 })) {
       await expect(downloadButton).toBeEnabled();
     }
+  });
+
+  test('should use correct API URL (not hardcoded localhost:5005)', async ({ page }) => {
+    // Track which URLs are called
+    const apiCalls: string[] = [];
+    
+    await page.route('**/api/**', (route) => {
+      apiCalls.push(route.request().url());
+      
+      // Mock responses based on endpoint
+      const url = route.request().url();
+      if (url.includes('/api/validation/brief')) {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ isValid: true, issues: [] })
+        });
+      } else if (url.includes('/api/quick/demo')) {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ jobId: 'test-123', status: 'queued' })
+        });
+      } else {
+        route.continue();
+      }
+    });
+
+    // Navigate to wizard and click Quick Demo
+    await page.goto('/create');
+    const quickDemoButton = page.getByRole('button', { name: /Quick Demo \(Safe\)/i });
+    await quickDemoButton.click();
+    
+    // Wait for API calls to complete
+    await page.waitForTimeout(1000);
+    
+    // Verify NO calls were made to localhost:5005 (the old hardcoded URL)
+    const hardcodedCalls = apiCalls.filter(url => url.includes('localhost:5005') || url.includes('127.0.0.1:5005'));
+    expect(hardcodedCalls).toHaveLength(0);
+    
+    // Verify validation endpoint WAS called (with correct URL)
+    const validationCalls = apiCalls.filter(url => url.includes('/api/validation/brief'));
+    expect(validationCalls.length).toBeGreaterThan(0);
+    
+    // Verify quick demo endpoint WAS called
+    const quickDemoCalls = apiCalls.filter(url => url.includes('/api/quick/demo'));
+    expect(quickDemoCalls.length).toBeGreaterThan(0);
   });
 });
