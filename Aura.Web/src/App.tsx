@@ -34,6 +34,7 @@ import { IdeationDashboard } from './pages/Ideation/IdeationDashboard';
 import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer';
 import { PlatformDashboard } from './components/Platform';
 import { QualityDashboard } from './components/dashboard';
+import { ContentPlanningDashboard } from './components/contentPlanning/ContentPlanningDashboard';
 
 const useStyles = makeStyles({
   root: {
@@ -189,6 +190,7 @@ function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/ideation" element={<IdeationDashboard />} />
                 <Route path="/trending" element={<TrendingTopicsExplorer />} />
+                <Route path="/content-planning" element={<ContentPlanningDashboard />} />
                 <Route path="/create" element={<CreateWizard />} />
                 <Route path="/create/legacy" element={<CreatePage />} />
                 <Route path="/timeline" element={<TimelinePage />} />
