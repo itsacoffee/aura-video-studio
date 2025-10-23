@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.AI;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
@@ -54,8 +55,10 @@ public class OllamaLlmProvider : ILlmProvider
                     await Task.Delay(TimeSpan.FromSeconds(2 * attempt), ct); // Exponential backoff
                 }
 
-                // Build the prompt
-                string prompt = BuildPrompt(brief, spec);
+                // Build enhanced prompt for quality content
+                string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
+                string userPrompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
+                string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
                 // Call Ollama API
                 var requestBody = new
@@ -127,38 +130,5 @@ public class OllamaLlmProvider : ILlmProvider
         throw new Exception($"Failed to generate script with Ollama after {_maxRetries + 1} attempts", lastException);
     }
 
-    private string BuildPrompt(Brief brief, PlanSpec spec)
-    {
-        var sb = new StringBuilder();
-
-        sb.AppendLine($"You are a YouTube video script writer. Create a detailed, engaging script for a video about: {brief.Topic}");
-        sb.AppendLine();
-        sb.AppendLine($"Requirements:");
-        sb.AppendLine($"- Target duration: {spec.TargetDuration.TotalMinutes:F1} minutes");
-        sb.AppendLine($"- Tone: {brief.Tone}");
-        sb.AppendLine($"- Pacing: {spec.Pacing}");
-        sb.AppendLine($"- Content density: {spec.Density}");
-        sb.AppendLine($"- Language: {brief.Language}");
-
-        if (!string.IsNullOrEmpty(brief.Audience))
-        {
-            sb.AppendLine($"- Target audience: {brief.Audience}");
-        }
-
-        if (!string.IsNullOrEmpty(brief.Goal))
-        {
-            sb.AppendLine($"- Goal: {brief.Goal}");
-        }
-
-        sb.AppendLine();
-        sb.AppendLine("Format the script with:");
-        sb.AppendLine("- A title starting with #");
-        sb.AppendLine("- Multiple scenes, each with a heading starting with ##");
-        sb.AppendLine("- Clear, engaging narration text for each scene");
-        sb.AppendLine("- A strong introduction and conclusion");
-        sb.AppendLine();
-        sb.AppendLine("Write the complete script now:");
-
-        return sb.ToString();
-    }
+    // Removed legacy prompt building method - now using EnhancedPromptTemplates
 }
