@@ -33,6 +33,7 @@ import { useJobState } from './state/jobState';
 import { IdeationDashboard } from './pages/Ideation/IdeationDashboard';
 import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer';
 import { PlatformDashboard } from './components/Platform';
+import { QualityDashboard } from './components/dashboard';
 
 const useStyles = makeStyles({
   root: {
@@ -194,6 +195,7 @@ function App() {
                 <Route path="/editor/:jobId" element={<TimelineEditor />} />
                 <Route path="/render" element={<RenderPage />} />
                 <Route path="/platform" element={<PlatformDashboard />} />
+                <Route path="/quality" element={<QualityDashboard />} />
                 <Route path="/publish" element={<PublishPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/assets" element={<AssetLibrary />} />

@@ -617,6 +617,12 @@ builder.Services.AddSingleton<Aura.Api.Services.QualityValidation.FrameRateServi
 builder.Services.AddSingleton<Aura.Api.Services.QualityValidation.ConsistencyAnalysisService>();
 builder.Services.AddSingleton<Aura.Api.Services.QualityValidation.PlatformRequirementsService>();
 
+// Register Quality Dashboard services
+builder.Services.AddSingleton<Aura.Api.Services.Dashboard.MetricsAggregationService>();
+builder.Services.AddSingleton<Aura.Api.Services.Dashboard.TrendAnalysisService>();
+builder.Services.AddSingleton<Aura.Api.Services.Dashboard.RecommendationService>();
+builder.Services.AddSingleton<Aura.Api.Services.Dashboard.ReportGenerationService>();
+
 // Register Editing Intelligence services
 builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.CutPointDetectionService>();
 builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.PacingOptimizationService>();
