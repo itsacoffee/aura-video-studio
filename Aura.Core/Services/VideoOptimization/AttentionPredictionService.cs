@@ -29,9 +29,14 @@ public class AttentionPredictionService
         PredictionOptions options,
         CancellationToken cancellationToken = default)
     {
+        if (scenes == null)
+        {
+            throw new ArgumentNullException(nameof(scenes));
+        }
+
         _logger.LogInformation("Predicting attention for {SceneCount} scenes", scenes.Count);
 
-        if (scenes == null || scenes.Count == 0)
+        if (scenes.Count == 0)
         {
             throw new ArgumentException("Scenes collection cannot be empty", nameof(scenes));
         }
