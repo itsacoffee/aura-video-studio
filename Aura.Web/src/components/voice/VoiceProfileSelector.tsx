@@ -1,0 +1,333 @@
+import React, { useState, useEffect } from 'react';
+import {
+  makeStyles,
+  tokens,
+  Text,
+  Card,
+  Button,
+  Input,
+  Dropdown,
+  Option,
+  Spinner,
+  Badge,
+  Tooltip,
+} from '@fluentui/react-components';
+import {
+  MicRegular,
+  FilterRegular,
+  SearchRegular,
+  PlayRegular,
+} from '@fluentui/react-icons';
+
+const useStyles = makeStyles({
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  filters: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+  },
+  searchBar: {
+    flex: 1,
+    minWidth: '200px',
+  },
+  filterDropdown: {
+    minWidth: '150px',
+  },
+  voiceGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: tokens.spacingVerticalM,
+    marginTop: tokens.spacingVerticalM,
+  },
+  voiceCard: {
+    padding: tokens.spacingVerticalM,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+      transform: 'translateY(-2px)',
+      boxShadow: tokens.shadow8,
+    },
+  },
+  selectedCard: {
+    backgroundColor: tokens.colorBrandBackground2,
+    borderColor: tokens.colorBrandForeground1,
+    borderWidth: '2px',
+  },
+  voiceHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: tokens.spacingVerticalS,
+  },
+  voiceName: {
+    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase400,
+  },
+  voiceInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+    marginTop: tokens.spacingVerticalS,
+  },
+  voiceDetails: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+  },
+  badges: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalXS,
+    flexWrap: 'wrap',
+    marginTop: tokens.spacingVerticalS,
+  },
+  playButton: {
+    marginTop: tokens.spacingVerticalS,
+  },
+  loading: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: tokens.spacingVerticalXXL,
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: tokens.spacingVerticalXXL,
+    color: tokens.colorNeutralForeground3,
+  },
+});
+
+interface VoiceDescriptor {
+  id: string;
+  name: string;
+  provider: string;
+  locale: string;
+  gender: string;
+  voiceType: string;
+  availableStyles?: string[];
+  description?: string;
+}
+
+interface VoiceProfileSelectorProps {
+  selectedVoiceId: string;
+  onVoiceSelect: (voiceId: string) => void;
+}
+
+export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
+  selectedVoiceId,
+  onVoiceSelect,
+}) => {
+  const styles = useStyles();
+  const [voices, setVoices] = useState<VoiceDescriptor[]>([]);
+  const [filteredVoices, setFilteredVoices] = useState<VoiceDescriptor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [providerFilter, setProviderFilter] = useState<string>('all');
+  const [genderFilter, setGenderFilter] = useState<string>('all');
+  const [localeFilter, setLocaleFilter] = useState<string>('all');
+
+  useEffect(() => {
+    loadVoices();
+  }, []);
+
+  useEffect(() => {
+    filterVoices();
+  }, [searchQuery, providerFilter, genderFilter, localeFilter, voices]);
+
+  const loadVoices = async () => {
+    setLoading(true);
+    try {
+      // TODO: Replace with actual API call
+      const mockVoices: VoiceDescriptor[] = [
+        {
+          id: 'azure-jenny',
+          name: 'Jenny',
+          provider: 'Azure',
+          locale: 'en-US',
+          gender: 'Female',
+          voiceType: 'Neural',
+          availableStyles: ['cheerful', 'sad', 'angry', 'friendly'],
+          description: 'Natural female voice with emotion support',
+        },
+        {
+          id: 'azure-guy',
+          name: 'Guy',
+          provider: 'Azure',
+          locale: 'en-US',
+          gender: 'Male',
+          voiceType: 'Neural',
+          availableStyles: ['newscast', 'friendly', 'shouting'],
+          description: 'Professional male voice for narration',
+        },
+        {
+          id: 'elevenlabs-rachel',
+          name: 'Rachel',
+          provider: 'ElevenLabs',
+          locale: 'en-US',
+          gender: 'Female',
+          voiceType: 'Neural',
+          description: 'High-quality AI voice with natural inflection',
+        },
+        {
+          id: 'playht-james',
+          name: 'James',
+          provider: 'PlayHT',
+          locale: 'en-GB',
+          gender: 'Male',
+          voiceType: 'Neural',
+          description: 'British English male voice',
+        },
+      ];
+
+      setVoices(mockVoices);
+    } catch (error) {
+      console.error('Failed to load voices:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterVoices = () => {
+    let filtered = voices;
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        v =>
+          v.name.toLowerCase().includes(query) ||
+          v.description?.toLowerCase().includes(query)
+      );
+    }
+
+    if (providerFilter !== 'all') {
+      filtered = filtered.filter(v => v.provider === providerFilter);
+    }
+
+    if (genderFilter !== 'all') {
+      filtered = filtered.filter(v => v.gender === genderFilter);
+    }
+
+    if (localeFilter !== 'all') {
+      filtered = filtered.filter(v => v.locale === localeFilter);
+    }
+
+    setFilteredVoices(filtered);
+  };
+
+  const handlePlaySample = (voiceId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    // TODO: Implement voice sample playback
+    console.log('Playing sample for:', voiceId);
+  };
+
+  if (loading) {
+    return (
+      <div className={styles.loading}>
+        <Spinner label="Loading voices..." />
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.filters}>
+        <Input
+          className={styles.searchBar}
+          placeholder="Search voices..."
+          contentBefore={<SearchRegular />}
+          value={searchQuery}
+          onChange={(_, data) => setSearchQuery(data.value)}
+        />
+        <Dropdown
+          className={styles.filterDropdown}
+          placeholder="Provider"
+          value={providerFilter}
+          onOptionSelect={(_, data) => setProviderFilter(data.optionValue as string)}
+        >
+          <Option value="all">All Providers</Option>
+          <Option value="Azure">Azure</Option>
+          <Option value="ElevenLabs">ElevenLabs</Option>
+          <Option value="PlayHT">PlayHT</Option>
+        </Dropdown>
+        <Dropdown
+          className={styles.filterDropdown}
+          placeholder="Gender"
+          value={genderFilter}
+          onOptionSelect={(_, data) => setGenderFilter(data.optionValue as string)}
+        >
+          <Option value="all">All Genders</Option>
+          <Option value="Male">Male</Option>
+          <Option value="Female">Female</Option>
+          <Option value="Neutral">Neutral</Option>
+        </Dropdown>
+        <Dropdown
+          className={styles.filterDropdown}
+          placeholder="Language"
+          value={localeFilter}
+          onOptionSelect={(_, data) => setLocaleFilter(data.optionValue as string)}
+        >
+          <Option value="all">All Languages</Option>
+          <Option value="en-US">English (US)</Option>
+          <Option value="en-GB">English (UK)</Option>
+          <Option value="es-ES">Spanish</Option>
+        </Dropdown>
+      </div>
+
+      {filteredVoices.length === 0 ? (
+        <div className={styles.emptyState}>
+          <Text>No voices found matching your criteria</Text>
+        </div>
+      ) : (
+        <div className={styles.voiceGrid}>
+          {filteredVoices.map(voice => (
+            <Card
+              key={voice.id}
+              className={`${styles.voiceCard} ${
+                selectedVoiceId === voice.id ? styles.selectedCard : ''
+              }`}
+              onClick={() => onVoiceSelect(voice.id)}
+            >
+              <div className={styles.voiceHeader}>
+                <Text className={styles.voiceName}>{voice.name}</Text>
+                <MicRegular />
+              </div>
+              <div className={styles.voiceInfo}>
+                <Text size={200}>{voice.description}</Text>
+                <div className={styles.voiceDetails}>
+                  <Text>{voice.gender}</Text>
+                  <Text>•</Text>
+                  <Text>{voice.locale}</Text>
+                </div>
+                <div className={styles.badges}>
+                  <Badge appearance="tint" color="brand">
+                    {voice.provider}
+                  </Badge>
+                  <Badge appearance="outline">{voice.voiceType}</Badge>
+                  {voice.availableStyles && voice.availableStyles.length > 0 && (
+                    <Badge appearance="outline">
+                      {voice.availableStyles.length} styles
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <Button
+                className={styles.playButton}
+                appearance="subtle"
+                size="small"
+                icon={<PlayRegular />}
+                onClick={e => handlePlaySample(voice.id, e)}
+              >
+                Play Sample
+              </Button>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
