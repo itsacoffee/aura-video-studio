@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.AI;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
@@ -43,8 +44,10 @@ public class GeminiLlmProvider : ILlmProvider
 
         try
         {
-            // Build the prompt
-            string prompt = BuildPrompt(brief, spec);
+            // Build enhanced prompt for quality content
+            string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
+            string userPrompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
+            string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
             // Call Gemini API
             var requestBody = new
@@ -110,46 +113,5 @@ public class GeminiLlmProvider : ILlmProvider
         }
     }
 
-    private string BuildPrompt(Brief brief, PlanSpec spec)
-    {
-        var sb = new StringBuilder();
-
-        sb.AppendLine("You are an expert YouTube video script writer. Your scripts are:");
-        sb.AppendLine("- Engaging and well-structured with clear sections");
-        sb.AppendLine("- Written in natural, conversational language suitable for voiceover");
-        sb.AppendLine("- Optimized for the specified pacing and density");
-        sb.AppendLine("- Formatted with markdown headers (# for title, ## for scenes)");
-        sb.AppendLine("- Include a strong hook in the introduction and a clear call-to-action in the conclusion");
-        sb.AppendLine();
-        sb.AppendLine($"Create a YouTube video script about: {brief.Topic}");
-        sb.AppendLine();
-        sb.AppendLine($"Requirements:");
-        sb.AppendLine($"- Target duration: {spec.TargetDuration.TotalMinutes:F1} minutes");
-        sb.AppendLine($"- Tone: {brief.Tone}");
-        sb.AppendLine($"- Pacing: {spec.Pacing}");
-        sb.AppendLine($"- Content density: {spec.Density}");
-        sb.AppendLine($"- Language: {brief.Language}");
-
-        if (!string.IsNullOrEmpty(brief.Audience))
-        {
-            sb.AppendLine($"- Target audience: {brief.Audience}");
-        }
-
-        if (!string.IsNullOrEmpty(brief.Goal))
-        {
-            sb.AppendLine($"- Goal: {brief.Goal}");
-        }
-
-        sb.AppendLine();
-        sb.AppendLine("Structure:");
-        sb.AppendLine("# [Title]");
-        sb.AppendLine("## Introduction");
-        sb.AppendLine("[Hook and overview]");
-        sb.AppendLine("## [Scene headings...]");
-        sb.AppendLine("[Scene content...]");
-        sb.AppendLine("## Conclusion");
-        sb.AppendLine("[Summary and call-to-action]");
-
-        return sb.ToString();
-    }
+    // Removed legacy prompt building method - now using EnhancedPromptTemplates
 }
