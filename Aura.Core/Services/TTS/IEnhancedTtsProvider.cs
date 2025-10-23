@@ -38,7 +38,7 @@ public interface IEnhancedTtsProvider
     /// <summary>
     /// Gets a sample of a voice
     /// </summary>
-    Task<string?> GetVoiceSampleAsync(
+    Task<VoiceSampleResult?> GetVoiceSampleAsync(
         string voiceId,
         string sampleText = "Hello, this is a sample of my voice.",
         CancellationToken ct = default);
@@ -142,9 +142,9 @@ public record TtsCapabilities
     public bool SupportsVoiceCloning { get; init; }
 
     /// <summary>
-    /// Maximum characters per request
+    /// Maximum characters per request (-1 for unlimited)
     /// </summary>
-    public int MaxCharactersPerRequest { get; init; }
+    public int MaxCharactersPerRequest { get; init; } = -1;
 
     /// <summary>
     /// Supports streaming synthesis
@@ -155,6 +155,32 @@ public record TtsCapabilities
     /// Available audio formats
     /// </summary>
     public string[] SupportedFormats { get; init; } = Array.Empty<string>();
+}
+
+/// <summary>
+/// Voice sample result
+/// </summary>
+public record VoiceSampleResult
+{
+    /// <summary>
+    /// Path to the sample audio file
+    /// </summary>
+    public required string AudioPath { get; init; }
+
+    /// <summary>
+    /// Duration of the sample
+    /// </summary>
+    public TimeSpan Duration { get; init; }
+
+    /// <summary>
+    /// Sample text that was synthesized
+    /// </summary>
+    public string? SampleText { get; init; }
+
+    /// <summary>
+    /// Sample format (e.g., "wav", "mp3")
+    /// </summary>
+    public string AudioFormat { get; init; } = "wav";
 }
 
 /// <summary>
