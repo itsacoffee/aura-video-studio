@@ -83,15 +83,15 @@ export function WelcomePage() {
     }
 
     Promise.all([
-      fetch(apiUrl('/api/healthz')).then(res => res.json()),
-      fetch(apiUrl('/api/capabilities')).then(res => res.json()),
+      fetch(apiUrl('/api/healthz')).then((res) => res.json()),
+      fetch(apiUrl('/api/capabilities')).then((res) => res.json()),
     ])
       .then(([healthData, capData]) => {
         setHealth(healthData);
         setCapabilities(capData);
         setLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to fetch system info:', err);
         setLoading(false);
       });
@@ -100,7 +100,7 @@ export function WelcomePage() {
   return (
     <div className={styles.container}>
       {/* First-Run Diagnostics */}
-      <FirstRunDiagnostics 
+      <FirstRunDiagnostics
         autoRun={true}
         onNeedsSetup={() => {
           // Optionally redirect to onboarding if critical issues found
@@ -116,27 +116,20 @@ export function WelcomePage() {
         <Text size={500} className={styles.subtitle}>
           Create professional YouTube videos with AI-powered automation
         </Text>
-        
+
         <div className={styles.actions}>
-          <Button 
-            appearance="primary" 
+          <Button
+            appearance="primary"
             size="large"
             icon={<Play24Regular />}
             onClick={() => navigate('/create')}
           >
             Create Video
           </Button>
-          <Button 
-            size="large"
-            icon={<Settings24Regular />}
-            onClick={() => navigate('/settings')}
-          >
+          <Button size="large" icon={<Settings24Regular />} onClick={() => navigate('/settings')}>
             Settings
           </Button>
-          <Button 
-            size="large"
-            onClick={() => navigate('/onboarding')}
-          >
+          <Button size="large" onClick={() => navigate('/onboarding')}>
             Run Onboarding
           </Button>
         </div>
@@ -152,22 +145,14 @@ export function WelcomePage() {
               ) : health ? (
                 <Text>
                   API is {health.status}
-                  <Badge 
-                    appearance="filled" 
-                    color="success"
-                    className={styles.statusBadge}
-                  >
+                  <Badge appearance="filled" color="success" className={styles.statusBadge}>
                     Online
                   </Badge>
                 </Text>
               ) : (
                 <Text>
                   API unavailable
-                  <Badge 
-                    appearance="filled" 
-                    color="danger"
-                    className={styles.statusBadge}
-                  >
+                  <Badge appearance="filled" color="danger" className={styles.statusBadge}>
                     Offline
                   </Badge>
                 </Text>
@@ -188,7 +173,9 @@ export function WelcomePage() {
                   <Text>CPU: {capabilities.cpu.threads} threads</Text>
                   <Text>RAM: {capabilities.ram.gb} GB</Text>
                   {capabilities.gpu && (
-                    <Text>GPU: {capabilities.gpu.model} ({capabilities.gpu.vramGB} GB)</Text>
+                    <Text>
+                      GPU: {capabilities.gpu.model} ({capabilities.gpu.vramGB} GB)
+                    </Text>
                   )}
                 </div>
               ) : (

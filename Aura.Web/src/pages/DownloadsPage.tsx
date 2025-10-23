@@ -21,15 +21,14 @@ import {
   SelectTabEvent,
   SelectTabData,
 } from '@fluentui/react-components';
-import { 
-  CloudArrowDown24Regular, 
+import {
+  CloudArrowDown24Regular,
   CheckmarkCircle24Filled,
   ErrorCircle24Filled,
 } from '@fluentui/react-icons';
 import { EnginesTab } from '../components/Engines/EnginesTab';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
 import { useNotifications } from '../components/Notifications/Toasts';
-
 
 interface DependencyComponent {
   name: string;
@@ -125,7 +124,7 @@ export function DownloadsPage() {
       if (response.ok) {
         const data = await response.json();
         setManifest(data.components || []);
-        
+
         // Check installation status for each component
         if (data.components) {
           for (const component of data.components) {
@@ -145,13 +144,13 @@ export function DownloadsPage() {
       const statusResponse = await fetch(`/api/downloads/${componentName}/status`);
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
-        
+
         // If installed, verify integrity
         if (statusData.isInstalled) {
           const verifyResponse = await fetch(`/api/downloads/${componentName}/verify`);
           if (verifyResponse.ok) {
             const verifyData = await verifyResponse.json();
-            setComponentStatus(prev => ({
+            setComponentStatus((prev) => ({
               ...prev,
               [componentName]: {
                 isInstalled: statusData.isInstalled,
@@ -164,8 +163,8 @@ export function DownloadsPage() {
             return;
           }
         }
-        
-        setComponentStatus(prev => ({
+
+        setComponentStatus((prev) => ({
           ...prev,
           [componentName]: {
             isInstalled: statusData.isInstalled,
@@ -183,7 +182,7 @@ export function DownloadsPage() {
   const installComponent = async (componentName: string) => {
     try {
       // Update status to installing
-      setComponentStatus(prev => ({
+      setComponentStatus((prev) => ({
         ...prev,
         [componentName]: {
           isInstalled: false,
@@ -202,7 +201,7 @@ export function DownloadsPage() {
         await checkComponentStatus(componentName);
       } else {
         const errorData = await response.json();
-        setComponentStatus(prev => ({
+        setComponentStatus((prev) => ({
           ...prev,
           [componentName]: {
             isInstalled: false,
@@ -215,7 +214,7 @@ export function DownloadsPage() {
       }
     } catch (error) {
       console.error(`Error installing ${componentName}:`, error);
-      setComponentStatus(prev => ({
+      setComponentStatus((prev) => ({
         ...prev,
         [componentName]: {
           isInstalled: false,
@@ -230,7 +229,7 @@ export function DownloadsPage() {
 
   const repairComponent = async (componentName: string) => {
     try {
-      setComponentStatus(prev => ({
+      setComponentStatus((prev) => ({
         ...prev,
         [componentName]: {
           ...prev[componentName],
@@ -247,7 +246,7 @@ export function DownloadsPage() {
         await checkComponentStatus(componentName);
       } else {
         const errorData = await response.json();
-        setComponentStatus(prev => ({
+        setComponentStatus((prev) => ({
           ...prev,
           [componentName]: {
             ...prev[componentName],
@@ -258,7 +257,7 @@ export function DownloadsPage() {
       }
     } catch (error) {
       console.error(`Error repairing ${componentName}:`, error);
-      setComponentStatus(prev => ({
+      setComponentStatus((prev) => ({
         ...prev,
         [componentName]: {
           ...prev[componentName],
@@ -321,7 +320,7 @@ export function DownloadsPage() {
           '',
           `Install Path: ${data.installPath}`,
           '',
-          ...data.steps
+          ...data.steps,
         ].join('\n');
         showSuccessToast({
           title: 'Manual Installation Instructions',
@@ -335,11 +334,11 @@ export function DownloadsPage() {
 
   const getStatusDisplay = (componentName: string) => {
     const status = componentStatus[componentName];
-    
+
     if (!status) {
       return <Spinner size="tiny" />;
     }
-    
+
     if (status.isInstalling) {
       return (
         <div className={styles.statusCell}>
@@ -348,7 +347,7 @@ export function DownloadsPage() {
         </div>
       );
     }
-    
+
     if (status.isRepairing) {
       return (
         <div className={styles.statusCell}>
@@ -357,7 +356,7 @@ export function DownloadsPage() {
         </div>
       );
     }
-    
+
     if (status.error) {
       return (
         <div className={styles.statusCell}>
@@ -366,21 +365,25 @@ export function DownloadsPage() {
         </div>
       );
     }
-    
+
     if (status.needsRepair) {
       return (
         <div className={styles.statusCell}>
           <ErrorCircle24Filled color={tokens.colorPaletteYellowForeground1} />
-          <Badge color="warning" appearance="filled">Needs Repair</Badge>
+          <Badge color="warning" appearance="filled">
+            Needs Repair
+          </Badge>
         </div>
       );
     }
-    
+
     if (status.isInstalled) {
       return (
         <div className={styles.statusCell}>
           <CheckmarkCircle24Filled color={tokens.colorPaletteGreenForeground1} />
-          <Badge color="success" appearance="filled">Installed</Badge>
+          <Badge color="success" appearance="filled">
+            Installed
+          </Badge>
           {status.verificationResult?.probeResult && (
             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
               ({status.verificationResult.probeResult})
@@ -389,9 +392,11 @@ export function DownloadsPage() {
         </div>
       );
     }
-    
+
     return (
-      <Badge color="warning" appearance="outline">Not installed</Badge>
+      <Badge color="warning" appearance="outline">
+        Not installed
+      </Badge>
     );
   };
 
@@ -404,30 +409,51 @@ export function DownloadsPage() {
         </Text>
       </div>
 
-      <TabList selectedValue={selectedTab} onTabSelect={onTabSelect} style={{ marginBottom: tokens.spacingVerticalL }}>
+      <TabList
+        selectedValue={selectedTab}
+        onTabSelect={onTabSelect}
+        style={{ marginBottom: tokens.spacingVerticalL }}
+      >
         <Tab value="dependencies">Dependencies</Tab>
         <Tab value="engines">Engines</Tab>
       </TabList>
 
       {selectedTab === 'dependencies' && (
         <>
-          <Card className={styles.card} style={{ marginBottom: tokens.spacingVerticalL, backgroundColor: tokens.colorNeutralBackground3 }}>
-            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'flex-start' }}>
+          <Card
+            className={styles.card}
+            style={{
+              marginBottom: tokens.spacingVerticalL,
+              backgroundColor: tokens.colorNeutralBackground3,
+            }}
+          >
+            <div
+              style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'flex-start' }}
+            >
               <div style={{ flex: 1 }}>
                 <Title2>Download & Manage Dependencies</Title2>
                 <Text style={{ marginTop: tokens.spacingVerticalS }}>
-                  This page helps you download and manage all required components for video production.
-                  After downloading, configure their paths in <strong>Settings → Local Providers</strong>.
+                  This page helps you download and manage all required components for video
+                  production. After downloading, configure their paths in{' '}
+                  <strong>Settings → Local Providers</strong>.
                 </Text>
                 <Text style={{ marginTop: tokens.spacingVerticalS }}>
                   <strong>Features:</strong>
                 </Text>
-                <ul style={{ marginTop: tokens.spacingVerticalXS, marginLeft: tokens.spacingHorizontalL }}>
+                <ul
+                  style={{
+                    marginTop: tokens.spacingVerticalXS,
+                    marginLeft: tokens.spacingHorizontalL,
+                  }}
+                >
                   <li>✓ SHA-256 checksum verification for all downloads</li>
                   <li>✓ Automatic resume support for interrupted downloads</li>
                   <li>✓ Repair corrupted or incomplete installations</li>
                   <li>✓ Post-install validation checks</li>
-                  <li>✓ Offline mode: Click "Manual" for manual installation instructions</li>
+                  <li>
+                    ✓ Offline mode: Click &quot;Manual&quot; for manual installation
+                    instructions
+                  </li>
                 </ul>
               </div>
             </div>
@@ -435,115 +461,120 @@ export function DownloadsPage() {
 
           <RescanPanel />
 
-      {loading ? (
-        <Card className={styles.card}>
-          <Spinner label="Loading dependencies..." />
-        </Card>
-      ) : (
-        <Card className={styles.card}>
-          <Title2>Available Components</Title2>
-          <div className={styles.tableContainer}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHeaderCell>Component</TableHeaderCell>
-                  <TableHeaderCell>Version</TableHeaderCell>
-                  <TableHeaderCell>Size</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell>Actions</TableHeaderCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {manifest.map((component) => {
-                  const totalSize = component.files.reduce((sum, file) => sum + file.sizeBytes, 0);
-                  const status = componentStatus[component.name];
-                  
-                  return (
-                    <TableRow key={component.name}>
-                      <TableCell>
-                        <div className={styles.nameCell}>
-                          <Text weight="semibold">{component.name}</Text>
-                          {component.isRequired && (
-                            <Badge color="danger" appearance="outline" size="small">
-                              Required
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Text>{component.version}</Text>
-                      </TableCell>
-                      <TableCell>
-                        <Text>{(totalSize / 1024 / 1024).toFixed(1)} MB</Text>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusDisplay(component.name)}
-                      </TableCell>
-                      <TableCell>
-                        <div style={{ display: 'flex', gap: tokens.spacingHorizontalXS, flexWrap: 'wrap' }}>
-                          {!status?.isInstalled ? (
-                            <>
-                              <Button
-                                size="small"
-                                appearance="primary"
-                                icon={<CloudArrowDown24Regular />}
-                                onClick={() => installComponent(component.name)}
-                                disabled={status?.isInstalling || status?.isRepairing}
-                              >
-                                {status?.isInstalling ? 'Installing...' : 'Install'}
-                              </Button>
-                              <Button
-                                size="small"
-                                appearance="subtle"
-                                onClick={() => showManualInstructions(component.name)}
-                              >
-                                Manual
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              {status?.needsRepair && (
-                                <Button
-                                  size="small"
-                                  appearance="primary"
-                                  onClick={() => repairComponent(component.name)}
-                                  disabled={status?.isRepairing}
-                                >
-                                  {status?.isRepairing ? 'Repairing...' : 'Repair'}
-                                </Button>
-                              )}
-                              <Button
-                                size="small"
-                                appearance="subtle"
-                                onClick={() => openComponentFolder(component.name)}
-                              >
-                                Open Folder
-                              </Button>
-                              <Button
-                                size="small"
-                                appearance="subtle"
-                                onClick={() => removeComponent(component.name)}
-                              >
-                                Remove
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
+          {loading ? (
+            <Card className={styles.card}>
+              <Spinner label="Loading dependencies..." />
+            </Card>
+          ) : (
+            <Card className={styles.card}>
+              <Title2>Available Components</Title2>
+              <div className={styles.tableContainer}>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHeaderCell>Component</TableHeaderCell>
+                      <TableHeaderCell>Version</TableHeaderCell>
+                      <TableHeaderCell>Size</TableHeaderCell>
+                      <TableHeaderCell>Status</TableHeaderCell>
+                      <TableHeaderCell>Actions</TableHeaderCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </Card>
-      )}
+                  </TableHeader>
+                  <TableBody>
+                    {manifest.map((component) => {
+                      const totalSize = component.files.reduce(
+                        (sum, file) => sum + file.sizeBytes,
+                        0
+                      );
+                      const status = componentStatus[component.name];
+
+                      return (
+                        <TableRow key={component.name}>
+                          <TableCell>
+                            <div className={styles.nameCell}>
+                              <Text weight="semibold">{component.name}</Text>
+                              {component.isRequired && (
+                                <Badge color="danger" appearance="outline" size="small">
+                                  Required
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Text>{component.version}</Text>
+                          </TableCell>
+                          <TableCell>
+                            <Text>{(totalSize / 1024 / 1024).toFixed(1)} MB</Text>
+                          </TableCell>
+                          <TableCell>{getStatusDisplay(component.name)}</TableCell>
+                          <TableCell>
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: tokens.spacingHorizontalXS,
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              {!status?.isInstalled ? (
+                                <>
+                                  <Button
+                                    size="small"
+                                    appearance="primary"
+                                    icon={<CloudArrowDown24Regular />}
+                                    onClick={() => installComponent(component.name)}
+                                    disabled={status?.isInstalling || status?.isRepairing}
+                                  >
+                                    {status?.isInstalling ? 'Installing...' : 'Install'}
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    appearance="subtle"
+                                    onClick={() => showManualInstructions(component.name)}
+                                  >
+                                    Manual
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  {status?.needsRepair && (
+                                    <Button
+                                      size="small"
+                                      appearance="primary"
+                                      onClick={() => repairComponent(component.name)}
+                                      disabled={status?.isRepairing}
+                                    >
+                                      {status?.isRepairing ? 'Repairing...' : 'Repair'}
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="small"
+                                    appearance="subtle"
+                                    onClick={() => openComponentFolder(component.name)}
+                                  >
+                                    Open Folder
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    appearance="subtle"
+                                    onClick={() => removeComponent(component.name)}
+                                  >
+                                    Remove
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          )}
         </>
       )}
 
-      {selectedTab === 'engines' && (
-        <EnginesTab />
-      )}
+      {selectedTab === 'engines' && <EnginesTab />}
     </div>
   );
 }

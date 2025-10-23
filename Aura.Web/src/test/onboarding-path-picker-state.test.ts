@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { onboardingReducer, initialOnboardingState } from '../state/onboarding';
-import type { OnboardingState, OnboardingAction } from '../state/onboarding';
+import type { OnboardingState } from '../state/onboarding';
 
 describe('Onboarding State Machine with Path Pickers', () => {
   it('should handle attach existing engine flow', () => {
@@ -9,13 +9,13 @@ describe('Onboarding State Machine with Path Pickers', () => {
     // Start installation for FFmpeg
     state = onboardingReducer(state, { type: 'START_INSTALL', payload: 'ffmpeg' });
     expect(state.status).toBe('installing');
-    expect(state.installItems.find(i => i.id === 'ffmpeg')?.installing).toBe(true);
+    expect(state.installItems.find((i) => i.id === 'ffmpeg')?.installing).toBe(true);
 
     // Complete installation (simulating attach)
     state = onboardingReducer(state, { type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
     expect(state.status).toBe('installed');
-    expect(state.installItems.find(i => i.id === 'ffmpeg')?.installed).toBe(true);
-    expect(state.installItems.find(i => i.id === 'ffmpeg')?.installing).toBe(false);
+    expect(state.installItems.find((i) => i.id === 'ffmpeg')?.installed).toBe(true);
+    expect(state.installItems.find((i) => i.id === 'ffmpeg')?.installing).toBe(false);
   });
 
   it('should handle skip optional component flow', () => {
@@ -23,7 +23,7 @@ describe('Onboarding State Machine with Path Pickers', () => {
 
     // Mark optional item as complete (skipped)
     state = onboardingReducer(state, { type: 'INSTALL_COMPLETE', payload: 'ollama' });
-    expect(state.installItems.find(i => i.id === 'ollama')?.installed).toBe(true);
+    expect(state.installItems.find((i) => i.id === 'ollama')?.installed).toBe(true);
   });
 
   it('should handle install failure for attach', () => {
@@ -39,8 +39,8 @@ describe('Onboarding State Machine with Path Pickers', () => {
       payload: { itemId: 'ffmpeg', error: 'Invalid installation path' },
     });
     expect(state.status).toBe('idle');
-    expect(state.installItems.find(i => i.id === 'ffmpeg')?.installing).toBe(false);
-    expect(state.installItems.find(i => i.id === 'ffmpeg')?.installed).toBe(false);
+    expect(state.installItems.find((i) => i.id === 'ffmpeg')?.installing).toBe(false);
+    expect(state.installItems.find((i) => i.id === 'ffmpeg')?.installed).toBe(false);
     expect(state.errors).toContain('Failed to install ffmpeg: Invalid installation path');
   });
 
@@ -70,7 +70,7 @@ describe('Onboarding State Machine with Path Pickers', () => {
     // Step 2: Attach existing FFmpeg
     state = onboardingReducer(state, { type: 'START_INSTALL', payload: 'ffmpeg' });
     state = onboardingReducer(state, { type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
-    expect(state.installItems.find(i => i.id === 'ffmpeg')?.installed).toBe(true);
+    expect(state.installItems.find((i) => i.id === 'ffmpeg')?.installed).toBe(true);
 
     // Step 3: Validation
     state = onboardingReducer(state, { type: 'START_VALIDATION' });
@@ -110,8 +110,8 @@ describe('Onboarding State Machine with Path Pickers', () => {
     state = onboardingReducer(state, { type: 'INSTALL_COMPLETE', payload: 'stable-diffusion' });
 
     // Both should be installed
-    expect(state.installItems.find(i => i.id === 'ffmpeg')?.installed).toBe(true);
-    expect(state.installItems.find(i => i.id === 'stable-diffusion')?.installed).toBe(true);
+    expect(state.installItems.find((i) => i.id === 'ffmpeg')?.installed).toBe(true);
+    expect(state.installItems.find((i) => i.id === 'stable-diffusion')?.installed).toBe(true);
   });
 
   it('should handle validation failure with retry', () => {
@@ -152,9 +152,7 @@ describe('Onboarding State Machine with Path Pickers', () => {
         correlationId: 'test-success',
         report: {
           ok: true,
-          stages: [
-            { stage: 'Script', status: 'pass', provider: 'OpenAI', message: 'OK' },
-          ],
+          stages: [{ stage: 'Script', status: 'pass', provider: 'OpenAI', message: 'OK' }],
         },
       },
     });
@@ -176,9 +174,9 @@ describe('Onboarding State Machine with Path Pickers', () => {
     state = onboardingReducer(state, { type: 'INSTALL_COMPLETE', payload: 'ollama' });
 
     // FFmpeg should still be not installed
-    expect(state.installItems.find(i => i.id === 'ffmpeg')?.installed).toBe(false);
+    expect(state.installItems.find((i) => i.id === 'ffmpeg')?.installed).toBe(false);
     // Ollama should be installed
-    expect(state.installItems.find(i => i.id === 'ollama')?.installed).toBe(true);
+    expect(state.installItems.find((i) => i.id === 'ollama')?.installed).toBe(true);
     // Error should be recorded
     expect(state.errors).toHaveLength(1);
   });

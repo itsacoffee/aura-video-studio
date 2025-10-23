@@ -251,15 +251,23 @@ export function FFmpegCard() {
 
   const getStatusBadge = () => {
     if (isLoading) return null;
-    
+
     switch (status?.state) {
       case 'Installed':
       case 'ExternalAttached':
-        return <Badge appearance="filled" color="success">Installed</Badge>;
+        return (
+          <Badge appearance="filled" color="success">
+            Installed
+          </Badge>
+        );
       case 'NotInstalled':
         return <Badge appearance="outline">Not Installed</Badge>;
       case 'PartiallyFailed':
-        return <Badge appearance="filled" color="warning">Needs Attention</Badge>;
+        return (
+          <Badge appearance="filled" color="warning">
+            Needs Attention
+          </Badge>
+        );
       default:
         return <Badge appearance="outline">Unknown</Badge>;
     }
@@ -273,17 +281,19 @@ export function FFmpegCard() {
         <CardHeader
           header={
             <div className={styles.row}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
-                <Text weight="semibold" size={500}>FFmpeg</Text>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+              >
+                <Text weight="semibold" size={500}>
+                  FFmpeg
+                </Text>
                 {getStatusBadge()}
               </div>
             </div>
           }
           description={
             <div>
-              <Text className={styles.metadata}>
-                Required for video rendering and processing
-              </Text>
+              <Text className={styles.metadata}>Required for video rendering and processing</Text>
             </div>
           }
         />
@@ -300,14 +310,21 @@ export function FFmpegCard() {
             <>
               {isInstalled && status?.ffmpegPath && (
                 <div>
-                  <Text size={300} weight="semibold" block style={{ marginBottom: tokens.spacingVerticalXXS }}>
+                  <Text
+                    size={300}
+                    weight="semibold"
+                    block
+                    style={{ marginBottom: tokens.spacingVerticalXXS }}
+                  >
                     Path:
                   </Text>
-                  <div className={styles.pathDisplay}>
-                    {status.ffmpegPath}
-                  </div>
+                  <div className={styles.pathDisplay}>{status.ffmpegPath}</div>
                   {status.version && (
-                    <Text className={styles.metadata} block style={{ marginTop: tokens.spacingVerticalXXS }}>
+                    <Text
+                      className={styles.metadata}
+                      block
+                      style={{ marginTop: tokens.spacingVerticalXXS }}
+                    >
                       Version: {status.version}
                     </Text>
                   )}
@@ -338,7 +355,7 @@ export function FFmpegCard() {
                   )}
 
                   <Button
-                    appearance={isInstalled ? "secondary" : "primary"}
+                    appearance={isInstalled ? 'secondary' : 'primary'}
                     icon={<ArrowSync24Regular />}
                     onClick={handleRescan}
                     disabled={isProcessing}
@@ -379,9 +396,7 @@ export function FFmpegCard() {
           <DialogBody>
             <DialogTitle>Attach Existing FFmpeg</DialogTitle>
             <DialogContent>
-              <Label htmlFor="ffmpeg-path">
-                FFmpeg Path (file or folder):
-              </Label>
+              <Label htmlFor="ffmpeg-path">FFmpeg Path (file or folder):</Label>
               <Input
                 id="ffmpeg-path"
                 value={attachPath}
@@ -389,8 +404,15 @@ export function FFmpegCard() {
                 placeholder="C:\ffmpeg\bin\ffmpeg.exe or C:\ffmpeg"
                 style={{ width: '100%' }}
               />
-              <Text size={200} style={{ marginTop: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}>
-                Provide the path to ffmpeg.exe (or ffmpeg binary on Linux/Mac), or the folder containing it.
+              <Text
+                size={200}
+                style={{
+                  marginTop: tokens.spacingVerticalS,
+                  color: tokens.colorNeutralForeground3,
+                }}
+              >
+                Provide the path to ffmpeg.exe (or ffmpeg binary on Linux/Mac), or the folder
+                containing it.
               </Text>
             </DialogContent>
             <DialogActions>

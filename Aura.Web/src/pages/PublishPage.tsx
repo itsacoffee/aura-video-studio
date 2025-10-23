@@ -54,7 +54,8 @@ export function PublishPage() {
   const handlePublish = () => {
     showFailureToast({
       title: 'OAuth Setup Required',
-      message: 'YouTube publishing requires OAuth setup. Configure OAuth credentials in Settings to enable direct publishing.',
+      message:
+        'YouTube publishing requires OAuth setup. Configure OAuth credentials in Settings to enable direct publishing.',
     });
   };
 

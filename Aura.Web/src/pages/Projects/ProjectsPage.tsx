@@ -127,7 +127,9 @@ export function ProjectsPage() {
       </div>
 
       {loading && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXL }}>
+        <div
+          style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXL }}
+        >
           <Spinner label="Loading projects..." />
         </div>
       )}
@@ -160,9 +162,7 @@ export function ProjectsPage() {
                 <TableRow key={job.id}>
                   <TableCell>{formatDate(job.startedAt)}</TableCell>
                   <TableCell>
-                    <Text weight="semibold">
-                      {job.correlationId?.substring(0, 8) || 'Unknown'}
-                    </Text>
+                    <Text weight="semibold">{job.correlationId?.substring(0, 8) || 'Unknown'}</Text>
                   </TableCell>
                   <TableCell>
                     <span
@@ -170,8 +170,8 @@ export function ProjectsPage() {
                         job.status === 'Done'
                           ? styles.statusDone
                           : job.status === 'Running'
-                          ? styles.statusRunning
-                          : styles.statusFailed
+                            ? styles.statusRunning
+                            : styles.statusFailed
                       }`}
                     >
                       {job.status}

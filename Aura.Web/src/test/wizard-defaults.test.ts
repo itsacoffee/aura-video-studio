@@ -11,7 +11,7 @@ describe('Wizard Defaults', () => {
       language: 'en-US',
       aspect: 'Widescreen16x9' as const,
     };
-    
+
     expect(defaultBrief.audience).toBe('General');
     expect(defaultBrief.tone).toBe('Informative');
     expect(defaultBrief.language).toBe('en-US');
@@ -24,7 +24,7 @@ describe('Wizard Defaults', () => {
       density: 'Balanced' as const,
       style: 'Documentary',
     };
-    
+
     expect(defaultPlan.targetDurationMinutes).toBe(3.0);
     expect(defaultPlan.pacing).toBe('Conversational');
     expect(defaultPlan.density).toBe('Balanced');
@@ -34,7 +34,7 @@ describe('Wizard Defaults', () => {
     const defaultBrandKit = {
       watermarkOpacity: 0.7,
     };
-    
+
     expect(defaultBrandKit.watermarkOpacity).toBe(0.7);
   });
 
@@ -50,7 +50,7 @@ describe('Wizard Defaults', () => {
       outlineWidth: 2,
       position: 'Bottom Center',
     };
-    
+
     expect(defaultCaptions.enabled).toBe(true);
     expect(defaultCaptions.format).toBe('srt');
     expect(defaultCaptions.burnIn).toBe(false);
@@ -64,7 +64,7 @@ describe('Wizard Defaults', () => {
       enableLocalAssets: false,
       enableStableDiffusion: false,
     };
-    
+
     expect(defaultStockSources.enablePexels).toBe(true);
     expect(defaultStockSources.enablePixabay).toBe(true);
     expect(defaultStockSources.enableUnsplash).toBe(true);

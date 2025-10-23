@@ -148,15 +148,35 @@ export function RecentJobsPage() {
     switch (status) {
       case 'Done':
       case 'Succeeded':
-        return <Badge appearance="filled" color="success">Completed</Badge>;
+        return (
+          <Badge appearance="filled" color="success">
+            Completed
+          </Badge>
+        );
       case 'Failed':
-        return <Badge appearance="filled" color="danger">Failed</Badge>;
+        return (
+          <Badge appearance="filled" color="danger">
+            Failed
+          </Badge>
+        );
       case 'Running':
-        return <Badge appearance="filled" color="informative">Running</Badge>;
+        return (
+          <Badge appearance="filled" color="informative">
+            Running
+          </Badge>
+        );
       case 'Queued':
-        return <Badge appearance="filled" color="warning">Queued</Badge>;
+        return (
+          <Badge appearance="filled" color="warning">
+            Queued
+          </Badge>
+        );
       case 'Canceled':
-        return <Badge appearance="outline" color="subtle">Canceled</Badge>;
+        return (
+          <Badge appearance="outline" color="subtle">
+            Canceled
+          </Badge>
+        );
       default:
         return <Badge appearance="outline">{status}</Badge>;
     }
@@ -189,7 +209,7 @@ export function RecentJobsPage() {
     // TODO: Implement via an API call to open the folder
   };
 
-  const filteredJobs = jobs.filter(job => {
+  const filteredJobs = jobs.filter((job) => {
     if (filterStatus !== 'all' && job.status !== filterStatus) {
       return false;
     }
@@ -223,10 +243,7 @@ export function RecentJobsPage() {
           value={searchQuery}
           onChange={(_e, data) => setSearchQuery(data.value)}
         />
-        <Select
-          value={filterStatus}
-          onChange={(_e, data) => setFilterStatus(data.value)}
-        >
+        <Select value={filterStatus} onChange={(_e, data) => setFilterStatus(data.value)}>
           <option value="all">All Status</option>
           <option value="Done">Completed</option>
           <option value="Failed">Failed</option>
@@ -258,7 +275,12 @@ export function RecentJobsPage() {
                     {job.correlationId && <span>Correlation: {job.correlationId}</span>}
                   </div>
                   {job.errorMessage && (
-                    <Text style={{ color: tokens.colorPaletteRedForeground1, marginTop: tokens.spacingVerticalS }}>
+                    <Text
+                      style={{
+                        color: tokens.colorPaletteRedForeground1,
+                        marginTop: tokens.spacingVerticalS,
+                      }}
+                    >
                       {job.errorMessage}
                     </Text>
                   )}
@@ -267,7 +289,7 @@ export function RecentJobsPage() {
                   {job.status === 'Done' && (
                     <Button
                       appearance="primary"
-                      onClick={() => window.location.href = `/editor/${job.id}`}
+                      onClick={() => (window.location.href = `/editor/${job.id}`)}
                     >
                       Edit Video
                     </Button>
@@ -294,7 +316,10 @@ export function RecentJobsPage() {
                           <Video24Regular />
                           <div>
                             <Text weight="semibold">{artifact.name}</Text>
-                            <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground2 }}>
+                            <Text
+                              size={200}
+                              style={{ display: 'block', color: tokens.colorNeutralForeground2 }}
+                            >
                               {artifact.type} • {formatSize(artifact.sizeBytes)}
                             </Text>
                           </div>

@@ -174,7 +174,7 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
 
   const loadExternalFolders = async () => {
     try {
-      const response = await fetch(apiUrl('/api/models/external-folders'))
+      const response = await fetch(apiUrl('/api/models/external-folders'));
       if (response.ok) {
         const data = await response.json();
         setExternalFolders(data.folders || []);
@@ -197,7 +197,10 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
     try {
       // Determine model kind based on engine
       let kind = 'PIPER_VOICE';
-      if (engineId.toLowerCase().includes('stable-diffusion') || engineId.toLowerCase().includes('comfy')) {
+      if (
+        engineId.toLowerCase().includes('stable-diffusion') ||
+        engineId.toLowerCase().includes('comfy')
+      ) {
         kind = 'SD_BASE'; // Could be more specific based on user selection
       } else if (engineId.toLowerCase().includes('mimic')) {
         kind = 'MIMIC3_VOICE';
@@ -324,17 +327,31 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
 
   const getVerificationBadge = (model: InstalledModel) => {
     if (model.isVerified) {
-      return <Badge appearance="tint" color="success" icon={<Checkmark24Regular />}>Verified</Badge>;
+      return (
+        <Badge appearance="tint" color="success" icon={<Checkmark24Regular />}>
+          Verified
+        </Badge>
+      );
     }
     if (model.verificationStatus.includes('Unknown')) {
-      return <Badge appearance="outline" color="warning" icon={<Warning24Regular />}>Unknown checksum</Badge>;
+      return (
+        <Badge appearance="outline" color="warning" icon={<Warning24Regular />}>
+          Unknown checksum
+        </Badge>
+      );
     }
-    return <Badge appearance="outline" color="danger" icon={<Warning24Regular />}>Not verified</Badge>;
+    return (
+      <Badge appearance="outline" color="danger" icon={<Warning24Regular />}>
+        Not verified
+      </Badge>
+    );
   };
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXL }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXL }}
+      >
         <Spinner label="Loading models..." />
       </div>
     );
@@ -361,7 +378,10 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
             {models.length} items • {formatSize(totalSize)} total
           </Text>
         </div>
-        <Dialog open={showAddFolderDialog} onOpenChange={(_, data) => setShowAddFolderDialog(data.open)}>
+        <Dialog
+          open={showAddFolderDialog}
+          onOpenChange={(_, data) => setShowAddFolderDialog(data.open)}
+        >
           <DialogTrigger disableButtonEnhancement>
             <Button appearance="primary" icon={<Add24Regular />}>
               Add External Folder
@@ -387,7 +407,11 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
                 <DialogTrigger disableButtonEnhancement>
                   <Button appearance="secondary">Cancel</Button>
                 </DialogTrigger>
-                <Button appearance="primary" onClick={handleAddExternalFolder} disabled={isAddingFolder}>
+                <Button
+                  appearance="primary"
+                  onClick={handleAddExternalFolder}
+                  disabled={isAddingFolder}
+                >
                   {isAddingFolder ? 'Adding...' : 'Add Folder'}
                 </Button>
               </DialogActions>
@@ -400,7 +424,9 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
         <>
           <Divider />
           <div>
-            <Text size={400} weight="semibold">External Folders</Text>
+            <Text size={400} weight="semibold">
+              External Folders
+            </Text>
             <div className={styles.externalFoldersList}>
               {externalFolders.map((folder, idx) => (
                 <div key={idx} className={styles.externalFolderItem}>
@@ -408,7 +434,10 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
                     <Text style={{ fontFamily: 'monospace', fontSize: tokens.fontSizeBase200 }}>
                       {folder.folderPath}
                     </Text>
-                    <Text size={200} style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                    <Text
+                      size={200}
+                      style={{ color: tokens.colorNeutralForeground3, display: 'block' }}
+                    >
                       {folder.kind} • {folder.isReadOnly ? 'Read-only' : 'Read/Write'}
                     </Text>
                   </div>
@@ -447,7 +476,9 @@ export function ModelManager({ engineId, engineName }: ModelManagerProps) {
                 <div className={styles.modelActions}>
                   {getVerificationBadge(model)}
                   {model.isExternal && (
-                    <Badge appearance="outline" icon={<Folder24Regular />}>External</Badge>
+                    <Badge appearance="outline" icon={<Folder24Regular />}>
+                      External
+                    </Badge>
                   )}
                   <Tooltip content="Open folder" relationship="label">
                     <Button

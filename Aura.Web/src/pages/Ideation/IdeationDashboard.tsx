@@ -1,11 +1,5 @@
 import React, { useState } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Button,
-  Spinner,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Button, Spinner } from '@fluentui/react-components';
 import { LightbulbRegular, LightbulbFilamentRegular } from '@fluentui/react-icons';
 import { BrainstormInput, BrainstormOptions } from '../../components/ideation/BrainstormInput';
 import { ConceptCard } from '../../components/ideation/ConceptCard';
@@ -99,9 +93,7 @@ export const IdeationDashboard: React.FC = () => {
       const response = await ideationService.brainstorm(request);
       setConcepts(response.concepts);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to generate concepts'
-      );
+      setError(err instanceof Error ? err.message : 'Failed to generate concepts');
     } finally {
       setLoading(false);
     }
@@ -131,9 +123,9 @@ export const IdeationDashboard: React.FC = () => {
           </Text>
         </div>
         <Text className={styles.subtitle} size={400}>
-          Transform your ideas into fully-fleshed video concepts. Enter a topic
-          and let AI generate creative variations with different storytelling
-          approaches, target audiences, and production angles.
+          Transform your ideas into fully-fleshed video concepts. Enter a topic and let AI generate
+          creative variations with different storytelling approaches, target audiences, and
+          production angles.
         </Text>
       </div>
 
@@ -151,7 +143,7 @@ export const IdeationDashboard: React.FC = () => {
           <div className={styles.conceptsSection}>
             <div className={styles.conceptsHeader}>
               <Text size={600} weight="semibold">
-                {concepts.length} Creative Concepts for "{originalTopic}"
+                {concepts.length} Creative Concepts for &quot;{originalTopic}&quot;
               </Text>
               <Button appearance="subtle" onClick={handleRefresh}>
                 Generate More
@@ -177,10 +169,7 @@ export const IdeationDashboard: React.FC = () => {
             <Text size={500} weight="semibold">
               Ready to brainstorm?
             </Text>
-            <Text>
-              Enter a video topic above to get started with AI-powered concept
-              generation
-            </Text>
+            <Text>Enter a video topic above to get started with AI-powered concept generation</Text>
           </div>
         )}
 
@@ -190,9 +179,7 @@ export const IdeationDashboard: React.FC = () => {
             <Text size={500} weight="semibold">
               Generating creative concepts...
             </Text>
-            <Text>
-              Our AI is analyzing multiple creative angles for your topic
-            </Text>
+            <Text>Our AI is analyzing multiple creative angles for your topic</Text>
           </div>
         )}
       </div>

@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  Card,
-  Text,
-  Button,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
+import { Card, Text, Button, makeStyles, tokens } from '@fluentui/react-components';
 import { ArrowRightRegular } from '@fluentui/react-icons';
 import {
   StoryFrameworkType,
@@ -102,9 +96,7 @@ export const FrameworkSelector: React.FC<FrameworkSelectorProps> = ({
   return (
     <div className={styles.container}>
       {frameworks.map((framework) => {
-        const description = scriptEnhancementService.getFrameworkDescription(
-          framework.type
-        );
+        const description = scriptEnhancementService.getFrameworkDescription(framework.type);
 
         return (
           <Card
@@ -113,9 +105,7 @@ export const FrameworkSelector: React.FC<FrameworkSelectorProps> = ({
             onClick={() => !disabled && onSelect(framework.type)}
           >
             <div className={styles.cardContent}>
-              <div style={{ fontSize: '32px', textAlign: 'center' }}>
-                {framework.icon}
-              </div>
+              <div style={{ fontSize: '32px', textAlign: 'center' }}>{framework.icon}</div>
               <div className={styles.title}>
                 <Text size={400} weight="semibold">
                   {framework.name}

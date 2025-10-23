@@ -9,11 +9,7 @@ import {
   Dropdown,
   Option,
 } from '@fluentui/react-components';
-import {
-  Delete24Regular,
-  Add24Regular,
-  Image24Regular,
-} from '@fluentui/react-icons';
+import { Delete24Regular, Add24Regular, Image24Regular } from '@fluentui/react-icons';
 import type { TimelineScene, TimelineAsset } from '../../types/timeline';
 
 const useStyles = makeStyles({
@@ -109,20 +105,18 @@ export function ScenePropertiesPanel({
   if (!scene) {
     return (
       <div className={styles.container}>
-        <div className={styles.placeholder}>
-          Select a scene to view its properties
-        </div>
+        <div className={styles.placeholder}>Select a scene to view its properties</div>
       </div>
     );
   }
 
-  const selectedAsset = scene.visualAssets.find(a => a.id === selectedAssetId);
+  const selectedAsset = scene.visualAssets.find((a) => a.id === selectedAssetId);
 
   return (
     <div className={styles.container}>
       <div className={styles.section}>
         <h3>Scene Properties</h3>
-        
+
         <div className={styles.field}>
           <Label>Scene {scene.index + 1}</Label>
           <Input
@@ -162,7 +156,7 @@ export function ScenePropertiesPanel({
           <Label>Transition</Label>
           <Dropdown
             value={scene.transitionType}
-            onOptionSelect={(_, data) => 
+            onOptionSelect={(_, data) =>
               onUpdateScene?.({ transitionType: data.optionValue as string })
             }
           >
@@ -192,17 +186,10 @@ export function ScenePropertiesPanel({
         )}
 
         <div className={styles.row}>
-          <Button
-            appearance="secondary"
-            onClick={onDuplicateScene}
-          >
+          <Button appearance="secondary" onClick={onDuplicateScene}>
             Duplicate Scene
           </Button>
-          <Button
-            appearance="secondary"
-            icon={<Delete24Regular />}
-            onClick={onDeleteScene}
-          >
+          <Button appearance="secondary" icon={<Delete24Regular />} onClick={onDeleteScene}>
             Delete
           </Button>
         </div>
@@ -211,19 +198,13 @@ export function ScenePropertiesPanel({
       <div className={styles.section}>
         <div className={styles.row}>
           <h3>Visual Assets</h3>
-          <Button
-            appearance="primary"
-            icon={<Add24Regular />}
-            onClick={onImportAsset}
-          >
+          <Button appearance="primary" icon={<Add24Regular />} onClick={onImportAsset}>
             Import Asset
           </Button>
         </div>
 
         {scene.visualAssets.length === 0 ? (
-          <div className={styles.placeholder}>
-            No assets in this scene
-          </div>
+          <div className={styles.placeholder}>No assets in this scene</div>
         ) : (
           <div className={styles.assetList}>
             {scene.visualAssets.map((asset) => (
@@ -237,7 +218,12 @@ export function ScenePropertiesPanel({
                 <Image24Regular />
                 <div className={styles.assetInfo}>
                   <div>{asset.type}</div>
-                  <div style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>
+                  <div
+                    style={{
+                      fontSize: tokens.fontSizeBase200,
+                      color: tokens.colorNeutralForeground3,
+                    }}
+                  >
                     Z: {asset.zIndex}, Opacity: {Math.round(asset.opacity * 100)}%
                   </div>
                 </div>

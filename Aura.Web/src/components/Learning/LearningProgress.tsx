@@ -5,9 +5,7 @@ interface LearningProgressProps {
   maturity: LearningMaturity;
 }
 
-export const LearningProgress: React.FC<LearningProgressProps> = ({
-  maturity,
-}) => {
+export const LearningProgress: React.FC<LearningProgressProps> = ({ maturity }) => {
   const getMaturityInfo = (
     level: string
   ): { label: string; color: string; description: string } => {
@@ -53,9 +51,7 @@ export const LearningProgress: React.FC<LearningProgressProps> = ({
     <div className="bg-white border border-gray-200 rounded-lg p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Learning Progress</h3>
-        <span
-          className={`px-3 py-1 rounded-full text-sm font-medium ${maturityInfo.color}`}
-        >
+        <span className={`px-3 py-1 rounded-full text-sm font-medium ${maturityInfo.color}`}>
           {maturityInfo.label}
         </span>
       </div>
@@ -83,9 +79,7 @@ export const LearningProgress: React.FC<LearningProgressProps> = ({
         <div>
           <div className="flex justify-between text-sm mb-2">
             <span className="text-gray-700">AI Confidence</span>
-            <span className="font-medium">
-              {Math.round(maturity.overallConfidence * 100)}%
-            </span>
+            <span className="font-medium">{Math.round(maturity.overallConfidence * 100)}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
             <div
@@ -98,21 +92,17 @@ export const LearningProgress: React.FC<LearningProgressProps> = ({
         {/* Categories */}
         {Object.keys(maturity.decisionsByCategory).length > 0 && (
           <div className="pt-4 border-t border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-3">
-              Decisions by Category
-            </p>
+            <p className="text-sm font-medium text-gray-700 mb-3">Decisions by Category</p>
             <div className="grid grid-cols-2 gap-2">
-              {Object.entries(maturity.decisionsByCategory).map(
-                ([category, count]) => (
-                  <div
-                    key={category}
-                    className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1"
-                  >
-                    <span className="capitalize text-gray-600">{category}</span>
-                    <span className="font-medium">{count}</span>
-                  </div>
-                )
-              )}
+              {Object.entries(maturity.decisionsByCategory).map(([category, count]) => (
+                <div
+                  key={category}
+                  className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1"
+                >
+                  <span className="capitalize text-gray-600">{category}</span>
+                  <span className="font-medium">{count}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -120,9 +110,7 @@ export const LearningProgress: React.FC<LearningProgressProps> = ({
         {/* Strength Areas */}
         {maturity.strengthCategories.length > 0 && (
           <div className="pt-4 border-t border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-2">
-              Strong Categories
-            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Strong Categories</p>
             <div className="flex flex-wrap gap-2">
               {maturity.strengthCategories.map((cat) => (
                 <span
@@ -139,9 +127,7 @@ export const LearningProgress: React.FC<LearningProgressProps> = ({
         {/* Weak Areas */}
         {maturity.weakCategories.length > 0 && (
           <div className="pt-4 border-t border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-2">
-              Needs More Data
-            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Needs More Data</p>
             <div className="flex flex-wrap gap-2">
               {maturity.weakCategories.map((cat) => (
                 <span

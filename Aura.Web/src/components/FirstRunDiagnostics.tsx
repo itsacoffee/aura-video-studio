@@ -112,7 +112,11 @@ interface FirstRunDiagnosticsProps {
   autoRun?: boolean;
 }
 
-export function FirstRunDiagnostics({ onReady, onNeedsSetup, autoRun = true }: FirstRunDiagnosticsProps) {
+export function FirstRunDiagnostics({
+  onReady,
+  onNeedsSetup,
+  autoRun = true,
+}: FirstRunDiagnosticsProps) {
   const styles = useStyles();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<FirstRunDiagnosticsResult | null>(null);
@@ -121,16 +125,16 @@ export function FirstRunDiagnostics({ onReady, onNeedsSetup, autoRun = true }: F
   const runDiagnostics = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(apiUrl('/api/health/first-run'));
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setResult(data);
-      
+
       // Call callbacks based on status
       if (data.ready && onReady) {
         onReady();
@@ -250,22 +254,28 @@ export function FirstRunDiagnostics({ onReady, onNeedsSetup, autoRun = true }: F
           loading ? (
             <Spinner size="tiny" label="Running diagnostics..." />
           ) : error ? (
-            <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
-              {error}
-            </Text>
+            <Text style={{ color: tokens.colorPaletteRedForeground1 }}>{error}</Text>
           ) : result ? (
             <Text>
               {result.ready ? (
                 <>
                   <CheckmarkCircle24Regular
-                    style={{ verticalAlign: 'middle', marginRight: '4px', color: tokens.colorPaletteGreenForeground1 }}
+                    style={{
+                      verticalAlign: 'middle',
+                      marginRight: '4px',
+                      color: tokens.colorPaletteGreenForeground1,
+                    }}
                   />
                   All systems ready! You can start creating videos.
                 </>
               ) : (
                 <>
                   <Warning24Regular
-                    style={{ verticalAlign: 'middle', marginRight: '4px', color: tokens.colorPaletteYellowForeground1 }}
+                    style={{
+                      verticalAlign: 'middle',
+                      marginRight: '4px',
+                      color: tokens.colorPaletteYellowForeground1,
+                    }}
                   />
                   {result.status === 'has-errors'
                     ? 'Critical issues detected. Please resolve them before continuing.'
@@ -274,15 +284,11 @@ export function FirstRunDiagnostics({ onReady, onNeedsSetup, autoRun = true }: F
               )}
             </Text>
           ) : (
-            <Text>Click "Run Diagnostics" to check your system.</Text>
+            <Text>Click &quot;Run Diagnostics&quot; to check your system.</Text>
           )
         }
         action={
-          <Button
-            appearance="secondary"
-            onClick={runDiagnostics}
-            disabled={loading}
-          >
+          <Button appearance="secondary" onClick={runDiagnostics} disabled={loading}>
             {loading ? 'Running...' : 'Run Diagnostics'}
           </Button>
         }

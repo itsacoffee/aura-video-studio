@@ -87,7 +87,11 @@ interface AssetSuggestionsProps {
   onSelectAsset?: (asset: AssetMatch) => void;
 }
 
-export function AssetSuggestions({ sceneHeading, sceneScript, onSelectAsset }: AssetSuggestionsProps) {
+export function AssetSuggestions({
+  sceneHeading,
+  sceneScript,
+  onSelectAsset,
+}: AssetSuggestionsProps) {
   const styles = useStyles();
   const [suggestions, setSuggestions] = useState<AssetSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -191,7 +195,11 @@ export function AssetSuggestions({ sceneHeading, sceneScript, onSelectAsset }: A
           <Text weight="semibold" block style={{ marginBottom: tokens.spacingVerticalXS }}>
             {suggestion.keyword}
           </Text>
-          <Text size={200} block style={{ marginBottom: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}>
+          <Text
+            size={200}
+            block
+            style={{ marginBottom: tokens.spacingVerticalS, color: tokens.colorNeutralForeground3 }}
+          >
             {suggestion.description}
           </Text>
 

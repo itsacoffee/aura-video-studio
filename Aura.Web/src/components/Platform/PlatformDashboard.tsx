@@ -9,11 +9,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import {
-  Video24Regular,
-  TagMultiple24Regular,
-  DataTrending24Regular,
-} from '@fluentui/react-icons';
+import { Video24Regular, TagMultiple24Regular, DataTrending24Regular } from '@fluentui/react-icons';
 import { PlatformSelector } from './PlatformSelector';
 import { MetadataGenerator } from './MetadataGenerator';
 
@@ -53,8 +49,8 @@ export const PlatformDashboard: React.FC = () => {
       <div className={styles.header}>
         <Title2>Platform Optimization</Title2>
         <Body1>
-          Optimize your content for multiple platforms with AI-powered metadata, thumbnails,
-          and scheduling
+          Optimize your content for multiple platforms with AI-powered metadata, thumbnails, and
+          scheduling
         </Body1>
       </div>
 
@@ -91,8 +87,8 @@ export const PlatformDashboard: React.FC = () => {
                 <div className={styles.featureIcon}>🎬</div>
                 <Title3>Video Optimization</Title3>
                 <Body1>
-                  Automatically adapt aspect ratios, duration, and format for each platform's
-                  requirements.
+                  Automatically adapt aspect ratios, duration, and format for each
+                  platform&apos;s requirements.
                 </Body1>
               </Card>
 
@@ -100,8 +96,8 @@ export const PlatformDashboard: React.FC = () => {
                 <div className={styles.featureIcon}>✍️</div>
                 <Title3>AI Metadata</Title3>
                 <Body1>
-                  Generate platform-specific titles, descriptions, tags, and hashtags
-                  optimized for discovery.
+                  Generate platform-specific titles, descriptions, tags, and hashtags optimized for
+                  discovery.
                 </Body1>
               </Card>
 
@@ -118,8 +114,8 @@ export const PlatformDashboard: React.FC = () => {
                 <div className={styles.featureIcon}>🔍</div>
                 <Title3>SEO Research</Title3>
                 <Body1>
-                  Keyword research, search volume analysis, and competition insights for
-                  better discoverability.
+                  Keyword research, search volume analysis, and competition insights for better
+                  discoverability.
                 </Body1>
               </Card>
 
@@ -127,8 +123,8 @@ export const PlatformDashboard: React.FC = () => {
                 <div className={styles.featureIcon}>⏰</div>
                 <Title3>Optimal Scheduling</Title3>
                 <Body1>
-                  Get recommendations for the best times to post based on platform algorithms
-                  and audience activity.
+                  Get recommendations for the best times to post based on platform algorithms and
+                  audience activity.
                 </Body1>
               </Card>
 
@@ -136,8 +132,8 @@ export const PlatformDashboard: React.FC = () => {
                 <div className={styles.featureIcon}>📊</div>
                 <Title3>Platform Trends</Title3>
                 <Body1>
-                  Stay updated with current trending topics, hashtags, and content strategies
-                  for each platform.
+                  Stay updated with current trending topics, hashtags, and content strategies for
+                  each platform.
                 </Body1>
               </Card>
 
@@ -145,8 +141,8 @@ export const PlatformDashboard: React.FC = () => {
                 <div className={styles.featureIcon}>🚀</div>
                 <Title3>Multi-Platform Export</Title3>
                 <Body1>
-                  Export optimized versions for multiple platforms simultaneously with a
-                  single click.
+                  Export optimized versions for multiple platforms simultaneously with a single
+                  click.
                 </Body1>
               </Card>
             </div>
@@ -157,7 +153,7 @@ export const PlatformDashboard: React.FC = () => {
 
         {selectedTab === 'platforms' && (
           <PlatformSelector
-            onPlatformsSelected={_platforms => {
+            onPlatformsSelected={(_platforms) => {
               // TODO: Handle platform selection
             }}
           />

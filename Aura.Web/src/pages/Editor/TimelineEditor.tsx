@@ -1,13 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  makeStyles,
-  tokens,
-  Button,
-  Spinner,
-  Text,
-  Title3,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Button, Spinner, Text, Title3 } from '@fluentui/react-components';
 import {
   Save24Regular,
   Play24Regular,
@@ -182,14 +175,14 @@ export function TimelineEditor() {
       try {
         setIsLoading(true);
         const response = await fetch(`/api/editor/timeline/${jobId}`);
-        
+
         if (!response.ok) {
           throw new Error('Failed to load timeline');
         }
 
         const data = await response.json();
         setTimeline(data);
-        
+
         // Check if preview exists
         try {
           const previewResponse = await fetch(`/api/editor/preview/${jobId}`, { method: 'HEAD' });
@@ -197,7 +190,7 @@ export function TimelineEditor() {
             setPreviewUrl(`/api/editor/preview/${jobId}`);
           }
         } catch {
-          // Preview doesn't exist yet
+          // Preview doesn&apos;t exist yet
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load timeline');
@@ -262,7 +255,7 @@ export function TimelineEditor() {
 
     try {
       setIsGeneratingPreview(true);
-      
+
       // Save timeline first
       await saveTimeline();
 
@@ -284,44 +277,53 @@ export function TimelineEditor() {
     }
   };
 
-  const handleSceneUpdate = useCallback((index: number, updates: Partial<TimelineScene>) => {
-    if (!timeline) return;
+  const handleSceneUpdate = useCallback(
+    (index: number, updates: Partial<TimelineScene>) => {
+      if (!timeline) return;
 
-    const newScenes = [...timeline.scenes];
-    newScenes[index] = { ...newScenes[index], ...updates };
+      const newScenes = [...timeline.scenes];
+      newScenes[index] = { ...newScenes[index], ...updates };
 
-    setTimeline({ ...timeline, scenes: newScenes });
-    setIsDirty(true);
-  }, [timeline]);
-
-  const handleAssetUpdate = useCallback((sceneIndex: number, assetId: string, updates: Partial<TimelineAsset>) => {
-    if (!timeline) return;
-
-    const newScenes = [...timeline.scenes];
-    const scene = newScenes[sceneIndex];
-    const assetIndex = scene.visualAssets.findIndex(a => a.id === assetId);
-    
-    if (assetIndex >= 0) {
-      scene.visualAssets[assetIndex] = { ...scene.visualAssets[assetIndex], ...updates };
       setTimeline({ ...timeline, scenes: newScenes });
       setIsDirty(true);
-    }
-  }, [timeline]);
+    },
+    [timeline]
+  );
 
-  const handleDeleteAsset = useCallback((sceneIndex: number, assetId: string) => {
-    if (!timeline) return;
+  const handleAssetUpdate = useCallback(
+    (sceneIndex: number, assetId: string, updates: Partial<TimelineAsset>) => {
+      if (!timeline) return;
 
-    const newScenes = [...timeline.scenes];
-    const scene = newScenes[sceneIndex];
-    scene.visualAssets = scene.visualAssets.filter(a => a.id !== assetId);
-    
-    setTimeline({ ...timeline, scenes: newScenes });
-    setIsDirty(true);
-    
-    if (selectedAssetId === assetId) {
-      setSelectedAssetId(null);
-    }
-  }, [timeline, selectedAssetId]);
+      const newScenes = [...timeline.scenes];
+      const scene = newScenes[sceneIndex];
+      const assetIndex = scene.visualAssets.findIndex((a) => a.id === assetId);
+
+      if (assetIndex >= 0) {
+        scene.visualAssets[assetIndex] = { ...scene.visualAssets[assetIndex], ...updates };
+        setTimeline({ ...timeline, scenes: newScenes });
+        setIsDirty(true);
+      }
+    },
+    [timeline]
+  );
+
+  const handleDeleteAsset = useCallback(
+    (sceneIndex: number, assetId: string) => {
+      if (!timeline) return;
+
+      const newScenes = [...timeline.scenes];
+      const scene = newScenes[sceneIndex];
+      scene.visualAssets = scene.visualAssets.filter((a) => a.id !== assetId);
+
+      setTimeline({ ...timeline, scenes: newScenes });
+      setIsDirty(true);
+
+      if (selectedAssetId === assetId) {
+        setSelectedAssetId(null);
+      }
+    },
+    [timeline, selectedAssetId]
+  );
 
   const getSceneWidth = (scene: TimelineScene) => {
     return scene.duration * zoom;
@@ -354,7 +356,8 @@ export function TimelineEditor() {
     return null;
   }
 
-  const selectedScene = selectedSceneIndex !== null ? timeline.scenes[selectedSceneIndex] : undefined;
+  const selectedScene =
+    selectedSceneIndex !== null ? timeline.scenes[selectedSceneIndex] : undefined;
 
   return (
     <div className={styles.container}>
@@ -367,7 +370,13 @@ export function TimelineEditor() {
         </div>
         <div className={styles.headerRight}>
           <Text className={styles.saveIndicator}>
-            {isSaving ? 'Saving...' : isDirty ? 'Unsaved changes' : lastSaved ? `Saved at ${lastSaved.toLocaleTimeString()}` : ''}
+            {isSaving
+              ? 'Saving...'
+              : isDirty
+                ? 'Unsaved changes'
+                : lastSaved
+                  ? `Saved at ${lastSaved.toLocaleTimeString()}`
+                  : ''}
           </Text>
           <Button
             appearance="subtle"
@@ -432,18 +441,13 @@ export function TimelineEditor() {
                   <div className={styles.sceneHeading}>
                     {scene.heading || `Scene ${scene.index + 1}`}
                   </div>
-                  <div className={styles.sceneDuration}>
-                    {scene.duration.toFixed(1)}s
-                  </div>
+                  <div className={styles.sceneDuration}>{scene.duration.toFixed(1)}s</div>
                   <div className={styles.resizeHandle} />
                 </div>
               ))}
-              
+
               {/* Playhead */}
-              <div
-                className={styles.playhead}
-                style={{ left: `${currentTime * zoom}px` }}
-              />
+              <div className={styles.playhead} style={{ left: `${currentTime * zoom}px` }} />
             </div>
           </div>
         </div>

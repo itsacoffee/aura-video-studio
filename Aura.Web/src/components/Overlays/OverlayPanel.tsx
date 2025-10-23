@@ -11,10 +11,7 @@ import {
   Field,
   Slider,
 } from '@fluentui/react-components';
-import {
-  Add24Regular,
-  Delete24Regular,
-} from '@fluentui/react-icons';
+import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
 import { useTimelineStore, TextOverlay } from '../../state/timeline';
 
 const useStyles = makeStyles({
@@ -98,7 +95,8 @@ export function OverlayPanel() {
       text: type === 'title' ? 'Title Text' : type === 'lowerThird' ? 'Name' : 'Important!',
       inTime: currentTime,
       outTime: currentTime + 3,
-      alignment: type === 'title' ? 'topCenter' : type === 'lowerThird' ? 'bottomLeft' : 'middleRight',
+      alignment:
+        type === 'title' ? 'topCenter' : type === 'lowerThird' ? 'bottomLeft' : 'middleRight',
       x: 0,
       y: 0,
       fontSize: type === 'title' ? 72 : type === 'lowerThird' ? 36 : 48,
@@ -176,7 +174,14 @@ export function OverlayPanel() {
               </div>
             ))}
             {overlays.length === 0 && (
-              <Text size={300} style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL, color: tokens.colorNeutralForeground3 }}>
+              <Text
+                size={300}
+                style={{
+                  textAlign: 'center',
+                  padding: tokens.spacingVerticalXXL,
+                  color: tokens.colorNeutralForeground3,
+                }}
+              >
                 No overlays yet. Add one to get started.
               </Text>
             )}
@@ -210,7 +215,9 @@ export function OverlayPanel() {
                   <Input
                     type="number"
                     value={editingOverlay.outTime?.toString() || '0'}
-                    onChange={(_, data) => handleUpdateField('outTime', parseFloat(data.value) || 0)}
+                    onChange={(_, data) =>
+                      handleUpdateField('outTime', parseFloat(data.value) || 0)
+                    }
                   />
                 </Field>
               </div>
@@ -274,7 +281,9 @@ export function OverlayPanel() {
                   <Input
                     type="number"
                     value={editingOverlay.borderWidth?.toString() || '0'}
-                    onChange={(_, data) => handleUpdateField('borderWidth', parseInt(data.value, 10) || 0)}
+                    onChange={(_, data) =>
+                      handleUpdateField('borderWidth', parseInt(data.value, 10) || 0)
+                    }
                   />
                 </Field>
                 <Field label="Border Color" className={styles.field}>

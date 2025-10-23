@@ -107,13 +107,7 @@ export const StockImageSearch: React.FC<StockImageSearchProps> = ({
     <Dialog open={isOpen} onOpenChange={(_, data) => !data.open && onClose()}>
       <DialogSurface style={{ maxWidth: '800px', maxHeight: '80vh' }}>
         <DialogTitle
-          action={
-            <Button
-              appearance="subtle"
-              icon={<Dismiss24Regular />}
-              onClick={onClose}
-            />
-          }
+          action={<Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />}
         >
           Stock Image Search
         </DialogTitle>
@@ -154,7 +148,7 @@ export const StockImageSearch: React.FC<StockImageSearchProps> = ({
                   >
                     <img
                       src={image.thumbnailUrl}
-                      alt={`Stock image ${idx + 1}`}
+                      alt={image.photographer || `Photo ${idx + 1}`}
                       className={styles.image}
                     />
                     <div className={styles.imageInfo}>

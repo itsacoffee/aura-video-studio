@@ -1,18 +1,6 @@
 import React, { useState } from 'react';
-import {
-  Card,
-  Text,
-  Button,
-  makeStyles,
-  tokens,
-  Badge,
-  Spinner,
-} from '@fluentui/react-components';
-import {
-  CheckmarkCircleRegular,
-  DismissCircleRegular,
-  InfoRegular,
-} from '@fluentui/react-icons';
+import { Card, Text, Button, makeStyles, tokens, Badge, Spinner } from '@fluentui/react-components';
+import { CheckmarkCircleRegular, DismissCircleRegular, InfoRegular } from '@fluentui/react-icons';
 import type {
   EnhancementSuggestion,
   SuggestionType,
@@ -117,8 +105,8 @@ export const SuggestionCard: React.FC<SuggestionCardProps> = ({
     suggestion.confidenceScore >= 70
       ? 'success'
       : suggestion.confidenceScore >= 50
-      ? 'warning'
-      : 'danger';
+        ? 'warning'
+        : 'danger';
 
   return (
     <Card className={styles.card}>
@@ -169,20 +157,12 @@ export const SuggestionCard: React.FC<SuggestionCardProps> = ({
         ) : (
           <>
             {onReject && (
-              <Button
-                appearance="subtle"
-                icon={<DismissCircleRegular />}
-                onClick={handleReject}
-              >
+              <Button appearance="subtle" icon={<DismissCircleRegular />} onClick={handleReject}>
                 Reject
               </Button>
             )}
             {onAccept && (
-              <Button
-                appearance="primary"
-                icon={<CheckmarkCircleRegular />}
-                onClick={handleAccept}
-              >
+              <Button appearance="primary" icon={<CheckmarkCircleRegular />} onClick={handleAccept}>
                 Accept
               </Button>
             )}

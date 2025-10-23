@@ -186,7 +186,9 @@ export const MusicSelector: React.FC<MusicSelectorProps> = ({ onSelect, selected
         </div>
       ) : tracks.length === 0 ? (
         <div className={styles.emptyState}>
-          <MusicNote224Regular style={{ fontSize: '48px', color: tokens.colorNeutralForeground3 }} />
+          <MusicNote224Regular
+            style={{ fontSize: '48px', color: tokens.colorNeutralForeground3 }}
+          />
           <Text size={400} weight="semibold">
             No music tracks found
           </Text>

@@ -15,9 +15,7 @@ interface LearningDashboardProps {
   profileId: string;
 }
 
-export const LearningDashboard: React.FC<LearningDashboardProps> = ({
-  profileId,
-}) => {
+export const LearningDashboard: React.FC<LearningDashboardProps> = ({ profileId }) => {
   const [patterns, setPatterns] = useState<DecisionPattern[]>([]);
   const [insights, setInsights] = useState<LearningInsight[]>([]);
   const [maturity, setMaturity] = useState<LearningMaturity | null>(null);
@@ -38,12 +36,7 @@ export const LearningDashboard: React.FC<LearningDashboardProps> = ({
       setLoading(true);
       setError(null);
 
-      const [
-        patternsRes,
-        insightsRes,
-        maturityRes,
-        preferencesRes,
-      ] = await Promise.all([
+      const [patternsRes, insightsRes, maturityRes, preferencesRes] = await Promise.all([
         learningService.getPatterns(profileId),
         learningService.getInsights(profileId),
         learningService.getMaturityLevel(profileId),
@@ -195,21 +188,15 @@ export const LearningDashboard: React.FC<LearningDashboardProps> = ({
                 <h3 className="text-lg font-semibold mb-4">Quick Stats</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {patterns.length}
-                    </p>
+                    <p className="text-2xl font-bold text-blue-600">{patterns.length}</p>
                     <p className="text-sm text-gray-600">Patterns</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-green-600">
-                      {insights.length}
-                    </p>
+                    <p className="text-2xl font-bold text-green-600">{insights.length}</p>
                     <p className="text-sm text-gray-600">Insights</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {preferences.length}
-                    </p>
+                    <p className="text-2xl font-bold text-purple-600">{preferences.length}</p>
                     <p className="text-sm text-gray-600">Preferences</p>
                   </div>
                   <div>
@@ -247,15 +234,11 @@ export const LearningDashboard: React.FC<LearningDashboardProps> = ({
             <h2 className="text-xl font-semibold mb-4">Learning Insights</h2>
             <div className="space-y-3">
               {insights.length > 0 ? (
-                insights.map((insight) => (
-                  <InsightCard key={insight.insightId} insight={insight} />
-                ))
+                insights.map((insight) => <InsightCard key={insight.insightId} insight={insight} />)
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <p>No insights available yet.</p>
-                  <p className="text-sm mt-2">
-                    Make more decisions to generate insights.
-                  </p>
+                  <p className="text-sm mt-2">Make more decisions to generate insights.</p>
                 </div>
               )}
             </div>
@@ -275,9 +258,7 @@ export const LearningDashboard: React.FC<LearningDashboardProps> = ({
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium capitalize">
-                            {pref.preferenceName}
-                          </span>
+                          <span className="font-medium capitalize">{pref.preferenceName}</span>
                           {pref.isConfirmed && (
                             <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
                               ✓ Confirmed
@@ -290,9 +271,7 @@ export const LearningDashboard: React.FC<LearningDashboardProps> = ({
                             : String(pref.preferenceValue)}
                         </p>
                         <div className="mt-2">
-                          <span className="text-xs text-gray-500 capitalize">
-                            {pref.category}
-                          </span>
+                          <span className="text-xs text-gray-500 capitalize">{pref.category}</span>
                           <span className="text-xs text-gray-400 mx-2">•</span>
                           <span className="text-xs text-gray-500">
                             Based on {pref.basedOnDecisions} decisions
@@ -305,8 +284,8 @@ export const LearningDashboard: React.FC<LearningDashboardProps> = ({
                             pref.confidence >= 0.7
                               ? 'bg-green-100 text-green-800'
                               : pref.confidence >= 0.4
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
                           }`}
                         >
                           {Math.round(pref.confidence * 100)}%

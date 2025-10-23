@@ -247,28 +247,28 @@ export const SUPPORTED_PLATFORMS = [
   'facebook',
 ] as const;
 
-export type SupportedPlatform = typeof SUPPORTED_PLATFORMS[number];
+export type SupportedPlatform = (typeof SUPPORTED_PLATFORMS)[number];
 
 export const PLATFORM_DISPLAY_NAMES: Record<SupportedPlatform, string> = {
-  'youtube': 'YouTube',
-  'tiktok': 'TikTok',
+  youtube: 'YouTube',
+  tiktok: 'TikTok',
   'instagram-reels': 'Instagram Reels',
   'instagram-feed': 'Instagram Feed',
   'youtube-shorts': 'YouTube Shorts',
-  'linkedin': 'LinkedIn',
-  'twitter': 'Twitter/X',
-  'facebook': 'Facebook',
+  linkedin: 'LinkedIn',
+  twitter: 'Twitter/X',
+  facebook: 'Facebook',
 };
 
 export const PLATFORM_ICONS: Record<SupportedPlatform, string> = {
-  'youtube': '▶️',
-  'tiktok': '🎵',
+  youtube: '▶️',
+  tiktok: '🎵',
   'instagram-reels': '📸',
   'instagram-feed': '📷',
   'youtube-shorts': '🎬',
-  'linkedin': '💼',
-  'twitter': '🐦',
-  'facebook': '👥',
+  linkedin: '💼',
+  twitter: '🐦',
+  facebook: '👥',
 };
 
 export const TARGET_EMOTIONS = [
@@ -282,4 +282,4 @@ export const TARGET_EMOTIONS = [
   'educational',
 ] as const;
 
-export type TargetEmotion = typeof TARGET_EMOTIONS[number];
+export type TargetEmotion = (typeof TARGET_EMOTIONS)[number];

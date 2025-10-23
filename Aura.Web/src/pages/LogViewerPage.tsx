@@ -13,11 +13,7 @@ import {
   Body1,
   Caption1,
 } from '@fluentui/react-components';
-import {
-  ArrowClockwise24Regular,
-  Copy24Regular,
-  Filter24Regular,
-} from '@fluentui/react-icons';
+import { ArrowClockwise24Regular, Copy24Regular, Filter24Regular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   container: {
@@ -140,7 +136,7 @@ export function LogViewerPage() {
 
       const response = await fetch(`/api/logs?${params.toString()}`);
       const data: LogsResponse = await response.json();
-      
+
       setLogs(data.logs || []);
       setTotalLines(data.totalLines || 0);
       setLogFile(data.file || '');
@@ -170,8 +166,9 @@ export function LogViewerPage() {
       correlationId: log.correlationId,
       message: log.message,
     };
-    
-    navigator.clipboard.writeText(JSON.stringify(logDetails, null, 2))
+
+    navigator.clipboard
+      .writeText(JSON.stringify(logDetails, null, 2))
       .then(() => {
         setCopySuccess(log.correlationId);
         setTimeout(() => setCopySuccess(''), 2000);
@@ -187,11 +184,14 @@ export function LogViewerPage() {
     return 'success';
   };
 
-  const levelCounts = logs.reduce((acc, log) => {
-    const level = log.level.toUpperCase();
-    acc[level] = (acc[level] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const levelCounts = logs.reduce(
+    (acc, log) => {
+      const level = log.level.toUpperCase();
+      acc[level] = (acc[level] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   return (
     <div className={styles.container}>

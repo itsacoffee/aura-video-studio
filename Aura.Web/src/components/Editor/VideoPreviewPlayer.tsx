@@ -20,7 +20,6 @@ import {
   FullScreenMaximize24Regular,
 } from '@fluentui/react-icons';
 
-
 const useStyles = makeStyles({
   container: {
     display: 'flex',
@@ -150,11 +149,11 @@ export function VideoPreviewPlayer({
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          video.currentTime = Math.max(0, video.currentTime - (1 / 30)); // 1 frame at 30fps
+          video.currentTime = Math.max(0, video.currentTime - 1 / 30); // 1 frame at 30fps
           break;
         case 'ArrowRight':
           e.preventDefault();
-          video.currentTime = Math.min(duration, video.currentTime + (1 / 30));
+          video.currentTime = Math.min(duration, video.currentTime + 1 / 30);
           break;
       }
     };
@@ -237,7 +236,7 @@ export function VideoPreviewPlayer({
         <div className={styles.videoContainer}>
           <div className={styles.placeholder}>
             <h3>Preview will appear after rendering</h3>
-            <p>Click "Generate Preview" to create a preview video</p>
+            <p>Click &quot;Generate Preview&quot; to create a preview video</p>
           </div>
         </div>
       </div>
@@ -247,11 +246,9 @@ export function VideoPreviewPlayer({
   return (
     <div className={styles.container}>
       <div className={styles.videoContainer}>
-        <video
-          ref={videoRef}
-          className={styles.video}
-          src={videoUrl}
-        />
+        <video ref={videoRef} className={styles.video} src={videoUrl}>
+          <track kind="captions" />
+        </video>
       </div>
 
       <div className={styles.controls}>
@@ -264,12 +261,12 @@ export function VideoPreviewPlayer({
           <Button
             appearance="subtle"
             icon={<Previous24Regular />}
-            onClick={() => handleSeek(Math.max(0, currentTime - (1 / 30)))}
+            onClick={() => handleSeek(Math.max(0, currentTime - 1 / 30))}
           />
           <Button
             appearance="subtle"
             icon={<Next24Regular />}
-            onClick={() => handleSeek(Math.min(duration, currentTime + (1 / 30)))}
+            onClick={() => handleSeek(Math.min(duration, currentTime + 1 / 30))}
           />
 
           <div className={styles.seekBar}>

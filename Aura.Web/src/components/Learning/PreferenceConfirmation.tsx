@@ -40,9 +40,7 @@ export const PreferenceConfirmation: React.FC<PreferenceConfirmationProps> = ({
       <div className="flex items-start gap-3">
         <div className="text-2xl">🤔</div>
         <div className="flex-1">
-          <h4 className="font-medium text-gray-900 mb-2">
-            We've noticed a preference
-          </h4>
+          <h4 className="font-medium text-gray-900 mb-2">We&apos;ve noticed a preference</h4>
           <p className="text-sm text-gray-700 mb-3">
             Based on your decisions, it seems you prefer:
           </p>
@@ -74,10 +72,11 @@ export const PreferenceConfirmation: React.FC<PreferenceConfirmationProps> = ({
 
           {showCorrection && (
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="correction-value" className="block text-sm font-medium text-gray-700 mb-1">
                 What should the value be?
               </label>
               <input
+                id="correction-value"
                 type="text"
                 value={correctedValue}
                 onChange={(e) => setCorrectedValue(e.target.value)}
@@ -92,7 +91,7 @@ export const PreferenceConfirmation: React.FC<PreferenceConfirmationProps> = ({
               onClick={handleConfirm}
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-medium"
             >
-              ✓ That's right
+              ✓ That&apos;s right
             </button>
             <button
               onClick={handleReject}

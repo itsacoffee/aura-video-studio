@@ -83,7 +83,13 @@ interface PreflightPanelProps {
   onApplySafeDefaults?: () => void;
 }
 
-export function PreflightPanel({ profile, report, isRunning, onRunPreflight, onApplySafeDefaults }: PreflightPanelProps) {
+export function PreflightPanel({
+  profile,
+  report,
+  isRunning,
+  onRunPreflight,
+  onApplySafeDefaults,
+}: PreflightPanelProps) {
   const styles = useStyles();
   const navigate = useNavigate();
   const { showFailureToast } = useNotifications();
@@ -102,11 +108,23 @@ export function PreflightPanel({ profile, report, isRunning, onRunPreflight, onA
   const getStatusBadge = (status: CheckStatus) => {
     switch (status) {
       case 'pass':
-        return <Badge appearance="filled" color="success">Pass</Badge>;
+        return (
+          <Badge appearance="filled" color="success">
+            Pass
+          </Badge>
+        );
       case 'warn':
-        return <Badge appearance="filled" color="warning">Warning</Badge>;
+        return (
+          <Badge appearance="filled" color="warning">
+            Warning
+          </Badge>
+        );
       case 'fail':
-        return <Badge appearance="filled" color="danger">Failed</Badge>;
+        return (
+          <Badge appearance="filled" color="danger">
+            Failed
+          </Badge>
+        );
     }
   };
 
@@ -182,9 +200,7 @@ export function PreflightPanel({ profile, report, isRunning, onRunPreflight, onA
 
   const renderStageCheck = (stage: StageCheck) => (
     <Card key={stage.stage} className={styles.stageItem}>
-      <div className={styles.stageIcon}>
-        {getStatusIcon(stage.status)}
-      </div>
+      <div className={styles.stageIcon}>{getStatusIcon(stage.status)}</div>
       <div className={styles.stageContent}>
         <div>
           <Text className={styles.stageName}>{stage.stage}</Text>
@@ -192,9 +208,7 @@ export function PreflightPanel({ profile, report, isRunning, onRunPreflight, onA
           <Text>{stage.provider}</Text>
         </div>
         <Text>{stage.message}</Text>
-        {stage.hint && (
-          <Text className={styles.hint}>💡 {stage.hint}</Text>
-        )}
+        {stage.hint && <Text className={styles.hint}>💡 {stage.hint}</Text>}
         {renderFixActions(stage.fixActions)}
       </div>
       {getStatusBadge(stage.status)}
@@ -219,9 +233,7 @@ export function PreflightPanel({ profile, report, isRunning, onRunPreflight, onA
 
       {report && (
         <>
-          <div className={styles.stageList}>
-            {report.stages.map(renderStageCheck)}
-          </div>
+          <div className={styles.stageList}>{report.stages.map(renderStageCheck)}</div>
 
           <div className={styles.summary}>
             {report.ok ? (
@@ -251,7 +263,8 @@ export function PreflightPanel({ profile, report, isRunning, onRunPreflight, onA
       {!report && !isRunning && (
         <Card>
           <Text>
-            Run a preflight check to verify that all providers for the <strong>{profile}</strong> profile are configured and reachable.
+            Run a preflight check to verify that all providers for the <strong>{profile}</strong>{' '}
+            profile are configured and reachable.
           </Text>
         </Card>
       )}

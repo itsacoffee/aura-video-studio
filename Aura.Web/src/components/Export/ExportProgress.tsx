@@ -203,10 +203,24 @@ export function ExportProgress({
         icon = <CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />;
         label = 'Complete';
       } else if (sceneNum === currentScene) {
-        icon = <div className={styles.progressCircle} style={{ width: '20px', height: '20px', border: '3px solid' }} />;
+        icon = (
+          <div
+            className={styles.progressCircle}
+            style={{ width: '20px', height: '20px', border: '3px solid' }}
+          />
+        );
         label = `${sceneProgress}%`;
       } else {
-        icon = <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: tokens.colorNeutralStroke2 }} />;
+        icon = (
+          <div
+            style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              backgroundColor: tokens.colorNeutralStroke2,
+            }}
+          />
+        );
         label = 'Pending';
       }
 
@@ -327,7 +341,14 @@ export function ExportProgress({
                 <CheckmarkCircle24Regular className={styles.successIcon} />
                 <Body1Strong>Video exported successfully!</Body1Strong>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS, width: '100%' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: tokens.spacingVerticalS,
+                    width: '100%',
+                  }}
+                >
                   {fileSize && <Caption1>File size: {formatFileSize(fileSize)}</Caption1>}
                   {renderTime && <Caption1>Render time: {formatTime(renderTime)}</Caption1>}
                   {outputPath && <Caption1>Output: {outputPath}</Caption1>}

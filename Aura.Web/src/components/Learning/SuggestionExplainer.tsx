@@ -6,9 +6,7 @@ interface SuggestionExplainerProps {
   prediction: SuggestionPrediction;
 }
 
-export const SuggestionExplainer: React.FC<SuggestionExplainerProps> = ({
-  prediction,
-}) => {
+export const SuggestionExplainer: React.FC<SuggestionExplainerProps> = ({ prediction }) => {
   const getPredictionLabel = (): string => {
     if (prediction.acceptanceProbability >= 0.7) {
       return 'Likely to accept';
@@ -41,9 +39,7 @@ export const SuggestionExplainer: React.FC<SuggestionExplainerProps> = ({
         <div className="text-2xl">🤖</div>
         <div className="flex-1">
           <h3 className="font-semibold text-gray-900">Why this suggestion?</h3>
-          <p className={`text-sm mt-1 ${getPredictionColor()}`}>
-            {getPredictionLabel()}
-          </p>
+          <p className={`text-sm mt-1 ${getPredictionColor()}`}>{getPredictionLabel()}</p>
         </div>
       </div>
 
@@ -79,9 +75,7 @@ export const SuggestionExplainer: React.FC<SuggestionExplainerProps> = ({
         {/* Reasoning Factors */}
         {prediction.reasoningFactors.length > 0 && (
           <div className="pt-3 border-t border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-2">
-              Why we think this:
-            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Why we think this:</p>
             <ul className="space-y-1">
               {prediction.reasoningFactors.map((factor, index) => (
                 <li key={index} className="text-sm text-gray-600 flex gap-2">
@@ -94,15 +88,14 @@ export const SuggestionExplainer: React.FC<SuggestionExplainerProps> = ({
         )}
 
         {/* Similar Past Decisions */}
-        {prediction.similarPastDecisions &&
-          prediction.similarPastDecisions.length > 0 && (
-            <div className="pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500">
-                Based on {prediction.similarPastDecisions.length} similar past
-                decision{prediction.similarPastDecisions.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-          )}
+        {prediction.similarPastDecisions && prediction.similarPastDecisions.length > 0 && (
+          <div className="pt-3 border-t border-gray-100">
+            <p className="text-xs text-gray-500">
+              Based on {prediction.similarPastDecisions.length} similar past decision
+              {prediction.similarPastDecisions.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

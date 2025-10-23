@@ -39,14 +39,14 @@ export interface JobArtifact {
 interface JobsState {
   // Active job being displayed
   activeJob: Job | null;
-  
+
   // All jobs list
   jobs: Job[];
-  
+
   // Loading states
   loading: boolean;
   polling: boolean;
-  
+
   // Actions
   createJob: (brief: any, planSpec: any, voiceSpec: any, renderSpec: any) => Promise<string>;
   getJob: (jobId: string) => Promise<void>;
@@ -123,18 +123,18 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       }
 
       const failureDetails: JobFailure = await response.json();
-      
+
       // Update active job with failure details if it matches
       const state = get();
       if (state.activeJob && state.activeJob.id === jobId) {
-        set({ 
-          activeJob: { 
-            ...state.activeJob, 
-            failureDetails 
-          } 
+        set({
+          activeJob: {
+            ...state.activeJob,
+            failureDetails,
+          },
         });
       }
-      
+
       return failureDetails;
     } catch (error) {
       console.error('Error getting failure details:', error);
@@ -175,8 +175,10 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       await state.getJob(jobId);
 
       // Stop polling if job is done or failed
-      if (state.activeJob && 
-          (state.activeJob.status === 'Done' || state.activeJob.status === 'Failed')) {
+      if (
+        state.activeJob &&
+        (state.activeJob.status === 'Done' || state.activeJob.status === 'Failed')
+      ) {
         state.stopPolling();
       }
     }, 2000); // Poll every 2 seconds

@@ -76,7 +76,7 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
     // Set up polling interval
     const interval = setInterval(() => {
       pollProgress();
-      
+
       // Stop polling if completed or failed
       if (status === 'completed' || status === 'failed') {
         clearInterval(interval);
@@ -87,18 +87,10 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
   }, [isOpen, jobId, status]);
 
   return (
-    <Drawer
-      open={isOpen}
-      position="end"
-      className={styles.drawer}
-    >
+    <Drawer open={isOpen} position="end" className={styles.drawer}>
       <DrawerHeader>
         <Text weight="semibold">Job Progress</Text>
-        <Button
-          appearance="subtle"
-          icon={<Dismiss24Regular />}
-          onClick={onClose}
-        />
+        <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />
       </DrawerHeader>
       <DrawerBody>
         <div className={styles.progressSection}>
@@ -106,7 +98,7 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
           <ProgressBar value={progress / 100} />
           <Text>{progress}%</Text>
         </div>
-        
+
         <Text weight="semibold">Logs:</Text>
         <div className={styles.logContainer}>
           {logs.map((log, index) => (

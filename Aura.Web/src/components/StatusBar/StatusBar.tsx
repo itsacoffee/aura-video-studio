@@ -1,11 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Button,
-  Badge,
-  Text,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Button, Badge, Text } from '@fluentui/react-components';
 import {
   ErrorCircle24Filled,
   Warning24Filled,
@@ -123,7 +117,7 @@ export function StatusBar({ messages = [], onDismiss, onDismissAll }: StatusBarP
 
   // Auto-expand when new errors appear
   useEffect(() => {
-    if (messages.some(m => m.severity === 'error')) {
+    if (messages.some((m) => m.severity === 'error')) {
       setIsExpanded(true);
     }
   }, [messages]);
@@ -132,18 +126,33 @@ export function StatusBar({ messages = [], onDismiss, onDismissAll }: StatusBarP
     return null;
   }
 
-  const errorCount = messages.filter(m => m.severity === 'error').length;
-  const warningCount = messages.filter(m => m.severity === 'warning').length;
-  const infoCount = messages.filter(m => m.severity === 'info').length;
+  const errorCount = messages.filter((m) => m.severity === 'error').length;
+  const warningCount = messages.filter((m) => m.severity === 'warning').length;
+  const infoCount = messages.filter((m) => m.severity === 'info').length;
 
   const getIcon = (severity: StatusSeverity) => {
     switch (severity) {
       case 'error':
-        return <ErrorCircle24Filled className={styles.errorIcon} style={{ color: tokens.colorPaletteRedForeground1 }} />;
+        return (
+          <ErrorCircle24Filled
+            className={styles.errorIcon}
+            style={{ color: tokens.colorPaletteRedForeground1 }}
+          />
+        );
       case 'warning':
-        return <Warning24Filled className={styles.errorIcon} style={{ color: tokens.colorPaletteYellowForeground1 }} />;
+        return (
+          <Warning24Filled
+            className={styles.errorIcon}
+            style={{ color: tokens.colorPaletteYellowForeground1 }}
+          />
+        );
       case 'info':
-        return <Info24Filled className={styles.errorIcon} style={{ color: tokens.colorBrandForeground1 }} />;
+        return (
+          <Info24Filled
+            className={styles.errorIcon}
+            style={{ color: tokens.colorBrandForeground1 }}
+          />
+        );
     }
   };
 
@@ -198,7 +207,9 @@ export function StatusBar({ messages = [], onDismiss, onDismissAll }: StatusBarP
           {infoCount > 0 && errorCount === 0 && warningCount === 0 && (
             <>
               <Info24Filled style={{ color: tokens.colorBrandForeground1 }} />
-              <Text>{infoCount} {infoCount === 1 ? 'Message' : 'Messages'}</Text>
+              <Text>
+                {infoCount} {infoCount === 1 ? 'Message' : 'Messages'}
+              </Text>
             </>
           )}
         </div>
@@ -226,21 +237,15 @@ export function StatusBar({ messages = [], onDismiss, onDismissAll }: StatusBarP
                 {getIcon(message.severity)}
                 <div className={styles.errorContent}>
                   <div className={styles.errorMessage}>{message.message}</div>
-                  {message.details && (
-                    <div className={styles.errorDetails}>{message.details}</div>
-                  )}
+                  {message.details && <div className={styles.errorDetails}>{message.details}</div>}
                   {message.remediation && (
                     <div className={styles.errorDetails}>
                       <strong>Remediation:</strong> {message.remediation}
                     </div>
                   )}
                   <div className={styles.errorMetadata}>
-                    {message.correlationId && (
-                      <span>Correlation ID: {message.correlationId}</span>
-                    )}
-                    {message.errorCode && (
-                      <span>Error Code: {message.errorCode}</span>
-                    )}
+                    {message.correlationId && <span>Correlation ID: {message.correlationId}</span>}
+                    {message.errorCode && <span>Error Code: {message.errorCode}</span>}
                     <span>{message.timestamp.toLocaleTimeString()}</span>
                   </div>
                   <div className={styles.errorActions}>

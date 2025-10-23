@@ -14,10 +14,7 @@ import {
   Body1Strong,
   Caption1,
 } from '@fluentui/react-components';
-import {
-  Checkmark24Regular,
-  Dismiss24Regular,
-} from '@fluentui/react-icons';
+import { Checkmark24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { CutPoint } from '../../../services/editingIntelligenceService';
 
 interface CutPointPanelProps {
@@ -62,10 +59,7 @@ const getCutTypeLabel = (type: string): string => {
   return type.replace(/([A-Z])/g, ' $1').trim();
 };
 
-export const CutPointPanel: React.FC<CutPointPanelProps> = ({
-  cutPoints,
-  onApply,
-}) => {
+export const CutPointPanel: React.FC<CutPointPanelProps> = ({ cutPoints, onApply }) => {
   const styles = useStyles();
 
   if (cutPoints.length === 0) {
@@ -89,12 +83,10 @@ export const CutPointPanel: React.FC<CutPointPanelProps> = ({
             </div>
             <Caption1>@ {cutPoint.timestamp}</Caption1>
           </div>
-          
+
           <Body1>{cutPoint.reasoning}</Body1>
-          
-          {cutPoint.durationToRemove && (
-            <Caption1>Remove: {cutPoint.durationToRemove}</Caption1>
-          )}
+
+          {cutPoint.durationToRemove && <Caption1>Remove: {cutPoint.durationToRemove}</Caption1>}
 
           <div className={styles.actions}>
             <Button
@@ -105,11 +97,7 @@ export const CutPointPanel: React.FC<CutPointPanelProps> = ({
             >
               Apply
             </Button>
-            <Button
-              size="small"
-              appearance="subtle"
-              icon={<Dismiss24Regular />}
-            >
+            <Button size="small" appearance="subtle" icon={<Dismiss24Regular />}>
               Dismiss
             </Button>
           </div>

@@ -108,7 +108,7 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
       </div>
 
       <div className={styles.inputSection}>
-        <Text weight="semibold">What's your video topic?</Text>
+        <Text weight="semibold">What&apos;s your video topic?</Text>
         <Textarea
           className={styles.textArea}
           placeholder="Enter your video topic or idea (e.g., 'How to start a successful podcast')"

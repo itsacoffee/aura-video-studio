@@ -1,11 +1,5 @@
 import { ReactNode } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Title3,
-  Button,
-  Tooltip,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Title3, Button, Tooltip } from '@fluentui/react-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { WeatherMoon24Regular, WeatherSunny24Regular } from '@fluentui/react-icons';
 import { navItems } from '../navigation';
@@ -114,8 +108,8 @@ export function Layout({ children }: LayoutProps) {
           })}
         </div>
         <div className={styles.footer}>
-          <Tooltip 
-            content={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'} 
+          <Tooltip
+            content={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             relationship="label"
           >
             <Button

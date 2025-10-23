@@ -69,9 +69,7 @@ class PlatformService {
   /**
    * Suggest thumbnail concepts
    */
-  async suggestThumbnails(
-    request: ThumbnailSuggestionRequest
-  ): Promise<ThumbnailConcept[]> {
+  async suggestThumbnails(request: ThumbnailSuggestionRequest): Promise<ThumbnailConcept[]> {
     const response = await apiClient.post<ThumbnailConcept[]>(
       `${this.baseUrl}/thumbnail/suggest`,
       request
@@ -122,9 +120,7 @@ class PlatformService {
   /**
    * Adapt content for different platform
    */
-  async adaptContent(
-    request: ContentAdaptationRequest
-  ): Promise<ContentAdaptationResult> {
+  async adaptContent(request: ContentAdaptationRequest): Promise<ContentAdaptationResult> {
     const response = await apiClient.post<ContentAdaptationResult>(
       `${this.baseUrl}/adapt-content`,
       request
@@ -136,9 +132,7 @@ class PlatformService {
    * Get current platform trends
    */
   async getPlatformTrends(platform: string): Promise<PlatformTrend[]> {
-    const response = await apiClient.get<PlatformTrend[]>(
-      `${this.baseUrl}/trends/${platform}`
-    );
+    const response = await apiClient.get<PlatformTrend[]>(`${this.baseUrl}/trends/${platform}`);
     return response.data;
   }
 

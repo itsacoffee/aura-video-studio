@@ -138,7 +138,9 @@ class PerformanceAnalyticsService {
   /**
    * Import analytics data from a file
    */
-  async importAnalytics(request: ImportAnalyticsRequest): Promise<{ importId: string; videosImported: number }> {
+  async importAnalytics(
+    request: ImportAnalyticsRequest
+  ): Promise<{ importId: string; videosImported: number }> {
     const response = await fetch(`${API_BASE}/import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

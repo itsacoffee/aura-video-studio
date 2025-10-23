@@ -29,21 +29,25 @@ export async function parseApiError(error: any): Promise<ParsedApiError> {
   if (error instanceof Response) {
     try {
       const contentType = error.headers.get('content-type');
-      
+
       // Try to parse as JSON (ProblemDetails)
-      if (contentType?.includes('application/json') || contentType?.includes('application/problem+json')) {
+      if (
+        contentType?.includes('application/json') ||
+        contentType?.includes('application/problem+json')
+      ) {
         const problemDetails: ProblemDetails = await error.json();
-        
+
         return {
           title: problemDetails.title || `Error ${error.status}`,
           message: problemDetails.detail || error.statusText || 'An error occurred',
           errorDetails: problemDetails.detail,
-          correlationId: problemDetails.correlationId || error.headers.get('X-Correlation-ID') || undefined,
+          correlationId:
+            problemDetails.correlationId || error.headers.get('X-Correlation-ID') || undefined,
           errorCode: problemDetails.errorCode || extractErrorCodeFromType(problemDetails.type),
           originalError: problemDetails,
         };
       }
-      
+
       // Fallback for non-JSON responses
       const text = await error.text();
       return {
@@ -62,7 +66,7 @@ export async function parseApiError(error: any): Promise<ParsedApiError> {
       };
     }
   }
-  
+
   // If it's already a parsed ProblemDetails object
   if (error && typeof error === 'object') {
     if (error.title || error.detail || error.status) {
@@ -75,7 +79,7 @@ export async function parseApiError(error: any): Promise<ParsedApiError> {
         originalError: error,
       };
     }
-    
+
     // Standard Error object
     if (error.message) {
       return {
@@ -85,7 +89,7 @@ export async function parseApiError(error: any): Promise<ParsedApiError> {
       };
     }
   }
-  
+
   // Fallback for unknown error types
   return {
     title: 'Error',
@@ -99,7 +103,7 @@ export async function parseApiError(error: any): Promise<ParsedApiError> {
  */
 function extractErrorCodeFromType(type?: string): string | undefined {
   if (!type) return undefined;
-  
+
   const match = type.match(/E\d{3,}/);
   return match ? match[0] : undefined;
 }
@@ -111,18 +115,13 @@ export async function fetchWithErrorHandling(
   url: string,
   options?: RequestInit
 ): Promise<Response> {
-  try {
-    const response = await fetch(url, options);
-    
-    if (!response.ok) {
-      throw response;
-    }
-    
-    return response;
-  } catch (error) {
-    // Re-throw to allow caller to handle, but ensure it's in a consistent format
-    throw error;
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    throw response;
   }
+
+  return response;
 }
 
 /**

@@ -144,15 +144,13 @@ class HealthNotificationService {
       if (!response.ok) return;
 
       const providers: ProviderHealth[] = await response.json();
-      const providersMap = Object.fromEntries(
-        providers.map(p => [p.providerName, p])
-      );
+      const providersMap = Object.fromEntries(providers.map((p) => [p.providerName, p]));
 
       // Compare with previous state
       if (this.state.lastProviders) {
         for (const [name, current] of Object.entries(providersMap)) {
           const previous = this.state.lastProviders[name];
-          
+
           // Skip if provider is muted
           if (this.state.mutedProviders.has(name)) continue;
 
@@ -189,14 +187,14 @@ class HealthNotificationService {
     }
     // Provider recovered
     else if (!wasHealthy && isHealthy) {
-      this.sendNotification(
-        `Provider Recovered: ${name}`,
-        'success',
-        name
-      );
+      this.sendNotification(`Provider Recovered: ${name}`, 'success', name);
     }
     // Provider degraded (was healthy, now having failures but not offline)
-    else if (previous.consecutiveFailures === 0 && current.consecutiveFailures > 0 && current.consecutiveFailures < 3) {
+    else if (
+      previous.consecutiveFailures === 0 &&
+      current.consecutiveFailures > 0 &&
+      current.consecutiveFailures < 3
+    ) {
       this.sendNotification(
         `Provider Degraded: ${name} - ${current.consecutiveFailures} consecutive failures`,
         'error',
@@ -205,15 +203,11 @@ class HealthNotificationService {
     }
   }
 
-  private sendNotification(
-    message: string,
-    type: 'success' | 'error',
-    providerName: string
-  ): void {
+  private sendNotification(message: string, type: 'success' | 'error', providerName: string): void {
     // Check cooldown
     const lastNotification = this.state.lastNotificationTime[providerName] || 0;
     const now = Date.now();
-    
+
     if (now - lastNotification < NOTIFICATION_COOLDOWN_MS) {
       console.log(`Notification for ${providerName} is on cooldown`);
       return;

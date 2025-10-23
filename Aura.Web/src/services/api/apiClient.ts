@@ -3,7 +3,12 @@
  * Provides centralized configuration, interceptors, and error handling
  */
 
-import axios, { AxiosInstance, AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
+import axios, {
+  AxiosInstance,
+  AxiosError,
+  AxiosRequestConfig,
+  InternalAxiosRequestConfig,
+} from 'axios';
 import { env } from '../../config/env';
 
 /**
@@ -50,7 +55,10 @@ apiClient.interceptors.response.use(
   (response) => {
     // Log responses in development
     if (env.isDevelopment && env.enableDebug) {
-      console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, response.data);
+      console.log(
+        `[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`,
+        response.data
+      );
     }
     return response;
   },
@@ -63,7 +71,7 @@ apiClient.interceptors.response.use(
     if (error.response) {
       // Server responded with error status
       const status = error.response.status;
-      
+
       if (status === 401) {
         // Unauthorized - clear token and redirect to login (future)
         localStorage.removeItem('auth_token');
@@ -105,11 +113,13 @@ export async function requestWithRetry<T>(
       return await requestFn();
     } catch (error) {
       lastError = error as Error;
-      
+
       if (attempt < maxRetries - 1) {
         const delay = baseDelay * Math.pow(2, attempt);
-        console.warn(`Request failed, retrying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        console.warn(
+          `Request failed, retrying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
@@ -128,7 +138,11 @@ export async function get<T>(url: string, config?: AxiosRequestConfig): Promise<
 /**
  * Generic POST request
  */
-export async function post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+export async function post<T>(
+  url: string,
+  data?: unknown,
+  config?: AxiosRequestConfig
+): Promise<T> {
   const response = await apiClient.post<T>(url, data, config);
   return response.data;
 }
@@ -144,7 +158,11 @@ export async function put<T>(url: string, data?: unknown, config?: AxiosRequestC
 /**
  * Generic PATCH request
  */
-export async function patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+export async function patch<T>(
+  url: string,
+  data?: unknown,
+  config?: AxiosRequestConfig
+): Promise<T> {
   const response = await apiClient.patch<T>(url, data, config);
   return response.data;
 }

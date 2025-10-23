@@ -88,9 +88,7 @@ export function BrandKitPanel({ settings, onSettingsChange }: BrandKitPanelProps
               value={localSettings.watermarkPath || ''}
               onChange={(e) => updateSettings({ watermarkPath: e.target.value })}
             />
-            <Text size={200}>
-              Recommended: Transparent PNG or SVG, max 200px height
-            </Text>
+            <Text size={200}>Recommended: Transparent PNG or SVG, max 200px height</Text>
           </div>
 
           <div className={styles.field}>
@@ -98,7 +96,9 @@ export function BrandKitPanel({ settings, onSettingsChange }: BrandKitPanelProps
             <Dropdown
               placeholder="Select position"
               value={localSettings.watermarkPosition || 'bottom-right'}
-              onOptionSelect={(_, data) => updateSettings({ watermarkPosition: data.optionValue as string })}
+              onOptionSelect={(_, data) =>
+                updateSettings({ watermarkPosition: data.optionValue as string })
+              }
             >
               <Option value="top-left">Top Left</Option>
               <Option value="top-right">Top Right</Option>
@@ -137,9 +137,7 @@ export function BrandKitPanel({ settings, onSettingsChange }: BrandKitPanelProps
                 style={{ backgroundColor: localSettings.brandColor }}
               />
             )}
-            <Text size={200}>
-              Primary brand color for subtle overlays (hex format)
-            </Text>
+            <Text size={200}>Primary brand color for subtle overlays (hex format)</Text>
           </div>
 
           <div className={styles.field}>
@@ -156,9 +154,7 @@ export function BrandKitPanel({ settings, onSettingsChange }: BrandKitPanelProps
                 style={{ backgroundColor: localSettings.accentColor }}
               />
             )}
-            <Text size={200}>
-              Secondary color for highlights and text (hex format)
-            </Text>
+            <Text size={200}>Secondary color for highlights and text (hex format)</Text>
           </div>
 
           <Button

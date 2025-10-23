@@ -104,7 +104,7 @@ describe('Engine State Machine', () => {
         type: 'START_ENGINE',
         payload: 'test-engine',
       });
-      
+
       state = engineReducer(state, {
         type: 'ENGINE_PROGRESS',
         payload: { id: 'test-engine', progress: 25 },
@@ -187,7 +187,7 @@ describe('Engine State Machine', () => {
   describe('Error handling', () => {
     it('should transition to error state from any state', () => {
       const states: EngineStatus[] = ['idle', 'starting', 'running', 'stopping'];
-      
+
       states.forEach((status) => {
         const state: EngineState = { ...initialState, status };
         const errorState = engineReducer(state, {
@@ -219,7 +219,7 @@ describe('Engine State Machine', () => {
         status: 'error',
         error: 'Failed to start',
       };
-      
+
       // Reset
       state = engineReducer(state, {
         type: 'RESET_ENGINE',
@@ -328,10 +328,22 @@ describe('Engine State Machine', () => {
 
       // Rapid fire actions
       state = engineReducer(state, { type: 'START_ENGINE', payload: 'test-engine' });
-      state = engineReducer(state, { type: 'ENGINE_PROGRESS', payload: { id: 'test-engine', progress: 10 } });
-      state = engineReducer(state, { type: 'ENGINE_PROGRESS', payload: { id: 'test-engine', progress: 20 } });
-      state = engineReducer(state, { type: 'ENGINE_PROGRESS', payload: { id: 'test-engine', progress: 30 } });
-      state = engineReducer(state, { type: 'ENGINE_STARTED', payload: { id: 'test-engine', pid: 111 } });
+      state = engineReducer(state, {
+        type: 'ENGINE_PROGRESS',
+        payload: { id: 'test-engine', progress: 10 },
+      });
+      state = engineReducer(state, {
+        type: 'ENGINE_PROGRESS',
+        payload: { id: 'test-engine', progress: 20 },
+      });
+      state = engineReducer(state, {
+        type: 'ENGINE_PROGRESS',
+        payload: { id: 'test-engine', progress: 30 },
+      });
+      state = engineReducer(state, {
+        type: 'ENGINE_STARTED',
+        payload: { id: 'test-engine', pid: 111 },
+      });
 
       expect(state.status).toBe('running');
       expect(state.progress).toBe(30);

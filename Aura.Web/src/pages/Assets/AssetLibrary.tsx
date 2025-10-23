@@ -190,7 +190,9 @@ export const AssetLibrary: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Text size={600} weight="semibold">Asset Library</Text>
+        <Text size={600} weight="semibold">
+          Asset Library
+        </Text>
         <div className={styles.headerActions}>
           <Button
             appearance="subtle"
@@ -206,11 +208,7 @@ export const AssetLibrary: React.FC = () => {
           >
             Stock Images
           </Button>
-          <Button
-            appearance="primary"
-            icon={<ArrowUpload24Regular />}
-            onClick={handleUpload}
-          >
+          <Button appearance="primary" icon={<ArrowUpload24Regular />} onClick={handleUpload}>
             Import Assets
           </Button>
         </div>
@@ -220,7 +218,9 @@ export const AssetLibrary: React.FC = () => {
         {/* Sidebar */}
         <div className={styles.sidebar}>
           <div className={styles.filterSection}>
-            <Text size={400} weight="semibold">Type</Text>
+            <Text size={400} weight="semibold">
+              Type
+            </Text>
             <Button
               className={styles.filterButton}
               appearance={!filterType ? 'primary' : 'subtle'}
@@ -278,7 +278,9 @@ export const AssetLibrary: React.FC = () => {
             </div>
           ) : assets.length === 0 ? (
             <div className={styles.emptyState}>
-              <ImageAdd24Regular style={{ fontSize: '64px', color: tokens.colorNeutralForeground3 }} />
+              <ImageAdd24Regular
+                style={{ fontSize: '64px', color: tokens.colorNeutralForeground3 }}
+              />
               <Text size={500}>No assets found</Text>
               <Text>Upload assets to get started</Text>
               <Button appearance="primary" icon={<ArrowUpload24Regular />} onClick={handleUpload}>
@@ -322,7 +324,12 @@ export const AssetLibrary: React.FC = () => {
         {/* Preview panel */}
         {selectedAsset && (
           <div className={styles.previewPanel}>
-            <Text size={500} weight="semibold" block style={{ marginBottom: tokens.spacingVerticalM }}>
+            <Text
+              size={500}
+              weight="semibold"
+              block
+              style={{ marginBottom: tokens.spacingVerticalM }}
+            >
               {selectedAsset.title}
             </Text>
 
@@ -348,7 +355,9 @@ export const AssetLibrary: React.FC = () => {
               </Text>
             )}
 
-            <Text size={300} weight="semibold" block>Metadata</Text>
+            <Text size={300} weight="semibold" block>
+              Metadata
+            </Text>
             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
               Type: {selectedAsset.type}
             </Text>
@@ -368,7 +377,12 @@ export const AssetLibrary: React.FC = () => {
 
             {selectedAsset.tags.length > 0 && (
               <>
-                <Text size={300} weight="semibold" block style={{ marginTop: tokens.spacingVerticalM }}>
+                <Text
+                  size={300}
+                  weight="semibold"
+                  block
+                  style={{ marginTop: tokens.spacingVerticalM }}
+                >
                   Tags
                 </Text>
                 <div className={styles.tagsList}>

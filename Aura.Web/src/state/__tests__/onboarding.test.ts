@@ -5,7 +5,6 @@ import {
   getButtonLabel,
   isButtonDisabled,
   canAdvanceStep,
-  type WizardStatus,
 } from '../onboarding';
 import type { PreflightReport } from '../providers';
 
@@ -21,23 +20,23 @@ describe('onboardingReducer', () => {
 
   it('should have install items with descriptions and default paths', () => {
     const state = initialOnboardingState;
-    
+
     // Check ffmpeg item
-    const ffmpegItem = state.installItems.find(item => item.id === 'ffmpeg');
+    const ffmpegItem = state.installItems.find((item) => item.id === 'ffmpeg');
     expect(ffmpegItem).toBeDefined();
     expect(ffmpegItem?.description).toBeTruthy();
     expect(ffmpegItem?.defaultPath).toBeTruthy();
     expect(ffmpegItem?.defaultPath).toContain('ffmpeg');
-    
+
     // Check ollama item
-    const ollamaItem = state.installItems.find(item => item.id === 'ollama');
+    const ollamaItem = state.installItems.find((item) => item.id === 'ollama');
     expect(ollamaItem).toBeDefined();
     expect(ollamaItem?.description).toBeTruthy();
     expect(ollamaItem?.defaultPath).toBeTruthy();
     expect(ollamaItem?.defaultPath).toContain('ollama');
-    
+
     // Check stable-diffusion item
-    const sdItem = state.installItems.find(item => item.id === 'stable-diffusion');
+    const sdItem = state.installItems.find((item) => item.id === 'stable-diffusion');
     expect(sdItem).toBeDefined();
     expect(sdItem?.description).toBeTruthy();
     expect(sdItem?.defaultPath).toBeTruthy();
@@ -173,7 +172,7 @@ describe('onboardingReducer', () => {
     });
 
     expect(state.status).toBe('installing');
-    const ffmpegItem = state.installItems.find(item => item.id === 'ffmpeg');
+    const ffmpegItem = state.installItems.find((item) => item.id === 'ffmpeg');
     expect(ffmpegItem?.installing).toBe(true);
   });
 
@@ -189,7 +188,7 @@ describe('onboardingReducer', () => {
     });
 
     expect(state.status).toBe('installed');
-    const ffmpegItem = state.installItems.find(item => item.id === 'ffmpeg');
+    const ffmpegItem = state.installItems.find((item) => item.id === 'ffmpeg');
     expect(ffmpegItem?.installing).toBe(false);
     expect(ffmpegItem?.installed).toBe(true);
   });
@@ -206,7 +205,7 @@ describe('onboardingReducer', () => {
     });
 
     expect(state.status).toBe('idle');
-    const ffmpegItem = state.installItems.find(item => item.id === 'ffmpeg');
+    const ffmpegItem = state.installItems.find((item) => item.id === 'ffmpeg');
     expect(ffmpegItem?.installing).toBe(false);
     expect(state.errors).toContain('Failed to install ffmpeg: Download failed');
   });

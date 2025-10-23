@@ -41,7 +41,10 @@ export class TimelineEditor {
     const firstScene: TimelineScene = {
       ...scene,
       duration: splitOffset,
-      script: scene.script.substring(0, Math.floor(scene.script.length * (splitOffset / scene.duration))),
+      script: scene.script.substring(
+        0,
+        Math.floor(scene.script.length * (splitOffset / scene.duration))
+      ),
     };
 
     // Create second scene (after split)
@@ -50,12 +53,16 @@ export class TimelineEditor {
       index: scene.index + 1,
       start: playheadTime,
       duration: scene.duration - splitOffset,
-      script: scene.script.substring(Math.floor(scene.script.length * (splitOffset / scene.duration))),
+      script: scene.script.substring(
+        Math.floor(scene.script.length * (splitOffset / scene.duration))
+      ),
       // Adjust visual assets timing
-      visualAssets: scene.visualAssets.map(asset => ({
-        ...asset,
-        start: Math.max(0, asset.start - splitOffset),
-      })).filter(asset => asset.start < (scene.duration - splitOffset)),
+      visualAssets: scene.visualAssets
+        .map((asset) => ({
+          ...asset,
+          start: Math.max(0, asset.start - splitOffset),
+        }))
+        .filter((asset) => asset.start < scene.duration - splitOffset),
     };
 
     // Create new scene array
@@ -63,7 +70,7 @@ export class TimelineEditor {
       ...scenes.slice(0, sceneIndex),
       firstScene,
       secondScene,
-      ...scenes.slice(sceneIndex + 1).map(s => ({ ...s, index: s.index + 1 })),
+      ...scenes.slice(sceneIndex + 1).map((s) => ({ ...s, index: s.index + 1 })),
     ];
 
     // Record operation for undo

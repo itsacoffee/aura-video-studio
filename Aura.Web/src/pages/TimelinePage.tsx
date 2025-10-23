@@ -1,9 +1,4 @@
-import {
-  makeStyles,
-  tokens,
-  Title1,
-  Text,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Title1, Text } from '@fluentui/react-components';
 import { TimelineView } from '../components/Timeline/TimelineView';
 import { OverlayPanel } from '../components/Overlays/OverlayPanel';
 

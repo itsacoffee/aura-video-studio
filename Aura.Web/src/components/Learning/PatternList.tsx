@@ -6,10 +6,7 @@ interface PatternListProps {
   onPatternSelect?: (pattern: DecisionPattern) => void;
 }
 
-export const PatternList: React.FC<PatternListProps> = ({
-  patterns,
-  onPatternSelect,
-}) => {
+export const PatternList: React.FC<PatternListProps> = ({ patterns, onPatternSelect }) => {
   const getPatternColor = (strength: number): string => {
     if (strength >= 0.7) return 'text-green-600';
     if (strength >= 0.4) return 'text-yellow-600';
@@ -33,9 +30,7 @@ export const PatternList: React.FC<PatternListProps> = ({
     return (
       <div className="text-center py-8 text-gray-500">
         <p>No patterns identified yet.</p>
-        <p className="text-sm mt-2">
-          Make more decisions to help the AI learn your preferences.
-        </p>
+        <p className="text-sm mt-2">Make more decisions to help the AI learn your preferences.</p>
       </div>
     );
   }
@@ -51,15 +46,9 @@ export const PatternList: React.FC<PatternListProps> = ({
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-xl">
-                  {getPatternIcon(pattern.patternType)}
-                </span>
-                <span className="font-medium capitalize">
-                  {pattern.suggestionType}
-                </span>
-                <span className="text-sm text-gray-500 capitalize">
-                  {pattern.patternType}
-                </span>
+                <span className="text-xl">{getPatternIcon(pattern.patternType)}</span>
+                <span className="font-medium capitalize">{pattern.suggestionType}</span>
+                <span className="text-sm text-gray-500 capitalize">{pattern.patternType}</span>
               </div>
               <div className="mt-2 text-sm text-gray-600">
                 <p>

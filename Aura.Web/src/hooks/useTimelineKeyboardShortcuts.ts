@@ -44,11 +44,7 @@ export function useTimelineKeyboardShortcuts(
 
       // Don't trigger shortcuts when typing in input fields
       const target = event.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
       }
 

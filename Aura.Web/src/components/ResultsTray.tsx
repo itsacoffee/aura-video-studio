@@ -12,11 +12,7 @@ import {
   Divider,
   Badge,
 } from '@fluentui/react-components';
-import {
-  Video24Regular,
-  FolderOpen24Regular,
-  Eye24Regular,
-} from '@fluentui/react-icons';
+import { Video24Regular, FolderOpen24Regular, Eye24Regular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   trigger: {
@@ -109,7 +105,7 @@ export function ResultsTray() {
 
   useEffect(() => {
     fetchRecentArtifacts();
-    
+
     // Refresh every 30 seconds
     const interval = setInterval(fetchRecentArtifacts, 30000);
     return () => clearInterval(interval);
@@ -121,7 +117,7 @@ export function ResultsTray() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
@@ -143,20 +139,11 @@ export function ResultsTray() {
     <Popover positioning="below-end">
       <PopoverTrigger>
         <div className={styles.trigger}>
-          <Button
-            appearance="subtle"
-            icon={<Video24Regular />}
-            aria-label="Recent results"
-          >
+          <Button appearance="subtle" icon={<Video24Regular />} aria-label="Recent results">
             Results
           </Button>
           {artifacts.length > 0 && (
-            <Badge
-              className={styles.badge}
-              size="small"
-              appearance="filled"
-              color="informative"
-            >
+            <Badge className={styles.badge} size="small" appearance="filled" color="informative">
               {artifacts.length}
             </Badge>
           )}
@@ -186,7 +173,8 @@ export function ResultsTray() {
                     {artifact.correlationId?.substring(0, 12) || 'Video'}
                   </Text>
                   <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    {formatDate(artifact.finishedAt)} • {artifact.artifacts[0]?.name || 'output.mp4'}
+                    {formatDate(artifact.finishedAt)} •{' '}
+                    {artifact.artifacts[0]?.name || 'output.mp4'}
                   </Text>
                 </div>
                 <div className={styles.itemActions}>

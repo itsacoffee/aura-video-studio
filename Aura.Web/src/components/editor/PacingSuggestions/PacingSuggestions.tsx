@@ -119,7 +119,9 @@ const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
     }
   }, [scenes, analyzePacing]);
 
-  const getPriorityColor = (priority: Priority): 'danger' | 'warning' | 'informative' | 'subtle' => {
+  const getPriorityColor = (
+    priority: Priority
+  ): 'danger' | 'warning' | 'informative' | 'subtle' => {
     switch (priority) {
       case Priority.Critical:
       case Priority.High:
@@ -187,7 +189,9 @@ const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
 
           {error && (
             <div className={styles.warningBox}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+              >
                 <Warning24Regular />
                 <Body1Strong>{error}</Body1Strong>
               </div>
@@ -196,10 +200,22 @@ const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
 
           {pacingAnalysis && (
             <>
-              <Divider style={{ marginTop: tokens.spacingVerticalL, marginBottom: tokens.spacingVerticalL }} />
+              <Divider
+                style={{
+                  marginTop: tokens.spacingVerticalL,
+                  marginBottom: tokens.spacingVerticalL,
+                }}
+              />
 
               <div className={styles.section}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: tokens.spacingHorizontalS,
+                    marginBottom: tokens.spacingVerticalS,
+                  }}
+                >
                   <ChartMultiple24Regular />
                   <Body1Strong>Engagement Score</Body1Strong>
                 </div>
@@ -212,7 +228,9 @@ const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
               </div>
 
               <div className={styles.section}>
-                <Caption1>Optimal Duration: {formatDuration(pacingAnalysis.optimalDuration)}</Caption1>
+                <Caption1>
+                  Optimal Duration: {formatDuration(pacingAnalysis.optimalDuration)}
+                </Caption1>
               </div>
 
               <div className={styles.section}>
@@ -222,7 +240,14 @@ const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
 
               {pacingAnalysis.warnings.length > 0 && (
                 <div className={styles.warningBox}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalS }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: tokens.spacingHorizontalS,
+                      marginBottom: tokens.spacingVerticalS,
+                    }}
+                  >
                     <Warning24Regular />
                     <Body1Strong>Pacing Warnings</Body1Strong>
                   </div>
@@ -239,29 +264,43 @@ const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
                   <Accordion collapsible>
                     <AccordionItem value="recommendations">
                       <AccordionHeader>
-                        <Body1Strong>Scene Recommendations ({pacingAnalysis.sceneRecommendations.length})</Body1Strong>
+                        <Body1Strong>
+                          Scene Recommendations ({pacingAnalysis.sceneRecommendations.length})
+                        </Body1Strong>
                       </AccordionHeader>
                       <AccordionPanel>
                         {pacingAnalysis.sceneRecommendations.map((rec) => (
                           <div key={rec.sceneIndex} className={styles.sceneCard}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalXS }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: tokens.spacingVerticalXS,
+                              }}
+                            >
                               <Body1Strong>Scene {rec.sceneIndex + 1}</Body1Strong>
                               <Badge appearance="tint" color="informative">
                                 Complexity: {(rec.complexityScore * 100).toFixed(0)}%
                               </Badge>
                             </div>
-                            <Caption1 block>Importance: {(rec.importanceScore * 100).toFixed(0)}%</Caption1>
+                            <Caption1 block>
+                              Importance: {(rec.importanceScore * 100).toFixed(0)}%
+                            </Caption1>
                             <Caption1 block style={{ marginTop: tokens.spacingVerticalXS }}>
                               {rec.reasoning}
                             </Caption1>
                             <Caption1 block style={{ marginTop: tokens.spacingVerticalXS }}>
-                              Current: {formatDuration(rec.currentDuration)} → Recommended: {formatDuration(rec.recommendedDuration)}
+                              Current: {formatDuration(rec.currentDuration)} → Recommended:{' '}
+                              {formatDuration(rec.recommendedDuration)}
                             </Caption1>
                             {rec.recommendedDuration && (
                               <div style={{ marginTop: tokens.spacingVerticalS }}>
                                 <Button
                                   size="small"
-                                  onClick={() => onApplySuggestion?.(rec.sceneIndex, rec.recommendedDuration)}
+                                  onClick={() =>
+                                    onApplySuggestion?.(rec.sceneIndex, rec.recommendedDuration)
+                                  }
                                 >
                                   Apply Duration: {formatDuration(rec.recommendedDuration)}
                                 </Button>
@@ -283,24 +322,41 @@ const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
                         <Body1Strong>Retention Analysis</Body1Strong>
                       </AccordionHeader>
                       <AccordionPanel>
-                        <Caption1 block>Overall Retention Score: {retentionAnalysis.retentionPrediction.overallRetentionScore.toFixed(1)}%</Caption1>
+                        <Caption1 block>
+                          Overall Retention Score:{' '}
+                          {retentionAnalysis.retentionPrediction.overallRetentionScore.toFixed(1)}%
+                        </Caption1>
                         <Caption1 block style={{ marginTop: tokens.spacingVerticalXS }}>
-                          Average Engagement: {retentionAnalysis.attentionCurve.averageEngagement.toFixed(1)}%
+                          Average Engagement:{' '}
+                          {retentionAnalysis.attentionCurve.averageEngagement.toFixed(1)}%
                         </Caption1>
                         {retentionAnalysis.retentionPrediction.highDropRiskPoints.length > 0 && (
                           <>
-                            <Body1Strong style={{ marginTop: tokens.spacingVerticalM }}>High Risk Drop Points</Body1Strong>
-                            {retentionAnalysis.retentionPrediction.highDropRiskPoints.map((point, index) => (
-                              <Caption1 key={index} block style={{ marginTop: tokens.spacingVerticalXS }}>
-                                • {point}
-                              </Caption1>
-                            ))}
+                            <Body1Strong style={{ marginTop: tokens.spacingVerticalM }}>
+                              High Risk Drop Points
+                            </Body1Strong>
+                            {retentionAnalysis.retentionPrediction.highDropRiskPoints.map(
+                              (point, index) => (
+                                <Caption1
+                                  key={index}
+                                  block
+                                  style={{ marginTop: tokens.spacingVerticalXS }}
+                                >
+                                  • {point}
+                                </Caption1>
+                              )
+                            )}
                           </>
                         )}
                         {retentionAnalysis.recommendations.length > 0 && (
                           <>
                             <Body1Strong style={{ marginTop: tokens.spacingVerticalM }}>
-                              <Lightbulb24Regular style={{ verticalAlign: 'middle', marginRight: tokens.spacingHorizontalXS }} />
+                              <Lightbulb24Regular
+                                style={{
+                                  verticalAlign: 'middle',
+                                  marginRight: tokens.spacingHorizontalXS,
+                                }}
+                              />
                               Recommendations
                             </Body1Strong>
                             {retentionAnalysis.recommendations.map((recommendation, index) => (
@@ -309,7 +365,11 @@ const PacingSuggestions: React.FC<PacingSuggestionsProps> = ({
                                 <Caption1 block style={{ marginTop: tokens.spacingVerticalXS }}>
                                   {recommendation.description}
                                 </Caption1>
-                                <Badge appearance="tint" color={getPriorityColor(recommendation.priority)} size="small">
+                                <Badge
+                                  appearance="tint"
+                                  color={getPriorityColor(recommendation.priority)}
+                                  size="small"
+                                >
                                   {Priority[recommendation.priority]}
                                 </Badge>
                               </div>

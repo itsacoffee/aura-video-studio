@@ -68,12 +68,10 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = () => {
-    const cheatsheet = shortcuts
-      .map(s => `${s.key.padEnd(12)} - ${s.description}`)
-      .join('\n');
-    
+    const cheatsheet = shortcuts.map((s) => `${s.key.padEnd(12)} - ${s.description}`).join('\n');
+
     const fullText = `Aura Video Studio - Keyboard Shortcuts\n${'='.repeat(45)}\n\n${cheatsheet}`;
-    
+
     navigator.clipboard.writeText(fullText).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -106,8 +104,8 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
           </div>
         </DialogBody>
         <DialogActions>
-          <Button 
-            appearance="secondary" 
+          <Button
+            appearance="secondary"
             icon={copied ? <Checkmark24Regular /> : <Copy24Regular />}
             onClick={copyToClipboard}
           >

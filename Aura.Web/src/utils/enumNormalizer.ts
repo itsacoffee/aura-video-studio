@@ -13,7 +13,7 @@ export type Density = 'Sparse' | 'Balanced' | 'Dense';
  */
 export function normalizeAspect(value: string): Aspect {
   const normalized = value.trim();
-  
+
   // Handle aliases
   switch (normalized) {
     case '16:9':
@@ -24,9 +24,11 @@ export function normalizeAspect(value: string): Aspect {
       return 'Square1x1';
     default:
       // Return as-is if already canonical
-      if (normalized === 'Widescreen16x9' || 
-          normalized === 'Vertical9x16' || 
-          normalized === 'Square1x1') {
+      if (
+        normalized === 'Widescreen16x9' ||
+        normalized === 'Vertical9x16' ||
+        normalized === 'Square1x1'
+      ) {
         return normalized as Aspect;
       }
       // Fallback to default
@@ -41,20 +43,18 @@ export function normalizeAspect(value: string): Aspect {
  */
 export function normalizeDensity(value: string): Density {
   const normalized = value.trim();
-  
+
   // Handle aliases
   if (normalized.toLowerCase() === 'normal') {
     console.warn('Density "Normal" is deprecated, using "Balanced" instead');
     return 'Balanced';
   }
-  
+
   // Return as-is if already canonical
-  if (normalized === 'Sparse' || 
-      normalized === 'Balanced' || 
-      normalized === 'Dense') {
+  if (normalized === 'Sparse' || normalized === 'Balanced' || normalized === 'Dense') {
     return normalized as Density;
   }
-  
+
   // Fallback to default
   console.warn(`Unknown density value: ${value}, defaulting to Balanced`);
   return 'Balanced';
@@ -68,10 +68,12 @@ export function validateAndWarnEnums(brief: Partial<Brief>, planSpec: Partial<Pl
   if (brief.aspect) {
     const legacyAspects = ['16:9', '9:16', '1:1'];
     if (legacyAspects.includes(brief.aspect)) {
-      console.warn(`[Compatibility] Aspect ratio "${brief.aspect}" is a legacy format. Consider using canonical name (e.g., "Widescreen16x9").`);
+      console.warn(
+        `[Compatibility] Aspect ratio "${brief.aspect}" is a legacy format. Consider using canonical name (e.g., "Widescreen16x9").`
+      );
     }
   }
-  
+
   // Check density
   if (planSpec.density) {
     if (planSpec.density.toLowerCase() === 'normal') {
@@ -84,18 +86,18 @@ export function validateAndWarnEnums(brief: Partial<Brief>, planSpec: Partial<Pl
  * Normalizes brief and plan spec enums before sending to API
  */
 export function normalizeEnumsForApi(
-  brief: Partial<Brief>, 
+  brief: Partial<Brief>,
   planSpec: Partial<PlanSpec>
 ): { brief: Partial<Brief>; planSpec: Partial<PlanSpec> } {
   const normalizedBrief: Partial<Brief> = {
     ...brief,
-    aspect: brief.aspect ? normalizeAspect(brief.aspect) : undefined
+    aspect: brief.aspect ? normalizeAspect(brief.aspect) : undefined,
   };
-  
+
   const normalizedPlanSpec: Partial<PlanSpec> = {
     ...planSpec,
-    density: planSpec.density ? normalizeDensity(planSpec.density) : undefined
+    density: planSpec.density ? normalizeDensity(planSpec.density) : undefined,
   };
-  
+
   return { brief: normalizedBrief, planSpec: normalizedPlanSpec };
 }

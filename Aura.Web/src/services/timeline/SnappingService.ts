@@ -56,11 +56,14 @@ export class SnappingService {
 
     for (const point of sortedPoints) {
       const distance = Math.abs(point.position - dragPosition);
-      
+
       if (distance <= thresholdTime) {
         // If this point has higher priority (lower number) or same priority but closer
-        if (!closestPoint || point.priority < closestPoint.priority || 
-            (point.priority === closestPoint.priority && distance < closestDistance)) {
+        if (
+          !closestPoint ||
+          point.priority < closestPoint.priority ||
+          (point.priority === closestPoint.priority && distance < closestDistance)
+        ) {
           closestDistance = distance;
           closestPoint = point;
         }
@@ -99,7 +102,7 @@ export class SnappingService {
     });
 
     // Scene starts and ends
-    sceneStarts.forEach(start => {
+    sceneStarts.forEach((start) => {
       points.push({
         position: start,
         type: 'scene-start',
@@ -107,7 +110,7 @@ export class SnappingService {
       });
     });
 
-    sceneEnds.forEach(end => {
+    sceneEnds.forEach((end) => {
       points.push({
         position: end,
         type: 'scene-end',
@@ -125,7 +128,7 @@ export class SnappingService {
     }
 
     // Markers
-    markerPositions.forEach(pos => {
+    markerPositions.forEach((pos) => {
       points.push({
         position: pos,
         type: 'marker',

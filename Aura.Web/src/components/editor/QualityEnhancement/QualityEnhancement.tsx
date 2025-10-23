@@ -91,20 +91,19 @@ export const QualityEnhancement: React.FC<QualityEnhancementProps> = ({
               <Sparkle24Regular />
               <Title3>AI Quality Enhancement</Title3>
             </div>
-            <Button
-              appearance="primary"
-              onClick={handleApplyAll}
-              disabled={isEnhancing}
-            >
+            <Button appearance="primary" onClick={handleApplyAll} disabled={isEnhancing}>
               {isEnhancing ? 'Enhancing...' : 'Apply All Enhancements'}
             </Button>
           </div>
 
           <Body1>
-            Automatically improve visual aesthetics, composition, and quality using AI-powered analysis.
+            Automatically improve visual aesthetics, composition, and quality using AI-powered
+            analysis.
           </Body1>
 
-          <Divider style={{ marginTop: tokens.spacingVerticalL, marginBottom: tokens.spacingVerticalL }} />
+          <Divider
+            style={{ marginTop: tokens.spacingVerticalL, marginBottom: tokens.spacingVerticalL }}
+          />
 
           <TabList
             selectedValue={selectedTab}
@@ -132,16 +131,10 @@ export const QualityEnhancement: React.FC<QualityEnhancementProps> = ({
               />
             )}
             {selectedTab === 'colorGrading' && (
-              <ColorGradingPanel
-                sceneIndex={sceneIndex}
-                onApplyEnhancement={onApplyEnhancement}
-              />
+              <ColorGradingPanel sceneIndex={sceneIndex} onApplyEnhancement={onApplyEnhancement} />
             )}
             {selectedTab === 'composition' && (
-              <CompositionPanel
-                sceneIndex={sceneIndex}
-                onApplyEnhancement={onApplyEnhancement}
-              />
+              <CompositionPanel sceneIndex={sceneIndex} onApplyEnhancement={onApplyEnhancement} />
             )}
             {selectedTab === 'coherence' && (
               <VisualCoherencePanel onApplyEnhancement={onApplyEnhancement} />

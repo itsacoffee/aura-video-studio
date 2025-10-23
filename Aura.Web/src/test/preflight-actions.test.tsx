@@ -9,9 +9,7 @@ import type { PreflightReport } from '../state/providers';
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
     <BrowserRouter>
-      <FluentProvider theme={webLightTheme}>
-        {component}
-      </FluentProvider>
+      <FluentProvider theme={webLightTheme}>{component}</FluentProvider>
     </BrowserRouter>
   );
 };

@@ -215,10 +215,17 @@ export function ProviderHealthDashboard() {
 
   const getProviderType = (name: string): string => {
     const nameLower = name.toLowerCase();
-    if (nameLower.includes('llm') || ['rulebased', 'ollama', 'openai', 'azure', 'gemini'].includes(nameLower)) {
+    if (
+      nameLower.includes('llm') ||
+      ['rulebased', 'ollama', 'openai', 'azure', 'gemini'].includes(nameLower)
+    ) {
       return 'LLM';
     }
-    if (nameLower.includes('tts') || nameLower.includes('voice') || ['windows', 'elevenlabs'].includes(nameLower)) {
+    if (
+      nameLower.includes('tts') ||
+      nameLower.includes('voice') ||
+      ['windows', 'elevenlabs'].includes(nameLower)
+    ) {
       return 'TTS';
     }
     if (nameLower.includes('image') || ['stablediffusion', 'stock'].includes(nameLower)) {
@@ -251,7 +258,7 @@ export function ProviderHealthDashboard() {
 
   const getSuccessRateColor = (rate: number): string => {
     if (rate >= 0.95) return tokens.colorPaletteGreenForeground1;
-    if (rate >= 0.80) return tokens.colorPaletteYellowForeground1;
+    if (rate >= 0.8) return tokens.colorPaletteYellowForeground1;
     return tokens.colorPaletteRedForeground1;
   };
 
@@ -260,7 +267,7 @@ export function ProviderHealthDashboard() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
@@ -268,7 +275,7 @@ export function ProviderHealthDashboard() {
     return date.toLocaleDateString();
   };
 
-  const filteredProviders = providers.filter(p => {
+  const filteredProviders = providers.filter((p) => {
     if (filter === 'all') return true;
     const type = getProviderType(p.providerName).toLowerCase();
     return type === filter;
@@ -321,19 +328,19 @@ export function ProviderHealthDashboard() {
           appearance={filter === 'llm' ? 'primary' : 'subtle'}
           onClick={() => setFilter('llm')}
         >
-          LLM ({providers.filter(p => getProviderType(p.providerName) === 'LLM').length})
+          LLM ({providers.filter((p) => getProviderType(p.providerName) === 'LLM').length})
         </Button>
         <Button
           appearance={filter === 'tts' ? 'primary' : 'subtle'}
           onClick={() => setFilter('tts')}
         >
-          TTS ({providers.filter(p => getProviderType(p.providerName) === 'TTS').length})
+          TTS ({providers.filter((p) => getProviderType(p.providerName) === 'TTS').length})
         </Button>
         <Button
           appearance={filter === 'image' ? 'primary' : 'subtle'}
           onClick={() => setFilter('image')}
         >
-          Image ({providers.filter(p => getProviderType(p.providerName) === 'Image').length})
+          Image ({providers.filter((p) => getProviderType(p.providerName) === 'Image').length})
         </Button>
       </div>
 
@@ -341,16 +348,20 @@ export function ProviderHealthDashboard() {
         <div className={styles.emptyState}>
           <Text size={500}>No providers found</Text>
           <br />
-          <Caption1>Providers will appear here once they are registered and health checks run</Caption1>
+          <Caption1>
+            Providers will appear here once they are registered and health checks run
+          </Caption1>
         </div>
       ) : (
         <div className={styles.grid}>
-          {filteredProviders.map(provider => (
+          {filteredProviders.map((provider) => (
             <Card key={provider.providerName} className={styles.providerCard}>
               <div className={styles.cardHeader}>
                 <div>
                   <div className={styles.providerName}>{provider.providerName}</div>
-                  <div className={styles.providerType}>{getProviderType(provider.providerName)}</div>
+                  <div className={styles.providerType}>
+                    {getProviderType(provider.providerName)}
+                  </div>
                 </div>
                 {getStatusBadge(provider)}
               </div>
@@ -393,15 +404,19 @@ export function ProviderHealthDashboard() {
                   <Button
                     appearance="subtle"
                     size="small"
-                    icon={expandedErrors.has(provider.providerName) ? <ChevronUp24Regular /> : <ChevronDown24Regular />}
+                    icon={
+                      expandedErrors.has(provider.providerName) ? (
+                        <ChevronUp24Regular />
+                      ) : (
+                        <ChevronDown24Regular />
+                      )
+                    }
                     onClick={() => toggleErrorExpanded(provider.providerName)}
                   >
                     {expandedErrors.has(provider.providerName) ? 'Hide' : 'Show'} Error Details
                   </Button>
                   {expandedErrors.has(provider.providerName) && (
-                    <div className={styles.errorDetails}>
-                      {provider.lastError}
-                    </div>
+                    <div className={styles.errorDetails}>{provider.lastError}</div>
                   )}
                 </>
               )}

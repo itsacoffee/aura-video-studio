@@ -14,7 +14,12 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { Warning24Regular, Folder24Regular, Link24Regular, Document24Regular } from '@fluentui/react-icons';
+import {
+  Warning24Regular,
+  Folder24Regular,
+  Link24Regular,
+  Document24Regular,
+} from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   content: {
@@ -87,7 +92,7 @@ export function DownloadDiagnostics({
       case 'E-DL-404':
         return 'The download file was not found at the expected URL. This could mean the mirror is down or the file has been moved.';
       case 'E-DL-CHECKSUM':
-        return 'The downloaded file\'s checksum does not match the expected value. This could indicate a corrupted download or a tampered file.';
+        return "The downloaded file's checksum does not match the expected value. This could indicate a corrupted download or a tampered file.";
       case 'E-HEALTH-TIMEOUT':
         return 'The engine failed to start or respond to health checks. This could be due to missing dependencies or configuration issues.';
       case 'E-DL-NETWORK':
@@ -99,7 +104,7 @@ export function DownloadDiagnostics({
 
   const handleInstallFromLocal = async () => {
     if (!localFilePath.trim() || !onInstallFromLocal) return;
-    
+
     setIsProcessing(true);
     try {
       await onInstallFromLocal(localFilePath.trim());
@@ -113,7 +118,7 @@ export function DownloadDiagnostics({
 
   const handleUseCustomUrl = async () => {
     if (!customUrl.trim() || !onUseCustomUrl) return;
-    
+
     setIsProcessing(true);
     try {
       await onUseCustomUrl(customUrl.trim());
@@ -127,7 +132,7 @@ export function DownloadDiagnostics({
 
   const handleTryMirror = async () => {
     if (!onTryMirror) return;
-    
+
     setIsProcessing(true);
     try {
       await onTryMirror();
@@ -147,9 +152,22 @@ export function DownloadDiagnostics({
           <DialogContent className={styles.content}>
             {/* Error Summary */}
             <div className={styles.errorSection}>
-              <Warning24Regular style={{ color: tokens.colorPaletteRedForeground1, fontSize: '32px', flexShrink: 0 }} />
+              <Warning24Regular
+                style={{
+                  color: tokens.colorPaletteRedForeground1,
+                  fontSize: '32px',
+                  flexShrink: 0,
+                }}
+              />
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: tokens.spacingHorizontalS,
+                    marginBottom: tokens.spacingVerticalS,
+                  }}
+                >
                   <Badge appearance="filled" color="danger" className={styles.errorCode}>
                     {error.errorCode}
                   </Badge>
@@ -157,13 +175,27 @@ export function DownloadDiagnostics({
                 </div>
                 <Text size={200}>{getErrorExplanation(error.errorCode)}</Text>
                 {error.lastAttemptedUrl && (
-                  <Text size={200} style={{ marginTop: tokens.spacingVerticalS, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  <Text
+                    size={200}
+                    style={{
+                      marginTop: tokens.spacingVerticalS,
+                      fontFamily: 'monospace',
+                      wordBreak: 'break-all',
+                    }}
+                  >
                     <strong>URL:</strong> {error.lastAttemptedUrl}
                   </Text>
                 )}
                 {error.errorCode === 'E-DL-CHECKSUM' && error.expectedChecksum && (
                   <>
-                    <Text size={200} style={{ marginTop: tokens.spacingVerticalS, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                    <Text
+                      size={200}
+                      style={{
+                        marginTop: tokens.spacingVerticalS,
+                        fontFamily: 'monospace',
+                        wordBreak: 'break-all',
+                      }}
+                    >
                       <strong>Expected:</strong> {error.expectedChecksum}
                     </Text>
                     {error.actualChecksum && (
@@ -176,17 +208,22 @@ export function DownloadDiagnostics({
               </div>
             </div>
 
-            <Text weight="semibold" size={400}>Available Solutions:</Text>
+            <Text weight="semibold" size={400}>
+              Available Solutions:
+            </Text>
 
             {/* Fix Option 1: Pick Existing Path */}
             {onPickExistingPath && (
               <div className={styles.fixOption}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   <Folder24Regular />
                   <Text weight="semibold">Use Existing Installation</Text>
                 </div>
                 <Text size={200}>
-                  If you already have {error.engineName} installed on your system, you can point Aura to that location instead of downloading.
+                  If you already have {error.engineName} installed on your system, you can point
+                  Aura to that location instead of downloading.
                 </Text>
                 <Button
                   appearance="secondary"
@@ -202,12 +239,14 @@ export function DownloadDiagnostics({
             {/* Fix Option 2: Install from Local File */}
             {onInstallFromLocal && (
               <div className={styles.fixOption}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   <Document24Regular />
                   <Text weight="semibold">Install from Local File</Text>
                 </div>
                 <Text size={200}>
-                  If you've manually downloaded the archive, provide the path to install it.
+                  If you&apos;ve manually downloaded the archive, provide the path to install it.
                 </Text>
                 <Field label="Local File Path">
                   <Input
@@ -230,7 +269,9 @@ export function DownloadDiagnostics({
             {/* Fix Option 3: Custom URL */}
             {onUseCustomUrl && (
               <div className={styles.fixOption}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   <Link24Regular />
                   <Text weight="semibold">Use Custom Download URL</Text>
                 </div>
@@ -274,7 +315,11 @@ export function DownloadDiagnostics({
             )}
           </DialogContent>
           <DialogActions>
-            <Button appearance="primary" onClick={() => onOpenChange(false)} disabled={isProcessing}>
+            <Button
+              appearance="primary"
+              onClick={() => onOpenChange(false)}
+              disabled={isProcessing}
+            >
               Close
             </Button>
           </DialogActions>

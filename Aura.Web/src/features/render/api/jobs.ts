@@ -56,12 +56,12 @@ export interface CreateJobResponse {
   stage?: string;
 }
 
-export type JobEventType = 
-  | 'step-progress' 
-  | 'step-status' 
-  | 'step-error' 
-  | 'job-status' 
-  | 'job-completed' 
+export type JobEventType =
+  | 'step-progress'
+  | 'step-status'
+  | 'step-error'
+  | 'job-status'
+  | 'job-completed'
   | 'job-failed'
   | 'error';
 
@@ -165,10 +165,10 @@ export async function cancelJob(jobId: string): Promise<void> {
  * Retry a failed job
  */
 export async function retryJob(jobId: string, strategy?: string): Promise<any> {
-  const url = strategy 
+  const url = strategy
     ? `/api/jobs/${jobId}/retry?strategy=${encodeURIComponent(strategy)}`
     : `/api/jobs/${jobId}/retry`;
-    
+
   const response = await fetch(url, {
     method: 'POST',
   });

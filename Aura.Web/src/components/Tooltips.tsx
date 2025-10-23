@@ -127,7 +127,7 @@ export const TooltipContent = {
     text: 'Stable Diffusion parameters: steps, CFG scale, seed, dimensions.',
     docLink: '/docs/LOCAL_PROVIDERS_SETUP.md#stable-diffusion',
   },
-  
+
   // Keyboard Shortcuts
   keyboardShortcuts: {
     text: 'Press Ctrl+K to view all keyboard shortcuts.',
@@ -138,7 +138,11 @@ export const TooltipContent = {
 /**
  * Helper component for rendering tooltip content with optional doc link
  */
-export function TooltipWithLink({ content }: { content: { text: string; docLink: string | null } }) {
+export function TooltipWithLink({
+  content,
+}: {
+  content: { text: string; docLink: string | null };
+}) {
   return (
     <div style={{ maxWidth: '300px' }}>
       {content.text}

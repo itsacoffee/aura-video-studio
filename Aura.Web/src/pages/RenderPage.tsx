@@ -1,9 +1,4 @@
-import {
-  makeStyles,
-  tokens,
-  Title1,
-  Text,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Title1, Text } from '@fluentui/react-components';
 import { RenderPanel } from '../components/RenderPanel';
 
 const useStyles = makeStyles({

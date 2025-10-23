@@ -26,7 +26,10 @@ import { useTimelineStore } from '../../../state/timeline';
 import { TimelineZoomControls } from './TimelineZoomControls';
 import { TimelineTrack } from './TimelineTrack';
 import { AudioTrackControls } from './AudioTrackControls';
-import { useTimelineKeyboardShortcuts, getKeyboardShortcuts } from '../../../hooks/useTimelineKeyboardShortcuts';
+import {
+  useTimelineKeyboardShortcuts,
+  getKeyboardShortcuts,
+} from '../../../hooks/useTimelineKeyboardShortcuts';
 
 const useStyles = makeStyles({
   container: {
@@ -164,83 +167,83 @@ export function Timeline({ duration = 120, onSave }: TimelineProps) {
     onPlayPause: useCallback(() => {
       setPlaying(!isPlaying);
     }, [isPlaying, setPlaying]),
-    
+
     onRewind: useCallback(() => {
       setCurrentTime(Math.max(0, currentTime - 1));
     }, [currentTime, setCurrentTime]),
-    
+
     onFastForward: useCallback(() => {
       setCurrentTime(Math.min(duration, currentTime + 1));
     }, [currentTime, duration, setCurrentTime]),
-    
+
     onFrameBackward: useCallback(() => {
-      setCurrentTime(Math.max(0, currentTime - (1 / 30)));
+      setCurrentTime(Math.max(0, currentTime - 1 / 30));
     }, [currentTime, setCurrentTime]),
-    
+
     onFrameForward: useCallback(() => {
-      setCurrentTime(Math.min(duration, currentTime + (1 / 30)));
+      setCurrentTime(Math.min(duration, currentTime + 1 / 30));
     }, [currentTime, duration, setCurrentTime]),
-    
+
     onSecondBackward: useCallback(() => {
       setCurrentTime(Math.max(0, currentTime - 1));
     }, [currentTime, setCurrentTime]),
-    
+
     onSecondForward: useCallback(() => {
       setCurrentTime(Math.min(duration, currentTime + 1));
     }, [currentTime, duration, setCurrentTime]),
-    
+
     onJumpToStart: useCallback(() => {
       setCurrentTime(0);
     }, [setCurrentTime]),
-    
+
     onJumpToEnd: useCallback(() => {
       setCurrentTime(duration);
     }, [duration, setCurrentTime]),
-    
+
     onSplice: useCallback(() => {
       // TODO: Implement splice logic here
     }, []),
-    
+
     onRippleDelete: useCallback(() => {
       // TODO: Implement ripple delete here
     }, []),
-    
+
     onDelete: useCallback(() => {
       // TODO: Implement delete here
     }, []),
-    
+
     onCopy: useCallback(() => {
       // TODO: Implement copy here
     }, []),
-    
+
     onPaste: useCallback(() => {
       // TODO: Implement paste here
     }, []),
-    
+
     onDuplicate: useCallback(() => {
       // TODO: Implement duplicate here
     }, []),
-    
+
     onUndo: useCallback(() => {
       // TODO: Implement undo here
     }, []),
-    
+
     onRedo: useCallback(() => {
       // TODO: Implement redo here
     }, []),
-    
+
     onZoomIn: useCallback(() => {
       setZoom(Math.min(200, zoom * 1.2));
     }, [zoom, setZoom]),
-    
+
     onZoomOut: useCallback(() => {
       setZoom(Math.max(10, zoom / 1.2));
     }, [zoom, setZoom]),
-    
+
     onSave: useCallback(() => {
       onSave?.();
     }, [onSave]),
-    
+
     onShowShortcuts: useCallback(() => {
       setShowShortcuts(true);
     }, []),
@@ -284,7 +287,11 @@ export function Timeline({ duration = 120, onSave }: TimelineProps) {
         <div className={styles.toolbarRight}>
           <Dialog open={showShortcuts} onOpenChange={(_, data) => setShowShortcuts(data.open)}>
             <DialogTrigger>
-              <Button icon={<Question24Regular />} appearance="subtle" title="Keyboard shortcuts (?)">
+              <Button
+                icon={<Question24Regular />}
+                appearance="subtle"
+                title="Keyboard shortcuts (?)"
+              >
                 Shortcuts
               </Button>
             </DialogTrigger>
@@ -318,9 +325,7 @@ export function Timeline({ duration = 120, onSave }: TimelineProps) {
       {/* Timeline */}
       <div className={styles.timelineContainer} ref={timelineRef}>
         {/* Ruler */}
-        <div className={styles.ruler}>
-          {/* Would render time markers here */}
-        </div>
+        <div className={styles.ruler}>{/* Would render time markers here */}</div>
 
         {/* Tracks */}
         <div className={styles.tracksContainer}>

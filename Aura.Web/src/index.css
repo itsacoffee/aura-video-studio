@@ -10,7 +10,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  
+
   /* CSS custom properties for theming */
   --color-primary: #0ea5e9;
   --color-secondary: #a855f7;

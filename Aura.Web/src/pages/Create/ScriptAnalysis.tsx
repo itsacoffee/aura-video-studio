@@ -122,7 +122,12 @@ interface EnhancementOptions {
   addDetails: boolean;
 }
 
-export function ScriptAnalysis({ script, onEnhanceScript, onProceed, onRegenerate }: ScriptAnalysisProps) {
+export function ScriptAnalysis({
+  script,
+  onEnhanceScript,
+  onProceed,
+  onRegenerate,
+}: ScriptAnalysisProps) {
   const styles = useStyles();
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -183,7 +188,10 @@ export function ScriptAnalysis({ script, onEnhanceScript, onProceed, onRegenerat
       <Card>
         <div style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL }}>
           <Title2>Script Analysis</Title2>
-          <Text block style={{ marginTop: tokens.spacingVerticalM, marginBottom: tokens.spacingVerticalL }}>
+          <Text
+            block
+            style={{ marginTop: tokens.spacingVerticalM, marginBottom: tokens.spacingVerticalL }}
+          >
             Analyze your script to get quality scores and improvement suggestions
           </Text>
           <Button appearance="primary" icon={<Sparkle24Regular />} onClick={analyzeScript}>
@@ -213,12 +221,21 @@ export function ScriptAnalysis({ script, onEnhanceScript, onProceed, onRegenerat
     <div className={styles.container}>
       <Card className={styles.overallScore}>
         <Text className={styles.scoreLabel}>Overall Quality Score</Text>
-        <div className={styles.overallValue} style={{ color: getScoreColor(analysis.overallQualityScore) }}>
+        <div
+          className={styles.overallValue}
+          style={{ color: getScoreColor(analysis.overallQualityScore) }}
+        >
           {analysis.overallQualityScore.toFixed(0)}
         </div>
         <ProgressBar
           value={analysis.overallQualityScore / 100}
-          color={analysis.overallQualityScore >= 80 ? 'success' : analysis.overallQualityScore >= 60 ? 'warning' : 'error'}
+          color={
+            analysis.overallQualityScore >= 80
+              ? 'success'
+              : analysis.overallQualityScore >= 60
+                ? 'warning'
+                : 'error'
+          }
         />
         {analysis.overallQualityScore < 70 && (
           <Badge appearance="tint" color="warning" style={{ marginTop: tokens.spacingVerticalM }}>
@@ -230,7 +247,10 @@ export function ScriptAnalysis({ script, onEnhanceScript, onProceed, onRegenerat
       <div className={styles.scoresGrid}>
         <Card className={styles.scoreCard}>
           <Text className={styles.scoreLabel}>Coherence</Text>
-          <div className={styles.scoreValue} style={{ color: getScoreColor(analysis.coherenceScore) }}>
+          <div
+            className={styles.scoreValue}
+            style={{ color: getScoreColor(analysis.coherenceScore) }}
+          >
             {analysis.coherenceScore.toFixed(0)}
           </div>
         </Card>
@@ -242,13 +262,19 @@ export function ScriptAnalysis({ script, onEnhanceScript, onProceed, onRegenerat
         </Card>
         <Card className={styles.scoreCard}>
           <Text className={styles.scoreLabel}>Engagement</Text>
-          <div className={styles.scoreValue} style={{ color: getScoreColor(analysis.engagementScore) }}>
+          <div
+            className={styles.scoreValue}
+            style={{ color: getScoreColor(analysis.engagementScore) }}
+          >
             {analysis.engagementScore.toFixed(0)}
           </div>
         </Card>
         <Card className={styles.scoreCard}>
           <Text className={styles.scoreLabel}>Readability</Text>
-          <div className={styles.scoreValue} style={{ color: getScoreColor(analysis.readabilityScore) }}>
+          <div
+            className={styles.scoreValue}
+            style={{ color: getScoreColor(analysis.readabilityScore) }}
+          >
             {analysis.readabilityScore.toFixed(0)}
           </div>
         </Card>
@@ -276,21 +302,30 @@ export function ScriptAnalysis({ script, onEnhanceScript, onProceed, onRegenerat
               label="Fix Coherence (add transitions between scenes)"
               checked={enhancementOptions.fixCoherence}
               onChange={(_, data) =>
-                setEnhancementOptions({ ...enhancementOptions, fixCoherence: data.checked === true })
+                setEnhancementOptions({
+                  ...enhancementOptions,
+                  fixCoherence: data.checked === true,
+                })
               }
             />
             <Checkbox
               label="Increase Engagement (add hooks, interesting facts)"
               checked={enhancementOptions.increaseEngagement}
               onChange={(_, data) =>
-                setEnhancementOptions({ ...enhancementOptions, increaseEngagement: data.checked === true })
+                setEnhancementOptions({
+                  ...enhancementOptions,
+                  increaseEngagement: data.checked === true,
+                })
               }
             />
             <Checkbox
               label="Improve Clarity (simplify complex sentences)"
               checked={enhancementOptions.improveClarity}
               onChange={(_, data) =>
-                setEnhancementOptions({ ...enhancementOptions, improveClarity: data.checked === true })
+                setEnhancementOptions({
+                  ...enhancementOptions,
+                  improveClarity: data.checked === true,
+                })
               }
             />
             <Checkbox

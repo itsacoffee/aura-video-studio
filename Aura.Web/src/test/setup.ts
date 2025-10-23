@@ -20,4 +20,3 @@ const localStorageMock = {
 };
 
 (globalThis as any).localStorage = localStorageMock;
-

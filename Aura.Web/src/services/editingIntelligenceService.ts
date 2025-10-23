@@ -7,7 +7,13 @@ const API_BASE = '/api/editing';
 
 export interface CutPoint {
   timestamp: string;
-  type: 'NaturalPause' | 'SentenceBoundary' | 'BreathPoint' | 'FillerRemoval' | 'SceneTransition' | 'EmphasisPoint';
+  type:
+    | 'NaturalPause'
+    | 'SentenceBoundary'
+    | 'BreathPoint'
+    | 'FillerRemoval'
+    | 'SceneTransition'
+    | 'EmphasisPoint';
   confidence: number;
   reasoning: string;
   durationToRemove?: string;
@@ -18,7 +24,13 @@ export interface ScenePacingRecommendation {
   currentDuration: string;
   recommendedDuration: string;
   engagementScore: number;
-  issueType?: 'TooSlow' | 'TooFast' | 'Monotonous' | 'PoorRhythm' | 'InformationOverload' | 'AttentionSpanExceeded';
+  issueType?:
+    | 'TooSlow'
+    | 'TooFast'
+    | 'Monotonous'
+    | 'PoorRhythm'
+    | 'InformationOverload'
+    | 'AttentionSpanExceeded';
   reasoning: string;
 }
 
@@ -44,7 +56,16 @@ export interface TransitionSuggestion {
 export interface EffectSuggestion {
   startTime: string;
   duration: string;
-  effectType: 'SlowMotion' | 'SpeedUp' | 'Zoom' | 'Pan' | 'ColorGrade' | 'Blur' | 'Vignette' | 'TextOverlay' | 'SplitScreen';
+  effectType:
+    | 'SlowMotion'
+    | 'SpeedUp'
+    | 'Zoom'
+    | 'Pan'
+    | 'ColorGrade'
+    | 'Blur'
+    | 'Vignette'
+    | 'TextOverlay'
+    | 'SplitScreen';
   purpose: 'Emphasis' | 'Transition' | 'Style' | 'Correction' | 'Engagement';
   parameters: Record<string, any>;
   reasoning: string;
@@ -67,7 +88,15 @@ export interface EngagementCurve {
 }
 
 export interface QualityIssue {
-  type: 'LowResolution' | 'AudioClipping' | 'ColorInconsistency' | 'BlackFrame' | 'AudioDesync' | 'ContinuityError' | 'RenderingArtifact' | 'MissingAsset';
+  type:
+    | 'LowResolution'
+    | 'AudioClipping'
+    | 'ColorInconsistency'
+    | 'BlackFrame'
+    | 'AudioDesync'
+    | 'ContinuityError'
+    | 'RenderingArtifact'
+    | 'MissingAsset';
   severity: 'Info' | 'Warning' | 'Error' | 'Critical';
   location?: string;
   description: string;
@@ -105,7 +134,9 @@ export interface OptimizeDurationRequest {
 /**
  * Analyze timeline for all issues and recommendations
  */
-export async function analyzeTimeline(request: AnalyzeTimelineRequest): Promise<TimelineAnalysisResult> {
+export async function analyzeTimeline(
+  request: AnalyzeTimelineRequest
+): Promise<TimelineAnalysisResult> {
   const response = await fetch(`${API_BASE}/analyze-timeline`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -123,7 +154,9 @@ export async function analyzeTimeline(request: AnalyzeTimelineRequest): Promise<
 /**
  * Get cut point suggestions for timeline
  */
-export async function suggestCuts(jobId: string): Promise<{ cutPoints: CutPoint[]; awkwardPauses: CutPoint[] }> {
+export async function suggestCuts(
+  jobId: string
+): Promise<{ cutPoints: CutPoint[]; awkwardPauses: CutPoint[] }> {
   const response = await fetch(`${API_BASE}/suggest-cuts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -141,7 +174,9 @@ export async function suggestCuts(jobId: string): Promise<{ cutPoints: CutPoint[
 /**
  * Optimize timeline pacing
  */
-export async function optimizePacing(request: EditingPacingRequest): Promise<{ analysis: PacingAnalysis; slowSegments: any[] }> {
+export async function optimizePacing(
+  request: EditingPacingRequest
+): Promise<{ analysis: PacingAnalysis; slowSegments: any[] }> {
   const response = await fetch(`${API_BASE}/optimize-pacing`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -159,7 +194,9 @@ export async function optimizePacing(request: EditingPacingRequest): Promise<{ a
 /**
  * Recommend transitions between scenes
  */
-export async function recommendTransitions(jobId: string): Promise<{ suggestions: TransitionSuggestion[]; jarringTransitions: TransitionSuggestion[] }> {
+export async function recommendTransitions(
+  jobId: string
+): Promise<{ suggestions: TransitionSuggestion[]; jarringTransitions: TransitionSuggestion[] }> {
   const response = await fetch(`${API_BASE}/transitions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -195,7 +232,9 @@ export async function suggestEffects(jobId: string): Promise<EffectSuggestion[]>
 /**
  * Generate engagement analysis
  */
-export async function analyzeEngagement(jobId: string): Promise<{ engagementCurve: EngagementCurve; fatiguePoints: any[] }> {
+export async function analyzeEngagement(
+  jobId: string
+): Promise<{ engagementCurve: EngagementCurve; fatiguePoints: any[] }> {
   const response = await fetch(`${API_BASE}/engagement`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -213,7 +252,9 @@ export async function analyzeEngagement(jobId: string): Promise<{ engagementCurv
 /**
  * Run quality control checks
  */
-export async function runQualityCheck(jobId: string): Promise<{ issues: QualityIssue[]; summary: any }> {
+export async function runQualityCheck(
+  jobId: string
+): Promise<{ issues: QualityIssue[]; summary: any }> {
   const response = await fetch(`${API_BASE}/quality-check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

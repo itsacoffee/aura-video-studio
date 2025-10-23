@@ -141,10 +141,7 @@ export const analyticsService = {
   /**
    * Analyzes attention span patterns
    */
-  async analyzeAttention(
-    content: string,
-    videoDuration: string
-  ): Promise<AttentionAnalysis> {
+  async analyzeAttention(content: string, videoDuration: string): Promise<AttentionAnalysis> {
     const response = await fetch(`${API_BASE}/analyze-attention`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -178,9 +175,7 @@ export const analyticsService = {
   /**
    * Suggests aspect ratios for cross-platform publishing
    */
-  async suggestAspectRatios(
-    targetPlatforms: string[]
-  ): Promise<AspectRatioSuggestions> {
+  async suggestAspectRatios(targetPlatforms: string[]): Promise<AspectRatioSuggestions> {
     const response = await fetch(`${API_BASE}/suggest-aspect-ratios`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -195,10 +190,7 @@ export const analyticsService = {
   /**
    * Analyzes content structure
    */
-  async analyzeStructure(
-    content: string,
-    contentType: string
-  ): Promise<ContentStructureAnalysis> {
+  async analyzeStructure(content: string, contentType: string): Promise<ContentStructureAnalysis> {
     const response = await fetch(`${API_BASE}/analyze-structure`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

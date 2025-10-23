@@ -56,9 +56,7 @@ const getScoreColor = (score: number): string => {
   return tokens.colorPaletteRedForeground1;
 };
 
-export const EngagementPanel: React.FC<EngagementPanelProps> = ({
-  curve,
-}) => {
+export const EngagementPanel: React.FC<EngagementPanelProps> = ({ curve }) => {
   const styles = useStyles();
 
   if (!curve) {
@@ -69,7 +67,7 @@ export const EngagementPanel: React.FC<EngagementPanelProps> = ({
     <div className={styles.container}>
       <Card className={styles.metricsCard}>
         <Title3>Engagement Metrics</Title3>
-        
+
         <div className={styles.metricRow}>
           <Body1>Average Engagement:</Body1>
           <Body1Strong style={{ color: getScoreColor(curve.averageEngagement) }}>
