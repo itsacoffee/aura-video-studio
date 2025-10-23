@@ -1,0 +1,177 @@
+/**
+ * Pacing Optimization Panel Component
+ * Main UI component for visual selection and pacing optimization
+ */
+
+import React, { useState, useCallback } from 'react';
+import {
+  Card,
+  Button,
+  makeStyles,
+  tokens,
+  Spinner,
+  Tab,
+  TabList,
+  Title3,
+  Body1,
+  Badge,
+} from '@fluentui/react-components';
+import {
+  VideoClip24Regular,
+  FlashFlow24Regular,
+  ChartMultiple24Regular,
+  TestBeaker24Regular,
+} from '@fluentui/react-icons';
+import { Scene } from '../../types';
+import { FrameSelectionView } from './FrameSelectionView';
+import { PaceAdjustmentSlider } from './PaceAdjustmentSlider';
+import { TransitionSuggestionCard } from './TransitionSuggestionCard';
+import { OptimizationResultsView } from './OptimizationResultsView';
+
+interface PacingOptimizationPanelProps {
+  scenes: Scene[];
+  videoPath?: string;
+  onScenesUpdated?: (scenes: Scene[]) => void;
+}
+
+const useStyles = makeStyles({
+  container: {
+    width: '100%',
+    padding: tokens.spacingVerticalL,
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: tokens.spacingVerticalL,
+  },
+  tabContent: {
+    marginTop: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalM,
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: tokens.spacingVerticalXXL,
+    color: tokens.colorNeutralForeground3,
+  },
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: tokens.spacingVerticalXXL,
+  },
+});
+
+export const PacingOptimizationPanel: React.FC<PacingOptimizationPanelProps> = ({
+  scenes,
+  videoPath,
+  onScenesUpdated,
+}) => {
+  const styles = useStyles();
+  const [selectedTab, setSelectedTab] = useState<string>('frames');
+  const [loading, setLoading] = useState(false);
+  const [optimizationActive, setOptimizationActive] = useState(false);
+
+  const handleOptimize = useCallback(async () => {
+    setLoading(true);
+    setOptimizationActive(true);
+    
+    try {
+      // Trigger optimization process
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulated delay
+      
+      // In production, this would call the optimization services
+      console.log('Optimization complete');
+    } catch (error) {
+      console.error('Optimization failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleTabChange = (_: unknown, data: { value: string }) => {
+    setSelectedTab(data.value);
+  };
+
+  if (scenes.length === 0) {
+    return (
+      <Card className={styles.container}>
+        <div className={styles.emptyState}>
+          <VideoClip24Regular />
+          <Body1>No scenes available. Add scenes to begin pacing optimization.</Body1>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className={styles.container}>
+      <div className={styles.header}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+          <FlashFlow24Regular style={{ fontSize: '24px' }} />
+          <Title3>Pacing Optimization</Title3>
+          {optimizationActive && (
+            <Badge appearance="tint" color="success">
+              Active
+            </Badge>
+          )}
+        </div>
+        <Button
+          appearance="primary"
+          icon={loading ? <Spinner size="tiny" /> : <ChartMultiple24Regular />}
+          onClick={handleOptimize}
+          disabled={loading}
+        >
+          {loading ? 'Analyzing...' : 'Optimize Pacing'}
+        </Button>
+      </div>
+
+      <TabList selectedValue={selectedTab} onTabSelect={handleTabChange}>
+        <Tab value="frames" icon={<VideoClip24Regular />}>
+          Frame Selection
+        </Tab>
+        <Tab value="pacing" icon={<FlashFlow24Regular />}>
+          Pace Adjustment
+        </Tab>
+        <Tab value="transitions" icon={<ChartMultiple24Regular />}>
+          Transitions
+        </Tab>
+        <Tab value="results" icon={<TestBeaker24Regular />}>
+          Results
+        </Tab>
+      </TabList>
+
+      <div className={styles.tabContent}>
+        {selectedTab === 'frames' && (
+          <FrameSelectionView
+            scenes={scenes}
+            videoPath={videoPath}
+            optimizationActive={optimizationActive}
+          />
+        )}
+        
+        {selectedTab === 'pacing' && (
+          <PaceAdjustmentSlider
+            scenes={scenes}
+            onScenesUpdated={onScenesUpdated}
+            optimizationActive={optimizationActive}
+          />
+        )}
+        
+        {selectedTab === 'transitions' && (
+          <TransitionSuggestionCard
+            scenes={scenes}
+            optimizationActive={optimizationActive}
+          />
+        )}
+        
+        {selectedTab === 'results' && (
+          <OptimizationResultsView
+            scenes={scenes}
+            optimizationActive={optimizationActive}
+          />
+        )}
+      </div>
+    </Card>
+  );
+};
