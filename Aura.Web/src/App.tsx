@@ -57,10 +57,17 @@ export const useTheme = () => useContext(ThemeContext);
 
 function App() {
   const styles = useStyles();
+  
+  // Initialize dark mode from localStorage or system preference
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
-    return saved ? JSON.parse(saved) : false;
+    if (saved !== null) {
+      return JSON.parse(saved);
+    }
+    // Detect system preference if no saved preference
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
+  
   const [showShortcuts, setShowShortcuts] = useState(false);
   const { toasterId } = useNotifications();
 
@@ -68,37 +75,80 @@ function App() {
   const { currentJobId, status, progress, message } = useJobState();
   const [showDrawer, setShowDrawer] = useState(false);
 
+  // Apply dark mode class to document root and save preference
   useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+    console.log(`Theme switched to: ${isDarkMode ? 'dark' : 'light'} mode`);
   }, [isDarkMode]);
+
+  // Listen for OS theme changes (only if user hasn't explicitly set preference)
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleChange = (e: MediaQueryListEvent) => {
+      const saved = localStorage.getItem('darkMode');
+      // Only update if user hasn't explicitly saved a preference
+      if (saved === null) {
+        setIsDarkMode(e.matches);
+      }
+    };
+    
+    // Use addEventListener for modern browsers
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  }, []);
 
   // Poll job progress when a job is active
   useEffect(() => {
+    // Early exit if no active job
     if (!currentJobId || status === 'completed' || status === 'failed') {
       return;
     }
 
+    let isActive = true; // Prevent state updates after unmount
     const pollInterval = setInterval(async () => {
+      // Skip if component unmounted or job completed
+      if (!isActive) return;
+      
       try {
         const response = await fetch(`/api/jobs/${currentJobId}/progress`);
-        if (response.ok) {
+        if (response.ok && isActive) {
           const data = await response.json();
-          useJobState.getState().updateProgress(data.progress, data.currentStage);
+          
+          // Update progress only if still active
+          if (isActive) {
+            useJobState.getState().updateProgress(data.progress, data.currentStage);
 
-          if (data.status === 'completed') {
-            useJobState.getState().setStatus('completed');
-            useJobState.getState().updateProgress(100, 'Video generation complete!');
-          } else if (data.status === 'failed') {
-            useJobState.getState().setStatus('failed');
-            useJobState.getState().updateProgress(data.progress, 'Generation failed');
+            if (data.status === 'completed') {
+              useJobState.getState().setStatus('completed');
+              useJobState.getState().updateProgress(100, 'Video generation complete!');
+              clearInterval(pollInterval); // Stop polling on completion
+            } else if (data.status === 'failed') {
+              useJobState.getState().setStatus('failed');
+              useJobState.getState().updateProgress(data.progress, 'Generation failed');
+              clearInterval(pollInterval); // Stop polling on failure
+            }
           }
         }
       } catch (error) {
-        console.error('Error polling job progress:', error);
+        if (isActive) {
+          console.error('Error polling job progress:', error);
+        }
       }
     }, 1000);
 
-    return () => clearInterval(pollInterval);
+    return () => {
+      isActive = false;
+      clearInterval(pollInterval);
+    };
   }, [currentJobId, status]);
 
   // Global keyboard shortcut handler for Ctrl+K
