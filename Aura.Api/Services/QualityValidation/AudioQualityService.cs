@@ -22,7 +22,9 @@ public class AudioQualityService
         string audioFilePath,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Analyzing audio quality for file: {FilePath}", audioFilePath);
+        // Sanitize file path for logging to prevent log forging
+        var sanitizedPath = Path.GetFileName(audioFilePath);
+        _logger.LogInformation("Analyzing audio quality for file: {FileName}", sanitizedPath);
 
         // For this implementation, we'll provide simulated analysis
         // In production, this would use NAudio, CSCore, or FFmpeg for actual analysis

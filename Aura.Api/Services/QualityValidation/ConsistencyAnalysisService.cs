@@ -22,7 +22,9 @@ public class ConsistencyAnalysisService
         string videoFilePath,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Analyzing content consistency for video: {FilePath}", videoFilePath);
+        // Sanitize file path for logging to prevent log forging
+        var sanitizedPath = Path.GetFileName(videoFilePath);
+        _logger.LogInformation("Analyzing content consistency for video: {FileName}", sanitizedPath);
 
         // For this implementation, we'll provide simulated analysis
         // In production, this would use ML.NET or similar for actual frame comparison

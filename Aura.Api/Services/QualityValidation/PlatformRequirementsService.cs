@@ -80,8 +80,12 @@ public class PlatformRequirementsService
         string codec,
         CancellationToken ct = default)
     {
+        // Sanitize platform name for logging to prevent log forging
+        var sanitizedPlatform = platform.Replace("\n", "").Replace("\r", "");
+        var sanitizedCodec = codec.Replace("\n", "").Replace("\r", "");
+        
         _logger.LogInformation("Validating against {Platform} requirements: {Width}x{Height}, {FileSize}MB, {Duration}s, {Codec}",
-            platform, width, height, fileSizeBytes / 1024.0 / 1024.0, durationSeconds, codec);
+            sanitizedPlatform, width, height, fileSizeBytes / 1024.0 / 1024.0, durationSeconds, sanitizedCodec);
 
         var platformKey = platform.ToLowerInvariant();
         
