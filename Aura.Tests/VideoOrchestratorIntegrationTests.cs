@@ -224,10 +224,52 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
             return Task.FromResult<IReadOnlyList<string>>(new List<string> { "en-US-AriaNeural" });
         }
 
-        public Task<string> SynthesizeAsync(IEnumerable<ScriptLine> lines, VoiceSpec spec, CancellationToken ct)
+        public async Task<string> SynthesizeAsync(IEnumerable<ScriptLine> lines, VoiceSpec spec, CancellationToken ct)
         {
             SynthesizeCalled = true;
-            return Task.FromResult("/tmp/test-audio.wav");
+            
+            // Create a temporary valid WAV file for testing
+            var outputPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test-audio-{Guid.NewGuid()}.wav");
+            
+            // Generate a simple valid WAV file (silent audio, 1 second)
+            // RIFF header for a valid WAV file
+            var sampleRate = 44100;
+            var channels = 1;
+            var bitsPerSample = 16;
+            var duration = 1.0; // 1 second of audio
+            var numSamples = (int)(sampleRate * duration);
+            var dataSize = numSamples * channels * (bitsPerSample / 8);
+            
+            using (var fs = new System.IO.FileStream(outputPath, System.IO.FileMode.Create))
+            using (var writer = new System.IO.BinaryWriter(fs))
+            {
+                // RIFF chunk
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
+                writer.Write(36 + dataSize); // File size - 8
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
+                
+                // fmt chunk
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
+                writer.Write(16); // Chunk size
+                writer.Write((short)1); // Audio format (PCM)
+                writer.Write((short)channels);
+                writer.Write(sampleRate);
+                writer.Write(sampleRate * channels * (bitsPerSample / 8)); // Byte rate
+                writer.Write((short)(channels * (bitsPerSample / 8))); // Block align
+                writer.Write((short)bitsPerSample);
+                
+                // data chunk
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
+                writer.Write(dataSize);
+                
+                // Write silence (zeros)
+                for (int i = 0; i < numSamples; i++)
+                {
+                    writer.Write((short)0);
+                }
+            }
+            
+            return await Task.FromResult(outputPath);
         }
     }
 
@@ -245,13 +287,34 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
 
     private class MockImageProvider : IImageProvider
     {
-        public Task<IReadOnlyList<Asset>> FetchOrGenerateAsync(Scene scene, VisualSpec spec, CancellationToken ct)
+        public async Task<IReadOnlyList<Asset>> FetchOrGenerateAsync(Scene scene, VisualSpec spec, CancellationToken ct)
         {
+            // Create a minimal valid JPEG file (1x1 pixel)
+            var imagePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"test-image-{Guid.NewGuid()}.jpg");
+            
+            // Minimal JPEG file header (1x1 red pixel)
+            byte[] minimalJpeg = new byte[]
+            {
+                0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48,
+                0x00, 0x48, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x03, 0x02, 0x02, 0x03, 0x02, 0x02, 0x03,
+                0x03, 0x03, 0x03, 0x04, 0x03, 0x03, 0x04, 0x05, 0x08, 0x05, 0x05, 0x04, 0x04, 0x05, 0x0A, 0x07,
+                0x07, 0x06, 0x08, 0x0C, 0x0A, 0x0C, 0x0C, 0x0B, 0x0A, 0x0B, 0x0B, 0x0D, 0x0E, 0x12, 0x10, 0x0D,
+                0x0E, 0x11, 0x0E, 0x0B, 0x0B, 0x10, 0x16, 0x10, 0x11, 0x13, 0x14, 0x15, 0x15, 0x15, 0x0C, 0x0F,
+                0x17, 0x18, 0x16, 0x14, 0x18, 0x12, 0x14, 0x15, 0x14, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01,
+                0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0xFF, 0xC4, 0x00, 0x14,
+                0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0xD2, 0xCF, 0x20, 0xFF,
+                0xD9
+            };
+            
+            await System.IO.File.WriteAllBytesAsync(imagePath, minimalJpeg, ct);
+            
             var assets = new List<Asset>
             {
-                new Asset("image", "/tmp/test-image.jpg", "CC0", null)
+                new Asset("image", imagePath, "CC0", null)
             };
-            return Task.FromResult<IReadOnlyList<Asset>>(assets);
+            return await Task.FromResult<IReadOnlyList<Asset>>(assets);
         }
     }
 
