@@ -18,7 +18,9 @@
     "test:coverage": "vitest run --coverage",
     "playwright": "playwright test",
     "playwright:ui": "playwright test --ui",
-    "playwright:install": "playwright install --with-deps chromium"
+    "playwright:install": "playwright install --with-deps chromium",
+    "docs": "typedoc",
+    "docs:watch": "typedoc --watch"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.47.0",
@@ -53,6 +55,7 @@
     "postcss": "^8.4.33",
     "prettier": "^3.1.1",
     "tailwindcss": "^3.4.1",
+    "typedoc": "^0.25.0",
     "typescript": "^5.3.3",
     "vite": "^6.4.1",
     "vitest": "^3.2.4"
