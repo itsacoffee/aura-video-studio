@@ -169,6 +169,12 @@ builder.Services.AddSingleton<Aura.Core.Services.Learning.LearningService>();
 // Register Ideation service
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
 
+// Register Content Planning services
+builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.TrendAnalysisService>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.TopicGenerationService>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.AudienceAnalysisService>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.ContentSchedulingService>();
+
 // Register Audio services
 builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
 builder.Services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
