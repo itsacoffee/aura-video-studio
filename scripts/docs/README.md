@@ -129,7 +129,11 @@ Install Node.js from https://nodejs.org/
 
 ### XML Documentation Warnings
 
-XML documentation warnings (CS1591) are suppressed via `<NoWarn>1591</NoWarn>` in project files. This is intentional to avoid build noise while documentation is being added incrementally.
+XML documentation warnings are suppressed in project files to avoid build noise while documentation is being added incrementally. Specifically:
+
+- **CS1591**: "Missing XML comment for publicly visible type or member" - This warning is suppressed via `<NoWarn>1591</NoWarn>` in `.csproj` files
+- This allows the build to succeed even when not all public APIs have documentation yet
+- As documentation coverage improves, consider removing this suppression to enforce complete documentation
 
 ### DocFX Build Warnings
 

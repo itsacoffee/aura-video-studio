@@ -34,7 +34,17 @@ fi
 # Validate links (if markdown-link-check is installed)
 if command -v markdown-link-check &> /dev/null; then
     echo "Validating links in documentation..."
-    find docs -name "*.md" -exec markdown-link-check --quiet {} \; || true
+    FAILED_FILES=0
+    while IFS= read -r -d '' file; do
+        if ! markdown-link-check --quiet "$file"; then
+            echo "Warning: Found broken links in $file"
+            ((FAILED_FILES++))
+        fi
+    done < <(find docs -name "*.md" -print0)
+    
+    if [ $FAILED_FILES -gt 0 ]; then
+        echo "Warning: $FAILED_FILES file(s) have broken links (not failing build)"
+    fi
 else
     echo "Skipping link validation (markdown-link-check not installed)"
     echo "Install with: npm install -g markdown-link-check"

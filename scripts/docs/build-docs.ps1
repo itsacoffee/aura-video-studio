@@ -49,8 +49,17 @@ if ($npmInstalled) {
 $linkCheckInstalled = Get-Command markdown-link-check -ErrorAction SilentlyContinue
 if ($linkCheckInstalled) {
     Write-Host "Validating links in documentation..." -ForegroundColor Green
+    $failedFiles = 0
     Get-ChildItem -Path docs -Filter *.md -Recurse | ForEach-Object {
-        markdown-link-check $_.FullName --quiet
+        try {
+            markdown-link-check $_.FullName --quiet
+        } catch {
+            Write-Warning "Found broken links in $($_.FullName)"
+            $failedFiles++
+        }
+    }
+    if ($failedFiles -gt 0) {
+        Write-Warning "$failedFiles file(s) have broken links (not failing build)"
     }
 } else {
     Write-Host "Skipping link validation (markdown-link-check not installed)" -ForegroundColor Yellow
