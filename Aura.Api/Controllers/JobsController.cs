@@ -35,6 +35,7 @@ public class JobsController : ControllerBase
         try
         {
             var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] POST /api/jobs endpoint called", correlationId);
             Log.Information("[{CorrelationId}] Creating new job for topic: {Topic}", correlationId, request.Brief.Topic);
 
             var brief = new Brief(
@@ -80,6 +81,8 @@ public class JobsController : ControllerBase
                 ct
             );
 
+            Log.Information("[{CorrelationId}] Job created successfully with ID: {JobId}, Status: {Status}", correlationId, job.Id, job.Status);
+            
             return Ok(new { jobId = job.Id, status = job.Status, stage = job.Stage, correlationId });
         }
         catch (Exception ex)
