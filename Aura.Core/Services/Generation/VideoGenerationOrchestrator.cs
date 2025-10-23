@@ -287,6 +287,7 @@ public class VideoGenerationOrchestrator
         // - Quality degradation strategies
 
         var failedTasks = failedResults.Where(r => !r.Succeeded).ToList();
+        bool anyRecovered = false;
 
         foreach (var failed in failedTasks)
         {
@@ -310,7 +311,7 @@ public class VideoGenerationOrchestrator
                 _taskResults[node.TaskId] = new TaskResult(node.TaskId, true, result, null);
 
                 _logger.LogInformation("Recovery successful for task: {TaskId}", failed.TaskId);
-                return true;
+                anyRecovered = true;
             }
             catch (Exception ex)
             {
@@ -318,7 +319,7 @@ public class VideoGenerationOrchestrator
             }
         }
 
-        return false;
+        return anyRecovered;
     }
 
     /// <summary>
