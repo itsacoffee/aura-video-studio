@@ -1,0 +1,63 @@
+- name: Home
+  href: README.md
+- name: Getting Started
+  href: docs/getting-started/README.md
+  items:
+  - name: Installation Guide
+    href: docs/getting-started/INSTALLATION.md
+  - name: Quick Start
+    href: docs/getting-started/QUICK_START.md
+  - name: First Run Guide
+    href: docs/getting-started/FIRST_RUN_GUIDE.md
+  - name: First Run FAQ
+    href: docs/getting-started/FIRST_RUN_FAQ.md
+- name: Features
+  href: docs/features/README.md
+  items:
+  - name: Video Generation Engines
+    href: docs/features/ENGINES.md
+  - name: Stable Diffusion
+    href: docs/features/ENGINES_SD.md
+  - name: Timeline Editor
+    href: docs/features/TIMELINE.md
+  - name: Text-to-Speech & Captions
+    href: docs/features/TTS-and-Captions.md
+  - name: Local TTS Providers
+    href: docs/features/TTS_LOCAL.md
+  - name: Command Line Interface
+    href: docs/features/CLI.md
+- name: Workflows
+  href: docs/workflows/README.md
+  items:
+  - name: Portable Mode Guide
+    href: docs/workflows/PORTABLE_MODE_GUIDE.md
+  - name: Quick Demo
+    href: docs/workflows/QUICK_DEMO.md
+  - name: Settings Schema
+    href: docs/workflows/SETTINGS_SCHEMA.md
+  - name: UX Guide
+    href: docs/workflows/UX_GUIDE.md
+- name: API Reference
+  href: docs/api/README.md
+  items:
+  - name: API Contract v1
+    href: docs/api/API_CONTRACT_V1.md
+  - name: Error Handling
+    href: docs/api/errors.md
+  - name: Health Endpoints
+    href: docs/api/health.md
+  - name: Job Management
+    href: docs/api/jobs.md
+  - name: Provider System
+    href: docs/api/providers.md
+- name: Troubleshooting
+  href: docs/troubleshooting/README.md
+  items:
+  - name: Troubleshooting Guide
+    href: docs/troubleshooting/Troubleshooting.md
+- name: Best Practices
+  href: docs/best-practices/README.md
+- name: Architecture
+  href: ARCHITECTURE.md
+- name: Contributing
+  href: CONTRIBUTING.md

@@ -119,3 +119,14 @@ output/
 **/logs/tools/
 engines-manifest.json
 engines-config.json
+
+# DocFX build artifacts
+_site/
+api/.manifest
+api/.mta.cache
+api/*.yml
+!api/index.md
+!api/toc.yml
+
+# TypeDoc output
+docs/api/typescript/

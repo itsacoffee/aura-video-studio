@@ -1,0 +1,155 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'docfx.json'
+      - '.github/workflows/documentation.yml'
+      - 'Aura.Core/**/*.cs'
+      - 'Aura.Api/**/*.cs'
+      - 'Aura.Providers/**/*.cs'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'docfx.json'
+      - 'Aura.Core/**/*.cs'
+      - 'Aura.Api/**/*.cs'
+      - 'Aura.Providers/**/*.cs'
+  workflow_dispatch:
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Install DocFX
+      run: dotnet tool update -g docfx
+      
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build solution (for XML docs)
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: Build documentation
+      run: docfx docfx.json
+      continue-on-error: true
+      
+    - name: Check for broken links
+      run: |
+        echo "Checking for broken links in documentation..."
+        # Install markdown-link-check
+        npm install -g markdown-link-check
+        # Check all markdown files
+        find docs -name "*.md" -exec markdown-link-check {} \; || true
+      
+    - name: Spell check
+      uses: rojopolis/spellcheck-github-actions@0.35.0
+      with:
+        config_path: .github/spellcheck-config.yml
+        task_name: Markdown
+      continue-on-error: true
+      
+    - name: Upload documentation artifact
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: documentation
+        path: _site/
+        retention-days: 30
+        
+  deploy-docs:
+    runs-on: ubuntu-latest
+    needs: build-docs
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download documentation artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: documentation
+        path: _site/
+        
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./_site
+        publish_branch: gh-pages
+        cname: docs.aura-video-studio.example.com
+        enable_jekyll: false
+        
+  validate-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Validate markdown structure
+      run: |
+        echo "Validating markdown files..."
+        # Check for required sections in README files
+        for file in docs/*/README.md; do
+          if [ -f "$file" ]; then
+            echo "Checking $file..."
+            if ! grep -q "^#" "$file"; then
+              echo "Error: $file missing header"
+              exit 1
+            fi
+          fi
+        done
+        
+    - name: Check documentation completeness
+      run: |
+        echo "Checking for TODO/FIXME in documentation..."
+        # Ensure no placeholder content
+        if grep -r "TODO\|FIXME\|TBD\|Coming Soon" docs/ --include="*.md" | grep -v "README.md" | grep -v "best-practices/README.md"; then
+          echo "Warning: Found placeholder content in documentation"
+          # Don't fail, just warn
+        fi
+        
+    - name: Validate links format
+      run: |
+        echo "Validating link formats..."
+        # Check for proper relative links
+        find docs -name "*.md" -exec grep -H '\[.*\](http://localhost\|127.0.0.1)' {} \; && {
+          echo "Error: Found localhost links in documentation"
+          exit 1
+        } || echo "No localhost links found"
+        
+    - name: Check file organization
+      run: |
+        echo "Checking documentation organization..."
+        # Verify required directories exist
+        required_dirs=("getting-started" "features" "workflows" "troubleshooting" "api" "best-practices" "assets")
+        for dir in "${required_dirs[@]}"; do
+          if [ ! -d "docs/$dir" ]; then
+            echo "Error: Required directory docs/$dir not found"
+            exit 1
+          fi
+        done
+        echo "All required directories present"

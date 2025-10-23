@@ -1,0 +1,22 @@
+matrix:
+- name: Markdown
+  sources:
+  - 'docs/**/*.md'
+  - '*.md'
+  aspell:
+    lang: en
+  dictionary:
+    encoding: utf-8
+  pipeline:
+  - pyspelling.filters.markdown:
+      markdown_extensions:
+      - pymdownx.superfences:
+  - pyspelling.filters.html:
+      comments: false
+      ignores:
+      - code
+      - pre
+  - pyspelling.filters.url:
+
+# Custom dictionary for technical terms
+extends: .github/custom-dictionary.txt

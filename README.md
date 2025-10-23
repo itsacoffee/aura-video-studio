@@ -88,6 +88,62 @@ This policy ensures maximum flexibility and compatibility. Users can extract and
 
 For more information, see [PORTABLE.md](./PORTABLE.md)
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the [docs/](./docs/) directory:
+
+### For Users
+
+- **[Getting Started](./docs/getting-started/README.md)** - Installation, setup, and first video
+  - [Installation Guide](./docs/getting-started/INSTALLATION.md)
+  - [Quick Start](./docs/getting-started/QUICK_START.md)
+  - [First Run Guide](./docs/getting-started/FIRST_RUN_GUIDE.md)
+  - [FAQ](./docs/getting-started/FIRST_RUN_FAQ.md)
+
+- **[Features](./docs/features/README.md)** - Complete feature documentation
+  - [Video Generation Engines](./docs/features/ENGINES.md)
+  - [Timeline Editor](./docs/features/TIMELINE.md)
+  - [Text-to-Speech & Captions](./docs/features/TTS-and-Captions.md)
+  - [CLI Usage](./docs/features/CLI.md)
+
+- **[Workflows](./docs/workflows/README.md)** - Common workflows and use cases
+  - [Quick Demo](./docs/workflows/QUICK_DEMO.md)
+  - [Portable Mode](./docs/workflows/PORTABLE_MODE_GUIDE.md)
+  - [Settings Configuration](./docs/workflows/SETTINGS_SCHEMA.md)
+
+- **[Troubleshooting](./docs/troubleshooting/README.md)** - Common issues and solutions
+  - [Troubleshooting Guide](./docs/troubleshooting/Troubleshooting.md)
+
+- **[Best Practices](./docs/best-practices/README.md)** - Optimization and guidelines
+
+### For Developers
+
+- **[API Reference](./docs/api/README.md)** - REST API and code documentation
+  - [API Contract v1](./docs/api/API_CONTRACT_V1.md)
+  - [Error Handling](./docs/api/errors.md)
+  - [Provider System](./docs/api/providers.md)
+
+- **[Architecture](./ARCHITECTURE.md)** - System architecture overview
+- **[Contributing](./CONTRIBUTING.md)** - Development guidelines
+- **[Build & Run](./BUILD_AND_RUN.md)** - Development setup
+
+### Building Documentation
+
+Generate API documentation from code:
+
+```bash
+# .NET API documentation (DocFX)
+dotnet tool install -g docfx
+docfx docfx.json
+docfx serve _site
+
+# TypeScript API documentation
+cd Aura.Web
+npm run docs
+```
+
+Documentation is automatically built and deployed to GitHub Pages on every commit to `main`.
+
 ## 🚦 Quick Start
 
 ### Development (Linux/Windows)
