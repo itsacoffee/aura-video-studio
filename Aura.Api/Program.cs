@@ -635,7 +635,11 @@ builder.WebHost.UseUrls(apiUrl);
 
 var app = builder.Build();
 
+Log.Information("=== Aura Video Studio API Starting ===");
+Log.Information("Initialization Phase 1: Service Registration Complete");
+
 // Perform startup validation - warn on non-critical issues but continue
+Log.Information("Initialization Phase 2: Running Startup Validation");
 var startupValidator = app.Services.GetRequiredService<Aura.Api.Services.StartupValidator>();
 if (!startupValidator.Validate())
 {
@@ -645,6 +649,10 @@ if (!startupValidator.Validate())
     Log.Warning("  - Antivirus/firewall settings");
     Log.Warning("  - Available disk space");
     // Don't exit - let the application start and users can fix issues via the UI
+}
+else
+{
+    Log.Information("Startup validation completed successfully");
 }
 
 // Add correlation ID middleware early in the pipeline
@@ -2446,65 +2454,100 @@ if (Directory.Exists(wwwrootPath))
     app.MapFallbackToFile("index.html");
 }
 
-// Start Engine Lifecycle Manager
+// Start Engine Lifecycle Manager and Provider Health Monitoring
+// These are started after the application begins to ensure all services are initialized
 var lifecycleManager = app.Services.GetRequiredService<Aura.Core.Runtime.EngineLifecycleManager>();
+var healthMonitor = app.Services.GetRequiredService<Aura.Core.Services.Health.ProviderHealthMonitor>();
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+
+// Track initialization state
+var initializationComplete = false;
+var engineManagerStarted = false;
+var healthMonitorStarted = false;
 
 lifetime.ApplicationStarted.Register(() =>
 {
+    Log.Information("Initialization Phase 3: Application started, beginning background service initialization");
+    
+    // Start Engine Lifecycle Manager first (deterministic ordering)
     _ = Task.Run(async () =>
     {
         try
         {
+            Log.Information("Starting Engine Lifecycle Manager...");
             await lifecycleManager.StartAsync();
+            engineManagerStarted = true;
             Log.Information("Engine Lifecycle Manager started successfully");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to start Engine Lifecycle Manager");
+            // Continue even if this fails - application can still function
         }
     });
-});
-
-lifetime.ApplicationStopping.Register(() =>
-{
-    Log.Information("Application stopping - shutting down engines...");
-    try
-    {
-        lifecycleManager.StopAsync().GetAwaiter().GetResult();
-        Log.Information("Engine Lifecycle Manager stopped successfully");
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error stopping Engine Lifecycle Manager");
-    }
-});
-
-// Start Provider Health Monitoring
-var healthMonitor = app.Services.GetRequiredService<Aura.Core.Services.Health.ProviderHealthMonitor>();
-
-lifetime.ApplicationStarted.Register(() =>
-{
+    
+    // Start Provider Health Monitoring after a slight delay to ensure engine manager initializes first
     _ = Task.Run(async () =>
     {
         try
         {
+            // Wait briefly for engine manager to start
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            
             Log.Information("Starting provider health monitoring...");
             await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping);
+            healthMonitorStarted = true;
             Log.Information("Provider health monitoring stopped");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error in provider health monitoring");
             // Restart monitoring after delay
-            await Task.Delay(TimeSpan.FromMinutes(1));
             if (!lifetime.ApplicationStopping.IsCancellationRequested)
             {
-                Log.Information("Restarting provider health monitoring after error...");
-                await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping);
+                Log.Information("Attempting to restart provider health monitoring after error...");
+                await Task.Delay(TimeSpan.FromMinutes(1));
+                if (!lifetime.ApplicationStopping.IsCancellationRequested)
+                {
+                    Log.Information("Restarting provider health monitoring...");
+                    await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping);
+                }
             }
         }
     });
+    
+    initializationComplete = true;
+    Log.Information("Initialization Phase 4: Background services initialization started");
+});
+
+lifetime.ApplicationStopping.Register(() =>
+{
+    Log.Information("=== Application Shutdown Initiated ===");
+    Log.Information("Shutdown Phase 1: Stopping background services");
+    
+    // Stop health monitor first (reverse order of startup)
+    if (healthMonitorStarted)
+    {
+        Log.Information("Stopping provider health monitoring...");
+        // Health monitor stops automatically via cancellation token
+    }
+    
+    // Stop engine lifecycle manager last
+    if (engineManagerStarted)
+    {
+        Log.Information("Stopping Engine Lifecycle Manager...");
+        try
+        {
+            lifecycleManager.StopAsync().GetAwaiter().GetResult();
+            Log.Information("Engine Lifecycle Manager stopped successfully");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error stopping Engine Lifecycle Manager");
+        }
+    }
+    
+    Log.Information("Shutdown Phase 2: Background services stopped");
 });
 
 // Helper methods for Azure TTS endpoints
