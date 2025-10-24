@@ -97,6 +97,230 @@ jobs:
         working-directory: Aura.Web
         run: npm run playwright
 
+      - name: Build Frontend for Static Hosting
+        working-directory: Aura.Web
+        run: npm run build
+
+      - name: Publish API with Static UI
+        shell: pwsh
+        run: |
+          # Publish Aura.Api to a local folder
+          dotnet publish Aura.Api/Aura.Api.csproj `
+            --configuration Release `
+            --output ./publish/api `
+            --no-build
+          
+          # Copy frontend build to wwwroot
+          New-Item -ItemType Directory -Force -Path ./publish/api/wwwroot
+          Copy-Item -Path ./Aura.Web/dist/* -Destination ./publish/api/wwwroot/ -Recurse -Force
+          
+          Write-Host "✓ API published with static UI"
+          Write-Host "wwwroot contents:"
+          Get-ChildItem -Path ./publish/api/wwwroot -Recurse | Select-Object FullName
+
+      - name: Static UI Smoke Tests
+        shell: pwsh
+        run: |
+          Write-Host "===================================="
+          Write-Host "Starting Static UI Smoke Tests"
+          Write-Host "===================================="
+          
+          # Start the API server in the background
+          $apiProcess = Start-Process -FilePath "dotnet" `
+            -ArgumentList "./publish/api/Aura.Api.dll" `
+            -PassThru `
+            -RedirectStandardOutput "./publish/api-stdout.log" `
+            -RedirectStandardError "./publish/api-stderr.log"
+          
+          Write-Host "API process started (PID: $($apiProcess.Id))"
+          
+          # Wait for API to be ready (poll /healthz)
+          $maxAttempts = 30
+          $attempt = 0
+          $apiReady = $false
+          
+          while ($attempt -lt $maxAttempts) {
+            $attempt++
+            Write-Host "Waiting for API readiness... attempt $attempt/$maxAttempts"
+            Start-Sleep -Seconds 2
+            
+            try {
+              $response = Invoke-WebRequest -Uri "http://127.0.0.1:5005/healthz" -UseBasicParsing -TimeoutSec 5
+              if ($response.StatusCode -eq 200) {
+                Write-Host "✓ API is ready!"
+                $apiReady = $true
+                break
+              }
+            } catch {
+              Write-Host "API not ready yet..."
+            }
+          }
+          
+          if (-not $apiReady) {
+            Write-Host "❌ API failed to start within timeout"
+            Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
+            Get-Content ./publish/api-stdout.log -ErrorAction SilentlyContinue
+            Get-Content ./publish/api-stderr.log -ErrorAction SilentlyContinue
+            exit 1
+          }
+          
+          # Give it a moment to fully initialize
+          Start-Sleep -Seconds 2
+          
+          # Test 1: index.html returns 200 and contains <html
+          Write-Host ""
+          Write-Host "Test 1: index.html accessibility"
+          try {
+            $response = Invoke-WebRequest -Uri "http://127.0.0.1:5005/index.html" -UseBasicParsing
+            if ($response.StatusCode -ne 200) {
+              Write-Host "❌ FAIL: index.html returned status $($response.StatusCode)"
+              Stop-Process -Id $apiProcess.Id -Force
+              exit 1
+            }
+            if ($response.Content -notmatch '<html') {
+              Write-Host "❌ FAIL: index.html does not contain <html tag"
+              Stop-Process -Id $apiProcess.Id -Force
+              exit 1
+            }
+            Write-Host "✓ PASS: index.html returns 200 and contains HTML"
+          } catch {
+            Write-Host "❌ FAIL: Failed to fetch index.html - $_"
+            Stop-Process -Id $apiProcess.Id -Force
+            exit 1
+          }
+          
+          # Test 2: Asset file returns 200 with correct content-type
+          Write-Host ""
+          Write-Host "Test 2: JavaScript asset accessibility and content-type"
+          try {
+            # Find a JS file in the assets directory
+            $jsFiles = Get-ChildItem -Path ./publish/api/wwwroot/assets -Filter "*.js" -File
+            if ($jsFiles.Count -eq 0) {
+              Write-Host "❌ FAIL: No JavaScript files found in assets directory"
+              Stop-Process -Id $apiProcess.Id -Force
+              exit 1
+            }
+            
+            $jsFile = $jsFiles[0].Name
+            Write-Host "Testing asset: /assets/$jsFile"
+            
+            $response = Invoke-WebRequest -Uri "http://127.0.0.1:5005/assets/$jsFile" -UseBasicParsing
+            if ($response.StatusCode -ne 200) {
+              Write-Host "❌ FAIL: Asset returned status $($response.StatusCode)"
+              Stop-Process -Id $apiProcess.Id -Force
+              exit 1
+            }
+            
+            $contentType = $response.Headers.'Content-Type'
+            if ($contentType -notmatch 'javascript') {
+              Write-Host "❌ FAIL: Asset has wrong content-type: $contentType (expected: application/javascript)"
+              Stop-Process -Id $apiProcess.Id -Force
+              exit 1
+            }
+            
+            Write-Host "✓ PASS: Asset returns 200 with content-type: $contentType"
+          } catch {
+            Write-Host "❌ FAIL: Failed to fetch asset - $_"
+            Stop-Process -Id $apiProcess.Id -Force
+            exit 1
+          }
+          
+          # Test 3: Deep route returns HTML (SPA fallback)
+          Write-Host ""
+          Write-Host "Test 3: SPA fallback for deep routes"
+          try {
+            $response = Invoke-WebRequest -Uri "http://127.0.0.1:5005/dashboard" -UseBasicParsing
+            if ($response.StatusCode -ne 200) {
+              Write-Host "❌ FAIL: Deep route /dashboard returned status $($response.StatusCode)"
+              Stop-Process -Id $apiProcess.Id -Force
+              exit 1
+            }
+            if ($response.Content -notmatch '<html') {
+              Write-Host "❌ FAIL: Deep route does not return HTML"
+              Stop-Process -Id $apiProcess.Id -Force
+              exit 1
+            }
+            Write-Host "✓ PASS: Deep route returns HTML (SPA fallback works)"
+          } catch {
+            Write-Host "❌ FAIL: Failed to fetch deep route - $_"
+            Stop-Process -Id $apiProcess.Id -Force
+            exit 1
+          }
+          
+          # Test 4: /diag endpoint shows static files
+          Write-Host ""
+          Write-Host "Test 4: /diag diagnostic endpoint"
+          try {
+            $response = Invoke-WebRequest -Uri "http://127.0.0.1:5005/diag" -UseBasicParsing
+            if ($response.StatusCode -ne 200) {
+              Write-Host "❌ FAIL: /diag returned status $($response.StatusCode)"
+              Stop-Process -Id $apiProcess.Id -Force
+              exit 1
+            }
+            if ($response.Content -notmatch 'Static files present' -and $response.Content -notmatch 'Total files in wwwroot') {
+              Write-Host "❌ FAIL: /diag does not contain static file information"
+              Stop-Process -Id $apiProcess.Id -Force
+              exit 1
+            }
+            
+            # Check if file count is non-zero
+            if ($response.Content -match 'Total files in wwwroot:\s*0') {
+              Write-Host "❌ FAIL: /diag shows 0 files in wwwroot"
+              Stop-Process -Id $apiProcess.Id -Force
+              exit 1
+            }
+            
+            Write-Host "✓ PASS: /diag shows static file diagnostics with non-zero file count"
+          } catch {
+            Write-Host "❌ FAIL: Failed to fetch /diag - $_"
+            Stop-Process -Id $apiProcess.Id -Force
+            exit 1
+          }
+          
+          # Test 5: CSS file accessibility and content-type
+          Write-Host ""
+          Write-Host "Test 5: CSS asset accessibility and content-type"
+          try {
+            $cssFiles = Get-ChildItem -Path ./publish/api/wwwroot/assets -Filter "*.css" -File
+            if ($cssFiles.Count -eq 0) {
+              Write-Host "⚠️  WARNING: No CSS files found in assets directory"
+            } else {
+              $cssFile = $cssFiles[0].Name
+              Write-Host "Testing asset: /assets/$cssFile"
+              
+              $response = Invoke-WebRequest -Uri "http://127.0.0.1:5005/assets/$cssFile" -UseBasicParsing
+              if ($response.StatusCode -ne 200) {
+                Write-Host "❌ FAIL: CSS asset returned status $($response.StatusCode)"
+                Stop-Process -Id $apiProcess.Id -Force
+                exit 1
+              }
+              
+              $contentType = $response.Headers.'Content-Type'
+              if ($contentType -notmatch 'css') {
+                Write-Host "❌ FAIL: CSS asset has wrong content-type: $contentType (expected: text/css)"
+                Stop-Process -Id $apiProcess.Id -Force
+                exit 1
+              }
+              
+              Write-Host "✓ PASS: CSS asset returns 200 with content-type: $contentType"
+            }
+          } catch {
+            Write-Host "❌ FAIL: Failed to fetch CSS asset - $_"
+            Stop-Process -Id $apiProcess.Id -Force
+            exit 1
+          }
+          
+          # Stop the API server
+          Write-Host ""
+          Write-Host "Stopping API server..."
+          Stop-Process -Id $apiProcess.Id -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 2
+          
+          Write-Host ""
+          Write-Host "===================================="
+          Write-Host "✓ All Static UI Smoke Tests PASSED"
+          Write-Host "===================================="
+
       - name: Smoke Render
         shell: pwsh
         run: |
