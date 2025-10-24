@@ -130,5 +130,14 @@ SUGGESTIONS:
             }
             return Task.FromResult(_response);
         }
+
+        public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<SceneAnalysisResult?>(null);
+        }
     }
 }

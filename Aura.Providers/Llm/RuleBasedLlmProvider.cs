@@ -199,4 +199,17 @@ public class RuleBasedLlmProvider : ILlmProvider
     {
         return text.Split(new[] { ' ', '\t', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
     }
+
+    public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Analyzing scene with rule-based provider (not supported)");
+        
+        // Rule-based provider doesn't support scene analysis
+        // Return null to trigger fallback to heuristics
+        return Task.FromResult<SceneAnalysisResult?>(null);
+    }
 }

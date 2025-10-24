@@ -130,4 +130,84 @@ public class FrameImportanceModel
     {
         return File.Exists(_modelPath);
     }
+
+    /// <summary>
+    /// Predicts importance score for a scene based on its content
+    /// This extends frame-level analysis to scene-level understanding
+    /// </summary>
+    public async Task<double> PredictSceneImportanceAsync(
+        string sceneScript,
+        int sceneIndex,
+        int totalScenes,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_isLoaded)
+        {
+            throw new InvalidOperationException("Model must be loaded before prediction");
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Scene-level importance prediction using ML heuristics
+        var score = await Task.FromResult(CalculateSceneImportanceHeuristic(
+            sceneScript, sceneIndex, totalScenes));
+
+        return score;
+    }
+
+    /// <summary>
+    /// Calculates scene importance using heuristic analysis
+    /// In production, this would use an ML model trained on scene-level features
+    /// </summary>
+    private double CalculateSceneImportanceHeuristic(
+        string sceneScript,
+        int sceneIndex,
+        int totalScenes)
+    {
+        var score = 0.5; // Base score
+
+        // First scene (hook) is highly important
+        if (sceneIndex == 0)
+        {
+            score += 0.3;
+        }
+        // Last scene (conclusion) is also important
+        else if (sceneIndex == totalScenes - 1)
+        {
+            score += 0.25;
+        }
+        // Middle scenes have lower base importance
+        else
+        {
+            var position = (double)sceneIndex / (totalScenes - 1);
+            // Slight boost for scenes in the middle (climax area)
+            score += 0.1 * (1.0 - Math.Abs(position - 0.5));
+        }
+
+        // Content-based factors
+        var wordCount = sceneScript.Split(new[] { ' ', '\t', '\n', '\r' }, 
+            StringSplitOptions.RemoveEmptyEntries).Length;
+
+        // Moderate word count suggests important content
+        if (wordCount >= 50 && wordCount <= 150)
+        {
+            score += 0.15;
+        }
+        else if (wordCount < 20)
+        {
+            score -= 0.1; // Very short scenes might be less important
+        }
+
+        // Look for key phrases that suggest importance
+        var importantPhrases = new[] 
+        { 
+            "important", "key", "crucial", "critical", "main", "primary",
+            "remember", "note", "essential", "fundamental", "significant"
+        };
+        var phraseCount = importantPhrases.Count(phrase => 
+            sceneScript.Contains(phrase, StringComparison.OrdinalIgnoreCase));
+        score += Math.Min(phraseCount * 0.05, 0.15);
+
+        return Math.Clamp(score, 0.0, 1.0);
+    }
 }

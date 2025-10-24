@@ -9,7 +9,25 @@ namespace Aura.Core.Providers;
 public interface ILlmProvider
 {
     Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct);
+    Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct);
 }
+
+/// <summary>
+/// Result of LLM-based scene analysis for pacing optimization
+/// </summary>
+public record SceneAnalysisResult(
+    double Importance,
+    double Complexity,
+    double EmotionalIntensity,
+    string InformationDensity,
+    double OptimalDurationSeconds,
+    string TransitionType,
+    string Reasoning
+);
 
 public interface ITtsProvider
 {
