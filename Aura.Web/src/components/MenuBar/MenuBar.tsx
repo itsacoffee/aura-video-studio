@@ -75,12 +75,10 @@ export function MenuBar({ onImportMedia, onExportVideo, onShowKeyboardShortcuts 
 
   const handleUndo = () => {
     // TODO: Implement undo functionality
-    console.log('Undo');
   };
 
   const handleRedo = () => {
     // TODO: Implement redo functionality
-    console.log('Redo');
   };
 
   const handleCut = () => {

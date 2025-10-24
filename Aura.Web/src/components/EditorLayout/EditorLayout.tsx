@@ -152,14 +152,14 @@ export function EditorLayout({
           <div className={styles.previewPanel} style={{ flex: previewHeight }}>
             {preview}
           </div>
-          <div className={styles.horizontalResizer} onMouseDown={handlePreviewResize} />
+          <div className={styles.horizontalResizer} onMouseDown={handlePreviewResize} role="separator" aria-orientation="horizontal" />
           <div className={styles.timelinePanel} style={{ flex: 100 - previewHeight }}>
             {timeline}
           </div>
         </div>
         {properties && (
           <>
-            <div className={styles.resizer} onMouseDown={handlePropertiesResize} />
+            <div className={styles.resizer} onMouseDown={handlePropertiesResize} role="separator" aria-orientation="vertical" />
             <div className={styles.propertiesPanel} style={{ width: `${propertiesWidth}px` }}>
               {properties}
             </div>

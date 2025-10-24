@@ -300,7 +300,7 @@ export function TimelinePanel({
           {renderRuler()}
         </div>
 
-        <div className={styles.tracksContainer} onClick={handleTimelineClick}>
+        <div className={styles.tracksContainer} onClick={handleTimelineClick} role="region" aria-label="Timeline tracks">
           {tracks.map((track) => (
             <div key={track.id} className={styles.track}>
               <div className={styles.trackLabel}>{track.label}</div>
@@ -319,6 +319,16 @@ export function TimelinePanel({
                         e.stopPropagation();
                         onClipSelect?.(clip.id);
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onClipSelect?.(clip.id);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${clip.label} clip`}
                     >
                       {clip.label}
                     </div>
@@ -329,7 +339,7 @@ export function TimelinePanel({
 
           {/* Playhead */}
           <div className={styles.playhead} style={{ left: `${currentTime * pixelsPerSecond + 100}px` }}>
-            <div className={styles.playheadHandle} onMouseDown={handlePlayheadDrag} />
+            <div className={styles.playheadHandle} onMouseDown={handlePlayheadDrag} role="slider" aria-label="Playhead" />
           </div>
         </div>
       </div>

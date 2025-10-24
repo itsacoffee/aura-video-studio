@@ -191,7 +191,9 @@ export function VideoPreviewPanel({
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={() => setIsPlaying(false)}
-          />
+          >
+            <track kind="captions" />
+          </video>
         ) : (
           <Text className={styles.placeholder}>No video loaded</Text>
         )}
