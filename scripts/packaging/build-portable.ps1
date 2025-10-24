@@ -152,10 +152,51 @@ try {
 
     # Copy Web UI to wwwroot folder inside the published API
     Write-Host "[5/6] Copying web UI to wwwroot..." -ForegroundColor Yellow
+    
+    # Validate dist folder exists
+    $distPath = "$rootDir\Aura.Web\dist"
+    if (-not (Test-Path $distPath)) {
+        Write-BuildError "Web UI dist folder not found at: $distPath"
+        Write-BuildError "The frontend build may have failed. Please check the build output above."
+        throw "Web UI build validation failed"
+    }
+    
+    # Validate dist folder has required files
+    $distIndexHtml = "$distPath\index.html"
+    if (-not (Test-Path $distIndexHtml)) {
+        Write-BuildError "index.html not found in dist folder"
+        Write-BuildError "The frontend build is incomplete. Please check the build output above."
+        throw "Web UI build validation failed"
+    }
+    
+    $distAssets = "$distPath\assets"
+    if (-not (Test-Path $distAssets)) {
+        Write-BuildError "assets folder not found in dist folder"
+        Write-BuildError "The frontend build is incomplete. Please check the build output above."
+        throw "Web UI build validation failed"
+    }
+    
+    Write-Host "      ✓ Web UI build validated" -ForegroundColor Green
+    
+    # Copy to wwwroot
     $wwwrootDir = Join-Path "$portableBuildDir\Api" "wwwroot"
     New-Item -ItemType Directory -Force -Path $wwwrootDir | Out-Null
     Copy-Item "$rootDir\Aura.Web\dist\*" -Destination $wwwrootDir -Recurse -Force
-    Write-Host "      ✓ Web UI copied to wwwroot" -ForegroundColor Green
+    
+    # Validate wwwroot has the files
+    $wwwrootIndexHtml = Join-Path $wwwrootDir "index.html"
+    if (-not (Test-Path $wwwrootIndexHtml)) {
+        Write-BuildError "Failed to copy index.html to wwwroot"
+        throw "Web UI copy validation failed"
+    }
+    
+    $wwwrootAssets = Join-Path $wwwrootDir "assets"
+    if (-not (Test-Path $wwwrootAssets)) {
+        Write-BuildError "Failed to copy assets folder to wwwroot"
+        throw "Web UI copy validation failed"
+    }
+    
+    Write-Host "      ✓ Web UI copied to wwwroot and validated" -ForegroundColor Green
 
     # Copy additional files
     Write-Host "[6/6] Copying additional files..." -ForegroundColor Yellow
@@ -177,12 +218,54 @@ if (Test-Path "$rootDir\LICENSE") {
     Copy-Item "$rootDir\LICENSE" -Destination $portableBuildDir -Force
 }
 
-# Create launcher script
+# Create launcher script with pre-flight checks
 $launcherScript = @"
 @echo off
 echo ========================================
 echo  Aura Video Studio - Portable Edition
 echo ========================================
+echo.
+echo Running pre-flight checks...
+
+REM Check if Api folder exists
+if not exist "Api\" (
+    echo ERROR: Api folder not found!
+    echo Please make sure you extracted all files from the ZIP.
+    echo.
+    pause
+    exit /b 1
+)
+
+REM Check if Aura.Api.exe exists
+if not exist "Api\Aura.Api.exe" (
+    echo ERROR: Aura.Api.exe not found!
+    echo Please make sure you extracted all files from the ZIP.
+    echo.
+    pause
+    exit /b 1
+)
+
+REM Check if wwwroot folder exists
+if not exist "Api\wwwroot\" (
+    echo ERROR: Web UI files not found at Api\wwwroot\
+    echo The application cannot start without the web interface.
+    echo Please re-extract the ZIP file or download a new copy.
+    echo.
+    pause
+    exit /b 1
+)
+
+REM Check if index.html exists
+if not exist "Api\wwwroot\index.html" (
+    echo ERROR: index.html not found in Api\wwwroot\
+    echo The application cannot start without the web interface.
+    echo Please re-extract the ZIP file or download a new copy.
+    echo.
+    pause
+    exit /b 1
+)
+
+echo Pre-flight checks passed!
 echo.
 echo Starting API server...
 start "" /D "Api" "Aura.Api.exe"
@@ -199,7 +282,7 @@ echo To stop the application, close the API server window.
 echo.
 "@
 Set-Content -Path "$portableBuildDir\Launch.bat" -Value $launcherScript
-Write-Host "      ✓ Launch script created" -ForegroundColor Green
+Write-Host "      ✓ Launch script created with pre-flight checks" -ForegroundColor Green
 
 # Create ZIP
 $zipPath = Join-Path $portableDir "AuraVideoStudio_Portable_x64.zip"
