@@ -281,6 +281,15 @@ This is a test scene with enough content to pass validation. Artificial intellig
 ## Scene 2
 More test content here to ensure we have adequate word count for the duration. Machine learning enables computers to learn from data.");
         }
+
+        public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<SceneAnalysisResult?>(null);
+        }
     }
 
     private class TestSlowLlmProvider : ILlmProvider
@@ -289,6 +298,15 @@ More test content here to ensure we have adequate word count for the duration. M
         {
             await Task.Delay(5000, ct); // Slow operation to allow cancellation
             return "This shouldn't be reached";
+        }
+
+        public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<SceneAnalysisResult?>(null);
         }
     }
 
