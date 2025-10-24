@@ -28,6 +28,7 @@ import {
 } from '@fluentui/react-icons';
 import { EnginesTab } from '../components/Engines/EnginesTab';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
+import { TroubleshootingPanel } from '../components/Engines/TroubleshootingPanel';
 import { useNotifications } from '../components/Notifications/Toasts';
 
 interface DependencyComponent {
@@ -442,6 +443,7 @@ export function DownloadsPage() {
       >
         <Tab value="dependencies">Dependencies</Tab>
         <Tab value="engines">Engines</Tab>
+        <Tab value="troubleshooting">Troubleshooting</Tab>
       </TabList>
 
       {selectedTab === 'dependencies' && (
@@ -601,6 +603,12 @@ export function DownloadsPage() {
       )}
 
       {selectedTab === 'engines' && <EnginesTab />}
+
+      {selectedTab === 'troubleshooting' && (
+        <Card className={styles.card}>
+          <TroubleshootingPanel />
+        </Card>
+      )}
     </div>
   );
 }
