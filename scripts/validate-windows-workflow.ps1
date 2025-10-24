@@ -28,11 +28,14 @@ Write-Host "══════════════════════�
 Write-Host ""
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-Push-Location $repoRoot
+$pushedLocation = $false
+
+try {
+    Push-Location $repoRoot
+    $pushedLocation = $true
 
 $allPassed = $true
 
-try {
     # Step 1: Check prerequisites
     Write-Host "[1/5] Checking prerequisites..." -ForegroundColor Yellow
     
@@ -80,7 +83,7 @@ try {
     Write-Host "[3/5] Installing npm dependencies..." -ForegroundColor Yellow
     Push-Location "Aura.Web"
     try {
-        npm install --silent
+        npm install --loglevel=error
         if ($LASTEXITCODE -ne 0) {
             throw "npm install failed"
         }
@@ -113,7 +116,7 @@ try {
     Write-Host "[5/5] Building web UI..." -ForegroundColor Yellow
     Push-Location "Aura.Web"
     try {
-        npm run build --silent
+        npm run build
         if ($LASTEXITCODE -ne 0) {
             throw "Web UI build failed"
         }
@@ -152,5 +155,7 @@ catch {
     exit 1
 }
 finally {
-    Pop-Location
+    if ($pushedLocation) {
+        Pop-Location
+    }
 }
