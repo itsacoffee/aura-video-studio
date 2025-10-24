@@ -167,7 +167,7 @@ export const FrameSelectionView = ({
     return (
       <div className={styles.emptyState}>
         <Info24Regular style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }} />
-        <Body1>Click "Optimize Pacing" to analyze video frames</Body1>
+        <Body1>Click &quot;Optimize Pacing&quot; to analyze video frames</Body1>
       </div>
     );
   }

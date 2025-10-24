@@ -173,7 +173,7 @@ export const PaceAdjustmentSlider = ({
   if (!optimizationActive) {
     return (
       <div className={styles.emptyState}>
-        <Body1>Click "Optimize Pacing" to adjust scene pacing</Body1>
+        <Body1>Click &quot;Optimize Pacing&quot; to adjust scene pacing</Body1>
       </div>
     );
   }

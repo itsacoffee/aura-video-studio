@@ -331,7 +331,7 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
         <Card className={styles.emptyState}>
           <ChartMultiple24Regular style={{ fontSize: '64px', marginBottom: tokens.spacingVerticalL }} />
           <Title3>Ready to optimize your video pacing</Title3>
-          <Body1>Click "Analyze Pacing" to get AI-powered suggestions for scene timing</Body1>
+          <Body1>Click &quot;Analyze Pacing&quot; to get AI-powered suggestions for scene timing</Body1>
         </Card>
       )}
 
