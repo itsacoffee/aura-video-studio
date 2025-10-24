@@ -1,11 +1,24 @@
-# aura-video-studio
+# Aura Video Studio
 
-## 🚀 Implementation Status - NOW WITH WEB-BASED ARCHITECTURE
+## 🎯 Platform Scope
+
+**Aura Video Studio is a Windows 11 (x64) application.**
+
+This software is designed, built, and tested exclusively for **Windows 11 (64-bit)** as the end-user platform. While developers may work in other environments for backend/API development, the complete application stack—including the web UI, build process, and distribution—targets Windows 11 only.
+
+**Why Windows 11 only?**
+- **Native toolchain compatibility**: Optimal integration with .NET 8, WinUI 3, and Windows-specific APIs
+- **Predictable dependencies**: Windows-native binaries (FFmpeg, NVENC, etc.) with guaranteed compatibility
+- **Hardware acceleration**: First-class support for NVIDIA NVENC, AMD AMF, and Intel QSV
+- **Simplified distribution**: Portable ZIP format works seamlessly on Windows without cross-platform complexity
+- **Consistent user experience**: Single platform = fewer edge cases, better stability, faster iteration
+
+## 🚀 Implementation Status
 
 **Core Infrastructure: ✅ COMPLETE**  
-**New Web-Based Architecture: ✅ IMPLEMENTED**
+**Web-Based Architecture: ✅ IMPLEMENTED**
 
-This repository now contains:
+This repository contains:
 - ✅ 92 tests passing (100% pass rate)
 - ✅ ~5,000+ lines of production code
 - ✅ **Aura.Api** - ASP.NET Core backend with RESTful endpoints
@@ -15,15 +28,13 @@ This repository now contains:
 - ✅ FFmpeg render pipeline with multi-encoder support
 - ✅ Audio processing with LUFS normalization
 - ✅ Subtitle generation (SRT/VTT)
-- ✅ **Split CI workflows** - Linux (build/test) + Windows (package)
-- ✅ **Packaging scripts** - **Portable ZIP** (only distribution format)
-- ✅ **CI guard** - Prevents MSIX/EXE packaging from returning
+- ✅ **Windows-focused packaging** - Portable ZIP distribution
 - ✅ Dependency manifest with SHA-256 verification
 - ✅ SBOM generation and license attributions
 
 ## 📐 Architecture
 
-The project now implements a **web-based UI architecture** as specified:
+**Web-based UI architecture:**
 - **Aura.Core** - Business logic (.NET 8)
 - **Aura.Providers** - Provider implementations
 - **Aura.Api** - ASP.NET Core backend API (runs on http://127.0.0.1:5005)
@@ -31,6 +42,22 @@ The project now implements a **web-based UI architecture** as specified:
 - **Aura.App** - WinUI 3 standalone app (coexists as alternative)
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for complete details.
+
+## ⚙️ System Requirements
+
+**Minimum Requirements:**
+- **Operating System**: Windows 11 (64-bit) - **Required**
+- **.NET Runtime**: 8.0 (included in portable distribution)
+- **Node.js**: 18.x or 20.x (for development only)
+- **npm**: 9.x or 10.x (for development only)
+- **RAM**: 8 GB
+- **Storage**: 5 GB free space
+
+**Recommended:**
+- Windows 11 22H2 or later
+- 16 GB RAM
+- NVIDIA GPU with 6+ GB VRAM for hardware acceleration
+- SSD for faster build and render times
 
 ## 🔧 Backend Dependencies
 
@@ -55,17 +82,19 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for complete details.
 - coverlet.collector (6.0.4) - Code coverage
 
 ### Version Requirements
-- **.NET SDK:** 8.0 or later
-- **Target Framework:** net8.0
-- **Windows 11:** For WinUI 3 app (Aura.App)
-- **Linux/macOS:** For backend API development and testing
+- **.NET SDK**: 8.0 or later (for development)
+- **Target Framework**: net8.0
+- **Node.js**: 18.x or 20.x (for frontend development)
+- **npm**: 9.x or 10.x (for frontend development)
+
+**Development Note**: While the backend (.NET) components can be built on any platform with .NET 8 SDK, the complete application—including WinUI 3 app (Aura.App) and final packaging—requires Windows 11.
 
 ### Security
 All packages are regularly audited for vulnerabilities using `dotnet list package --vulnerable`. Last audit: 2025-10-22 - **No vulnerabilities found**.
 
 ### Package Updates
-To update packages:
-```bash
+To update packages (on Windows):
+```powershell
 # Check for outdated packages
 dotnet list package --outdated
 
@@ -129,9 +158,9 @@ Comprehensive documentation is available in the [docs/](./docs/) directory:
 
 ### Building Documentation
 
-Generate API documentation from code:
+Generate API documentation from code (Windows):
 
-```bash
+```powershell
 # .NET API documentation (DocFX)
 dotnet tool install -g docfx
 docfx docfx.json
@@ -144,40 +173,54 @@ npm run docs
 
 Documentation is automatically built and deployed to GitHub Pages on every commit to `main`.
 
-## 🚦 Quick Start
+## 🚦 Quick Start (Windows 11)
 
-### Development (Linux/Windows)
-```bash
-# Start API backend
-cd Aura.Api && dotnet run
+**Prerequisites:**
+1. Windows 11 (64-bit)
+2. Download and install [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+3. Download and install [Node.js 18.x or 20.x](https://nodejs.org/)
 
-# In another terminal, start web UI
-cd Aura.Web && npm install && npm run dev
+**Steps:**
 
-# Open http://localhost:5173
+```powershell
+# 1. Clone the repository
+git clone https://github.com/Saiyan9001/aura-video-studio.git
+cd aura-video-studio
+
+# 2. Start the backend API
+cd Aura.Api
+dotnet run
+
+# 3. In a new PowerShell window, start the web UI
+cd Aura.Web
+npm install
+npm run dev
+
+# 4. Open your browser to http://localhost:5173
 ```
+
+That's it! The application should now be running.
 
 ### Building Portable Distribution (Windows)
 ```powershell
-# Build portable ZIP (recommended)
+# Build portable ZIP (recommended for distribution)
 .\scripts\packaging\build-portable.ps1
 
 # Output: Portable ZIP in artifacts/portable/
 ```
 
-For detailed build instructions, see [INSTALL.md](./INSTALL.md)
+For detailed build instructions, see [BUILD_AND_RUN.md](./BUILD_AND_RUN.md)
 
-### Smoke Testing
+### Smoke Testing (Windows)
 
 Run startup sanity checks to ensure the application is healthy:
 
-```bash
-# Linux/macOS
-./scripts/smoke/start_and_probe.sh
-
-# Windows
+```powershell
+# Windows (Recommended)
 .\scripts\smoke\start_and_probe.ps1
 ```
+
+**Note**: Bash versions of scripts (`.sh` files) exist for backend-only development on other platforms but are **not supported** for end-user scenarios. Windows 11 is the only supported platform for the complete application.
 
 The smoke test script:
 - Builds the solution
@@ -189,41 +232,40 @@ The smoke test script:
 
 See [scripts/smoke/README.md](./scripts/smoke/README.md) for detailed usage.
 
-## 🔧 Troubleshooting
+## 🔧 Troubleshooting (Windows)
 
 ### Build Issues
 
-**Problem: `dotnet build` fails with Aura.App on Linux/macOS**
-- **Cause:** Aura.App is a WinUI 3 application that requires Windows to build.
-- **Solution:** Build backend projects individually:
-  ```bash
-  dotnet build Aura.Api/Aura.Api.csproj
-  dotnet build Aura.Core/Aura.Core.csproj
-  dotnet build Aura.Providers/Aura.Providers.csproj
-  dotnet build Aura.Cli/Aura.Cli.csproj
+**Problem: `dotnet build` fails**
+- **Solution**: Ensure .NET 8 SDK is installed:
+  ```powershell
+  dotnet --version  # Should be 8.0.x or higher
   ```
 
 **Problem: Package restore fails**
-- **Solution:** Clear NuGet cache and restore:
-  ```bash
+- **Solution**: Clear NuGet cache and restore:
+  ```powershell
   dotnet nuget locals all --clear
   dotnet restore
   ```
 
+**Problem: npm install fails**
+- **Solution**: Ensure Node.js 18.x or 20.x is installed:
+  ```powershell
+  node --version  # Should be v18.x or v20.x
+  npm --version   # Should be 9.x or 10.x
+  ```
+
 **Problem: API fails to start with DI lifetime errors**
-- **Cause:** Service lifetime mismatch (e.g., singleton consuming scoped service)
-- **Solution:** Check that services are registered with compatible lifetimes. Updated packages may enforce stricter validation.
+- **Cause**: Service lifetime mismatch (e.g., singleton consuming scoped service)
+- **Solution**: Check that services are registered with compatible lifetimes. Updated packages may enforce stricter validation.
 
 **Problem: Outdated package warnings**
-- **Solution:** Check for updates:
-  ```bash
+- **Solution**: Check for updates:
+  ```powershell
   dotnet list package --outdated
   ```
 - Note: Only update to versions compatible with .NET 8.0. Some v9.x packages require .NET 9.0.
-
-**Problem: Build warnings about ConfigureAwait**
-- **Info:** These are code analysis warnings (CA2007), not errors. Safe to ignore or suppress in production code.
-- To suppress: Add `<NoWarn>CA2007</NoWarn>` to project file PropertyGroup.
 
 ### Runtime Issues
 
