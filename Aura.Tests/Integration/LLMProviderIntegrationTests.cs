@@ -40,7 +40,7 @@ public class LLMProviderIntegrationTests
         );
 
         // Act
-        var script = await provider.DraftScriptAsync(brief, spec);
+        var script = await provider.DraftScriptAsync(brief, spec, default);
 
         // Assert
         Assert.NotNull(script);
@@ -81,7 +81,7 @@ public class LLMProviderIntegrationTests
         );
 
         // Act
-        var script = await provider.DraftScriptAsync(brief, spec);
+        var script = await provider.DraftScriptAsync(brief, spec, default);
 
         // Assert
         Assert.NotNull(script);
@@ -121,7 +121,7 @@ public class LLMProviderIntegrationTests
         );
 
         // Act - Generate content
-        var script = await provider.DraftScriptAsync(brief, spec);
+        var script = await provider.DraftScriptAsync(brief, spec, default);
         
         // Act - Analyze content
         var analysis = await advisor.AnalyzeContentQualityAsync(script, brief, spec);
@@ -161,7 +161,7 @@ public class LLMProviderIntegrationTests
         );
 
         // Act
-        var script = await provider.DraftScriptAsync(brief, spec);
+        var script = await provider.DraftScriptAsync(brief, spec, default);
 
         // Assert
         Assert.NotNull(script);
@@ -199,7 +199,7 @@ public class LLMProviderIntegrationTests
         );
 
         // Act
-        var script = await provider.DraftScriptAsync(brief, spec);
+        var script = await provider.DraftScriptAsync(brief, spec, default);
 
         // Assert
         Assert.NotNull(script);
@@ -233,7 +233,7 @@ public class LLMProviderIntegrationTests
         );
 
         // Act
-        var script = await provider.DraftScriptAsync(brief, spec);
+        var script = await provider.DraftScriptAsync(brief, spec, default);
 
         // Assert
         Assert.NotNull(script);
@@ -263,7 +263,7 @@ public class LLMProviderIntegrationTests
         );
 
         // Act
-        var script = await provider.DraftScriptAsync(brief, spec);
+        var script = await provider.DraftScriptAsync(brief, spec, default);
 
         // Assert
         Assert.NotNull(script);
@@ -297,7 +297,7 @@ public class LLMProviderIntegrationTests
         );
 
         // Act
-        var script = await provider.DraftScriptAsync(brief, spec);
+        var script = await provider.DraftScriptAsync(brief, spec, default);
 
         // Assert
         Assert.NotNull(script);

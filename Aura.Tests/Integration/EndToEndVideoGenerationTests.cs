@@ -56,7 +56,7 @@ public class EndToEndVideoGenerationTests
             Style: systemPrompt + "\n\n" + userPrompt
         );
 
-        var script = await llmProvider.DraftScriptAsync(brief, scriptSpec);
+        var script = await llmProvider.DraftScriptAsync(brief, scriptSpec, default);
 
         // Act - Analyze quality
         var qualityAnalysis = await advisor.AnalyzeContentQualityAsync(script, brief, spec);
@@ -106,7 +106,7 @@ public class EndToEndVideoGenerationTests
             var llmProvider = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance);
 
             // Act
-            var script = await llmProvider.DraftScriptAsync(brief, spec);
+            var script = await llmProvider.DraftScriptAsync(brief, spec, default);
 
             // Assert
             Assert.NotNull(script);
@@ -149,7 +149,7 @@ public class EndToEndVideoGenerationTests
 
             // Act
             var prompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
-            var script = await llmProvider.DraftScriptAsync(brief, spec);
+            var script = await llmProvider.DraftScriptAsync(brief, spec, default);
 
             // Assert
             Assert.NotNull(script);
@@ -209,7 +209,7 @@ public class EndToEndVideoGenerationTests
         );
 
         // Act
-        var script = await llmProvider.DraftScriptAsync(brief, spec);
+        var script = await llmProvider.DraftScriptAsync(brief, spec, default);
         var analysis = await advisor.AnalyzeContentQualityAsync(script, brief, spec);
 
         // Assert - Verify quality feedback is actionable
@@ -251,7 +251,7 @@ public class EndToEndVideoGenerationTests
             Style: "tip"
         );
 
-        var shortScript = await llmProvider.DraftScriptAsync(shortBrief, shortSpec);
+        var shortScript = await llmProvider.DraftScriptAsync(shortBrief, shortSpec, default);
         Assert.NotNull(shortScript);
         Assert.NotEmpty(shortScript);
 
@@ -272,7 +272,7 @@ public class EndToEndVideoGenerationTests
             Style: "test"
         );
 
-        var minimalScript = await llmProvider.DraftScriptAsync(minimalBrief, minimalSpec);
+        var minimalScript = await llmProvider.DraftScriptAsync(minimalBrief, minimalSpec, default);
         Assert.NotNull(minimalScript);
         Assert.NotEmpty(minimalScript);
     }
@@ -302,7 +302,7 @@ public class EndToEndVideoGenerationTests
         );
 
         var prompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
-        var script = await llmProvider.DraftScriptAsync(brief, spec);
+        var script = await llmProvider.DraftScriptAsync(brief, spec, default);
 
         Assert.Contains("Language: en", prompt);
         Assert.NotNull(script);

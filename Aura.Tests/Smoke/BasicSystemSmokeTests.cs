@@ -70,7 +70,7 @@ public class BasicSystemSmokeTests
             Style: "test"
         );
 
-        var script = await provider.DraftScriptAsync(brief, spec);
+        var script = await provider.DraftScriptAsync(brief, spec, default);
         Assert.NotNull(script);
         Assert.NotEmpty(script);
     }

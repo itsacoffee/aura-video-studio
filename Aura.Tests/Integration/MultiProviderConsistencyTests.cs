@@ -46,7 +46,7 @@ public class MultiProviderConsistencyTests
         foreach (var provider in providers)
         {
             // Act - Generate content
-            var script = await provider.DraftScriptAsync(brief, spec);
+            var script = await provider.DraftScriptAsync(brief, spec, default);
 
             // Create advisor with this provider
             var advisor = new IntelligentContentAdvisor(
@@ -105,7 +105,7 @@ public class MultiProviderConsistencyTests
                 Style: systemPrompt + "\n\n" + userPrompt
             );
 
-            var script = await provider.DraftScriptAsync(brief, enhancedSpec);
+            var script = await provider.DraftScriptAsync(brief, enhancedSpec, default);
 
             // Assert
             Assert.NotNull(script);
@@ -244,7 +244,7 @@ public class MultiProviderConsistencyTests
             );
 
             var prompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
-            var script = await provider.DraftScriptAsync(brief, spec);
+            var script = await provider.DraftScriptAsync(brief, spec, default);
 
             // Assert - Should handle all tones
             Assert.NotNull(script);
@@ -284,7 +284,7 @@ public class MultiProviderConsistencyTests
         
         for (int i = 0; i < 3; i++)
         {
-            var script = await provider.DraftScriptAsync(brief, spec);
+            var script = await provider.DraftScriptAsync(brief, spec, default);
             var analysis = await advisor.AnalyzeContentQualityAsync(script, brief, spec);
             
             // Verify threshold logic is consistent

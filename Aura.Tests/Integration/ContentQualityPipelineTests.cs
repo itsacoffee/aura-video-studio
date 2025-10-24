@@ -42,7 +42,7 @@ public class ContentQualityPipelineTests
         );
 
         // Act - Step 1: Generate initial content
-        var initialScript = await llmProvider.DraftScriptAsync(brief, spec);
+        var initialScript = await llmProvider.DraftScriptAsync(brief, spec, default);
         
         // Act - Step 2: Analyze quality
         var analysis = await advisor.AnalyzeContentQualityAsync(initialScript, brief, spec);
@@ -141,7 +141,7 @@ public class ContentQualityPipelineTests
         );
 
         // Act
-        var script = await llmProvider.DraftScriptAsync(brief, spec);
+        var script = await llmProvider.DraftScriptAsync(brief, spec, default);
         var analysis = await advisor.AnalyzeContentQualityAsync(script, brief, spec);
 
         // Assert - Quality threshold validation
@@ -281,7 +281,7 @@ public class ContentQualityPipelineTests
         );
 
         // Act - Iteration 1
-        var script1 = await llmProvider.DraftScriptAsync(brief, spec);
+        var script1 = await llmProvider.DraftScriptAsync(brief, spec, default);
         var analysis1 = await advisor.AnalyzeContentQualityAsync(script1, brief, spec);
 
         // If quality is low, we would use suggestions to regenerate
