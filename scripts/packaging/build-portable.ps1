@@ -106,15 +106,17 @@ try {
                     Start-Sleep -Seconds 2
                 }
                 
-                $npmOutput = npm install 2>&1
+                # Capture output but only show on error
+                $npmOutput = npm install --silent 2>&1
                 if ($LASTEXITCODE -eq 0) {
                     $installSuccess = $true
                     Write-Host "      ✓ npm dependencies installed" -ForegroundColor Green
                 } else {
                     $retryCount++
                     if ($retryCount -ge $maxRetries) {
-                        Write-BuildError "npm install failed after $maxRetries attempts. Output: $npmOutput"
-                        throw "npm install failed. Please check your internet connection and try again."
+                        Write-BuildError "npm install failed after $maxRetries attempts"
+                        Write-Host "npm output: $npmOutput" -ForegroundColor Red
+                        throw "npm install failed after $maxRetries attempts. Error: $npmOutput`n`nPlease check your internet connection and npm configuration."
                     }
                 }
             }
@@ -123,10 +125,12 @@ try {
         }
         
         Write-Host "      Building frontend..." -ForegroundColor Gray
-        $buildOutput = npm run build 2>&1
+        # Capture output to reduce noise, but show on error
+        $buildOutput = npm run build --silent 2>&1
         if ($LASTEXITCODE -ne 0) { 
-            Write-BuildError "npm build failed. Output: $buildOutput"
-            throw "npm build failed. Check TypeScript compilation errors above."
+            Write-BuildError "npm build failed"
+            Write-Host "Build output: $buildOutput" -ForegroundColor Red
+            throw "npm build failed. Error: $buildOutput`n`nThis may be due to TypeScript compilation errors or other build issues."
         }
         Write-Host "      ✓ Frontend build complete" -ForegroundColor Green
     }
