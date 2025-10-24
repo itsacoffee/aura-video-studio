@@ -1,3 +1,4 @@
 # wwwroot should be populated during build/publish from Aura.Web/dist
 # Do not commit the built frontend files here
-wwwroot/
+wwwroot/**/*
+!wwwroot/.gitkeep
