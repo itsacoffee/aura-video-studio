@@ -34,8 +34,49 @@ public class JobsController : ControllerBase
     {
         try
         {
+            // Input validation with correlation ID
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] POST /api/jobs endpoint called", correlationId);
+            
+            ArgumentNullException.ThrowIfNull(request, nameof(request));
+            ArgumentNullException.ThrowIfNull(request.Brief, nameof(request.Brief));
+            ArgumentNullException.ThrowIfNull(request.PlanSpec, nameof(request.PlanSpec));
+            ArgumentNullException.ThrowIfNull(request.VoiceSpec, nameof(request.VoiceSpec));
+            ArgumentNullException.ThrowIfNull(request.RenderSpec, nameof(request.RenderSpec));
+            
+            // Validate Brief has non-empty Topic
+            if (string.IsNullOrWhiteSpace(request.Brief.Topic))
+            {
+                Log.Warning("[{CorrelationId}] Job creation rejected: Topic is required", correlationId);
+                return BadRequest(new
+                {
+                    type = "https://docs.aura.studio/errors/E400",
+                    title = "Invalid Request",
+                    status = 400,
+                    detail = "Brief.Topic cannot be null or empty",
+                    correlationId,
+                    field = "Brief.Topic",
+                    guidance = "Please provide a valid video topic (e.g., 'Cooking pasta', 'Space exploration')"
+                });
+            }
+            
+            // Validate PlanSpec has positive TargetDuration
+            if (request.PlanSpec.TargetDuration <= TimeSpan.Zero)
+            {
+                Log.Warning("[{CorrelationId}] Job creation rejected: Invalid TargetDuration {Duration}", 
+                    correlationId, request.PlanSpec.TargetDuration);
+                return BadRequest(new
+                {
+                    type = "https://docs.aura.studio/errors/E400",
+                    title = "Invalid Request",
+                    status = 400,
+                    detail = $"PlanSpec.TargetDuration must be positive (received: {request.PlanSpec.TargetDuration})",
+                    correlationId,
+                    field = "PlanSpec.TargetDuration",
+                    guidance = "Specify a target duration between 5 seconds and 10 minutes"
+                });
+            }
+            
             Log.Information("[{CorrelationId}] Creating new job for topic: {Topic}", correlationId, request.Brief.Topic);
 
             var brief = new Brief(

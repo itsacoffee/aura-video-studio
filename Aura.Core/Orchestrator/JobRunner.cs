@@ -33,6 +33,11 @@ public class JobRunner
         VideoOrchestrator orchestrator,
         Aura.Core.Hardware.HardwareDetector hardwareDetector)
     {
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(artifactManager);
+        ArgumentNullException.ThrowIfNull(orchestrator);
+        ArgumentNullException.ThrowIfNull(hardwareDetector);
+        
         _logger = logger;
         _artifactManager = artifactManager;
         _orchestrator = orchestrator;
@@ -50,6 +55,11 @@ public class JobRunner
         string? correlationId = null,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(brief);
+        ArgumentNullException.ThrowIfNull(planSpec);
+        ArgumentNullException.ThrowIfNull(voiceSpec);
+        ArgumentNullException.ThrowIfNull(renderSpec);
+        
         var jobId = Guid.NewGuid().ToString();
         _logger.LogInformation("Creating new job with ID: {JobId}, Topic: {Topic}", jobId, brief.Topic);
         

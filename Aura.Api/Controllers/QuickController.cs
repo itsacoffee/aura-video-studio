@@ -33,9 +33,10 @@ public class QuickController : ControllerBase
         [FromBody] QuickDemoRequest? request = null,
         CancellationToken ct = default)
     {
+        var correlationId = HttpContext.TraceIdentifier;
+        
         try
         {
-            var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] POST /api/quick/demo endpoint called", correlationId);
             Log.Information("[{CorrelationId}] Quick Demo requested with topic: {Topic}", correlationId, request?.Topic ?? "(default)");
 
@@ -62,13 +63,26 @@ public class QuickController : ControllerBase
                     status = 500,
                     detail = result.Message,
                     correlationId,
-                    guidance = "Quick Demo uses safe defaults and should always work. This error indicates a system issue. Please check logs or contact support."
+                    guidance = "Quick Demo uses safe defaults and should always work. This error indicates a system issue. Ensure FFmpeg is installed and all required services are running. Check logs for details."
                 });
             }
         }
+        catch (ArgumentNullException ex)
+        {
+            Log.Error(ex, "[{CorrelationId}] Null argument error in quick demo", correlationId);
+            
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Internal Service Error",
+                status = 500,
+                detail = $"Required service not initialized: {ex.ParamName}",
+                correlationId,
+                guidance = "This is an internal configuration error. Please restart the service or contact support."
+            });
+        }
         catch (Exception ex)
         {
-            var correlationId = HttpContext.TraceIdentifier;
             Log.Error(ex, "[{CorrelationId}] Error creating quick demo", correlationId);
             
             return StatusCode(500, new
@@ -78,7 +92,8 @@ public class QuickController : ControllerBase
                 status = 500,
                 detail = $"Unexpected error creating quick demo: {ex.Message}",
                 correlationId,
-                guidance = "Quick Demo should never fail. This indicates a critical system issue. Please check logs and verify all dependencies are installed."
+                guidance = "Quick Demo should never fail. This indicates a critical system issue. Verify: 1) FFmpeg is installed and accessible, 2) Sufficient disk space available, 3) All required dependencies are installed. Check logs for stack trace.",
+                exceptionType = ex.GetType().Name
             });
         }
     }
