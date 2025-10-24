@@ -1,5 +1,10 @@
-import React, { useState } from 'react';
-import { AlertTriangle, X, Info, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Warning20Regular as AlertTriangle,
+  Dismiss20Regular as X,
+  Info20Regular as Info,
+  ErrorCircle20Regular as AlertCircle
+} from '@fluentui/react-icons';
 
 interface Warning {
   id: string;

@@ -1,5 +1,9 @@
-import React from 'react';
-import { CheckCircle, XCircle, AlertTriangle, Info, ExternalLink } from 'lucide-react';
+import {
+  DismissCircle20Regular as XCircle,
+  Warning20Regular as AlertTriangle,
+  Info20Regular as Info,
+  Open20Regular as ExternalLink
+} from '@fluentui/react-icons';
 import { ConfidenceMeter } from './ConfidenceMeter';
 
 interface Source {
@@ -43,7 +47,7 @@ interface VerificationResultsViewProps {
 export const VerificationResultsView: React.FC<VerificationResultsViewProps> = ({ result }) => {
   const getStatusBadge = (status: string) => {
     const statusLower = status.toLowerCase();
-    const styles = {
+    const styles: Record<string, string> = {
       verified: 'bg-green-100 text-green-800 border-green-200',
       partiallyverified: 'bg-blue-100 text-blue-800 border-blue-200',
       disputed: 'bg-red-100 text-red-800 border-red-200',
@@ -60,7 +64,7 @@ export const VerificationResultsView: React.FC<VerificationResultsViewProps> = (
   };
 
   const getRiskLevelBadge = (level: string) => {
-    const styles = {
+    const styles: Record<string, string> = {
       low: 'bg-green-100 text-green-800',
       medium: 'bg-yellow-100 text-yellow-800',
       high: 'bg-orange-100 text-orange-800',

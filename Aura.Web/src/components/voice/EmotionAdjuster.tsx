@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -7,13 +7,6 @@ import {
   Card,
   Badge,
 } from '@fluentui/react-components';
-import {
-  EmojiRegular,
-  EmojiSmileSlight20Regular,
-  EmojiSad20Regular,
-  EmojiAngry20Regular,
-  Sparkle20Regular,
-} from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   container: {
@@ -39,8 +32,8 @@ const useStyles = makeStyles({
   },
   selectedEmotion: {
     backgroundColor: tokens.colorBrandBackground2,
-    borderColor: tokens.colorBrandForeground1,
-    borderWidth: '2px',
+    borderColor: tokens.colorBrandForeground1 as any,
+    borderWidth: '2px' as any,
   },
   emotionIcon: {
     fontSize: '32px',

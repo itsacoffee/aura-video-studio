@@ -3,7 +3,7 @@
  * Visual interface for frame selection and analysis
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   makeStyles,
@@ -12,7 +12,6 @@ import {
   Body1,
   Body1Strong,
   Caption1,
-  Badge,
   Button,
   Tooltip,
 } from '@fluentui/react-components';
@@ -102,11 +101,11 @@ const useStyles = makeStyles({
   },
 });
 
-export const FrameSelectionView: React.FC<FrameSelectionViewProps> = ({
+export const FrameSelectionView = ({
   scenes,
-  videoPath,
+  videoPath: _videoPath,
   optimizationActive,
-}) => {
+}: FrameSelectionViewProps) => {
   const styles = useStyles();
   const [loading, setLoading] = useState(false);
   const [frames, setFrames] = useState<FrameInfo[]>([]);
@@ -127,10 +126,10 @@ export const FrameSelectionView: React.FC<FrameSelectionViewProps> = ({
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const mockFrames: FrameInfo[] = scenes.flatMap((scene, sceneIndex) => {
-        const numFrames = Math.floor(scene.duration.totalSeconds / 2); // Sample every 2 seconds
+        const numFrames = Math.floor(scene.duration / 2); // Sample every 2 seconds
         return Array.from({ length: numFrames }, (_, i) => ({
           index: sceneIndex * 100 + i,
-          timestamp: scene.start.totalSeconds + (i * 2),
+          timestamp: scene.start + (i * 2),
           importanceScore: Math.random() * 0.5 + 0.3, // Random score between 0.3 and 0.8
           isKeyFrame: i === 0 || i === numFrames - 1,
         }));

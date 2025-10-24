@@ -1,5 +1,8 @@
-import React from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { 
+  ArrowTrendingLines20Regular as TrendingUp,
+  ArrowTrendingDown20Regular as TrendingDown,
+  Subtract20Regular as Minus
+} from '@fluentui/react-icons';
 
 interface ConfidenceMeterProps {
   confidence: number;

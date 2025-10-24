@@ -1,18 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
   Text,
   Button,
-  Input,
   Spinner,
   ProgressBar,
+  Textarea,
 } from '@fluentui/react-components';
 import {
   PlayRegular,
   PauseRegular,
   ArrowDownloadRegular,
-  WaveformRegular,
+  SoundWaveCircle24Regular as WaveformRegular,
 } from '@fluentui/react-icons';
 import type { VoiceEnhancementConfig } from './VoiceStudioPanel';
 
@@ -183,9 +183,8 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
     <div className={styles.container}>
       <div className={styles.sampleTextSection}>
         <Text weight="semibold">Sample Text</Text>
-        <Input
+        <Textarea
           className={styles.textInput}
-          textarea
           value={sampleText}
           onChange={(_, data) => setSampleText(data.value)}
           placeholder="Enter text to preview the voice..."

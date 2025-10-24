@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -10,11 +10,9 @@ import {
   Option,
   Spinner,
   Badge,
-  Tooltip,
 } from '@fluentui/react-components';
 import {
   MicRegular,
-  FilterRegular,
   SearchRegular,
   PlayRegular,
 } from '@fluentui/react-icons';
@@ -55,8 +53,8 @@ const useStyles = makeStyles({
   },
   selectedCard: {
     backgroundColor: tokens.colorBrandBackground2,
-    borderColor: tokens.colorBrandForeground1,
-    borderWidth: '2px',
+    borderColor: tokens.colorBrandForeground1 as any,
+    borderWidth: '2px' as any,
   },
   voiceHeader: {
     display: 'flex',

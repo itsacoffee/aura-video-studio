@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
   Text,
   Slider,
   Button,
-  Switch,
   Card,
 } from '@fluentui/react-components';
 import { ArrowResetRegular } from '@fluentui/react-icons';

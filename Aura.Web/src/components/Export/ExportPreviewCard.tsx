@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   makeStyles,
   tokens,
@@ -11,7 +11,6 @@ import {
 } from '@fluentui/react-components';
 import {
   VideoClip24Regular,
-  Info24Regular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -146,7 +145,7 @@ export interface ExportPreviewCardProps {
 export function ExportPreviewCard({
   platformId,
   settings,
-  videoPath,
+  videoPath: _videoPath,
   duration = 180, // 3 minutes default
 }: ExportPreviewCardProps) {
   const styles = useStyles();

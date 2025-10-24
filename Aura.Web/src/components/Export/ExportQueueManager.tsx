@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   makeStyles,
   tokens,
-  Text,
   Body1,
   Caption1,
   ProgressBar,
   Button,
   Badge,
-  mergeClasses,
 } from '@fluentui/react-components';
 import {
   Dismiss24Regular,

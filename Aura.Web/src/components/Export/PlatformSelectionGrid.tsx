@@ -1,9 +1,7 @@
-import React from 'react';
 import {
   makeStyles,
   tokens,
   Card,
-  CardHeader,
   Text,
   Badge,
   mergeClasses,
@@ -26,8 +24,8 @@ const useStyles = makeStyles({
     },
   },
   selected: {
-    borderColor: tokens.colorBrandBackground,
-    borderWidth: '2px',
+    borderColor: tokens.colorBrandBackground as any,
+    borderWidth: '2px' as any,
     backgroundColor: tokens.colorBrandBackground2,
   },
   cardContent: {
