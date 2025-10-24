@@ -99,10 +99,10 @@ apiKeyErrors: Record<string, string>;
 - `LOAD_FROM_STORAGE` - Restore saved progress
 
 ### New Functions
-- `validateApiKeyThunk()` - Async API key validation
-- `saveWizardStateToStorage()` - Persist progress
-- `loadWizardStateFromStorage()` - Restore progress
-- `clearWizardStateFromStorage()` - Clean up on completion
+- `validateApiKeyThunk(provider, apiKey, dispatch)` - Async API key validation with client-side format checking and mock backend call
+- `saveWizardStateToStorage(state)` - Persist OnboardingState to localStorage (excludes validation state, stores step, tier, apiKeys, hardware, installItems)
+- `loadWizardStateFromStorage()` - Restore saved Partial<OnboardingState> from localStorage or return null if no saved state
+- `clearWizardStateFromStorage()` - Remove saved wizard state from localStorage (called on completion)
 
 ## Wizard Flow
 
@@ -153,7 +153,7 @@ apiKeyErrors: Record<string, string>;
 ### ✅ Validation
 - Client-side format validation
 - Mock API validation (80% success rate for testing)
-- Rate limiting (20 seconds between attempts)
+- Rate limiting (20 seconds between attempts to prevent API abuse)
 - Specific error messages per provider
 
 ### ✅ Navigation
@@ -178,12 +178,12 @@ apiKeyErrors: Record<string, string>;
 
 | Provider | Used For | Free Tier | Cost Estimate | Key Format |
 |----------|----------|-----------|---------------|------------|
-| OpenAI | Script generation (GPT-4) | $5 credit | $0.15/video | starts with "sk-" |
-| Anthropic | Script generation (Claude) | $5 credit | $0.12/video | starts with "sk-ant-" |
+| OpenAI | Script generation (GPT-4) | $5 credit | $0.15/video | Starts with "sk-" |
+| Anthropic | Script generation (Claude) | $5 credit | $0.12/video | Starts with "sk-ant-" |
 | Gemini | Script generation (Gemini Pro) | Free tier | $0.10/video | 39 characters |
-| ElevenLabs | AI voice synthesis | 10k chars/month | $5/month | 32 characters |
-| PlayHT | AI voice synthesis | 12.5k chars | $31/month | userId:secretKey |
-| Replicate | Image generation (SD) | $5 credit | $0.0023/image | starts with "r8_" |
+| ElevenLabs | AI voice synthesis | 10k chars/month | $5/month | 32-character hex |
+| PlayHT | AI voice synthesis | 12.5k chars | $31/month | Requires userId:secretKey |
+| Replicate | Image generation (SD) | $5 credit | $0.0023/image | Starts with "r8_" |
 
 ## Testing Results
 
