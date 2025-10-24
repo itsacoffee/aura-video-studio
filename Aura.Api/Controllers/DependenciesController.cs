@@ -53,7 +53,15 @@ public class DependenciesController : ControllerBase
             return StatusCode(500, new
             {
                 success = false,
-                error = ex.Message
+                error = ex.Message,
+                errorType = ex.GetType().Name,
+                troubleshooting = new[]
+                {
+                    "Ensure all dependency services are properly configured",
+                    "Check if FFmpegLocator and ComponentDownloader are registered in DI",
+                    "Verify components.json file exists and is valid",
+                    "Check application logs for detailed error information"
+                }
             });
         }
     }
@@ -148,7 +156,14 @@ public class DependenciesController : ControllerBase
                     success = false,
                     available = false,
                     status = ffmpegDep?.Status.ToString() ?? "Missing",
-                    error = ffmpegDep?.ErrorMessage ?? "FFmpeg not found. Install or attach FFmpeg first."
+                    error = ffmpegDep?.ErrorMessage ?? "FFmpeg not found. Install or attach FFmpeg first.",
+                    troubleshooting = new[]
+                    {
+                        "Use the 'Install' button to download FFmpeg automatically",
+                        "Use 'Attach Existing' if you already have FFmpeg installed",
+                        "Click 'Manual Install Guide' for step-by-step installation instructions",
+                        "Ensure FFmpeg is in your system PATH or Aura's dependencies folder"
+                    }
                 });
             }
             

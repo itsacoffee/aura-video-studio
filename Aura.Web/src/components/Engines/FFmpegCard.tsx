@@ -25,9 +25,11 @@ import {
   ArrowSync24Regular,
   Folder24Regular,
   Link24Regular,
+  Document24Regular,
 } from '@fluentui/react-icons';
 import { apiUrl } from '../../config/api';
 import { useNotifications } from '../Notifications/Toasts';
+import { ManualInstallationModal } from './ManualInstallationModal';
 
 const useStyles = makeStyles({
   card: {
@@ -83,6 +85,7 @@ export function FFmpegCard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAttachDialog, setShowAttachDialog] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
   const [attachPath, setAttachPath] = useState('');
 
   useEffect(() => {
@@ -351,6 +354,14 @@ export function FFmpegCard() {
                       >
                         Attach Existing...
                       </Button>
+                      <Button
+                        appearance="secondary"
+                        icon={<Document24Regular />}
+                        onClick={() => setShowManualModal(true)}
+                        disabled={isProcessing}
+                      >
+                        Manual Install Guide
+                      </Button>
                     </>
                   )}
 
@@ -426,6 +437,12 @@ export function FFmpegCard() {
           </DialogBody>
         </DialogSurface>
       </Dialog>
+
+      <ManualInstallationModal
+        open={showManualModal}
+        onClose={() => setShowManualModal(false)}
+        onVerify={handleRescan}
+      />
     </>
   );
 }

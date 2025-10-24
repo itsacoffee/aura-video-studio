@@ -83,19 +83,38 @@ export function RescanPanel() {
     setError(null);
 
     try {
-      const response = await fetch(apiUrl('/api/dependencies/rescan'));
+      const response = await fetch(apiUrl('/api/dependencies/rescan'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
 
       if (response.ok) {
-        const data = await response.json();
-        setReport(data);
-        setLastScanTime(data.scanTime);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          setReport(data);
+          setLastScanTime(data.scanTime);
+        } else {
+          const text = await response.text();
+          setError('Server returned invalid response (expected JSON, got HTML or other format). Please check if the API server is running correctly.');
+          console.error('Invalid response format:', text.substring(0, 200));
+        }
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to rescan dependencies');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to rescan dependencies');
+        } else {
+          setError(`Server returned HTTP ${response.status} error. The API endpoint may not be available.`);
+        }
       }
     } catch (err) {
       console.error('Rescan failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to rescan dependencies');
+      if (err instanceof Error && err.message.includes('JSON')) {
+        setError('Unable to parse server response. The server may have returned HTML instead of JSON. Please check the API configuration.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to rescan dependencies');
+      }
     } finally {
       setIsScanning(false);
     }

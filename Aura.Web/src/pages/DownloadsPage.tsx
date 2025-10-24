@@ -28,6 +28,7 @@ import {
 } from '@fluentui/react-icons';
 import { EnginesTab } from '../components/Engines/EnginesTab';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
+import { TroubleshootingPanel } from '../components/Engines/TroubleshootingPanel';
 import { useNotifications } from '../components/Notifications/Toasts';
 
 interface DependencyComponent {
@@ -122,18 +123,44 @@ export function DownloadsPage() {
     try {
       const response = await fetch(apiUrl('/api/downloads/manifest'));
       if (response.ok) {
-        const data = await response.json();
-        setManifest(data.components || []);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          setManifest(data.components || []);
 
-        // Check installation status for each component
-        if (data.components) {
-          for (const component of data.components) {
-            checkComponentStatus(component.name);
+          // Check installation status for each component
+          if (data.components) {
+            for (const component of data.components) {
+              checkComponentStatus(component.name);
+            }
           }
+        } else {
+          const text = await response.text();
+          console.error('Invalid response format (expected JSON):', text.substring(0, 200));
+          showFailureToast({
+            title: 'Failed to Load Manifest',
+            message: 'Server returned invalid response format. The API may not be configured correctly.',
+          });
         }
+      } else {
+        showFailureToast({
+          title: 'Failed to Load Manifest',
+          message: `Server returned HTTP ${response.status} error. The manifest endpoint may not be available.`,
+        });
       }
     } catch (error) {
       console.error('Error fetching manifest:', error);
+      if (error instanceof Error && error.message.includes('JSON')) {
+        showFailureToast({
+          title: 'Failed to Parse Response',
+          message: 'Unable to parse server response. The server may have returned HTML instead of JSON.',
+        });
+      } else {
+        showFailureToast({
+          title: 'Connection Error',
+          message: error instanceof Error ? error.message : 'Failed to fetch manifest',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -416,6 +443,7 @@ export function DownloadsPage() {
       >
         <Tab value="dependencies">Dependencies</Tab>
         <Tab value="engines">Engines</Tab>
+        <Tab value="troubleshooting">Troubleshooting</Tab>
       </TabList>
 
       {selectedTab === 'dependencies' && (
@@ -575,6 +603,12 @@ export function DownloadsPage() {
       )}
 
       {selectedTab === 'engines' && <EnginesTab />}
+
+      {selectedTab === 'troubleshooting' && (
+        <Card className={styles.card}>
+          <TroubleshootingPanel />
+        </Card>
+      )}
     </div>
   );
 }
