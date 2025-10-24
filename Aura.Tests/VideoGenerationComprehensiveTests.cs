@@ -143,6 +143,10 @@ public class VideoGenerationComprehensiveTests
         var cleanupManager = new Aura.Core.Services.ResourceCleanupManager(
             _loggerFactory.CreateLogger<Aura.Core.Services.ResourceCleanupManager>());
 
+        var timelineBuilder = new Aura.Core.Timeline.TimelineBuilder();
+        var providerSettings = new Aura.Core.Configuration.ProviderSettings(
+            _loggerFactory.CreateLogger<Aura.Core.Configuration.ProviderSettings>());
+
         var orchestrator = new VideoOrchestrator(
             _loggerFactory.CreateLogger<VideoOrchestrator>(),
             mockLlmProvider,
@@ -157,6 +161,8 @@ public class VideoGenerationComprehensiveTests
             imageValidator,
             llmValidator,
             cleanupManager,
+            timelineBuilder,
+            providerSettings,
             mockImageProvider);
 
         var brief = new Brief("Test Topic", null, null, "Professional", "English", Aspect.Widescreen16x9);
@@ -218,6 +224,10 @@ public class VideoGenerationComprehensiveTests
         var cleanupManager = new Aura.Core.Services.ResourceCleanupManager(
             _loggerFactory.CreateLogger<Aura.Core.Services.ResourceCleanupManager>());
 
+        var timelineBuilder = new Aura.Core.Timeline.TimelineBuilder();
+        var providerSettings = new Aura.Core.Configuration.ProviderSettings(
+            _loggerFactory.CreateLogger<Aura.Core.Configuration.ProviderSettings>());
+
         var orchestrator = new VideoOrchestrator(
             _loggerFactory.CreateLogger<VideoOrchestrator>(),
             mockLlmProvider,
@@ -232,6 +242,8 @@ public class VideoGenerationComprehensiveTests
             imageValidator,
             llmValidator,
             cleanupManager,
+            timelineBuilder,
+            providerSettings,
             null);
 
         var brief = new Brief("Test Topic", null, null, "Professional", "English", Aspect.Widescreen16x9);

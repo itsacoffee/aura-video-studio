@@ -268,6 +268,20 @@ builder.Services.AddSingleton<Aura.Core.Services.Resources.DiskSpaceChecker>();
 builder.Services.AddSingleton<Aura.Core.Services.Generation.ResourceMonitor>();
 builder.Services.AddSingleton<Aura.Core.Services.Generation.StrategySelector>();
 builder.Services.AddSingleton<Aura.Core.Services.Generation.VideoGenerationOrchestrator>();
+
+// Register timeline and pacing services (required for VideoOrchestrator)
+builder.Services.AddSingleton<Aura.Core.Timeline.TimelineBuilder>();
+
+// Register ML models first (dependencies)
+builder.Services.AddSingleton<Aura.Core.ML.Models.AttentionRetentionModel>();
+builder.Services.AddSingleton<Aura.Core.ML.Models.FrameImportanceModel>();
+
+// Register pacing services in dependency order
+builder.Services.AddSingleton<Aura.Core.Services.PacingServices.SceneImportanceAnalyzer>();
+builder.Services.AddSingleton<Aura.Core.Services.PacingServices.AttentionCurvePredictor>();
+builder.Services.AddSingleton<Aura.Core.Services.PacingServices.IntelligentPacingOptimizer>();
+builder.Services.AddSingleton<Aura.Core.Services.PacingServices.PacingApplicationService>();
+
 builder.Services.AddSingleton<VideoOrchestrator>();
 
 // Register AI pacing and rhythm optimization services
