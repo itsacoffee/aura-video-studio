@@ -5,6 +5,8 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Use relative base path for production to work when served from Aura.Api
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
