@@ -48,7 +48,7 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
     onSourcesChange?.(updated);
   };
 
-  const handleUpdateSource = (sourceId: string, field: keyof Source, value: any) => {
+  const handleUpdateSource = (sourceId: string, field: keyof Source, value: string | number) => {
     const updated = sources.map(s =>
       s.sourceId === sourceId ? { ...s, [field]: value } : s
     );
@@ -219,7 +219,7 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
               <label className="text-sm font-medium text-gray-700">Citation Format:</label>
               <select
                 value={citationFormat}
-                onChange={(e) => setCitationFormat(e.target.value as any)}
+                onChange={(e) => setCitationFormat(e.target.value as 'APA' | 'MLA' | 'Chicago' | 'Harvard')}
                 className="px-3 py-1.5 border rounded-md text-sm"
               >
                 <option value="APA">APA</option>

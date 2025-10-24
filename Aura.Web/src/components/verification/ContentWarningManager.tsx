@@ -167,32 +167,42 @@ export const ContentWarningManager: React.FC<ContentWarningManagerProps> = ({
   );
 };
 
-function determineWarningType(message: string, riskLevel?: string): Warning['type'] {
-  const lowerMsg = message.toLowerCase();
+// Configuration for warning type patterns
+const WARNING_TYPE_PATTERNS = {
+  error: [
+    /\bfalse\b/i,
+    /\bdisputed\b/i,
+    /\bcritical\b/i,
+    /\bverified as false\b/i,
+  ],
+  warning: [
+    /\blow confidence\b/i,
+    /\bbelow threshold\b/i,
+    /\brisk detected\b/i,
+    /\bissue\(s\)\b/i,
+    /\bunverified\b/i,
+  ],
+};
 
-  // Critical issues
-  if (
-    lowerMsg.includes('false') ||
-    lowerMsg.includes('disputed') ||
-    lowerMsg.includes('critical') ||
-    riskLevel?.toLowerCase() === 'critical'
-  ) {
+function determineWarningType(message: string, riskLevel?: string): Warning['type'] {
+  // Check risk level first for explicit categorization
+  const normalizedRiskLevel = riskLevel?.toLowerCase();
+  if (normalizedRiskLevel === 'critical') {
     return 'error';
   }
-
-  // Warnings
-  if (
-    lowerMsg.includes('low confidence') ||
-    lowerMsg.includes('below threshold') ||
-    lowerMsg.includes('risk detected') ||
-    lowerMsg.includes('issue') ||
-    riskLevel?.toLowerCase() === 'high' ||
-    riskLevel?.toLowerCase() === 'medium'
-  ) {
+  if (normalizedRiskLevel === 'high' || normalizedRiskLevel === 'medium') {
     return 'warning';
   }
 
-  // Info
+  // Check message patterns
+  if (WARNING_TYPE_PATTERNS.error.some(pattern => pattern.test(message))) {
+    return 'error';
+  }
+  if (WARNING_TYPE_PATTERNS.warning.some(pattern => pattern.test(message))) {
+    return 'warning';
+  }
+
+  // Default to info
   return 'info';
 }
 
