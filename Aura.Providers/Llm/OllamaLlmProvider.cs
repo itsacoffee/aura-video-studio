@@ -13,6 +13,7 @@ namespace Aura.Providers.Llm;
 
 /// <summary>
 /// LLM provider that uses a local Ollama instance for script generation.
+/// Supports optional ML-driven enhancements via callbacks.
 /// </summary>
 public class OllamaLlmProvider : ILlmProvider
 {
@@ -22,6 +23,16 @@ public class OllamaLlmProvider : ILlmProvider
     private readonly string _model;
     private readonly int _maxRetries;
     private readonly TimeSpan _timeout;
+
+    /// <summary>
+    /// Optional callback to enhance prompts before generation
+    /// </summary>
+    public Func<string, Brief, PlanSpec, Task<string>>? PromptEnhancementCallback { get; set; }
+
+    /// <summary>
+    /// Optional callback to track generation performance
+    /// </summary>
+    public Action<double, TimeSpan, bool>? PerformanceTrackingCallback { get; set; }
 
     public OllamaLlmProvider(
         ILogger<OllamaLlmProvider> logger,
@@ -43,6 +54,7 @@ public class OllamaLlmProvider : ILlmProvider
     {
         _logger.LogInformation("Generating script with Ollama (model: {Model}) at {BaseUrl} for topic: {Topic}", _model, _baseUrl, brief.Topic);
 
+        var startTime = DateTime.UtcNow;
         Exception? lastException = null;
         
         for (int attempt = 0; attempt <= _maxRetries; attempt++)
@@ -58,6 +70,13 @@ public class OllamaLlmProvider : ILlmProvider
                 // Build enhanced prompt for quality content
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
                 string userPrompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
+                
+                // Apply enhancement callback if configured
+                if (PromptEnhancementCallback != null)
+                {
+                    userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec);
+                }
+                
                 string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
                 // Call Ollama API
@@ -89,7 +108,13 @@ public class OllamaLlmProvider : ILlmProvider
                 if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
                 {
                     string script = responseText.GetString() ?? string.Empty;
+                    var duration = DateTime.UtcNow - startTime;
+                    
                     _logger.LogInformation("Script generated successfully with Ollama ({Length} characters)", script.Length);
+                    
+                    // Track performance if callback configured
+                    PerformanceTrackingCallback?.Invoke(75.0, duration, true);
+                    
                     return script;
                 }
 
@@ -102,6 +127,8 @@ public class OllamaLlmProvider : ILlmProvider
                 _logger.LogWarning(ex, "Ollama request timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
                 if (attempt >= _maxRetries)
                 {
+                    var duration = DateTime.UtcNow - startTime;
+                    PerformanceTrackingCallback?.Invoke(0, duration, false);
                     throw new Exception("Ollama request timed out.", ex);
                 }
             }
@@ -111,6 +138,8 @@ public class OllamaLlmProvider : ILlmProvider
                 _logger.LogWarning(ex, "Failed to connect to Ollama at {BaseUrl} (attempt {Attempt}/{MaxRetries})", _baseUrl, attempt + 1, _maxRetries + 1);
                 if (attempt >= _maxRetries)
                 {
+                    var duration = DateTime.UtcNow - startTime;
+                    PerformanceTrackingCallback?.Invoke(0, duration, false);
                     throw new Exception($"Failed to connect to Ollama at {_baseUrl} after {_maxRetries + 1} attempts. Ensure Ollama is running and the model '{_model}' is available.", ex);
                 }
             }
@@ -121,12 +150,16 @@ public class OllamaLlmProvider : ILlmProvider
             }
             catch (Exception ex)
             {
+                var duration = DateTime.UtcNow - startTime;
+                PerformanceTrackingCallback?.Invoke(0, duration, false);
                 _logger.LogError(ex, "Error generating script with Ollama after all retries");
                 throw;
             }
         }
 
         // Should not reach here, but just in case
+        var finalDuration = DateTime.UtcNow - startTime;
+        PerformanceTrackingCallback?.Invoke(0, finalDuration, false);
         throw new Exception($"Failed to generate script with Ollama after {_maxRetries + 1} attempts", lastException);
     }
 

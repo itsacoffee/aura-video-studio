@@ -20,6 +20,7 @@ import type { Profile } from '../types';
 import { LocalEngines } from '../components/Settings/LocalEngines';
 import { ProvidersTable } from '../components/Settings/ProvidersTable';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
+import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel';
 
 const useStyles = makeStyles({
   container: {
@@ -576,6 +577,7 @@ export function SettingsPage() {
         <Tab value="localproviders">Local Providers</Tab>
         <Tab value="localengines">Local Engines</Tab>
         <Tab value="apikeys">API Keys</Tab>
+        <Tab value="aioptimization">AI Optimization</Tab>
         <Tab value="templates">Templates</Tab>
         <Tab value="privacy">Privacy</Tab>
       </TabList>
@@ -1250,6 +1252,10 @@ export function SettingsPage() {
             </Button>
           </div>
         </Card>
+      )}
+
+      {activeTab === 'aioptimization' && (
+        <AIOptimizationPanel />
       )}
 
       {activeTab === 'templates' && (

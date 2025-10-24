@@ -13,6 +13,7 @@ namespace Aura.Providers.Llm;
 
 /// <summary>
 /// LLM provider that uses OpenAI API for script generation (Pro feature).
+/// Supports optional ML-driven enhancements via callbacks.
 /// </summary>
 public class OpenAiLlmProvider : ILlmProvider
 {
@@ -20,6 +21,16 @@ public class OpenAiLlmProvider : ILlmProvider
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
     private readonly string _model;
+
+    /// <summary>
+    /// Optional callback to enhance prompts before generation
+    /// </summary>
+    public Func<string, Brief, PlanSpec, Task<string>>? PromptEnhancementCallback { get; set; }
+
+    /// <summary>
+    /// Optional callback to track generation performance
+    /// </summary>
+    public Action<double, TimeSpan, bool>? PerformanceTrackingCallback { get; set; }
 
     public OpenAiLlmProvider(
         ILogger<OpenAiLlmProvider> logger,
@@ -42,11 +53,19 @@ public class OpenAiLlmProvider : ILlmProvider
     {
         _logger.LogInformation("Generating high-quality script with OpenAI (model: {Model}) for topic: {Topic}", _model, brief.Topic);
 
+        var startTime = DateTime.UtcNow;
+        
         try
         {
             // Build enhanced prompts for quality content
             string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
             string userPrompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
+
+            // Apply enhancement callback if configured
+            if (PromptEnhancementCallback != null)
+            {
+                userPrompt = await PromptEnhancementCallback(userPrompt, brief, spec);
+            }
 
             // Call OpenAI API
             var requestBody = new
@@ -81,21 +100,33 @@ public class OpenAiLlmProvider : ILlmProvider
                     message.TryGetProperty("content", out var contentProp))
                 {
                     string script = contentProp.GetString() ?? string.Empty;
+                    var duration = DateTime.UtcNow - startTime;
+                    
                     _logger.LogInformation("Script generated successfully ({Length} characters)", script.Length);
+                    
+                    // Track performance if callback configured
+                    PerformanceTrackingCallback?.Invoke(80.0, duration, true);
+                    
                     return script;
                 }
             }
 
             _logger.LogWarning("OpenAI response did not contain expected structure");
+            var failureDuration = DateTime.UtcNow - startTime;
+            PerformanceTrackingCallback?.Invoke(0, failureDuration, false);
             throw new Exception("Invalid response from OpenAI");
         }
         catch (HttpRequestException ex)
         {
+            var duration = DateTime.UtcNow - startTime;
+            PerformanceTrackingCallback?.Invoke(0, duration, false);
             _logger.LogWarning(ex, "Failed to connect to OpenAI API");
             throw new Exception("Failed to connect to OpenAI API. Check your API key and internet connection.", ex);
         }
         catch (Exception ex)
         {
+            var duration = DateTime.UtcNow - startTime;
+            PerformanceTrackingCallback?.Invoke(0, duration, false);
             _logger.LogError(ex, "Error generating script with OpenAI");
             throw;
         }
