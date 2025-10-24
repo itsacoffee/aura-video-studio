@@ -295,7 +295,9 @@ export async function detectHardwareThunk(
   dispatch({ type: 'START_HARDWARE_DETECTION' });
 
   try {
-    const response = await fetch('/api/hardware/probe');
+    const response = await fetch('/api/probes/run', {
+      method: 'POST',
+    });
     if (response.ok) {
       const data = await response.json();
 

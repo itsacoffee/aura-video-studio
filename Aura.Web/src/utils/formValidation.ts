@@ -63,9 +63,9 @@ export function validateField<T>(
   try {
     schema.parse(value);
     return { valid: true };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return { valid: false, error: error.errors[0]?.message };
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return { valid: false, error: err.errors[0]?.message };
     }
     return { valid: false, error: 'Validation failed' };
   }

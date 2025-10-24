@@ -4,7 +4,7 @@
  */
 
 export const env = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5272',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005',
   appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
   appName: import.meta.env.VITE_APP_NAME || 'Aura Video Studio',
   environment: import.meta.env.VITE_ENV || 'development',

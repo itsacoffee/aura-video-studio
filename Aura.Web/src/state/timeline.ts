@@ -179,30 +179,30 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       return { tracks };
     }),
 
-  updateClip: (clip) =>
+  updateClip: (clip: TimelineClip) =>
     set((state) => {
-      const tracks = state.tracks.map((track) => ({
+      const tracks = state.tracks.map((track: Track) => ({
         ...track,
         clips: track.clips
-          .map((c) => (c.id === clip.id ? clip : c))
-          .sort((a, b) => a.timelineStart - b.timelineStart),
+          .map((c: TimelineClip) => (c.id === clip.id ? clip : c))
+          .sort((a: TimelineClip, b: TimelineClip) => a.timelineStart - b.timelineStart),
       }));
       return { tracks };
     }),
 
-  removeClip: (clipId) =>
+  removeClip: (clipId: string) =>
     set((state) => {
-      const tracks = state.tracks.map((track) => ({
+      const tracks = state.tracks.map((track: Track) => ({
         ...track,
-        clips: track.clips.filter((c) => c.id !== clipId),
+        clips: track.clips.filter((c: TimelineClip) => c.id !== clipId),
       }));
       return { tracks };
     }),
 
-  splitClip: (clipId, splitTime) =>
+  splitClip: (clipId: string, splitTime: number) =>
     set((state) => {
-      const tracks = state.tracks.map((track) => {
-        const clipIndex = track.clips.findIndex((c) => c.id === clipId);
+      const tracks = state.tracks.map((track: Track) => {
+        const clipIndex = track.clips.findIndex((c: TimelineClip) => c.id === clipId);
         if (clipIndex === -1) return track;
 
         const clip = track.clips[clipIndex];
@@ -240,58 +240,58 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       return { tracks };
     }),
 
-  addMarker: (marker) =>
+  addMarker: (marker: ChapterMarker) =>
     set((state) => ({
-      markers: [...state.markers, marker].sort((a, b) => a.time - b.time),
+      markers: [...state.markers, marker].sort((a: ChapterMarker, b: ChapterMarker) => a.time - b.time),
     })),
 
-  removeMarker: (markerId) =>
+  removeMarker: (markerId: string) =>
     set((state) => ({
-      markers: state.markers.filter((m) => m.id !== markerId),
+      markers: state.markers.filter((m: ChapterMarker) => m.id !== markerId),
     })),
 
-  addOverlay: (overlay) =>
+  addOverlay: (overlay: TextOverlay) =>
     set((state) => ({
-      overlays: [...state.overlays, overlay].sort((a, b) => a.inTime - b.inTime),
+      overlays: [...state.overlays, overlay].sort((a: TextOverlay, b: TextOverlay) => a.inTime - b.inTime),
     })),
 
-  updateOverlay: (overlay) =>
+  updateOverlay: (overlay: TextOverlay) =>
     set((state) => ({
       overlays: state.overlays
-        .map((o) => (o.id === overlay.id ? overlay : o))
-        .sort((a, b) => a.inTime - b.inTime),
+        .map((o: TextOverlay) => (o.id === overlay.id ? overlay : o))
+        .sort((a: TextOverlay, b: TextOverlay) => a.inTime - b.inTime),
     })),
 
-  removeOverlay: (overlayId) =>
+  removeOverlay: (overlayId: string) =>
     set((state) => ({
-      overlays: state.overlays.filter((o) => o.id !== overlayId),
+      overlays: state.overlays.filter((o: TextOverlay) => o.id !== overlayId),
     })),
 
   // Audio track controls
-  updateTrack: (trackId, updates) =>
+  updateTrack: (trackId: string, updates: Partial<Track>) =>
     set((state) => ({
-      tracks: state.tracks.map((track) =>
+      tracks: state.tracks.map((track: Track) =>
         track.id === trackId ? { ...track, ...updates } : track
       ),
     })),
 
-  toggleMute: (trackId) =>
+  toggleMute: (trackId: string) =>
     set((state) => ({
-      tracks: state.tracks.map((track) =>
+      tracks: state.tracks.map((track: Track) =>
         track.id === trackId ? { ...track, muted: !track.muted } : track
       ),
     })),
 
-  toggleSolo: (trackId) =>
+  toggleSolo: (trackId: string) =>
     set((state) => ({
-      tracks: state.tracks.map((track) =>
+      tracks: state.tracks.map((track: Track) =>
         track.id === trackId ? { ...track, solo: !track.solo } : track
       ),
     })),
 
-  toggleLock: (trackId) =>
+  toggleLock: (trackId: string) =>
     set((state) => ({
-      tracks: state.tracks.map((track) =>
+      tracks: state.tracks.map((track: Track) =>
         track.id === trackId ? { ...track, locked: !track.locked } : track
       ),
     })),
@@ -299,8 +299,8 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
   exportChapters: () => {
     const { markers } = get();
     return markers
-      .sort((a, b) => a.time - b.time)
-      .map((marker) => {
+      .sort((a: ChapterMarker, b: ChapterMarker) => a.time - b.time)
+      .map((marker: ChapterMarker) => {
         const totalSeconds = Math.floor(marker.time);
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);

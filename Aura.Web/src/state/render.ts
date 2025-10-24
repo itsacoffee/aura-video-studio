@@ -183,7 +183,7 @@ export const useRenderStore = create<RenderState>((set, get) => ({
 
     try {
       // Send render request to API
-      const response = await fetch('/api/render', {
+      const response = await fetch('/api/jobs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -203,7 +203,7 @@ export const useRenderStore = create<RenderState>((set, get) => ({
       // Poll for progress
       const pollInterval = setInterval(async () => {
         try {
-          const progressResponse = await fetch(`/api/render/${jobId}/progress`);
+          const progressResponse = await fetch(`/api/jobs/${jobId}`);
           if (!progressResponse.ok) {
             throw new Error('Failed to get progress');
           }
