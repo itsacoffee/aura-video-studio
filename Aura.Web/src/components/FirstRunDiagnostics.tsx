@@ -205,7 +205,6 @@ export function FirstRunDiagnostics({
       case 'install':
       case 'configure':
         // These would be handled by specific logic
-        console.log('Action:', action.actionType, action.actionData);
         break;
     }
   };

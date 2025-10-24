@@ -336,13 +336,8 @@ export function CreateWizard() {
   };
 
   const handleGenerate = async () => {
-    console.log('[GENERATE VIDEO] Button clicked');
-    console.log('[GENERATE VIDEO] Form data:', { settings, perStageSelection, preflightReport });
-    
     setGenerating(true);
     try {
-      console.log('[GENERATE VIDEO] Starting video generation...');
-      
       validateAndWarnEnums(settings.brief, settings.planSpec);
       const { brief: normalizedBrief, planSpec: normalizedPlanSpec } = normalizeEnumsForApi(
         settings.brief,
@@ -386,8 +381,6 @@ export function CreateWizard() {
 
       const requestData = { brief, planSpec, voiceSpec, renderSpec };
       const jobsUrl = apiUrl('/api/jobs');
-      
-      console.log('[API] Calling endpoint:', jobsUrl, 'with data:', requestData);
 
       const response = await fetch(jobsUrl, {
         method: 'POST',
@@ -395,11 +388,8 @@ export function CreateWizard() {
         body: JSON.stringify(requestData),
       });
 
-      console.log('[API] Response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('[API] Response data:', data);
 
         // Set job in global state for status bar
         useJobState.getState().setJob(data.jobId);
@@ -407,8 +397,6 @@ export function CreateWizard() {
 
         setActiveJobId(data.jobId);
         setShowGenerationPanel(true);
-        
-        console.log('[GENERATE VIDEO] Job created successfully, jobId:', data.jobId);
       } else {
         const errorInfo = await parseApiError(response);
         console.error('[GENERATE VIDEO] API request failed:', errorInfo);
@@ -436,21 +424,14 @@ export function CreateWizard() {
       });
     } finally {
       setGenerating(false);
-      console.log('[GENERATE VIDEO] Handler completed');
     }
   };
 
   const handleQuickDemo = async () => {
-    console.log('[QUICK DEMO] Button clicked');
-    console.log('[QUICK DEMO] Current state:', { settings });
-    
     setGenerating(true);
     try {
-      console.log('[QUICK DEMO] Starting demo generation...');
-      
       // Validate before starting generation
       const validationUrl = apiUrl('/api/validation/brief');
-      console.log('[QUICK DEMO] Calling validation endpoint:', validationUrl);
       
       const validationResponse = await fetch(validationUrl, {
         method: 'POST',
@@ -461,11 +442,8 @@ export function CreateWizard() {
         }),
       });
 
-      console.log('[QUICK DEMO] Validation response status:', validationResponse.status);
-
       if (validationResponse.ok) {
         const validationData = await validationResponse.json();
-        console.log('[QUICK DEMO] Validation result:', validationData);
         
         if (!validationData.isValid) {
           console.warn('[QUICK DEMO] Validation failed:', validationData.issues);
@@ -484,19 +462,14 @@ export function CreateWizard() {
       const demoUrl = apiUrl('/api/quick/demo');
       const requestData = { topic: settings.brief.topic || null };
       
-      console.log('[API] Calling endpoint:', demoUrl, 'with data:', requestData);
-      
       const response = await fetch(demoUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData),
       });
 
-      console.log('[API] Response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('[API] Response data:', data);
 
         // Set job in global state for status bar
         useJobState.getState().setJob(data.jobId);
@@ -510,8 +483,6 @@ export function CreateWizard() {
 
         setActiveJobId(data.jobId);
         setShowGenerationPanel(true);
-        
-        console.log('[QUICK DEMO] Generation started successfully, jobId:', data.jobId);
       } else {
         const errorInfo = await parseApiError(response);
         console.error('[QUICK DEMO] API request failed:', errorInfo);
@@ -535,7 +506,6 @@ export function CreateWizard() {
       });
     } finally {
       setGenerating(false);
-      console.log('[QUICK DEMO] Handler completed');
     }
   };
 

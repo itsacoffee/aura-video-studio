@@ -96,8 +96,6 @@ class HealthNotificationService {
     this.pollInterval = window.setInterval(() => {
       this.checkHealth();
     }, POLL_INTERVAL_MS);
-
-    console.log('Health notification service started');
   }
 
   /**
@@ -109,7 +107,6 @@ class HealthNotificationService {
       this.pollInterval = undefined;
     }
     this.isActive = false;
-    console.log('Health notification service stopped');
   }
 
   /**
@@ -209,7 +206,6 @@ class HealthNotificationService {
     const now = Date.now();
 
     if (now - lastNotification < NOTIFICATION_COOLDOWN_MS) {
-      console.log(`Notification for ${providerName} is on cooldown`);
       return;
     }
 
@@ -221,9 +217,6 @@ class HealthNotificationService {
     if (this.onNotificationCallback) {
       this.onNotificationCallback(message, type);
     }
-
-    // Also log to console
-    console.log(`[Health Notification] ${message}`);
   }
 }
 

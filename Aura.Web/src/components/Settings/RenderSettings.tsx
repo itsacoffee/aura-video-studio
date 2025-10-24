@@ -178,7 +178,6 @@ export function RenderSettings() {
       if (response.ok) {
         const data = await response.json();
         if (data.path) {
-          console.log('Selected cache location:', data.path);
           // Update cache location state if needed
         }
       } else {
@@ -202,7 +201,6 @@ export function RenderSettings() {
       if (response.ok) {
         const data = await response.json();
         if (data.path) {
-          console.log('Selected export location:', data.path);
           // Update export location state if needed
         }
       } else {

@@ -50,11 +50,13 @@ interface ThemeContextType {
   toggleTheme: () => void;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const ThemeContext = createContext<ThemeContextType>({
   isDarkMode: false,
   toggleTheme: () => {},
 });
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTheme = () => useContext(ThemeContext);
 
 function App() {
@@ -86,7 +88,6 @@ function App() {
       root.classList.remove('dark');
     }
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
-    console.log(`Theme switched to: ${isDarkMode ? 'dark' : 'light'} mode`);
   }, [isDarkMode]);
 
   // Listen for OS theme changes (only if user hasn't explicitly set preference)

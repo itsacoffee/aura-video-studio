@@ -133,8 +133,6 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
     const unsubscribe = subscribeToJobEvents(
       jobId,
       (event: JobEvent) => {
-        console.log('Job event:', event);
-
         // Update job state based on events
         setJob((prev) => {
           if (!prev) return prev;

@@ -154,7 +154,6 @@ export function SetupWizard() {
 
   const loadExistingConfig = async () => {
     // In a real implementation, would load from config endpoint
-    console.log('Loading existing config...');
   };
 
   const detectDependencies = async () => {
@@ -189,8 +188,7 @@ export function SetupWizard() {
       });
 
       eventSource.addEventListener('complete', (event) => {
-        const result = JSON.parse(event.data);
-        console.log('Installation complete:', result);
+        JSON.parse(event.data);
         setIsInstalling(false);
         eventSource.close();
         // Re-detect after installation

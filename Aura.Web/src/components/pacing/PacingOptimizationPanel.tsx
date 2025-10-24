@@ -81,7 +81,6 @@ export const PacingOptimizationPanel = ({
       await new Promise(resolve => setTimeout(resolve, 1500)); // Simulated delay
       
       // In production, this would call the optimization services
-      console.log('Optimization complete');
     } catch (error) {
       console.error('Optimization failed:', error);
     } finally {

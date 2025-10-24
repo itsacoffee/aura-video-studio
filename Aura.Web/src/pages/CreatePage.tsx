@@ -177,8 +177,6 @@ export function CreatePage() {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      console.log('Starting video generation...');
-
       // Validate and warn about legacy enum values
       validateAndWarnEnums(brief, planSpec);
 
@@ -208,9 +206,6 @@ export function CreatePage() {
         enableSceneCut: true,
       };
 
-      console.log('Creating job with brief:', normalizedBrief);
-      console.log('Plan spec:', normalizedPlanSpec);
-
       // Create a full video generation job via JobsController
       const response = await fetch('/api/jobs', {
         method: 'POST',
@@ -237,7 +232,6 @@ export function CreatePage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Job created successfully:', data);
         alert(
           `Video generation started! Job ID: ${data.jobId}\n\nYou can track progress in the jobs panel.`
         );
