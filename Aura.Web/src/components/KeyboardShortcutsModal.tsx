@@ -15,6 +15,7 @@ import { Dismiss24Regular, Copy24Regular, Checkmark24Regular } from '@fluentui/r
 const useStyles = makeStyles({
   dialogSurface: {
     maxWidth: '600px',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
   },
   shortcutList: {
     display: 'flex',
@@ -28,6 +29,12 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalS,
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: tokens.colorNeutralBackground2,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground3,
+      transform: 'translateX(4px)',
+      boxShadow: tokens.shadow4,
+    },
   },
   shortcutKey: {
     fontFamily: 'monospace',
@@ -35,6 +42,8 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     borderRadius: tokens.borderRadiusSmall,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
+    boxShadow: '0 2px 0 rgba(0, 0, 0, 0.1)',
+    fontWeight: tokens.fontWeightSemibold,
   },
   shortcutDescription: {
     color: tokens.colorNeutralForeground2,
@@ -56,10 +65,21 @@ const shortcuts = [
   { key: 'S', description: 'Split clip at playhead' },
   { key: 'Q', description: 'Ripple trim start' },
   { key: 'W', description: 'Ripple trim end' },
+  { key: 'Delete', description: 'Delete selected clip' },
+  { key: 'Backspace', description: 'Delete selected clip' },
+  { key: 'Home', description: 'Go to beginning of timeline' },
+  { key: 'End', description: 'Go to end of timeline' },
+  { key: 'Left Arrow', description: 'Previous frame' },
+  { key: 'Right Arrow', description: 'Next frame' },
   { key: 'Ctrl+K', description: 'Open keyboard shortcuts (this dialog)' },
   { key: 'Ctrl+S', description: 'Save project' },
   { key: 'Ctrl+Z', description: 'Undo' },
   { key: 'Ctrl+Y', description: 'Redo' },
+  { key: 'Ctrl+C', description: 'Copy selected item' },
+  { key: 'Ctrl+V', description: 'Paste item' },
+  { key: 'Ctrl+X', description: 'Cut selected item' },
+  { key: 'Ctrl+A', description: 'Select all clips' },
+  { key: 'Ctrl+D', description: 'Duplicate selected clip' },
   { key: 'Esc', description: 'Close dialogs/Cancel' },
 ];
 

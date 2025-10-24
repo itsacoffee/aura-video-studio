@@ -15,12 +15,19 @@ const useStyles = makeStyles({
   videoCard: {
     padding: 0,
     overflow: 'hidden',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    ':hover': {
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
+      transform: 'translateY(-2px)',
+    },
   },
   videoContainer: {
     position: 'relative',
     width: '100%',
     backgroundColor: tokens.colorNeutralBackground6,
     aspectRatio: '16 / 9',
+    borderRadius: `${tokens.borderRadiusMedium} ${tokens.borderRadiusMedium} 0 0`,
   },
   video: {
     width: '100%',
@@ -32,9 +39,13 @@ const useStyles = makeStyles({
     display: 'flex',
     gap: tokens.spacingHorizontalS,
     flexWrap: 'wrap',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
   },
   metadataCard: {
     padding: tokens.spacingVerticalL,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   metadataGrid: {
     display: 'grid',
@@ -50,6 +61,9 @@ const useStyles = makeStyles({
   metadataLabel: {
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground2,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    fontWeight: tokens.fontWeightSemibold,
   },
   metadataValue: {
     fontSize: tokens.fontSizeBase300,
