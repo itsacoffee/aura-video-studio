@@ -169,6 +169,20 @@ builder.Services.AddSingleton<Aura.Core.Services.Learning.LearningService>();
 // Register Ideation service
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
 
+// Register Content Verification services
+builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.FactCheckingService>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.SourceAttributionService>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.ConfidenceAnalysisService>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.MisinformationDetectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.ContentVerificationOrchestrator>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.VerificationPersistence>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.ContentVerification.VerificationPersistence>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var dataDir = providerSettings.GetAuraDataDirectory();
+    return new Aura.Core.Services.ContentVerification.VerificationPersistence(logger, dataDir);
+});
+
 // Register Content Planning services
 builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.TrendAnalysisService>();
 builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.TopicGenerationService>();
