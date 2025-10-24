@@ -63,6 +63,7 @@ const useStyles = makeStyles({
 
 export function CreatePage() {
   const styles = useStyles();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [brief, setBrief] = useState<Partial<Brief>>({
     topic: '',

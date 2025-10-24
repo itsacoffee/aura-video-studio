@@ -95,6 +95,16 @@ export function RenderSettings() {
     libx264: true,
     libx265: true,
   });
+
+  // Additional render settings state
+  const [gpuEncoding] = useState(true);
+  const [hardwareDecoding] = useState(true);
+  const [threadCount] = useState(8);
+  const [memoryLimit] = useState(4096);
+  const [quality] = useState('high');
+  const [resolution] = useState('1080p');
+  const [framerate] = useState(30);
+
   const getQualityLabel = (value: number) => {
     if (value < 25) return 'Draft';
     if (value < 50) return 'Good';

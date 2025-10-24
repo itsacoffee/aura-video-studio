@@ -150,9 +150,9 @@ export const VoiceStudioPanel = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: 'This is a preview of the selected voice with current settings.',
-          voiceId: selectedVoice,
-          prosody,
-          enhancement,
+          voiceId: selectedVoiceId,
+          prosodyConfig: enhancementConfig.prosody,
+          enhancement: enhancementConfig,
         }),
       });
       

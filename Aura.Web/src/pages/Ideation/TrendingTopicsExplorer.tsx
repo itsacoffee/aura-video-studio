@@ -91,7 +91,7 @@ export const TrendingTopicsExplorer: React.FC = () => {
 
   const handleSelectTopic = (topic: TrendingTopic) => {
     // Navigate to ideation dashboard with the topic pre-filled for brainstorming
-    navigate('/ideation', { state: { initialTopic: topic.keyword || topic.hashtag } });
+    navigate('/ideation', { state: { initialTopic: topic.topic } });
   };
 
   return (
