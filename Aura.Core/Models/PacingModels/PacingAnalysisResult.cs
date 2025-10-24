@@ -52,5 +52,20 @@ public record PacingAnalysisResult
     /// Warnings or recommendations
     /// </summary>
     public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Transition recommendations between scenes
+    /// </summary>
+    public IReadOnlyList<TransitionRecommendation> TransitionRecommendations { get; init; } = Array.Empty<TransitionRecommendation>();
+
+    /// <summary>
+    /// Emotional beats detected across the video
+    /// </summary>
+    public IReadOnlyList<EmotionalBeat> EmotionalBeats { get; init; } = Array.Empty<EmotionalBeat>();
+
+    /// <summary>
+    /// Scene relationship graph and flow analysis
+    /// </summary>
+    public SceneRelationshipGraph? SceneRelationships { get; init; }
 }
 

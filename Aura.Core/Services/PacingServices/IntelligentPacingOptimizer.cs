@@ -20,6 +20,9 @@ public class IntelligentPacingOptimizer
     private readonly ILogger<IntelligentPacingOptimizer> _logger;
     private readonly SceneImportanceAnalyzer _sceneAnalyzer;
     private readonly AttentionCurvePredictor _attentionPredictor;
+    private readonly TransitionRecommender _transitionRecommender;
+    private readonly EmotionalBeatAnalyzer _emotionalBeatAnalyzer;
+    private readonly SceneRelationshipMapper _relationshipMapper;
     private readonly FrameImportanceModel? _frameModel;
 
     // Pacing calculation constants
@@ -33,11 +36,17 @@ public class IntelligentPacingOptimizer
         ILogger<IntelligentPacingOptimizer> logger,
         SceneImportanceAnalyzer sceneAnalyzer,
         AttentionCurvePredictor attentionPredictor,
+        TransitionRecommender transitionRecommender,
+        EmotionalBeatAnalyzer emotionalBeatAnalyzer,
+        SceneRelationshipMapper relationshipMapper,
         FrameImportanceModel? frameModel = null)
     {
         _logger = logger;
         _sceneAnalyzer = sceneAnalyzer;
         _attentionPredictor = attentionPredictor;
+        _transitionRecommender = transitionRecommender;
+        _emotionalBeatAnalyzer = emotionalBeatAnalyzer;
+        _relationshipMapper = relationshipMapper;
         _frameModel = frameModel;
     }
 
@@ -95,11 +104,22 @@ public class IntelligentPacingOptimizer
             var attentionCurve = await _attentionPredictor.GenerateAttentionCurveAsync(
                 scenes, timingSuggestions, ct);
 
-            // Step 4: Calculate confidence and metrics
+            // Step 4: Analyze transitions between scenes
+            var transitionRecommendations = await _transitionRecommender.RecommendTransitionsAsync(
+                scenes, sceneAnalyses, brief, ct);
+
+            // Step 5: Analyze emotional beats
+            var emotionalBeats = await _emotionalBeatAnalyzer.AnalyzeEmotionalBeatsAsync(
+                scenes, llmProvider, ct);
+
+            // Step 6: Map scene relationships
+            var sceneRelationships = await _relationshipMapper.MapRelationshipsAsync(scenes, ct);
+
+            // Step 7: Calculate confidence and metrics
             var confidenceScore = CalculateConfidenceScore(sceneAnalyses, llmAnalysisSucceeded);
             var optimalDuration = TimeSpan.FromSeconds(
                 timingSuggestions.Sum(s => s.OptimalDuration.TotalSeconds));
-            var warnings = GenerateWarnings(timingSuggestions, scenes);
+            var warnings = GenerateWarnings(timingSuggestions, scenes, sceneRelationships);
 
             var result = new PacingAnalysisResult
             {
@@ -110,13 +130,18 @@ public class IntelligentPacingOptimizer
                 OptimalDuration = optimalDuration,
                 LlmProviderUsed = llmProviderUsed,
                 LlmAnalysisSucceeded = llmAnalysisSucceeded,
-                Warnings = warnings
+                Warnings = warnings,
+                TransitionRecommendations = transitionRecommendations,
+                EmotionalBeats = emotionalBeats,
+                SceneRelationships = sceneRelationships
             };
 
             var elapsed = DateTime.UtcNow - startTime;
             _logger.LogInformation("Pacing optimization complete in {Elapsed:F2}s. " +
-                "Confidence: {Confidence:F1}%, Retention: {Retention:F1}%, Duration: {Duration}",
-                elapsed.TotalSeconds, confidenceScore, attentionCurve.OverallRetentionScore, optimalDuration);
+                "Confidence: {Confidence:F1}%, Retention: {Retention:F1}%, Duration: {Duration}, " +
+                "Transitions: {TransitionCount}, Emotional Peaks: {PeakCount}, Flow Issues: {IssueCount}",
+                elapsed.TotalSeconds, confidenceScore, attentionCurve.OverallRetentionScore, optimalDuration,
+                transitionRecommendations.Count, emotionalBeats.Count(b => b.IsPeak), sceneRelationships.FlowIssues.Count);
 
             return result;
         }
@@ -332,7 +357,8 @@ public class IntelligentPacingOptimizer
 
     private IReadOnlyList<string> GenerateWarnings(
         IReadOnlyList<SceneTimingSuggestion> suggestions,
-        IReadOnlyList<Scene> scenes)
+        IReadOnlyList<Scene> scenes,
+        SceneRelationshipGraph? sceneRelationships)
     {
         var warnings = new List<string>();
 
@@ -363,6 +389,21 @@ public class IntelligentPacingOptimizer
         if (longScenes.Count > 0)
         {
             warnings.Add($"{longScenes.Count} scene(s) exceed 60 seconds - consider breaking into smaller segments");
+        }
+
+        // Add warnings for flow issues
+        if (sceneRelationships != null)
+        {
+            var highSeverityIssues = sceneRelationships.FlowIssues.Count(i => i.Severity == "high");
+            if (highSeverityIssues > 0)
+            {
+                warnings.Add($"{highSeverityIssues} high-severity flow issue(s) detected - scenes may confuse viewers");
+            }
+
+            if (sceneRelationships.ReorderingSuggestions.Count > 0)
+            {
+                warnings.Add($"{sceneRelationships.ReorderingSuggestions.Count} scene(s) might benefit from reordering");
+            }
         }
 
         return warnings;
