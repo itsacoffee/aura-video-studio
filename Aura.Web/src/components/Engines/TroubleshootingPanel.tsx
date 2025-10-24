@@ -56,12 +56,20 @@ export function TroubleshootingPanel() {
     );
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    showSuccessToast({
-      title: 'Copied',
-      message: 'Text copied to clipboard',
-    });
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showSuccessToast({
+        title: 'Copied',
+        message: 'Text copied to clipboard',
+      });
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      showSuccessToast({
+        title: 'Copy Failed',
+        message: 'Please copy the text manually',
+      });
+    }
   };
 
   return (
