@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { makeStyles, tokens, Text, Button, Spinner } from '@fluentui/react-components';
 import { LightbulbRegular, LightbulbFilamentRegular } from '@fluentui/react-icons';
 import { BrainstormInput, BrainstormOptions } from '../../components/ideation/BrainstormInput';
@@ -74,6 +75,7 @@ const useStyles = makeStyles({
 
 export const IdeationDashboard: React.FC = () => {
   const styles = useStyles();
+  const navigate = useNavigate();
   const [concepts, setConcepts] = useState<ConceptIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,12 +101,15 @@ export const IdeationDashboard: React.FC = () => {
     }
   };
 
-  const handleSelectConcept = (_concept: ConceptIdea) => {
-    // TODO: Navigate to concept explorer or show detail modal
+  const handleSelectConcept = (concept: ConceptIdea) => {
+    // Navigate to create page with the selected concept pre-filled
+    navigate('/create', { state: { conceptIdea: concept } });
   };
 
-  const handleExpandConcept = (_concept: ConceptIdea) => {
-    // TODO: Navigate to detailed view or show modal
+  const handleExpandConcept = (concept: ConceptIdea) => {
+    // Navigate to concept detail/expansion view
+    // For now, navigate to create page with the concept
+    navigate('/create', { state: { conceptIdea: concept, expandMode: true } });
   };
 
   const handleRefresh = () => {

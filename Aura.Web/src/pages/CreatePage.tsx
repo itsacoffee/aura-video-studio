@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../config/api';
 import {
   makeStyles,
@@ -240,8 +241,8 @@ export function CreatePage() {
           `Video generation started! Job ID: ${data.jobId}\n\nYou can track progress in the jobs panel.`
         );
 
-        // TODO: Navigate to jobs page or open generation panel
-        // For now, just show success message
+        // Navigate to recent jobs page to see the progress
+        navigate('/jobs');
       } else {
         const errorText = await response.text();
         console.error('Failed to create job:', response.status, errorText);

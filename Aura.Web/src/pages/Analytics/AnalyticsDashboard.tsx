@@ -163,7 +163,8 @@ export function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [insights, setInsights] = useState<PerformanceInsights | null>(null);
   const [videos, setVideos] = useState<VideoPerformance[]>([]);
-  const [profileId] = useState('default'); // TODO: Get from context
+  // Use a default profile ID - in a real app, this would come from user context/auth
+  const [profileId] = useState('default');
 
   useEffect(() => {
     loadData();
@@ -186,11 +187,46 @@ export function AnalyticsDashboard() {
   };
 
   const handleImportCSV = () => {
-    // TODO: Implement file picker and CSV import
+    // Create a file input element and trigger it
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        // In a real implementation, parse the CSV and import the data
+        console.log('Importing CSV:', file.name);
+        // TODO: Implement CSV parsing and data import via API
+        alert(`CSV import would process ${file.name}. API integration pending.`);
+      }
+    };
+    input.click();
   };
 
   const handleImportJSON = () => {
-    // TODO: Implement file picker and JSON import
+    // Create a file input element and trigger it
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        // In a real implementation, parse the JSON and import the data
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            const data = JSON.parse(event.target?.result as string);
+            console.log('Importing JSON:', data);
+            // TODO: Implement JSON validation and data import via API
+            alert(`JSON import would process ${file.name}. API integration pending.`);
+          } catch (error) {
+            alert('Invalid JSON file');
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
   };
 
   const formatNumber = (num: number) => {

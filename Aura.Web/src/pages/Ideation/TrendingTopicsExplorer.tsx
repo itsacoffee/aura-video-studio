@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { makeStyles, tokens, Text, Input, Button, Spinner } from '@fluentui/react-components';
 import { DataTrendingRegular, SearchRegular } from '@fluentui/react-icons';
 import { TrendingTopicCard } from '../../components/ideation/TrendingTopicCard';
@@ -60,6 +61,7 @@ const useStyles = makeStyles({
 
 export const TrendingTopicsExplorer: React.FC = () => {
   const styles = useStyles();
+  const navigate = useNavigate();
   const [topics, setTopics] = useState<TrendingTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,8 +89,9 @@ export const TrendingTopicsExplorer: React.FC = () => {
     loadTrendingTopics(niche || undefined);
   };
 
-  const handleSelectTopic = (_topic: TrendingTopic) => {
-    // TODO: Navigate to brainstorming with this topic pre-filled
+  const handleSelectTopic = (topic: TrendingTopic) => {
+    // Navigate to ideation dashboard with the topic pre-filled for brainstorming
+    navigate('/ideation', { state: { initialTopic: topic.keyword || topic.hashtag } });
   };
 
   return (
