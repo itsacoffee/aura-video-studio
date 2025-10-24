@@ -2,7 +2,9 @@ import { useEffect, useReducer } from 'react';
 import {
   makeStyles,
   tokens,
+  Title1,
   Title2,
+  Title3,
   Text,
   Button,
   Card,
@@ -13,6 +15,9 @@ import {
   Checkmark24Regular,
   ChevronRight24Regular,
   ChevronLeft24Regular,
+  Play24Regular,
+  Settings24Regular,
+  VideoClip24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
@@ -23,19 +28,12 @@ import {
   detectHardwareThunk,
   installItemThunk,
   checkAllInstallationStatusesThunk,
-  validateApiKeyThunk,
-  saveWizardStateToStorage,
-  loadWizardStateFromStorage,
-  clearWizardStateFromStorage,
+  getButtonLabel,
+  isButtonDisabled,
 } from '../../state/onboarding';
 import type { FixAction } from '../../state/providers';
 import { InstallItemCard } from '../../components/Onboarding/InstallItemCard';
 import { FileLocationsSummary } from '../../components/Onboarding/FileLocationsSummary';
-import { WizardProgress } from '../../components/WizardProgress';
-import { WelcomeStep } from './WelcomeStep';
-import { ChooseTierStep } from './ChooseTierStep';
-import { ApiKeySetupStep } from './ApiKeySetupStep';
-import { CompletionStep } from './CompletionStep';
 import { useEnginesStore } from '../../state/engines';
 
 const useStyles = makeStyles({
@@ -56,8 +54,6 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalL,
-    overflow: 'auto',
-    paddingBottom: tokens.spacingVerticalL,
   },
   footer: {
     display: 'flex',
@@ -66,6 +62,32 @@ const useStyles = makeStyles({
     marginTop: tokens.spacingVerticalXXL,
     paddingTop: tokens.spacingVerticalL,
     borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
+  },
+  steps: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    justifyContent: 'center',
+    marginBottom: tokens.spacingVerticalL,
+  },
+  step: {
+    width: '60px',
+    height: '4px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: '2px',
+  },
+  stepActive: {
+    backgroundColor: tokens.colorBrandBackground,
+  },
+  stepCompleted: {
+    backgroundColor: tokens.colorPaletteGreenBackground2,
+  },
+  modeCard: {
+    cursor: 'pointer',
+    padding: tokens.spacingVerticalL,
+    transition: 'all 0.2s',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
   },
   hardwareInfo: {
     display: 'flex',
@@ -83,6 +105,10 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalM,
     padding: tokens.spacingVerticalM,
   },
+  successCard: {
+    textAlign: 'center',
+    padding: tokens.spacingVerticalXXL,
+  },
   errorCard: {
     padding: tokens.spacingVerticalL,
     backgroundColor: tokens.colorPaletteRedBackground1,
@@ -93,6 +119,12 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalM,
     marginTop: tokens.spacingVerticalL,
   },
+  fixActionCard: {
+    padding: tokens.spacingVerticalM,
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
+  },
 });
 
 export function FirstRunWizard() {
@@ -101,8 +133,7 @@ export function FirstRunWizard() {
   const [state, dispatch] = useReducer(onboardingReducer, initialOnboardingState);
   const { attachEngine } = useEnginesStore();
 
-  const totalSteps = 7;
-  const stepLabels = ['Welcome', 'Choose Tier', 'API Keys', 'Hardware', 'Dependencies', 'Validation', 'Complete'];
+  const totalSteps = 4;
 
   useEffect(() => {
     // Check if this is truly first run
@@ -110,151 +141,74 @@ export function FirstRunWizard() {
     if (hasSeenOnboarding === 'true') {
       // User has already seen onboarding, redirect to home
       navigate('/');
-      return;
-    }
-
-    // Check for saved progress
-    const savedState = loadWizardStateFromStorage();
-    if (savedState) {
-      // Ask user if they want to resume
-      const resume = window.confirm('You have incomplete setup. Would you like to resume where you left off?');
-      if (resume && savedState) {
-        dispatch({ type: 'LOAD_FROM_STORAGE', payload: savedState });
-      } else {
-        clearWizardStateFromStorage();
-      }
     }
   }, [navigate]);
 
-  // Save progress on state changes
+  // Check installation status when entering step 2
   useEffect(() => {
-    if (state.step > 0 && state.step < totalSteps - 1) {
-      saveWizardStateToStorage(state);
-    }
-  }, [state, totalSteps]);
-
-  // Check installation status when entering dependencies step (step 4)
-  useEffect(() => {
-    if (state.step === 4) {
+    if (state.step === 2) {
       checkAllInstallationStatusesThunk(dispatch);
     }
   }, [state.step]);
 
   // Auto-advance to next step when validation succeeds
   useEffect(() => {
-    if (state.status === 'valid' && state.step === 5) {
-      // Validation passed on final validation step, mark as ready
+    if (state.status === 'valid' && state.step === 3) {
+      // Validation passed on final step, mark as ready
       dispatch({ type: 'MARK_READY' });
     }
   }, [state.status, state.step]);
 
   const handleNext = async () => {
-    // Step 0: Welcome -> Step 1: Choose Tier
-    if (state.step === 0) {
-      dispatch({ type: 'SET_STEP', payload: 1 });
-      return;
+    if (state.step === 1 && !state.hardware) {
+      // Detect hardware before moving to step 2
+      await detectHardwareThunk(dispatch);
     }
 
-    // Step 1: Choose Tier -> Step 2: API Keys (or skip to Step 3 if Free tier)
-    if (state.step === 1) {
-      if (!state.selectedTier) {
-        alert('Please select a tier to continue');
-        return;
-      }
-      
-      // If Free tier, skip API keys step
-      if (state.selectedTier === 'free') {
-        dispatch({ type: 'SET_MODE', payload: 'free' });
-        dispatch({ type: 'SET_STEP', payload: 3 }); // Skip to hardware detection
-      } else {
-        dispatch({ type: 'SET_MODE', payload: 'pro' });
-        dispatch({ type: 'SET_STEP', payload: 2 }); // Go to API keys
-      }
-      return;
-    }
-
-    // Step 2: API Keys -> Step 3: Hardware
     if (state.step === 2) {
-      dispatch({ type: 'SET_STEP', payload: 3 });
-      return;
-    }
-
-    // Step 3: Hardware -> Step 4: Dependencies
-    if (state.step === 3) {
-      if (!state.hardware) {
-        // Detect hardware before moving forward
-        await detectHardwareThunk(dispatch);
-      }
-      dispatch({ type: 'SET_STEP', payload: 4 });
-      return;
-    }
-
-    // Step 4: Dependencies -> Step 5: Validation
-    if (state.step === 4) {
       // Install required items
       const requiredItems = state.installItems.filter((item) => item.required && !item.installed);
       for (const item of requiredItems) {
         await installItemThunk(item.id, dispatch);
       }
-      dispatch({ type: 'SET_STEP', payload: 5 });
-      return;
     }
 
-    // Step 5: Validation -> Step 6: Complete
-    if (state.step === 5) {
+    if (state.step === 3) {
       // Run validation only if not already valid
       if (state.status === 'idle' || state.status === 'installed') {
         await runValidationThunk(state, dispatch);
-        return; // Don't advance yet, wait for validation result
+        return; // Don&apos;t advance yet, wait for validation result
       } else if (state.status === 'valid' || state.status === 'ready') {
-        // Already validated, move to completion
-        dispatch({ type: 'SET_STEP', payload: 6 });
+        // Already validated, complete onboarding
+        completeOnboarding();
         return;
       } else if (state.status === 'invalid') {
-        // Show fix actions, don't advance
+        // Show fix actions, don&apos;t advance
         return;
       }
     }
 
-    // Step 6: Completion - handled by completion step buttons
+    if (state.step < totalSteps - 1) {
+      dispatch({ type: 'SET_STEP', payload: state.step + 1 });
+    }
   };
 
   const handleBack = () => {
     if (state.step > 0) {
-      // If going back from hardware (step 3) and we came from Free tier, go back to tier selection (step 1)
-      if (state.step === 3 && state.selectedTier === 'free') {
-        dispatch({ type: 'SET_STEP', payload: 1 });
-      }
-      // If going back from dependencies (step 4) and we're Pro tier, go to API keys (step 2)
-      else if (state.step === 4 && state.selectedTier === 'pro') {
-        dispatch({ type: 'SET_STEP', payload: 2 });
-      }
-      // Otherwise, go back one step
-      else {
-        dispatch({ type: 'SET_STEP', payload: state.step - 1 });
-      }
-      
-      // Reset validation when going back from validation step
-      if (state.step === 5) {
+      dispatch({ type: 'SET_STEP', payload: state.step - 1 });
+      // Reset validation when going back
+      if (state.step === 3) {
         dispatch({ type: 'RESET_VALIDATION' });
       }
     }
   };
 
-  const handleSaveAndExit = () => {
-    saveWizardStateToStorage(state);
+  const handleSkip = () => {
+    localStorage.setItem('hasSeenOnboarding', 'true');
     navigate('/');
   };
 
-  const handleStepClick = (step: number) => {
-    // Allow clicking on completed steps to go back
-    if (step < state.step) {
-      dispatch({ type: 'SET_STEP', payload: step });
-    }
-  };
-
   const completeOnboarding = () => {
-    clearWizardStateFromStorage();
     localStorage.setItem('hasSeenOnboarding', 'true');
     navigate('/create');
   };
@@ -262,19 +216,24 @@ export function FirstRunWizard() {
   const handleFixAction = (action: FixAction) => {
     switch (action.type) {
       case 'Install':
+        // Navigate to downloads page with the item pre-selected
         navigate(`/downloads?item=${action.parameter}`);
         break;
       case 'Start':
+        // Show instructions for starting the service
         alert(`To start ${action.parameter}, please follow these steps:\n\n${action.description}`);
         break;
       case 'OpenSettings':
+        // Navigate to settings with the specific tab
         navigate(`/settings?tab=${action.parameter}`);
         break;
       case 'SwitchToFree':
+        // Switch to free alternative
         dispatch({ type: 'RESET_VALIDATION' });
         alert(`Switched to ${action.parameter}. Click Validate again to check.`);
         break;
       case 'Help':
+        // Open help URL
         if (action.parameter) {
           window.open(action.parameter, '_blank');
         }
@@ -288,11 +247,14 @@ export function FirstRunWizard() {
     executablePath?: string
   ) => {
     try {
+      // Call attach engine API
       await attachEngine({
         engineId: itemId,
         installPath,
         executablePath,
       });
+
+      // Mark item as installed in state
       dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
     } catch (error) {
       console.error(`Failed to attach ${itemId}:`, error);
@@ -308,51 +270,95 @@ export function FirstRunWizard() {
   };
 
   const handleSkipItem = (itemId: string) => {
+    // Mark item as skipped (treat as installed for progression)
     dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
   };
 
-  const handleApiKeyChange = (provider: string, key: string) => {
-    dispatch({ type: 'SET_API_KEY', payload: { provider, key } });
-  };
+  const renderStep0 = () => (
+    <>
+      <Title2>Welcome to Aura Video Studio!</Title2>
+      <Text>Let&apos;s get you set up in just a few steps. Choose your preferred mode:</Text>
 
-  const handleValidateApiKey = async (provider: string) => {
-    const apiKey = state.apiKeys[provider];
-    if (apiKey) {
-      await validateApiKeyThunk(provider, apiKey, dispatch);
-    }
-  };
+      <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+        <Card
+          className={styles.modeCard}
+          onClick={() => dispatch({ type: 'SET_MODE', payload: 'free' })}
+          style={
+            state.mode === 'free'
+              ? {
+                  borderColor: tokens.colorBrandBackground,
+                  borderWidth: '2px',
+                  borderStyle: 'solid',
+                }
+              : {}
+          }
+        >
+          <Title3>🆓 Free-Only Mode</Title3>
+          <Text>
+            Uses free, always-available providers:
+            <ul>
+              <li>Rule-based script generation</li>
+              <li>Windows built-in text-to-speech</li>
+              <li>Stock images from Pexels/Unsplash</li>
+            </ul>
+            Best for: Getting started quickly with zero setup
+          </Text>
+        </Card>
 
-  const handleSkipAllApiKeys = () => {
-    if (window.confirm('Are you sure you want to skip API key setup? You can add them later in Settings.')) {
-      dispatch({ type: 'SET_STEP', payload: 3 }); // Skip to hardware
-    }
-  };
+        <Card
+          className={styles.modeCard}
+          onClick={() => dispatch({ type: 'SET_MODE', payload: 'local' })}
+          style={
+            state.mode === 'local'
+              ? {
+                  borderColor: tokens.colorBrandBackground,
+                  borderWidth: '2px',
+                  borderStyle: 'solid',
+                }
+              : {}
+          }
+        >
+          <Title3>💻 Local Mode</Title3>
+          <Text>
+            Uses local AI engines for privacy and offline work:
+            <ul>
+              <li>Ollama for script generation</li>
+              <li>Local Piper/Mimic3 TTS</li>
+              <li>Stable Diffusion for visuals (requires NVIDIA GPU)</li>
+            </ul>
+            Best for: Privacy-conscious users with capable hardware
+          </Text>
+        </Card>
 
-  const handleSelectTier = (tier: 'free' | 'pro') => {
-    dispatch({ type: 'SET_TIER', payload: tier });
-  };
-
-  const renderStep0 = () => <WelcomeStep />;
+        <Card
+          className={styles.modeCard}
+          onClick={() => dispatch({ type: 'SET_MODE', payload: 'pro' })}
+          style={
+            state.mode === 'pro'
+              ? {
+                  borderColor: tokens.colorBrandBackground,
+                  borderWidth: '2px',
+                  borderStyle: 'solid',
+                }
+              : {}
+          }
+        >
+          <Title3>⭐ Pro Mode</Title3>
+          <Text>
+            Uses premium cloud APIs for best quality:
+            <ul>
+              <li>OpenAI GPT-4 for scripts</li>
+              <li>ElevenLabs for voices</li>
+              <li>Stability AI/Runway for visuals</li>
+            </ul>
+            Best for: Professional content creators (requires API keys)
+          </Text>
+        </Card>
+      </div>
+    </>
+  );
 
   const renderStep1 = () => (
-    <ChooseTierStep
-      selectedTier={state.selectedTier}
-      onSelectTier={handleSelectTier}
-    />
-  );
-
-  const renderStep2 = () => (
-    <ApiKeySetupStep
-      apiKeys={state.apiKeys}
-      validationStatus={state.apiKeyValidationStatus}
-      validationErrors={state.apiKeyErrors}
-      onApiKeyChange={handleApiKeyChange}
-      onValidateApiKey={handleValidateApiKey}
-      onSkipAll={handleSkipAllApiKeys}
-    />
-  );
-
-  const renderStep3 = () => (
     <>
       <Title2>Hardware Detection</Title2>
 
@@ -366,7 +372,7 @@ export function FirstRunWizard() {
       ) : state.hardware ? (
         <div className={styles.hardwareInfo}>
           <Card>
-            <Title2>System Information</Title2>
+            <Title3>System Information</Title3>
             {state.hardware.gpu && <Text>GPU: {state.hardware.gpu}</Text>}
             {state.hardware.vram && <Text>VRAM: {state.hardware.vram}GB</Text>}
             <Text style={{ marginTop: tokens.spacingVerticalM }}>
@@ -394,7 +400,7 @@ export function FirstRunWizard() {
     </>
   );
 
-  const renderStep4 = () => (
+  const renderStep2 = () => (
     <>
       <Title2>Install Required Components</Title2>
       <Text>We&apos;ll help you install the necessary tools for your chosen mode.</Text>
@@ -424,16 +430,19 @@ export function FirstRunWizard() {
           <li>
             <Text>
               <strong>Install:</strong> Automatically download and install to the default location
+              shown above
             </Text>
           </li>
           <li>
             <Text>
-              <strong>Use Existing:</strong> If you already have it installed, point Aura to its location
+              <strong>Use Existing:</strong> If you already have it installed, point Aura to its
+              location
             </Text>
           </li>
           <li>
             <Text>
-              <strong>Skip:</strong> Skip optional components (you can install them later)
+              <strong>Skip:</strong> Skip optional components (you can install them later from the
+              Downloads page)
             </Text>
           </li>
         </ul>
@@ -470,12 +479,18 @@ export function FirstRunWizard() {
           ))}
         </Card>
       )}
+
+      <Card>
+        <Text>
+          💡 Tip: After installation, you can verify everything is working on the next screen.
+        </Text>
+      </Card>
     </>
   );
 
-  const renderStep5 = () => (
+  const renderStep3 = () => (
     <>
-      <Title2>Validation & Preflight Checks</Title2>
+      <Title2>Validation & Demo</Title2>
 
       {state.status === 'validating' ? (
         <Card>
@@ -486,18 +501,45 @@ export function FirstRunWizard() {
         </Card>
       ) : state.status === 'valid' || state.status === 'ready' ? (
         <>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-              <Checkmark24Regular
-                style={{ fontSize: '32px', color: tokens.colorPaletteGreenForeground1 }}
-              />
-              <div>
-                <Title2>All Checks Passed!</Title2>
-                <Text>Your system is ready to create videos.</Text>
-              </div>
+          <div className={styles.successCard}>
+            <Checkmark24Regular
+              style={{ fontSize: '64px', color: tokens.colorPaletteGreenForeground1 }}
+            />
+            <Title1 style={{ marginTop: tokens.spacingVerticalL }}>All Set!</Title1>
+            <Text style={{ marginTop: tokens.spacingVerticalM }}>
+              Your system is ready to create amazing videos. Let&apos;s create your first project!
+            </Text>
+            <div
+              style={{
+                display: 'flex',
+                gap: tokens.spacingHorizontalM,
+                justifyContent: 'center',
+                marginTop: tokens.spacingVerticalXL,
+              }}
+            >
+              <Button
+                appearance="primary"
+                size="large"
+                icon={<VideoClip24Regular />}
+                onClick={completeOnboarding}
+              >
+                Create My First Video
+              </Button>
+              <Button
+                appearance="secondary"
+                size="large"
+                icon={<Settings24Regular />}
+                onClick={() => {
+                  localStorage.setItem('hasSeenOnboarding', 'true');
+                  navigate('/settings');
+                }}
+              >
+                Go to Settings
+              </Button>
             </div>
-          </Card>
+          </div>
 
+          {/* Show file locations summary */}
           <FileLocationsSummary />
         </>
       ) : state.status === 'invalid' && state.lastValidation ? (
@@ -508,9 +550,9 @@ export function FirstRunWizard() {
                 style={{ fontSize: '32px', color: tokens.colorPaletteRedForeground1 }}
               />
               <div>
-                <Title2>Validation Failed</Title2>
+                <Title3>Validation Failed</Title3>
                 <Text>
-                  Some providers are not available. Please fix the issues below or click Next to continue anyway.
+                  Some providers are not available. Please fix the issues below to continue.
                 </Text>
               </div>
             </div>
@@ -518,7 +560,7 @@ export function FirstRunWizard() {
 
           {state.lastValidation.failedStages.map((stage, index) => (
             <Card key={index}>
-              <Title2>{stage.stage} Stage</Title2>
+              <Title3>{stage.stage} Stage</Title3>
               <Text>
                 <strong>Provider:</strong> {stage.provider}
               </Text>
@@ -561,6 +603,10 @@ export function FirstRunWizard() {
               )}
             </Card>
           ))}
+
+          <Card>
+            <Text>After fixing the issues, click Validate again to re-check your setup.</Text>
+          </Card>
         </>
       ) : (
         <Card>
@@ -572,33 +618,6 @@ export function FirstRunWizard() {
     </>
   );
 
-  const renderStep6 = () => {
-    const validApiKeys = Object.entries(state.apiKeyValidationStatus)
-      .filter(([_, status]) => status === 'valid')
-      .map(([provider]) => provider);
-
-    const installedComponents = state.installItems
-      .filter((item) => item.installed)
-      .map((item) => item.name);
-
-    return (
-      <CompletionStep
-        summary={{
-          tier: state.selectedTier || 'free',
-          apiKeysConfigured: validApiKeys,
-          hardwareDetected: !!state.hardware,
-          componentsInstalled: installedComponents,
-        }}
-        onCreateFirstVideo={completeOnboarding}
-        onExploreApp={() => {
-          clearWizardStateFromStorage();
-          localStorage.setItem('hasSeenOnboarding', 'true');
-          navigate('/');
-        }}
-      />
-    );
-  };
-
   const renderStepContent = () => {
     switch (state.step) {
       case 0:
@@ -609,45 +628,35 @@ export function FirstRunWizard() {
         return renderStep2();
       case 3:
         return renderStep3();
-      case 4:
-        return renderStep4();
-      case 5:
-        return renderStep5();
-      case 6:
-        return renderStep6();
       default:
         return null;
     }
   };
 
-  const buttonLabel = state.step === 5 ? (
-    state.status === 'idle' || state.status === 'installed' ? 'Validate' : 
-    state.status === 'invalid' ? 'Next Anyway' : 'Next'
-  ) : 'Next';
-  const buttonDisabled = 
-    (state.step === 1 && !state.selectedTier) ||
-    state.isDetectingHardware ||
-    state.status === 'validating' ||
-    state.status === 'installing';
+  const isLastStep = state.step === totalSteps - 1;
+  const buttonLabel = getButtonLabel(state.status, isLastStep);
+  const buttonDisabled = isButtonDisabled(state.status, state.isDetectingHardware);
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <WizardProgress
-          currentStep={state.step}
-          totalSteps={totalSteps}
-          stepLabels={stepLabels}
-          onStepClick={handleStepClick}
-          onSaveAndExit={state.step < totalSteps - 1 ? handleSaveAndExit : undefined}
-        />
+        <Title1>First-Run Setup</Title1>
+        <div className={styles.steps}>
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <div
+              key={i}
+              className={`${styles.step} ${i === state.step ? styles.stepActive : ''} ${i < state.step ? styles.stepCompleted : ''}`}
+            />
+          ))}
+        </div>
       </div>
 
       <div className={styles.content}>{renderStepContent()}</div>
 
-      {state.step < totalSteps - 1 && (
+      {state.status !== 'ready' && (
         <div className={styles.footer}>
-          <Button appearance="subtle" onClick={handleSaveAndExit}>
-            Save and Exit
+          <Button appearance="subtle" onClick={handleSkip}>
+            Skip Setup
           </Button>
 
           <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
@@ -666,6 +675,8 @@ export function FirstRunWizard() {
               icon={
                 state.status === 'validating' || state.status === 'installing' ? (
                   <Spinner size="tiny" />
+                ) : isLastStep ? (
+                  <Play24Regular />
                 ) : (
                   <ChevronRight24Regular />
                 )
