@@ -159,8 +159,8 @@ public class TransitionRecommenderTests
 
         var brief = new Brief(
             "Test Topic",
-            "General",
             "Engage viewers",
+            "General",
             "Casual",
             "English",
             Aspect.Vertical9x16
