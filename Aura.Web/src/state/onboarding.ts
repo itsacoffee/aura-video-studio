@@ -17,6 +17,7 @@ export type WizardStatus =
   | 'ready'; // All set, wizard complete
 
 export type WizardMode = 'free' | 'local' | 'pro';
+export type TierSelection = 'free' | 'pro' | null;
 
 export interface WizardValidation {
   correlationId: string;
@@ -28,6 +29,7 @@ export interface WizardValidation {
 export interface OnboardingState {
   step: number;
   mode: WizardMode;
+  selectedTier: TierSelection;
   status: WizardStatus;
   lastValidation: WizardValidation | null;
   errors: string[];
@@ -47,11 +49,15 @@ export interface OnboardingState {
     installed: boolean;
     installing: boolean;
   }>;
+  apiKeys: Record<string, string>;
+  apiKeyValidationStatus: Record<string, 'idle' | 'validating' | 'valid' | 'invalid'>;
+  apiKeyErrors: Record<string, string>;
 }
 
 export const initialOnboardingState: OnboardingState = {
   step: 0,
   mode: 'free',
+  selectedTier: null,
   status: 'idle',
   lastValidation: null,
   errors: [],
@@ -88,12 +94,16 @@ export const initialOnboardingState: OnboardingState = {
       installing: false,
     },
   ],
+  apiKeys: {},
+  apiKeyValidationStatus: {},
+  apiKeyErrors: {},
 };
 
 // Action types
 export type OnboardingAction =
   | { type: 'SET_STEP'; payload: number }
   | { type: 'SET_MODE'; payload: WizardMode }
+  | { type: 'SET_TIER'; payload: TierSelection }
   | { type: 'SET_STATUS'; payload: WizardStatus }
   | { type: 'START_VALIDATION' }
   | { type: 'VALIDATION_SUCCESS'; payload: { report: PreflightReport; correlationId: string } }
@@ -105,7 +115,12 @@ export type OnboardingAction =
   | { type: 'INSTALL_COMPLETE'; payload: string }
   | { type: 'INSTALL_FAILED'; payload: { itemId: string; error: string } }
   | { type: 'MARK_READY' }
-  | { type: 'RESET_VALIDATION' };
+  | { type: 'RESET_VALIDATION' }
+  | { type: 'SET_API_KEY'; payload: { provider: string; key: string } }
+  | { type: 'START_API_KEY_VALIDATION'; payload: string }
+  | { type: 'API_KEY_VALID'; payload: { provider: string; accountInfo?: string } }
+  | { type: 'API_KEY_INVALID'; payload: { provider: string; error: string } }
+  | { type: 'LOAD_FROM_STORAGE'; payload: Partial<OnboardingState> };
 
 // Reducer
 export function onboardingReducer(
@@ -118,6 +133,9 @@ export function onboardingReducer(
 
     case 'SET_MODE':
       return { ...state, mode: action.payload };
+
+    case 'SET_TIER':
+      return { ...state, selectedTier: action.payload };
 
     case 'SET_STATUS':
       return { ...state, status: action.payload };
@@ -227,6 +245,60 @@ export function onboardingReducer(
         status: 'idle',
         lastValidation: null,
         errors: [],
+      };
+
+    case 'SET_API_KEY':
+      return {
+        ...state,
+        apiKeys: {
+          ...state.apiKeys,
+          [action.payload.provider]: action.payload.key,
+        },
+      };
+
+    case 'START_API_KEY_VALIDATION':
+      return {
+        ...state,
+        apiKeyValidationStatus: {
+          ...state.apiKeyValidationStatus,
+          [action.payload]: 'validating',
+        },
+        apiKeyErrors: {
+          ...state.apiKeyErrors,
+          [action.payload]: '',
+        },
+      };
+
+    case 'API_KEY_VALID':
+      return {
+        ...state,
+        apiKeyValidationStatus: {
+          ...state.apiKeyValidationStatus,
+          [action.payload.provider]: 'valid',
+        },
+        apiKeyErrors: {
+          ...state.apiKeyErrors,
+          [action.payload.provider]: '',
+        },
+      };
+
+    case 'API_KEY_INVALID':
+      return {
+        ...state,
+        apiKeyValidationStatus: {
+          ...state.apiKeyValidationStatus,
+          [action.payload.provider]: 'invalid',
+        },
+        apiKeyErrors: {
+          ...state.apiKeyErrors,
+          [action.payload.provider]: action.payload.error,
+        },
+      };
+
+    case 'LOAD_FROM_STORAGE':
+      return {
+        ...state,
+        ...action.payload,
       };
 
     default:
@@ -486,4 +558,135 @@ export async function checkAllInstallationStatusesThunk(
     checkInstallationStatusThunk('ollama', dispatch),
     checkInstallationStatusThunk('stable-diffusion', dispatch),
   ]);
+}
+
+// Validate API key
+export async function validateApiKeyThunk(
+  provider: string,
+  apiKey: string,
+  dispatch: React.Dispatch<OnboardingAction>
+): Promise<void> {
+  dispatch({ type: 'START_API_KEY_VALIDATION', payload: provider });
+
+  try {
+    // Client-side format validation
+    const formatValidation = validateApiKeyFormat(provider, apiKey);
+    if (!formatValidation.valid) {
+      dispatch({
+        type: 'API_KEY_INVALID',
+        payload: { provider, error: formatValidation.error || 'Invalid API key format' },
+      });
+      return;
+    }
+
+    // Mock validation for now - in PR #2, this will call actual backend validation
+    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API call
+
+    // Mock success (80% success rate for testing)
+    const isSuccess = Math.random() > 0.2;
+    if (isSuccess) {
+      dispatch({
+        type: 'API_KEY_VALID',
+        payload: { provider, accountInfo: 'API key validated successfully' },
+      });
+    } else {
+      dispatch({
+        type: 'API_KEY_INVALID',
+        payload: {
+          provider,
+          error: 'This API key is invalid. Please check you copied it correctly.',
+        },
+      });
+    }
+  } catch (error) {
+    dispatch({
+      type: 'API_KEY_INVALID',
+      payload: {
+        provider,
+        error: 'Could not connect. Check your internet connection.',
+      },
+    });
+  }
+}
+
+// Validate API key format
+function validateApiKeyFormat(provider: string, apiKey: string): { valid: boolean; error?: string } {
+  if (!apiKey || apiKey.trim() === '') {
+    return { valid: false, error: 'Please enter your API key' };
+  }
+
+  switch (provider) {
+    case 'openai':
+      if (!apiKey.startsWith('sk-')) {
+        return { valid: false, error: 'OpenAI API keys start with "sk-"' };
+      }
+      break;
+    case 'anthropic':
+      if (!apiKey.startsWith('sk-ant-')) {
+        return { valid: false, error: 'Anthropic API keys start with "sk-ant-"' };
+      }
+      break;
+    case 'gemini':
+      if (apiKey.length !== 39) {
+        return { valid: false, error: 'Google Gemini API keys are 39 characters long' };
+      }
+      break;
+    case 'replicate':
+      if (!apiKey.startsWith('r8_')) {
+        return { valid: false, error: 'Replicate API keys start with "r8_"' };
+      }
+      break;
+    case 'elevenlabs':
+      if (apiKey.length !== 32) {
+        return { valid: false, error: 'ElevenLabs API keys are 32 characters long' };
+      }
+      break;
+    case 'playht':
+      if (!apiKey.includes(':')) {
+        return { valid: false, error: 'PlayHT requires both User ID and Secret Key (format: userId:secretKey)' };
+      }
+      break;
+  }
+
+  return { valid: true };
+}
+
+// Save wizard state to localStorage
+export function saveWizardStateToStorage(state: OnboardingState): void {
+  try {
+    const stateToSave = {
+      step: state.step,
+      selectedTier: state.selectedTier,
+      mode: state.mode,
+      apiKeys: state.apiKeys,
+      apiKeyValidationStatus: state.apiKeyValidationStatus,
+      hardware: state.hardware,
+      installItems: state.installItems,
+    };
+    localStorage.setItem('wizardProgress', JSON.stringify(stateToSave));
+  } catch (error) {
+    console.error('Failed to save wizard state:', error);
+  }
+}
+
+// Load wizard state from localStorage
+export function loadWizardStateFromStorage(): Partial<OnboardingState> | null {
+  try {
+    const saved = localStorage.getItem('wizardProgress');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (error) {
+    console.error('Failed to load wizard state:', error);
+  }
+  return null;
+}
+
+// Clear wizard state from localStorage
+export function clearWizardStateFromStorage(): void {
+  try {
+    localStorage.removeItem('wizardProgress');
+  } catch (error) {
+    console.error('Failed to clear wizard state:', error);
+  }
 }
