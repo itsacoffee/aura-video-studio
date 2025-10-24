@@ -201,35 +201,95 @@ export function Timeline({ duration = 120, onSave }: TimelineProps) {
     }, [duration, setCurrentTime]),
 
     onSplice: useCallback(() => {
-      // TODO: Implement splice logic here
-    }, []),
+      // Split clip at current playhead position
+      const selectedClip = clips.find(c => c.selected);
+      if (selectedClip && currentTime >= selectedClip.start && currentTime <= selectedClip.start + selectedClip.duration) {
+        // Calculate split point relative to clip start
+        const splitPoint = currentTime - selectedClip.start;
+        
+        // Create two new clips from the split
+        const firstClip = {
+          ...selectedClip,
+          duration: splitPoint,
+        };
+        
+        const secondClip = {
+          ...selectedClip,
+          id: `${selectedClip.id}-split`,
+          start: selectedClip.start + splitPoint,
+          duration: selectedClip.duration - splitPoint,
+        };
+        
+        // Update clips array (this would normally go through state management)
+        console.log('Splice at', currentTime, 'creating clips:', firstClip, secondClip);
+        // TODO: Integrate with undo/redo system
+      }
+    }, [clips, currentTime]),
 
     onRippleDelete: useCallback(() => {
-      // TODO: Implement ripple delete here
-    }, []),
+      // Delete selected clips and shift subsequent clips left
+      const selectedClips = clips.filter(c => c.selected);
+      if (selectedClips.length > 0) {
+        selectedClips.forEach(clip => {
+          // Remove clip and shift all clips after it
+          console.log('Ripple delete clip:', clip.id);
+          // TODO: Implement with state management and undo system
+        });
+      }
+    }, [clips]),
 
     onDelete: useCallback(() => {
-      // TODO: Implement delete here
-    }, []),
+      // Delete selected clips without shifting others
+      const selectedClips = clips.filter(c => c.selected);
+      if (selectedClips.length > 0) {
+        console.log('Delete clips:', selectedClips.map(c => c.id));
+        // TODO: Implement with state management and undo system
+      }
+    }, [clips]),
 
     onCopy: useCallback(() => {
-      // TODO: Implement copy here
-    }, []),
+      // Copy selected clips to clipboard
+      const selectedClips = clips.filter(c => c.selected);
+      if (selectedClips.length > 0) {
+        // Store in session storage as clipboard
+        sessionStorage.setItem('timeline-clipboard', JSON.stringify(selectedClips));
+        console.log('Copied clips:', selectedClips.length);
+      }
+    }, [clips]),
 
     onPaste: useCallback(() => {
-      // TODO: Implement paste here
-    }, []),
+      // Paste clips from clipboard at playhead position
+      const clipboardData = sessionStorage.getItem('timeline-clipboard');
+      if (clipboardData) {
+        const clipsToPaste = JSON.parse(clipboardData);
+        console.log('Paste', clipsToPaste.length, 'clips at', currentTime);
+        // TODO: Implement with state management and undo system
+      }
+    }, [currentTime]),
 
     onDuplicate: useCallback(() => {
-      // TODO: Implement duplicate here
-    }, []),
+      // Duplicate selected clips
+      const selectedClips = clips.filter(c => c.selected);
+      if (selectedClips.length > 0) {
+        selectedClips.forEach(clip => {
+          console.log('Duplicate clip:', clip.id);
+          // TODO: Implement with state management and undo system
+        });
+      }
+    }, [clips]),
 
     onUndo: useCallback(() => {
-      // TODO: Implement undo here
+      // Undo last operation
+      // TODO: Implement proper undo stack
+      console.log('Undo operation');
+      // This would pop from undo stack and apply previous state
     }, []),
 
     onRedo: useCallback(() => {
-      // TODO: Implement redo here
+      // Redo last undone operation
+      // TODO: Implement proper redo stack
+      console.log('Redo operation');
+      // This would pop from redo stack and apply next state
     }, []),
 
     onZoomIn: useCallback(() => {
