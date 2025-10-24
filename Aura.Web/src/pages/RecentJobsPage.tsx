@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -205,8 +206,23 @@ export function RecentJobsPage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const openFolder = (_path: string) => {
-    // TODO: Implement via an API call to open the folder
+  const openFolder = async (path: string) => {
+    try {
+      // Call API to open the folder containing the file
+      const response = await fetch(`${apiUrl}/api/v1/files/open-folder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to open folder:', await response.text());
+        alert('Failed to open folder. This feature requires backend API support.');
+      }
+    } catch (error) {
+      console.error('Error opening folder:', error);
+      alert('Could not open folder. Ensure the backend API is running.');
+    }
   };
 
   const filteredJobs = jobs.filter((job) => {

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -74,12 +76,14 @@ public class SmartRenderer
 {
     private readonly ILogger<SmartRenderer> _logger;
     private readonly string _cacheDirectory;
+    private readonly string _ffmpegPath;
     private const int MaxCachedRenders = 3;
 
-    public SmartRenderer(ILogger<SmartRenderer> logger, string cacheDirectory)
+    public SmartRenderer(ILogger<SmartRenderer> logger, string cacheDirectory, string ffmpegPath = "ffmpeg")
     {
         _logger = logger;
         _cacheDirectory = cacheDirectory;
+        _ffmpegPath = ffmpegPath;
         
         // Ensure cache directory exists
         Directory.CreateDirectory(_cacheDirectory);
@@ -244,8 +248,8 @@ public class SmartRenderer
                     scenePlan.SceneIndex, scenePlan.Status
                 );
 
-                // TODO: Actual scene rendering would happen here
-                // For now, we'll just log the intent
+                // Render the individual scene
+                await RenderSingleSceneAsync(scene, preset, sceneOutputPath, cancellationToken);
                 
                 sceneOutputs[scenePlan.SceneIndex] = sceneOutputPath;
                 completedScenes++;
@@ -297,14 +301,10 @@ public class SmartRenderer
             await File.WriteAllLinesAsync(concatListPath, lines, cancellationToken);
 
             // Use FFmpeg concat demuxer with stream copy (fast)
-            // TODO: Actual FFmpeg execution would happen here
+            var ffmpegArgs = $"-f concat -safe 0 -i \"{concatListPath}\" -c copy -y \"{outputPath}\"";
             _logger.LogInformation("Stitching scenes with FFmpeg concat demuxer");
             
-            // For now, we'll just copy the first scene as a placeholder
-            if (sceneOutputs.Count > 0 && File.Exists(sceneOutputs.First().Value))
-            {
-                File.Copy(sceneOutputs.First().Value, outputPath, overwrite: true);
-            }
+            await ExecuteFFmpegAsync(ffmpegArgs, cancellationToken);
         }
         finally
         {
@@ -452,6 +452,153 @@ public class SmartRenderer
         var inputBytes = Encoding.UTF8.GetBytes(input);
         var hash = md5.ComputeHash(inputBytes);
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Renders a single scene to video file
+    /// </summary>
+    private async Task RenderSingleSceneAsync(
+        TimelineScene scene,
+        ExportPreset preset,
+        string outputPath,
+        CancellationToken cancellationToken)
+    {
+        var args = new StringBuilder();
+        
+        // Input files for visual assets
+        foreach (var asset in scene.VisualAssets.Where(a => File.Exists(a.FilePath)))
+        {
+            args.AppendFormat(CultureInfo.InvariantCulture, "-i \"{0}\" ", asset.FilePath);
+        }
+        
+        // Input narration audio if present
+        if (!string.IsNullOrEmpty(scene.NarrationAudioPath) && File.Exists(scene.NarrationAudioPath))
+        {
+            args.AppendFormat(CultureInfo.InvariantCulture, "-i \"{0}\" ", scene.NarrationAudioPath);
+        }
+        
+        // Build filter for visual composition
+        var filterComplex = BuildSceneFilterComplex(scene, preset);
+        if (!string.IsNullOrEmpty(filterComplex))
+        {
+            args.AppendFormat(CultureInfo.InvariantCulture, "-filter_complex \"{0}\" ", filterComplex);
+            args.Append("-map \"[outv]\" ");
+        }
+        
+        // Map audio
+        if (!string.IsNullOrEmpty(scene.NarrationAudioPath) && File.Exists(scene.NarrationAudioPath))
+        {
+            var audioInputIndex = scene.VisualAssets.Count;
+            args.AppendFormat(CultureInfo.InvariantCulture, "-map {0}:a ", audioInputIndex);
+        }
+        
+        // Video encoding settings from preset
+        args.AppendFormat(CultureInfo.InvariantCulture,
+            "-c:v libx264 -preset medium -crf 23 -b:v {0}k ",
+            preset.VideoBitrate / 1000);
+        
+        // Audio encoding
+        args.Append("-c:a aac -b:a 192k ");
+        
+        // Frame rate
+        args.AppendFormat(CultureInfo.InvariantCulture, "-r {0} ", preset.FrameRate);
+        
+        // Duration
+        args.AppendFormat(CultureInfo.InvariantCulture, "-t {0} ", scene.Duration.TotalSeconds);
+        
+        // Pixel format and output
+        args.Append("-pix_fmt yuv420p -y ");
+        args.AppendFormat(CultureInfo.InvariantCulture, "\"{0}\"", outputPath);
+        
+        await ExecuteFFmpegAsync(args.ToString(), cancellationToken);
+    }
+
+    /// <summary>
+    /// Builds filter complex for a single scene
+    /// </summary>
+    private string BuildSceneFilterComplex(TimelineScene scene, ExportPreset preset)
+    {
+        if (scene.VisualAssets.Count == 0)
+        {
+            return string.Empty;
+        }
+        
+        var filter = new StringBuilder();
+        var width = preset.Resolution.Width;
+        var height = preset.Resolution.Height;
+        
+        // Start with base layer (first asset)
+        filter.AppendFormat(CultureInfo.InvariantCulture,
+            "[0:v]scale={0}:{1}:force_original_aspect_ratio=decrease,pad={0}:{1}:(ow-iw)/2:(oh-ih)/2,setsar=1[base];",
+            width, height);
+        
+        // Overlay additional assets
+        var currentLayer = "base";
+        for (int i = 1; i < scene.VisualAssets.Count; i++)
+        {
+            var asset = scene.VisualAssets[i];
+            var nextLayer = i == scene.VisualAssets.Count - 1 ? "outv" : $"layer{i}";
+            
+            filter.AppendFormat(CultureInfo.InvariantCulture,
+                "[{0}:v]scale={1}:{2}[overlay{0}];",
+                i, (int)(asset.Position.Width * width), (int)(asset.Position.Height * height));
+            
+            filter.AppendFormat(CultureInfo.InvariantCulture,
+                "[{0}][overlay{1}]overlay={2}:{3}[{4}];",
+                currentLayer, i,
+                (int)(asset.Position.X * width),
+                (int)(asset.Position.Y * height),
+                nextLayer);
+            
+            currentLayer = nextLayer;
+        }
+        
+        // If only one asset, rename to outv
+        if (scene.VisualAssets.Count == 1)
+        {
+            filter.Append("[base]copy[outv]");
+        }
+        
+        return filter.ToString().TrimEnd(';');
+    }
+
+    /// <summary>
+    /// Executes FFmpeg with the given arguments
+    /// </summary>
+    private async Task ExecuteFFmpegAsync(string arguments, CancellationToken cancellationToken)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = _ffmpegPath,
+            Arguments = arguments,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = new Process { StartInfo = startInfo };
+        var errorOutput = new StringBuilder();
+
+        process.ErrorDataReceived += (sender, e) =>
+        {
+            if (!string.IsNullOrEmpty(e.Data))
+            {
+                errorOutput.AppendLine(e.Data);
+            }
+        };
+
+        process.Start();
+        process.BeginErrorReadLine();
+
+        await process.WaitForExitAsync(cancellationToken);
+
+        if (process.ExitCode != 0)
+        {
+            _logger.LogError("FFmpeg failed with exit code {ExitCode}. Output: {Output}",
+                process.ExitCode, errorOutput.ToString());
+            throw new InvalidOperationException($"FFmpeg rendering failed with exit code {process.ExitCode}");
+        }
     }
 }
 

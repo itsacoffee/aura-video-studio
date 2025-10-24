@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models.Export;
 using Aura.Core.Models.Timeline;
+using Aura.Core.Services.Editor;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Render;
@@ -20,10 +21,12 @@ public record TimeRange(TimeSpan Start, TimeSpan End, int HandleFrames = 0);
 public class SectionRenderer
 {
     private readonly ILogger<SectionRenderer> _logger;
+    private readonly TimelineRenderer _timelineRenderer;
 
-    public SectionRenderer(ILogger<SectionRenderer> logger)
+    public SectionRenderer(ILogger<SectionRenderer> logger, TimelineRenderer timelineRenderer)
     {
         _logger = logger;
+        _timelineRenderer = timelineRenderer;
     }
 
     /// <summary>
@@ -77,11 +80,32 @@ public class SectionRenderer
             trimmedTimeline.Scenes.Count, trimmedTimeline.TotalDuration
         );
 
-        // TODO: Render the trimmed timeline using standard renderer
-        // For now, just log the intent
-        progress?.Report(100);
+        // Render the trimmed timeline using TimelineRenderer
+        var renderSpec = ConvertPresetToRenderSpec(preset);
+        await _timelineRenderer.GenerateFinalAsync(
+            trimmedTimeline,
+            renderSpec,
+            outputPath,
+            progress,
+            cancellationToken);
 
         return outputPath;
+    }
+
+    /// <summary>
+    /// Converts ExportPreset to RenderSpec for TimelineRenderer
+    /// </summary>
+    private Models.RenderSpec ConvertPresetToRenderSpec(ExportPreset preset)
+    {
+        return new Models.RenderSpec(
+            Res: new Models.Resolution(preset.Resolution.Width, preset.Resolution.Height),
+            Container: preset.Container,
+            VideoBitrateK: preset.VideoBitrate / 1000,
+            AudioBitrateK: preset.AudioBitrate / 1000,
+            Fps: preset.FrameRate,
+            Codec: "H264",
+            QualityLevel: 75
+        );
     }
 
     /// <summary>

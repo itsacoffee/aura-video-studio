@@ -153,8 +153,13 @@ export const PlatformDashboard: React.FC = () => {
 
         {selectedTab === 'platforms' && (
           <PlatformSelector
-            onPlatformsSelected={(_platforms) => {
-              // TODO: Handle platform selection
+            onPlatformsSelected={(platforms) => {
+              // Handle platform selection - could navigate or update state
+              console.log('Selected platforms:', platforms);
+              // Example: navigate to create page with platforms pre-selected
+              if (platforms.length > 0) {
+                window.location.href = `/create?platforms=${platforms.join(',')}`;
+              }
             }}
           />
         )}
