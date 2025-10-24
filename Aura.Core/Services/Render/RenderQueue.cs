@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models.Export;
 using Aura.Core.Models.Timeline;
+using Aura.Core.Services.Editor;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Render;
@@ -71,6 +72,7 @@ public record QueueStatistics(
 public class RenderQueue
 {
     private readonly ILogger<RenderQueue> _logger;
+    private readonly TimelineRenderer _timelineRenderer;
     private readonly string _queuePersistencePath;
     private readonly ConcurrentDictionary<string, RenderQueueItem> _queue;
     private readonly SemaphoreSlim _processingLock;
@@ -79,9 +81,10 @@ public class RenderQueue
     private Task? _processingTask;
     private CancellationTokenSource? _processingCancellation;
 
-    public RenderQueue(ILogger<RenderQueue> logger, string persistenceDirectory)
+    public RenderQueue(ILogger<RenderQueue> logger, TimelineRenderer timelineRenderer, string persistenceDirectory)
     {
         _logger = logger;
+        _timelineRenderer = timelineRenderer;
         _queuePersistencePath = Path.Combine(persistenceDirectory, "render_queue.json");
         _queue = new ConcurrentDictionary<string, RenderQueueItem>();
         _processingLock = new SemaphoreSlim(1, 1);
@@ -373,20 +376,21 @@ public class RenderQueue
                     throw new InvalidOperationException("Failed to deserialize timeline");
                 }
 
-                // TODO: Actual rendering would happen here
-                // For now, simulate render with progress updates
-                for (int i = 0; i <= 100; i += 10)
+                // Render the timeline using TimelineRenderer
+                var renderSpec = ConvertPresetToRenderSpec(nextItem.Preset);
+                
+                var renderProgress = new Progress<int>(percent =>
                 {
-                    if (_currentRenderCancellation.Token.IsCancellationRequested)
-                    {
-                        throw new OperationCanceledException("Render cancelled by user");
-                    }
-
-                    var progressItem = renderingItem with { Progress = i };
+                    var progressItem = renderingItem with { Progress = percent };
                     _queue[nextItem.Id] = progressItem;
-                    
-                    await Task.Delay(TimeSpan.FromSeconds(1), _currentRenderCancellation.Token);
-                }
+                });
+
+                await _timelineRenderer.GenerateFinalAsync(
+                    timeline,
+                    renderSpec,
+                    nextItem.OutputPath,
+                    renderProgress,
+                    _currentRenderCancellation.Token);
 
                 var renderTime = DateTime.UtcNow - startTime;
 
@@ -548,5 +552,21 @@ public class RenderQueue
         {
             _logger.LogWarning(ex, "Failed to load persisted render queue");
         }
+    }
+
+    /// <summary>
+    /// Converts ExportPreset to RenderSpec
+    /// </summary>
+    private Models.RenderSpec ConvertPresetToRenderSpec(ExportPreset preset)
+    {
+        return new Models.RenderSpec(
+            Res: new Models.Resolution(preset.Resolution.Width, preset.Resolution.Height),
+            Container: preset.Container,
+            VideoBitrateK: preset.VideoBitrate / 1000,
+            AudioBitrateK: preset.AudioBitrate / 1000,
+            Fps: preset.FrameRate,
+            Codec: "H264",
+            QualityLevel: 75
+        );
     }
 }
