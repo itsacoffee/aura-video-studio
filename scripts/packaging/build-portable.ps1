@@ -126,6 +126,13 @@ try {
             Write-Host "      ✓ npm dependencies already installed" -ForegroundColor Green
         }
         
+        # Clean dist directory for a fresh build
+        if (Test-Path "dist") {
+            Write-Host "      Removing old dist directory..." -ForegroundColor Gray
+            Remove-Item -Recurse -Force dist
+            Write-Host "      ✓ Old dist directory removed" -ForegroundColor Green
+        }
+        
         Write-Host "      Building frontend..." -ForegroundColor Gray
         # Capture output to reduce noise, but show on error
         $buildOutput = npm run build --silent 2>&1
@@ -134,6 +141,67 @@ try {
             Write-Host "Build output: $buildOutput" -ForegroundColor Red
             throw "npm build failed. Error: $buildOutput`n`nThis may be due to TypeScript compilation errors or other build issues."
         }
+        
+        # Validate the build output
+        Write-Host "      Validating build output..." -ForegroundColor Gray
+        $validationErrors = @()
+        
+        # Check 1: Verify dist/index.html exists
+        if (-not (Test-Path "dist\index.html")) {
+            $validationErrors += "index.html not found in dist folder"
+        }
+        
+        # Check 2: Verify dist/assets folder exists
+        if (-not (Test-Path "dist\assets")) {
+            $validationErrors += "assets folder not found in dist folder"
+        }
+        
+        # Check 3: Count JavaScript files in dist/assets
+        $jsFileCount = 0
+        if (Test-Path "dist\assets") {
+            $jsFileCount = (Get-ChildItem "dist\assets" -Filter "*.js" -File).Count
+            if ($jsFileCount -eq 0) {
+                $validationErrors += "No JavaScript bundles found in dist/assets"
+            }
+        }
+        
+        # Check 4 & 5: Verify HTML transformation
+        if (Test-Path "dist\index.html") {
+            $indexContent = Get-Content "dist\index.html" -Raw
+            
+            # Check for development path (should NOT be present)
+            if ($indexContent -match 'src="/src/main\.tsx"') {
+                $validationErrors += "HTML not transformed: still contains development path 'src=""/src/main.tsx""'"
+                # Show actual script tags for diagnostics
+                $scriptTags = Select-String -Path "dist\index.html" -Pattern '<script[^>]*>' -AllMatches | ForEach-Object { $_.Matches.Value }
+                Write-Host "      Found script tags in index.html:" -ForegroundColor Yellow
+                foreach ($tag in $scriptTags) {
+                    Write-Host "        $tag" -ForegroundColor Yellow
+                }
+            }
+            
+            # Check for production path (should be present)
+            if ($indexContent -notmatch 'src="/assets/') {
+                $validationErrors += "HTML not transformed: does not contain production path 'src=""/assets/""'"
+            }
+        }
+        
+        # Report validation results
+        if ($validationErrors.Count -gt 0) {
+            Write-Host ""
+            Write-Host "      ✗ Build validation failed:" -ForegroundColor Red
+            foreach ($error in $validationErrors) {
+                Write-Host "        - $error" -ForegroundColor Red
+            }
+            throw "Frontend build validation failed. Please check the errors above."
+        } else {
+            Write-Host "      Build validation passed:" -ForegroundColor Green
+            Write-Host "        - index.html: ✓" -ForegroundColor Green
+            Write-Host "        - assets folder: ✓" -ForegroundColor Green
+            Write-Host "        - JavaScript bundles: $jsFileCount files" -ForegroundColor Green
+            Write-Host "        - HTML transformation: ✓" -ForegroundColor Green
+        }
+        
         Write-Host "      ✓ Frontend build complete" -ForegroundColor Green
     }
     finally {
