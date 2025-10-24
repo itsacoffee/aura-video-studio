@@ -18,17 +18,24 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     justifyContent: 'space-between',
     border: `2px solid ${tokens.colorNeutralStroke1}`,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     ':hover': {
       backgroundColor: tokens.colorBrandBackgroundHover,
+      transform: 'translateY(-2px)',
+      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
     },
   },
   sceneBlockSelected: {
     border: `3px solid ${tokens.colorBrandForeground1}`,
     backgroundColor: tokens.colorBrandBackground2,
+    boxShadow: `0 0 12px ${tokens.colorBrandBackground}`,
+    transform: 'scale(1.02)',
   },
   sceneBlockDragging: {
     opacity: 0.5,
     cursor: 'grabbing',
+    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
   },
   sceneContent: {
     color: tokens.colorNeutralForegroundOnBrand,
@@ -42,6 +49,7 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase100,
     color: tokens.colorNeutralForegroundOnBrand,
     opacity: 0.8,
+    fontFamily: 'monospace',
   },
   trimHandle: {
     position: 'absolute',
@@ -51,8 +59,10 @@ const useStyles = makeStyles({
     cursor: 'ew-resize',
     backgroundColor: 'transparent',
     zIndex: 10,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
     ':hover': {
       backgroundColor: tokens.colorBrandBackgroundHover,
+      width: '12px',
     },
   },
   trimHandleLeft: {
@@ -63,6 +73,7 @@ const useStyles = makeStyles({
   },
   trimHandleActive: {
     backgroundColor: tokens.colorPaletteYellowBackground3,
+    boxShadow: `0 0 8px ${tokens.colorPaletteYellowBackground3}`,
   },
   tooltip: {
     position: 'absolute',
@@ -77,6 +88,7 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     pointerEvents: 'none',
     zIndex: 11,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
   },
 });
 
