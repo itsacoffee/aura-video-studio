@@ -38,7 +38,9 @@ public class IntelligentContentAdvisor
         PlanSpec spec,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Analyzing content quality for topic: {Topic}", brief.Topic);
+        // Sanitize input for logging to prevent log forging
+        var sanitizedTopic = brief.Topic?.Replace("\n", "").Replace("\r", "") ?? "null";
+        _logger.LogInformation("Analyzing content quality for topic: {Topic}", sanitizedTopic);
 
         try
         {

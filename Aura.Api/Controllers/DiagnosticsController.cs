@@ -86,7 +86,9 @@ public class DiagnosticsController : ControllerBase
         [FromBody] ProviderTestRequest request,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Provider test requested: {Provider}", request.ProviderName);
+        // Sanitize input for logging to prevent log forging
+        var sanitizedProviderName = request.ProviderName?.Replace("\n", "").Replace("\r", "") ?? "null";
+        _logger.LogInformation("Provider test requested: {Provider}", sanitizedProviderName);
 
         if (_llmProviders == null || !_llmProviders.Any())
         {
@@ -146,7 +148,7 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Provider test failed: {Provider}", request.ProviderName);
+            _logger.LogError(ex, "Provider test failed: {Provider}", sanitizedProviderName);
             return StatusCode(500, new
             {
                 Provider = provider.GetType().Name,
