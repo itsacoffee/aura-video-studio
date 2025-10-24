@@ -36,11 +36,18 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground2,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     minHeight: '40px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
   },
   menuButton: {
     minWidth: 'auto',
     paddingLeft: tokens.spacingHorizontalM,
     paddingRight: tokens.spacingHorizontalM,
+    borderRadius: tokens.borderRadiusMedium,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground3,
+      transform: 'translateY(-1px)',
+    },
   },
   divider: {
     height: '20px',
@@ -58,6 +65,10 @@ const useStyles = makeStyles({
     marginLeft: 'auto',
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground3,
+    fontFamily: 'monospace',
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: `2px ${tokens.spacingHorizontalXS}`,
+    borderRadius: tokens.borderRadiusSmall,
   },
 });
 

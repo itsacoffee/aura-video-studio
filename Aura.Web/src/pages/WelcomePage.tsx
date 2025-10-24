@@ -26,10 +26,18 @@ const useStyles = makeStyles({
   hero: {
     textAlign: 'center',
     marginBottom: tokens.spacingVerticalXXXL,
+    padding: tokens.spacingVerticalXXL,
+    borderRadius: tokens.borderRadiusLarge,
+    background: `linear-gradient(135deg, ${tokens.colorNeutralBackground2} 0%, ${tokens.colorNeutralBackground1} 100%)`,
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
   },
   title: {
     marginBottom: tokens.spacingVerticalM,
     display: 'block',
+    background: `linear-gradient(135deg, ${tokens.colorBrandForeground1} 0%, ${tokens.colorPalettePurpleForeground2} 100%)`,
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
   },
   subtitle: {
     color: tokens.colorNeutralForeground2,
@@ -50,6 +58,12 @@ const useStyles = makeStyles({
   },
   card: {
     height: '100%',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    cursor: 'default',
+    ':hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)',
+    },
   },
   statusBadge: {
     marginLeft: tokens.spacingHorizontalS,

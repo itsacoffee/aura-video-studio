@@ -21,6 +21,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     padding: tokens.spacingVerticalL,
     gap: tokens.spacingVerticalM,
+    boxShadow: '2px 0 8px rgba(0, 0, 0, 0.1)',
   },
   header: {
     marginBottom: tokens.spacingVerticalM,
@@ -40,6 +41,15 @@ const useStyles = makeStyles({
     width: '100%',
     paddingTop: tokens.spacingVerticalM,
     paddingBottom: tokens.spacingVerticalM,
+    borderRadius: tokens.borderRadiusMedium,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    ':hover': {
+      transform: 'translateX(4px)',
+      boxShadow: tokens.shadow8,
+    },
+    ':active': {
+      transform: 'translateX(2px)',
+    },
   },
   mainContainer: {
     flex: 1,
@@ -55,6 +65,7 @@ const useStyles = makeStyles({
     paddingRight: tokens.spacingHorizontalL,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
   },
   content: {
     flex: 1,
@@ -65,6 +76,11 @@ const useStyles = makeStyles({
   themeToggle: {
     width: '100%',
     justifyContent: 'center',
+    borderRadius: tokens.borderRadiusMedium,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    ':hover': {
+      transform: 'scale(1.05)',
+    },
   },
   footer: {
     marginTop: 'auto',

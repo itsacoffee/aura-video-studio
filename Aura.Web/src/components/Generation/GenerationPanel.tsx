@@ -32,10 +32,11 @@ const useStyles = makeStyles({
     height: '100vh',
     backgroundColor: tokens.colorNeutralBackground1,
     borderLeft: `1px solid ${tokens.colorNeutralStroke1}`,
-    boxShadow: tokens.shadow64,
+    boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.15)',
     display: 'flex',
     flexDirection: 'column',
     zIndex: 1000,
+    animation: 'slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   header: {
     display: 'flex',
@@ -43,6 +44,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
     padding: tokens.spacingVerticalL,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    background: `linear-gradient(135deg, ${tokens.colorNeutralBackground2} 0%, ${tokens.colorNeutralBackground1} 100%)`,
   },
   content: {
     flex: 1,
@@ -56,6 +58,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalM,
+    animation: 'fadeIn 0.3s ease-out',
   },
   stepHeader: {
     display: 'flex',
@@ -70,18 +73,23 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: tokens.colorNeutralBackground3,
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   stepIconActive: {
     backgroundColor: tokens.colorBrandBackground,
     color: tokens.colorNeutralForegroundOnBrand,
+    boxShadow: `0 0 12px ${tokens.colorBrandBackground}`,
+    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
   },
   stepIconDone: {
     backgroundColor: tokens.colorPaletteGreenBackground3,
     color: tokens.colorNeutralForegroundOnBrand,
+    transform: 'scale(1.1)',
   },
   stepIconFailed: {
     backgroundColor: tokens.colorPaletteRedBackground3,
     color: tokens.colorNeutralForegroundOnBrand,
+    animation: 'shake 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   logs: {
     backgroundColor: tokens.colorNeutralBackground3,
@@ -92,6 +100,8 @@ const useStyles = makeStyles({
     maxHeight: '200px',
     overflowY: 'auto',
     whiteSpace: 'pre-wrap',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)',
   },
   actions: {
     padding: tokens.spacingVerticalL,
@@ -99,6 +109,7 @@ const useStyles = makeStyles({
     display: 'flex',
     gap: tokens.spacingHorizontalM,
     justifyContent: 'flex-end',
+    backgroundColor: tokens.colorNeutralBackground2,
   },
 });
 
