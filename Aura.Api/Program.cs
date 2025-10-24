@@ -282,6 +282,9 @@ builder.Services.AddSingleton<Aura.Core.Services.PacingServices.AttentionCurvePr
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.IntelligentPacingOptimizer>();
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.PacingApplicationService>();
 
+// Register pacing API services
+builder.Services.AddSingleton<Aura.Api.Services.PacingAnalysisCacheService>();
+
 builder.Services.AddSingleton<VideoOrchestrator>();
 
 // Register AI pacing and rhythm optimization services

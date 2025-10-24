@@ -5,10 +5,8 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using Aura.Api.Controllers;
-using Aura.Core.AI.Pacing;
+using Aura.Api.Models.Responses;
 using Aura.Core.Models;
-using Aura.Core.Services.Analytics;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -30,11 +28,16 @@ public class PacingControllerIntegrationTests : IClassFixture<WebApplicationFact
         // Arrange
         var client = _factory.CreateClient();
         var scenes = CreateTestScenes(3);
+        var brief = new Brief("Test Topic", "General Audience", "Educate", "Professional", "English", Aspect.Widescreen16x9);
+        
         var request = new
         {
-            scenes,
-            audioPath = (string?)null,
-            format = "Explainer"
+            Script = "This is a test script with enough content to analyze pacing effectively.",
+            Scenes = scenes,
+            TargetPlatform = "YouTube",
+            TargetDuration = 60.0,
+            Audience = "General",
+            Brief = brief
         };
 
         // Act
@@ -42,139 +45,164 @@ public class PacingControllerIntegrationTests : IClassFixture<WebApplicationFact
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<PacingAnalysisResult>();
+        var result = await response.Content.ReadFromJsonAsync<PacingAnalysisResponse>();
         Assert.NotNull(result);
-        Assert.True(result.EngagementScore > 0);
-        Assert.Equal(scenes.Count, result.SceneRecommendations.Count);
+        Assert.True(result.OverallScore >= 0);
+        Assert.NotEmpty(result.AnalysisId);
+        Assert.NotEmpty(result.CorrelationId);
+        Assert.Equal(scenes.Count, result.Suggestions.Count);
     }
 
     [Fact]
-    public async Task PredictRetention_WithValidRequest_ReturnsAnalysis()
+    public async Task GetPlatformPresets_ReturnsAllPlatforms()
     {
         // Arrange
         var client = _factory.CreateClient();
-        var scenes = CreateTestScenes(4);
-        var request = new
-        {
-            scenes,
-            audioPath = (string?)null,
-            format = "Tutorial"
-        };
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/pacing/retention", request);
+        var response = await client.GetAsync("/api/pacing/platforms");
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<VideoRetentionAnalysis>();
+        var result = await response.Content.ReadFromJsonAsync<PlatformPresetsResponse>();
         Assert.NotNull(result);
-        Assert.NotNull(result.PacingAnalysis);
-        Assert.NotNull(result.RetentionPrediction);
-        Assert.NotNull(result.AttentionCurve);
-    }
-
-    [Fact]
-    public async Task OptimizeScenes_WithValidRequest_ReturnsOptimizedScenes()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-        var scenes = new List<Scene>
-        {
-            CreateScene(0, "Long Hook", 25), // Should be shortened
-            CreateScene(1, "Middle", 15),
-            CreateScene(2, "End", 12)
-        };
-        var request = new
-        {
-            scenes,
-            format = "Entertainment"
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("/api/pacing/optimize", request);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<List<Scene>>();
-        Assert.NotNull(result);
-        Assert.Equal(scenes.Count, result.Count);
+        Assert.Equal(5, result.Platforms.Count); // YouTube, TikTok, Instagram Reels, YouTube Shorts, Facebook
         
-        // First scene should be optimized (shortened for entertainment format)
-        Assert.True(result[0].Duration.TotalSeconds <= 20);
+        // Verify expected platforms
+        Assert.Contains(result.Platforms, p => p.Name == "YouTube");
+        Assert.Contains(result.Platforms, p => p.Name == "TikTok");
+        Assert.Contains(result.Platforms, p => p.Name == "Instagram Reels");
+        Assert.Contains(result.Platforms, p => p.Name == "YouTube Shorts");
+        Assert.Contains(result.Platforms, p => p.Name == "Facebook");
+
+        // Verify YouTube preset
+        var youtube = result.Platforms.First(p => p.Name == "YouTube");
+        Assert.Equal(1.0, youtube.PacingMultiplier);
+        Assert.Equal("Conversational", youtube.RecommendedPacing);
     }
 
     [Fact]
-    public async Task GetAttentionCurve_WithValidRequest_ReturnsCurve()
+    public async Task GetAnalysis_WithValidId_ReturnsAnalysis()
     {
         // Arrange
         var client = _factory.CreateClient();
         var scenes = CreateTestScenes(3);
-        var totalDuration = TimeSpan.FromSeconds(scenes.Sum(s => s.Duration.TotalSeconds));
-        var request = new
-        {
-            scenes,
-            videoDuration = totalDuration
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("/api/pacing/attention-curve", request);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<AttentionCurve>();
-        Assert.NotNull(result);
-        Assert.NotEmpty(result.Points);
-        Assert.True(result.AverageEngagement >= 0 && result.AverageEngagement <= 1.0);
-    }
-
-    [Fact]
-    public async Task CompareVersions_WithValidRequest_ReturnsComparison()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-        var originalScenes = CreateTestScenes(3);
-        var optimizedScenes = originalScenes.Select(s => s with { Duration = TimeSpan.FromSeconds(s.Duration.TotalSeconds * 0.9) }).ToList();
-        var request = new
-        {
-            originalScenes,
-            optimizedScenes,
-            format = "Vlog"
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("/api/pacing/compare", request);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<VideoComparisonMetrics>();
-        Assert.NotNull(result);
-        Assert.NotNull(result.Original);
-        Assert.NotNull(result.Optimized);
-        Assert.NotNull(result.Improvements);
-    }
-
-    [Fact]
-    public async Task GetTemplates_ReturnsAllTemplates()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-
-        // Act
-        var response = await client.GetAsync("/api/pacing/templates");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<List<ContentTemplateDto>>();
-        Assert.NotNull(result);
-        Assert.True(result.Count >= 6); // At least 6 formats
+        var brief = new Brief("Test Topic", "General Audience", "Educate", "Professional", "English", Aspect.Widescreen16x9);
         
-        // Verify templates have required data
-        foreach (var template in result)
+        // First, create an analysis
+        var createRequest = new
         {
-            Assert.False(string.IsNullOrEmpty(template.Name));
-            Assert.False(string.IsNullOrEmpty(template.Description));
-            Assert.NotNull(template.Parameters);
-        }
+            Script = "This is a test script with enough content.",
+            Scenes = scenes,
+            TargetPlatform = "YouTube",
+            TargetDuration = 60.0,
+            Audience = "General",
+            Brief = brief
+        };
+        var createResponse = await client.PostAsJsonAsync("/api/pacing/analyze", createRequest);
+        var analysis = await createResponse.Content.ReadFromJsonAsync<PacingAnalysisResponse>();
+        Assert.NotNull(analysis);
+        var analysisId = analysis.AnalysisId;
+
+        // Act
+        var response = await client.GetAsync($"/api/pacing/analysis/{analysisId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<PacingAnalysisResponse>();
+        Assert.NotNull(result);
+        Assert.Equal(analysisId, result.AnalysisId);
+    }
+
+    [Fact]
+    public async Task ReanalyzePacing_WithValidId_ReturnsNewAnalysis()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var scenes = CreateTestScenes(3);
+        var brief = new Brief("Test Topic", "General Audience", "Educate", "Professional", "English", Aspect.Widescreen16x9);
+        
+        // First, create an analysis
+        var createRequest = new
+        {
+            Script = "This is a test script with enough content.",
+            Scenes = scenes,
+            TargetPlatform = "YouTube",
+            TargetDuration = 60.0,
+            Audience = "General",
+            Brief = brief
+        };
+        var createResponse = await client.PostAsJsonAsync("/api/pacing/analyze", createRequest);
+        var analysis = await createResponse.Content.ReadFromJsonAsync<PacingAnalysisResponse>();
+        Assert.NotNull(analysis);
+        var analysisId = analysis.AnalysisId;
+
+        // Act - reanalyze with different parameters
+        var reanalyzeRequest = new
+        {
+            OptimizationLevel = "High",
+            TargetPlatform = "TikTok"
+        };
+        var response = await client.PostAsJsonAsync($"/api/pacing/reanalyze/{analysisId}", reanalyzeRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<PacingAnalysisResponse>();
+        Assert.NotNull(result);
+        Assert.NotEqual(analysisId, result.AnalysisId); // Should have a new ID
+        Assert.Contains("Reanalyzed from", result.Warnings[0]);
+    }
+
+    [Fact]
+    public async Task DeleteAnalysis_WithValidId_ReturnsSuccess()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var scenes = CreateTestScenes(3);
+        var brief = new Brief("Test Topic", "General Audience", "Educate", "Professional", "English", Aspect.Widescreen16x9);
+        
+        // First, create an analysis
+        var createRequest = new
+        {
+            Script = "This is a test script with enough content.",
+            Scenes = scenes,
+            TargetPlatform = "YouTube",
+            TargetDuration = 60.0,
+            Audience = "General",
+            Brief = brief
+        };
+        var createResponse = await client.PostAsJsonAsync("/api/pacing/analyze", createRequest);
+        var analysis = await createResponse.Content.ReadFromJsonAsync<PacingAnalysisResponse>();
+        Assert.NotNull(analysis);
+        var analysisId = analysis.AnalysisId;
+
+        // Act
+        var response = await client.DeleteAsync($"/api/pacing/analysis/{analysisId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<DeleteAnalysisResponse>();
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.Contains("successfully deleted", result.Message);
+
+        // Verify it's actually deleted
+        var getResponse = await client.GetAsync($"/api/pacing/analysis/{analysisId}");
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAnalysis_WithInvalidId_ReturnsNotFound()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var invalidId = "non-existent-id";
+
+        // Act
+        var response = await client.GetAsync($"/api/pacing/analysis/{invalidId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -182,11 +210,16 @@ public class PacingControllerIntegrationTests : IClassFixture<WebApplicationFact
     {
         // Arrange
         var client = _factory.CreateClient();
+        var brief = new Brief("Test Topic", "General Audience", "Educate", "Professional", "English", Aspect.Widescreen16x9);
+        
         var request = new
         {
-            scenes = new List<Scene>(),
-            audioPath = (string?)null,
-            format = "Explainer"
+            Script = "Test script",
+            Scenes = new List<Scene>(),
+            TargetPlatform = "YouTube",
+            TargetDuration = 60.0,
+            Audience = "General",
+            Brief = brief
         };
 
         // Act
@@ -197,32 +230,53 @@ public class PacingControllerIntegrationTests : IClassFixture<WebApplicationFact
     }
 
     [Fact]
-    public async Task OptimizeScenes_WithDifferentFormats_ProducesDifferentResults()
+    public async Task AnalyzePacing_WithInvalidPlatform_ReturnsBadRequest()
     {
         // Arrange
         var client = _factory.CreateClient();
         var scenes = CreateTestScenes(3);
+        var brief = new Brief("Test Topic", "General Audience", "Educate", "Professional", "English", Aspect.Widescreen16x9);
+        
+        var request = new
+        {
+            Script = "Test script with content",
+            Scenes = scenes,
+            TargetPlatform = "InvalidPlatform",
+            TargetDuration = 60.0,
+            Audience = "General",
+            Brief = brief
+        };
 
-        // Act - Entertainment format
-        var entertainmentRequest = new { scenes, format = "Entertainment" };
-        var entertainmentResponse = await client.PostAsJsonAsync("/api/pacing/optimize", entertainmentRequest);
-        var entertainmentResult = await entertainmentResponse.Content.ReadFromJsonAsync<List<Scene>>();
-
-        // Act - Educational format
-        var educationalRequest = new { scenes, format = "Educational" };
-        var educationalResponse = await client.PostAsJsonAsync("/api/pacing/optimize", educationalRequest);
-        var educationalResult = await educationalResponse.Content.ReadFromJsonAsync<List<Scene>>();
+        // Act
+        var response = await client.PostAsJsonAsync("/api/pacing/analyze", request);
 
         // Assert
-        Assert.NotNull(entertainmentResult);
-        Assert.NotNull(educationalResult);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnalyzePacing_WithEmptyScript_ReturnsBadRequest()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var scenes = CreateTestScenes(3);
+        var brief = new Brief("Test Topic", "General Audience", "Educate", "Professional", "English", Aspect.Widescreen16x9);
         
-        // Entertainment format should generally have shorter scenes than educational
-        var entertainmentAvg = entertainmentResult.Average(s => s.Duration.TotalSeconds);
-        var educationalAvg = educationalResult.Average(s => s.Duration.TotalSeconds);
-        
-        // Educational allows longer durations, so entertainment should be shorter or equal
-        Assert.True(entertainmentAvg <= educationalAvg + 5); // Allow small tolerance
+        var request = new
+        {
+            Script = "",
+            Scenes = scenes,
+            TargetPlatform = "YouTube",
+            TargetDuration = 60.0,
+            Audience = "General",
+            Brief = brief
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/pacing/analyze", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private List<Scene> CreateTestScenes(int count)
