@@ -276,9 +276,9 @@ echo Waiting for server to become ready...
 set /a attempts=0
 :wait_loop
 set /a attempts+=1
-if %attempts% gtr ${HealthCheckMaxAttempts} (
+if %attempts% gtr $HealthCheckMaxAttempts (
     echo.
-    echo WARNING: Server did not respond after ${HealthCheckMaxAttempts} attempts.
+    echo WARNING: Server did not respond after $HealthCheckMaxAttempts attempts.
     echo The server may still be starting. Opening browser anyway...
     goto open_browser
 )
@@ -290,7 +290,7 @@ if %errorlevel% equ 0 (
     goto open_browser
 )
 
-timeout /t ${HealthCheckIntervalSeconds} /nobreak >nul
+timeout /t $HealthCheckIntervalSeconds /nobreak >nul
 goto wait_loop
 
 :open_browser
