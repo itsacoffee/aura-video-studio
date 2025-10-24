@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -101,30 +102,112 @@ export function RenderSettings() {
     return 'Maximum';
   };
 
-  const handleSave = () => {
-    // TODO: Save settings to API
+  const handleSave = async () => {
+    try {
+      // Save render settings to API
+      const response = await fetch(`${apiUrl}/api/v1/settings/render`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gpuEncoding,
+          hardwareDecoding,
+          threadCount,
+          memoryLimit,
+          cacheSize,
+          quality,
+          resolution,
+          framerate,
+        }),
+      });
+      
+      if (response.ok) {
+        alert('Settings saved successfully!');
+      } else {
+        console.error('Failed to save settings:', await response.text());
+        alert('Failed to save settings. Check console for details.');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Could not save settings. Ensure the backend API is running.');
+    }
   };
 
-  const handleClearCache = () => {
+  const handleClearCache = async () => {
     if (
       confirm(
         'Are you sure you want to clear the render cache? This will remove all cached renders.'
       )
     ) {
-      // TODO: Clear cache via API
+      try {
+        const response = await fetch(`${apiUrl}/api/v1/cache/clear`, {
+          method: 'POST',
+        });
+        
+        if (response.ok) {
+          alert('Cache cleared successfully!');
+        } else {
+          console.error('Failed to clear cache:', await response.text());
+          alert('Failed to clear cache. Check console for details.');
+        }
+      } catch (error) {
+        console.error('Error clearing cache:', error);
+        alert('Could not clear cache. Ensure the backend API is running.');
+      }
     }
   };
 
-  const handleBrowseCacheLocation = () => {
-    // TODO: Open folder browser
+  const handleBrowseCacheLocation = async () => {
+    try {
+      // Open folder browser dialog via API
+      const response = await fetch(`${apiUrl}/api/v1/dialogs/folder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Select Cache Location' }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.path) {
+          console.log('Selected cache location:', data.path);
+          // Update cache location state if needed
+        }
+      } else {
+        alert('Folder browser not available. This requires backend API support.');
+      }
+    } catch (error) {
+      console.error('Error opening folder browser:', error);
+      alert('Folder browser not available.');
+    }
   };
 
-  const handleBrowseExportLocation = () => {
-    // TODO: Open folder browser
+  const handleBrowseExportLocation = async () => {
+    try {
+      // Open folder browser dialog via API
+      const response = await fetch(`${apiUrl}/api/v1/dialogs/folder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Select Export Location' }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.path) {
+          console.log('Selected export location:', data.path);
+          // Update export location state if needed
+        }
+      } else {
+        alert('Folder browser not available. This requires backend API support.');
+      }
+    } catch (error) {
+      console.error('Error opening folder browser:', error);
+      alert('Folder browser not available.');
+    }
   };
 
   const handleShowFFmpegLog = () => {
-    // TODO: Show FFmpeg log viewer
+    // Open FFmpeg log viewer in a new window or modal
+    // For now, navigate to a dedicated log viewer page
+    window.open('/logs/ffmpeg', '_blank');
   };
 
   return (
