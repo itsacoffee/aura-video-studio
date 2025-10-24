@@ -18,6 +18,7 @@ import {
   ChartMultiple24Regular,
   CalendarLtr24Regular,
   FlashFlow24Regular,
+  VideoClipMultiple24Regular,
 } from '@fluentui/react-icons';
 
 export interface NavItem {
@@ -36,6 +37,7 @@ export const navItems: NavItem[] = [
   { key: 'create', name: 'Create', icon: VideoClip24Regular, path: '/create' },
   { key: 'projects', name: 'Projects', icon: Folder24Regular, path: '/projects' },
   { key: 'assets', name: 'Asset Library', icon: Image24Regular, path: '/assets' },
+  { key: 'editor', name: 'Video Editor', icon: VideoClipMultiple24Regular, path: '/editor' },
   { key: 'timeline', name: 'Timeline', icon: Timeline24Regular, path: '/timeline' },
   { key: 'pacing', name: 'Pacing Analyzer', icon: FlashFlow24Regular, path: '/pacing' },
   { key: 'render', name: 'Render', icon: Play24Regular, path: '/render' },

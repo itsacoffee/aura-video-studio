@@ -35,6 +35,7 @@ import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer'
 import { PlatformDashboard } from './components/Platform';
 import { QualityDashboard } from './components/dashboard';
 import { ContentPlanningDashboard } from './components/contentPlanning/ContentPlanningDashboard';
+import { VideoEditorPage } from './pages/VideoEditorPage';
 
 const useStyles = makeStyles({
   root: {
@@ -196,6 +197,7 @@ function App() {
                 <Route path="/create/legacy" element={<CreatePage />} />
                 <Route path="/timeline" element={<TimelinePage />} />
                 <Route path="/editor/:jobId" element={<TimelineEditor />} />
+                <Route path="/editor" element={<VideoEditorPage />} />
                 <Route path="/render" element={<RenderPage />} />
                 <Route path="/platform" element={<PlatformDashboard />} />
                 <Route path="/quality" element={<QualityDashboard />} />
