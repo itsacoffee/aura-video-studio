@@ -3,7 +3,9 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$Platform = "x64"
+    [string]$Platform = "x64",
+    [int]$HealthCheckMaxAttempts = 30,
+    [int]$HealthCheckIntervalSeconds = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -218,7 +220,7 @@ if (Test-Path "$rootDir\LICENSE") {
     Copy-Item "$rootDir\LICENSE" -Destination $portableBuildDir -Force
 }
 
-# Create launcher script with pre-flight checks
+# Create launcher script with pre-flight checks and health check polling
 $launcherScript = @"
 @echo off
 echo ========================================
@@ -269,14 +271,41 @@ echo Pre-flight checks passed!
 echo.
 echo Starting API server...
 start "" /D "Api" "Aura.Api.exe"
-echo Waiting for server to start...
-timeout /t 3 /nobreak >nul
+
+echo Waiting for server to become ready...
+set /a attempts=0
+:wait_loop
+set /a attempts+=1
+if %attempts% gtr $HealthCheckMaxAttempts (
+    echo.
+    echo WARNING: Server did not respond after $HealthCheckMaxAttempts attempts.
+    echo The server may still be starting. Opening browser anyway...
+    goto open_browser
+)
+
+REM Try to reach the health check endpoint using PowerShell (more reliable than curl on Windows)
+powershell -Command "try { `$response = Invoke-WebRequest -Uri 'http://127.0.0.1:5005/api/healthz' -TimeoutSec 1 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Server is ready!
+    goto open_browser
+)
+
+timeout /t $HealthCheckIntervalSeconds /nobreak >nul
+goto wait_loop
+
+:open_browser
 echo.
 echo Opening web browser...
 start "" "http://127.0.0.1:5005"
 echo.
+echo ========================================
+echo Application started successfully!
+echo ========================================
+echo.
 echo The application should open in your web browser.
 echo If not, manually navigate to: http://127.0.0.1:5005
+echo.
+echo For diagnostics, visit: http://127.0.0.1:5005/diag
 echo.
 echo To stop the application, close the API server window.
 echo.

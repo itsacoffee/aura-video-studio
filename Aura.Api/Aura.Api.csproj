@@ -21,4 +21,65 @@
     <ProjectReference Include="..\Aura.Providers\Aura.Providers.csproj" />
   </ItemGroup>
 
+  <!-- Build and copy frontend during publish -->
+  <Target Name="BuildFrontend" BeforeTargets="Publish" Condition="'$(SkipFrontendBuild)' != 'true'">
+    <PropertyGroup>
+      <FrontendProjectPath>$(MSBuildProjectDirectory)\..\Aura.Web</FrontendProjectPath>
+      <FrontendDistPath>$(FrontendProjectPath)\dist</FrontendDistPath>
+    </PropertyGroup>
+    
+    <Message Text="========================================" Importance="high" />
+    <Message Text="Building frontend for production..." Importance="high" />
+    <Message Text="========================================" Importance="high" />
+    
+    <!-- Check if npm is available -->
+    <Exec Command="npm --version" IgnoreExitCode="true" ContinueOnError="true" WorkingDirectory="$(FrontendProjectPath)">
+      <Output TaskParameter="ExitCode" PropertyName="NpmExitCode" />
+    </Exec>
+    
+    <Error Condition="'$(NpmExitCode)' != '0'" Text="npm not found! Please install Node.js from https://nodejs.org/" />
+    
+    <!-- Install dependencies if node_modules doesn't exist -->
+    <Message Text="Checking frontend dependencies..." Importance="high" />
+    <Exec Command="npm install" WorkingDirectory="$(FrontendProjectPath)" Condition="!Exists('$(FrontendProjectPath)\node_modules')" />
+    
+    <!-- Build the frontend -->
+    <Message Text="Building React frontend..." Importance="high" />
+    <Exec Command="npm run build" WorkingDirectory="$(FrontendProjectPath)" />
+    
+    <!-- Verify dist folder was created -->
+    <Error Condition="!Exists('$(FrontendDistPath)')" Text="Frontend build failed: dist folder not found at $(FrontendDistPath)" />
+    <Error Condition="!Exists('$(FrontendDistPath)\index.html')" Text="Frontend build incomplete: index.html not found in dist folder" />
+    
+    <Message Text="✓ Frontend build complete" Importance="high" />
+  </Target>
+  
+  <Target Name="CopyFrontendToWwwroot" AfterTargets="BuildFrontend" BeforeTargets="Publish" Condition="'$(SkipFrontendBuild)' != 'true'">
+    <PropertyGroup>
+      <FrontendDistPath>$(MSBuildProjectDirectory)\..\Aura.Web\dist</FrontendDistPath>
+      <WwwrootPath>$(PublishDir)wwwroot</WwwrootPath>
+    </PropertyGroup>
+    
+    <Message Text="========================================" Importance="high" />
+    <Message Text="Copying frontend to wwwroot..." Importance="high" />
+    <Message Text="  Source: $(FrontendDistPath)" Importance="high" />
+    <Message Text="  Target: $(WwwrootPath)" Importance="high" />
+    <Message Text="========================================" Importance="high" />
+    
+    <!-- Create wwwroot directory -->
+    <MakeDir Directories="$(WwwrootPath)" />
+    
+    <!-- Copy all files from dist to wwwroot -->
+    <ItemGroup>
+      <FrontendFiles Include="$(FrontendDistPath)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FrontendFiles)" DestinationFolder="$(WwwrootPath)\%(RecursiveDir)" />
+    
+    <!-- Verify files were copied -->
+    <Error Condition="!Exists('$(WwwrootPath)\index.html')" Text="Failed to copy frontend: index.html not found in wwwroot" />
+    
+    <Message Text="✓ Frontend copied to wwwroot" Importance="high" />
+    <Message Text="  Files: @(FrontendFiles->Count())" Importance="high" />
+  </Target>
+
 </Project>

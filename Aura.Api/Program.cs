@@ -736,14 +736,36 @@ if (Directory.Exists(wwwrootPath))
 {
     // Validate that wwwroot has the minimum required files
     var indexHtmlPath = Path.Combine(wwwrootPath, "index.html");
+    var assetsPath = Path.Combine(wwwrootPath, "assets");
+    var fileCount = Directory.GetFiles(wwwrootPath, "*", SearchOption.AllDirectories).Length;
+    
     if (!File.Exists(indexHtmlPath))
     {
+        Log.Warning("=================================================================");
         Log.Warning("wwwroot directory exists but index.html is missing: {Path}", wwwrootPath);
+        Log.Warning("Files found in wwwroot: {Count}", fileCount);
         Log.Warning("The web UI will not be available. Please ensure the build completed successfully.");
+        Log.Warning("Visit http://127.0.0.1:5005/diag for more diagnostics.");
+        Log.Warning("=================================================================");
+    }
+    else if (!Directory.Exists(assetsPath))
+    {
+        Log.Warning("=================================================================");
+        Log.Warning("index.html found but assets directory is missing: {Path}", assetsPath);
+        Log.Warning("Files found in wwwroot: {Count}", fileCount);
+        Log.Warning("The web UI may not function correctly. JavaScript and CSS may be missing.");
+        Log.Warning("Visit http://127.0.0.1:5005/diag for more diagnostics.");
+        Log.Warning("=================================================================");
     }
     else
     {
-        Log.Information("Serving static files from: {Path}", wwwrootPath);
+        Log.Information("=================================================================");
+        Log.Information("Static UI: ENABLED");
+        Log.Information("  Path: {Path}", wwwrootPath);
+        Log.Information("  Files: {Count}", fileCount);
+        Log.Information("  index.html: ✓");
+        Log.Information("  assets/: ✓");
+        Log.Information("=================================================================");
         
         app.UseDefaultFiles(); // Serve index.html as default file
         app.UseStaticFiles();
@@ -767,6 +789,7 @@ else
     Log.Error("");
     Log.Error("The API will continue to run, but accessing http://127.0.0.1:5005");
     Log.Error("in your browser will show a blank page or 404 error.");
+    Log.Error("Visit http://127.0.0.1:5005/diag for diagnostics.");
     Log.Error("=================================================================");
 }
 
@@ -905,6 +928,92 @@ apiGroup.MapPost("/health/auto-fix", async (
 apiGroup.MapGet("/healthz", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
     .WithName("HealthCheck")
     .WithOpenApi();
+
+// Simple diagnostic page for debugging static file serving and API connectivity
+app.MapGet("/diag", (HttpContext httpContext) =>
+{
+    var wwwrootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+    var wwwrootExists = Directory.Exists(wwwrootPath);
+    var indexHtmlPath = Path.Combine(wwwrootPath, "index.html");
+    var indexHtmlExists = File.Exists(indexHtmlPath);
+    var assetsPath = Path.Combine(wwwrootPath, "assets");
+    var assetsExists = Directory.Exists(assetsPath);
+    var fileCount = wwwrootExists ? Directory.GetFiles(wwwrootPath, "*", SearchOption.AllDirectories).Length : 0;
+    
+    var html = $@"<!DOCTYPE html>
+<html>
+<head>
+    <title>Aura Video Studio - Diagnostics</title>
+    <style>
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background: #f5f5f5; }}
+        .container {{ max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        h1 {{ color: #0078d4; border-bottom: 2px solid #0078d4; padding-bottom: 10px; }}
+        .status {{ margin: 20px 0; padding: 15px; border-radius: 4px; }}
+        .ok {{ background: #dff0d8; border: 1px solid #d6e9c6; color: #3c763d; }}
+        .error {{ background: #f2dede; border: 1px solid #ebccd1; color: #a94442; }}
+        .info {{ background: #d9edf7; border: 1px solid #bce8f1; color: #31708f; }}
+        .detail {{ font-size: 0.9em; color: #666; margin-top: 5px; }}
+        ul {{ list-style-type: none; padding: 0; }}
+        li {{ padding: 5px 0; }}
+        .check {{ display: inline-block; width: 20px; }}
+        .timestamp {{ font-size: 0.8em; color: #999; margin-top: 20px; text-align: center; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <h1>🔍 Aura Video Studio Diagnostics</h1>
+        
+        <div class='status {(wwwrootExists && indexHtmlExists && assetsExists ? "ok" : "error")}'>
+            <strong>Static File Hosting Status</strong>
+            <ul>
+                <li><span class='check'>{(wwwrootExists ? "✅" : "❌")}</span> wwwroot directory: {(wwwrootExists ? "FOUND" : "NOT FOUND")}</li>
+                <li class='detail'>Path: {wwwrootPath}</li>
+                <li><span class='check'>{(indexHtmlExists ? "✅" : "❌")}</span> index.html: {(indexHtmlExists ? "FOUND" : "NOT FOUND")}</li>
+                <li><span class='check'>{(assetsExists ? "✅" : "❌")}</span> assets directory: {(assetsExists ? "FOUND" : "NOT FOUND")}</li>
+                <li class='detail'>Total files in wwwroot: {fileCount}</li>
+            </ul>
+        </div>
+        
+        <div class='status ok'>
+            <strong>API Status</strong>
+            <ul>
+                <li><span class='check'>✅</span> API is reachable (you're seeing this page!)</li>
+                <li class='detail'>Request URL: {httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.Path}</li>
+                <li class='detail'>API Base: {httpContext.Request.Scheme}://{httpContext.Request.Host}/api</li>
+            </ul>
+        </div>
+        
+        <div class='status info'>
+            <strong>Quick Tests</strong>
+            <ul>
+                <li>• Navigate to <a href='/'>http://{httpContext.Request.Host}/</a> - Should show the app UI</li>
+                <li>• Navigate to <a href='/api/healthz'>http://{httpContext.Request.Host}/api/healthz</a> - Should return JSON health status</li>
+                <li>• Check browser console for 404 errors on JS/CSS files</li>
+                <li>• Try a hard refresh (Ctrl+F5) on the main page</li>
+            </ul>
+        </div>
+        
+        {(!wwwrootExists || !indexHtmlExists ? @"
+        <div class='status error'>
+            <strong>⚠️ Issue Detected</strong>
+            <p>The wwwroot directory or index.html is missing. This means the frontend build was not copied correctly.</p>
+            <p><strong>To fix:</strong></p>
+            <ul>
+                <li>1. Ensure you built the frontend: <code>cd Aura.Web && npm run build</code></li>
+                <li>2. Copy dist to wwwroot: <code>Copy-Item Aura.Web\dist\* -Destination Aura.Api\wwwroot\ -Recurse</code></li>
+                <li>3. Or rebuild the portable package: <code>.\scripts\packaging\build-portable.ps1</code></li>
+            </ul>
+        </div>" : "")}
+        
+        <div class='timestamp'>Generated at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC</div>
+    </div>
+</body>
+</html>";
+    
+    return Results.Content(html, "text/html");
+})
+.WithName("DiagnosticsPage")
+.WithOpenApi();
 
 // Log viewer endpoint - retrieve logs with optional filtering
 apiGroup.MapGet("/logs", (HttpContext httpContext, string? level = null, string? correlationId = null, int lines = 500) =>

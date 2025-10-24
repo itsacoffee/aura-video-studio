@@ -14,14 +14,14 @@ function getApiBaseUrl(): string {
     return import.meta.env.VITE_API_URL;
   }
 
-  // In development, try to auto-detect from window location
-  // This handles cases where the API is served on the same host but different port
+  // In development, use the dev server port with proxy
   if (import.meta.env.DEV) {
     // Default to common development port (matches backend default)
     return 'http://127.0.0.1:5005';
   }
 
-  // Production fallback - assume API is on same origin
+  // Production: API is served on the same origin as the SPA
+  // This works because Aura.Api serves both the static files and the API
   return window.location.origin;
 }
 
