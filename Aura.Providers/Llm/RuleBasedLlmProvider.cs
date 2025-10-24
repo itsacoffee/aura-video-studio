@@ -206,10 +206,74 @@ public class RuleBasedLlmProvider : ILlmProvider
         string videoGoal,
         CancellationToken ct)
     {
-        _logger.LogInformation("Analyzing scene with rule-based provider (not supported)");
+        _logger.LogInformation("Analyzing scene with rule-based heuristics");
         
-        // Rule-based provider doesn't support scene analysis
-        // Return null to trigger fallback to heuristics
-        return Task.FromResult<SceneAnalysisResult?>(null);
+        // Implement deterministic analysis based on heuristics
+        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' }, 
+            StringSplitOptions.RemoveEmptyEntries).Length;
+
+        // Heuristic complexity based on word count
+        double complexity = wordCount switch
+        {
+            < 30 => 30.0,
+            < 70 => 50.0,
+            < 120 => 70.0,
+            _ => 85.0
+        };
+
+        // Heuristic importance - default moderate importance
+        // Can be enhanced with keyword detection
+        double importance = 50.0;
+        var importantKeywords = new[] { "introduction", "conclusion", "summary", "key", "important", "critical" };
+        var importantCount = importantKeywords.Count(keyword => 
+            sceneText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+        importance += Math.Min(importantCount * 10, 30);
+
+        // Heuristic emotional intensity
+        double emotionalIntensity = 50.0;
+        var emotionalWords = new[] { "amazing", "incredible", "important", "critical", "exciting", 
+                                      "fantastic", "wonderful", "terrible", "devastating", "shocking" };
+        var emotionalCount = emotionalWords.Count(word => 
+            sceneText.Contains(word, StringComparison.OrdinalIgnoreCase));
+        emotionalIntensity += Math.Min(emotionalCount * 10, 30);
+
+        // Information density based on word count
+        string informationDensity = wordCount switch
+        {
+            < 50 => "low",
+            < 100 => "medium",
+            _ => "high"
+        };
+
+        // Optimal duration: ~2.5 words per second (conversational pace)
+        double optimalDuration = Math.Max(5.0, wordCount / 2.5);
+
+        // Default transition type based on content
+        string transitionType = "cut";
+        if (sceneText.Contains("meanwhile", StringComparison.OrdinalIgnoreCase) ||
+            sceneText.Contains("later", StringComparison.OrdinalIgnoreCase))
+        {
+            transitionType = "fade";
+        }
+        else if (sceneText.Contains("gradually", StringComparison.OrdinalIgnoreCase) ||
+                 sceneText.Contains("slowly", StringComparison.OrdinalIgnoreCase))
+        {
+            transitionType = "dissolve";
+        }
+
+        var result = new SceneAnalysisResult(
+            Importance: Math.Clamp(importance, 0, 100),
+            Complexity: Math.Clamp(complexity, 0, 100),
+            EmotionalIntensity: Math.Clamp(emotionalIntensity, 0, 100),
+            InformationDensity: informationDensity,
+            OptimalDurationSeconds: optimalDuration,
+            TransitionType: transitionType,
+            Reasoning: "Rule-based heuristic analysis using word count, keyword detection, and content patterns"
+        );
+
+        _logger.LogDebug("Scene analyzed: Importance={Importance}, Complexity={Complexity}, Duration={Duration}s",
+            result.Importance, result.Complexity, result.OptimalDurationSeconds);
+
+        return Task.FromResult<SceneAnalysisResult?>(result);
     }
 }

@@ -302,4 +302,13 @@ internal class FailingLlmProvider : ILlmProvider
     {
         throw new Exception($"{_name} provider is not available");
     }
+
+    public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        throw new Exception($"{_name} provider is not available");
+    }
 }
