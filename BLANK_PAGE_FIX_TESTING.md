@@ -11,21 +11,21 @@ This document outlines the testing procedures to verify that the blank page issu
 ## Changes Made
 
 ### 1. Build Script Validation (`scripts/packaging/build-portable.ps1`)
-- Validates `Aura.Web/dist` folder exists
-- Validates `dist/index.html` exists
-- Validates `dist/assets/` folder exists
-- Validates files are successfully copied to `Api/wwwroot/`
+- Validates `Aura.Web\dist` folder exists
+- Validates `Aura.Web\dist\index.html` exists
+- Validates `Aura.Web\dist\assets\` folder exists
+- Validates files are successfully copied to `Api\wwwroot\`
 - Build fails fast with clear error messages if validation fails
 
 ### 2. Launch Script Pre-flight Checks (`Launch.bat`)
-- Checks `Api/` folder exists
-- Checks `Api/Aura.Api.exe` exists
-- Checks `Api/wwwroot/` folder exists
-- Checks `Api/wwwroot/index.html` exists
+- Checks `Api\` folder exists
+- Checks `Api\Aura.Api.exe` exists
+- Checks `Api\wwwroot\` folder exists
+- Checks `Api\wwwroot\index.html` exists
 - Shows clear error messages if any check fails
 - Prevents starting API if files are missing
 
-### 3. Runtime Error Handling (`Aura.Api/Program.cs`)
+### 3. Runtime Error Handling (`Aura.Api\Program.cs`)
 - Validates `index.html` exists in wwwroot before serving
 - Logs comprehensive error messages if wwwroot is missing
 - Provides step-by-step troubleshooting instructions
