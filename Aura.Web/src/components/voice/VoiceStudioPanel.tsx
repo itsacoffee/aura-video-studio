@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -6,13 +6,12 @@ import {
   Title3,
   Tab,
   TabList,
-  Card,
   Button,
   Spinner,
 } from '@fluentui/react-components';
 import {
   MicRegular,
-  WaveformRegular,
+  SoundWaveCircle24Regular as WaveformRegular,
   PlayRegular,
   SaveRegular,
 } from '@fluentui/react-icons';
@@ -89,6 +88,7 @@ export interface VoiceEnhancementConfig {
     rateMultiplier: number;
     emphasisLevel: number;
     volumeAdjustment: number;
+    pauseDurationMultiplier: number;
   };
   enableEmotionEnhancement: boolean;
   targetEmotion?: {
@@ -97,11 +97,11 @@ export interface VoiceEnhancementConfig {
   };
 }
 
-export const VoiceStudioPanel: React.FC<VoiceStudioPanelProps> = ({
+export const VoiceStudioPanel = ({
   onVoiceChange,
   onEnhancementChange,
   onSave,
-}) => {
+}: VoiceStudioPanelProps) => {
   const styles = useStyles();
   const [selectedTab, setSelectedTab] = useState<string>('voice');
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');

@@ -1,5 +1,10 @@
-import React, { useState } from 'react';
-import { CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
+import { useState } from 'react';
+import {
+  CheckmarkCircle20Regular as CheckCircle,
+  DismissCircle20Regular as XCircle,
+  Warning20Regular as AlertTriangle,
+  Info20Regular as Info
+} from '@fluentui/react-icons';
 
 interface Claim {
   claimId: string;

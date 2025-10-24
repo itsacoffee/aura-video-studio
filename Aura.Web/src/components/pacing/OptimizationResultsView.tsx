@@ -3,7 +3,7 @@
  * Visualization of optimization results and engagement predictions
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   makeStyles,
@@ -107,10 +107,10 @@ const useStyles = makeStyles({
   },
 });
 
-export const OptimizationResultsView: React.FC<OptimizationResultsViewProps> = ({
+export const OptimizationResultsView = ({
   scenes,
   optimizationActive,
-}) => {
+}: OptimizationResultsViewProps) => {
   const styles = useStyles();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<OptimizationResults | null>(null);
@@ -129,16 +129,16 @@ export const OptimizationResultsView: React.FC<OptimizationResultsViewProps> = (
       // In production, this would call the AttentionPredictionService and ABTestingService APIs
       await new Promise(resolve => setTimeout(resolve, 1200));
       
-      const totalDuration = scenes.reduce((sum, scene) => sum + scene.duration.totalSeconds, 0);
+      const totalDuration = scenes.reduce((sum, scene) => sum + scene.duration, 0);
       const avgEngagement = 0.7 + Math.random() * 0.2; // 70-90%
       const retentionRate = 0.65 + Math.random() * 0.25; // 65-90%
 
       const drops: EngagementDrop[] = scenes
-        .filter((_, index) => Math.random() > 0.6)
+        .filter(() => Math.random() > 0.6)
         .slice(0, 3)
-        .map((scene, index) => ({
+        .map((scene) => ({
           sceneIndex: scenes.indexOf(scene),
-          timestamp: scene.start.totalSeconds,
+          timestamp: scene.start,
           severity: (['low', 'medium', 'high', 'critical'] as const)[
             Math.floor(Math.random() * 4)
           ],
@@ -299,7 +299,7 @@ export const OptimizationResultsView: React.FC<OptimizationResultsViewProps> = (
         <div className={styles.recommendationsList}>
           {results.recommendations.map((rec, index) => (
             <div key={index} className={styles.recommendationItem}>
-              <CheckmarkCircle24Regular style={{ fontSize: '20px', color: tokens.colorPaletteBlueForeground1 }} />
+              <CheckmarkCircle24Regular style={{ fontSize: '20px', color: tokens.colorPaletteBlueForeground2 }} />
               <Body1>{rec}</Body1>
             </div>
           ))}

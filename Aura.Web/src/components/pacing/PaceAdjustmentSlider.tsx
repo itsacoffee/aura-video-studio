@@ -3,7 +3,7 @@
  * Interactive timeline adjustment for pacing optimization
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   makeStyles,
@@ -80,11 +80,11 @@ const useStyles = makeStyles({
   },
 });
 
-export const PaceAdjustmentSlider: React.FC<PaceAdjustmentSliderProps> = ({
+export const PaceAdjustmentSlider = ({
   scenes,
   onScenesUpdated,
   optimizationActive,
-}) => {
+}: PaceAdjustmentSliderProps) => {
   const styles = useStyles();
   const [scenePacing, setScenePacing] = useState<ScenePacing[]>([]);
 
@@ -96,7 +96,7 @@ export const PaceAdjustmentSlider: React.FC<PaceAdjustmentSliderProps> = ({
 
   const initializeScenePacing = () => {
     const pacing: ScenePacing[] = scenes.map((scene, index) => {
-      const currentDuration = scene.duration.totalSeconds;
+      const currentDuration = scene.duration;
       const wordCount = scene.script.split(/\s+/).length;
       const wordsPerSecond = wordCount / currentDuration;
       
@@ -144,10 +144,7 @@ export const PaceAdjustmentSlider: React.FC<PaceAdjustmentSliderProps> = ({
       const newDuration = pacing.currentDuration;
       return {
         ...scene,
-        duration: {
-          totalSeconds: newDuration,
-          totalMinutes: newDuration / 60,
-        },
+        duration: newDuration,
       };
     });
 
@@ -192,7 +189,7 @@ export const PaceAdjustmentSlider: React.FC<PaceAdjustmentSliderProps> = ({
   return (
     <div className={styles.container}>
       <div className={styles.sceneList}>
-        {scenePacing.map((pacing, index) => {
+        {scenePacing.map((pacing) => {
           const scene = scenes[pacing.sceneIndex];
           
           return (
@@ -207,7 +204,7 @@ export const PaceAdjustmentSlider: React.FC<PaceAdjustmentSliderProps> = ({
 
               <div className={styles.sceneInfo}>
                 <div>
-                  <Caption1>Current: {formatDuration(scene.duration.totalSeconds)}</Caption1>
+                  <Caption1>Current: {formatDuration(scene.duration)}</Caption1>
                 </div>
                 <ChevronRight24Regular />
                 <div>
@@ -216,7 +213,7 @@ export const PaceAdjustmentSlider: React.FC<PaceAdjustmentSliderProps> = ({
                 {pacing.recommendedDuration !== pacing.currentDuration && (
                   <>
                     <Divider vertical />
-                    <Caption1 style={{ color: tokens.colorPaletteBlueForeground1 }}>
+                    <Caption1 style={{ color: tokens.colorPaletteBlueForeground2 }}>
                       Recommended: {formatDuration(pacing.recommendedDuration)}
                     </Caption1>
                   </>

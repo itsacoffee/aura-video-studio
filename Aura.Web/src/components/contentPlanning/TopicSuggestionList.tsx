@@ -97,7 +97,7 @@ export const TopicSuggestionList: React.FC = () => {
   const [audience, setAudience] = useState<string>('');
   const [platform, setPlatform] = useState<string>('YouTube');
   const [interests, setInterests] = useState<string>('');
-  const [count, setCount] = useState<number>(10);
+  const [count] = useState<number>(10);
 
   const platforms = ['YouTube', 'TikTok', 'Instagram', 'Facebook', 'Twitter'];
 
@@ -202,10 +202,10 @@ export const TopicSuggestionList: React.FC = () => {
                 <div className={styles.topicHeader}>
                   <div className={styles.topicTitle}>{topic.topic}</div>
                   <div className={styles.scores}>
-                    <Badge appearance="tinted" color={getScoreColor(topic.relevanceScore)}>
+                    <Badge appearance="tint" color={getScoreColor(topic.relevanceScore)}>
                       Relevance: {topic.relevanceScore.toFixed(0)}
                     </Badge>
-                    <Badge appearance="tinted" color={getScoreColor(topic.trendScore)}>
+                    <Badge appearance="tint" color={getScoreColor(topic.trendScore)}>
                       Trend: {topic.trendScore.toFixed(0)}
                     </Badge>
                   </div>

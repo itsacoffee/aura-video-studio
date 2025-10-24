@@ -3,7 +3,7 @@
  * Component for displaying transition options between scenes
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   makeStyles,
@@ -11,7 +11,6 @@ import {
   Body1,
   Body1Strong,
   Caption1,
-  Button,
   Badge,
   Spinner,
   Tooltip,
@@ -103,10 +102,10 @@ const useStyles = makeStyles({
   },
 });
 
-export const TransitionSuggestionCard: React.FC<TransitionSuggestionCardProps> = ({
+export const TransitionSuggestionCard = ({
   scenes,
   optimizationActive,
-}) => {
+}: TransitionSuggestionCardProps) => {
   const styles = useStyles();
   const [loading, setLoading] = useState(false);
   const [transitions, setTransitions] = useState<TransitionSuggestion[]>([]);

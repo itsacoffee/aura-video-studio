@@ -2,7 +2,7 @@
  * Content Planning API service for AI-driven content strategy and scheduling
  */
 
-import { apiClient } from './api/client';
+import apiClient from './api/apiClient';
 
 // Types for Trend Analysis
 export interface TrendData {

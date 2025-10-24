@@ -3,7 +3,7 @@
  * Main UI component for visual selection and pacing optimization
  */
 
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Card,
   Button,
@@ -20,7 +20,7 @@ import {
   VideoClip24Regular,
   FlashFlow24Regular,
   ChartMultiple24Regular,
-  TestBeaker24Regular,
+  Beaker24Regular as TestBeaker24Regular,
 } from '@fluentui/react-icons';
 import { Scene } from '../../types';
 import { FrameSelectionView } from './FrameSelectionView';
@@ -62,11 +62,11 @@ const useStyles = makeStyles({
   },
 });
 
-export const PacingOptimizationPanel: React.FC<PacingOptimizationPanelProps> = ({
+export const PacingOptimizationPanel = ({
   scenes,
   videoPath,
   onScenesUpdated,
-}) => {
+}: PacingOptimizationPanelProps) => {
   const styles = useStyles();
   const [selectedTab, setSelectedTab] = useState<string>('frames');
   const [loading, setLoading] = useState(false);
@@ -89,8 +89,8 @@ export const PacingOptimizationPanel: React.FC<PacingOptimizationPanelProps> = (
     }
   }, []);
 
-  const handleTabChange = (_: unknown, data: { value: string }) => {
-    setSelectedTab(data.value);
+  const handleTabChange = (_: unknown, data: any) => {
+    setSelectedTab(data.value as string);
   };
 
   if (scenes.length === 0) {

@@ -1,5 +1,11 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, ExternalLink, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Add20Regular as Plus,
+  Delete20Regular as Trash2,
+  Open20Regular as ExternalLink,
+  Copy20Regular as Copy,
+  Checkmark20Regular as Check
+} from '@fluentui/react-icons';
 
 interface Source {
   sourceId: string;
