@@ -727,15 +727,40 @@ app.MapControllers();
 var wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
 if (Directory.Exists(wwwrootPath))
 {
-    Log.Information("Serving static files from: {Path}", wwwrootPath);
-    
-    app.UseDefaultFiles(); // Serve index.html as default file
-    app.UseStaticFiles();
+    // Validate that wwwroot has the minimum required files
+    var indexHtmlPath = Path.Combine(wwwrootPath, "index.html");
+    if (!File.Exists(indexHtmlPath))
+    {
+        Log.Warning("wwwroot directory exists but index.html is missing: {Path}", wwwrootPath);
+        Log.Warning("The web UI will not be available. Please ensure the build completed successfully.");
+    }
+    else
+    {
+        Log.Information("Serving static files from: {Path}", wwwrootPath);
+        
+        app.UseDefaultFiles(); // Serve index.html as default file
+        app.UseStaticFiles();
+    }
 }
 else
 {
-    Log.Warning("wwwroot directory not found at: {Path}", wwwrootPath);
-    Log.Warning("Static file serving is disabled. Web UI will not be available.");
+    Log.Error("=================================================================");
+    Log.Error("CRITICAL: wwwroot directory not found at: {Path}", wwwrootPath);
+    Log.Error("The web UI cannot be served without this directory.");
+    Log.Error("=================================================================");
+    Log.Error("");
+    Log.Error("This usually means one of the following:");
+    Log.Error("  1. The portable build did not complete successfully");
+    Log.Error("  2. The frontend build (npm run build) failed");
+    Log.Error("  3. The wwwroot folder was not extracted from the ZIP");
+    Log.Error("");
+    Log.Error("To fix this issue:");
+    Log.Error("  - Re-extract the portable ZIP file completely");
+    Log.Error("  - Or rebuild the application with: scripts\\packaging\\build-portable.ps1");
+    Log.Error("");
+    Log.Error("The API will continue to run, but accessing http://127.0.0.1:5005");
+    Log.Error("in your browser will show a blank page or 404 error.");
+    Log.Error("=================================================================");
 }
 
 // API endpoints are grouped under /api prefix

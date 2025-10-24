@@ -92,14 +92,56 @@ If you see an error that port 5005 is already in use:
 2. Check if another application is using port 5005
 3. Kill the process using port 5005 or restart your computer
 
-### Browser Shows 404 Error
+### Blank White Page / 404 Error
 
-If the browser shows a 404 error:
+If you see a blank white page or 404 error when accessing `http://127.0.0.1:5005`:
 
-1. Wait a few seconds for the API to fully start
-2. Check the console window for any error messages
-3. Try refreshing the browser page
-4. Verify the `wwwroot` folder exists inside the `Api` folder
+**This is the most common issue and indicates the web UI files are missing.**
+
+**Immediate Fixes:**
+
+1. **Check if Launch.bat gave you an error before starting**
+   - If Launch.bat showed an error about missing `wwwroot` or `index.html`, the build is incomplete
+   - Re-extract the entire ZIP file to a new folder
+   - Make sure you extracted ALL files, not just selected ones
+
+2. **Check the API console window for error messages**
+   - Look for: `[INF] Serving static files from: C:\path\to\Api\wwwroot` ✅ (Good)
+   - If you see: `[ERR] CRITICAL: wwwroot directory not found` ❌ (Problem!)
+   - The error message will tell you exactly what's wrong
+
+3. **Verify the directory structure is correct**
+   ```
+   AuraVideoStudio_Portable_x64/
+   ├── Api/
+   │   ├── wwwroot/              ← Must exist!
+   │   │   ├── index.html        ← Must exist!
+   │   │   └── assets/           ← Must exist!
+   │   └── Aura.Api.exe
+   └── Launch.bat
+   ```
+
+4. **Check that wwwroot folder exists and has files**
+   - Open File Explorer and navigate to the extracted folder
+   - Go to `Api\wwwroot\`
+   - You should see `index.html` and an `assets` folder with JavaScript files
+   - If these are missing, the ZIP file is corrupted or incomplete
+
+**If the problem persists:**
+
+1. **Re-download the ZIP file** - it may have been corrupted during download
+2. **Extract to a simpler path** - avoid spaces and special characters in the path
+3. **Try a different extraction tool** - Windows built-in extractor, 7-Zip, or WinRAR
+4. **Check antivirus logs** - some antivirus software may block or delete files
+
+**For developers rebuilding from source:**
+
+If you built the portable package yourself and encounter this issue:
+
+1. Check that `npm run build` completed successfully in `Aura.Web` folder
+2. Verify that `Aura.Web\dist\` folder contains `index.html` and `assets`
+3. Re-run the build script: `scripts\packaging\build-portable.ps1`
+4. The build script will now validate the web UI files and fail with clear errors if something is wrong
 
 ### API Won't Start
 
@@ -108,29 +150,20 @@ If the API fails to start:
 1. Check if you have antivirus software blocking the executable
 2. Make sure you extracted all files from the ZIP
 3. Try running `Aura.Api.exe` as administrator
-4. Check the `logs` folder for error messages
+4. Check the `Logs` folder for error messages
+5. Make sure port 5005 is not already in use by another application
 
-### Web UI Won't Load
+### Other Common Issues
 
-If the web UI doesn't load:
+**Browser shows wrong page:**
+1. Clear your browser cache (Ctrl+Shift+Delete)
+2. Try a different web browser (Chrome, Edge, or Firefox work best)
+3. Make sure you're going to `http://127.0.0.1:5005` (not `localhost`)
 
-1. **Check the API console output**
-   - Look for: `[INF] Serving static files from: C:\path\to\Api\wwwroot`
-   - If you see: `[WRN] wwwroot directory not found` - the structure is incorrect
-
-2. **Verify directory structure**
-   - Correct: `Api\wwwroot\index.html` ✅
-   - Wrong: `wwwroot\index.html` (at root level) ❌
-   - Wrong: `Web\index.html` (separate folder) ❌
-
-3. **Check that all files were extracted from the ZIP**
-   - Make sure to extract ALL files, not just the executable
-
-4. **Try a different web browser**
-   - Chrome, Edge, or Firefox work best
-
-5. **Clear your browser cache**
-   - Press Ctrl+Shift+Delete in your browser
+**Application is slow to start:**
+1. Wait 5-10 seconds for the API to fully initialize
+2. The first startup may take longer as it creates necessary folders
+3. Check the console window - you should see "Application started" message
 
 ## Logs
 
