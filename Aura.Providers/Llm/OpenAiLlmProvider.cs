@@ -132,5 +132,110 @@ public class OpenAiLlmProvider : ILlmProvider
         }
     }
 
+    public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Analyzing scene importance with OpenAI");
+
+        try
+        {
+            var systemPrompt = "You are a video pacing expert. Analyze scenes for optimal timing. " +
+                              "Return your response ONLY as valid JSON with no additional text.";
+            
+            var userPrompt = $@"Analyze this scene and return JSON with:
+- importance (0-100): How critical is this scene to the video's message
+- complexity (0-100): How complex is the information presented
+- emotionalIntensity (0-100): Emotional impact level
+- informationDensity (""low""|""medium""|""high""): Amount of information
+- optimalDurationSeconds (number): Recommended duration in seconds
+- transitionType (""cut""|""fade""|""dissolve""): Recommended transition
+- reasoning (string): Brief explanation
+
+Scene: {sceneText}
+{(previousSceneText != null ? $"Previous scene: {previousSceneText}" : "")}
+Video goal: {videoGoal}
+
+Respond with ONLY the JSON object, no other text:";
+
+            var requestBody = new
+            {
+                model = _model,
+                messages = new[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
+                },
+                temperature = 0.3,
+                max_tokens = 512,
+                response_format = new { type = "json_object" }
+            };
+
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, ct);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
+                choices.GetArrayLength() > 0)
+            {
+                var firstChoice = choices[0];
+                if (firstChoice.TryGetProperty("message", out var message) &&
+                    message.TryGetProperty("content", out var contentProp))
+                {
+                    var analysisText = contentProp.GetString() ?? string.Empty;
+                    
+                    try
+                    {
+                        var analysisDoc = JsonDocument.Parse(analysisText);
+                        var root = analysisDoc.RootElement;
+
+                        var result = new SceneAnalysisResult(
+                            Importance: root.TryGetProperty("importance", out var imp) ? imp.GetDouble() : 50.0,
+                            Complexity: root.TryGetProperty("complexity", out var comp) ? comp.GetDouble() : 50.0,
+                            EmotionalIntensity: root.TryGetProperty("emotionalIntensity", out var emo) ? emo.GetDouble() : 50.0,
+                            InformationDensity: root.TryGetProperty("informationDensity", out var info) ? info.GetString() ?? "medium" : "medium",
+                            OptimalDurationSeconds: root.TryGetProperty("optimalDurationSeconds", out var dur) ? dur.GetDouble() : 10.0,
+                            TransitionType: root.TryGetProperty("transitionType", out var trans) ? trans.GetString() ?? "cut" : "cut",
+                            Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
+                        );
+
+                        _logger.LogInformation("Scene analysis complete. Importance: {Importance}, Complexity: {Complexity}", 
+                            result.Importance, result.Complexity);
+                        
+                        return result;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to parse scene analysis JSON from OpenAI: {Response}", analysisText);
+                        return null;
+                    }
+                }
+            }
+
+            _logger.LogWarning("OpenAI scene analysis response did not contain expected structure");
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to connect to OpenAI API for scene analysis");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing scene with OpenAI");
+            return null;
+        }
+    }
+
     // Removed legacy prompt building methods - now using EnhancedPromptTemplates
 }

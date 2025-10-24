@@ -163,5 +163,113 @@ public class OllamaLlmProvider : ILlmProvider
         throw new Exception($"Failed to generate script with Ollama after {_maxRetries + 1} attempts", lastException);
     }
 
+    public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Analyzing scene importance with Ollama");
+
+        try
+        {
+            // Build prompt for scene analysis
+            var systemPrompt = "You are a video pacing expert. Analyze scenes for optimal timing. " +
+                              "Return your response ONLY as valid JSON with no additional text.";
+            
+            var userPrompt = $@"Analyze this scene and return JSON with:
+- importance (0-100): How critical is this scene to the video's message
+- complexity (0-100): How complex is the information presented
+- emotionalIntensity (0-100): Emotional impact level
+- informationDensity (""low""|""medium""|""high""): Amount of information
+- optimalDurationSeconds (number): Recommended duration in seconds
+- transitionType (""cut""|""fade""|""dissolve""): Recommended transition
+- reasoning (string): Brief explanation
+
+Scene: {sceneText}
+{(previousSceneText != null ? $"Previous scene: {previousSceneText}" : "")}
+Video goal: {videoGoal}
+
+Respond with ONLY the JSON object, no other text:";
+
+            var prompt = $"{systemPrompt}\n\n{userPrompt}";
+
+            var requestBody = new
+            {
+                model = _model,
+                prompt = prompt,
+                stream = false,
+                options = new
+                {
+                    temperature = 0.3, // Lower temperature for more consistent JSON
+                    top_p = 0.9,
+                    num_predict = 512
+                }
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30)); // Shorter timeout for analysis
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
+            {
+                var analysisText = responseText.GetString() ?? string.Empty;
+                
+                // Try to parse the JSON response
+                try
+                {
+                    var analysisDoc = JsonDocument.Parse(analysisText);
+                    var root = analysisDoc.RootElement;
+
+                    var result = new SceneAnalysisResult(
+                        Importance: root.TryGetProperty("importance", out var imp) ? imp.GetDouble() : 50.0,
+                        Complexity: root.TryGetProperty("complexity", out var comp) ? comp.GetDouble() : 50.0,
+                        EmotionalIntensity: root.TryGetProperty("emotionalIntensity", out var emo) ? emo.GetDouble() : 50.0,
+                        InformationDensity: root.TryGetProperty("informationDensity", out var info) ? info.GetString() ?? "medium" : "medium",
+                        OptimalDurationSeconds: root.TryGetProperty("optimalDurationSeconds", out var dur) ? dur.GetDouble() : 10.0,
+                        TransitionType: root.TryGetProperty("transitionType", out var trans) ? trans.GetString() ?? "cut" : "cut",
+                        Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
+                    );
+
+                    _logger.LogInformation("Scene analysis complete. Importance: {Importance}, Complexity: {Complexity}", 
+                        result.Importance, result.Complexity);
+                    
+                    return result;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse scene analysis JSON from Ollama: {Response}", analysisText);
+                    return null;
+                }
+            }
+
+            _logger.LogWarning("Ollama scene analysis response did not contain expected 'response' field");
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Ollama scene analysis request timed out");
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to connect to Ollama for scene analysis");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing scene with Ollama");
+            return null;
+        }
+    }
+
     // Removed legacy prompt building method - now using EnhancedPromptTemplates
 }

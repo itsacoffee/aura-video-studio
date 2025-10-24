@@ -1,0 +1,370 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Aura.Core.ML.Models;
+using Aura.Core.Models;
+using Aura.Core.Models.PacingModels;
+using Aura.Core.Providers;
+using Microsoft.Extensions.Logging;
+
+namespace Aura.Core.Services.PacingServices;
+
+/// <summary>
+/// Orchestrates ML-powered pacing optimization for video scenes
+/// Combines LLM analysis, ML predictions, and heuristics for optimal timing
+/// </summary>
+public class IntelligentPacingOptimizer
+{
+    private readonly ILogger<IntelligentPacingOptimizer> _logger;
+    private readonly SceneImportanceAnalyzer _sceneAnalyzer;
+    private readonly AttentionCurvePredictor _attentionPredictor;
+    private readonly FrameImportanceModel? _frameModel;
+
+    // Pacing calculation constants
+    private const double BaseWordsPerMinute = 150.0;
+    private const double ComplexityFactor = 0.3;
+    private const double ImportanceFactor = 0.2;
+    private const double MinDurationMultiplier = 0.7;
+    private const double MaxDurationMultiplier = 1.3;
+
+    public IntelligentPacingOptimizer(
+        ILogger<IntelligentPacingOptimizer> logger,
+        SceneImportanceAnalyzer sceneAnalyzer,
+        AttentionCurvePredictor attentionPredictor,
+        FrameImportanceModel? frameModel = null)
+    {
+        _logger = logger;
+        _sceneAnalyzer = sceneAnalyzer;
+        _attentionPredictor = attentionPredictor;
+        _frameModel = frameModel;
+    }
+
+    /// <summary>
+    /// Performs comprehensive pacing analysis and optimization
+    /// </summary>
+    public async Task<PacingAnalysisResult> OptimizePacingAsync(
+        IReadOnlyList<Scene> scenes,
+        Brief brief,
+        ILlmProvider? llmProvider = null,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Starting intelligent pacing optimization for {SceneCount} scenes", scenes.Count);
+
+        var startTime = DateTime.UtcNow;
+        string? llmProviderUsed = null;
+        bool llmAnalysisSucceeded = false;
+
+        try
+        {
+            // Step 1: Analyze scenes with LLM (if available)
+            IReadOnlyList<SceneAnalysisData> sceneAnalyses;
+            
+            if (llmProvider != null)
+            {
+                try
+                {
+                    llmProviderUsed = llmProvider.GetType().Name;
+                    _logger.LogInformation("Using LLM provider: {Provider}", llmProviderUsed);
+                    
+                    sceneAnalyses = await _sceneAnalyzer.AnalyzeScenesAsync(
+                        llmProvider, scenes, brief.Goal ?? "general video", ct);
+                    
+                    llmAnalysisSucceeded = sceneAnalyses.Any(a => a.AnalyzedWithLlm);
+                    _logger.LogInformation("LLM analysis: {SuccessCount}/{Total} scenes analyzed",
+                        sceneAnalyses.Count(a => a.AnalyzedWithLlm), scenes.Count);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "LLM analysis failed, falling back to heuristics");
+                    sceneAnalyses = CreateFallbackAnalyses(scenes);
+                }
+            }
+            else
+            {
+                _logger.LogInformation("No LLM provider available, using heuristic analysis");
+                sceneAnalyses = CreateFallbackAnalyses(scenes);
+            }
+
+            // Step 2: Calculate optimal timings using ML and LLM data
+            var timingSuggestions = await CalculateOptimalTimingsAsync(
+                scenes, sceneAnalyses, brief, ct);
+
+            // Step 3: Generate attention curve predictions
+            var attentionCurve = await _attentionPredictor.GenerateAttentionCurveAsync(
+                scenes, timingSuggestions, ct);
+
+            // Step 4: Calculate confidence and metrics
+            var confidenceScore = CalculateConfidenceScore(sceneAnalyses, llmAnalysisSucceeded);
+            var optimalDuration = TimeSpan.FromSeconds(
+                timingSuggestions.Sum(s => s.OptimalDuration.TotalSeconds));
+            var warnings = GenerateWarnings(timingSuggestions, scenes);
+
+            var result = new PacingAnalysisResult
+            {
+                TimingSuggestions = timingSuggestions,
+                AttentionCurve = attentionCurve,
+                ConfidenceScore = confidenceScore,
+                PredictedRetentionRate = attentionCurve.OverallRetentionScore,
+                OptimalDuration = optimalDuration,
+                LlmProviderUsed = llmProviderUsed,
+                LlmAnalysisSucceeded = llmAnalysisSucceeded,
+                Warnings = warnings
+            };
+
+            var elapsed = DateTime.UtcNow - startTime;
+            _logger.LogInformation("Pacing optimization complete in {Elapsed:F2}s. " +
+                "Confidence: {Confidence:F1}%, Retention: {Retention:F1}%, Duration: {Duration}",
+                elapsed.TotalSeconds, confidenceScore, attentionCurve.OverallRetentionScore, optimalDuration);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during pacing optimization");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Calculates optimal scene timings using pacing algorithm
+    /// </summary>
+    private async Task<IReadOnlyList<SceneTimingSuggestion>> CalculateOptimalTimingsAsync(
+        IReadOnlyList<Scene> scenes,
+        IReadOnlyList<SceneAnalysisData> analyses,
+        Brief brief,
+        CancellationToken ct)
+    {
+        _logger.LogDebug("Calculating optimal timings for {SceneCount} scenes", scenes.Count);
+
+        var suggestions = new List<SceneTimingSuggestion>();
+
+        // Get platform and audience multipliers
+        var platformMultiplier = GetPlatformMultiplier(brief);
+        var audienceMultiplier = GetAudienceMultiplier(brief);
+
+        for (int i = 0; i < scenes.Count; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var scene = scenes[i];
+            var analysis = analyses.FirstOrDefault(a => a.SceneIndex == i);
+
+            if (analysis == null)
+            {
+                _logger.LogWarning("No analysis found for scene {SceneIndex}, using defaults", i);
+                analysis = CreateDefaultAnalysis(scene, scenes.Count);
+            }
+
+            // Calculate optimal duration using the algorithm from spec
+            var optimal = await CalculateSceneOptimalDurationAsync(
+                scene, analysis, platformMultiplier, audienceMultiplier, ct);
+
+            var minDuration = TimeSpan.FromSeconds(optimal.TotalSeconds * MinDurationMultiplier);
+            var maxDuration = TimeSpan.FromSeconds(optimal.TotalSeconds * MaxDurationMultiplier);
+
+            suggestions.Add(new SceneTimingSuggestion
+            {
+                SceneIndex = i,
+                CurrentDuration = scene.Duration,
+                OptimalDuration = optimal,
+                MinDuration = minDuration,
+                MaxDuration = maxDuration,
+                ImportanceScore = analysis.Importance,
+                ComplexityScore = analysis.Complexity,
+                EmotionalIntensity = analysis.EmotionalIntensity,
+                InformationDensity = analysis.InformationDensity,
+                TransitionType = analysis.TransitionType,
+                Confidence = CalculateSuggestionConfidence(analysis),
+                Reasoning = analysis.Reasoning,
+                UsedLlmAnalysis = analysis.AnalyzedWithLlm
+            });
+        }
+
+        _logger.LogDebug("Calculated {Count} timing suggestions", suggestions.Count);
+        return suggestions;
+    }
+
+    /// <summary>
+    /// Calculates optimal duration for a single scene using the spec's algorithm
+    /// Base duration = word_count / words_per_minute
+    /// Complexity factor = LLM_complexity_score * 0.3
+    /// Importance factor = LLM_importance_score * 0.2
+    /// Audience factor = audience_type_multiplier
+    /// Platform factor = platform_multiplier
+    /// Optimal_duration = base * (1 + complexity + importance + audience + platform)
+    /// </summary>
+    private async Task<TimeSpan> CalculateSceneOptimalDurationAsync(
+        Scene scene,
+        SceneAnalysisData analysis,
+        double platformMultiplier,
+        double audienceMultiplier,
+        CancellationToken ct)
+    {
+        await Task.CompletedTask;
+        ct.ThrowIfCancellationRequested();
+
+        // Calculate word count
+        var wordCount = scene.Script.Split(new[] { ' ', '\t', '\n', '\r' }, 
+            StringSplitOptions.RemoveEmptyEntries).Length;
+
+        // Base duration from word count and speaking rate
+        var baseDurationSeconds = (wordCount / BaseWordsPerMinute) * 60.0;
+
+        // Normalize scores to 0-1 range
+        var complexityNorm = analysis.Complexity / 100.0;
+        var importanceNorm = analysis.Importance / 100.0;
+
+        // Apply the formula from spec
+        var complexityAdjustment = complexityNorm * ComplexityFactor;
+        var importanceAdjustment = importanceNorm * ImportanceFactor;
+        var audienceAdjustment = audienceMultiplier;
+        var platformAdjustment = platformMultiplier - 1.0; // Convert to adjustment factor
+
+        var totalMultiplier = 1.0 + complexityAdjustment + importanceAdjustment + 
+            audienceAdjustment + platformAdjustment;
+
+        var optimalSeconds = baseDurationSeconds * totalMultiplier;
+
+        // Ensure reasonable bounds (3-120 seconds per scene)
+        optimalSeconds = Math.Clamp(optimalSeconds, 3.0, 120.0);
+
+        return TimeSpan.FromSeconds(optimalSeconds);
+    }
+
+    private double GetPlatformMultiplier(Brief brief)
+    {
+        // Platform-specific multipliers from spec
+        // YouTube: 1.0, TikTok: 0.7, Instagram: 0.8, etc.
+        var aspect = brief.Aspect;
+        
+        return aspect switch
+        {
+            Aspect.Vertical9x16 => 0.7,  // TikTok/Shorts (faster pacing)
+            Aspect.Square1x1 => 0.8,     // Instagram (moderate pacing)
+            _ => 1.0                      // YouTube/Landscape (standard pacing)
+        };
+    }
+
+    private double GetAudienceMultiplier(Brief brief)
+    {
+        // Audience-based adjustments
+        var audience = brief.Audience?.ToLowerInvariant();
+        
+        if (audience == null)
+            return 0.0;
+
+        return audience switch
+        {
+            var a when a.Contains("expert") || a.Contains("professional") => 0.1,
+            var a when a.Contains("beginner") || a.Contains("novice") => -0.1,
+            var a when a.Contains("general") => 0.0,
+            _ => 0.0
+        };
+    }
+
+    private IReadOnlyList<SceneAnalysisData> CreateFallbackAnalyses(IReadOnlyList<Scene> scenes)
+    {
+        var analyses = new List<SceneAnalysisData>();
+        
+        for (int i = 0; i < scenes.Count; i++)
+        {
+            analyses.Add(CreateDefaultAnalysis(scenes[i], scenes.Count));
+        }
+
+        return analyses;
+    }
+
+    private SceneAnalysisData CreateDefaultAnalysis(Scene scene, int totalScenes)
+    {
+        var wordCount = scene.Script.Split(new[] { ' ', '\t', '\n', '\r' }, 
+            StringSplitOptions.RemoveEmptyEntries).Length;
+
+        return new SceneAnalysisData
+        {
+            SceneIndex = scene.Index,
+            Importance = scene.Index == 0 ? 85.0 : 50.0,
+            Complexity = wordCount > 70 ? 70.0 : 50.0,
+            EmotionalIntensity = 50.0,
+            InformationDensity = wordCount > 100 ? InformationDensity.High : InformationDensity.Medium,
+            OptimalDurationSeconds = (wordCount / 2.5),
+            TransitionType = TransitionType.Fade,
+            Reasoning = "Default heuristic analysis",
+            AnalyzedWithLlm = false
+        };
+    }
+
+    private double CalculateConfidenceScore(
+        IReadOnlyList<SceneAnalysisData> analyses,
+        bool llmAnalysisSucceeded)
+    {
+        var baseConfidence = 60.0;
+
+        // Boost if LLM was used successfully
+        if (llmAnalysisSucceeded)
+        {
+            var llmAnalysisCount = analyses.Count(a => a.AnalyzedWithLlm);
+            var llmPercentage = llmAnalysisCount / (double)analyses.Count;
+            baseConfidence += llmPercentage * 30.0; // Up to +30 for full LLM coverage
+        }
+
+        // Boost for consistent analysis
+        if (analyses.Count > 0)
+        {
+            baseConfidence += 10.0;
+        }
+
+        return Math.Clamp(baseConfidence, 0, 100);
+    }
+
+    private double CalculateSuggestionConfidence(SceneAnalysisData analysis)
+    {
+        var confidence = 70.0;
+
+        if (analysis.AnalyzedWithLlm)
+        {
+            confidence += 20.0;
+        }
+
+        return Math.Clamp(confidence, 0, 100);
+    }
+
+    private IReadOnlyList<string> GenerateWarnings(
+        IReadOnlyList<SceneTimingSuggestion> suggestions,
+        IReadOnlyList<Scene> scenes)
+    {
+        var warnings = new List<string>();
+
+        // Check for scenes that need significant adjustment
+        var needsAdjustment = suggestions.Where(s =>
+        {
+            var diff = Math.Abs((s.OptimalDuration - s.CurrentDuration).TotalSeconds);
+            return diff > 3.0;
+        }).ToList();
+
+        if (needsAdjustment.Count > 0)
+        {
+            warnings.Add($"{needsAdjustment.Count} scene(s) need timing adjustments of 3+ seconds");
+        }
+
+        // Check total duration
+        var totalOptimal = suggestions.Sum(s => s.OptimalDuration.TotalSeconds);
+        var totalCurrent = scenes.Sum(s => s.Duration.TotalSeconds);
+        var totalDiff = Math.Abs(totalOptimal - totalCurrent);
+
+        if (totalDiff > 10.0)
+        {
+            warnings.Add($"Total video duration should change by {totalDiff:F0} seconds");
+        }
+
+        // Check for very long scenes
+        var longScenes = suggestions.Where(s => s.OptimalDuration.TotalSeconds > 60).ToList();
+        if (longScenes.Count > 0)
+        {
+            warnings.Add($"{longScenes.Count} scene(s) exceed 60 seconds - consider breaking into smaller segments");
+        }
+
+        return warnings;
+    }
+}
