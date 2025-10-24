@@ -33,6 +33,10 @@ public class VideoOrchestrator
     private readonly ImageOutputValidator _imageValidator;
     private readonly LlmOutputValidator _llmValidator;
     private readonly ResourceCleanupManager _cleanupManager;
+    private readonly Services.PacingServices.IntelligentPacingOptimizer? _pacingOptimizer;
+    private readonly Services.PacingServices.PacingApplicationService? _pacingApplicationService;
+    private readonly Timeline.TimelineBuilder _timelineBuilder;
+    private readonly Configuration.ProviderSettings _providerSettings;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -48,7 +52,11 @@ public class VideoOrchestrator
         ImageOutputValidator imageValidator,
         LlmOutputValidator llmValidator,
         ResourceCleanupManager cleanupManager,
-        IImageProvider? imageProvider = null)
+        Timeline.TimelineBuilder timelineBuilder,
+        Configuration.ProviderSettings providerSettings,
+        IImageProvider? imageProvider = null,
+        Services.PacingServices.IntelligentPacingOptimizer? pacingOptimizer = null,
+        Services.PacingServices.PacingApplicationService? pacingApplicationService = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(llmProvider);
@@ -63,6 +71,8 @@ public class VideoOrchestrator
         ArgumentNullException.ThrowIfNull(imageValidator);
         ArgumentNullException.ThrowIfNull(llmValidator);
         ArgumentNullException.ThrowIfNull(cleanupManager);
+        ArgumentNullException.ThrowIfNull(timelineBuilder);
+        ArgumentNullException.ThrowIfNull(providerSettings);
         
         _logger = logger;
         _llmProvider = llmProvider;
@@ -78,6 +88,10 @@ public class VideoOrchestrator
         _imageValidator = imageValidator;
         _llmValidator = llmValidator;
         _cleanupManager = cleanupManager;
+        _pacingOptimizer = pacingOptimizer;
+        _pacingApplicationService = pacingApplicationService;
+        _timelineBuilder = timelineBuilder;
+        _providerSettings = providerSettings;
     }
 
     /// <summary>
@@ -231,6 +245,68 @@ public class VideoOrchestrator
             progress?.Report("Stage 2/5: Parsing scenes...");
             var scenes = ParseScriptIntoScenes(script, planSpec.TargetDuration);
             _logger.LogInformation("Parsed {SceneCount} scenes", scenes.Count);
+
+            // Optional: Apply pacing optimization if enabled
+            if (_providerSettings.GetEnablePacingOptimization() && 
+                _pacingOptimizer != null && 
+                _pacingApplicationService != null &&
+                _providerSettings.GetAutoApplyPacingSuggestions())
+            {
+                try
+                {
+                    progress?.Report("Analyzing and optimizing pacing...");
+                    _logger.LogInformation("Pacing optimization enabled, analyzing scenes");
+
+                    var startTime = DateTime.UtcNow;
+                    var pacingResult = await _pacingOptimizer.OptimizePacingAsync(
+                        scenes, brief, _llmProvider, ct).ConfigureAwait(false);
+                    
+                    var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
+                    _logger.LogInformation(
+                        "Pacing analysis completed in {Elapsed:F2}s. Confidence: {Confidence:F1}%, Retention: {Retention:F1}%",
+                        elapsed, pacingResult.ConfidenceScore, pacingResult.PredictedRetentionRate);
+
+                    // Validate suggestions
+                    var optimizationLevel = Enum.Parse<Models.Settings.OptimizationLevel>(
+                        _providerSettings.GetPacingOptimizationLevel(), ignoreCase: true);
+                    var minConfidence = _providerSettings.GetMinimumConfidenceThreshold();
+
+                    var validation = _pacingApplicationService.ValidateSuggestions(
+                        pacingResult, scenes, planSpec.TargetDuration, minConfidence);
+
+                    if (validation.IsValid)
+                    {
+                        // Apply pacing suggestions
+                        scenes = _timelineBuilder.ApplyPacingSuggestions(
+                            scenes, pacingResult, optimizationLevel, minConfidence).ToList();
+                        
+                        _logger.LogInformation(
+                            "Applied pacing suggestions. New total duration: {Duration}",
+                            TimeSpan.FromSeconds(scenes.Sum(s => s.Duration.TotalSeconds)));
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Pacing suggestions validation failed: {Issues}",
+                            string.Join("; ", validation.Issues));
+                    }
+
+                    // Log warnings if any
+                    foreach (var warning in validation.Warnings)
+                    {
+                        _logger.LogWarning("Pacing warning: {Warning}", warning);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Pacing optimization failed, continuing with original timings");
+                    // Continue with original scenes if pacing fails
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Pacing optimization disabled or not available");
+            }
 
             // Stage 3: Generate narration
             progress?.Report("Stage 3/5: Generating narration...");
@@ -445,6 +521,49 @@ public class VideoOrchestrator
                     // Parse scenes immediately for downstream tasks
                     parsedScenes = ParseScriptIntoScenes(generatedScript, planSpec.TargetDuration);
                     _logger.LogInformation("Parsed {SceneCount} scenes", parsedScenes.Count);
+                    
+                    // Optional: Apply pacing optimization if enabled
+                    if (_providerSettings.GetEnablePacingOptimization() && 
+                        _pacingOptimizer != null && 
+                        _pacingApplicationService != null &&
+                        _providerSettings.GetAutoApplyPacingSuggestions())
+                    {
+                        try
+                        {
+                            _logger.LogInformation("Pacing optimization enabled, analyzing scenes");
+                            
+                            var startTime = DateTime.UtcNow;
+                            var pacingResult = await _pacingOptimizer.OptimizePacingAsync(
+                                parsedScenes, brief, _llmProvider, ct).ConfigureAwait(false);
+                            
+                            var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
+                            _logger.LogInformation(
+                                "Pacing analysis completed in {Elapsed:F2}s. Confidence: {Confidence:F1}%",
+                                elapsed, pacingResult.ConfidenceScore);
+
+                            // Validate and apply
+                            var optimizationLevel = Enum.Parse<Models.Settings.OptimizationLevel>(
+                                _providerSettings.GetPacingOptimizationLevel(), ignoreCase: true);
+                            var minConfidence = _providerSettings.GetMinimumConfidenceThreshold();
+
+                            var validation = _pacingApplicationService.ValidateSuggestions(
+                                pacingResult, parsedScenes, planSpec.TargetDuration, minConfidence);
+
+                            if (validation.IsValid)
+                            {
+                                parsedScenes = _timelineBuilder.ApplyPacingSuggestions(
+                                    parsedScenes, pacingResult, optimizationLevel, minConfidence).ToList();
+                                
+                                _logger.LogInformation(
+                                    "Applied pacing suggestions. New total duration: {Duration}",
+                                    TimeSpan.FromSeconds(parsedScenes.Sum(s => s.Duration.TotalSeconds)));
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Pacing optimization failed, continuing with original timings");
+                        }
+                    }
                     
                     return generatedScript;
 

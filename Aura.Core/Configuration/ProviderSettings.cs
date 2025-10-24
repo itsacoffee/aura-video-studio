@@ -333,6 +333,101 @@ public class ProviderSettings
         return false;
     }
 
+    /// <summary>
+    /// Check if pacing optimization is enabled
+    /// </summary>
+    public bool GetEnablePacingOptimization()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enablePacingOptimization", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Get pacing optimization level
+    /// </summary>
+    public string GetPacingOptimizationLevel()
+    {
+        LoadSettings();
+        return GetStringSetting("pacingOptimizationLevel", "Balanced");
+    }
+
+    /// <summary>
+    /// Check if auto-apply pacing suggestions is enabled
+    /// </summary>
+    public bool GetAutoApplyPacingSuggestions()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("autoApplyPacingSuggestions", out var value))
+        {
+            if (value is JsonElement jsonElement)
+            {
+                if (jsonElement.ValueKind == JsonValueKind.True)
+                    return true;
+                if (jsonElement.ValueKind == JsonValueKind.False)
+                    return false;
+            }
+        }
+        return true; // Default: enabled if pacing is enabled
+    }
+
+    /// <summary>
+    /// Get minimum confidence threshold for pacing suggestions (0-100)
+    /// </summary>
+    public int GetMinimumConfidenceThreshold()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("minimumConfidenceThreshold", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.TryGetInt32(out var intValue))
+            {
+                return Math.Clamp(intValue, 0, 100);
+            }
+        }
+        return 70; // Default: 70%
+    }
+
+    /// <summary>
+    /// Set pacing optimization configuration
+    /// </summary>
+    public void SetPacingOptimizationConfig(
+        bool? enabled = null,
+        string? level = null,
+        bool? autoApply = null,
+        int? minimumConfidenceThreshold = null)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+
+        if (enabled.HasValue)
+        {
+            _settings["enablePacingOptimization"] = enabled.Value;
+        }
+        if (level != null)
+        {
+            _settings["pacingOptimizationLevel"] = level;
+        }
+        if (autoApply.HasValue)
+        {
+            _settings["autoApplyPacingSuggestions"] = autoApply.Value;
+        }
+        if (minimumConfidenceThreshold.HasValue)
+        {
+            _settings["minimumConfidenceThreshold"] = Math.Clamp(minimumConfidenceThreshold.Value, 0, 100);
+        }
+
+        SaveSettings();
+    }
+
     private void LoadSettings()
     {
         if (_settings != null)

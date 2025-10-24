@@ -174,4 +174,64 @@ public class TimelineBuilder
 
         return text.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
     }
+
+    /// <summary>
+    /// Applies pacing suggestions to scenes, updating durations based on analysis
+    /// </summary>
+    public IReadOnlyList<Scene> ApplyPacingSuggestions(
+        IReadOnlyList<Scene> scenes,
+        Models.PacingModels.PacingAnalysisResult analysisResult,
+        Models.Settings.OptimizationLevel optimizationLevel = Models.Settings.OptimizationLevel.Balanced,
+        double minimumConfidenceThreshold = 70.0)
+    {
+        if (scenes == null || scenes.Count == 0)
+            return scenes;
+
+        if (analysisResult == null || analysisResult.TimingSuggestions.Count == 0)
+            return scenes;
+
+        var updatedScenes = new List<Scene>();
+        TimeSpan currentStart = TimeSpan.Zero;
+
+        for (int i = 0; i < scenes.Count; i++)
+        {
+            var scene = scenes[i];
+            var suggestion = analysisResult.TimingSuggestions.FirstOrDefault(s => s.SceneIndex == i);
+
+            TimeSpan newDuration;
+            if (suggestion != null && suggestion.Confidence >= minimumConfidenceThreshold)
+            {
+                // Apply duration based on optimization level
+                newDuration = optimizationLevel switch
+                {
+                    Models.Settings.OptimizationLevel.Conservative =>
+                        TimeSpan.FromSeconds(scene.Duration.TotalSeconds * 0.7 + suggestion.OptimalDuration.TotalSeconds * 0.3),
+                    Models.Settings.OptimizationLevel.Balanced =>
+                        TimeSpan.FromSeconds(scene.Duration.TotalSeconds * 0.4 + suggestion.OptimalDuration.TotalSeconds * 0.6),
+                    Models.Settings.OptimizationLevel.Aggressive =>
+                        suggestion.OptimalDuration,
+                    _ => scene.Duration
+                };
+
+                // Enforce constraints (3-120 seconds per scene)
+                newDuration = TimeSpan.FromSeconds(Math.Clamp(newDuration.TotalSeconds, 3.0, 120.0));
+            }
+            else
+            {
+                // No suggestion or low confidence, keep current duration
+                newDuration = scene.Duration;
+            }
+
+            var updatedScene = scene with
+            {
+                Start = currentStart,
+                Duration = newDuration
+            };
+
+            updatedScenes.Add(updatedScene);
+            currentStart += newDuration;
+        }
+
+        return updatedScenes;
+    }
 }
