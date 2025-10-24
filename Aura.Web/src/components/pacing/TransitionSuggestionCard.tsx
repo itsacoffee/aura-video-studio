@@ -188,7 +188,7 @@ export const TransitionSuggestionCard = ({
     return (
       <div className={styles.emptyState}>
         <Info24Regular style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }} />
-        <Body1>Click "Optimize Pacing" to analyze transitions</Body1>
+        <Body1>Click &quot;Optimize Pacing&quot; to analyze transitions</Body1>
       </div>
     );
   }

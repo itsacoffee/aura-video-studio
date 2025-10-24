@@ -52,6 +52,7 @@ const useStyles = makeStyles({
   },
 });
 
+// eslint-disable-next-line react-refresh/only-export-components
 function ErrorFallback({
   error,
   errorInfo,

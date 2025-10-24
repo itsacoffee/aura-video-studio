@@ -29,6 +29,7 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Log requests in development
     if (env.isDevelopment && env.enableDebug) {
+      // eslint-disable-next-line no-console
       console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, config.data);
     }
 
@@ -55,6 +56,7 @@ apiClient.interceptors.response.use(
   (response) => {
     // Log responses in development
     if (env.isDevelopment && env.enableDebug) {
+      // eslint-disable-next-line no-console
       console.log(
         `[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`,
         response.data

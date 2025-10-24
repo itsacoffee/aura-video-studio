@@ -180,7 +180,7 @@ export function ExportSettingsEditor({
               label="Platform-specific optimization"
             />
             <Caption1>
-              Automatically adjust settings for each platform's requirements
+              Automatically adjust settings for each platform&apos;s requirements
             </Caption1>
           </Field>
 

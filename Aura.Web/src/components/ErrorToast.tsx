@@ -37,6 +37,7 @@ export interface ErrorToastOptions {
 /**
  * Hook to display error toasts with copy-to-clipboard functionality
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useErrorToast() {
   const toasterId = useId('error-toaster');
   const { dispatchToast } = useToastController(toasterId);

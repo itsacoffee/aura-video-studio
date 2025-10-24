@@ -134,9 +134,7 @@ export function AIOptimizationPanel() {
 
       const data = await response.json();
       
-      if (data.success) {
-        console.log('Settings saved successfully');
-      } else {
+      if (!data.success) {
         console.error('Failed to save settings:', data.error);
       }
     } catch (error) {

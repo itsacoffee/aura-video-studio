@@ -117,10 +117,11 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
             <div className="flex items-start justify-between gap-4 mb-3">
               <div className="flex-1 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label htmlFor={`source-name-${source.sourceId}`} className="block text-xs font-medium text-gray-700 mb-1">
                     Source Name *
                   </label>
                   <input
+                    id={`source-name-${source.sourceId}`}
                     type="text"
                     value={source.name}
                     onChange={(e) => handleUpdateSource(source.sourceId, 'name', e.target.value)}
@@ -130,10 +131,11 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label htmlFor={`source-author-${source.sourceId}`} className="block text-xs font-medium text-gray-700 mb-1">
                     Author
                   </label>
                   <input
+                    id={`source-author-${source.sourceId}`}
                     type="text"
                     value={source.author || ''}
                     onChange={(e) => handleUpdateSource(source.sourceId, 'author', e.target.value)}
@@ -143,10 +145,11 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label htmlFor={`source-url-${source.sourceId}`} className="block text-xs font-medium text-gray-700 mb-1">
                     URL *
                   </label>
                   <input
+                    id={`source-url-${source.sourceId}`}
                     type="url"
                     value={source.url}
                     onChange={(e) => handleUpdateSource(source.sourceId, 'url', e.target.value)}
@@ -156,10 +159,11 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label htmlFor={`source-type-${source.sourceId}`} className="block text-xs font-medium text-gray-700 mb-1">
                     Type
                   </label>
                   <select
+                    id={`source-type-${source.sourceId}`}
                     value={source.type}
                     onChange={(e) => handleUpdateSource(source.sourceId, 'type', e.target.value)}
                     className="w-full px-3 py-1.5 border rounded-md text-sm"
@@ -175,10 +179,11 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label htmlFor={`source-date-${source.sourceId}`} className="block text-xs font-medium text-gray-700 mb-1">
                     Published Date
                   </label>
                   <input
+                    id={`source-date-${source.sourceId}`}
                     type="date"
                     value={source.publishedDate ? source.publishedDate.split('T')[0] : ''}
                     onChange={(e) => handleUpdateSource(source.sourceId, 'publishedDate', e.target.value + 'T00:00:00Z')}
@@ -212,7 +217,7 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
 
         {sources.length === 0 && (
           <div className="text-center py-8 text-gray-500 text-sm">
-            No sources added yet. Click "Add Source" to start.
+            No sources added yet. Click &quot;Add Source&quot; to start.
           </div>
         )}
       </div>
@@ -222,8 +227,9 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
         <div className="border-t pt-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-700">Citation Format:</label>
+              <label htmlFor="citation-format" className="text-sm font-medium text-gray-700">Citation Format:</label>
               <select
+                id="citation-format"
                 value={citationFormat}
                 onChange={(e) => setCitationFormat(e.target.value as 'APA' | 'MLA' | 'Chicago' | 'Harvard')}
                 className="px-3 py-1.5 border rounded-md text-sm"

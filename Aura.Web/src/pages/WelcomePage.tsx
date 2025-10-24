@@ -104,7 +104,6 @@ export function WelcomePage() {
         autoRun={true}
         onNeedsSetup={() => {
           // Optionally redirect to onboarding if critical issues found
-          console.log('System needs setup');
         }}
       />
 

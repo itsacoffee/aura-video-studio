@@ -69,7 +69,6 @@ export const QualityEnhancement: React.FC<QualityEnhancementProps> = ({
     setIsEnhancing(true);
     try {
       // Apply all enhancements
-      console.log('Applying all enhancements...');
       // Implementation would apply all selected enhancements
       onApplyEnhancement?.({
         type: 'all',

@@ -48,6 +48,7 @@ export interface FailureToastOptions {
 /**
  * Hook to display success and failure toasts with action buttons
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useNotifications() {
   const toasterId = useId('notifications-toaster');
   const { dispatchToast } = useToastController(toasterId);

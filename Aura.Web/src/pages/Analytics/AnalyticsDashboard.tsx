@@ -195,7 +195,6 @@ export function AnalyticsDashboard() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         // In a real implementation, parse the CSV and import the data
-        console.log('Importing CSV:', file.name);
         // TODO: Implement CSV parsing and data import via API
         alert(`CSV import would process ${file.name}. API integration pending.`);
       }
@@ -215,8 +214,7 @@ export function AnalyticsDashboard() {
         const reader = new FileReader();
         reader.onload = async (event) => {
           try {
-            const data = JSON.parse(event.target?.result as string);
-            console.log('Importing JSON:', data);
+            JSON.parse(event.target?.result as string);
             // TODO: Implement JSON validation and data import via API
             alert(`JSON import would process ${file.name}. API integration pending.`);
           } catch (error) {
