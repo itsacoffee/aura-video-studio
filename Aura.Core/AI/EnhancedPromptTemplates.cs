@@ -8,9 +8,31 @@ namespace Aura.Core.AI;
 /// <summary>
 /// Enhanced prompt templates for AI-guided video creation that produces high-quality,
 /// natural-sounding content that doesn't feel AI-generated or like "slop".
+/// Supports both static (default) and dynamic (ML-optimized) modes.
 /// </summary>
 public static class EnhancedPromptTemplates
 {
+    /// <summary>
+    /// Prompt mode for template usage
+    /// </summary>
+    public enum PromptMode
+    {
+        /// <summary>
+        /// Use static, predefined templates
+        /// </summary>
+        Static,
+        
+        /// <summary>
+        /// Allow dynamic ML-driven enhancements
+        /// </summary>
+        Dynamic
+    }
+
+    /// <summary>
+    /// Current prompt mode (default: Static)
+    /// </summary>
+    public static PromptMode CurrentMode { get; set; } = PromptMode.Static;
+
     /// <summary>
     /// System prompt for video script generation with emphasis on quality and naturalness
     /// </summary>
