@@ -29,6 +29,10 @@ public class VideoGenerationOrchestrator
         ResourceMonitor resourceMonitor,
         StrategySelector strategySelector)
     {
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(resourceMonitor);
+        ArgumentNullException.ThrowIfNull(strategySelector);
+        
         _logger = logger;
         _resourceMonitor = resourceMonitor;
         _strategySelector = strategySelector;
@@ -46,6 +50,11 @@ public class VideoGenerationOrchestrator
         IProgress<OrchestrationProgress>? progress = null,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(brief);
+        ArgumentNullException.ThrowIfNull(planSpec);
+        ArgumentNullException.ThrowIfNull(systemProfile);
+        ArgumentNullException.ThrowIfNull(taskExecutor);
+        
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -74,6 +83,36 @@ public class VideoGenerationOrchestrator
             foreach (var batch in batches)
             {
                 _logger.LogInformation("Executing batch with {TaskCount} tasks", batch.Count);
+                
+                // CRITICAL: Validate all dependencies are in succeeded state before executing batch
+                foreach (var node in batch)
+                {
+                    var dependencies = graph.GetDependencies(node.TaskId);
+                    _logger.LogDebug("Task {TaskId} has {DependencyCount} dependencies: [{Dependencies}]", 
+                        node.TaskId, dependencies.Count, string.Join(", ", dependencies));
+                    
+                    foreach (var depTaskId in dependencies)
+                    {
+                        var depNode = graph.GetNode(depTaskId);
+                        if (depNode == null)
+                        {
+                            var error = $"Dependency validation failed: Task '{node.TaskId}' depends on '{depTaskId}' which was not found in graph";
+                            _logger.LogError(error);
+                            throw new OrchestrationException(error);
+                        }
+                        
+                        if (depNode.Status != TaskStatus.Completed)
+                        {
+                            var error = $"Dependency validation failed: Task '{node.TaskId}' depends on '{depTaskId}' which has status '{depNode.Status}' (expected: Completed). Task execution order violation detected.";
+                            _logger.LogError(error);
+                            throw new OrchestrationException(error);
+                        }
+                        
+                        _logger.LogDebug("Dependency validation passed: Task {TaskId} <- {DependencyTaskId} (Status: {Status})", 
+                            node.TaskId, depTaskId, depNode.Status);
+                    }
+                }
+                
                 progress?.Report(new OrchestrationProgress(
                     $"Processing batch ({completedTasks}/{totalTasks} tasks completed)",
                     completedTasks,
@@ -219,7 +258,8 @@ public class VideoGenerationOrchestrator
                     node.Status = TaskStatus.Running;
                     node.StartedAt = DateTime.UtcNow;
 
-                    _logger.LogDebug("Executing task: {TaskId} ({TaskType})", node.TaskId, node.TaskType);
+                    _logger.LogInformation("Executing task: {TaskId} ({TaskType}) - Priority: {Priority}, ResourceCost: {ResourceCost}", 
+                        node.TaskId, node.TaskType, node.Priority, node.EstimatedResourceCost);
 
                     var result = await taskExecutor(node, ct).ConfigureAwait(false);
 
@@ -231,7 +271,10 @@ public class VideoGenerationOrchestrator
                     _taskResults[node.TaskId] = taskResult;
                     results.Add(taskResult);
 
-                    _logger.LogDebug("Task completed: {TaskId}", node.TaskId);
+                    _logger.LogInformation("Task completed successfully: {TaskId} (Duration: {Duration}ms)", 
+                        node.TaskId, node.CompletedAt.HasValue && node.StartedAt.HasValue 
+                            ? (node.CompletedAt.Value - node.StartedAt.Value).TotalMilliseconds 
+                            : 0);
                 }
                 finally
                 {

@@ -35,6 +35,27 @@ Write-Host "Configuration: $Configuration" -ForegroundColor White
 Write-Host "Platform:      $Platform" -ForegroundColor White
 Write-Host ""
 
+# Validate prerequisites
+Write-Host "[0/6] Validating prerequisites..." -ForegroundColor Yellow
+
+# Check for dotnet
+if (-not (Get-Command "dotnet" -ErrorAction SilentlyContinue)) {
+    Write-BuildError ".NET SDK not found in PATH. Please install .NET 8.0 SDK from https://dotnet.microsoft.com/download"
+    throw "Required prerequisite missing: .NET SDK"
+}
+$dotnetVersion = dotnet --version
+Write-Host "      ✓ .NET SDK found (version $dotnetVersion)" -ForegroundColor Green
+
+# Check for npm
+if (-not (Get-Command "npm" -ErrorAction SilentlyContinue)) {
+    Write-BuildError "npm not found in PATH. Please install Node.js from https://nodejs.org/"
+    throw "Required prerequisite missing: npm"
+}
+$npmVersion = npm --version
+Write-Host "      ✓ npm found (version $npmVersion)" -ForegroundColor Green
+
+Write-Host ""
+
 # Set paths
 $scriptDir = $PSScriptRoot
 $rootDir = Split-Path -Parent (Split-Path -Parent $scriptDir)
@@ -73,11 +94,45 @@ try {
     try {
         if (-not (Test-Path "node_modules")) {
             Write-Host "      Installing npm dependencies..." -ForegroundColor Gray
-            npm install --silent 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
+            
+            # Retry npm install up to 3 times for network issues
+            $maxRetries = 3
+            $retryCount = 0
+            $installSuccess = $false
+            
+            while (-not $installSuccess -and $retryCount -lt $maxRetries) {
+                if ($retryCount -gt 0) {
+                    Write-Host "      Retry attempt $retryCount of $maxRetries..." -ForegroundColor Gray
+                    Start-Sleep -Seconds 2
+                }
+                
+                # Capture output but only show on error
+                $npmOutput = npm install --silent 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    $installSuccess = $true
+                    Write-Host "      ✓ npm dependencies installed" -ForegroundColor Green
+                } else {
+                    $retryCount++
+                    if ($retryCount -ge $maxRetries) {
+                        Write-BuildError "npm install failed after $maxRetries attempts"
+                        Write-Host "npm output: $npmOutput" -ForegroundColor Red
+                        throw "npm install failed after $maxRetries attempts. Error: $npmOutput`n`nPlease check your internet connection and npm configuration."
+                    }
+                }
+            }
+        } else {
+            Write-Host "      ✓ npm dependencies already installed" -ForegroundColor Green
         }
-        npm run build --silent 2>&1 | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "npm build failed" }
+        
+        Write-Host "      Building frontend..." -ForegroundColor Gray
+        # Capture output to reduce noise, but show on error
+        $buildOutput = npm run build --silent 2>&1
+        if ($LASTEXITCODE -ne 0) { 
+            Write-BuildError "npm build failed"
+            Write-Host "Build output: $buildOutput" -ForegroundColor Red
+            throw "npm build failed. Error: $buildOutput`n`nThis may be due to TypeScript compilation errors or other build issues."
+        }
+        Write-Host "      ✓ Frontend build complete" -ForegroundColor Green
     }
     finally {
         Pop-Location

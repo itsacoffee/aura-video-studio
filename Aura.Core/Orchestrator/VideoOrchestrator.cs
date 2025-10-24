@@ -50,6 +50,20 @@ public class VideoOrchestrator
         ResourceCleanupManager cleanupManager,
         IImageProvider? imageProvider = null)
     {
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(llmProvider);
+        ArgumentNullException.ThrowIfNull(ttsProvider);
+        ArgumentNullException.ThrowIfNull(videoComposer);
+        ArgumentNullException.ThrowIfNull(smartOrchestrator);
+        ArgumentNullException.ThrowIfNull(resourceMonitor);
+        ArgumentNullException.ThrowIfNull(preGenerationValidator);
+        ArgumentNullException.ThrowIfNull(scriptValidator);
+        ArgumentNullException.ThrowIfNull(retryWrapper);
+        ArgumentNullException.ThrowIfNull(ttsValidator);
+        ArgumentNullException.ThrowIfNull(imageValidator);
+        ArgumentNullException.ThrowIfNull(llmValidator);
+        ArgumentNullException.ThrowIfNull(cleanupManager);
+        
         _logger = logger;
         _llmProvider = llmProvider;
         _ttsProvider = ttsProvider;
@@ -78,6 +92,12 @@ public class VideoOrchestrator
         IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(brief);
+        ArgumentNullException.ThrowIfNull(planSpec);
+        ArgumentNullException.ThrowIfNull(voiceSpec);
+        ArgumentNullException.ThrowIfNull(renderSpec);
+        ArgumentNullException.ThrowIfNull(systemProfile);
+        
         try
         {
             // Pre-generation validation
@@ -158,6 +178,11 @@ public class VideoOrchestrator
         IProgress<string>? progress = null,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(brief);
+        ArgumentNullException.ThrowIfNull(planSpec);
+        ArgumentNullException.ThrowIfNull(voiceSpec);
+        ArgumentNullException.ThrowIfNull(renderSpec);
+        
         try
         {
             // Pre-generation validation
