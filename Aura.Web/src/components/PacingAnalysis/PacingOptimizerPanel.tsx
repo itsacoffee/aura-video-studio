@@ -158,6 +158,7 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
     if (settings.enabled && script && scenes.length > 0 && !data && !loading) {
       handleAnalyze();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAnalyze = useCallback(async () => {
@@ -173,14 +174,14 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
   }, [script, scenes, settings.targetPlatform, brief, analyzePacing]);
 
   const handleReanalyze = useCallback(async () => {
-    const optimizationLevelMap = {
+    const optimizationLevelMap: Record<string, 'Low' | 'Medium' | 'High'> = {
       'Conservative': 'Low',
       'Moderate': 'Medium',
       'Aggressive': 'High',
     };
 
     await reanalyzePacing({
-      optimizationLevel: optimizationLevelMap[settings.optimizationLevel] as any,
+      optimizationLevel: optimizationLevelMap[settings.optimizationLevel],
       targetPlatform: settings.targetPlatform,
     });
   }, [settings, reanalyzePacing]);

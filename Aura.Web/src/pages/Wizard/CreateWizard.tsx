@@ -31,6 +31,7 @@ import {
   ChevronDown24Regular,
   Info24Regular,
   ArrowReset24Regular,
+  FlashFlow24Regular,
 } from '@fluentui/react-icons';
 import type {
   Brief,
@@ -50,6 +51,7 @@ import { GenerationPanel } from '../../components/Generation/GenerationPanel';
 import { parseApiError, openLogsFolder } from '../../utils/apiErrorHandler';
 import { useNotifications } from '../../components/Notifications/Toasts';
 import { useJobState } from '../../state/jobState';
+import { PacingOptimizerPanel } from '../../components/PacingAnalysis';
 
 const useStyles = makeStyles({
   container: {
@@ -188,6 +190,9 @@ export function CreateWizard() {
   // Generation panel state
   const [showGenerationPanel, setShowGenerationPanel] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+
+  // Pacing panel state
+  const [showPacingPanel, setShowPacingPanel] = useState(false);
 
   const { showFailureToast, showSuccessToast } = useNotifications();
 
@@ -1141,6 +1146,40 @@ export function CreateWizard() {
               </Field>
             </Card>
 
+            {/* Pacing Optimization (Optional) */}
+            <Card className={styles.section}>
+              <Title3>
+                Pacing Optimization (Optional)
+                <Tooltip
+                  content="AI-powered scene timing analysis for maximum viewer engagement"
+                  relationship="label"
+                >
+                  <Info24Regular className={styles.infoIcon} />
+                </Tooltip>
+              </Title3>
+              <Text size={200} style={{ marginBottom: tokens.spacingVerticalM }}>
+                Analyze and optimize your video pacing using ML-powered predictions
+              </Text>
+              <Button
+                appearance="secondary"
+                icon={<FlashFlow24Regular />}
+                onClick={() => setShowPacingPanel(true)}
+                disabled={!settings.brief.topic}
+              >
+                Analyze Pacing
+              </Button>
+              <Text
+                size={200}
+                style={{
+                  display: 'block',
+                  marginTop: tokens.spacingVerticalS,
+                  color: tokens.colorNeutralForeground3,
+                }}
+              >
+                Opens AI pacing analyzer with scene-by-scene suggestions
+              </Text>
+            </Card>
+
             {/* Advanced Settings */}
             <Card className={styles.section}>
               <Accordion collapsible>
@@ -1435,6 +1474,29 @@ export function CreateWizard() {
             setActiveJobId(null);
           }}
         />
+      )}
+
+      {/* Pacing Optimizer Panel - Shown as modal/drawer */}
+      {showPacingPanel && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: tokens.colorNeutralBackground1,
+            zIndex: 1000,
+            overflow: 'auto',
+          }}
+        >
+          <PacingOptimizerPanel
+            script={settings.brief.topic} // Use topic as placeholder script
+            scenes={[]} // Empty scenes - component will show appropriate message
+            brief={settings.brief}
+            onClose={() => setShowPacingPanel(false)}
+          />
+        </div>
       )}
     </div>
   );
