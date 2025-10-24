@@ -26,6 +26,7 @@ import { SetupWizard } from './pages/Setup/SetupWizard';
 import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard';
 import { AssetLibrary } from './pages/Assets/AssetLibrary';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
+import { CommandPalette } from './components/CommandPalette';
 import { NotificationsToaster, useNotifications } from './components/Notifications/Toasts';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
 import { JobProgressDrawer } from './components/JobProgressDrawer';
@@ -74,6 +75,7 @@ function App() {
   });
   
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const { toasterId } = useNotifications();
 
   // Job state for status bar
@@ -155,10 +157,21 @@ function App() {
     };
   }, [currentJobId, status]);
 
-  // Global keyboard shortcut handler for Ctrl+K
+  // Global keyboard shortcut handler for Ctrl+K (command palette) and Ctrl+/ (shortcuts)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+K or Cmd+K for command palette
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(true);
+      }
+      // Ctrl+P or Cmd+P for command palette (alternative)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        setShowCommandPalette(true);
+      }
+      // Ctrl+/ or Cmd+/ for shortcuts modal
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
         e.preventDefault();
         setShowShortcuts(true);
       }
@@ -214,6 +227,7 @@ function App() {
             </Layout>
           </BrowserRouter>
           <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+          <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
           <NotificationsToaster toasterId={toasterId} />
 
           {/* Job progress drawer */}

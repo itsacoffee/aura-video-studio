@@ -24,6 +24,7 @@ import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel'
 import { OutputSettingsTab } from '../components/Settings/OutputSettingsTab';
 import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettingsTab';
 import { KeyboardShortcutsTab } from '../components/Settings/KeyboardShortcutsTab';
+import { ThemeCustomizationTab } from '../components/Settings/ThemeCustomizationTab';
 
 const useStyles = makeStyles({
   container: {
@@ -583,6 +584,7 @@ export function SettingsPage() {
         <Tab value="output">Output</Tab>
         <Tab value="performance">Performance</Tab>
         <Tab value="ui">UI</Tab>
+        <Tab value="theme">Theme</Tab>
         <Tab value="shortcuts">Shortcuts</Tab>
         <Tab value="portable">Portable Info</Tab>
         <Tab value="providers">Providers</Tab>
@@ -647,6 +649,8 @@ export function SettingsPage() {
       {activeTab === 'performance' && <PerformanceSettingsTab />}
 
       {activeTab === 'shortcuts' && <KeyboardShortcutsTab />}
+
+      {activeTab === 'theme' && <ThemeCustomizationTab />}
 
       {activeTab === 'ui' && (
         <Card className={styles.section}>
