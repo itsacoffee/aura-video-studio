@@ -21,6 +21,9 @@ import { LocalEngines } from '../components/Settings/LocalEngines';
 import { ProvidersTable } from '../components/Settings/ProvidersTable';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
 import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel';
+import { OutputSettingsTab } from '../components/Settings/OutputSettingsTab';
+import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettingsTab';
+import { KeyboardShortcutsTab } from '../components/Settings/KeyboardShortcutsTab';
 
 const useStyles = makeStyles({
   container: {
@@ -577,7 +580,10 @@ export function SettingsPage() {
         onTabSelect={(_, data) => setActiveTab(data.value as string)}
       >
         <Tab value="system">System</Tab>
+        <Tab value="output">Output</Tab>
+        <Tab value="performance">Performance</Tab>
         <Tab value="ui">UI</Tab>
+        <Tab value="shortcuts">Shortcuts</Tab>
         <Tab value="portable">Portable Info</Tab>
         <Tab value="providers">Providers</Tab>
         <Tab value="localproviders">Local Providers</Tab>
@@ -635,6 +641,12 @@ export function SettingsPage() {
           </div>
         </Card>
       )}
+
+      {activeTab === 'output' && <OutputSettingsTab />}
+
+      {activeTab === 'performance' && <PerformanceSettingsTab />}
+
+      {activeTab === 'shortcuts' && <KeyboardShortcutsTab />}
 
       {activeTab === 'ui' && (
         <Card className={styles.section}>
