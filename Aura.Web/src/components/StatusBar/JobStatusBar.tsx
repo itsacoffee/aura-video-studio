@@ -1,4 +1,4 @@
-import { makeStyles, Spinner, Text, Button } from '@fluentui/react-components';
+import { makeStyles, Spinner, Text, Button, tokens } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Regular,
   ErrorCircle24Regular,
@@ -10,31 +10,55 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
     padding: '12px 20px',
-    backgroundColor: '#f5f5f5',
-    borderBottom: '1px solid #e0e0e0',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     minHeight: '60px',
     alignItems: 'center',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
   },
   statusBarRunning: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderBottom: `2px solid ${tokens.colorBrandBackground}`,
+    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
   },
   statusBarCompleted: {
-    backgroundColor: '#e8f5e9',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderBottom: `2px solid ${tokens.colorPaletteGreenBorder2}`,
   },
   statusBarFailed: {
-    backgroundColor: '#ffebee',
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderBottom: `2px solid ${tokens.colorPaletteRedForeground1}`,
   },
   leftSection: {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
+    flex: 1,
   },
   progressText: {
     minWidth: '50px',
-    fontWeight: '600',
+    fontWeight: tokens.fontWeightSemibold,
+    fontFamily: 'monospace',
+    fontSize: tokens.fontSizeBase300,
   },
   messageText: {
     flex: 1,
+    fontWeight: tokens.fontWeightRegular,
+  },
+  progressBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '3px',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  progressBarFill: {
+    height: '100%',
+    background: `linear-gradient(90deg, ${tokens.colorBrandBackground}, ${tokens.colorPalettePurpleBackground2})`,
+    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: `0 0 8px ${tokens.colorBrandBackground}`,
   },
 });
 
@@ -58,9 +82,9 @@ export function JobStatusBar({ status, progress, message, onViewDetails }: JobSt
       case 'running':
         return <Spinner size="small" />;
       case 'completed':
-        return <CheckmarkCircle24Regular style={{ color: '#2e7d32' }} />;
+        return <CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />;
       case 'failed':
-        return <ErrorCircle24Regular style={{ color: '#c62828' }} />;
+        return <ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />;
       default:
         return <Info24Regular />;
     }
@@ -80,7 +104,7 @@ export function JobStatusBar({ status, progress, message, onViewDetails }: JobSt
   };
 
   return (
-    <div className={`${styles.statusBar} ${getBackgroundClass()}`}>
+    <div className={`${styles.statusBar} ${getBackgroundClass()}`} style={{ position: 'relative' }}>
       <div className={styles.leftSection}>
         {getIcon()}
         {status === 'running' && <Text className={styles.progressText}>{progress}%</Text>}
@@ -90,6 +114,11 @@ export function JobStatusBar({ status, progress, message, onViewDetails }: JobSt
         <Button appearance="subtle" onClick={onViewDetails}>
           View Details
         </Button>
+      )}
+      {status === 'running' && (
+        <div className={styles.progressBarContainer}>
+          <div className={styles.progressBarFill} style={{ width: `${progress}%` }} />
+        </div>
       )}
     </div>
   );
