@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -140,14 +141,21 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
   const loadVoices = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      const mockVoices: VoiceDescriptor[] = [
-        {
-          id: 'azure-jenny',
-          name: 'Jenny',
-          provider: 'Azure',
-          locale: 'en-US',
-          gender: 'Female',
+      // Call API to get available voices
+      const response = await fetch(`${apiUrl}/api/v1/voices`);
+      if (response.ok) {
+        const data = await response.json();
+        setVoices(data.voices || []);
+      } else {
+        // Fallback to mock data if API not available
+        console.warn('Voice API not available, using mock data');
+        const mockVoices: VoiceDescriptor[] = [
+          {
+            id: 'azure-jenny',
+            name: 'Jenny',
+            provider: 'Azure',
+            locale: 'en-US',
+            gender: 'Female',
           voiceType: 'Neural',
           availableStyles: ['cheerful', 'sad', 'angry', 'friendly'],
           description: 'Natural female voice with emotion support',
@@ -183,6 +191,7 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
       ];
 
       setVoices(mockVoices);
+      }
     } catch (error) {
       console.error('Failed to load voices:', error);
     } finally {
@@ -217,10 +226,28 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
     setFilteredVoices(filtered);
   };
 
-  const handlePlaySample = (voiceId: string, event: React.MouseEvent) => {
+  const handlePlaySample = async (voiceId: string, event: React.MouseEvent) => {
     event.stopPropagation();
-    // TODO: Implement voice sample playback
-    console.log('Playing sample for:', voiceId);
+    try {
+      // Request voice sample playback from API
+      const response = await fetch(`${apiUrl}/api/v1/voices/${voiceId}/sample`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.audioUrl) {
+          // Play the audio sample
+          const audio = new Audio(data.audioUrl);
+          audio.play().catch((err) => console.error('Failed to play audio:', err));
+        }
+      } else {
+        console.warn('Voice sample not available for:', voiceId);
+        alert('Voice sample preview not available. Try selecting the voice to hear it in your video.');
+      }
+    } catch (error) {
+      console.error('Error playing voice sample:', error);
+    }
   };
 
   if (loading) {

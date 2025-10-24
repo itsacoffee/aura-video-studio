@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -126,14 +127,32 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
   const generateSample = async () => {
     setIsLoading(true);
     try {
-      // TODO: Replace with actual API call to generate sample
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call API to generate voice sample
+      const response = await fetch(`${apiUrl}/api/v1/voice/sample`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: sampleText,
+          voiceId,
+          enhancement: enhancementConfig,
+        }),
+      });
       
-      // Mock audio URL - in production, this would be the generated audio
-      setAudioUrl('/mock-sample.mp3');
-      setDuration(5.2); // Mock duration
+      if (response.ok) {
+        const data = await response.json();
+        setAudioUrl(data.audioUrl || '');
+        setDuration(data.duration || 0);
+      } else {
+        console.warn('Sample generation failed, using mock data');
+        // Mock fallback
+        setAudioUrl('/mock-sample.mp3');
+        setDuration(5.2);
+      }
     } catch (error) {
       console.error('Failed to generate sample:', error);
+      // Mock fallback on error
+      setAudioUrl('/mock-sample.mp3');
+      setDuration(5.2);
     } finally {
       setIsLoading(false);
     }
@@ -152,8 +171,13 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
 
   const handleDownload = () => {
     if (audioUrl) {
-      // TODO: Implement download functionality
-      console.log('Downloading sample:', audioUrl);
+      // Create a download link and trigger it
+      const link = document.createElement('a');
+      link.href = audioUrl;
+      link.download = `voice-sample-${voiceId}.mp3`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 

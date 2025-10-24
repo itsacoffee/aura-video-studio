@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -143,8 +144,32 @@ export const VoiceStudioPanel = ({
   const handlePreview = async () => {
     setIsProcessing(true);
     try {
-      // TODO: Implement preview functionality
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Generate preview with current voice settings
+      const response = await fetch(`${apiUrl}/api/v1/voice/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: 'This is a preview of the selected voice with current settings.',
+          voiceId: selectedVoice,
+          prosody,
+          enhancement,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.audioUrl) {
+          // Play the preview audio
+          const audio = new Audio(data.audioUrl);
+          audio.play().catch((err) => console.error('Failed to play preview:', err));
+        }
+      } else {
+        console.warn('Preview generation failed');
+        alert('Voice preview not available. This feature requires backend API support.');
+      }
+    } catch (error) {
+      console.error('Error generating preview:', error);
+      alert('Could not generate preview. Ensure the backend API is running.');
     } finally {
       setIsProcessing(false);
     }
