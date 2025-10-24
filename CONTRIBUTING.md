@@ -2,6 +2,20 @@
 
 Thank you for your interest in contributing to Aura Video Studio! This guide outlines the development workflow and standards for the project.
 
+## Platform Requirements
+
+**Aura Video Studio targets Windows 11 (x64) exclusively.**
+
+While some backend components (.NET API) can be developed on any platform with .NET 8 SDK, the complete application—including WinUI 3 components, final packaging, and distribution—requires Windows 11 (64-bit).
+
+**Development Prerequisites:**
+- Windows 11 (64-bit) - **Required for full-stack development**
+- .NET 8 SDK
+- Node.js 18.x or 20.x
+- npm 9.x or 10.x
+- PowerShell 5.1 or later
+- Git for Windows
+
 ## Development Standards
 
 ### No Placeholder Policy
@@ -77,9 +91,9 @@ Instead of adding placeholder text:
 
 See [BUILD_AND_RUN.md](BUILD_AND_RUN.md) for detailed build and test instructions.
 
-### Quick Start
+### Quick Start (Windows)
 
-```bash
+```powershell
 # Restore dependencies
 dotnet restore
 
