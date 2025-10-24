@@ -99,4 +99,135 @@ public class RuleBasedLlmProviderTests
         var wordCount = script.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
         Assert.True(wordCount >= minWords, $"Expected at least {minWords} words, got {wordCount}");
     }
+
+    [Fact]
+    public async Task AnalyzeSceneImportanceAsync_Should_ReturnValidAnalysis()
+    {
+        // Arrange
+        var provider = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance);
+        var sceneText = "This is an important introduction to our topic. It's critical to understand the key concepts.";
+
+        // Act
+        var result = await provider.AnalyzeSceneImportanceAsync(sceneText, null, "Educational video", CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.InRange(result.Importance, 0, 100);
+        Assert.InRange(result.Complexity, 0, 100);
+        Assert.InRange(result.EmotionalIntensity, 0, 100);
+        Assert.NotNull(result.InformationDensity);
+        Assert.True(result.OptimalDurationSeconds > 0);
+        Assert.NotNull(result.TransitionType);
+        Assert.NotEmpty(result.Reasoning);
+        Assert.Contains("Rule-based heuristic", result.Reasoning);
+    }
+
+    [Fact]
+    public async Task AnalyzeSceneImportanceAsync_Should_DetectHighComplexity_ForLongText()
+    {
+        // Arrange
+        var provider = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance);
+        var longText = string.Join(" ", System.Linq.Enumerable.Repeat("word", 150));
+
+        // Act
+        var result = await provider.AnalyzeSceneImportanceAsync(longText, null, "test", CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Complexity >= 70, $"Expected high complexity (>=70) for long text, got {result.Complexity}");
+        Assert.Equal("high", result.InformationDensity);
+    }
+
+    [Fact]
+    public async Task AnalyzeSceneImportanceAsync_Should_DetectLowComplexity_ForShortText()
+    {
+        // Arrange
+        var provider = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance);
+        var shortText = "Short text.";
+
+        // Act
+        var result = await provider.AnalyzeSceneImportanceAsync(shortText, null, "test", CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Complexity <= 50, $"Expected low complexity (<=50) for short text, got {result.Complexity}");
+        Assert.Equal("low", result.InformationDensity);
+    }
+
+    [Fact]
+    public async Task AnalyzeSceneImportanceAsync_Should_DetectImportantKeywords()
+    {
+        // Arrange
+        var provider = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance);
+        var textWithKeywords = "This is an important and critical introduction to key concepts.";
+        var textWithoutKeywords = "This is some regular content about the topic.";
+
+        // Act
+        var resultWithKeywords = await provider.AnalyzeSceneImportanceAsync(textWithKeywords, null, "test", CancellationToken.None);
+        var resultWithoutKeywords = await provider.AnalyzeSceneImportanceAsync(textWithoutKeywords, null, "test", CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(resultWithKeywords);
+        Assert.NotNull(resultWithoutKeywords);
+        Assert.True(resultWithKeywords.Importance > resultWithoutKeywords.Importance,
+            $"Text with keywords should have higher importance. With: {resultWithKeywords.Importance}, Without: {resultWithoutKeywords.Importance}");
+    }
+
+    [Fact]
+    public async Task AnalyzeSceneImportanceAsync_Should_DetectEmotionalWords()
+    {
+        // Arrange
+        var provider = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance);
+        var emotionalText = "This is amazing and incredible! It's fantastic and exciting!";
+        var neutralText = "This is some content about the topic.";
+
+        // Act
+        var emotionalResult = await provider.AnalyzeSceneImportanceAsync(emotionalText, null, "test", CancellationToken.None);
+        var neutralResult = await provider.AnalyzeSceneImportanceAsync(neutralText, null, "test", CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(emotionalResult);
+        Assert.NotNull(neutralResult);
+        Assert.True(emotionalResult.EmotionalIntensity > neutralResult.EmotionalIntensity,
+            $"Emotional text should have higher intensity. Emotional: {emotionalResult.EmotionalIntensity}, Neutral: {neutralResult.EmotionalIntensity}");
+    }
+
+    [Fact]
+    public async Task AnalyzeSceneImportanceAsync_Should_CalculateOptimalDuration()
+    {
+        // Arrange
+        var provider = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance);
+        var shortText = "Short.";
+        var longText = string.Join(" ", System.Linq.Enumerable.Repeat("word", 100));
+
+        // Act
+        var shortResult = await provider.AnalyzeSceneImportanceAsync(shortText, null, "test", CancellationToken.None);
+        var longResult = await provider.AnalyzeSceneImportanceAsync(longText, null, "test", CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(shortResult);
+        Assert.NotNull(longResult);
+        Assert.True(shortResult.OptimalDurationSeconds >= 5, "Should have minimum duration of 5 seconds");
+        Assert.True(longResult.OptimalDurationSeconds > shortResult.OptimalDurationSeconds,
+            $"Longer text should have longer duration. Long: {longResult.OptimalDurationSeconds}s, Short: {shortResult.OptimalDurationSeconds}s");
+    }
+
+    [Theory]
+    [InlineData("meanwhile we continue", "fade")]
+    [InlineData("later that day", "fade")]
+    [InlineData("gradually the scene changes", "dissolve")]
+    [InlineData("slowly it transforms", "dissolve")]
+    [InlineData("standard content", "cut")]
+    public async Task AnalyzeSceneImportanceAsync_Should_DetectTransitionType(string text, string expectedTransition)
+    {
+        // Arrange
+        var provider = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance);
+
+        // Act
+        var result = await provider.AnalyzeSceneImportanceAsync(text, null, "test", CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(expectedTransition, result.TransitionType);
+    }
 }
