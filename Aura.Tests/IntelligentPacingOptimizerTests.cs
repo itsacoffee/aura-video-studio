@@ -23,6 +23,9 @@ public class IntelligentPacingOptimizerTests
     private readonly SceneImportanceAnalyzer _sceneAnalyzer;
     private readonly AttentionCurvePredictor _attentionPredictor;
     private readonly AttentionRetentionModel _attentionModel;
+    private readonly TransitionRecommender _transitionRecommender;
+    private readonly EmotionalBeatAnalyzer _emotionalBeatAnalyzer;
+    private readonly SceneRelationshipMapper _relationshipMapper;
 
     public IntelligentPacingOptimizerTests()
     {
@@ -30,14 +33,23 @@ public class IntelligentPacingOptimizerTests
         var predictorLogger = NullLogger<AttentionCurvePredictor>.Instance;
         var modelLogger = NullLogger<AttentionRetentionModel>.Instance;
         var optimizerLogger = NullLogger<IntelligentPacingOptimizer>.Instance;
+        var transitionLogger = NullLogger<TransitionRecommender>.Instance;
+        var emotionalLogger = NullLogger<EmotionalBeatAnalyzer>.Instance;
+        var relationshipLogger = NullLogger<SceneRelationshipMapper>.Instance;
 
         _attentionModel = new AttentionRetentionModel(modelLogger);
         _sceneAnalyzer = new SceneImportanceAnalyzer(sceneLogger);
         _attentionPredictor = new AttentionCurvePredictor(predictorLogger, _attentionModel);
+        _transitionRecommender = new TransitionRecommender(transitionLogger);
+        _emotionalBeatAnalyzer = new EmotionalBeatAnalyzer(emotionalLogger);
+        _relationshipMapper = new SceneRelationshipMapper(relationshipLogger);
         _optimizer = new IntelligentPacingOptimizer(
             optimizerLogger,
             _sceneAnalyzer,
             _attentionPredictor,
+            _transitionRecommender,
+            _emotionalBeatAnalyzer,
+            _relationshipMapper,
             null);
     }
 
