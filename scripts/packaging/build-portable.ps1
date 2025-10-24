@@ -3,7 +3,9 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$Platform = "x64"
+    [string]$Platform = "x64",
+    [int]$HealthCheckMaxAttempts = 30,
+    [int]$HealthCheckIntervalSeconds = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -274,21 +276,21 @@ echo Waiting for server to become ready...
 set /a attempts=0
 :wait_loop
 set /a attempts+=1
-if %attempts% gtr 30 (
+if %attempts% gtr $HealthCheckMaxAttempts (
     echo.
-    echo WARNING: Server did not respond after 30 attempts.
+    echo WARNING: Server did not respond after $HealthCheckMaxAttempts attempts.
     echo The server may still be starting. Opening browser anyway...
     goto open_browser
 )
 
-REM Try to reach the health check endpoint
-curl -s -f http://127.0.0.1:5005/api/healthz >nul 2>&1
+REM Try to reach the health check endpoint using PowerShell (more reliable than curl on Windows)
+powershell -Command "try { `$response = Invoke-WebRequest -Uri 'http://127.0.0.1:5005/api/healthz' -TimeoutSec 1 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
 if %errorlevel% equ 0 (
     echo Server is ready!
     goto open_browser
 )
 
-timeout /t 1 /nobreak >nul
+timeout /t $HealthCheckIntervalSeconds /nobreak >nul
 goto wait_loop
 
 :open_browser
