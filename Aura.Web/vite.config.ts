@@ -5,6 +5,8 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Use relative base path for production to work when served from Aura.Api
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -24,8 +26,13 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
     chunkSizeWarningLimit: 500,
+    emptyOutDir: true,
+    assetsDir: 'assets',
     rollupOptions: {
       output: {
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'fluent-vendor': ['@fluentui/react-components', '@fluentui/react-icons'],

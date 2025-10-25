@@ -36,7 +36,11 @@ using AssetGenerateRequest = Aura.Api.Models.ApiModels.V1.AssetGenerateRequest;
 using CaptionsRequest = Aura.Api.Models.ApiModels.V1.CaptionsRequest;
 using ValidateProvidersRequest = Aura.Api.Models.ApiModels.V1.ValidateProvidersRequest;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
+});
 
 // Configure JSON options to handle string enum conversion for minimal APIs
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -279,6 +283,9 @@ builder.Services.AddSingleton<Aura.Core.ML.Models.FrameImportanceModel>();
 // Register pacing services in dependency order
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.SceneImportanceAnalyzer>();
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.AttentionCurvePredictor>();
+builder.Services.AddSingleton<Aura.Core.Services.PacingServices.TransitionRecommender>();
+builder.Services.AddSingleton<Aura.Core.Services.PacingServices.EmotionalBeatAnalyzer>();
+builder.Services.AddSingleton<Aura.Core.Services.PacingServices.SceneRelationshipMapper>();
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.IntelligentPacingOptimizer>();
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.PacingApplicationService>();
 
@@ -334,6 +341,10 @@ builder.Services.AddSingleton<Aura.Core.Planner.HeuristicRecommendationService>(
 
 builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
 builder.Services.AddSingleton<Aura.Api.Services.PreflightService>();
+
+// Register API key validation and secure storage services
+builder.Services.AddSingleton<Aura.Api.Services.ApiKeyValidationService>();
+builder.Services.AddSingleton<Aura.Core.Services.ISecureStorageService, Aura.Core.Services.SecureStorageService>();
 
 // Register content analysis services
 builder.Services.AddSingleton<Aura.Core.Services.Content.ContentAnalyzer>(sp =>
@@ -720,22 +731,115 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 
+// Add routing BEFORE static files (API routes take precedence)
+app.UseRouting();
+
 // Add controller routing
 app.MapControllers();
 
-// Serve static files from wwwroot (must be before routing)
-var wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+// Serve static files from wwwroot with proper content types
+var wwwrootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
 if (Directory.Exists(wwwrootPath))
 {
-    Log.Information("Serving static files from: {Path}", wwwrootPath);
+    // Validate that wwwroot has the minimum required files
+    var indexHtmlPath = Path.Combine(wwwrootPath, "index.html");
+    var assetsPath = Path.Combine(wwwrootPath, "assets");
+    var fileCount = Directory.GetFiles(wwwrootPath, "*", SearchOption.AllDirectories).Length;
     
-    app.UseDefaultFiles(); // Serve index.html as default file
-    app.UseStaticFiles();
+    if (!File.Exists(indexHtmlPath))
+    {
+        Log.Warning("=================================================================");
+        Log.Warning("wwwroot directory exists but index.html is missing: {Path}", wwwrootPath);
+        Log.Warning("Files found in wwwroot: {Count}", fileCount);
+        Log.Warning("The web UI will not be available. Please ensure the build completed successfully.");
+        Log.Warning("Visit http://127.0.0.1:5005/diag for more diagnostics.");
+        Log.Warning("=================================================================");
+    }
+    else if (!Directory.Exists(assetsPath))
+    {
+        Log.Warning("=================================================================");
+        Log.Warning("index.html found but assets directory is missing: {Path}", assetsPath);
+        Log.Warning("Files found in wwwroot: {Count}", fileCount);
+        Log.Warning("The web UI may not function correctly. JavaScript and CSS may be missing.");
+        Log.Warning("Visit http://127.0.0.1:5005/diag for more diagnostics.");
+        Log.Warning("=================================================================");
+    }
+    else
+    {
+        Log.Information("=================================================================");
+        Log.Information("Static UI: ENABLED");
+        Log.Information("  Path: {Path}", wwwrootPath);
+        Log.Information("  Files: {Count}", fileCount);
+        Log.Information("  index.html: ✓");
+        Log.Information("  assets/: ✓");
+        Log.Information("  SPA fallback: ACTIVE (handles client-side routing)");
+        Log.Information("=================================================================");
+        
+        // Serve index.html as default file for root requests
+        app.UseDefaultFiles();
+        
+        // Configure static file serving with proper MIME types
+        var staticFileOptions = new StaticFileOptions
+        {
+            ContentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider
+            {
+                Mappings =
+                {
+                    [".js"] = "application/javascript",
+                    [".mjs"] = "application/javascript",
+                    [".json"] = "application/json",
+                    [".css"] = "text/css",
+                    [".map"] = "application/json",
+                    [".svg"] = "image/svg+xml",
+                    [".webp"] = "image/webp",
+                    [".wasm"] = "application/wasm",
+                    [".woff"] = "font/woff",
+                    [".woff2"] = "font/woff2",
+                    [".ttf"] = "font/ttf",
+                    [".eot"] = "application/vnd.ms-fontobject"
+                }
+            },
+            OnPrepareResponse = ctx =>
+            {
+                // Add caching headers for static assets (not for index.html)
+                if (!ctx.File.Name.Equals("index.html", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Cache static assets for 1 year (they have content hashes in filenames)
+                    ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=31536000, immutable");
+                }
+                else
+                {
+                    // Never cache index.html to ensure latest version is always served
+                    ctx.Context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+                    ctx.Context.Response.Headers.Append("Pragma", "no-cache");
+                    ctx.Context.Response.Headers.Append("Expires", "0");
+                }
+            }
+        };
+        
+        app.UseStaticFiles(staticFileOptions);
+    }
 }
 else
 {
-    Log.Warning("wwwroot directory not found at: {Path}", wwwrootPath);
-    Log.Warning("Static file serving is disabled. Web UI will not be available.");
+    Log.Error("=================================================================");
+    Log.Error("CRITICAL: wwwroot directory not found at: {Path}", wwwrootPath);
+    Log.Error("The web UI cannot be served without this directory.");
+    Log.Error("=================================================================");
+    Log.Error("");
+    Log.Error("This usually means one of the following:");
+    Log.Error("  1. The portable build did not complete successfully");
+    Log.Error("  2. The frontend build (npm run build) failed");
+    Log.Error("  3. The wwwroot folder was not extracted from the ZIP");
+    Log.Error("");
+    Log.Error("To fix this issue:");
+    Log.Error("  - Re-extract the portable ZIP file completely");
+    Log.Error("  - Or rebuild the application with: scripts\\packaging\\build-portable.ps1");
+    Log.Error("");
+    Log.Error("The API will continue to run, but accessing http://127.0.0.1:5005");
+    Log.Error("in your browser will show a blank page or 404 error.");
+    Log.Error("Visit http://127.0.0.1:5005/diag for diagnostics.");
+    Log.Error("=================================================================");
 }
 
 // API endpoints are grouped under /api prefix
@@ -873,6 +977,247 @@ apiGroup.MapPost("/health/auto-fix", async (
 apiGroup.MapGet("/healthz", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
     .WithName("HealthCheck")
     .WithOpenApi();
+
+// Enhanced diagnostic page for debugging static file serving and API connectivity
+app.MapGet("/diag", (HttpContext httpContext) =>
+{
+    var wwwrootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+    var wwwrootExists = Directory.Exists(wwwrootPath);
+    var indexHtmlPath = Path.Combine(wwwrootPath, "index.html");
+    var indexHtmlExists = File.Exists(indexHtmlPath);
+    var assetsPath = Path.Combine(wwwrootPath, "assets");
+    var assetsExists = Directory.Exists(assetsPath);
+    var fileCount = wwwrootExists ? Directory.GetFiles(wwwrootPath, "*", SearchOption.AllDirectories).Length : 0;
+    var assetCount = assetsExists ? Directory.GetFiles(assetsPath, "*", SearchOption.TopDirectoryOnly).Length : 0;
+    
+    // Try to find a sample JS and CSS file for testing
+    string? sampleJsFile = null;
+    string? sampleCssFile = null;
+    if (assetsExists)
+    {
+        var jsFiles = Directory.GetFiles(assetsPath, "*.js", SearchOption.TopDirectoryOnly);
+        var cssFiles = Directory.GetFiles(assetsPath, "*.css", SearchOption.TopDirectoryOnly);
+        sampleJsFile = jsFiles.Length > 0 ? Path.GetFileName(jsFiles[0]) : null;
+        sampleCssFile = cssFiles.Length > 0 ? Path.GetFileName(cssFiles[0]) : null;
+    }
+    
+    var html = $@"<!DOCTYPE html>
+<html>
+<head>
+    <title>Aura Video Studio - Diagnostics</title>
+    <meta charset=""UTF-8"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <style>
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background: #f5f5f5; }}
+        .container {{ max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        h1 {{ color: #0078d4; border-bottom: 2px solid #0078d4; padding-bottom: 10px; }}
+        h2 {{ color: #333; margin-top: 30px; }}
+        .status {{ margin: 20px 0; padding: 15px; border-radius: 4px; }}
+        .ok {{ background: #dff0d8; border: 1px solid #d6e9c6; color: #3c763d; }}
+        .error {{ background: #f2dede; border: 1px solid #ebccd1; color: #a94442; }}
+        .warning {{ background: #fcf8e3; border: 1px solid #faebcc; color: #8a6d3b; }}
+        .info {{ background: #d9edf7; border: 1px solid #bce8f1; color: #31708f; }}
+        .detail {{ font-size: 0.9em; color: #666; margin-top: 5px; }}
+        ul {{ list-style-type: none; padding: 0; }}
+        li {{ padding: 5px 0; }}
+        .check {{ display: inline-block; width: 20px; }}
+        .timestamp {{ font-size: 0.8em; color: #999; margin-top: 20px; text-align: center; }}
+        code {{ background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }}
+        .test-result {{ margin: 10px 0; padding: 10px; background: #f9f9f9; border-left: 4px solid #0078d4; }}
+        button {{ 
+            background: #0078d4; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px;
+        }}
+        button:hover {{ background: #005a9e; }}
+        #testResults {{ margin-top: 15px; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <h1>🔍 Aura Video Studio Diagnostics</h1>
+        
+        <div class='status {(wwwrootExists && indexHtmlExists && assetsExists ? "ok" : "error")}'>
+            <strong>Static File Hosting Status</strong>
+            <ul>
+                <li><span class='check'>{(wwwrootExists ? "✅" : "❌")}</span> wwwroot directory: {(wwwrootExists ? "FOUND" : "NOT FOUND")}</li>
+                <li class='detail'>Path: <code>{wwwrootPath}</code></li>
+                <li><span class='check'>{(indexHtmlExists ? "✅" : "❌")}</span> index.html: {(indexHtmlExists ? "FOUND" : "NOT FOUND")}</li>
+                <li><span class='check'>{(assetsExists ? "✅" : "❌")}</span> assets directory: {(assetsExists ? "FOUND" : "NOT FOUND")}</li>
+                <li class='detail'>Total files in wwwroot: {fileCount}</li>
+                <li class='detail'>Asset files (.js/.css): {assetCount}</li>
+            </ul>
+        </div>
+        
+        <div class='status ok'>
+            <strong>API Status</strong>
+            <ul>
+                <li><span class='check'>✅</span> API is reachable (you're seeing this page!)</li>
+                <li class='detail'>Request URL: <code>{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.Path}</code></li>
+                <li class='detail'>Runtime Origin: <code>{httpContext.Request.Scheme}://{httpContext.Request.Host}</code></li>
+                <li class='detail'>API Base: <code>{httpContext.Request.Scheme}://{httpContext.Request.Host}/api</code></li>
+            </ul>
+        </div>
+
+        <h2>🧪 Asset Fetch Tests</h2>
+        <div class='status info'>
+            <p>Click the buttons below to test if assets can be fetched correctly:</p>
+            <button onclick=""testAsset('/assets/{sampleJsFile ?? "index.js"}', 'application/javascript')"">Test JS File</button>
+            <button onclick=""testAsset('/assets/{sampleCssFile ?? "index.css"}', 'text/css')"">Test CSS File</button>
+            <button onclick=""testServiceWorker()"">Check Service Worker</button>
+            <div id=""testResults""></div>
+        </div>
+        
+        <h2>🔗 Quick Navigation Tests</h2>
+        <div class='status info'>
+            <ul>
+                <li>• Navigate to <a href='/'>http://{httpContext.Request.Host}/</a> - Should show the app UI</li>
+                <li>• Navigate to <a href='/api/healthz'>http://{httpContext.Request.Host}/api/healthz</a> - Should return JSON health status</li>
+                <li>• Navigate to <a href='/dashboard'>http://{httpContext.Request.Host}/dashboard</a> - Should show dashboard (SPA route)</li>
+                <li>• Try a hard refresh (Ctrl+F5) on any page - Should not show 404</li>
+                <li>• Open browser DevTools Console - Check for errors</li>
+            </ul>
+        </div>
+        
+        {(!wwwrootExists || !indexHtmlExists ? @"
+        <h2>⚠️ Issue Detected</h2>
+        <div class='status error'>
+            <p>The wwwroot directory or index.html is missing. This means the frontend build was not copied correctly.</p>
+            <p><strong>To fix:</strong></p>
+            <ul>
+                <li>1. Ensure you built the frontend: <code>cd Aura.Web && npm run build</code></li>
+                <li>2. Copy dist to wwwroot: <code>Copy-Item Aura.Web\dist\* -Destination Aura.Api\wwwroot\ -Recurse</code></li>
+                <li>3. Or rebuild the portable package: <code>.\scripts\packaging\build-portable.ps1</code></li>
+                <li>4. Restart the API server after copying files</li>
+            </ul>
+        </div>" : "")}
+        
+        <h2>📋 Troubleshooting Guide</h2>
+        <div class='status info'>
+            <strong>White/Blank Page Issues:</strong>
+            <ul>
+                <li>• Check that asset count above is > 0</li>
+                <li>• Open browser DevTools → Console tab → Look for red errors</li>
+                <li>• Open browser DevTools → Network tab → Check if .js/.css files return 200</li>
+                <li>• Clear browser cache (Ctrl+Shift+Delete) and hard refresh (Ctrl+F5)</li>
+                <li>• Check if Content-Security-Policy is blocking scripts (Console warnings)</li>
+            </ul>
+            
+            <strong>Deep Link Refresh Fails:</strong>
+            <ul>
+                <li>• Ensure SPA fallback is active (check server logs for ""SPA fallback configured"")</li>
+                <li>• Navigate to /dashboard, refresh → should still show UI, not 404</li>
+                <li>• If fallback doesn't work, consider using HashRouter (/#/route URLs)</li>
+            </ul>
+            
+            <strong>Service Worker or Stale Cache:</strong>
+            <ul>
+                <li>• Click ""Check Service Worker"" button above</li>
+                <li>• If active, unregister it: DevTools → Application → Service Workers → Unregister</li>
+                <li>• Clear all site data: DevTools → Application → Clear storage → Clear site data</li>
+            </ul>
+        </div>
+        
+        <div class='timestamp'>Generated at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC</div>
+    </div>
+    
+    <script>
+        // Display runtime environment info
+        window.addEventListener('DOMContentLoaded', function() {{
+            var envInfo = document.createElement('div');
+            envInfo.className = 'status info';
+            envInfo.style.marginTop = '20px';
+            envInfo.innerHTML = '<strong>Client Runtime Info:</strong>' +
+                '<ul>' +
+                '<li>Window Origin: <code>' + window.location.origin + '</code></li>' +
+                '<li>Current URL: <code>' + window.location.href + '</code></li>' +
+                '<li>User Agent: <code>' + navigator.userAgent + '</code></li>' +
+                '</ul>';
+            document.querySelector('.container').insertBefore(envInfo, document.querySelector('.timestamp'));
+        }});
+        
+        function testAsset(path, expectedType) {{
+            var resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<p>Testing: <code>' + path + '</code>...</p>';
+            
+            fetch(path)
+                .then(function(response) {{
+                    var contentType = response.headers.get('Content-Type') || 'unknown';
+                    var status = response.status;
+                    
+                    if (status === 200) {{
+                        var typeMatch = contentType.includes(expectedType);
+                        resultsDiv.innerHTML = '<div class=""test-result ' + (typeMatch ? 'ok' : 'warning') + '"">' +
+                            '<strong>✓ Asset Fetch Test</strong><br>' +
+                            'URL: <code>' + path + '</code><br>' +
+                            'Status: ' + status + ' OK<br>' +
+                            'Content-Type: <code>' + contentType + '</code>' + 
+                            (typeMatch ? ' ✓ Correct' : ' ⚠️ Expected: ' + expectedType) +
+                            '</div>';
+                    }} else {{
+                        resultsDiv.innerHTML = '<div class=""test-result error"">' +
+                            '<strong>✗ Asset Fetch Failed</strong><br>' +
+                            'URL: <code>' + path + '</code><br>' +
+                            'Status: ' + status + '<br>' +
+                            'This asset file is missing or inaccessible.' +
+                            '</div>';
+                    }}
+                }})
+                .catch(function(err) {{
+                    resultsDiv.innerHTML = '<div class=""test-result error"">' +
+                        '<strong>✗ Fetch Error</strong><br>' +
+                        'URL: <code>' + path + '</code><br>' +
+                        'Error: ' + err.message +
+                        '</div>';
+                }});
+        }}
+        
+        function testServiceWorker() {{
+            var resultsDiv = document.getElementById('testResults');
+            
+            if ('serviceWorker' in navigator) {{
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {{
+                    if (registrations.length > 0) {{
+                        var swInfo = registrations.map(function(reg) {{
+                            return 'Scope: <code>' + reg.scope + '</code>, State: ' + 
+                                   (reg.active ? reg.active.state : 'inactive');
+                        }}).join('<br>');
+                        
+                        resultsDiv.innerHTML = '<div class=""test-result warning"">' +
+                            '<strong>⚠️ Service Worker Detected</strong><br>' +
+                            'Active service workers found:<br>' + swInfo + '<br><br>' +
+                            '<strong>Action Required:</strong> If you\'re experiencing issues, unregister the service worker:<br>' +
+                            '1. Open DevTools → Application tab<br>' +
+                            '2. Click ""Service Workers"" in the sidebar<br>' +
+                            '3. Click ""Unregister"" next to each service worker<br>' +
+                            '4. Hard refresh (Ctrl+F5)' +
+                            '</div>';
+                    }} else {{
+                        resultsDiv.innerHTML = '<div class=""test-result ok"">' +
+                            '<strong>✓ No Service Worker</strong><br>' +
+                            'No service workers are registered for this origin.' +
+                            '</div>';
+                    }}
+                }});
+            }} else {{
+                resultsDiv.innerHTML = '<div class=""test-result info"">' +
+                    '<strong>Service Workers Not Supported</strong><br>' +
+                    'This browser does not support service workers.' +
+                    '</div>';
+            }}
+        }}
+    </script>
+</body>
+</html>";
+    
+    return Results.Content(html, "text/html");
+})
+.WithName("DiagnosticsPage")
+.WithOpenApi();
 
 // Log viewer endpoint - retrieve logs with optional filtering
 apiGroup.MapGet("/logs", (HttpContext httpContext, string? level = null, string? correlationId = null, int lines = 500) =>
@@ -2498,10 +2843,41 @@ apiGroup.MapPost("/providers/validate", async (
 .WithName("ValidateProviders")
 .WithOpenApi();
 
-// Fallback to index.html for client-side routing (must be after all API routes)
-if (Directory.Exists(wwwrootPath))
+// Root health endpoint for startup readiness checks
+app.MapGet("/healthz", () => 
+{
+    var wwwroot = Path.Combine(AppContext.BaseDirectory, "wwwroot");
+    var staticReady = Directory.Exists(wwwroot) && File.Exists(Path.Combine(wwwroot, "index.html"));
+    
+    if (staticReady)
+    {
+        return Results.Ok(new 
+        { 
+            status = "healthy", 
+            timestamp = DateTime.UtcNow,
+            staticHosting = "ready"
+        });
+    }
+    else
+    {
+        return Results.Json(new 
+        { 
+            status = "degraded", 
+            timestamp = DateTime.UtcNow,
+            staticHosting = "unavailable",
+            message = "Static UI files not found. API is functional but web UI unavailable."
+        }, statusCode: 200);
+    }
+})
+.WithName("RootHealthCheck")
+.WithOpenApi();
+
+// SPA fallback - return index.html for any non-API, non-file routes (must be LAST)
+// This enables client-side routing (deep links work on refresh)
+if (Directory.Exists(wwwrootPath) && File.Exists(Path.Combine(wwwrootPath, "index.html")))
 {
     app.MapFallbackToFile("index.html");
+    Log.Information("SPA fallback configured: All unmatched routes will serve index.html for client-side routing");
 }
 
 // Start Engine Lifecycle Manager and Provider Health Monitoring

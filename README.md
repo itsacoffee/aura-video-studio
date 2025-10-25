@@ -176,11 +176,11 @@ Documentation is automatically built and deployed to GitHub Pages on every commi
 ## 🚦 Quick Start (Windows 11)
 
 **Prerequisites:**
-1. Windows 11 (64-bit)
+1. Windows 11 (64-bit) - **Required**
 2. Download and install [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 3. Download and install [Node.js 18.x or 20.x](https://nodejs.org/)
 
-**Steps:**
+**Development Mode (for developers):**
 
 ```powershell
 # 1. Clone the repository
@@ -198,6 +198,203 @@ npm run dev
 
 # 4. Open your browser to http://localhost:5173
 ```
+
+**Production/Portable Mode (end users):**
+
+```powershell
+# 1. Download the latest portable release ZIP from GitHub Releases
+
+# 2. Extract to a folder (e.g., C:\AuraStudio)
+
+# 3. Navigate to the folder
+cd C:\AuraStudio
+
+# 4. Run the API server
+.\Aura.Api.exe
+# Or: dotnet Aura.Api.dll
+
+# 5. Open your browser to http://127.0.0.1:5005
+```
+
+The portable build includes the frontend in the `wwwroot` directory. No separate web server is needed.
+
+## 🔧 Troubleshooting
+
+### White Page / Blank Screen
+
+**Symptom:** Navigating to http://127.0.0.1:5005 shows a white/blank page with no UI.
+
+**Diagnosis Steps:**
+
+1. **Visit the diagnostic page:** http://127.0.0.1:5005/diag
+   - Check "Static File Hosting Status" - should show ✅ for wwwroot, index.html, and assets
+   - Check that "Total files in wwwroot" is > 0
+   - Click "Test JS File" and "Test CSS File" buttons - should show ✓ Asset Fetch Test
+
+2. **Open Browser DevTools:** Press `F12` or `Ctrl+Shift+I`
+   - **Console Tab:** Look for red error messages
+     - CSP violations: "Refused to execute script..."
+     - Missing files: "Failed to load resource: 404"
+     - CORS errors: "blocked by CORS policy"
+   - **Network Tab:** 
+     - Filter to "JS" - all JavaScript files should show status 200
+     - Filter to "CSS" - all CSS files should show status 200
+     - Look for 404 errors on any `/assets/` files
+
+**Common Causes & Fixes:**
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| wwwroot missing | Frontend not built/copied | Run: `cd Aura.Web && npm run build`, then copy `dist/*` to `Aura.Api/wwwroot/` |
+| Assets return 404 | Static file serving not configured | Check server logs for "Static UI: ENABLED" message |
+| Scripts blocked | Content Security Policy too strict | Check Console for CSP errors; see CSP section below |
+| JS files have wrong MIME | Content-Type not set correctly | Verify server logs show proper MIME type mapping |
+
+**Quick Fixes:**
+
+```powershell
+# Fix 1: Rebuild and copy frontend
+cd Aura.Web
+npm run build
+Copy-Item -Path ./dist/* -Destination ../Aura.Api/wwwroot/ -Recurse -Force
+
+# Fix 2: Clear browser cache
+# Press Ctrl+Shift+Delete → Clear "Cached images and files" → Clear data
+
+# Fix 3: Hard refresh
+# Press Ctrl+F5 or Ctrl+Shift+R
+
+# Fix 4: Verify API is running
+# Open http://127.0.0.1:5005/api/healthz - should return JSON
+
+# Fix 5: Check server logs
+# Look for "Static UI: ENABLED" and "SPA fallback: ACTIVE" messages
+```
+
+### Deep Link Refresh Issues
+
+**Symptom:** Navigating to a route like `/dashboard` works, but refreshing the page shows 404 or blank page.
+
+**Cause:** SPA fallback not active - server doesn't return index.html for client-side routes.
+
+**Fix:**
+
+1. Check server logs for: `SPA fallback configured: All unmatched routes will serve index.html`
+2. Test manually:
+   ```powershell
+   # Should return HTML, not 404
+   Invoke-WebRequest -Uri "http://127.0.0.1:5005/dashboard"
+   ```
+3. If still failing, the fallback may not be configured correctly in Program.cs
+
+**Alternative (Fail-safe):** Use HashRouter instead of BrowserRouter
+- Pros: Works without server-side configuration; refresh always works
+- Cons: URLs have `#` in them (e.g., `http://127.0.0.1:5005/#/dashboard`)
+- Implementation: In `Aura.Web/src/App.tsx`, replace `<BrowserRouter>` with `<HashRouter>` from react-router-dom
+
+### Service Worker or Stale Cache
+
+**Symptom:** App shows old/blank content even after updates; changes don't appear.
+
+**Diagnosis:**
+
+1. Visit http://127.0.0.1:5005/diag and click "Check Service Worker"
+2. Or: Open DevTools → Application tab → Service Workers
+   - If you see any registered service workers, they may be caching old content
+
+**Fix:**
+
+```text
+1. Open DevTools (F12)
+2. Go to Application tab
+3. Click "Service Workers" in the left sidebar
+4. Click "Unregister" next to any registered workers
+5. Go to "Storage" in the left sidebar
+6. Click "Clear site data"
+7. Close DevTools and hard refresh (Ctrl+F5)
+```
+
+### Content Security Policy (CSP) Blocking Scripts
+
+**Symptom:** Console shows: `Refused to execute inline script because it violates the following Content Security Policy directive...`
+
+**Cause:** CSP headers are too restrictive and block bundled scripts.
+
+**Fix:**
+
+The current implementation allows scripts from 'self' (same origin). If you still see CSP errors:
+
+1. Check for conflicting CSP meta tags in index.html (there should be none)
+2. Verify server logs don't show custom CSP headers being added
+3. Temporarily disable CSP for testing:
+   - Add `<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval';">` to index.html
+   - **Note:** Only for debugging, not for production
+
+### API Not Reachable
+
+**Symptom:** Frontend loads but can't connect to API; network requests fail.
+
+**Diagnosis:**
+
+```powershell
+# Test 1: Check if API is listening
+Invoke-WebRequest -Uri "http://127.0.0.1:5005/api/healthz"
+# Should return: {"status":"healthy",...}
+
+# Test 2: Check root health (includes static hosting status)
+Invoke-WebRequest -Uri "http://127.0.0.1:5005/healthz"
+# Should return: {"status":"healthy","staticHosting":"ready"}
+
+# Test 3: Check if port is in use
+Get-NetTCPConnection -LocalPort 5005 -ErrorAction SilentlyContinue
+# Should show LISTENING state
+```
+
+**Common Causes:**
+
+- Port 5005 already in use by another app → Change port in environment variable: `$env:ASPNETCORE_URLS="http://127.0.0.1:5006"`
+- Firewall blocking localhost connections → Add exception in Windows Firewall
+- API crashed during startup → Check logs in `./logs/` directory
+
+### Build Failures
+
+**Frontend build fails:**
+
+```powershell
+# Clean and reinstall dependencies
+cd Aura.Web
+Remove-Item -Recurse -Force node_modules
+Remove-Item package-lock.json
+npm install
+npm run build
+```
+
+**Backend build fails:**
+
+```powershell
+# Restore packages and rebuild
+dotnet clean
+dotnet restore
+dotnet build --configuration Release
+```
+
+### Getting Help
+
+If the above steps don't resolve your issue:
+
+1. **Collect diagnostic information:**
+   - Visit http://127.0.0.1:5005/diag and screenshot the page
+   - Copy Console errors from DevTools (F12 → Console)
+   - Copy Network errors from DevTools (F12 → Network)
+   - Copy relevant server logs from `./logs/` directory
+
+2. **Check existing issues:** https://github.com/Saiyan9001/aura-video-studio/issues
+
+3. **Create a new issue** with:
+   - OS version (Windows 11 build number)
+   - Steps to reproduce
+   - Diagnostic information from step 1
+   - Expected vs actual behavior
 
 That's it! The application should now be running.
 

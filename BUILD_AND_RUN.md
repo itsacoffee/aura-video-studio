@@ -1,35 +1,43 @@
 # Build and Run Guide - Aura Video Studio
 
-## 🔧 Fixes Applied
+## 🔧 Recent Fixes Applied
 
-### Issue: 404 Error When Running Portable Build
+### Issue: White Screen on Launch
+
+**Problem:** After extracting and running the portable build, the browser opens to `http://127.0.0.1:5005` but shows a white screen instead of the application UI.
+
+**Root Causes:**
+1. Frontend not being built during the publish process
+2. Assets not copied to the wwwroot directory
+3. Incorrect API base URL configuration in production
+
+**Solutions Applied:**
+1. ✅ Added MSBuild targets to auto-build frontend during `dotnet publish`
+2. ✅ Added automatic copy of dist folder to wwwroot during publish
+3. ✅ Updated frontend to use same-origin API calls in production
+4. ✅ Enhanced startup diagnostics to detect missing static files
+5. ✅ Added `/diag` endpoint for troubleshooting
+6. ✅ Updated Launch.bat to poll health endpoint before opening browser
+
+### Previous Fix: 404 Error When Running Portable Build
 
 **Problem:** The Web UI returned 404 errors because the working directory was incorrect.
 
-**Root Cause:** The launcher script was starting the API with:
-```batch
-start "" "Api\Aura.Api.exe"
-```
+**Root Cause:** The launcher script was starting the API without setting the working directory.
 
-This launched the executable but didn't change the working directory to the `Api` folder, causing it to look for `wwwroot` in the wrong location.
-
-**Solution:** Updated the launcher to use:
+**Solution:** Updated the launcher to use `/D` flag:
 ```batch
 start "" /D "Api" "Aura.Api.exe"
 ```
 
-The `/D` flag sets the working directory to `Api`, ensuring the API finds `Api\wwwroot\` correctly.
+### API Endpoint Prefix
 
-### Additional Fix: API Endpoint Prefix
-
-**Problem:** The Web UI was calling `/api/healthz` and `/api/capabilities` but the API served them at `/healthz` and `/capabilities`.
+**Problem:** The Web UI was calling `/api/healthz` but the API served it at `/healthz`.
 
 **Solution:** Added a route group with `/api` prefix to all API endpoints:
 ```csharp
 var apiGroup = app.MapGroup("/api");
 apiGroup.MapGet("/healthz", ...);
-apiGroup.MapGet("/capabilities", ...);
-// All other endpoints similarly updated
 ```
 
 ## 🚀 Quick Start - Portable Version (Recommended)
@@ -58,7 +66,8 @@ This is the easiest way to build and run Aura Video Studio.
 
    This will:
    - Build the .NET API (self-contained, no dependencies needed)
-   - Build the React Web UI
+   - **Automatically build the React Web UI**
+   - **Automatically copy the frontend to wwwroot**
    - Copy everything to `artifacts\portable\build\`
    - Create `AuraVideoStudio_Portable_x64.zip`
 
@@ -74,7 +83,8 @@ This is the easiest way to build and run Aura Video Studio.
 
 4. **Use the application**:
    - The launcher will start the API server
-   - After 3 seconds, it will open your browser to `http://127.0.0.1:5005`
+   - Wait for the health check to pass
+   - Browser opens automatically to `http://127.0.0.1:5005`
    - You should see the Aura Video Studio welcome page
 
 ### Expected Output
@@ -86,22 +96,104 @@ When you run `Launch.bat`, you should see:
 ========================================
 
 Starting API server...
-Waiting for server to start...
+Waiting for server to become ready...
+Server is ready!
 
 Opening web browser...
 
+========================================
+Application started successfully!
+========================================
+
 The application should open in your web browser.
 If not, manually navigate to: http://127.0.0.1:5005
+
+For diagnostics, visit: http://127.0.0.1:5005/diag
 ```
 
 In the API server window, you should see:
 ```
-[INFO] Serving static files from: C:\path\to\build\Api\wwwroot
+[INFO] =================================================================
+[INFO] Static UI: ENABLED
+[INFO]   Path: C:\path\to\build\Api\wwwroot
+[INFO]   Files: 14
+[INFO]   index.html: ✓
+[INFO]   assets/: ✓
+[INFO] =================================================================
 [INFO] Now listening on: http://127.0.0.1:5005
 [INFO] Application started. Press Ctrl+C to shut down.
 ```
 
-**Key Success Indicator:** The first line should say "Serving static files from" - NOT "wwwroot directory not found"!
+**Key Success Indicators:**
+- ✅ "Static UI: ENABLED" message
+- ✅ File count > 0 (should be ~14 files)
+- ✅ index.html and assets/ checkmarks
+- ✅ NO "wwwroot directory not found" errors
+
+## 🔍 Troubleshooting
+
+### Problem: White Screen or 404 Errors
+
+**Step 1: Check the Diagnostics Page**
+
+Open http://127.0.0.1:5005/diag in your browser. This page will show:
+- ✅/❌ wwwroot directory status
+- ✅/❌ index.html file status
+- ✅/❌ assets directory status
+- File count in wwwroot
+- API connectivity status
+
+**Step 2: Check Server Logs**
+
+Look at the API server window for these messages:
+
+**Good:**
+```
+[INFO] Static UI: ENABLED
+[INFO]   Files: 14
+```
+
+**Bad:**
+```
+[ERROR] CRITICAL: wwwroot directory not found
+```
+
+**Step 3: Verify Files Exist**
+
+Check that these files exist:
+- `Api\wwwroot\index.html` ✓
+- `Api\wwwroot\assets\` (folder with JS/CSS files) ✓
+
+**Step 4: Re-extract or Rebuild**
+
+If files are missing:
+```powershell
+# Option 1: Re-extract the portable ZIP
+Expand-Archive -Force artifacts\portable\AuraVideoStudio_Portable_x64.zip -DestinationPath test-run
+
+# Option 2: Rebuild from source
+.\scripts\packaging\build-portable.ps1
+```
+
+### Problem: Server Won't Start
+
+**Check Port Availability:**
+```powershell
+# Check if port 5005 is in use
+netstat -ano | findstr :5005
+
+# If port is in use, kill the process or choose different port
+$env:ASPNETCORE_URLS = "http://127.0.0.1:5006"
+```
+
+### Problem: Browser Opens Too Early
+
+The new launcher script includes health check polling, but if you still see issues:
+
+**Manual Start:**
+1. Start the API: `cd Api && Aura.Api.exe`
+2. Wait for "Application started" message
+3. Open browser to http://127.0.0.1:5005
 
 ## 🛠️ Development Mode
 

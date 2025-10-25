@@ -3,7 +3,9 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$Platform = "x64"
+    [string]$Platform = "x64",
+    [int]$HealthCheckMaxAttempts = 30,
+    [int]$HealthCheckIntervalSeconds = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -124,6 +126,13 @@ try {
             Write-Host "      ✓ npm dependencies already installed" -ForegroundColor Green
         }
         
+        # Clean dist directory for a fresh build
+        if (Test-Path "dist") {
+            Write-Host "      Removing old dist directory..." -ForegroundColor Gray
+            Remove-Item -Recurse -Force dist
+            Write-Host "      ✓ Old dist directory removed" -ForegroundColor Green
+        }
+        
         Write-Host "      Building frontend..." -ForegroundColor Gray
         # Capture output to reduce noise, but show on error
         $buildOutput = npm run build --silent 2>&1
@@ -132,6 +141,67 @@ try {
             Write-Host "Build output: $buildOutput" -ForegroundColor Red
             throw "npm build failed. Error: $buildOutput`n`nThis may be due to TypeScript compilation errors or other build issues."
         }
+        
+        # Validate the build output
+        Write-Host "      Validating build output..." -ForegroundColor Gray
+        $validationErrors = @()
+        
+        # Check 1: Verify dist/index.html exists
+        if (-not (Test-Path "dist\index.html")) {
+            $validationErrors += "index.html not found in dist folder"
+        }
+        
+        # Check 2: Verify dist/assets folder exists
+        if (-not (Test-Path "dist\assets")) {
+            $validationErrors += "assets folder not found in dist folder"
+        }
+        
+        # Check 3: Count JavaScript files in dist/assets
+        $jsFileCount = 0
+        if (Test-Path "dist\assets") {
+            $jsFileCount = (Get-ChildItem "dist\assets" -Filter "*.js" -File).Count
+            if ($jsFileCount -eq 0) {
+                $validationErrors += "No JavaScript bundles found in dist/assets"
+            }
+        }
+        
+        # Check 4 & 5: Verify HTML transformation
+        if (Test-Path "dist\index.html") {
+            $indexContent = Get-Content "dist\index.html" -Raw
+            
+            # Check for development path (should NOT be present)
+            if ($indexContent -match 'src="/src/main\.tsx"') {
+                $validationErrors += "HTML not transformed: still contains development path 'src=`"/src/main.tsx`"'"
+                # Show actual script tags for diagnostics
+                $scriptTags = Select-String -Path "dist\index.html" -Pattern '<script[^>]*>' -AllMatches | ForEach-Object { $_.Matches.Value }
+                Write-Host "      Found script tags in index.html:" -ForegroundColor Yellow
+                foreach ($tag in $scriptTags) {
+                    Write-Host "        $tag" -ForegroundColor Yellow
+                }
+            }
+            
+            # Check for production path (should be present)
+            if ($indexContent -notmatch 'src="/assets/') {
+                $validationErrors += "HTML not transformed: does not contain production path 'src=`"/assets/`"'"
+            }
+        }
+        
+        # Report validation results
+        if ($validationErrors.Count -gt 0) {
+            Write-Host ""
+            Write-Host "      ✗ Build validation failed:" -ForegroundColor Red
+            foreach ($error in $validationErrors) {
+                Write-Host "        - $error" -ForegroundColor Red
+            }
+            throw "Frontend build validation failed. Please check the errors above."
+        } else {
+            Write-Host "      Build validation passed:" -ForegroundColor Green
+            Write-Host "        - index.html: ✓" -ForegroundColor Green
+            Write-Host "        - assets folder: ✓" -ForegroundColor Green
+            Write-Host "        - JavaScript bundles: $jsFileCount files" -ForegroundColor Green
+            Write-Host "        - HTML transformation: ✓" -ForegroundColor Green
+        }
+        
         Write-Host "      ✓ Frontend build complete" -ForegroundColor Green
     }
     finally {
@@ -152,10 +222,51 @@ try {
 
     # Copy Web UI to wwwroot folder inside the published API
     Write-Host "[5/6] Copying web UI to wwwroot..." -ForegroundColor Yellow
+    
+    # Validate dist folder exists
+    $distPath = "$rootDir\Aura.Web\dist"
+    if (-not (Test-Path $distPath)) {
+        Write-BuildError "Web UI dist folder not found at: $distPath"
+        Write-BuildError "The frontend build may have failed. Please check the build output above."
+        throw "Web UI build validation failed"
+    }
+    
+    # Validate dist folder has required files
+    $distIndexHtml = "$distPath\index.html"
+    if (-not (Test-Path $distIndexHtml)) {
+        Write-BuildError "index.html not found in dist folder"
+        Write-BuildError "The frontend build is incomplete. Please check the build output above."
+        throw "Web UI build validation failed"
+    }
+    
+    $distAssets = "$distPath\assets"
+    if (-not (Test-Path $distAssets)) {
+        Write-BuildError "assets folder not found in dist folder"
+        Write-BuildError "The frontend build is incomplete. Please check the build output above."
+        throw "Web UI build validation failed"
+    }
+    
+    Write-Host "      ✓ Web UI build validated" -ForegroundColor Green
+    
+    # Copy to wwwroot
     $wwwrootDir = Join-Path "$portableBuildDir\Api" "wwwroot"
     New-Item -ItemType Directory -Force -Path $wwwrootDir | Out-Null
     Copy-Item "$rootDir\Aura.Web\dist\*" -Destination $wwwrootDir -Recurse -Force
-    Write-Host "      ✓ Web UI copied to wwwroot" -ForegroundColor Green
+    
+    # Validate wwwroot has the files
+    $wwwrootIndexHtml = Join-Path $wwwrootDir "index.html"
+    if (-not (Test-Path $wwwrootIndexHtml)) {
+        Write-BuildError "Failed to copy index.html to wwwroot"
+        throw "Web UI copy validation failed"
+    }
+    
+    $wwwrootAssets = Join-Path $wwwrootDir "assets"
+    if (-not (Test-Path $wwwrootAssets)) {
+        Write-BuildError "Failed to copy assets folder to wwwroot"
+        throw "Web UI copy validation failed"
+    }
+    
+    Write-Host "      ✓ Web UI copied to wwwroot and validated" -ForegroundColor Green
 
     # Copy additional files
     Write-Host "[6/6] Copying additional files..." -ForegroundColor Yellow
@@ -177,29 +288,98 @@ if (Test-Path "$rootDir\LICENSE") {
     Copy-Item "$rootDir\LICENSE" -Destination $portableBuildDir -Force
 }
 
-# Create launcher script
+# Create launcher script with pre-flight checks and health check polling
 $launcherScript = @"
 @echo off
 echo ========================================
 echo  Aura Video Studio - Portable Edition
 echo ========================================
 echo.
+echo Running pre-flight checks...
+
+REM Check if Api folder exists
+if not exist "Api\" (
+    echo ERROR: Api folder not found!
+    echo Please make sure you extracted all files from the ZIP.
+    echo.
+    pause
+    exit /b 1
+)
+
+REM Check if Aura.Api.exe exists
+if not exist "Api\Aura.Api.exe" (
+    echo ERROR: Aura.Api.exe not found!
+    echo Please make sure you extracted all files from the ZIP.
+    echo.
+    pause
+    exit /b 1
+)
+
+REM Check if wwwroot folder exists
+if not exist "Api\wwwroot\" (
+    echo ERROR: Web UI files not found at Api\wwwroot\
+    echo The application cannot start without the web interface.
+    echo Please re-extract the ZIP file or download a new copy.
+    echo.
+    pause
+    exit /b 1
+)
+
+REM Check if index.html exists
+if not exist "Api\wwwroot\index.html" (
+    echo ERROR: index.html not found in Api\wwwroot\
+    echo The application cannot start without the web interface.
+    echo Please re-extract the ZIP file or download a new copy.
+    echo.
+    pause
+    exit /b 1
+)
+
+echo Pre-flight checks passed!
+echo.
 echo Starting API server...
 start "" /D "Api" "Aura.Api.exe"
-echo Waiting for server to start...
-timeout /t 3 /nobreak >nul
+
+echo Waiting for server to become ready...
+set /a attempts=0
+:wait_loop
+set /a attempts+=1
+if %attempts% gtr $HealthCheckMaxAttempts (
+    echo.
+    echo WARNING: Server did not respond after $HealthCheckMaxAttempts attempts.
+    echo The server may still be starting. Opening browser anyway...
+    goto open_browser
+)
+
+REM Try to reach the health check endpoint using PowerShell (more reliable than curl on Windows)
+powershell -Command "try { `$response = Invoke-WebRequest -Uri 'http://127.0.0.1:5005/api/healthz' -TimeoutSec 1 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Server is ready!
+    goto open_browser
+)
+
+timeout /t $HealthCheckIntervalSeconds /nobreak >nul
+goto wait_loop
+
+:open_browser
 echo.
 echo Opening web browser...
 start "" "http://127.0.0.1:5005"
 echo.
+echo ========================================
+echo Application started successfully!
+echo ========================================
+echo.
 echo The application should open in your web browser.
 echo If not, manually navigate to: http://127.0.0.1:5005
+echo.
+echo For diagnostics, visit: http://127.0.0.1:5005/diag
 echo.
 echo To stop the application, close the API server window.
 echo.
 "@
 Set-Content -Path "$portableBuildDir\Launch.bat" -Value $launcherScript
-Write-Host "      ✓ Launch script created" -ForegroundColor Green
+Write-Host "      ✓ Launch script created with pre-flight checks" -ForegroundColor Green
 
 # Create ZIP
 $zipPath = Join-Path $portableDir "AuraVideoStudio_Portable_x64.zip"

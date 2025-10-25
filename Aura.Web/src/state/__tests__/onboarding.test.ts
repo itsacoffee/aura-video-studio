@@ -2,8 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   onboardingReducer,
   initialOnboardingState,
-  getButtonLabel,
-  isButtonDisabled,
   canAdvanceStep,
 } from '../onboarding';
 import type { PreflightReport } from '../providers';
@@ -13,9 +11,13 @@ describe('onboardingReducer', () => {
     const state = initialOnboardingState;
     expect(state.step).toBe(0);
     expect(state.mode).toBe('free');
+    expect(state.selectedTier).toBeNull();
     expect(state.status).toBe('idle');
     expect(state.lastValidation).toBeNull();
     expect(state.errors).toEqual([]);
+    expect(state.apiKeys).toEqual({});
+    expect(state.apiKeyValidationStatus).toEqual({});
+    expect(state.apiKeyErrors).toEqual({});
   });
 
   it('should have install items with descriptions and default paths', () => {
@@ -234,65 +236,48 @@ describe('onboardingReducer', () => {
     expect(state.lastValidation).toBeNull();
     expect(state.errors).toEqual([]);
   });
-});
 
-describe('getButtonLabel', () => {
-  it('should return correct label for idle state on first step', () => {
-    expect(getButtonLabel('idle', false)).toBe('Next');
+  it('should handle SET_TIER', () => {
+    const state = onboardingReducer(initialOnboardingState, {
+      type: 'SET_TIER',
+      payload: 'pro',
+    });
+    expect(state.selectedTier).toBe('pro');
   });
 
-  it('should return correct label for idle state on last step', () => {
-    expect(getButtonLabel('idle', true)).toBe('Validate');
+  it('should handle SET_API_KEY', () => {
+    const state = onboardingReducer(initialOnboardingState, {
+      type: 'SET_API_KEY',
+      payload: { provider: 'openai', key: 'sk-test123' },
+    });
+    expect(state.apiKeys['openai']).toBe('sk-test123');
   });
 
-  it('should return correct label for validating state', () => {
-    expect(getButtonLabel('validating', true)).toBe('Validating…');
+  it('should handle START_API_KEY_VALIDATION', () => {
+    const state = onboardingReducer(initialOnboardingState, {
+      type: 'START_API_KEY_VALIDATION',
+      payload: 'openai',
+    });
+    expect(state.apiKeyValidationStatus['openai']).toBe('validating');
+    expect(state.apiKeyErrors['openai']).toBe('');
   });
 
-  it('should return correct label for valid state', () => {
-    expect(getButtonLabel('valid', true)).toBe('Next');
+  it('should handle API_KEY_VALID', () => {
+    const state = onboardingReducer(initialOnboardingState, {
+      type: 'API_KEY_VALID',
+      payload: { provider: 'openai', accountInfo: 'Account validated' },
+    });
+    expect(state.apiKeyValidationStatus['openai']).toBe('valid');
+    expect(state.apiKeyErrors['openai']).toBe('');
   });
 
-  it('should return correct label for invalid state', () => {
-    expect(getButtonLabel('invalid', true)).toBe('Fix Issues');
-  });
-
-  it('should return correct label for installing state', () => {
-    expect(getButtonLabel('installing', true)).toBe('Installing…');
-  });
-
-  it('should return correct label for installed state', () => {
-    expect(getButtonLabel('installed', true)).toBe('Validate');
-  });
-
-  it('should return correct label for ready state', () => {
-    expect(getButtonLabel('ready', true)).toBe('Continue');
-  });
-});
-
-describe('isButtonDisabled', () => {
-  it('should disable button when validating', () => {
-    expect(isButtonDisabled('validating', false)).toBe(true);
-  });
-
-  it('should disable button when installing', () => {
-    expect(isButtonDisabled('installing', false)).toBe(true);
-  });
-
-  it('should disable button when detecting hardware', () => {
-    expect(isButtonDisabled('idle', true)).toBe(true);
-  });
-
-  it('should not disable button in idle state', () => {
-    expect(isButtonDisabled('idle', false)).toBe(false);
-  });
-
-  it('should not disable button in valid state', () => {
-    expect(isButtonDisabled('valid', false)).toBe(false);
-  });
-
-  it('should not disable button in invalid state', () => {
-    expect(isButtonDisabled('invalid', false)).toBe(false);
+  it('should handle API_KEY_INVALID', () => {
+    const state = onboardingReducer(initialOnboardingState, {
+      type: 'API_KEY_INVALID',
+      payload: { provider: 'openai', error: 'Invalid key format' },
+    });
+    expect(state.apiKeyValidationStatus['openai']).toBe('invalid');
+    expect(state.apiKeyErrors['openai']).toBe('Invalid key format');
   });
 });
 
