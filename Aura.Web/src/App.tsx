@@ -52,14 +52,14 @@ export const ThemeContext = createContext<ThemeContextType>({
 export const useTheme = () => useContext(ThemeContext);
 
 function App() {
-  // Initialize dark mode from localStorage or system preference
+  // Initialize dark mode - default to dark on first run, then use localStorage
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     if (saved !== null) {
       return JSON.parse(saved);
     }
-    // Detect system preference if no saved preference
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Default to dark mode for first-run users (creative app standard)
+    return true;
   });
   
   const [showShortcuts, setShowShortcuts] = useState(false);

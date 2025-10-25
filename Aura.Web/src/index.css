@@ -11,6 +11,22 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  /* Spacing scale tokens */
+  --space-0: 4px;
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+
+  /* Typography tokens */
+  --font-size-base: 14px;
+  --line-height-base: 1.5;
+  --heading-1-size: 24px;
+  --heading-2-size: 20px;
+  --heading-3-size: 16px;
+
   /* CSS custom properties for theming - Light mode */
   --color-primary: #0ea5e9;
   --color-secondary: #a855f7;
@@ -22,6 +38,7 @@
   --color-text-primary: #1f2937;
   --color-text-secondary: #6b7280;
   --color-border: #e5e7eb;
+  --card-bg: #ffffff;
   
   /* Enhanced shadow system for depth */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -48,6 +65,7 @@
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
   --color-border: #1e293b;
+  --card-bg: #0f1724;
   
   /* Enhanced shadows for dark mode */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
@@ -67,6 +85,10 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow-x: hidden;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
 }
 
 #root {
@@ -75,6 +97,71 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* Normalized typography */
+h1 {
+  font-size: var(--heading-1-size);
+  margin: 0 0 var(--space-3) 0;
+  font-weight: 600;
+}
+
+h2 {
+  font-size: var(--heading-2-size);
+  margin: 0 0 var(--space-2) 0;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: var(--heading-3-size);
+  margin: 0 0 var(--space-2) 0;
+  font-weight: 600;
+}
+
+p {
+  margin: 0 0 var(--space-2) 0;
+}
+
+ul, ol {
+  margin: 0 0 var(--space-2) var(--space-4);
+  padding: 0;
+}
+
+/* Section and card styling */
+.section {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--card-bg);
+  border-radius: 6px;
+}
+
+/* Form controls */
+.form-row {
+  margin-bottom: var(--space-2);
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  padding: var(--space-1);
+  font-size: var(--font-size-base);
+}
+
+button {
+  padding: calc(var(--space-1) + 2px) var(--space-3);
+}
+
+/* Utility spacing classes */
+.mt-1 { margin-top: var(--space-1); }
+.mb-1 { margin-bottom: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mb-4 { margin-bottom: var(--space-4); }
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
 
 /* Focus visible styles for accessibility */
 *:focus-visible {
