@@ -356,8 +356,8 @@ export function CreateWizard() {
 
   const handleGenerate = async () => {
     console.log('[GENERATE VIDEO] Button clicked - starting generation');
-    setGenerating(true);
     try {
+      setGenerating(true);
       validateAndWarnEnums(settings.brief, settings.planSpec);
       const { brief: normalizedBrief, planSpec: normalizedPlanSpec } = normalizeEnumsForApi(
         settings.brief,
@@ -449,8 +449,8 @@ export function CreateWizard() {
 
   const handleQuickDemo = async () => {
     console.log('[QUICK DEMO] Button clicked - starting demo generation');
-    setGenerating(true);
     try {
+      setGenerating(true);
       // Validate before starting generation
       const validationUrl = apiUrl('/api/validation/brief');
       
@@ -477,6 +477,12 @@ export function CreateWizard() {
         }
       } else {
         console.error('[QUICK DEMO] Validation request failed:', validationResponse.status, validationResponse.statusText);
+        showFailureToast({
+          title: 'Validation Failed',
+          message: `Could not validate quick demo request. Server returned status ${validationResponse.status}`,
+        });
+        setGenerating(false);
+        return;
       }
 
       // Validation passed, proceed with generation
