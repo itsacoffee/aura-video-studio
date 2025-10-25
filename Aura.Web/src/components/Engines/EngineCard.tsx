@@ -150,7 +150,6 @@ export function EngineCard({ engine }: EngineCardProps) {
   const [urlVerificationMessage, setUrlVerificationMessage] = useState<string>('');
 
   const {
-    installEngine,
     verifyEngine,
     repairEngine,
     removeEngine,
