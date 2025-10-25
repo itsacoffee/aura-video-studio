@@ -82,4 +82,27 @@
     <Message Text="  Files: @(FrontendFiles->Count())" Importance="high" />
   </Target>
 
+  <!-- Also copy frontend to wwwroot during regular build for development -->
+  <Target Name="CopyFrontendForDevelopment" AfterTargets="Build" Condition="'$(SkipFrontendBuild)' != 'true' AND Exists('$(MSBuildProjectDirectory)\..\Aura.Web\dist')">
+    <PropertyGroup>
+      <FrontendDistPath>$(MSBuildProjectDirectory)\..\Aura.Web\dist</FrontendDistPath>
+      <OutputWwwrootPath>$(OutputPath)wwwroot</OutputWwwrootPath>
+    </PropertyGroup>
+    
+    <Message Text="Copying frontend dist to output wwwroot for development..." Importance="high" />
+    <Message Text="  Source: $(FrontendDistPath)" Importance="high" />
+    <Message Text="  Target: $(OutputWwwrootPath)" Importance="high" />
+    
+    <!-- Create wwwroot directory in output -->
+    <MakeDir Directories="$(OutputWwwrootPath)" />
+    
+    <!-- Copy all files from dist to output wwwroot -->
+    <ItemGroup>
+      <DevFrontendFiles Include="$(FrontendDistPath)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DevFrontendFiles)" DestinationFolder="$(OutputWwwrootPath)\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    
+    <Message Text="✓ Frontend copied to development wwwroot ($(OutputWwwrootPath))" Importance="high" />
+  </Target>
+
 </Project>
