@@ -320,6 +320,116 @@ public class EnginesController : ControllerBase
     }
 
     /// <summary>
+    /// Install an engine with SSE progress stream
+    /// </summary>
+    [HttpPost("install-stream")]
+    public async Task InstallWithProgress([FromBody] InstallRequest request, CancellationToken ct)
+    {
+        Response.Headers.Append("Content-Type", "text/event-stream");
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("Connection", "keep-alive");
+
+        try
+        {
+            if (string.IsNullOrEmpty(request.EngineId))
+            {
+                var errorData = System.Text.Json.JsonSerializer.Serialize(new { error = "engineId is required" });
+                await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct);
+                await Response.Body.FlushAsync(ct);
+                return;
+            }
+
+            var manifest = await _manifestLoader.LoadManifestAsync();
+            var engine = manifest.Engines.FirstOrDefault(e => e.Id == request.EngineId);
+            
+            if (engine == null)
+            {
+                var errorData = System.Text.Json.JsonSerializer.Serialize(new { error = $"Engine {request.EngineId} not found in manifest" });
+                await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct);
+                await Response.Body.FlushAsync(ct);
+                return;
+            }
+
+            if (_installer.IsInstalled(request.EngineId))
+            {
+                var errorData = System.Text.Json.JsonSerializer.Serialize(new { error = $"Engine {request.EngineId} is already installed" });
+                await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct);
+                await Response.Body.FlushAsync(ct);
+                return;
+            }
+
+            // Create progress handler
+            var progress = new Progress<EngineInstallProgress>(p =>
+            {
+                try
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(p);
+                    Response.WriteAsync($"event: progress\ndata: {json}\n\n", ct).GetAwaiter().GetResult();
+                    Response.Body.FlushAsync(ct).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send progress update");
+                }
+            });
+
+            // Install the engine with progress reporting
+            string installPath = await _installer.InstallAsync(
+                engine, 
+                request.CustomUrl, 
+                request.LocalFilePath, 
+                progress, 
+                ct);
+
+            // Register with the registry
+            string executablePath = System.IO.Path.Combine(installPath, engine.Entrypoint);
+            
+            var engineConfig = new EngineConfig(
+                Id: engine.Id,
+                EngineId: engine.Id,
+                Name: engine.Name,
+                Version: request.Version ?? engine.Version,
+                Mode: EngineMode.Managed,
+                InstallPath: installPath,
+                ExecutablePath: executablePath,
+                Arguments: engine.ArgsTemplate,
+                Port: request.Port ?? engine.DefaultPort,
+                HealthCheckUrl: engine.HealthCheck != null ? $"http://localhost:{request.Port ?? engine.DefaultPort}{engine.HealthCheck.Url}" : null,
+                StartOnAppLaunch: false,
+                AutoRestart: false
+            );
+
+            await _registry.RegisterEngineAsync(engineConfig);
+
+            var completionData = System.Text.Json.JsonSerializer.Serialize(new { 
+                success = true,
+                engineId = request.EngineId,
+                installPath,
+                message = $"Engine {engine.Name} installed successfully"
+            });
+            await Response.WriteAsync($"event: complete\ndata: {completionData}\n\n", ct);
+            await Response.Body.FlushAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Install operation cancelled for {EngineId}", request.EngineId);
+            var errorData = System.Text.Json.JsonSerializer.Serialize(new { error = "Installation cancelled by user" });
+            await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct);
+            await Response.Body.FlushAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to install engine {EngineId}", request.EngineId);
+            var errorData = System.Text.Json.JsonSerializer.Serialize(new { 
+                error = $"Installation failed: {ex.Message}",
+                details = ex.ToString()
+            });
+            await Response.WriteAsync($"event: error\ndata: {errorData}\n\n", ct);
+            await Response.Body.FlushAsync(ct);
+        }
+    }
+
+    /// <summary>
     /// Verify an engine installation
     /// </summary>
     [HttpPost("verify")]
