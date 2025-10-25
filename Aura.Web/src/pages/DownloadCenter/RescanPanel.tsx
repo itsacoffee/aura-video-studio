@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
 import {
   makeStyles,
@@ -78,6 +78,12 @@ export function RescanPanel() {
   const [lastScanTime, setLastScanTime] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Run rescan automatically on component mount
+  useEffect(() => {
+    handleRescanAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleRescanAll = async () => {
     setIsScanning(true);
     setError(null);
@@ -150,20 +156,47 @@ export function RescanPanel() {
       return null; // No action needed
     }
 
+    const handleInstall = () => {
+      // Navigate to the main downloads page where installation is handled
+      window.location.href = '/downloads';
+    };
+
+    const handleAttach = () => {
+      // Navigate to the main downloads page for attaching existing installations
+      window.location.href = '/downloads';
+    };
+
     return (
       <div className={styles.actions}>
         {dep.status === 'Missing' && (
           <>
-            <Button appearance="primary" icon={<ArrowDownload24Regular />} size="small">
+            <Button 
+              appearance="primary" 
+              icon={<ArrowDownload24Regular />} 
+              size="small"
+              onClick={handleInstall}
+              title="Install this dependency automatically"
+            >
               Install
             </Button>
-            <Button appearance="secondary" icon={<Link24Regular />} size="small">
+            <Button 
+              appearance="secondary" 
+              icon={<Link24Regular />} 
+              size="small"
+              onClick={handleAttach}
+              title="Attach an existing installation"
+            >
               Attach
             </Button>
           </>
         )}
         {dep.status === 'PartiallyInstalled' && (
-          <Button appearance="primary" size="small">
+          <Button 
+            appearance="primary" 
+            size="small"
+            onClick={handleInstall}
+            title="Repair this dependency"
+          >
             Repair
           </Button>
         )}

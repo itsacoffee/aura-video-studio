@@ -121,7 +121,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     { id: 'nav-render', name: 'Render & Export', description: 'Configure and render videos', category: 'Navigation', icon: Play24Regular, action: () => navigate('/render') },
     { id: 'nav-publish', name: 'Publish', description: 'Publish to platforms', category: 'Navigation', icon: Share24Regular, action: () => navigate('/publish') },
     { id: 'nav-assets', name: 'Asset Library', description: 'Manage video assets', category: 'Navigation', icon: Image24Regular, action: () => navigate('/assets') },
-    { id: 'nav-downloads', name: 'Downloads', description: 'Manage downloads and engines', category: 'Navigation', icon: CloudArrowDown24Regular, action: () => navigate('/downloads') },
+    { id: 'nav-downloads', name: 'Program Dependencies', description: 'Manage program dependencies and engines', category: 'Navigation', icon: CloudArrowDown24Regular, action: () => navigate('/downloads') },
     { id: 'nav-health', name: 'Provider Health', description: 'Check provider status', category: 'Navigation', icon: HeartPulse24Regular, action: () => navigate('/health') },
     { id: 'nav-ideation', name: 'Ideation', description: 'Generate video ideas', category: 'Navigation', icon: Lightbulb24Regular, action: () => navigate('/ideation') },
     { id: 'nav-settings', name: 'Settings', description: 'Open settings', category: 'Navigation', icon: Settings24Regular, shortcut: 'Ctrl+,', action: () => navigate('/settings') },
