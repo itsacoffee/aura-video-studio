@@ -45,7 +45,7 @@ public class TrendingTopicsServiceTests
 
         // Mock LLM provider to return a simple response for AI analysis
         _mockLlmProvider
-            .Setup(x => x.DraftScriptAsync(It.IsAny<Aura.Core.Models.Brief>(), It.IsAny<Aura.Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("WHY TRENDING: This topic is trending because of increased interest.\nAUDIENCE ENGAGEMENT: Audiences are actively engaging.\nCONTENT ANGLES:\n- Angle 1\n- Angle 2\n- Angle 3\nDEMOGRAPHIC APPEAL: Broad appeal.\nVIRALITY SCORE: 75");
 
         // Act
@@ -72,7 +72,7 @@ public class TrendingTopicsServiceTests
 
         // Mock LLM provider
         _mockLlmProvider
-            .Setup(x => x.DraftScriptAsync(It.IsAny<Aura.Core.Models.Brief>(), It.IsAny<Aura.Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("WHY TRENDING: Gaming hardware is trending.\nAUDIENCE ENGAGEMENT: Gamers are highly engaged.\nCONTENT ANGLES:\n- GPU reviews\n- PC builds\n- Console comparisons\nDEMOGRAPHIC APPEAL: Gaming enthusiasts.\nVIRALITY SCORE: 85");
 
         // Act
@@ -93,7 +93,7 @@ public class TrendingTopicsServiceTests
 
         // Mock LLM provider
         _mockLlmProvider
-            .Setup(x => x.DraftScriptAsync(It.IsAny<Aura.Core.Models.Brief>(), It.IsAny<Aura.Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("WHY TRENDING: Tech trends are emerging.\nAUDIENCE ENGAGEMENT: Tech enthusiasts are engaged.\nCONTENT ANGLES:\n- AI tools\n- Software dev\n- Cybersecurity\nDEMOGRAPHIC APPEAL: Tech professionals.\nVIRALITY SCORE: 80");
 
         // Act - First call should fetch and cache
@@ -109,7 +109,7 @@ public class TrendingTopicsServiceTests
 
         // Verify LLM provider was called (for AI insights)
         _mockLlmProvider.Verify(
-            x => x.DraftScriptAsync(It.IsAny<Aura.Core.Models.Brief>(), It.IsAny<Aura.Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()),
+            x => x.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()),
             Times.AtLeastOnce
         );
     }
@@ -123,7 +123,7 @@ public class TrendingTopicsServiceTests
 
         // Mock LLM provider
         _mockLlmProvider
-            .Setup(x => x.DraftScriptAsync(It.IsAny<Aura.Core.Models.Brief>(), It.IsAny<Aura.Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("WHY TRENDING: Health trends are important.\nAUDIENCE ENGAGEMENT: Health-conscious audience.\nCONTENT ANGLES:\n- Fitness\n- Nutrition\n- Mental health\nDEMOGRAPHIC APPEAL: Health enthusiasts.\nVIRALITY SCORE: 70");
 
         // Act - First call with cache
@@ -146,7 +146,7 @@ public class TrendingTopicsServiceTests
 
         // Mock LLM provider with detailed response
         _mockLlmProvider
-            .Setup(x => x.DraftScriptAsync(It.IsAny<Aura.Core.Models.Brief>(), It.IsAny<Aura.Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(@"WHY TRENDING: Business strategies are evolving rapidly in the current market environment.
 
 AUDIENCE ENGAGEMENT: Entrepreneurs and business professionals are actively seeking guidance.
@@ -188,7 +188,7 @@ VIRALITY SCORE: 82");
 
         // Mock LLM provider
         _mockLlmProvider
-            .Setup(x => x.DraftScriptAsync(It.IsAny<Aura.Core.Models.Brief>(), It.IsAny<Aura.Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("WHY TRENDING: Entertainment content is popular.\nAUDIENCE ENGAGEMENT: High engagement.\nCONTENT ANGLES:\n- Reviews\n- Analysis\n- Reactions\nDEMOGRAPHIC APPEAL: General audience.\nVIRALITY SCORE: 75");
 
         // Act
@@ -212,7 +212,7 @@ VIRALITY SCORE: 82");
 
         // Mock LLM provider
         _mockLlmProvider
-            .Setup(x => x.DraftScriptAsync(It.IsAny<Aura.Core.Models.Brief>(), It.IsAny<Aura.Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("WHY TRENDING: Educational content demand is growing.\nAUDIENCE ENGAGEMENT: Students are seeking resources.\nCONTENT ANGLES:\n- Tutorials\n- Courses\n- Study guides\nDEMOGRAPHIC APPEAL: Students and learners.\nVIRALITY SCORE: 68");
 
         // Act
