@@ -25,6 +25,7 @@ import { OutputSettingsTab } from '../components/Settings/OutputSettingsTab';
 import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettingsTab';
 import { KeyboardShortcutsTab } from '../components/Settings/KeyboardShortcutsTab';
 import { ThemeCustomizationTab } from '../components/Settings/ThemeCustomizationTab';
+import { resetFirstRunStatus } from '../services/firstRunService';
 
 const useStyles = makeStyles({
   container: {
@@ -638,6 +639,25 @@ export function SettingsPage() {
                 }}
               >
                 Re-run Setup Wizard
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (
+                    confirm(
+                      'This will reset the first-run wizard and restart onboarding. You will be redirected to the onboarding wizard. Continue?'
+                    )
+                  ) {
+                    try {
+                      await resetFirstRunStatus();
+                      window.location.href = '/onboarding';
+                    } catch (error) {
+                      console.error('Error resetting first-run status:', error);
+                      alert('Failed to reset first-run status. Check console for details.');
+                    }
+                  }
+                }}
+              >
+                Reset First-Run Wizard
               </Button>
             </div>
           </div>

@@ -4,7 +4,10 @@ test.describe('First-Run Wizard E2E', () => {
   test.beforeEach(async ({ page }) => {
     // Clear localStorage to simulate first run
     await page.goto('/');
-    await page.evaluate(() => localStorage.removeItem('hasSeenOnboarding'));
+    await page.evaluate(() => {
+      localStorage.removeItem('hasSeenOnboarding');
+      localStorage.removeItem('hasCompletedFirstRun');
+    });
   });
 
   test('should complete wizard flow with Free-Only mode and successful validation', async ({ page }) => {
@@ -445,9 +448,12 @@ test.describe('First-Run Wizard E2E', () => {
   });
 
   test('should not show wizard if already completed', async ({ page }) => {
-    // Set hasSeenOnboarding flag
+    // Set hasCompletedFirstRun flag
     await page.goto('/');
-    await page.evaluate(() => localStorage.setItem('hasSeenOnboarding', 'true'));
+    await page.evaluate(() => {
+      localStorage.setItem('hasCompletedFirstRun', 'true');
+      localStorage.setItem('hasSeenOnboarding', 'true'); // For backward compatibility
+    });
 
     // Navigate to onboarding
     await page.goto('/onboarding');

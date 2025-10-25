@@ -3,6 +3,7 @@ import {
   FluentProvider,
   webLightTheme,
   webDarkTheme,
+  Spinner,
 } from '@fluentui/react-components';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
@@ -36,6 +37,7 @@ import { QualityDashboard } from './components/dashboard';
 import { ContentPlanningDashboard } from './components/contentPlanning/ContentPlanningDashboard';
 import { VideoEditorPage } from './pages/VideoEditorPage';
 import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
+import { hasCompletedFirstRun, migrateLegacyFirstRunStatus } from './services/firstRunService';
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -66,9 +68,35 @@ function App() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const toasterId = 'notifications-toaster'; // Hardcoded to avoid hook context issues
 
+  // First-run detection state
+  const [isCheckingFirstRun, setIsCheckingFirstRun] = useState(true);
+  const [shouldShowOnboarding, setShouldShowOnboarding] = useState(false);
+
   // Job state for status bar
   const { currentJobId, status, progress, message } = useJobState();
   const [showDrawer, setShowDrawer] = useState(false);
+
+  // Check first-run status on app mount
+  useEffect(() => {
+    async function checkFirstRun() {
+      try {
+        // Migrate legacy first-run flag if needed
+        migrateLegacyFirstRunStatus();
+
+        // Check if user has completed first-run wizard
+        const completed = await hasCompletedFirstRun();
+        setShouldShowOnboarding(!completed);
+      } catch (error) {
+        console.error('Error checking first-run status:', error);
+        // On error, assume not first-run to avoid blocking access
+        setShouldShowOnboarding(false);
+      } finally {
+        setIsCheckingFirstRun(false);
+      }
+    }
+
+    checkFirstRun();
+  }, []);
 
   // Apply dark mode class to document root and save preference
   useEffect(() => {
@@ -154,6 +182,19 @@ function App() {
     setIsDarkMode(!isDarkMode);
   };
 
+  // Show loading spinner while checking first-run status
+  if (isCheckingFirstRun) {
+    return (
+      <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+        <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+          <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Spinner size="large" label="Loading..." />
+          </div>
+        </FluentProvider>
+      </ThemeContext.Provider>
+    );
+  }
+
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
       <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
@@ -168,9 +209,17 @@ function App() {
             />
             <Layout>
               <Routes>
-                <Route path="/" element={<WelcomePage />} />
-                <Route path="/setup" element={<SetupWizard />} />
+                {/* First-run onboarding route - highest priority */}
                 <Route path="/onboarding" element={<FirstRunWizard />} />
+                
+                {/* Redirect to onboarding if first run */}
+                <Route 
+                  path="/" 
+                  element={shouldShowOnboarding ? <Navigate to="/onboarding" replace /> : <WelcomePage />} 
+                />
+                
+                {/* All other routes */}
+                <Route path="/setup" element={<SetupWizard />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/ideation" element={<IdeationDashboard />} />
                 <Route path="/trending" element={<TrendingTopicsExplorer />} />
