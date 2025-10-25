@@ -102,7 +102,10 @@ export function VideoEditorPage() {
     if (projectId) {
       loadProject(projectId).catch((error) => {
         console.error('Failed to load project:', error);
-        alert('Failed to load project');
+        // Better error message based on error type
+        const errorMessage = error.message || 'An unknown error occurred';
+        // TODO: Replace with toast notification system when available
+        console.error(`Failed to load project: ${errorMessage}`);
       });
     }
   }, [searchParams, loadProject]);
@@ -419,10 +422,13 @@ export function VideoEditorPage() {
       } else {
         await saveCurrentProject(projectName, true);
       }
-      alert('Project saved successfully!');
+      // Success feedback via console (TODO: use toast notification)
+      console.log('Project saved successfully!');
     } catch (error) {
       console.error('Failed to save project:', error);
-      alert('Failed to save project. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      // TODO: Replace with toast notification system when available
+      console.error(`Failed to save project: ${errorMessage}`);
     }
   };
 

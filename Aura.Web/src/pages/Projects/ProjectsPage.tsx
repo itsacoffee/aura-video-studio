@@ -117,7 +117,9 @@ export function ProjectsPage() {
         await loadEditorProjects();
       } catch (error) {
         console.error('Failed to delete project:', error);
-        alert('Failed to delete project');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        // TODO: Replace with toast notification system when available
+        console.error(`Failed to delete project: ${errorMessage}`);
       }
     }
   };
@@ -128,7 +130,9 @@ export function ProjectsPage() {
       await loadEditorProjects();
     } catch (error) {
       console.error('Failed to duplicate project:', error);
-      alert('Failed to duplicate project');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      // TODO: Replace with toast notification system when available
+      console.error(`Failed to duplicate project: ${errorMessage}`);
     }
   };
 
