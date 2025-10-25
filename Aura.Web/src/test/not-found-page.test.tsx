@@ -14,8 +14,8 @@ describe('NotFoundPage', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText('404')).toBeDefined();
-    expect(screen.getByText('Page Not Found')).toBeDefined();
+    expect(screen.getByText('404')).toBeInTheDocument();
+    expect(screen.getByText('Page Not Found')).toBeInTheDocument();
   });
 
   it('should have navigation buttons', () => {
@@ -27,7 +27,7 @@ describe('NotFoundPage', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText('Go to Home')).toBeDefined();
-    expect(screen.getByText('Go Back')).toBeDefined();
+    expect(screen.getByText('Go to Home')).toBeInTheDocument();
+    expect(screen.getByText('Go Back')).toBeInTheDocument();
   });
 });
