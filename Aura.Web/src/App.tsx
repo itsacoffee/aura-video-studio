@@ -40,6 +40,7 @@ import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
 import { hasCompletedFirstRun, migrateLegacyFirstRunStatus } from './services/firstRunService';
 import { ActivityProvider } from './state/activityContext';
 import { GlobalStatusFooter } from './components/GlobalStatusFooter';
+import { ActivityDemoPage } from './pages/ActivityDemoPage';
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -244,6 +245,7 @@ function App() {
                   <Route path="/health" element={<ProviderHealthDashboard />} />
                   <Route path="/logs" element={<LogViewerPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/activity-demo" element={<ActivityDemoPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Layout>
