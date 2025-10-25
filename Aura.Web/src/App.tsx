@@ -25,7 +25,9 @@ import { SetupWizard } from './pages/Setup/SetupWizard';
 import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard';
 import { AssetLibrary } from './pages/Assets/AssetLibrary';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
+import { KeyboardShortcutsPanel } from './components/KeyboardShortcuts/KeyboardShortcutsPanel';
 import { CommandPalette } from './components/CommandPalette';
+import { keyboardShortcutManager } from './services/keyboardShortcutManager';
 import { NotificationsToaster } from './components/Notifications/Toasts';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
 import { JobProgressDrawer } from './components/JobProgressDrawer';
@@ -68,6 +70,7 @@ function App() {
   });
   
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const toasterId = 'notifications-toaster'; // Hardcoded to avoid hook context issues
 
@@ -111,6 +114,56 @@ function App() {
     }
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
+
+  // Register global shortcuts
+  useEffect(() => {
+    // Register global shortcuts that are always available
+    keyboardShortcutManager.registerMultiple([
+      {
+        id: 'open-settings',
+        keys: 'Ctrl+,',
+        description: 'Open Settings',
+        context: 'global',
+        handler: () => {
+          window.location.href = '/settings';
+        },
+      },
+      {
+        id: 'new-project',
+        keys: 'Ctrl+N',
+        description: 'New Project',
+        context: 'global',
+        handler: () => {
+          window.location.href = '/create';
+        },
+      },
+      {
+        id: 'open-project',
+        keys: 'Ctrl+O',
+        description: 'Open Project',
+        context: 'global',
+        handler: () => {
+          window.location.href = '/projects';
+        },
+      },
+      {
+        id: 'save-project',
+        keys: 'Ctrl+S',
+        description: 'Save Project',
+        context: 'global',
+        handler: (e) => {
+          e.preventDefault();
+          // TODO: Implement save functionality
+          console.log('Save project');
+        },
+      },
+    ]);
+
+    // Clean up on unmount
+    return () => {
+      keyboardShortcutManager.unregisterContext('global');
+    };
+  }, []);
 
   // Poll job progress when a job is active
   useEffect(() => {
@@ -157,21 +210,36 @@ function App() {
     };
   }, [currentJobId, status]);
 
-  // Global keyboard shortcut handler for Ctrl+K (command palette) and Ctrl+/ (shortcuts)
+  // Global keyboard shortcut handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+K or Cmd+K for command palette
+      // Let the keyboard shortcut manager handle registered shortcuts first
+      const handled = keyboardShortcutManager.handleKeyEvent(e);
+      if (handled) {
+        return;
+      }
+
+      // Handle special global shortcuts not in the manager
+      // Ctrl+K or Cmd+K for shortcuts panel (preferred)
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        setShowCommandPalette(true);
+        setShowShortcutsPanel(true);
       }
-      // Ctrl+P or Cmd+P for command palette (alternative)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      // ? key for shortcuts panel (alternative)
+      else if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Don't trigger if user is typing in an input
+        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+          e.preventDefault();
+          setShowShortcutsPanel(true);
+        }
+      }
+      // Ctrl+P or Cmd+P for command palette
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
         setShowCommandPalette(true);
       }
-      // Ctrl+/ or Cmd+/ for shortcuts modal
-      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+      // Ctrl+/ or Cmd+/ for old shortcuts modal
+      else if ((e.ctrlKey || e.metaKey) && e.key === '/') {
         e.preventDefault();
         setShowShortcuts(true);
       }
@@ -252,6 +320,7 @@ function App() {
               
               {/* These components need to be inside BrowserRouter for navigation hooks */}
               <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+              <KeyboardShortcutsPanel isOpen={showShortcutsPanel} onClose={() => setShowShortcutsPanel(false)} />
               <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
               <NotificationsToaster toasterId={toasterId} />
 
