@@ -45,6 +45,7 @@ import { GlobalStatusFooter } from './components/GlobalStatusFooter';
 import { ActivityDemoPage } from './pages/ActivityDemoPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { loggingService } from './services/loggingService';
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -104,6 +105,47 @@ function App() {
     }
 
     checkFirstRun();
+  }, []);
+
+  // Global error handlers for uncaught errors and promise rejections
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      event.preventDefault(); // Prevent default browser error handling
+      loggingService.error(
+        'Uncaught error',
+        event.error,
+        'window',
+        'error',
+        {
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+        }
+      );
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      event.preventDefault(); // Prevent default browser error handling
+      const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+      loggingService.error(
+        'Unhandled promise rejection',
+        error,
+        'window',
+        'unhandledrejection',
+        {
+          reason: event.reason,
+        }
+      );
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
   }, []);
 
   // Apply dark mode class to document root and save preference
@@ -222,8 +264,13 @@ function App() {
       }
 
       // Handle special global shortcuts not in the manager
+      // Ctrl+Shift+L for log viewer
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'L') {
+        e.preventDefault();
+        window.location.href = '/logs';
+      }
       // Ctrl+K or Cmd+K for shortcuts panel (preferred)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
         setShowShortcutsPanel(true);
       }

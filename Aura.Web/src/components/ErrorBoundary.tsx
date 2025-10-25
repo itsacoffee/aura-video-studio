@@ -1,6 +1,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button, Title1, Body1, makeStyles, tokens } from '@fluentui/react-components';
-import { ErrorCircle24Regular, ArrowClockwise24Regular } from '@fluentui/react-icons';
+import { ErrorCircle24Regular, ArrowClockwise24Regular, Send24Regular } from '@fluentui/react-icons';
+import { loggingService } from '../services/loggingService';
+import { ErrorReportDialog } from './ErrorReportDialog';
 
 interface Props {
   children: ReactNode;
@@ -11,6 +13,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  showReportDialog: boolean;
 }
 
 const useStyles = makeStyles({
@@ -57,10 +60,12 @@ function ErrorFallback({
   error,
   errorInfo,
   onReset,
+  onReport,
 }: {
   error: Error;
   errorInfo: ErrorInfo;
   onReset: () => void;
+  onReport: () => void;
 }) {
   const styles = useStyles();
   const [showDetails, setShowDetails] = React.useState(false);
@@ -75,6 +80,9 @@ function ErrorFallback({
       <div className={styles.actions}>
         <Button appearance="primary" icon={<ArrowClockwise24Regular />} onClick={onReset}>
           Try Again
+        </Button>
+        <Button appearance="secondary" icon={<Send24Regular />} onClick={onReport}>
+          Report Error
         </Button>
         <Button appearance="secondary" onClick={() => setShowDetails(!showDetails)}>
           {showDetails ? 'Hide Details' : 'Show Details'}
@@ -98,43 +106,27 @@ export class ErrorBoundary extends Component<Props, State> {
     hasError: false,
     error: null,
     errorInfo: null,
+    showReportDialog: false,
   };
 
-  public static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
       error,
-      errorInfo: null,
     };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-
-    // Log error to localStorage for debugging
-    try {
-      const errorLog = {
-        timestamp: new Date().toISOString(),
-        error: {
-          message: error.message,
-          stack: error.stack,
-        },
+    // Log error using the logging service
+    loggingService.error(
+      'ErrorBoundary caught an error',
+      error,
+      'ErrorBoundary',
+      'componentDidCatch',
+      {
         componentStack: errorInfo.componentStack,
-      };
-
-      const existingLogs = localStorage.getItem('error_logs');
-      const logs = existingLogs ? JSON.parse(existingLogs) : [];
-      logs.push(errorLog);
-
-      // Keep only last 10 errors
-      if (logs.length > 10) {
-        logs.shift();
       }
-
-      localStorage.setItem('error_logs', JSON.stringify(logs));
-    } catch (e) {
-      console.error('Failed to log error to localStorage:', e);
-    }
+    );
 
     this.setState({
       error,
@@ -143,10 +135,19 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReset = () => {
+    loggingService.info('User reset error boundary', 'ErrorBoundary', 'reset');
     this.setState({
       hasError: false,
       error: null,
       errorInfo: null,
+      showReportDialog: false,
+    });
+  };
+
+  private handleReport = () => {
+    loggingService.info('User opened error report dialog', 'ErrorBoundary', 'report');
+    this.setState({
+      showReportDialog: true,
     });
   };
 
@@ -157,11 +158,22 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <ErrorFallback
-          error={this.state.error}
-          errorInfo={this.state.errorInfo}
-          onReset={this.handleReset}
-        />
+        <>
+          <ErrorFallback
+            error={this.state.error}
+            errorInfo={this.state.errorInfo}
+            onReset={this.handleReset}
+            onReport={this.handleReport}
+          />
+          <ErrorReportDialog
+            open={this.state.showReportDialog}
+            onOpenChange={(open) => this.setState({ showReportDialog: open })}
+            error={this.state.error}
+            errorInfo={{
+              componentStack: this.state.errorInfo.componentStack || undefined,
+            }}
+          />
+        </>
       );
     }
 
