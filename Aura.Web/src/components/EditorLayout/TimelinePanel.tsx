@@ -18,7 +18,7 @@ import {
   LockClosed24Regular,
   LockOpen24Regular,
 } from '@fluentui/react-icons';
-import { AppliedEffect } from '../../types/effects';
+import { AppliedEffect, EFFECT_DEFINITIONS } from '../../types/effects';
 
 const useStyles = makeStyles({
   container: {
@@ -233,6 +233,7 @@ interface TimelinePanelProps {
   onClipSelect?: (clipId: string | null) => void;
   selectedClipId?: string | null;
   onClipAdd?: (trackId: string, clip: TimelineClip) => void;
+  onClipUpdate?: (clipId: string, updates: Partial<TimelineClip>) => void;
   onTrackToggleVisibility?: (trackId: string) => void;
   onTrackToggleLock?: (trackId: string) => void;
 }
@@ -250,6 +251,7 @@ export function TimelinePanel({
   onClipSelect,
   selectedClipId = null,
   onClipAdd,
+  onClipUpdate,
   onTrackToggleVisibility,
   onTrackToggleLock,
 }: TimelinePanelProps) {
@@ -343,7 +345,15 @@ export function TimelinePanel({
       const data = e.dataTransfer.getData('application/json');
       if (!data) return;
 
-      const mediaClip = JSON.parse(data);
+      const dropData = JSON.parse(data);
+      
+      if (dropData.type === 'effect') {
+        // Don't handle effects here - they should be dropped on clips
+        return;
+      }
+
+      // Handle media clip drops
+      const mediaClip = dropData;
       
       // Calculate drop position based on mouse position
       const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -372,6 +382,48 @@ export function TimelinePanel({
       onClipAdd?.(trackId, newClip);
     } catch (error) {
       console.error('Failed to parse dropped data:', error);
+    }
+  };
+
+  const handleClipDragOver = (e: React.DragEvent, _clipId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleClipDrop = (e: React.DragEvent, clipId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      const data = e.dataTransfer.getData('application/json');
+      if (!data) return;
+
+      const dropData = JSON.parse(data);
+      
+      if (dropData.type === 'effect') {
+        // Apply effect to clip
+        const effectDef = EFFECT_DEFINITIONS.find((e: { type: string }) => e.type === dropData.effectType);
+        if (!effectDef) return;
+
+        const clip = clips.find(c => c.id === clipId);
+        if (!clip) return;
+
+        // Create new effect with default parameters
+        const newEffect: AppliedEffect = {
+          id: `effect-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          effectType: effectDef.type,
+          enabled: true,
+          parameters: effectDef.parameters.reduce((acc: Record<string, string | number | boolean>, param: { name: string; defaultValue: string | number | boolean }) => {
+            acc[param.name] = param.defaultValue;
+            return acc;
+          }, {} as Record<string, number | boolean | string>),
+        };
+
+        const currentEffects = clip.effects || [];
+        onClipUpdate?.(clipId, { effects: [...currentEffects, newEffect] });
+      }
+    } catch (error) {
+      console.error('Failed to parse dropped effect:', error);
     }
   };
 
@@ -501,6 +553,8 @@ export function TimelinePanel({
                           onClipSelect?.(clip.id);
                         }
                       }}
+                      onDragOver={(e) => handleClipDragOver(e, clip.id)}
+                      onDrop={(e) => handleClipDrop(e, clip.id)}
                       role="button"
                       tabIndex={0}
                       aria-label={`${clip.label} clip`}

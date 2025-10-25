@@ -137,6 +137,12 @@ export function VideoEditorPage() {
     );
   };
 
+  const handleUpdateClipById = (clipId: string, updates: Partial<TimelineClip>) => {
+    setClips((prevClips) =>
+      prevClips.map((clip) => (clip.id === clipId ? { ...clip, ...updates } : clip))
+    );
+  };
+
   const handleDeleteClip = () => {
     if (!selectedClipId) return;
 
@@ -217,6 +223,7 @@ export function VideoEditorPage() {
           onClipSelect={setSelectedClipId}
           selectedClipId={selectedClipId}
           onClipAdd={handleAddClip}
+          onClipUpdate={handleUpdateClipById}
           onTrackToggleVisibility={handleTrackToggleVisibility}
           onTrackToggleLock={handleTrackToggleLock}
         />
