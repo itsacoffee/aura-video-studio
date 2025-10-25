@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { EditorLayout } from '../components/EditorLayout/EditorLayout';
 import { VideoPreviewPanel } from '../components/EditorLayout/VideoPreviewPanel';
 import { TimelinePanel } from '../components/EditorLayout/TimelinePanel';
@@ -43,6 +44,7 @@ interface TimelineTrack {
 }
 
 export function VideoEditorPage() {
+  const [searchParams] = useSearchParams();
   const [currentTime, setCurrentTime] = useState(0);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [clips, setClips] = useState<TimelineClip[]>([]);
@@ -91,7 +93,19 @@ export function VideoEditorPage() {
     lastSaved,
     saveCurrentProject,
     exportProject,
+    loadProject,
   } = useProjectState(clips, tracks, mediaLibrary, currentTime, handleProjectLoaded);
+
+  // Load project from URL parameter
+  useEffect(() => {
+    const projectId = searchParams.get('projectId');
+    if (projectId) {
+      loadProject(projectId).catch((error) => {
+        console.error('Failed to load project:', error);
+        alert('Failed to load project');
+      });
+    }
+  }, [searchParams, loadProject]);
 
   // Log state changes for debugging
   useEffect(() => {
