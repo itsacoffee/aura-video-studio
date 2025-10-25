@@ -26,6 +26,9 @@ import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettin
 import { KeyboardShortcutsTab } from '../components/Settings/KeyboardShortcutsTab';
 import { ThemeCustomizationTab } from '../components/Settings/ThemeCustomizationTab';
 import { resetFirstRunStatus } from '../services/firstRunService';
+import { ValidatedInput } from '../components/forms/ValidatedInput';
+import { useFormValidation } from '../hooks/useFormValidation';
+import { apiKeysSchema, providerPathsSchema } from '../utils/formValidation';
 
 const useStyles = makeStyles({
   container: {
@@ -126,6 +129,28 @@ export function SettingsPage() {
   const [logsDirectory, setLogsDirectory] = useState('');
   const [projectsDirectory, setProjectsDirectory] = useState('');
   const [downloadsDirectory, setDownloadsDirectory] = useState('');
+
+  // Form validation for API keys
+  const {
+    values: apiKeyValues,
+    errors: apiKeyErrors,
+    setValue: setApiKeyValue,
+  } = useFormValidation({
+    schema: apiKeysSchema,
+    initialValues: apiKeys,
+    debounceMs: 500,
+  });
+
+  // Form validation for provider paths
+  const {
+    values: providerPathValues,
+    errors: providerPathErrors,
+    setValue: setProviderPathValue,
+  } = useFormValidation({
+    schema: providerPathsSchema,
+    initialValues: providerPaths,
+    debounceMs: 500,
+  });
 
   useEffect(() => {
     fetchSettings();
@@ -1055,30 +1080,27 @@ export function SettingsPage() {
           </Card>
 
           <div className={styles.form}>
-            <Field
-              label="Stable Diffusion WebUI URL"
-              hint="URL where Stable Diffusion WebUI is running (requires NVIDIA GPU with 6GB+ VRAM)"
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  gap: tokens.spacingHorizontalS,
-                  alignItems: 'flex-start',
+            <div>
+              <ValidatedInput
+                label="Stable Diffusion WebUI URL"
+                placeholder="http://127.0.0.1:7860"
+                value={providerPathValues.stableDiffusionUrl || ''}
+                onChange={(value) => {
+                  setProviderPathValue('stableDiffusionUrl', value);
+                  updateProviderPath('stableDiffusionUrl', value);
                 }}
+                error={providerPathErrors.stableDiffusionUrl?.error}
+                isValid={providerPathErrors.stableDiffusionUrl?.isValid}
+                isValidating={providerPathErrors.stableDiffusionUrl?.isValidating}
+                hint="URL where Stable Diffusion WebUI is running (requires NVIDIA GPU with 6GB+ VRAM). Format: http://host:port"
+              />
+              <Button
+                size="small"
+                onClick={() => testProvider('stablediffusion', providerPathValues.stableDiffusionUrl || '')}
+                style={{ marginTop: tokens.spacingVerticalXS }}
               >
-                <Input
-                  style={{ flex: 1 }}
-                  placeholder="http://127.0.0.1:7860"
-                  value={providerPaths.stableDiffusionUrl}
-                  onChange={(e) => updateProviderPath('stableDiffusionUrl', e.target.value)}
-                />
-                <Button
-                  size="small"
-                  onClick={() => testProvider('stablediffusion', providerPaths.stableDiffusionUrl)}
-                >
-                  Test Connection
-                </Button>
-              </div>
+                Test Connection
+              </Button>
               {testResults.stablediffusion && (
                 <Text
                   size={200}
@@ -1093,29 +1115,29 @@ export function SettingsPage() {
                   {testResults.stablediffusion.message}
                 </Text>
               )}
-            </Field>
+            </div>
 
-            <Field label="Ollama URL" hint="URL where Ollama is running for local LLM generation">
-              <div
-                style={{
-                  display: 'flex',
-                  gap: tokens.spacingHorizontalS,
-                  alignItems: 'flex-start',
+            <div>
+              <ValidatedInput
+                label="Ollama URL"
+                placeholder="http://127.0.0.1:11434"
+                value={providerPathValues.ollamaUrl || ''}
+                onChange={(value) => {
+                  setProviderPathValue('ollamaUrl', value);
+                  updateProviderPath('ollamaUrl', value);
                 }}
+                error={providerPathErrors.ollamaUrl?.error}
+                isValid={providerPathErrors.ollamaUrl?.isValid}
+                isValidating={providerPathErrors.ollamaUrl?.isValidating}
+                hint="URL where Ollama is running for local LLM generation. Format: http://host:port"
+              />
+              <Button
+                size="small"
+                onClick={() => testProvider('ollama', providerPathValues.ollamaUrl || '')}
+                style={{ marginTop: tokens.spacingVerticalXS }}
               >
-                <Input
-                  style={{ flex: 1 }}
-                  placeholder="http://127.0.0.1:11434"
-                  value={providerPaths.ollamaUrl}
-                  onChange={(e) => updateProviderPath('ollamaUrl', e.target.value)}
-                />
-                <Button
-                  size="small"
-                  onClick={() => testProvider('ollama', providerPaths.ollamaUrl)}
-                >
-                  Test Connection
-                </Button>
-              </div>
+                Test Connection
+              </Button>
               {testResults.ollama && (
                 <Text
                   size={200}
@@ -1129,7 +1151,7 @@ export function SettingsPage() {
                   {testResults.ollama.success ? '✓' : '✗'} {testResults.ollama.message}
                 </Text>
               )}
-            </Field>
+            </div>
 
             <Field
               label="FFmpeg Executable Path"
@@ -1232,54 +1254,90 @@ export function SettingsPage() {
             Configure API keys for external services. Keys are stored securely.
           </Text>
           <div className={styles.form}>
-            <Field label="OpenAI API Key" hint="Required for GPT-based script generation">
-              <Input
-                type="password"
-                placeholder="sk-..."
-                value={apiKeys.openai}
-                onChange={(e) => updateApiKey('openai', e.target.value)}
-              />
-            </Field>
-            <Field label="ElevenLabs API Key" hint="Required for high-quality voice synthesis">
-              <Input
-                type="password"
-                placeholder="..."
-                value={apiKeys.elevenlabs}
-                onChange={(e) => updateApiKey('elevenlabs', e.target.value)}
-              />
-            </Field>
-            <Field label="Pexels API Key" hint="Required for stock video and images from Pexels">
-              <Input
-                type="password"
-                placeholder="..."
-                value={apiKeys.pexels}
-                onChange={(e) => updateApiKey('pexels', e.target.value)}
-              />
-            </Field>
-            <Field label="Pixabay API Key" hint="Required for stock video and images from Pixabay">
-              <Input
-                type="password"
-                placeholder="..."
-                value={apiKeys.pixabay}
-                onChange={(e) => updateApiKey('pixabay', e.target.value)}
-              />
-            </Field>
-            <Field label="Unsplash API Key" hint="Required for stock images from Unsplash">
-              <Input
-                type="password"
-                placeholder="..."
-                value={apiKeys.unsplash}
-                onChange={(e) => updateApiKey('unsplash', e.target.value)}
-              />
-            </Field>
-            <Field label="Stability AI API Key" hint="Optional - for AI image generation">
-              <Input
-                type="password"
-                placeholder="..."
-                value={apiKeys.stabilityai}
-                onChange={(e) => updateApiKey('stabilityai', e.target.value)}
-              />
-            </Field>
+            <ValidatedInput
+              label="OpenAI API Key"
+              type="password"
+              placeholder="sk-..."
+              value={apiKeyValues.openai || ''}
+              onChange={(value) => {
+                setApiKeyValue('openai', value);
+                updateApiKey('openai', value);
+              }}
+              error={apiKeyErrors.openai?.error}
+              isValid={apiKeyErrors.openai?.isValid}
+              isValidating={apiKeyErrors.openai?.isValidating}
+              hint="Required for GPT-based script generation. Must start with 'sk-' and be at least 20 characters."
+            />
+            <ValidatedInput
+              label="ElevenLabs API Key"
+              type="password"
+              placeholder="Enter your ElevenLabs API key"
+              value={apiKeyValues.elevenlabs || ''}
+              onChange={(value) => {
+                setApiKeyValue('elevenlabs', value);
+                updateApiKey('elevenlabs', value);
+              }}
+              error={apiKeyErrors.elevenlabs?.error}
+              isValid={apiKeyErrors.elevenlabs?.isValid}
+              isValidating={apiKeyErrors.elevenlabs?.isValidating}
+              hint="Required for high-quality voice synthesis. Must be at least 32 characters."
+            />
+            <ValidatedInput
+              label="Pexels API Key"
+              type="password"
+              placeholder="Enter your Pexels API key"
+              value={apiKeyValues.pexels || ''}
+              onChange={(value) => {
+                setApiKeyValue('pexels', value);
+                updateApiKey('pexels', value);
+              }}
+              error={apiKeyErrors.pexels?.error}
+              isValid={apiKeyErrors.pexels?.isValid}
+              isValidating={apiKeyErrors.pexels?.isValidating}
+              hint="Required for stock video and images from Pexels."
+            />
+            <ValidatedInput
+              label="Pixabay API Key"
+              type="password"
+              placeholder="Enter your Pixabay API key"
+              value={apiKeyValues.pixabay || ''}
+              onChange={(value) => {
+                setApiKeyValue('pixabay', value);
+                updateApiKey('pixabay', value);
+              }}
+              error={apiKeyErrors.pixabay?.error}
+              isValid={apiKeyErrors.pixabay?.isValid}
+              isValidating={apiKeyErrors.pixabay?.isValidating}
+              hint="Required for stock video and images from Pixabay."
+            />
+            <ValidatedInput
+              label="Unsplash API Key"
+              type="password"
+              placeholder="Enter your Unsplash API key"
+              value={apiKeyValues.unsplash || ''}
+              onChange={(value) => {
+                setApiKeyValue('unsplash', value);
+                updateApiKey('unsplash', value);
+              }}
+              error={apiKeyErrors.unsplash?.error}
+              isValid={apiKeyErrors.unsplash?.isValid}
+              isValidating={apiKeyErrors.unsplash?.isValidating}
+              hint="Required for stock images from Unsplash."
+            />
+            <ValidatedInput
+              label="Stability AI API Key"
+              type="password"
+              placeholder="sk-..."
+              value={apiKeyValues.stabilityai || ''}
+              onChange={(value) => {
+                setApiKeyValue('stabilityai', value);
+                updateApiKey('stabilityai', value);
+              }}
+              error={apiKeyErrors.stabilityai?.error}
+              isValid={apiKeyErrors.stabilityai?.isValid}
+              isValidating={apiKeyErrors.stabilityai?.isValidating}
+              hint="Optional - for AI image generation. Must start with 'sk-'."
+            />
             {keysModified && (
               <Text size={200} style={{ color: tokens.colorPaletteYellowForeground1 }}>
                 ⚠️ You have unsaved changes
