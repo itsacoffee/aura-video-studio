@@ -43,6 +43,8 @@ import { hasCompletedFirstRun, migrateLegacyFirstRunStatus } from './services/fi
 import { ActivityProvider } from './state/activityContext';
 import { GlobalStatusFooter } from './components/GlobalStatusFooter';
 import { ActivityDemoPage } from './pages/ActivityDemoPage';
+import { NotFoundPage } from './pages/NotFoundPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -302,42 +304,44 @@ function App() {
                 onViewDetails={() => setShowDrawer(true)}
               />
               <Layout>
-                <Routes>
-                  {/* First-run onboarding route - highest priority */}
-                  <Route path="/onboarding" element={<FirstRunWizard />} />
-                  
-                  {/* Redirect to onboarding if first run */}
-                  <Route 
-                    path="/" 
-                    element={shouldShowOnboarding ? <Navigate to="/onboarding" replace /> : <WelcomePage />} 
-                  />
-                  
-                  {/* All other routes */}
-                  <Route path="/setup" element={<SetupWizard />} />
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/ideation" element={<IdeationDashboard />} />
-                  <Route path="/trending" element={<TrendingTopicsExplorer />} />
-                  <Route path="/content-planning" element={<ContentPlanningDashboard />} />
-                  <Route path="/create" element={<CreateWizard />} />
-                  <Route path="/create/legacy" element={<CreatePage />} />
-                  <Route path="/timeline" element={<TimelinePage />} />
-                  <Route path="/editor/:jobId" element={<TimelineEditor />} />
-                  <Route path="/editor" element={<VideoEditorPage />} />
-                  <Route path="/pacing" element={<PacingAnalyzerPage />} />
-                  <Route path="/render" element={<RenderPage />} />
-                  <Route path="/platform" element={<PlatformDashboard />} />
-                  <Route path="/quality" element={<QualityDashboard />} />
-                  <Route path="/publish" element={<PublishPage />} />
-                  <Route path="/projects" element={<ProjectsPage />} />
-                  <Route path="/assets" element={<AssetLibrary />} />
-                  <Route path="/jobs" element={<RecentJobsPage />} />
-                  <Route path="/downloads" element={<DownloadsPage />} />
-                  <Route path="/health" element={<ProviderHealthDashboard />} />
-                  <Route path="/logs" element={<LogViewerPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/activity-demo" element={<ActivityDemoPage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                <ErrorBoundary>
+                  <Routes>
+                    {/* First-run onboarding route - highest priority */}
+                    <Route path="/onboarding" element={<FirstRunWizard />} />
+                    
+                    {/* Redirect to onboarding if first run */}
+                    <Route 
+                      path="/" 
+                      element={shouldShowOnboarding ? <Navigate to="/onboarding" replace /> : <WelcomePage />} 
+                    />
+                    
+                    {/* All other routes */}
+                    <Route path="/setup" element={<SetupWizard />} />
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/ideation" element={<IdeationDashboard />} />
+                    <Route path="/trending" element={<TrendingTopicsExplorer />} />
+                    <Route path="/content-planning" element={<ContentPlanningDashboard />} />
+                    <Route path="/create" element={<CreateWizard />} />
+                    <Route path="/create/legacy" element={<CreatePage />} />
+                    <Route path="/timeline" element={<TimelinePage />} />
+                    <Route path="/editor/:jobId" element={<TimelineEditor />} />
+                    <Route path="/editor" element={<VideoEditorPage />} />
+                    <Route path="/pacing" element={<PacingAnalyzerPage />} />
+                    <Route path="/render" element={<RenderPage />} />
+                    <Route path="/platform" element={<PlatformDashboard />} />
+                    <Route path="/quality" element={<QualityDashboard />} />
+                    <Route path="/publish" element={<PublishPage />} />
+                    <Route path="/projects" element={<ProjectsPage />} />
+                    <Route path="/assets" element={<AssetLibrary />} />
+                    <Route path="/jobs" element={<RecentJobsPage />} />
+                    <Route path="/downloads" element={<DownloadsPage />} />
+                    <Route path="/health" element={<ProviderHealthDashboard />} />
+                    <Route path="/logs" element={<LogViewerPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/activity-demo" element={<ActivityDemoPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </ErrorBoundary>
               </Layout>
               
               {/* These components need to be inside BrowserRouter for navigation hooks */}
