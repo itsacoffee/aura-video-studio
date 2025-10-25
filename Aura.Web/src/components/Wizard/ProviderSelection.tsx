@@ -24,7 +24,6 @@ import {
   ScriptProviders,
   TtsProviders,
   VisualsProviders,
-  UploadProviders,
 } from '../../state/providers';
 import { useEnginesStore } from '../../state/engines';
 import { useNotifications } from '../Notifications/Toasts';
@@ -277,31 +276,7 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
             renderEngineStatus(selection.visuals, selection.visuals)}
         </Field>
 
-        <Field
-          label={
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              Upload Provider
-              <Tooltip
-                content="Whether to automatically upload the finished video"
-                relationship="label"
-              >
-                <Info24Regular className={styles.infoIcon} />
-              </Tooltip>
-            </div>
-          }
-        >
-          <Dropdown
-            value={selection.upload || 'Auto'}
-            onOptionSelect={(_, data) => updateSelection('upload', data.optionValue as string)}
-          >
-            <Option value="Auto">Auto (Use Profile Default)</Option>
-            {UploadProviders.map((provider) => (
-              <Option key={provider.value} value={provider.value}>
-                {provider.label}
-              </Option>
-            ))}
-          </Dropdown>
-        </Field>
+        {/* Upload Provider field removed per user request - upload functionality not needed in UI */}
       </div>
     </Card>
   );

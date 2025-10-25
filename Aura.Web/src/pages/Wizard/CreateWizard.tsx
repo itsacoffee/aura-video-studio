@@ -213,6 +213,21 @@ export function CreateWizard() {
     }
   }, [settings]);
 
+  // Log Generate Video button state for debugging
+  useEffect(() => {
+    if (currentStep === 3 && preflightReport) {
+      const isDisabled = generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate);
+      console.log('[GENERATE BUTTON] State:', {
+        disabled: isDisabled,
+        generating,
+        hasReport: !!preflightReport,
+        reportOk: preflightReport?.ok,
+        overrideEnabled: overridePreflightGate,
+        preflightReport: preflightReport
+      });
+    }
+  }, [currentStep, preflightReport, generating, overridePreflightGate]);
+
   // Update brief
   const updateBrief = (updates: Partial<Brief>) => {
     setSettings({ ...settings, brief: { ...settings.brief, ...updates } });
@@ -286,14 +301,18 @@ export function CreateWizard() {
   };
 
   const handleRunPreflight = async () => {
+    console.log('[PREFLIGHT] Starting preflight check with profile:', selectedProfile);
     setIsRunningPreflight(true);
     try {
       const response = await fetch(`/api/preflight?profile=${encodeURIComponent(selectedProfile)}`);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('[PREFLIGHT] Preflight report received:', data);
+        console.log('[PREFLIGHT] Report OK status:', data.ok);
         setPreflightReport(data);
       } else {
+        console.error('[PREFLIGHT] Preflight check failed with status:', response.status);
         alert('Failed to run preflight check');
       }
     } catch (error) {
@@ -336,8 +355,9 @@ export function CreateWizard() {
   };
 
   const handleGenerate = async () => {
-    setGenerating(true);
+    console.log('[GENERATE VIDEO] Button clicked - starting generation');
     try {
+      setGenerating(true);
       validateAndWarnEnums(settings.brief, settings.planSpec);
       const { brief: normalizedBrief, planSpec: normalizedPlanSpec } = normalizeEnumsForApi(
         settings.brief,
@@ -428,8 +448,9 @@ export function CreateWizard() {
   };
 
   const handleQuickDemo = async () => {
-    setGenerating(true);
+    console.log('[QUICK DEMO] Button clicked - starting demo generation');
     try {
+      setGenerating(true);
       // Validate before starting generation
       const validationUrl = apiUrl('/api/validation/brief');
       
@@ -456,6 +477,12 @@ export function CreateWizard() {
         }
       } else {
         console.error('[QUICK DEMO] Validation request failed:', validationResponse.status, validationResponse.statusText);
+        showFailureToast({
+          title: 'Validation Failed',
+          message: `Could not validate quick demo request. Server returned status ${validationResponse.status}`,
+        });
+        setGenerating(false);
+        return;
       }
 
       // Validation passed, proceed with generation
