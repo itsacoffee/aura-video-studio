@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { z } from 'zod';
 import { apiUrl } from '../config/api';
 import {
   makeStyles,
@@ -9,7 +10,6 @@ import {
   Title3,
   Text,
   Button,
-  Input,
   Dropdown,
   Option,
   Slider,
@@ -28,6 +28,8 @@ import { PreflightPanel } from '../components/PreflightPanel';
 import { useActivity } from '../state/activityContext';
 import { useNotifications } from '../components/Notifications/Toasts';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
+import { ValidatedInput } from '../components/forms/ValidatedInput';
+import { useFormValidation } from '../hooks/useFormValidation';
 
 const useStyles = makeStyles({
   container: {
@@ -85,6 +87,29 @@ export function CreatePage() {
     density: 'Balanced',
     style: 'Standard',
   });
+
+  // Form validation state
+  const briefValidationSchema = z.object({
+    topic: z.string().min(3, 'Topic must be at least 3 characters').max(100, 'Topic must be no more than 100 characters'),
+  });
+
+  const {
+    values: briefValues,
+    errors: briefErrors,
+    isFormValid: isBriefValid,
+    setValue: setBriefValue,
+  } = useFormValidation({
+    schema: briefValidationSchema,
+    initialValues: { topic: brief.topic || '' },
+    debounceMs: 500,
+  });
+
+  // Update brief when validated values change
+  useEffect(() => {
+    if (briefValues.topic !== brief.topic) {
+      setBrief({ ...brief, topic: briefValues.topic });
+    }
+  }, [briefValues.topic]);
 
   const [generating, setGenerating] = useState(false);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
@@ -376,13 +401,17 @@ export function CreatePage() {
               Define the core details of your video
             </Text>
             <div className={styles.fieldGroup}>
-              <Field label="Topic" required hint="What is your video about?">
-                <Input
-                  value={brief.topic}
-                  onChange={(_, data) => setBrief({ ...brief, topic: data.value })}
-                  placeholder="Enter your video topic"
-                />
-              </Field>
+              <ValidatedInput
+                label="Topic"
+                required
+                value={briefValues.topic || ''}
+                onChange={(value) => setBriefValue('topic', value)}
+                error={briefErrors.topic?.error}
+                isValid={briefErrors.topic?.isValid}
+                isValidating={briefErrors.topic?.isValidating}
+                placeholder="e.g., Introduction to Machine Learning"
+                hint="Enter a topic between 3 and 100 characters"
+              />
 
               <Field label="Audience" hint="Who is this video for?">
                 <Dropdown
@@ -434,7 +463,7 @@ export function CreatePage() {
               <div className={styles.fieldGroup}>
                 <Field
                   label={`Duration: ${planSpec.targetDurationMinutes} minutes`}
-                  hint="How long should the video be?"
+                  hint="Recommended: 0.5 to 20 minutes. Shorter videos have higher engagement."
                 >
                   <Slider
                     min={0.5}
@@ -708,13 +737,22 @@ export function CreatePage() {
             <Button onClick={() => setCurrentStep(currentStep - 1)}>Previous</Button>
           )}
           {currentStep < 3 ? (
-            <Button
-              appearance="primary"
-              onClick={() => setCurrentStep(currentStep + 1)}
-              disabled={currentStep === 1 && !brief.topic}
+            <Tooltip
+              content={
+                currentStep === 1 && !isBriefValid
+                  ? 'Please enter a valid topic (3-100 characters)'
+                  : ''
+              }
+              relationship="label"
             >
-              Next
-            </Button>
+              <Button
+                appearance="primary"
+                onClick={() => setCurrentStep(currentStep + 1)}
+                disabled={currentStep === 1 && !isBriefValid}
+              >
+                Next
+              </Button>
+            </Tooltip>
           ) : (
             <Tooltip
               content={
