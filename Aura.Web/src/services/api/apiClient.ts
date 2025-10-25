@@ -10,6 +10,7 @@ import axios, {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { env } from '../../config/env';
+import { loggingService } from '../loggingService';
 
 /**
  * Create axios instance with default configuration
@@ -27,11 +28,22 @@ const apiClient: AxiosInstance = axios.create({
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Log requests in development
-    if (env.isDevelopment && env.enableDebug) {
-      // eslint-disable-next-line no-console
-      console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, config.data);
-    }
+    // Log API requests using logging service
+    const startTime = Date.now();
+    
+    // Store start time in config for performance logging
+    (config as any)._requestStartTime = startTime;
+
+    loggingService.debug(
+      `API Request: ${config.method?.toUpperCase()} ${config.url}`,
+      'apiClient',
+      'request',
+      {
+        method: config.method,
+        url: config.url,
+        data: config.data,
+      }
+    );
 
     // Add auth token if available (future implementation)
     const token = localStorage.getItem('auth_token');
@@ -42,9 +54,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    if (env.isDevelopment) {
-      console.error('[API Request Error]', error);
-    }
+    loggingService.error('API request setup error', error, 'apiClient', 'request');
     return Promise.reject(error);
   }
 );
@@ -54,47 +64,122 @@ apiClient.interceptors.request.use(
  */
 apiClient.interceptors.response.use(
   (response) => {
-    // Log responses in development
-    if (env.isDevelopment && env.enableDebug) {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`,
-        response.data
+    // Calculate request duration for performance logging
+    const startTime = (response.config as any)._requestStartTime;
+    const duration = startTime ? Date.now() - startTime : 0;
+
+    // Log successful responses with performance metrics
+    loggingService.debug(
+      `API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`,
+      'apiClient',
+      'response',
+      {
+        method: response.config.method,
+        url: response.config.url,
+        status: response.status,
+        data: response.data,
+      }
+    );
+
+    // Log performance if request took more than 1 second
+    if (duration > 1000) {
+      loggingService.performance(
+        `${response.config.method?.toUpperCase()} ${response.config.url}`,
+        duration,
+        'apiClient',
+        {
+          url: response.config.url,
+          status: response.status,
+        }
       );
     }
+
     return response;
   },
   async (error: AxiosError) => {
-    if (env.isDevelopment) {
-      console.error('[API Response Error]', error);
-    }
+    // Log API errors
+    const startTime = (error.config as any)?._requestStartTime;
+    const duration = startTime ? Date.now() - startTime : 0;
 
-    // Handle specific error cases
+    // Extract user-friendly error message
+    let userMessage = 'An error occurred while communicating with the server';
+    let technicalDetails = {};
+
     if (error.response) {
       // Server responded with error status
       const status = error.response.status;
+      const responseData = error.response.data as any;
 
+      // Extract user-friendly message from response if available
+      if (responseData?.message) {
+        userMessage = responseData.message;
+      } else if (responseData?.error) {
+        userMessage = responseData.error;
+      }
+
+      technicalDetails = {
+        status,
+        statusText: error.response.statusText,
+        data: responseData,
+        url: error.config?.url,
+        method: error.config?.method,
+      };
+
+      // Handle specific error cases
       if (status === 401) {
+        userMessage = 'Authentication required. Please log in.';
         // Unauthorized - clear token and redirect to login (future)
         localStorage.removeItem('auth_token');
         // Could dispatch a logout action here
       } else if (status === 403) {
-        // Forbidden
-        console.error('Access forbidden');
+        userMessage = 'Access forbidden. You do not have permission to perform this action.';
       } else if (status === 404) {
-        // Not found
-        console.error('Resource not found');
+        userMessage = 'The requested resource was not found.';
       } else if (status >= 500) {
-        // Server error
-        console.error('Server error occurred');
+        userMessage = 'A server error occurred. Please try again later.';
       }
     } else if (error.request) {
       // Request made but no response received
-      console.error('No response from server');
+      userMessage = 'Unable to reach the server. Please check your connection.';
+      technicalDetails = {
+        request: error.request,
+        url: error.config?.url,
+        method: error.config?.method,
+      };
     } else {
       // Error setting up request
-      console.error('Request setup error:', error.message);
+      userMessage = 'An error occurred while preparing the request.';
+      technicalDetails = {
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method,
+      };
     }
+
+    // Log the error with full technical details
+    loggingService.error(
+      `API Error: ${userMessage}`,
+      error,
+      'apiClient',
+      'error',
+      technicalDetails
+    );
+
+    // Log performance even for errors
+    if (duration > 0) {
+      loggingService.performance(
+        `${error.config?.method?.toUpperCase()} ${error.config?.url} (failed)`,
+        duration,
+        'apiClient',
+        {
+          url: error.config?.url,
+          error: true,
+        }
+      );
+    }
+
+    // Attach user-friendly message to error for UI display
+    (error as any).userMessage = userMessage;
 
     return Promise.reject(error);
   }
