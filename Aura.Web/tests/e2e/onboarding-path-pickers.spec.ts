@@ -4,7 +4,10 @@ test.describe('Onboarding with Path Pickers', () => {
   test.beforeEach(async ({ page }) => {
     // Clear localStorage to simulate first run
     await page.goto('/');
-    await page.evaluate(() => localStorage.removeItem('hasSeenOnboarding'));
+    await page.evaluate(() => {
+      localStorage.removeItem('hasSeenOnboarding');
+      localStorage.removeItem('hasCompletedFirstRun');
+    });
   });
 
   test('should complete onboarding using existing FFmpeg path', async ({ page }) => {
