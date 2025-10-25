@@ -209,7 +209,7 @@ All tests pass successfully! ✓
 
 ### For the Application
 1. **Prevents invalid submissions** - Client-side validation reduces server errors
-2. **Consistent validation** - Same rules on frontend and backend
+2. **Validation rules designed to match backend** - Schemas align with API requirements
 3. **Better data quality** - Users enter correct data from the start
 4. **Reduced support burden** - Fewer user errors mean fewer support tickets
 
