@@ -114,3 +114,42 @@ export async function handleFormSubmit<T>(
     return { success: false, error: err };
   }
 }
+
+/**
+ * Brief validation schema
+ */
+export const briefValidationSchema = z.object({
+  topic: z.string().min(3, 'Topic must be at least 3 characters'),
+  audience: z.string().optional(),
+  goal: z.string().optional(),
+  tone: z.string().optional(),
+  language: z.string().optional(),
+  durationMinutes: z
+    .number()
+    .min(10 / 60, 'Duration must be at least 10 seconds (0.17 minutes)')
+    .max(30, 'Duration must be no more than 30 minutes'),
+});
+
+/**
+ * Validates a brief validation request before sending to API
+ */
+export function validateBriefRequest(request: {
+  topic?: string;
+  audience?: string;
+  goal?: string;
+  tone?: string;
+  language?: string;
+  durationMinutes?: number;
+}): { valid: boolean; errors: string[] } {
+  const result = briefValidationSchema.safeParse(request);
+
+  if (result.success) {
+    return { valid: true, errors: [] };
+  }
+
+  const errors = result.error.errors.map(
+    (err) => `${err.path.join('.')}: ${err.message}`
+  );
+
+  return { valid: false, errors };
+}
