@@ -110,7 +110,7 @@ export function useProjectState(
 
   // Save project
   const saveCurrentProject = useCallback(
-    async (name?: string, showNotification = true) => {
+    async (name?: string, _showNotification = true) => {
       const projectNameToUse = name || projectName || 'Untitled Project';
       setAutosaveStatus('saving');
 
@@ -132,10 +132,6 @@ export function useProjectState(
 
         // Also save to local storage for recovery
         saveToLocalStorage(projectFile);
-
-        if (showNotification) {
-          console.log(`Project "${projectNameToUse}" saved successfully`);
-        }
 
         // Reset status after 3 seconds
         setTimeout(() => {

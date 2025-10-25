@@ -49,11 +49,11 @@ export function VideoEditorPage() {
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [clips, setClips] = useState<TimelineClip[]>([]);
   const [, setShowKeyboardShortcuts] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  const [inPoint, setInPoint] = useState<number | null>(null);
-  const [outPoint, setOutPoint] = useState<number | null>(null);
-  const [selectedTool, setSelectedTool] = useState<'select' | 'razor' | 'hand'>('select');
+  const [, setIsPlaying] = useState(false);
+  const [, setPlaybackSpeed] = useState(1.0);
+  const [, setInPoint] = useState<number | null>(null);
+  const [, setOutPoint] = useState<number | null>(null);
+  const [, setSelectedTool] = useState<'select' | 'razor' | 'hand'>('select');
   const [tracks, setTracks] = useState<TimelineTrack[]>([
     { id: 'video1', label: 'Video 1', type: 'video', visible: true, locked: false },
     { id: 'video2', label: 'Video 2', type: 'video', visible: true, locked: false },
@@ -102,34 +102,11 @@ export function VideoEditorPage() {
     if (projectId) {
       loadProject(projectId).catch((error) => {
         console.error('Failed to load project:', error);
-        // Better error message based on error type
-        const errorMessage = error.message || 'An unknown error occurred';
-        // TODO: Replace with toast notification system when available
-        console.error(`Failed to load project: ${errorMessage}`);
       });
     }
   }, [searchParams, loadProject]);
 
-  // Log state changes for debugging
-  useEffect(() => {
-    if (playbackSpeed !== 1.0) {
-      console.log('Playback speed:', playbackSpeed);
-    }
-  }, [playbackSpeed]);
 
-  useEffect(() => {
-    if (inPoint !== null || outPoint !== null) {
-      console.log('In/Out points:', { inPoint, outPoint });
-    }
-  }, [inPoint, outPoint]);
-
-  useEffect(() => {
-    console.log('Selected tool:', selectedTool);
-  }, [selectedTool]);
-
-  useEffect(() => {
-    console.log('Playing:', isPlaying);
-  }, [isPlaying]);
   
   // Ref to track video preview controls
   const videoPreviewRef = useRef<{
@@ -229,7 +206,6 @@ export function VideoEditorPage() {
         context: 'video-editor',
         handler: () => {
           setInPoint(currentTime);
-          console.log('In point set at:', currentTime);
         },
       },
       {
@@ -239,7 +215,6 @@ export function VideoEditorPage() {
         context: 'video-editor',
         handler: () => {
           setOutPoint(currentTime);
-          console.log('Out point set at:', currentTime);
         },
       },
       {
@@ -422,13 +397,8 @@ export function VideoEditorPage() {
       } else {
         await saveCurrentProject(projectName, true);
       }
-      // Success feedback via console (TODO: use toast notification)
-      console.log('Project saved successfully!');
     } catch (error) {
       console.error('Failed to save project:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      // TODO: Replace with toast notification system when available
-      console.error(`Failed to save project: ${errorMessage}`);
     }
   };
 

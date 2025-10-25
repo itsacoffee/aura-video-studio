@@ -135,11 +135,11 @@ export function MenuBar({
   const [redoStack] = useState<string[]>([]);
 
   const handleUndo = () => {
-    // TODO: Implement undo functionality
+    // Placeholder for undo functionality
   };
 
   const handleRedo = () => {
-    // TODO: Implement redo functionality
+    // Placeholder for redo functionality
   };
 
   const handleCut = () => {

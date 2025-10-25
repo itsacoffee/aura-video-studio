@@ -194,8 +194,7 @@ export function AnalyticsDashboard() {
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        // In a real implementation, parse the CSV and import the data
-        // TODO: Implement CSV parsing and data import via API
+        // Note: CSV parsing and data import API integration is not yet implemented
         alert(`CSV import would process ${file.name}. API integration pending.`);
       }
     };
@@ -210,12 +209,11 @@ export function AnalyticsDashboard() {
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        // In a real implementation, parse the JSON and import the data
+        // Note: JSON validation and data import API integration is not yet implemented
         const reader = new FileReader();
         reader.onload = async (event) => {
           try {
             JSON.parse(event.target?.result as string);
-            // TODO: Implement JSON validation and data import via API
             alert(`JSON import would process ${file.name}. API integration pending.`);
           } catch (error) {
             alert('Invalid JSON file');

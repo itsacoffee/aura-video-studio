@@ -8,7 +8,9 @@ describe('KeyboardShortcutManager', () => {
   });
 
   it('should register a shortcut', () => {
-    const handler = () => console.log('test');
+    const handler = () => {
+      // Test handler
+    };
     const shortcut: ShortcutHandler = {
       id: 'test-shortcut',
       keys: 'Ctrl+T',

@@ -197,8 +197,7 @@ function App() {
         context: 'global',
         handler: (e) => {
           e.preventDefault();
-          // TODO: Implement save functionality
-          console.log('Save project');
+          // Placeholder for save functionality
         },
       },
     ]);

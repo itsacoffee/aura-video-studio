@@ -142,9 +142,9 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     { id: 'action-clear-cache', name: 'Clear Cache', description: 'Clear preview and render cache', category: 'Actions', action: async () => { if (confirm('Clear all cache?')) { await fetch('/api/cache/clear', { method: 'POST' }); alert('Cache cleared'); } } },
     
     // Quick Generators
-    { id: 'quick-youtube', name: 'Quick YouTube Video', description: 'Generate a video optimized for YouTube', category: 'Quick Actions', action: () => { navigate('/create'); /* TODO: Set YouTube preset */ } },
-    { id: 'quick-shorts', name: 'Quick YouTube Shorts', description: 'Generate a vertical short video', category: 'Quick Actions', action: () => { navigate('/create'); /* TODO: Set Shorts preset */ } },
-    { id: 'quick-social', name: 'Quick Social Media Post', description: 'Generate a square social media video', category: 'Quick Actions', action: () => { navigate('/create'); /* TODO: Set social preset */ } },
+    { id: 'quick-youtube', name: 'Quick YouTube Video', description: 'Generate a video optimized for YouTube', category: 'Quick Actions', action: () => { navigate('/create'); /* Preset selection not yet implemented */ } },
+    { id: 'quick-shorts', name: 'Quick YouTube Shorts', description: 'Generate a vertical short video', category: 'Quick Actions', action: () => { navigate('/create'); /* Preset selection not yet implemented */ } },
+    { id: 'quick-social', name: 'Quick Social Media Post', description: 'Generate a square social media video', category: 'Quick Actions', action: () => { navigate('/create'); /* Preset selection not yet implemented */ } },
   ];
 
   // Filter commands based on search query

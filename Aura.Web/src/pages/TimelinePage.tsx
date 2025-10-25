@@ -54,8 +54,7 @@ export function TimelinePage() {
         description: 'Play/Pause',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Play/Pause');
-          // TODO: Implement play/pause for timeline
+          // Placeholder for timeline play/pause functionality
         },
       },
       {
@@ -64,8 +63,7 @@ export function TimelinePage() {
         description: 'Split clip at playhead',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Split at playhead');
-          // TODO: Implement split functionality
+          // Placeholder for split functionality
         },
       },
       {
@@ -74,8 +72,7 @@ export function TimelinePage() {
         description: 'Zoom in timeline',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Zoom in');
-          // TODO: Implement zoom in
+          // Placeholder for zoom in functionality
         },
       },
       {
@@ -84,8 +81,7 @@ export function TimelinePage() {
         description: 'Zoom in timeline',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Zoom in');
-          // TODO: Implement zoom in
+          // Placeholder for zoom in functionality
         },
       },
       {
@@ -94,8 +90,7 @@ export function TimelinePage() {
         description: 'Zoom out timeline',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Zoom out');
-          // TODO: Implement zoom out
+          // Placeholder for zoom out functionality
         },
       },
       {
@@ -104,8 +99,7 @@ export function TimelinePage() {
         description: 'Ripple delete (delete and close gap)',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Ripple delete');
-          // TODO: Implement ripple delete
+          // Placeholder for ripple delete functionality
         },
       },
       {
@@ -114,8 +108,7 @@ export function TimelinePage() {
         description: 'Delete selected clip',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Delete clip');
-          // TODO: Implement delete
+          // Placeholder for delete functionality
         },
       },
       {
@@ -124,8 +117,7 @@ export function TimelinePage() {
         description: 'Go to beginning',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Go to beginning');
-          // TODO: Implement go to beginning
+          // Placeholder for go to beginning functionality
         },
       },
       {
@@ -134,8 +126,7 @@ export function TimelinePage() {
         description: 'Go to end',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Go to end');
-          // TODO: Implement go to end
+          // Placeholder for go to end functionality
         },
       },
       {
@@ -144,8 +135,7 @@ export function TimelinePage() {
         description: 'Undo',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Undo');
-          // TODO: Implement undo
+          // Placeholder for undo functionality
         },
       },
       {
@@ -154,8 +144,7 @@ export function TimelinePage() {
         description: 'Redo',
         context: 'timeline',
         handler: () => {
-          console.log('Timeline: Redo');
-          // TODO: Implement redo
+          // Placeholder for redo functionality
         },
       },
     ]);
