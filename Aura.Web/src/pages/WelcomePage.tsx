@@ -88,14 +88,7 @@ export function WelcomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if this is the first run
-    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
-    if (!hasSeenOnboarding || hasSeenOnboarding !== 'true') {
-      // Redirect to onboarding
-      navigate('/onboarding');
-      return;
-    }
-
+    // Fetch system info on mount
     Promise.all([
       fetch(apiUrl('/api/healthz')).then((res) => res.json()),
       fetch(apiUrl('/api/capabilities')).then((res) => res.json()),
@@ -109,7 +102,7 @@ export function WelcomePage() {
         console.error('Failed to fetch system info:', err);
         setLoading(false);
       });
-  }, [navigate]);
+  }, []);
 
   return (
     <div className={styles.container}>

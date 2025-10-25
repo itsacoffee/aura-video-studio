@@ -20,6 +20,7 @@ public class SettingsController : ControllerBase
     private readonly ILogger<SettingsController> _logger;
     private readonly ProviderSettings _providerSettings;
     private readonly string _settingsFilePath;
+    private readonly string _firstRunFilePath;
 
     public SettingsController(
         ILogger<SettingsController> logger,
@@ -31,6 +32,7 @@ public class SettingsController : ControllerBase
         // Store AI optimization settings in AuraData directory
         var auraDataDir = _providerSettings.GetAuraDataDirectory();
         _settingsFilePath = Path.Combine(auraDataDir, "ai-optimization-settings.json");
+        _firstRunFilePath = Path.Combine(auraDataDir, "first-run-status.json");
     }
 
     /// <summary>
@@ -125,6 +127,90 @@ public class SettingsController : ControllerBase
     }
 
     /// <summary>
+    /// Get first-run status
+    /// </summary>
+    [HttpGet("first-run")]
+    public async Task<IActionResult> GetFirstRunStatus(CancellationToken ct)
+    {
+        try
+        {
+            var status = await LoadFirstRunStatusAsync(ct);
+            return Ok(status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading first-run status");
+            return StatusCode(500, new { error = "Failed to load first-run status" });
+        }
+    }
+
+    /// <summary>
+    /// Set first-run status
+    /// </summary>
+    [HttpPost("first-run")]
+    public async Task<IActionResult> SetFirstRunStatus(
+        [FromBody] FirstRunStatus status,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (status == null)
+            {
+                return BadRequest(new { error = "Status is required" });
+            }
+
+            await SaveFirstRunStatusAsync(status, ct);
+
+            _logger.LogInformation(
+                "First-run status updated: Completed={Completed}, Version={Version}",
+                status.HasCompletedFirstRun, status.Version);
+
+            return Ok(new
+            {
+                success = true,
+                message = "First-run status updated successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating first-run status");
+            return StatusCode(500, new { error = "Failed to update first-run status" });
+        }
+    }
+
+    /// <summary>
+    /// Reset first-run status (for testing/re-running wizard)
+    /// </summary>
+    [HttpPost("first-run/reset")]
+    public async Task<IActionResult> ResetFirstRunStatus(CancellationToken ct)
+    {
+        try
+        {
+            var resetStatus = new FirstRunStatus
+            {
+                HasCompletedFirstRun = false,
+                CompletedAt = null,
+                Version = null
+            };
+
+            await SaveFirstRunStatusAsync(resetStatus, ct);
+
+            _logger.LogInformation("First-run status reset");
+
+            return Ok(new
+            {
+                success = true,
+                message = "First-run status reset successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting first-run status");
+            return StatusCode(500, new { error = "Failed to reset first-run status" });
+        }
+    }
+
+    /// <summary>
     /// Load settings from file or return defaults
     /// </summary>
     private async Task<AIOptimizationSettings> LoadSettingsAsync(CancellationToken ct)
@@ -167,4 +253,73 @@ public class SettingsController : ControllerBase
         var json = JsonSerializer.Serialize(settings, options);
         await System.IO.File.WriteAllTextAsync(_settingsFilePath, json, ct);
     }
+
+    /// <summary>
+    /// Load first-run status from file or return default
+    /// </summary>
+    private async Task<FirstRunStatus> LoadFirstRunStatusAsync(CancellationToken ct)
+    {
+        if (!System.IO.File.Exists(_firstRunFilePath))
+        {
+            _logger.LogDebug("First-run status file not found, returning default");
+            return new FirstRunStatus
+            {
+                HasCompletedFirstRun = false,
+                CompletedAt = null,
+                Version = null
+            };
+        }
+
+        try
+        {
+            var json = await System.IO.File.ReadAllTextAsync(_firstRunFilePath, ct);
+            var status = JsonSerializer.Deserialize<FirstRunStatus>(json);
+            return status ?? new FirstRunStatus
+            {
+                HasCompletedFirstRun = false,
+                CompletedAt = null,
+                Version = null
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading first-run status file, using default");
+            return new FirstRunStatus
+            {
+                HasCompletedFirstRun = false,
+                CompletedAt = null,
+                Version = null
+            };
+        }
+    }
+
+    /// <summary>
+    /// Save first-run status to file
+    /// </summary>
+    private async Task SaveFirstRunStatusAsync(FirstRunStatus status, CancellationToken ct)
+    {
+        var directory = Path.GetDirectoryName(_firstRunFilePath);
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
+
+        var json = JsonSerializer.Serialize(status, options);
+        await System.IO.File.WriteAllTextAsync(_firstRunFilePath, json, ct);
+    }
+}
+
+/// <summary>
+/// First-run status model
+/// </summary>
+public class FirstRunStatus
+{
+    public bool HasCompletedFirstRun { get; set; }
+    public string? CompletedAt { get; set; }
+    public string? Version { get; set; }
 }

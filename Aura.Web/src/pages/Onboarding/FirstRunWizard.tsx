@@ -37,6 +37,7 @@ import { ChooseTierStep } from './ChooseTierStep';
 import { ApiKeySetupStep } from './ApiKeySetupStep';
 import { CompletionStep } from './CompletionStep';
 import { useEnginesStore } from '../../state/engines';
+import { markFirstRunCompleted, getLocalFirstRunStatus } from '../../services/firstRunService';
 
 const useStyles = makeStyles({
   container: {
@@ -106,8 +107,8 @@ export function FirstRunWizard() {
 
   useEffect(() => {
     // Check if this is truly first run
-    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
-    if (hasSeenOnboarding === 'true') {
+    const hasSeenOnboarding = getLocalFirstRunStatus();
+    if (hasSeenOnboarding) {
       // User has already seen onboarding, redirect to home
       navigate('/');
       return;
@@ -253,9 +254,9 @@ export function FirstRunWizard() {
     }
   };
 
-  const completeOnboarding = () => {
+  const completeOnboarding = async () => {
     clearWizardStateFromStorage();
-    localStorage.setItem('hasSeenOnboarding', 'true');
+    await markFirstRunCompleted();
     navigate('/create');
   };
 
@@ -590,9 +591,9 @@ export function FirstRunWizard() {
           componentsInstalled: installedComponents,
         }}
         onCreateFirstVideo={completeOnboarding}
-        onExploreApp={() => {
+        onExploreApp={async () => {
           clearWizardStateFromStorage();
-          localStorage.setItem('hasSeenOnboarding', 'true');
+          await markFirstRunCompleted();
           navigate('/');
         }}
       />
