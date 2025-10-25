@@ -4,6 +4,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { makeStyles, tokens } from '@fluentui/react-components';
+import { VideoThumbnail } from './VideoThumbnail';
 
 const useStyles = makeStyles({
   sceneBlock: {
@@ -15,8 +16,8 @@ const useStyles = makeStyles({
     cursor: 'grab',
     overflow: 'hidden',
     display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
+    flexDirection: 'row',
+    gap: tokens.spacingHorizontalS,
     border: `2px solid ${tokens.colorNeutralStroke1}`,
     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
@@ -36,6 +37,20 @@ const useStyles = makeStyles({
     opacity: 0.5,
     cursor: 'grabbing',
     boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+  },
+  thumbnailContainer: {
+    width: '80px',
+    height: '100%',
+    flexShrink: 0,
+    borderRadius: tokens.borderRadiusSmall,
+    overflow: 'hidden',
+  },
+  sceneInfo: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    overflow: 'hidden',
   },
   sceneContent: {
     color: tokens.colorNeutralForegroundOnBrand,
@@ -98,6 +113,8 @@ export interface SceneBlockProps {
   start: number;
   duration: number;
   zoom: number; // pixels per second
+  videoPath?: string;
+  thumbnailTimestamp?: number;
   selected?: boolean;
   onSelect?: () => void;
   onTrim?: (newStart: number, newDuration: number) => void;
@@ -110,6 +127,8 @@ export function SceneBlock({
   start,
   duration,
   zoom,
+  videoPath,
+  thumbnailTimestamp = 1,
   selected = false,
   onSelect,
   onTrim,
@@ -259,10 +278,25 @@ export function SceneBlock({
       }}
       onMouseDown={handleMouseDown}
     >
-      <div className={styles.sceneContent}>
-        {index + 1}. {heading}
+      {/* Video thumbnail */}
+      {videoPath && width > 100 && (
+        <div className={styles.thumbnailContainer}>
+          <VideoThumbnail
+            videoPath={videoPath}
+            timestamp={thumbnailTimestamp}
+            width={80}
+            height={50}
+          />
+        </div>
+      )}
+
+      {/* Scene info */}
+      <div className={styles.sceneInfo}>
+        <div className={styles.sceneContent}>
+          {index + 1}. {heading}
+        </div>
+        <div className={styles.sceneDuration}>{formatDuration(duration)}</div>
       </div>
-      <div className={styles.sceneDuration}>{formatDuration(duration)}</div>
 
       {/* Trim handles */}
       <div
