@@ -96,7 +96,7 @@ export function TimelineTrack({
   name,
   type,
   audioPath,
-  duration: _duration, // Reserved for future use
+  duration: _duration, // Not used - WaveSurfer.js automatically determines duration from audio file
   zoom,
   onSeek,
   muted = false,

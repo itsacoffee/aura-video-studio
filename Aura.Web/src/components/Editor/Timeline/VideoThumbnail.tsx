@@ -83,8 +83,8 @@ export function VideoThumbnail({
         const ffmpeg = new FFmpeg();
         ffmpegRef.current = ffmpeg;
 
-        // Load FFmpeg core
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+        // Load FFmpeg core - using 0.12.4 for compatibility with @ffmpeg/ffmpeg 0.12.10
+        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/umd';
         await ffmpeg.load({
           coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
           wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
