@@ -346,31 +346,39 @@ public class IdeationService
     private string BuildBrainstormPrompt(BrainstormRequest request)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Generate 10 creative and distinct video concept variations for the topic: '{request.Topic}'");
+        sb.AppendLine($"Generate exactly 3 unique, creative, and actionable video concept ideas for the topic: '{request.Topic}'");
         sb.AppendLine();
-        sb.AppendLine("For each concept, provide:");
-        sb.AppendLine("1. A catchy title");
-        sb.AppendLine("2. A brief description (2-3 sentences)");
-        sb.AppendLine("3. The storytelling angle (narrative, tutorial, case study, comparison, interview, documentary, etc.)");
-        sb.AppendLine("4. Target audience");
-        sb.AppendLine("5. 3 pros of this approach");
-        sb.AppendLine("6. 3 cons or challenges");
-        sb.AppendLine("7. A compelling hook for the first 15 seconds");
+        sb.AppendLine("You must respond with ONLY valid JSON in this exact format:");
+        sb.AppendLine("{");
+        sb.AppendLine("  \"concepts\": [");
+        sb.AppendLine("    {");
+        sb.AppendLine("      \"title\": \"Catchy, engaging title\",");
+        sb.AppendLine("      \"description\": \"Detailed 2-3 sentence description of the video concept\",");
+        sb.AppendLine("      \"angle\": \"One of: Tutorial, Narrative, Case Study, Comparison, Interview, Documentary, Behind-the-Scenes, Expert Analysis, Beginner's Guide, Deep Dive\",");
+        sb.AppendLine("      \"targetAudience\": \"Specific description of the intended audience\",");
+        sb.AppendLine("      \"pros\": [\"Pro 1\", \"Pro 2\", \"Pro 3\"],");
+        sb.AppendLine("      \"cons\": [\"Con 1\", \"Con 2\", \"Con 3\"],");
+        sb.AppendLine("      \"hook\": \"Compelling opening hook for the first 15 seconds\",");
+        sb.AppendLine("      \"talkingPoints\": [\"Key point 1\", \"Key point 2\", \"Key point 3\", \"Key point 4\", \"Key point 5\"],");
+        sb.AppendLine("      \"appealScore\": 85");
+        sb.AppendLine("    }");
+        sb.AppendLine("  ]");
+        sb.AppendLine("}");
         sb.AppendLine();
         
         if (!string.IsNullOrEmpty(request.Audience))
         {
-            sb.AppendLine($"Target Audience: {request.Audience}");
+            sb.AppendLine($"Target Audience Preference: {request.Audience}");
         }
         
         if (!string.IsNullOrEmpty(request.Tone))
         {
-            sb.AppendLine($"Tone: {request.Tone}");
+            sb.AppendLine($"Tone Preference: {request.Tone}");
         }
         
         if (request.TargetDuration.HasValue)
         {
-            sb.AppendLine($"Target Duration: {request.TargetDuration}s");
+            sb.AppendLine($"Target Duration: {request.TargetDuration} seconds");
         }
         
         if (!string.IsNullOrEmpty(request.Platform))
@@ -379,7 +387,12 @@ public class IdeationService
         }
 
         sb.AppendLine();
-        sb.AppendLine("Make each concept unique and actionable. Focus on creative quality and inspiring the creator.");
+        sb.AppendLine("Requirements:");
+        sb.AppendLine("- Make each concept genuinely unique with different angles and approaches");
+        sb.AppendLine("- Ensure talking points are specific, actionable, and relevant to the concept");
+        sb.AppendLine("- Focus on creative quality and practical value for video creators");
+        sb.AppendLine("- Appeal scores should realistically range from 65-95 based on concept viability");
+        sb.AppendLine("- Return ONLY the JSON object, no additional text or markdown formatting");
 
         return sb.ToString();
     }
@@ -546,41 +559,144 @@ public class IdeationService
 
     private List<ConceptIdea> ParseBrainstormResponse(string response, string originalTopic)
     {
-        // Simplified parsing - in production, would use structured LLM output (JSON mode)
         var concepts = new List<ConceptIdea>();
         
-        // Generate sample concepts based on the response
-        var angles = new[] { "Tutorial", "Narrative", "Case Study", "Comparison", "Interview", 
-            "Documentary", "Behind-the-Scenes", "Expert Analysis", "Beginner's Guide", "Deep Dive" };
-        
-        for (int i = 0; i < 10; i++)
+        try
         {
-            concepts.Add(new ConceptIdea(
-                ConceptId: Guid.NewGuid().ToString(),
-                Title: $"{originalTopic} - {angles[i]} Approach",
-                Description: $"A {angles[i].ToLower()} style video exploring {originalTopic}. " +
-                            "This approach provides unique value through its specific perspective and presentation style.",
-                Angle: angles[i],
-                TargetAudience: "General viewers interested in the topic",
-                Pros: new List<string>
+            // Clean the response - remove markdown code blocks if present
+            var cleanedResponse = response.Trim();
+            if (cleanedResponse.StartsWith("```json"))
+            {
+                cleanedResponse = cleanedResponse.Substring(7);
+            }
+            if (cleanedResponse.StartsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(3);
+            }
+            if (cleanedResponse.EndsWith("```"))
+            {
+                cleanedResponse = cleanedResponse.Substring(0, cleanedResponse.Length - 3);
+            }
+            cleanedResponse = cleanedResponse.Trim();
+
+            // Parse JSON response
+            var jsonDoc = JsonDocument.Parse(cleanedResponse);
+            if (jsonDoc.RootElement.TryGetProperty("concepts", out var conceptsArray))
+            {
+                foreach (var conceptElement in conceptsArray.EnumerateArray())
                 {
-                    "Engaging and accessible format",
-                    "Clear value proposition",
-                    "Suitable for target platform"
-                },
-                Cons: new List<string>
-                {
-                    "May require specific expertise",
-                    "Needs careful pacing",
-                    "Competition in this format"
-                },
-                AppealScore: 70 + (i * 3),
-                Hook: $"Discover the most {angles[i].ToLower()} way to understand {originalTopic}",
-                CreatedAt: DateTime.UtcNow
-            ));
+                    var title = conceptElement.GetProperty("title").GetString() ?? "Untitled Concept";
+                    var description = conceptElement.GetProperty("description").GetString() ?? "";
+                    var angle = conceptElement.GetProperty("angle").GetString() ?? "Tutorial";
+                    var targetAudience = conceptElement.GetProperty("targetAudience").GetString() ?? "General audience";
+                    var hook = conceptElement.GetProperty("hook").GetString() ?? "";
+                    var appealScore = conceptElement.GetProperty("appealScore").GetDouble();
+
+                    var pros = new List<string>();
+                    if (conceptElement.TryGetProperty("pros", out var prosArray))
+                    {
+                        foreach (var pro in prosArray.EnumerateArray())
+                        {
+                            var proText = pro.GetString();
+                            if (!string.IsNullOrEmpty(proText))
+                            {
+                                pros.Add(proText);
+                            }
+                        }
+                    }
+
+                    var cons = new List<string>();
+                    if (conceptElement.TryGetProperty("cons", out var consArray))
+                    {
+                        foreach (var con in consArray.EnumerateArray())
+                        {
+                            var conText = con.GetString();
+                            if (!string.IsNullOrEmpty(conText))
+                            {
+                                cons.Add(conText);
+                            }
+                        }
+                    }
+
+                    var talkingPoints = new List<string>();
+                    if (conceptElement.TryGetProperty("talkingPoints", out var talkingPointsArray))
+                    {
+                        foreach (var point in talkingPointsArray.EnumerateArray())
+                        {
+                            var pointText = point.GetString();
+                            if (!string.IsNullOrEmpty(pointText))
+                            {
+                                talkingPoints.Add(pointText);
+                            }
+                        }
+                    }
+
+                    concepts.Add(new ConceptIdea(
+                        ConceptId: Guid.NewGuid().ToString(),
+                        Title: title,
+                        Description: description,
+                        Angle: angle,
+                        TargetAudience: targetAudience,
+                        Pros: pros,
+                        Cons: cons,
+                        AppealScore: appealScore,
+                        Hook: hook,
+                        TalkingPoints: talkingPoints.Count > 0 ? talkingPoints : null,
+                        CreatedAt: DateTime.UtcNow
+                    ));
+                }
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse JSON response from LLM, falling back to generic concepts");
         }
 
-        return concepts;
+        // Fallback: If parsing failed or no concepts were generated, create 3 generic concepts
+        if (concepts.Count == 0)
+        {
+            _logger.LogWarning("No concepts parsed from LLM response, generating fallback concepts");
+            
+            var angles = new[] { "Tutorial", "Narrative", "Case Study" };
+            
+            for (int i = 0; i < 3; i++)
+            {
+                concepts.Add(new ConceptIdea(
+                    ConceptId: Guid.NewGuid().ToString(),
+                    Title: $"{originalTopic} - {angles[i]} Approach",
+                    Description: $"A {angles[i].ToLower()} style video exploring {originalTopic}. " +
+                                "This approach provides unique value through its specific perspective and presentation style.",
+                    Angle: angles[i],
+                    TargetAudience: "General viewers interested in the topic",
+                    Pros: new List<string>
+                    {
+                        "Engaging and accessible format",
+                        "Clear value proposition",
+                        "Suitable for target platform"
+                    },
+                    Cons: new List<string>
+                    {
+                        "May require specific expertise",
+                        "Needs careful pacing",
+                        "Competition in this format"
+                    },
+                    AppealScore: 70 + (i * 5),
+                    Hook: $"Discover the most {angles[i].ToLower()} way to understand {originalTopic}",
+                    TalkingPoints: new List<string>
+                    {
+                        "Introduction to the topic",
+                        "Key concepts and fundamentals",
+                        "Practical examples and applications",
+                        "Common mistakes to avoid",
+                        "Next steps and resources"
+                    },
+                    CreatedAt: DateTime.UtcNow
+                ));
+            }
+        }
+
+        // Ensure we return exactly 3 concepts
+        return concepts.Take(3).ToList();
     }
 
     private (List<ClarifyingQuestion>?, string) ParseExpandBriefResponse(string response)

@@ -131,6 +131,17 @@ export const ConceptCard: React.FC<ConceptCardProps> = ({ concept, onSelect, onE
           </div>
         )}
 
+        {concept.talkingPoints && concept.talkingPoints.length > 0 && (
+          <div className={styles.section}>
+            <Text className={styles.sectionTitle}>Key Talking Points:</Text>
+            <ul className={styles.list}>
+              {concept.talkingPoints.map((point, index) => (
+                <li key={index}>{point}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className={styles.section}>
           <Text className={styles.sectionTitle}>
             <ThumbLikeRegular style={{ marginRight: '4px' }} />

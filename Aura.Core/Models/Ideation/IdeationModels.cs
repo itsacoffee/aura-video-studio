@@ -16,6 +16,7 @@ public record ConceptIdea(
     List<string> Cons,
     double AppealScore,              // 0-100 score for audience appeal
     string Hook,                     // Opening hook suggestion
+    List<string>? TalkingPoints = null,  // Key talking points for the video
     Dictionary<string, double>? DemographicScores = null,  // Appeal scores by demographic
     DateTime? CreatedAt = null
 );
