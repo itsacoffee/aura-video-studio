@@ -36,15 +36,23 @@ describe('MediaLibraryPanel', () => {
 
     const file = new File(['dummy content'], 'test-video.mp4', { type: 'video/mp4' });
     
-    if (fileInput) {
-      await userEvent.upload(fileInput, file);
-    }
+    await userEvent.upload(fileInput, file);
 
-    // Wait for the clip to be processed and rendered
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    // Wait for the clip to be processed and rendered using a more deterministic approach
+    const clipCards = await new Promise<NodeListOf<Element>>((resolve) => {
+      const checkForClips = () => {
+        const cards = container.querySelectorAll('[draggable="true"]');
+        if (cards.length > 0) {
+          resolve(cards);
+        } else {
+          setTimeout(checkForClips, 100);
+        }
+      };
+      checkForClips();
+      // Timeout after 2 seconds to prevent infinite wait
+      setTimeout(() => resolve(container.querySelectorAll('[draggable="true"]')), 2000);
+    });
 
-    // Find the clip card (it should now be visible after processing)
-    const clipCards = container.querySelectorAll('[draggable="true"]');
     expect(clipCards.length).toBeGreaterThan(0);
   });
 
