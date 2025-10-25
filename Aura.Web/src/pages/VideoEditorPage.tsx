@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { EditorLayout } from '../components/EditorLayout/EditorLayout';
 import { VideoPreviewPanel } from '../components/EditorLayout/VideoPreviewPanel';
 import { TimelinePanel } from '../components/EditorLayout/TimelinePanel';
@@ -14,6 +14,20 @@ interface TimelineClip {
   type: 'video' | 'audio' | 'image';
   prompt?: string;
   effects?: string[];
+  transform?: {
+    x?: number;
+    y?: number;
+    scale?: number;
+    rotation?: number;
+  };
+}
+
+interface TimelineTrack {
+  id: string;
+  label: string;
+  type: 'video' | 'audio';
+  visible: boolean;
+  locked: boolean;
 }
 
 export function VideoEditorPage() {
@@ -21,14 +35,59 @@ export function VideoEditorPage() {
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [clips, setClips] = useState<TimelineClip[]>([]);
   const [, setShowKeyboardShortcuts] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [tracks, setTracks] = useState<TimelineTrack[]>([
+    { id: 'video1', label: 'Video 1', type: 'video', visible: true, locked: false },
+    { id: 'video2', label: 'Video 2', type: 'video', visible: true, locked: false },
+    { id: 'audio1', label: 'Audio 1', type: 'audio', visible: true, locked: false },
+    { id: 'audio2', label: 'Audio 2', type: 'audio', visible: true, locked: false },
+  ]);
+  
+  // Ref to track video preview controls
+  const videoPreviewRef = useRef<{
+    play: () => void;
+    pause: () => void;
+    stepForward: () => void;
+    stepBackward: () => void;
+  } | null>(null);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
       // Space for play/pause
       if (e.code === 'Space' && !e.ctrlKey && !e.shiftKey) {
         e.preventDefault();
-        // Play/pause handled by VideoPreviewPanel
+        setIsPlaying((prev) => !prev);
+      }
+      // J for reverse shuttle (step backward)
+      else if (e.key === 'j' && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        videoPreviewRef.current?.stepBackward();
+      }
+      // K for pause
+      else if (e.key === 'k' && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        setIsPlaying(false);
+      }
+      // L for forward shuttle (step forward)
+      else if (e.key === 'l' && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        videoPreviewRef.current?.stepForward();
+      }
+      // Arrow left for frame step backward
+      else if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        videoPreviewRef.current?.stepBackward();
+      }
+      // Arrow right for frame step forward
+      else if (e.key === 'ArrowRight' && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault();
+        videoPreviewRef.current?.stepForward();
       }
       // Ctrl+K for keyboard shortcuts
       else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -54,7 +113,7 @@ export function VideoEditorPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedClipId]);
+  }, [selectedClipId, isPlaying]);
 
   const handleUpdateClip = (updates: Partial<TimelineClip>) => {
     if (!selectedClipId) return;
@@ -73,6 +132,22 @@ export function VideoEditorPage() {
 
   const handleAddClip = (_trackId: string, clip: TimelineClip) => {
     setClips((prevClips) => [...prevClips, clip]);
+  };
+
+  const handleTrackToggleVisibility = (trackId: string) => {
+    setTracks((prevTracks) =>
+      prevTracks.map((track) =>
+        track.id === trackId ? { ...track, visible: !track.visible } : track
+      )
+    );
+  };
+
+  const handleTrackToggleLock = (trackId: string) => {
+    setTracks((prevTracks) =>
+      prevTracks.map((track) =>
+        track.id === trackId ? { ...track, locked: !track.locked } : track
+      )
+    );
   };
 
   const selectedClip = clips.find((clip) => clip.id === selectedClipId);
@@ -94,16 +169,21 @@ export function VideoEditorPage() {
         <VideoPreviewPanel
           currentTime={currentTime}
           onTimeUpdate={setCurrentTime}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
         />
       }
       timeline={
         <TimelinePanel
           clips={clips}
+          tracks={tracks}
           currentTime={currentTime}
           onTimeChange={setCurrentTime}
           onClipSelect={setSelectedClipId}
           selectedClipId={selectedClipId}
           onClipAdd={handleAddClip}
+          onTrackToggleVisibility={handleTrackToggleVisibility}
+          onTrackToggleLock={handleTrackToggleLock}
         />
       }
       properties={

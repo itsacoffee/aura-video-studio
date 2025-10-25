@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { makeStyles, tokens, Button, Slider, Text } from '@fluentui/react-components';
+import { makeStyles, tokens, Button, Slider, Text, Menu, MenuTrigger, MenuList, MenuItem, MenuPopover } from '@fluentui/react-components';
 import {
   Play24Regular,
   Pause24Regular,
@@ -8,6 +8,9 @@ import {
   Next24Regular,
   SpeakerMute24Regular,
   Speaker224Regular,
+  ZoomIn24Regular,
+  ZoomOut24Regular,
+  ZoomFit24Regular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -30,6 +33,7 @@ const useStyles = makeStyles({
     maxWidth: '100%',
     maxHeight: '100%',
     objectFit: 'contain',
+    transition: 'transform 0.2s ease',
   },
   placeholder: {
     color: tokens.colorNeutralForeground3,
@@ -65,6 +69,11 @@ const useStyles = makeStyles({
   volumeSlider: {
     width: '80px',
   },
+  zoomControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+  },
 });
 
 interface VideoPreviewPanelProps {
@@ -91,6 +100,7 @@ export function VideoPreviewPanel({
   const [localTime, setLocalTime] = useState(0);
   const [volume, setVolume] = useState(100);
   const [isMuted, setIsMuted] = useState(false);
+  const [zoom, setZoom] = useState(100); // Zoom level percentage
 
   // Sync external current time with video
   useEffect(() => {
@@ -180,6 +190,18 @@ export function VideoPreviewPanel({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleZoomIn = () => {
+    setZoom((prev) => Math.min(200, prev + 25));
+  };
+
+  const handleZoomOut = () => {
+    setZoom((prev) => Math.max(50, prev - 25));
+  };
+
+  const handleZoomFit = () => {
+    setZoom(100);
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.videoContainer}>
@@ -191,6 +213,7 @@ export function VideoPreviewPanel({
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={() => setIsPlaying(false)}
+            style={{ transform: `scale(${zoom / 100})` }}
           >
             <track kind="captions" />
           </video>
@@ -268,6 +291,33 @@ export function VideoPreviewPanel({
               value={isMuted ? 0 : volume}
               onChange={handleVolumeChange}
             />
+          </div>
+
+          <div className={styles.zoomControls}>
+            <Menu>
+              <MenuTrigger disableButtonEnhancement>
+                <Button
+                  appearance="subtle"
+                  icon={<ZoomFit24Regular />}
+                  aria-label="Zoom controls"
+                >
+                  {zoom}%
+                </Button>
+              </MenuTrigger>
+              <MenuPopover>
+                <MenuList>
+                  <MenuItem icon={<ZoomIn24Regular />} onClick={handleZoomIn}>
+                    Zoom In (125%)
+                  </MenuItem>
+                  <MenuItem icon={<ZoomOut24Regular />} onClick={handleZoomOut}>
+                    Zoom Out (75%)
+                  </MenuItem>
+                  <MenuItem icon={<ZoomFit24Regular />} onClick={handleZoomFit}>
+                    Fit to Window (100%)
+                  </MenuItem>
+                </MenuList>
+              </MenuPopover>
+            </Menu>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { MenuBar } from '../MenuBar/MenuBar';
 
@@ -94,6 +94,32 @@ interface EditorLayoutProps {
   onShowKeyboardShortcuts?: () => void;
 }
 
+// LocalStorage keys for panel sizes
+const STORAGE_KEYS = {
+  propertiesWidth: 'editor-properties-width',
+  mediaLibraryWidth: 'editor-media-library-width',
+  previewHeight: 'editor-preview-height',
+};
+
+// Helper to load from localStorage with default fallback
+const loadPanelSize = (key: string, defaultValue: number): number => {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? parseFloat(stored) : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+};
+
+// Helper to save to localStorage
+const savePanelSize = (key: string, value: number): void => {
+  try {
+    localStorage.setItem(key, value.toString());
+  } catch {
+    // Ignore localStorage errors
+  }
+};
+
 export function EditorLayout({
   preview,
   timeline,
@@ -104,9 +130,28 @@ export function EditorLayout({
   onShowKeyboardShortcuts,
 }: EditorLayoutProps) {
   const styles = useStyles();
-  const [propertiesWidth, setPropertiesWidth] = useState(320);
-  const [mediaLibraryWidth, setMediaLibraryWidth] = useState(280);
-  const [previewHeight, setPreviewHeight] = useState(60); // Percentage
+  const [propertiesWidth, setPropertiesWidth] = useState(() => 
+    loadPanelSize(STORAGE_KEYS.propertiesWidth, 320)
+  );
+  const [mediaLibraryWidth, setMediaLibraryWidth] = useState(() =>
+    loadPanelSize(STORAGE_KEYS.mediaLibraryWidth, 280)
+  );
+  const [previewHeight, setPreviewHeight] = useState(() =>
+    loadPanelSize(STORAGE_KEYS.previewHeight, 60)
+  ); // Percentage
+
+  // Persist panel sizes to localStorage
+  useEffect(() => {
+    savePanelSize(STORAGE_KEYS.propertiesWidth, propertiesWidth);
+  }, [propertiesWidth]);
+
+  useEffect(() => {
+    savePanelSize(STORAGE_KEYS.mediaLibraryWidth, mediaLibraryWidth);
+  }, [mediaLibraryWidth]);
+
+  useEffect(() => {
+    savePanelSize(STORAGE_KEYS.previewHeight, previewHeight);
+  }, [previewHeight]);
 
   // Handle resizing properties panel
   const handlePropertiesResize = (e: React.MouseEvent) => {
@@ -186,21 +231,60 @@ export function EditorLayout({
             <div className={styles.mediaLibraryPanel} style={{ width: `${mediaLibraryWidth}px` }}>
               {mediaLibrary}
             </div>
-            <div className={styles.resizer} onMouseDown={handleMediaLibraryResize} role="separator" aria-orientation="vertical" />
+            <div 
+              className={styles.resizer} 
+              onMouseDown={handleMediaLibraryResize} 
+              role="separator" 
+              aria-orientation="vertical"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  setMediaLibraryWidth((prev) => Math.max(240, prev - 10));
+                } else if (e.key === 'ArrowRight') {
+                  setMediaLibraryWidth((prev) => Math.min(350, prev + 10));
+                }
+              }}
+            />
           </>
         )}
         <div className={styles.mainArea}>
           <div className={styles.previewPanel} style={{ flex: previewHeight }}>
             {preview}
           </div>
-          <div className={styles.horizontalResizer} onMouseDown={handlePreviewResize} role="separator" aria-orientation="horizontal" />
+          <div 
+            className={styles.horizontalResizer} 
+            onMouseDown={handlePreviewResize} 
+            role="separator" 
+            aria-orientation="horizontal"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp') {
+                setPreviewHeight((prev) => Math.min(80, prev + 5));
+              } else if (e.key === 'ArrowDown') {
+                setPreviewHeight((prev) => Math.max(40, prev - 5));
+              }
+            }}
+          />
           <div className={styles.timelinePanel} style={{ flex: 100 - previewHeight }}>
             {timeline}
           </div>
         </div>
         {properties && (
           <>
-            <div className={styles.resizer} onMouseDown={handlePropertiesResize} role="separator" aria-orientation="vertical" />
+            <div 
+              className={styles.resizer} 
+              onMouseDown={handlePropertiesResize} 
+              role="separator" 
+              aria-orientation="vertical"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  setPropertiesWidth((prev) => Math.min(400, prev + 10));
+                } else if (e.key === 'ArrowRight') {
+                  setPropertiesWidth((prev) => Math.max(280, prev - 10));
+                }
+              }}
+            />
             <div className={styles.propertiesPanel} style={{ width: `${propertiesWidth}px` }}>
               {properties}
             </div>
