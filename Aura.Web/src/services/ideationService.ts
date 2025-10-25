@@ -27,6 +27,14 @@ export interface BriefRequirements {
   additionalDetails?: Record<string, string>;
 }
 
+export interface TrendingTopicInsights {
+  whyTrending: string;
+  audienceEngagement: string;
+  contentAngles: string[];
+  demographicAppeal: string;
+  viralityScore: number;
+}
+
 export interface TrendingTopic {
   topicId: string;
   topic: string;
@@ -37,6 +45,10 @@ export interface TrendingTopic {
   lifecycle?: string;
   relatedTopics?: string[];
   detectedAt?: string;
+  aiInsights?: TrendingTopicInsights;
+  hashtags?: string[];
+  trendVelocity?: number;
+  estimatedAudience?: number;
 }
 
 export interface ResearchFinding {

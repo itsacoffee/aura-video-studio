@@ -22,17 +22,20 @@ public class IdeationService
     private readonly ILlmProvider _llmProvider;
     private readonly ProjectContextManager _projectManager;
     private readonly ConversationContextManager _conversationManager;
+    private readonly TrendingTopicsService _trendingTopicsService;
 
     public IdeationService(
         ILogger<IdeationService> logger,
         ILlmProvider llmProvider,
         ProjectContextManager projectManager,
-        ConversationContextManager conversationManager)
+        ConversationContextManager conversationManager,
+        TrendingTopicsService trendingTopicsService)
     {
         _logger = logger;
         _llmProvider = llmProvider;
         _projectManager = projectManager;
         _conversationManager = conversationManager;
+        _trendingTopicsService = trendingTopicsService;
     }
 
     /// <summary>
@@ -130,7 +133,7 @@ public class IdeationService
     }
 
     /// <summary>
-    /// Get trending topics for a niche
+    /// Get trending topics for a niche with AI analysis
     /// </summary>
     public async Task<TrendingTopicsResponse> GetTrendingTopicsAsync(
         TrendingTopicsRequest request,
@@ -138,7 +141,11 @@ public class IdeationService
     {
         _logger.LogInformation("Analyzing trending topics for niche: {Niche}", request.Niche ?? "general");
 
-        var topics = GenerateTrendingTopics(request.Niche, request.MaxResults ?? 10);
+        var topics = await _trendingTopicsService.GetTrendingTopicsAsync(
+            request.Niche,
+            request.MaxResults ?? 10,
+            forceRefresh: false,
+            ct);
 
         return new TrendingTopicsResponse(
             Topics: topics,
@@ -614,31 +621,6 @@ public class IdeationService
         return (questions, response);
     }
 
-    private List<TrendingTopic> GenerateTrendingTopics(string? niche, int maxResults)
-    {
-        // Simplified implementation - in production, would integrate with external APIs
-        var topics = new List<TrendingTopic>();
-        var baseTopics = new[] { "AI and Machine Learning", "Sustainability", "Remote Work", 
-            "Digital Marketing", "Content Creation", "Personal Development", "Technology Trends", 
-            "Health and Wellness", "Financial Literacy", "Creative Skills" };
-
-        for (int i = 0; i < Math.Min(maxResults, baseTopics.Length); i++)
-        {
-            topics.Add(new TrendingTopic(
-                TopicId: Guid.NewGuid().ToString(),
-                Topic: baseTopics[i],
-                TrendScore: 85 - (i * 5),
-                SearchVolume: $"{(100 - i * 10)}K searches/month",
-                Competition: i < 3 ? "Medium" : "Low",
-                Seasonality: "Year-round",
-                Lifecycle: i < 3 ? "Rising" : i < 6 ? "Peak" : "Stable",
-                RelatedTopics: new List<string> { $"{baseTopics[i]} for beginners", $"{baseTopics[i]} trends 2025" },
-                DetectedAt: DateTime.UtcNow
-            ));
-        }
-
-        return topics;
-    }
 
     private (List<string>, List<TrendingTopic>, List<string>, Dictionary<string, List<string>>) 
         ParseGapAnalysisResponse(string response)

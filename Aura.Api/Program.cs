@@ -171,6 +171,8 @@ builder.Services.AddSingleton<Aura.Core.Services.Learning.PredictiveSuggestionRa
 builder.Services.AddSingleton<Aura.Core.Services.Learning.LearningService>();
 
 // Register Ideation service
+builder.Services.AddMemoryCache(); // For trending topics caching
+builder.Services.AddSingleton<Aura.Core.Services.Ideation.TrendingTopicsService>();
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
 
 // Register Content Verification services
