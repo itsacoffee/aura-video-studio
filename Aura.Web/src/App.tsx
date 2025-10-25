@@ -81,25 +81,6 @@ function App() {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
 
-  // Listen for OS theme changes (only if user hasn't explicitly set preference)
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleChange = (e: MediaQueryListEvent) => {
-      const saved = localStorage.getItem('darkMode');
-      // Only update if user hasn't explicitly saved a preference
-      if (saved === null) {
-        setIsDarkMode(e.matches);
-      }
-    };
-    
-    // Use addEventListener for modern browsers
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-  }, []);
-
   // Poll job progress when a job is active
   useEffect(() => {
     // Early exit if no active job
