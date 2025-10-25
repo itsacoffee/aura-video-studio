@@ -1,10 +1,11 @@
 import { ReactElement } from 'react';
 import { Tooltip as FluentTooltip, TooltipProps } from '@fluentui/react-components';
 
-interface EnhancedTooltipProps extends Omit<TooltipProps, 'content'> {
+interface EnhancedTooltipProps extends Omit<TooltipProps, 'content' | 'relationship'> {
   content: string;
   children: ReactElement;
   showDelay?: number;
+  relationship?: TooltipProps['relationship'];
   // Optional keyboard shortcut to display
   shortcut?: string;
 }
