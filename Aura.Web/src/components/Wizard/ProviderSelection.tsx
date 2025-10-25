@@ -24,7 +24,6 @@ import {
   ScriptProviders,
   TtsProviders,
   VisualsProviders,
-  UploadProviders,
 } from '../../state/providers';
 import { useEnginesStore } from '../../state/engines';
 import { useNotifications } from '../Notifications/Toasts';
