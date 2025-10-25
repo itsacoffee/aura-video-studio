@@ -81,7 +81,6 @@ export function RescanPanel() {
   // Run rescan automatically on component mount
   useEffect(() => {
     handleRescanAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRescanAll = async () => {

@@ -28,7 +28,6 @@ export interface ShortcutGroup {
 
 class KeyboardShortcutManager {
   private shortcuts: Map<string, ShortcutHandler> = new Map();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private activeContext: ShortcutContext = 'global';
   private enabledContexts: Set<ShortcutContext> = new Set(['global']);
   private customKeyMappings: Map<string, string> = new Map(); // Maps action IDs to custom key combinations
