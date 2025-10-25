@@ -168,13 +168,13 @@ export function DownloadsPage() {
 
   const checkComponentStatus = async (componentName: string) => {
     try {
-      const statusResponse = await fetch(`/api/downloads/${componentName}/status`);
+      const statusResponse = await fetch(apiUrl(`/api/downloads/${componentName}/status`));
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
 
         // If installed, verify integrity
         if (statusData.isInstalled) {
-          const verifyResponse = await fetch(`/api/downloads/${componentName}/verify`);
+          const verifyResponse = await fetch(apiUrl(`/api/downloads/${componentName}/verify`));
           if (verifyResponse.ok) {
             const verifyData = await verifyResponse.json();
             setComponentStatus((prev) => ({
@@ -219,15 +219,31 @@ export function DownloadsPage() {
         },
       }));
 
-      const response = await fetch(`/api/downloads/${componentName}/install`, {
+      const response = await fetch(apiUrl(`/api/downloads/${componentName}/install`), {
         method: 'POST',
       });
 
       if (response.ok) {
+        showSuccessToast({
+          title: 'Installation Started',
+          message: `${componentName} is being installed. This may take a few minutes.`,
+        });
         // Check status again after install
         await checkComponentStatus(componentName);
       } else {
-        const errorData = await response.json();
+        let errorMessage = 'Installation failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Installation failed with HTTP ${response.status}`;
+        }
+        
+        showFailureToast({
+          title: 'Installation Failed',
+          message: errorMessage,
+        });
+        
         setComponentStatus((prev) => ({
           ...prev,
           [componentName]: {
@@ -235,12 +251,19 @@ export function DownloadsPage() {
             isInstalling: false,
             isRepairing: false,
             needsRepair: false,
-            error: errorData.message || 'Installation failed',
+            error: errorMessage,
           },
         }));
       }
     } catch (error) {
       console.error(`Error installing ${componentName}:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Network error';
+      
+      showFailureToast({
+        title: 'Installation Error',
+        message: errorMessage,
+      });
+      
       setComponentStatus((prev) => ({
         ...prev,
         [componentName]: {
@@ -248,7 +271,7 @@ export function DownloadsPage() {
           isInstalling: false,
           isRepairing: false,
           needsRepair: false,
-          error: 'Network error',
+          error: errorMessage,
         },
       }));
     }
@@ -265,31 +288,54 @@ export function DownloadsPage() {
         },
       }));
 
-      const response = await fetch(`/api/downloads/${componentName}/repair`, {
+      const response = await fetch(apiUrl(`/api/downloads/${componentName}/repair`), {
         method: 'POST',
       });
 
       if (response.ok) {
+        showSuccessToast({
+          title: 'Repair Complete',
+          message: `${componentName} has been repaired successfully.`,
+        });
         await checkComponentStatus(componentName);
       } else {
-        const errorData = await response.json();
+        let errorMessage = 'Repair failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Repair failed with HTTP ${response.status}`;
+        }
+        
+        showFailureToast({
+          title: 'Repair Failed',
+          message: errorMessage,
+        });
+        
         setComponentStatus((prev) => ({
           ...prev,
           [componentName]: {
             ...prev[componentName],
             isRepairing: false,
-            error: errorData.message || 'Repair failed',
+            error: errorMessage,
           },
         }));
       }
     } catch (error) {
       console.error(`Error repairing ${componentName}:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Network error during repair';
+      
+      showFailureToast({
+        title: 'Repair Error',
+        message: errorMessage,
+      });
+      
       setComponentStatus((prev) => ({
         ...prev,
         [componentName]: {
           ...prev[componentName],
           isRepairing: false,
-          error: 'Network error during repair',
+          error: errorMessage,
         },
       }));
     }
@@ -301,45 +347,66 @@ export function DownloadsPage() {
     }
 
     try {
-      const response = await fetch(`/api/downloads/${componentName}`, {
+      const response = await fetch(apiUrl(`/api/downloads/${componentName}`), {
         method: 'DELETE',
       });
 
       if (response.ok) {
+        showSuccessToast({
+          title: 'Component Removed',
+          message: `${componentName} has been removed successfully.`,
+        });
         await checkComponentStatus(componentName);
       } else {
+        let errorMessage = 'Failed to remove component';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Remove failed with HTTP ${response.status}`;
+        }
+        
         showFailureToast({
           title: 'Remove Failed',
-          message: 'Failed to remove component',
+          message: errorMessage,
         });
       }
     } catch (error) {
       console.error(`Error removing ${componentName}:`, error);
       showFailureToast({
         title: 'Network Error',
-        message: 'Network error during removal',
+        message: error instanceof Error ? error.message : 'Network error during removal',
       });
     }
   };
 
   const openComponentFolder = async (componentName: string) => {
     try {
-      const response = await fetch(`/api/downloads/${componentName}/folder`);
+      const response = await fetch(apiUrl(`/api/downloads/${componentName}/folder`));
       if (response.ok) {
         const data = await response.json();
         showSuccessToast({
           title: 'Component Folder',
           message: `Path: ${data.path}\n\nPlease navigate to this path manually in your file explorer.`,
         });
+      } else {
+        showFailureToast({
+          title: 'Error',
+          message: 'Failed to get component folder path',
+        });
       }
     } catch (error) {
       console.error(`Error getting folder for ${componentName}:`, error);
+      showFailureToast({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to get component folder',
+      });
     }
   };
 
   const showManualInstructions = async (componentName: string) => {
     try {
-      const response = await fetch(`/api/downloads/${componentName}/manual`);
+      const response = await fetch(apiUrl(`/api/downloads/${componentName}/manual`));
       if (response.ok) {
         const data: ManualInstructions = await response.json();
         const instructionsText = [
@@ -353,9 +420,18 @@ export function DownloadsPage() {
           title: 'Manual Installation Instructions',
           message: instructionsText,
         });
+      } else {
+        showFailureToast({
+          title: 'Error',
+          message: 'Failed to get manual installation instructions',
+        });
       }
     } catch (error) {
       console.error(`Error getting manual instructions for ${componentName}:`, error);
+      showFailureToast({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to get manual instructions',
+      });
     }
   };
 
