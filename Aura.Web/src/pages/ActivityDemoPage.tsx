@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -47,7 +46,6 @@ const useStyles = makeStyles({
 export function ActivityDemoPage() {
   const styles = useStyles();
   const { addActivity, updateActivity } = useActivity();
-  const [activeIds, setActiveIds] = useState<string[]>([]);
 
   const simulateVideoGeneration = () => {
     const id = addActivity({
@@ -58,8 +56,6 @@ export function ActivityDemoPage() {
       canRetry: true,
     });
     
-    setActiveIds([...activeIds, id]);
-
     // Simulate progress updates
     let progress = 0;
     const interval = setInterval(() => {
@@ -90,7 +86,6 @@ export function ActivityDemoPage() {
           message: 'Video generated successfully!' 
         });
         clearInterval(interval);
-        setActiveIds(activeIds.filter(activeId => activeId !== id));
       }
     }, 500);
   };
@@ -103,8 +98,6 @@ export function ActivityDemoPage() {
       canRetry: true,
     });
 
-    setActiveIds([...activeIds, id]);
-
     // Simulate a failure after 2 seconds
     setTimeout(() => {
       updateActivity(id, {
@@ -112,7 +105,6 @@ export function ActivityDemoPage() {
         message: 'Request failed',
         error: 'Network error: Unable to connect to server (ERR_CONNECTION_REFUSED)',
       });
-      setActiveIds(activeIds.filter(activeId => activeId !== id));
     }, 2000);
   };
 
@@ -122,8 +114,6 @@ export function ActivityDemoPage() {
       title: 'File Upload',
       message: 'Uploading test.mp4...',
     });
-
-    setActiveIds([...activeIds, id]);
 
     let progress = 0;
     const interval = setInterval(() => {
@@ -136,7 +126,6 @@ export function ActivityDemoPage() {
           message: 'File uploaded successfully!',
         });
         clearInterval(interval);
-        setActiveIds(activeIds.filter(activeId => activeId !== id));
       } else {
         updateActivity(id, {
           status: 'running',
@@ -162,8 +151,6 @@ export function ActivityDemoPage() {
       canCancel: true,
     });
 
-    setActiveIds([...activeIds, id]);
-
     let progress = 0;
     const interval = setInterval(() => {
       progress += 5;
@@ -175,7 +162,6 @@ export function ActivityDemoPage() {
           message: 'Analysis complete!',
         });
         clearInterval(interval);
-        setActiveIds(activeIds.filter(activeId => activeId !== id));
       } else {
         updateActivity(id, {
           status: 'running',
