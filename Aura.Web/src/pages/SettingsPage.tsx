@@ -30,6 +30,7 @@ import { FileLocationsSettingsTab } from '../components/Settings/FileLocationsSe
 import { VideoDefaultsSettingsTab } from '../components/Settings/VideoDefaultsSettingsTab';
 import { EditorPreferencesSettingsTab } from '../components/Settings/EditorPreferencesSettingsTab';
 import { ApiKeysSettingsTab } from '../components/Settings/ApiKeysSettingsTab';
+import { LoggingSettingsTab } from '../components/Settings/LoggingSettingsTab';
 import { resetFirstRunStatus } from '../services/firstRunService';
 import { ValidatedInput } from '../components/forms/ValidatedInput';
 import { useFormValidation } from '../hooks/useFormValidation';
@@ -710,6 +711,7 @@ export function SettingsPage() {
         <Tab value="ui">UI</Tab>
         <Tab value="theme">Theme</Tab>
         <Tab value="shortcuts">Shortcuts</Tab>
+        <Tab value="logging">Logging</Tab>
         <Tab value="portable">Portable Info</Tab>
         <Tab value="providers">Providers</Tab>
         <Tab value="localproviders">Local Providers</Tab>
@@ -838,6 +840,8 @@ export function SettingsPage() {
       {activeTab === 'performance' && <PerformanceSettingsTab />}
 
       {activeTab === 'shortcuts' && <KeyboardShortcutsTab />}
+
+      {activeTab === 'logging' && <LoggingSettingsTab />}
 
       {activeTab === 'theme' && <ThemeCustomizationTab />}
 
