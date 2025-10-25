@@ -77,7 +77,7 @@ public class IdeationServiceTests
         Assert.NotNull(response);
         Assert.Equal(request.Topic, response.OriginalTopic);
         Assert.NotEmpty(response.Concepts);
-        Assert.Equal(10, response.Concepts.Count); // Should generate 10 concepts
+        Assert.Equal(3, response.Concepts.Count); // Should generate exactly 3 concepts
         Assert.All(response.Concepts, concept =>
         {
             Assert.NotNull(concept.ConceptId);
@@ -86,6 +86,80 @@ public class IdeationServiceTests
             Assert.NotNull(concept.Angle);
             Assert.True(concept.AppealScore >= 0 && concept.AppealScore <= 100);
         });
+    }
+
+    [Fact]
+    public async Task BrainstormConceptsAsync_WithJsonResponse_ParsesConceptsCorrectly()
+    {
+        // Arrange
+        var request = new BrainstormRequest(
+            Topic: "AI in video production",
+            Audience: "Content creators"
+        );
+
+        var jsonResponse = GetSampleBrainstormJsonResponse();
+
+        _mockLlmProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Core.Models.Brief>(), It.IsAny<Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(jsonResponse);
+
+        // Act
+        var response = await _service.BrainstormConceptsAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Equal(3, response.Concepts.Count);
+        
+        var firstConcept = response.Concepts[0];
+        Assert.Equal("AI Tools for Video Editing", firstConcept.Title);
+        Assert.Equal("Tutorial", firstConcept.Angle);
+        Assert.Equal(85, firstConcept.AppealScore);
+        Assert.NotNull(firstConcept.TalkingPoints);
+        Assert.Equal(5, firstConcept.TalkingPoints.Count);
+        Assert.Contains("Introduction to AI editing", firstConcept.TalkingPoints);
+        Assert.Equal(3, firstConcept.Pros.Count);
+        Assert.Equal(3, firstConcept.Cons.Count);
+    }
+
+    private static string GetSampleBrainstormJsonResponse()
+    {
+        return @"{
+            ""concepts"": [
+                {
+                    ""title"": ""AI Tools for Video Editing"",
+                    ""description"": ""Explore cutting-edge AI tools that automate video editing tasks."",
+                    ""angle"": ""Tutorial"",
+                    ""targetAudience"": ""Video editors and content creators"",
+                    ""pros"": [""Time-saving"", ""Professional results"", ""Easy to learn""],
+                    ""cons"": [""Requires subscription"", ""Limited customization"", ""Learning curve""],
+                    ""hook"": ""Want to edit videos 10x faster? AI can help!"",
+                    ""talkingPoints"": [""Introduction to AI editing"", ""Top AI tools"", ""Hands-on demo"", ""Tips and tricks"", ""Future trends""],
+                    ""appealScore"": 85
+                },
+                {
+                    ""title"": ""The Future of AI in Video Production"",
+                    ""description"": ""A deep dive into how AI is transforming the video production industry."",
+                    ""angle"": ""Documentary"",
+                    ""targetAudience"": ""Industry professionals"",
+                    ""pros"": [""Insightful"", ""Industry trends"", ""Expert opinions""],
+                    ""cons"": [""Complex topic"", ""Longer format"", ""Requires research""],
+                    ""hook"": ""AI is revolutionizing video production. Here's how."",
+                    ""talkingPoints"": [""Current state of AI"", ""Key innovations"", ""Industry impact"", ""Challenges"", ""What's next""],
+                    ""appealScore"": 78
+                },
+                {
+                    ""title"": ""AI vs Traditional Editing: A Comparison"",
+                    ""description"": ""Compare AI-powered editing tools with traditional methods to see which is better."",
+                    ""angle"": ""Comparison"",
+                    ""targetAudience"": ""Professionals and beginners"",
+                    ""pros"": [""Clear comparison"", ""Practical insights"", ""Balanced view""],
+                    ""cons"": [""May be biased"", ""Requires testing"", ""Rapidly changing field""],
+                    ""hook"": ""AI editing vs traditional: which should you choose?"",
+                    ""talkingPoints"": [""Traditional workflow"", ""AI workflow"", ""Speed comparison"", ""Quality comparison"", ""Cost analysis""],
+                    ""appealScore"": 82
+                }
+            ]
+        }";
     }
 
     [Fact]

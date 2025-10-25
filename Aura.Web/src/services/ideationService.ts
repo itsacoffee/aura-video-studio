@@ -12,6 +12,7 @@ export interface ConceptIdea {
   cons: string[];
   appealScore: number;
   hook: string;
+  talkingPoints?: string[];
   demographicScores?: Record<string, number>;
   createdAt?: string;
 }

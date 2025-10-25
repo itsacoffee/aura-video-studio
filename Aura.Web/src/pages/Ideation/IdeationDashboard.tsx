@@ -80,11 +80,13 @@ export const IdeationDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [originalTopic, setOriginalTopic] = useState<string>('');
+  const [originalOptions, setOriginalOptions] = useState<BrainstormOptions>({});
 
   const handleBrainstorm = async (topic: string, options: BrainstormOptions) => {
     setLoading(true);
     setError(null);
     setOriginalTopic(topic);
+    setOriginalOptions(options);
 
     try {
       const request: BrainstormRequest = {
@@ -114,7 +116,7 @@ export const IdeationDashboard: React.FC = () => {
 
   const handleRefresh = () => {
     if (originalTopic) {
-      handleBrainstorm(originalTopic, {});
+      handleBrainstorm(originalTopic, originalOptions);
     }
   };
 

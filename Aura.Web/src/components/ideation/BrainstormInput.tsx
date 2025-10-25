@@ -189,10 +189,6 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
           </Button>
         </div>
       )}
-
-      <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-        Tip: Press Ctrl+Enter to brainstorm
-      </Text>
     </div>
   );
 };
