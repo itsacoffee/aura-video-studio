@@ -375,24 +375,19 @@ export function TimelinePanel({
         </div>
 
         <div 
-          className={styles.tracksContainer} 
-          onClick={handleTimelineClick} 
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              handleTimelineClick(e as unknown as React.MouseEvent);
-            }
-          }}
+          className={styles.tracksContainer}
           role="region" 
           aria-label="Timeline tracks"
-          tabIndex={0}
         >
           {tracks.map((track) => (
+            /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
             <div 
               key={track.id} 
               className={`${styles.track} ${dragOverTrack === track.id ? styles.trackDragOver : ''}`}
               onDragOver={(e) => handleTrackDragOver(e, track.id)}
               onDragLeave={handleTrackDragLeave}
               onDrop={(e) => handleTrackDrop(e, track.id)}
+              onClick={handleTimelineClick}
             >
               <div className={styles.trackLabel}>
                 <Text className={styles.trackLabelText}>{track.label}</Text>

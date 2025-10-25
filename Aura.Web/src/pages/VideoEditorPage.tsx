@@ -97,12 +97,12 @@ export function VideoEditorPage() {
       // Ctrl+S for save (prevent browser save)
       else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        console.log('Save project');
+        // TODO: Implement project save
       }
       // Ctrl+E for export
       else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
         e.preventDefault();
-        console.log('Export video');
+        handleExportVideo();
       }
       // Delete key to delete selected clip
       else if (e.key === 'Delete' && selectedClipId) {
@@ -153,12 +153,10 @@ export function VideoEditorPage() {
   const selectedClip = clips.find((clip) => clip.id === selectedClipId);
 
   const handleImportMedia = () => {
-    console.log('Import media');
     // TODO: Implement media import
   };
 
   const handleExportVideo = () => {
-    console.log('Export video');
     // TODO: Implement video export
   };
 
