@@ -9,7 +9,7 @@ The enhanced API client provides comprehensive error handling, automatic retry l
 ### 🔄 Automatic Retry with Exponential Backoff
 - Automatically retries transient errors (5xx, network errors, timeouts)
 - Uses exponential backoff: 1s, 2s, 4s delays
-- Maximum 3 retry attempts
+- Up to 3 retry attempts (4 total attempts including initial request)
 - Does NOT retry client errors (4xx)
 
 ### 🛡️ Circuit Breaker Pattern

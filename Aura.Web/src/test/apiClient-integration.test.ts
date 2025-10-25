@@ -58,7 +58,7 @@ describe('API Client Integration', () => {
       expect(delay2).toBeGreaterThanOrEqual(1800);
       expect(delay2).toBeLessThanOrEqual(2200);
     }
-  }, 10000);
+  }, 6000); // Reduced timeout: 1s + 2s delays + buffer
 
   it('should demonstrate circuit breaker preventing cascading failures', async () => {
     // Configure endpoint to always fail
@@ -115,8 +115,11 @@ describe('API Client Integration', () => {
 
       try {
         await get('/api/test', { _skipRetry: true });
-        expect.fail('Should have thrown error');
+        throw new Error('Expected error was not thrown');
       } catch (error: any) {
+        if (error.message === 'Expected error was not thrown') {
+          throw error;
+        }
         expect(error.userMessage).toBeDefined();
         expect(error.userMessage).toBeTruthy();
 
@@ -170,8 +173,11 @@ describe('API Client Integration', () => {
 
     try {
       await post('/api/projects', { name: '' });
-      expect.fail('Should have thrown error');
+      throw new Error('Expected error was not thrown');
     } catch (error: any) {
+      if (error.message === 'Expected error was not thrown') {
+        throw error;
+      }
       // Should only attempt once (no retries for 4xx errors)
       expect(attempts).toBe(1);
       expect(error.response.status).toBe(400);
