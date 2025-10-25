@@ -12,6 +12,8 @@ import {
   ZoomOut24Regular,
   ZoomFit24Regular,
 } from '@fluentui/react-icons';
+import { AppliedEffect } from '../../types/effects';
+import { applyEffectsToFrame } from '../../utils/effectsEngine';
 
 const useStyles = makeStyles({
   container: {
@@ -30,6 +32,13 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   video: {
+    maxWidth: '100%',
+    maxHeight: '100%',
+    objectFit: 'contain',
+    transition: 'transform 0.2s ease',
+    display: 'none', // Hide original video when effects are active
+  },
+  canvas: {
     maxWidth: '100%',
     maxHeight: '100%',
     objectFit: 'contain',
@@ -79,6 +88,7 @@ const useStyles = makeStyles({
 interface VideoPreviewPanelProps {
   videoUrl?: string;
   currentTime?: number;
+  effects?: AppliedEffect[];
   onTimeUpdate?: (time: number) => void;
   onPlay?: () => void;
   onPause?: () => void;
@@ -88,6 +98,7 @@ interface VideoPreviewPanelProps {
 export function VideoPreviewPanel({
   videoUrl,
   currentTime = 0,
+  effects = [],
   onTimeUpdate,
   onPlay,
   onPause,
@@ -95,12 +106,58 @@ export function VideoPreviewPanel({
 }: VideoPreviewPanelProps) {
   const styles = useStyles();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [localTime, setLocalTime] = useState(0);
   const [volume, setVolume] = useState(100);
   const [isMuted, setIsMuted] = useState(false);
   const [zoom, setZoom] = useState(100); // Zoom level percentage
+
+  // Apply effects to video frame
+  useEffect(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const renderFrame = () => {
+      if (video.paused && !video.ended) return;
+      
+      // Set canvas size to match video
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+      }
+
+      // Draw video frame to canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Apply effects if any
+      if (effects.length > 0) {
+        const sourceCanvas = document.createElement('canvas');
+        sourceCanvas.width = canvas.width;
+        sourceCanvas.height = canvas.height;
+        const sourceCtx = sourceCanvas.getContext('2d');
+        if (sourceCtx) {
+          sourceCtx.drawImage(canvas, 0, 0);
+          const effectCanvas = applyEffectsToFrame(sourceCanvas, effects, localTime);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(effectCanvas, 0, 0);
+        }
+      }
+
+      if (isPlaying) {
+        requestAnimationFrame(renderFrame);
+      }
+    };
+
+    if (isPlaying || effects.length > 0) {
+      renderFrame();
+    }
+  }, [isPlaying, effects, localTime]);
 
   // Sync external current time with video
   useEffect(() => {
@@ -206,17 +263,30 @@ export function VideoPreviewPanel({
     <div className={styles.container}>
       <div className={styles.videoContainer}>
         {videoUrl ? (
-          <video
-            ref={videoRef}
-            className={styles.video}
-            src={videoUrl}
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={handleLoadedMetadata}
-            onEnded={() => setIsPlaying(false)}
-            style={{ transform: `scale(${zoom / 100})` }}
-          >
-            <track kind="captions" />
-          </video>
+          <>
+            <video
+              ref={videoRef}
+              className={styles.video}
+              src={videoUrl}
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
+              onEnded={() => setIsPlaying(false)}
+              style={{ 
+                transform: `scale(${zoom / 100})`,
+                display: effects.length > 0 ? 'none' : 'block',
+              }}
+            >
+              <track kind="captions" />
+            </video>
+            <canvas
+              ref={canvasRef}
+              className={styles.canvas}
+              style={{ 
+                transform: `scale(${zoom / 100})`,
+                display: effects.length > 0 ? 'block' : 'none',
+              }}
+            />
+          </>
         ) : (
           <Text className={styles.placeholder}>No video loaded</Text>
         )}

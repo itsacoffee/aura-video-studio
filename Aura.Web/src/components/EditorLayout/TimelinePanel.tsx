@@ -18,6 +18,7 @@ import {
   LockClosed24Regular,
   LockOpen24Regular,
 } from '@fluentui/react-icons';
+import { AppliedEffect, EFFECT_DEFINITIONS } from '../../types/effects';
 
 const useStyles = makeStyles({
   container: {
@@ -163,6 +164,17 @@ const useStyles = makeStyles({
     zIndex: 1,
     textShadow: '0 1px 2px rgba(0,0,0,0.5)',
   },
+  effectIndicator: {
+    position: 'absolute',
+    top: '2px',
+    right: '2px',
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: tokens.colorPalettePurpleBackground2,
+    border: `1px solid ${tokens.colorNeutralForegroundOnBrand}`,
+    zIndex: 2,
+  },
   playhead: {
     position: 'absolute',
     top: 0,
@@ -195,6 +207,7 @@ interface TimelineClip {
   duration: number;
   label: string;
   type: 'video' | 'audio' | 'image';
+  effects?: AppliedEffect[];
   // Media source reference
   mediaId?: string;
   file?: File;
@@ -220,6 +233,7 @@ interface TimelinePanelProps {
   onClipSelect?: (clipId: string | null) => void;
   selectedClipId?: string | null;
   onClipAdd?: (trackId: string, clip: TimelineClip) => void;
+  onClipUpdate?: (clipId: string, updates: Partial<TimelineClip>) => void;
   onTrackToggleVisibility?: (trackId: string) => void;
   onTrackToggleLock?: (trackId: string) => void;
 }
@@ -237,6 +251,7 @@ export function TimelinePanel({
   onClipSelect,
   selectedClipId = null,
   onClipAdd,
+  onClipUpdate,
   onTrackToggleVisibility,
   onTrackToggleLock,
 }: TimelinePanelProps) {
@@ -330,7 +345,15 @@ export function TimelinePanel({
       const data = e.dataTransfer.getData('application/json');
       if (!data) return;
 
-      const mediaClip = JSON.parse(data);
+      const dropData = JSON.parse(data);
+      
+      if (dropData.type === 'effect') {
+        // Don't handle effects here - they should be dropped on clips
+        return;
+      }
+
+      // Handle media clip drops
+      const mediaClip = dropData;
       
       // Calculate drop position based on mouse position
       const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -343,7 +366,7 @@ export function TimelinePanel({
 
       // Create a new timeline clip from the media clip
       const newClip: TimelineClip = {
-        id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `clip-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         trackId,
         startTime: dropTime,
         duration: mediaClip.duration || 3, // Use media duration or default to 3
@@ -359,6 +382,48 @@ export function TimelinePanel({
       onClipAdd?.(trackId, newClip);
     } catch (error) {
       console.error('Failed to parse dropped data:', error);
+    }
+  };
+
+  const handleClipDragOver = (e: React.DragEvent, _clipId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleClipDrop = (e: React.DragEvent, clipId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      const data = e.dataTransfer.getData('application/json');
+      if (!data) return;
+
+      const dropData = JSON.parse(data);
+      
+      if (dropData.type === 'effect') {
+        // Apply effect to clip
+        const effectDef = EFFECT_DEFINITIONS.find(e => e.type === dropData.effectType);
+        if (!effectDef) return;
+
+        const clip = clips.find(c => c.id === clipId);
+        if (!clip) return;
+
+        // Create new effect with default parameters
+        const newEffect: AppliedEffect = {
+          id: `effect-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          effectType: effectDef.type,
+          enabled: true,
+          parameters: effectDef.parameters.reduce((acc, param) => {
+            acc[param.name] = param.defaultValue;
+            return acc;
+          }, {} as Record<string, number | boolean | string>),
+        };
+
+        const currentEffects = clip.effects || [];
+        onClipUpdate?.(clipId, { effects: [...currentEffects, newEffect] });
+      }
+    } catch (error) {
+      console.error('Failed to parse dropped effect:', error);
     }
   };
 
@@ -488,6 +553,8 @@ export function TimelinePanel({
                           onClipSelect?.(clip.id);
                         }
                       }}
+                      onDragOver={(e) => handleClipDragOver(e, clip.id)}
+                      onDrop={(e) => handleClipDrop(e, clip.id)}
                       role="button"
                       tabIndex={0}
                       aria-label={`${clip.label} clip`}
@@ -523,6 +590,11 @@ export function TimelinePanel({
                       )}
                       
                       <span className={styles.clipLabel}>{clip.label}</span>
+                      
+                      {/* Effect indicator */}
+                      {clip.effects && clip.effects.length > 0 && (
+                        <div className={styles.effectIndicator} title={`${clip.effects.length} effect(s) applied`} />
+                      )}
                     </div>
                   ))}
               </div>
