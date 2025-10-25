@@ -15,7 +15,7 @@ import {
   TabList,
   Slider,
 } from '@fluentui/react-components';
-import { Save24Regular } from '@fluentui/react-icons';
+import { Save24Regular, ArrowDownload24Regular, ArrowUpload24Regular } from '@fluentui/react-icons';
 import type { Profile } from '../types';
 import { LocalEngines } from '../components/Settings/LocalEngines';
 import { ProvidersTable } from '../components/Settings/ProvidersTable';
@@ -25,10 +25,18 @@ import { OutputSettingsTab } from '../components/Settings/OutputSettingsTab';
 import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettingsTab';
 import { KeyboardShortcutsTab } from '../components/Settings/KeyboardShortcutsTab';
 import { ThemeCustomizationTab } from '../components/Settings/ThemeCustomizationTab';
+import { GeneralSettingsTab } from '../components/Settings/GeneralSettingsTab';
+import { FileLocationsSettingsTab } from '../components/Settings/FileLocationsSettingsTab';
+import { VideoDefaultsSettingsTab } from '../components/Settings/VideoDefaultsSettingsTab';
+import { EditorPreferencesSettingsTab } from '../components/Settings/EditorPreferencesSettingsTab';
+import { ApiKeysSettingsTab } from '../components/Settings/ApiKeysSettingsTab';
 import { resetFirstRunStatus } from '../services/firstRunService';
 import { ValidatedInput } from '../components/forms/ValidatedInput';
 import { useFormValidation } from '../hooks/useFormValidation';
 import { apiKeysSchema, providerPathsSchema } from '../utils/formValidation';
+import { settingsService } from '../services/settingsService';
+import type { UserSettings } from '../types/settings';
+import { createDefaultSettings } from '../types/settings';
 
 const useStyles = makeStyles({
   container: {
@@ -79,10 +87,15 @@ const useStyles = makeStyles({
 
 export function SettingsPage() {
   const styles = useStyles();
-  const [activeTab, setActiveTab] = useState('system');
+  const [activeTab, setActiveTab] = useState('general');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [offlineMode, setOfflineMode] = useState(false);
   const [settings, setSettings] = useState<any>({});
+
+  // Comprehensive user settings (new)
+  const [userSettings, setUserSettings] = useState<UserSettings>(createDefaultSettings());
+  const [originalSettings, setOriginalSettings] = useState<UserSettings>(createDefaultSettings());
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // UI Settings state
   const [uiScale, setUiScale] = useState(100);
@@ -153,6 +166,7 @@ export function SettingsPage() {
   });
 
   useEffect(() => {
+    loadUserSettings();
     fetchSettings();
     fetchProfiles();
     fetchApiKeys();
@@ -166,6 +180,23 @@ export function SettingsPage() {
       document.documentElement.style.fontSize = `${uiScale}%`;
     }
   }, [uiScale]);
+
+  // Track unsaved changes
+  useEffect(() => {
+    const hasChanges = JSON.stringify(userSettings) !== JSON.stringify(originalSettings);
+    setHasUnsavedChanges(hasChanges);
+  }, [userSettings, originalSettings]);
+
+  // Load comprehensive user settings
+  const loadUserSettings = async () => {
+    try {
+      const loaded = await settingsService.loadSettings();
+      setUserSettings(loaded);
+      setOriginalSettings(loaded);
+    } catch (error) {
+      console.error('Error loading user settings:', error);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -558,6 +589,63 @@ export function SettingsPage() {
     alert(`Profile "${name}" deleted`);
   };
 
+  // Save comprehensive user settings
+  const saveUserSettings = async () => {
+    try {
+      const success = await settingsService.saveSettings(userSettings);
+      if (success) {
+        setOriginalSettings({ ...userSettings });
+        alert('Settings saved successfully!');
+      } else {
+        alert('Failed to save settings to backend, but saved locally.');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Error saving settings');
+    }
+  };
+
+  // Export settings
+  const exportUserSettings = () => {
+    settingsService.exportSettings(userSettings);
+  };
+
+  // Import settings
+  const importUserSettings = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const imported = await settingsService.importSettings(file);
+        if (imported) {
+          setUserSettings(imported);
+          alert('Settings imported successfully! Remember to save.');
+        } else {
+          alert('Failed to import settings. Please check the file format.');
+        }
+      }
+    };
+    input.click();
+  };
+
+  // Reset settings to defaults
+  const resetUserSettings = async () => {
+    if (!confirm('Reset all settings to defaults? This cannot be undone.')) {
+      return;
+    }
+    try {
+      const defaults = await settingsService.resetToDefaults();
+      setUserSettings(defaults);
+      setOriginalSettings(defaults);
+      alert('Settings reset to defaults');
+    } catch (error) {
+      console.error('Error resetting settings:', error);
+      alert('Error resetting settings');
+    }
+  };
+
   const fetchPortableModeSettings = async () => {
     try {
       const response = await fetch(apiUrl('/api/settings/portable'));
@@ -599,6 +687,11 @@ export function SettingsPage() {
         <Text className={styles.subtitle}>
           Configure system preferences, providers, and API keys
         </Text>
+        {hasUnsavedChanges && (
+          <Text style={{ color: tokens.colorPaletteYellowForeground1, fontWeight: 600 }}>
+            ⚠️ You have unsaved changes
+          </Text>
+        )}
       </div>
 
       <TabList
@@ -606,6 +699,11 @@ export function SettingsPage() {
         selectedValue={activeTab}
         onTabSelect={(_, data) => setActiveTab(data.value as string)}
       >
+        <Tab value="general">General</Tab>
+        <Tab value="apikeys">API Keys</Tab>
+        <Tab value="filelocations">File Locations</Tab>
+        <Tab value="videodefaults">Video Defaults</Tab>
+        <Tab value="editorpreferences">Editor</Tab>
         <Tab value="system">System</Tab>
         <Tab value="output">Output</Tab>
         <Tab value="performance">Performance</Tab>
@@ -616,11 +714,57 @@ export function SettingsPage() {
         <Tab value="providers">Providers</Tab>
         <Tab value="localproviders">Local Providers</Tab>
         <Tab value="localengines">Local Engines</Tab>
-        <Tab value="apikeys">API Keys</Tab>
         <Tab value="aioptimization">AI Optimization</Tab>
-        <Tab value="templates">Templates</Tab>
+        <Tab value="importexport">Import/Export</Tab>
         <Tab value="privacy">Privacy</Tab>
       </TabList>
+
+      {activeTab === 'general' && (
+        <GeneralSettingsTab
+          settings={userSettings.general}
+          onChange={(general) => setUserSettings({ ...userSettings, general })}
+          onSave={saveUserSettings}
+          hasChanges={hasUnsavedChanges}
+        />
+      )}
+
+      {activeTab === 'apikeys' && (
+        <ApiKeysSettingsTab
+          settings={userSettings.apiKeys}
+          onChange={(apiKeys) => setUserSettings({ ...userSettings, apiKeys })}
+          onSave={saveUserSettings}
+          onTestApiKey={async (provider, apiKey) => settingsService.testApiKey(provider, apiKey)}
+          hasChanges={hasUnsavedChanges}
+        />
+      )}
+
+      {activeTab === 'filelocations' && (
+        <FileLocationsSettingsTab
+          settings={userSettings.fileLocations}
+          onChange={(fileLocations) => setUserSettings({ ...userSettings, fileLocations })}
+          onSave={saveUserSettings}
+          onValidatePath={async (path) => settingsService.validatePath(path)}
+          hasChanges={hasUnsavedChanges}
+        />
+      )}
+
+      {activeTab === 'videodefaults' && (
+        <VideoDefaultsSettingsTab
+          settings={userSettings.videoDefaults}
+          onChange={(videoDefaults) => setUserSettings({ ...userSettings, videoDefaults })}
+          onSave={saveUserSettings}
+          hasChanges={hasUnsavedChanges}
+        />
+      )}
+
+      {activeTab === 'editorpreferences' && (
+        <EditorPreferencesSettingsTab
+          settings={userSettings.editorPreferences}
+          onChange={(editorPreferences) => setUserSettings({ ...userSettings, editorPreferences })}
+          onSave={saveUserSettings}
+          hasChanges={hasUnsavedChanges}
+        />
+      )}
 
       {activeTab === 'system' && (
         <Card className={styles.section}>
@@ -1530,13 +1674,29 @@ export function SettingsPage() {
           <Title2>Privacy Settings</Title2>
           <div className={styles.form}>
             <Field label="Telemetry">
-              <Switch />
+              <Switch
+                checked={userSettings.advanced.enableTelemetry}
+                onChange={(_, data) =>
+                  setUserSettings({
+                    ...userSettings,
+                    advanced: { ...userSettings.advanced, enableTelemetry: data.checked },
+                  })
+                }
+              />
               <Text size={200}>
                 Send anonymous usage data to improve the app (disabled by default)
               </Text>
             </Field>
             <Field label="Crash Reports">
-              <Switch />
+              <Switch
+                checked={userSettings.advanced.enableCrashReports}
+                onChange={(_, data) =>
+                  setUserSettings({
+                    ...userSettings,
+                    advanced: { ...userSettings.advanced, enableCrashReports: data.checked },
+                  })
+                }
+              />
               <Text size={200}>
                 Send crash reports to help diagnose issues (disabled by default)
               </Text>
@@ -1545,10 +1705,101 @@ export function SettingsPage() {
         </Card>
       )}
 
+      {activeTab === 'importexport' && (
+        <Card className={styles.section}>
+          <Title2>Import/Export Settings</Title2>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+            Backup and restore all your settings as a JSON file
+          </Text>
+          <div className={styles.form}>
+            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
+              <Button
+                appearance="primary"
+                icon={<ArrowDownload24Regular />}
+                onClick={exportUserSettings}
+              >
+                Export All Settings
+              </Button>
+              <Button
+                appearance="secondary"
+                icon={<ArrowUpload24Regular />}
+                onClick={importUserSettings}
+              >
+                Import Settings
+              </Button>
+              <Button appearance="subtle" onClick={resetUserSettings}>
+                Reset to Defaults
+              </Button>
+            </div>
+            <Card
+              style={{
+                marginTop: tokens.spacingVerticalL,
+                padding: tokens.spacingVerticalM,
+                backgroundColor: tokens.colorNeutralBackground3,
+              }}
+            >
+              <Text weight="semibold" size={300}>
+                ⚠️ Important
+              </Text>
+              <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
+                Exported settings include API keys and sensitive information. Keep your exported
+                files secure and never share them publicly.
+              </Text>
+            </Card>
+            <Card
+              style={{
+                marginTop: tokens.spacingVerticalM,
+                padding: tokens.spacingVerticalM,
+                backgroundColor: tokens.colorNeutralBackground2,
+              }}
+            >
+              <Text weight="semibold" size={300}>
+                📋 What's Included
+              </Text>
+              <ul style={{ marginTop: tokens.spacingVerticalS, paddingLeft: '20px' }}>
+                <li>
+                  <Text size={200}>General settings (theme, language, autosave, etc.)</Text>
+                </li>
+                <li>
+                  <Text size={200}>API keys for all services</Text>
+                </li>
+                <li>
+                  <Text size={200}>File locations and paths</Text>
+                </li>
+                <li>
+                  <Text size={200}>Video defaults (resolution, codec, etc.)</Text>
+                </li>
+                <li>
+                  <Text size={200}>Editor preferences</Text>
+                </li>
+                <li>
+                  <Text size={200}>UI customization</Text>
+                </li>
+                <li>
+                  <Text size={200}>Advanced settings</Text>
+                </li>
+              </ul>
+            </Card>
+          </div>
+        </Card>
+      )}
+
       <div className={styles.actions}>
-        <Button appearance="primary" icon={<Save24Regular />} onClick={saveSettings}>
-          Save Settings
+        <Button appearance="primary" icon={<Save24Regular />} onClick={saveUserSettings} disabled={!hasUnsavedChanges}>
+          Save All Settings
         </Button>
+        {hasUnsavedChanges && (
+          <Button
+            appearance="subtle"
+            onClick={() => {
+              if (confirm('Discard all unsaved changes?')) {
+                setUserSettings({ ...originalSettings });
+              }
+            }}
+          >
+            Discard Changes
+          </Button>
+        )}
       </div>
     </div>
   );
