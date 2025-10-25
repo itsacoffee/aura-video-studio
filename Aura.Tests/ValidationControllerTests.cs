@@ -41,6 +41,22 @@ public class ValidationControllerTests
         };
     }
 
+    /// <summary>
+    /// Helper method to extract validation response properties from anonymous object
+    /// </summary>
+    private static (bool IsValid, List<string> Issues, int IssueCount) GetValidationResponse(object response)
+    {
+        var isValid = response.GetType().GetProperty("isValid")?.GetValue(response);
+        var issues = response.GetType().GetProperty("issues")?.GetValue(response) as List<string>;
+        var issueCount = response.GetType().GetProperty("issueCount")?.GetValue(response);
+
+        Assert.NotNull(isValid);
+        Assert.NotNull(issues);
+        Assert.NotNull(issueCount);
+
+        return ((bool)isValid, issues, (int)issueCount);
+    }
+
     [Fact]
     public async Task ValidateBrief_WithValidRequest_ReturnsOkWithValidResult()
     {
@@ -61,16 +77,11 @@ public class ValidationControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = okResult.Value;
-        Assert.NotNull(response);
+        Assert.NotNull(okResult.Value);
 
-        var isValid = response.GetType().GetProperty("isValid")?.GetValue(response);
-        var issues = response.GetType().GetProperty("issues")?.GetValue(response) as List<string>;
-        var issueCount = response.GetType().GetProperty("issueCount")?.GetValue(response);
-
-        Assert.NotNull(isValid);
-        Assert.True((bool)isValid);
-        Assert.NotNull(issues);
+        var (isValid, issues, issueCount) = GetValidationResponse(okResult.Value);
+        
+        Assert.True(isValid);
         Assert.Empty(issues);
         Assert.Equal(0, issueCount);
     }
@@ -91,15 +102,11 @@ public class ValidationControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = okResult.Value;
-        Assert.NotNull(response);
+        Assert.NotNull(okResult.Value);
 
-        var isValid = response.GetType().GetProperty("isValid")?.GetValue(response);
-        var issues = response.GetType().GetProperty("issues")?.GetValue(response) as List<string>;
-
-        Assert.NotNull(isValid);
-        Assert.False((bool)isValid);
-        Assert.NotNull(issues);
+        var (isValid, issues, _) = GetValidationResponse(okResult.Value);
+        
+        Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Contains(issues, i => i.Contains("Topic is required"));
     }
@@ -120,15 +127,11 @@ public class ValidationControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = okResult.Value;
-        Assert.NotNull(response);
+        Assert.NotNull(okResult.Value);
 
-        var isValid = response.GetType().GetProperty("isValid")?.GetValue(response);
-        var issues = response.GetType().GetProperty("issues")?.GetValue(response) as List<string>;
-
-        Assert.NotNull(isValid);
-        Assert.False((bool)isValid);
-        Assert.NotNull(issues);
+        var (isValid, issues, _) = GetValidationResponse(okResult.Value);
+        
+        Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Contains(issues, i => i.Contains("too short"));
     }
@@ -149,15 +152,11 @@ public class ValidationControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = okResult.Value;
-        Assert.NotNull(response);
+        Assert.NotNull(okResult.Value);
 
-        var isValid = response.GetType().GetProperty("isValid")?.GetValue(response);
-        var issues = response.GetType().GetProperty("issues")?.GetValue(response) as List<string>;
-
-        Assert.NotNull(isValid);
-        Assert.False((bool)isValid);
-        Assert.NotNull(issues);
+        var (isValid, issues, _) = GetValidationResponse(okResult.Value);
+        
+        Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Contains(issues, i => i.Contains("too short") && i.Contains("10 seconds"));
     }
@@ -178,15 +177,11 @@ public class ValidationControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = okResult.Value;
-        Assert.NotNull(response);
+        Assert.NotNull(okResult.Value);
 
-        var isValid = response.GetType().GetProperty("isValid")?.GetValue(response);
-        var issues = response.GetType().GetProperty("issues")?.GetValue(response) as List<string>;
-
-        Assert.NotNull(isValid);
-        Assert.False((bool)isValid);
-        Assert.NotNull(issues);
+        var (isValid, issues, _) = GetValidationResponse(okResult.Value);
+        
+        Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Contains(issues, i => i.Contains("too long") && i.Contains("30 minutes"));
     }
@@ -211,15 +206,11 @@ public class ValidationControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = okResult.Value;
-        Assert.NotNull(response);
+        Assert.NotNull(okResult.Value);
 
-        var isValid = response.GetType().GetProperty("isValid")?.GetValue(response);
-        var issues = response.GetType().GetProperty("issues")?.GetValue(response) as List<string>;
-
-        Assert.NotNull(isValid);
-        Assert.True((bool)isValid);
-        Assert.NotNull(issues);
+        var (isValid, issues, _) = GetValidationResponse(okResult.Value);
+        
+        Assert.True(isValid);
         Assert.Empty(issues);
     }
 
@@ -248,15 +239,11 @@ public class ValidationControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = okResult.Value;
-        Assert.NotNull(response);
+        Assert.NotNull(okResult.Value);
 
-        var isValid = response.GetType().GetProperty("isValid")?.GetValue(response);
-        var issues = response.GetType().GetProperty("issues")?.GetValue(response) as List<string>;
-
-        Assert.NotNull(isValid);
-        Assert.False((bool)isValid);
-        Assert.NotNull(issues);
+        var (isValid, issues, _) = GetValidationResponse(okResult.Value);
+        
+        Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Contains(issues, i => i.Contains("FFmpeg"));
     }
@@ -277,19 +264,14 @@ public class ValidationControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = okResult.Value;
-        Assert.NotNull(response);
+        Assert.NotNull(okResult.Value);
 
-        var isValid = response.GetType().GetProperty("isValid")?.GetValue(response);
-        var issues = response.GetType().GetProperty("issues")?.GetValue(response) as List<string>;
-        var issueCount = response.GetType().GetProperty("issueCount")?.GetValue(response);
-
-        Assert.NotNull(isValid);
-        Assert.False((bool)isValid!);
-        Assert.NotNull(issues);
+        var (isValid, issues, issueCount) = GetValidationResponse(okResult.Value);
+        
+        Assert.False(isValid);
         Assert.NotEmpty(issues);
         Assert.Equal(issues.Count, issueCount);
-        Assert.True((int)issueCount! >= 2); // At least topic and duration issues
+        Assert.True(issueCount >= 2); // At least topic and duration issues
     }
 
     private void SetupValidSystemMocks()
