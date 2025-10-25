@@ -1,5 +1,5 @@
 /**
- * Axios-based HTTP client for API requests
+ * Comprehensive API client with retry logic, circuit breaker, and request queueing
  * Provides centralized configuration, interceptors, and error handling
  */
 
@@ -8,9 +8,225 @@ import axios, {
   AxiosError,
   AxiosRequestConfig,
   InternalAxiosRequestConfig,
+  AxiosResponse,
 } from 'axios';
 import { env } from '../../config/env';
 import { loggingService } from '../loggingService';
+import {
+  getHttpErrorMessage,
+  getAppErrorMessage,
+  isTransientError,
+  shouldTriggerCircuitBreaker,
+} from './apiErrorMessages';
+
+/**
+ * Circuit breaker states
+ */
+enum CircuitState {
+  CLOSED = 'CLOSED', // Normal operation
+  OPEN = 'OPEN', // Blocking requests
+  HALF_OPEN = 'HALF_OPEN', // Testing if service recovered
+}
+
+/**
+ * Circuit breaker configuration
+ */
+interface CircuitBreakerConfig {
+  failureThreshold: number; // Number of failures before opening
+  successThreshold: number; // Number of successes needed to close from half-open
+  timeout: number; // Time in ms before attempting recovery
+}
+
+/**
+ * Circuit breaker for preventing cascading failures
+ */
+class CircuitBreaker {
+  private state: CircuitState = CircuitState.CLOSED;
+  private failureCount = 0;
+  private successCount = 0;
+  private nextAttempt = Date.now();
+  private config: CircuitBreakerConfig;
+
+  constructor(config: Partial<CircuitBreakerConfig> = {}) {
+    this.config = {
+      failureThreshold: config.failureThreshold || 5,
+      successThreshold: config.successThreshold || 2,
+      timeout: config.timeout || 60000, // 1 minute
+    };
+  }
+
+  /**
+   * Check if request should be allowed
+   */
+  public canAttempt(): boolean {
+    if (this.state === CircuitState.CLOSED) {
+      return true;
+    }
+
+    if (this.state === CircuitState.OPEN) {
+      // Check if timeout has passed
+      if (Date.now() >= this.nextAttempt) {
+        this.state = CircuitState.HALF_OPEN;
+        this.successCount = 0;
+        loggingService.info('Circuit breaker entering half-open state', 'apiClient', 'circuitBreaker');
+        return true;
+      }
+      return false;
+    }
+
+    // HALF_OPEN state - allow attempts
+    return true;
+  }
+
+  /**
+   * Record successful request
+   */
+  public recordSuccess(): void {
+    this.failureCount = 0;
+
+    if (this.state === CircuitState.HALF_OPEN) {
+      this.successCount++;
+      if (this.successCount >= this.config.successThreshold) {
+        this.state = CircuitState.CLOSED;
+        loggingService.info('Circuit breaker closed - service recovered', 'apiClient', 'circuitBreaker');
+      }
+    }
+  }
+
+  /**
+   * Record failed request
+   */
+  public recordFailure(): void {
+    this.failureCount++;
+
+    if (this.state === CircuitState.HALF_OPEN) {
+      this.state = CircuitState.OPEN;
+      this.nextAttempt = Date.now() + this.config.timeout;
+      loggingService.warn(
+        'Circuit breaker opened - service still failing',
+        'apiClient',
+        'circuitBreaker',
+        { nextAttempt: new Date(this.nextAttempt).toISOString() }
+      );
+    } else if (this.failureCount >= this.config.failureThreshold) {
+      this.state = CircuitState.OPEN;
+      this.nextAttempt = Date.now() + this.config.timeout;
+      loggingService.error(
+        'Circuit breaker opened - too many failures',
+        undefined,
+        'apiClient',
+        'circuitBreaker',
+        {
+          failureCount: this.failureCount,
+          threshold: this.config.failureThreshold,
+          nextAttempt: new Date(this.nextAttempt).toISOString(),
+        }
+      );
+    }
+  }
+
+  /**
+   * Get current state
+   */
+  public getState(): CircuitState {
+    return this.state;
+  }
+
+  /**
+   * Reset circuit breaker
+   */
+  public reset(): void {
+    this.state = CircuitState.CLOSED;
+    this.failureCount = 0;
+    this.successCount = 0;
+    this.nextAttempt = Date.now();
+  }
+}
+
+/**
+ * Request queue for rate-limited endpoints
+ */
+class RequestQueue {
+  private queue: Array<() => Promise<void>> = [];
+  private processing = false;
+  private lastRequestTime = 0;
+  private minInterval: number;
+
+  constructor(minInterval = 1000) {
+    this.minInterval = minInterval;
+  }
+
+  /**
+   * Add request to queue
+   */
+  public async enqueue<T>(requestFn: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const result = await requestFn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      this.processQueue();
+    });
+  }
+
+  /**
+   * Process queued requests
+   */
+  private async processQueue(): Promise<void> {
+    if (this.processing || this.queue.length === 0) {
+      return;
+    }
+
+    this.processing = true;
+
+    while (this.queue.length > 0) {
+      const now = Date.now();
+      const timeSinceLastRequest = now - this.lastRequestTime;
+
+      if (timeSinceLastRequest < this.minInterval) {
+        await new Promise((resolve) => setTimeout(resolve, this.minInterval - timeSinceLastRequest));
+      }
+
+      const request = this.queue.shift();
+      if (request) {
+        this.lastRequestTime = Date.now();
+        await request();
+      }
+    }
+
+    this.processing = false;
+  }
+}
+
+/**
+ * Extended Axios config with custom options
+ */
+interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
+  _retry?: number;
+  _skipRetry?: boolean;
+  _skipCircuitBreaker?: boolean;
+  _timeout?: number;
+  _queueKey?: string;
+}
+
+// Initialize circuit breaker and request queues
+const circuitBreaker = new CircuitBreaker();
+const requestQueues = new Map<string, RequestQueue>();
+
+/**
+ * Get or create request queue for a key
+ */
+function getRequestQueue(key: string): RequestQueue {
+  if (!requestQueues.has(key)) {
+    requestQueues.set(key, new RequestQueue());
+  }
+  return requestQueues.get(key)!;
+}
 
 /**
  * Create axios instance with default configuration
@@ -24,13 +240,28 @@ const apiClient: AxiosInstance = axios.create({
 });
 
 /**
- * Request interceptor for logging and auth token injection
+ * Request interceptor for logging, auth token injection, and circuit breaker
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const extendedConfig = config as ExtendedAxiosRequestConfig;
+
+    // Check circuit breaker (unless explicitly skipped)
+    if (!extendedConfig._skipCircuitBreaker && !circuitBreaker.canAttempt()) {
+      const error = new Error('Circuit breaker is open - service unavailable');
+      (error as any).isCircuitBreakerError = true;
+      loggingService.warn(
+        'Request blocked by circuit breaker',
+        'apiClient',
+        'circuitBreaker',
+        { url: config.url }
+      );
+      return Promise.reject(error);
+    }
+
     // Log API requests using logging service
     const startTime = Date.now();
-    
+
     // Store start time in config for performance logging
     (config as any)._requestStartTime = startTime;
 
@@ -45,7 +276,7 @@ apiClient.interceptors.request.use(
       }
     );
 
-    // Add auth token if available (future implementation)
+    // Add auth token if available
     const token = localStorage.getItem('auth_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -60,13 +291,19 @@ apiClient.interceptors.request.use(
 );
 
 /**
- * Response interceptor for logging and error handling
+ * Response interceptor for logging, error handling, and automatic retry
  */
 apiClient.interceptors.response.use(
-  (response) => {
+  (response: AxiosResponse) => {
     // Calculate request duration for performance logging
     const startTime = (response.config as any)._requestStartTime;
     const duration = startTime ? Date.now() - startTime : 0;
+
+    // Record success in circuit breaker
+    const extendedConfig = response.config as ExtendedAxiosRequestConfig;
+    if (!extendedConfig._skipCircuitBreaker) {
+      circuitBreaker.recordSuccess();
+    }
 
     // Log successful responses with performance metrics
     loggingService.debug(
@@ -97,24 +334,36 @@ apiClient.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
+    const extendedConfig = error.config as ExtendedAxiosRequestConfig | undefined;
+
     // Log API errors
     const startTime = (error.config as any)?._requestStartTime;
     const duration = startTime ? Date.now() - startTime : 0;
 
-    // Extract user-friendly error message
+    // Extract error information
     let userMessage = 'An error occurred while communicating with the server';
-    let technicalDetails = {};
+    let errorCode: string | undefined;
+    let technicalDetails: Record<string, any> = {};
 
+    // Handle different error scenarios
     if (error.response) {
       // Server responded with error status
       const status = error.response.status;
       const responseData = error.response.data as any;
 
-      // Extract user-friendly message from response if available
-      if (responseData?.message) {
-        userMessage = responseData.message;
-      } else if (responseData?.error) {
-        userMessage = responseData.error;
+      // Extract error code
+      errorCode = responseData?.errorCode || responseData?.code;
+
+      // Get user-friendly message
+      const errorMessage = errorCode
+        ? getAppErrorMessage(errorCode)
+        : getHttpErrorMessage(status);
+
+      userMessage = errorMessage.message;
+
+      // Add custom message from response if available
+      if (responseData?.message || responseData?.detail) {
+        userMessage = responseData.message || responseData.detail;
       }
 
       technicalDetails = {
@@ -123,28 +372,56 @@ apiClient.interceptors.response.use(
         data: responseData,
         url: error.config?.url,
         method: error.config?.method,
+        errorCode,
       };
 
-      // Handle specific error cases
+      // Check if we should trigger circuit breaker
+      if (extendedConfig && !extendedConfig._skipCircuitBreaker) {
+        if (shouldTriggerCircuitBreaker(status, errorCode)) {
+          circuitBreaker.recordFailure();
+        }
+      }
+
+      // Handle 401 - clear auth and potentially redirect
       if (status === 401) {
-        userMessage = 'Authentication required. Please log in.';
-        // Unauthorized - clear token and redirect to login (future)
         localStorage.removeItem('auth_token');
-        // Could dispatch a logout action here
-      } else if (status === 403) {
-        userMessage = 'Access forbidden. You do not have permission to perform this action.';
-      } else if (status === 404) {
-        userMessage = 'The requested resource was not found.';
-      } else if (status >= 500) {
-        userMessage = 'A server error occurred. Please try again later.';
+        // TODO: Dispatch logout action or trigger auth refresh
+      }
+
+      // Handle 429 - rate limit
+      if (status === 429) {
+        const retryAfter = error.response.headers['retry-after'];
+        technicalDetails.retryAfter = retryAfter;
+        loggingService.warn(
+          'Rate limit exceeded',
+          'apiClient',
+          'rateLimit',
+          { retryAfter, url: error.config?.url }
+        );
       }
     } else if (error.request) {
       // Request made but no response received
       userMessage = 'Unable to reach the server. Please check your connection.';
+      errorCode = 'NETWORK_ERROR';
       technicalDetails = {
         request: error.request,
         url: error.config?.url,
         method: error.config?.method,
+        errorCode,
+      };
+
+      // Record network failure in circuit breaker
+      if (extendedConfig && !extendedConfig._skipCircuitBreaker) {
+        if (shouldTriggerCircuitBreaker(undefined, errorCode)) {
+          circuitBreaker.recordFailure();
+        }
+      }
+    } else if ((error as any).isCircuitBreakerError) {
+      // Circuit breaker blocked the request
+      userMessage = 'The service is temporarily unavailable. Please try again later.';
+      errorCode = 'CIRCUIT_BREAKER_OPEN';
+      technicalDetails = {
+        circuitBreakerState: circuitBreaker.getState(),
       };
     } else {
       // Error setting up request
@@ -180,13 +457,51 @@ apiClient.interceptors.response.use(
 
     // Attach user-friendly message to error for UI display
     (error as any).userMessage = userMessage;
+    (error as any).errorCode = errorCode;
+
+    // Check if we should retry
+    if (extendedConfig && !extendedConfig._skipRetry && error.config) {
+      const shouldRetry = isTransientError(error.response?.status, errorCode);
+
+      if (shouldRetry) {
+        const retryCount = (extendedConfig._retry || 0) + 1;
+        const maxRetries = 3;
+
+        if (retryCount <= maxRetries) {
+          // Calculate delay with exponential backoff
+          const baseDelay = 1000; // 1 second
+          const delay = Math.min(baseDelay * Math.pow(2, retryCount - 1), 8000);
+
+          loggingService.warn(
+            `Retrying request (${retryCount}/${maxRetries}) after ${delay}ms`,
+            'apiClient',
+            'retry',
+            {
+              url: error.config.url,
+              method: error.config.method,
+              attempt: retryCount,
+            }
+          );
+
+          // Wait before retrying
+          await new Promise((resolve) => setTimeout(resolve, delay));
+
+          // Update retry count
+          extendedConfig._retry = retryCount;
+
+          // Retry the request
+          return apiClient(extendedConfig);
+        }
+      }
+    }
 
     return Promise.reject(error);
   }
 );
 
 /**
- * Retry logic with exponential backoff
+ * Retry logic with exponential backoff (legacy helper - prefer using built-in retry)
+ * @deprecated Use the built-in retry mechanism in interceptors instead
  */
 export async function requestWithRetry<T>(
   requestFn: () => Promise<T>,
@@ -203,8 +518,10 @@ export async function requestWithRetry<T>(
 
       if (attempt < maxRetries - 1) {
         const delay = baseDelay * Math.pow(2, attempt);
-        console.warn(
-          `Request failed, retrying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`
+        loggingService.warn(
+          `Request failed, retrying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`,
+          'apiClient',
+          'retry'
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
@@ -217,7 +534,10 @@ export async function requestWithRetry<T>(
 /**
  * Generic GET request
  */
-export async function get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+export async function get<T>(
+  url: string,
+  config?: ExtendedAxiosRequestConfig
+): Promise<T> {
   const response = await apiClient.get<T>(url, config);
   return response.data;
 }
@@ -228,7 +548,7 @@ export async function get<T>(url: string, config?: AxiosRequestConfig): Promise<
 export async function post<T>(
   url: string,
   data?: unknown,
-  config?: AxiosRequestConfig
+  config?: ExtendedAxiosRequestConfig
 ): Promise<T> {
   const response = await apiClient.post<T>(url, data, config);
   return response.data;
@@ -237,7 +557,11 @@ export async function post<T>(
 /**
  * Generic PUT request
  */
-export async function put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+export async function put<T>(
+  url: string,
+  data?: unknown,
+  config?: ExtendedAxiosRequestConfig
+): Promise<T> {
   const response = await apiClient.put<T>(url, data, config);
   return response.data;
 }
@@ -248,7 +572,7 @@ export async function put<T>(url: string, data?: unknown, config?: AxiosRequestC
 export async function patch<T>(
   url: string,
   data?: unknown,
-  config?: AxiosRequestConfig
+  config?: ExtendedAxiosRequestConfig
 ): Promise<T> {
   const response = await apiClient.patch<T>(url, data, config);
   return response.data;
@@ -257,9 +581,175 @@ export async function patch<T>(
 /**
  * Generic DELETE request
  */
-export async function del<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+export async function del<T>(
+  url: string,
+  config?: ExtendedAxiosRequestConfig
+): Promise<T> {
   const response = await apiClient.delete<T>(url, config);
   return response.data;
+}
+
+/**
+ * Create AbortController for request cancellation
+ */
+export function createAbortController(): AbortController {
+  return new AbortController();
+}
+
+/**
+ * Make a cancellable request
+ */
+export async function getCancellable<T>(
+  url: string,
+  abortController: AbortController,
+  config?: ExtendedAxiosRequestConfig
+): Promise<T> {
+  const response = await apiClient.get<T>(url, {
+    ...config,
+    signal: abortController.signal,
+  });
+  return response.data;
+}
+
+/**
+ * Queue a request to prevent rate limiting
+ */
+export async function queuedRequest<T>(
+  queueKey: string,
+  requestFn: () => Promise<T>
+): Promise<T> {
+  const queue = getRequestQueue(queueKey);
+  return queue.enqueue(requestFn);
+}
+
+/**
+ * GET request with automatic queuing for rate-limited endpoints
+ */
+export async function getQueued<T>(
+  url: string,
+  queueKey: string,
+  config?: ExtendedAxiosRequestConfig
+): Promise<T> {
+  return queuedRequest(queueKey, () => get<T>(url, config));
+}
+
+/**
+ * POST request with automatic queuing for rate-limited endpoints
+ */
+export async function postQueued<T>(
+  url: string,
+  queueKey: string,
+  data?: unknown,
+  config?: ExtendedAxiosRequestConfig
+): Promise<T> {
+  return queuedRequest(queueKey, () => post<T>(url, data, config));
+}
+
+/**
+ * Make a request with custom timeout
+ */
+export async function getWithTimeout<T>(
+  url: string,
+  timeoutMs: number,
+  config?: ExtendedAxiosRequestConfig
+): Promise<T> {
+  const response = await apiClient.get<T>(url, {
+    ...config,
+    timeout: timeoutMs,
+  });
+  return response.data;
+}
+
+/**
+ * POST request with custom timeout (useful for video generation)
+ */
+export async function postWithTimeout<T>(
+  url: string,
+  data: unknown,
+  timeoutMs: number,
+  config?: ExtendedAxiosRequestConfig
+): Promise<T> {
+  const response = await apiClient.post<T>(url, data, {
+    ...config,
+    timeout: timeoutMs,
+  });
+  return response.data;
+}
+
+/**
+ * Reset circuit breaker (for testing or manual recovery)
+ */
+export function resetCircuitBreaker(): void {
+  circuitBreaker.reset();
+  loggingService.info('Circuit breaker manually reset', 'apiClient', 'circuitBreaker');
+}
+
+/**
+ * Get circuit breaker state
+ */
+export function getCircuitBreakerState(): string {
+  return circuitBreaker.getState();
+}
+
+/**
+ * Upload file with progress tracking
+ */
+export async function uploadFile<T>(
+  url: string,
+  file: File,
+  onProgress?: (progress: number) => void,
+  config?: ExtendedAxiosRequestConfig
+): Promise<T> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await apiClient.post<T>(url, formData, {
+    ...config,
+    headers: {
+      ...config?.headers,
+      'Content-Type': 'multipart/form-data',
+    },
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress(progress);
+      }
+    },
+  });
+
+  return response.data;
+}
+
+/**
+ * Download file with progress tracking
+ */
+export async function downloadFile(
+  url: string,
+  filename: string,
+  onProgress?: (progress: number) => void,
+  config?: ExtendedAxiosRequestConfig
+): Promise<void> {
+  const response = await apiClient.get(url, {
+    ...config,
+    responseType: 'blob',
+    onDownloadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress(progress);
+      }
+    },
+  });
+
+  // Create download link
+  const blob = new Blob([response.data]);
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(downloadUrl);
 }
 
 export default apiClient;
