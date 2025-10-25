@@ -2020,6 +2020,41 @@ apiGroup.MapGet("/downloads/{component}/manual", (string component, Aura.Core.De
 .WithName("GetManualInstructions")
 .WithOpenApi();
 
+// Dependency rescan endpoint
+apiGroup.MapPost("/dependencies/rescan", async (
+    Aura.Core.Dependencies.DependencyRescanService rescanService,
+    CancellationToken ct) =>
+{
+    try
+    {
+        Log.Information("Starting dependency rescan");
+        var report = await rescanService.RescanAllAsync(ct);
+        
+        return Results.Ok(new 
+        { 
+            success = true,
+            scanTime = report.ScanTime,
+            dependencies = report.Dependencies.Select(d => new
+            {
+                id = d.Id,
+                displayName = d.DisplayName,
+                status = d.Status.ToString(),
+                path = d.Path,
+                validationOutput = d.ValidationOutput,
+                provenance = d.Provenance,
+                errorMessage = d.ErrorMessage
+            }).ToList()
+        });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error during dependency rescan");
+        return Results.Problem("Error rescanning dependencies", statusCode: 500);
+    }
+})
+.WithName("RescanDependencies")
+.WithOpenApi();
+
 // Settings endpoints
 apiGroup.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settings) =>
 {
@@ -3069,6 +3104,37 @@ static Aura.Core.Models.Voice.EmphasisLevel ParseEmphasis(string? emphasis)
         _ => Aura.Core.Models.Voice.EmphasisLevel.None
     };
 }
+
+// Run dependency scan on startup
+// This scans for dependencies on first launch and every program startup
+Task.Run(async () =>
+{
+    try
+    {
+        Log.Information("Running automatic dependency scan on startup");
+        
+        using var scope = app.Services.CreateScope();
+        var rescanService = scope.ServiceProvider.GetRequiredService<Aura.Core.Dependencies.DependencyRescanService>();
+        
+        var report = await rescanService.RescanAllAsync();
+        
+        var installedCount = report.Dependencies.Count(d => d.Status == Aura.Core.Dependencies.DependencyStatus.Installed);
+        var missingCount = report.Dependencies.Count(d => d.Status == Aura.Core.Dependencies.DependencyStatus.Missing);
+        var partialCount = report.Dependencies.Count(d => d.Status == Aura.Core.Dependencies.DependencyStatus.PartiallyInstalled);
+        
+        Log.Information("Startup dependency scan completed: {Installed} installed, {Missing} missing, {Partial} partially installed",
+            installedCount, missingCount, partialCount);
+            
+        if (missingCount > 0 || partialCount > 0)
+        {
+            Log.Warning("Some dependencies are missing or incomplete. Please visit Program Dependencies page to install them.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Failed to run startup dependency scan");
+    }
+});
 
 app.Run();
 
