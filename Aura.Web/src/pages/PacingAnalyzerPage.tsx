@@ -14,6 +14,8 @@ import {
 } from '@fluentui/react-components';
 import { FlashFlow24Regular, Play24Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
+import { PacingOptimizerPanel } from '../components/PacingAnalysis';
+import type { Brief } from '../types';
 
 const useStyles = makeStyles({
   container: {
@@ -74,14 +76,25 @@ export function PacingAnalyzerPage() {
   const styles = useStyles();
   const navigate = useNavigate();
   const [scriptText, setScriptText] = useState('');
+  const [showAnalysisPanel, setShowAnalysisPanel] = useState(false);
 
   const handleAnalyze = () => {
-    // Navigate to create page with pacing analysis
-    navigate('/create', { state: { script: scriptText, step: 'pacing' } });
+    // Show inline pacing analysis panel instead of navigating
+    setShowAnalysisPanel(true);
   };
 
   const handleGoToEditor = () => {
     navigate('/editor');
+  };
+
+  // Create a minimal brief for pacing analysis
+  const brief: Brief = {
+    topic: 'Script Analysis',
+    audience: 'General',
+    goal: 'Inform',
+    tone: 'Informative',
+    language: 'en-US',
+    aspect: 'Widescreen16x9',
   };
 
   return (
@@ -182,6 +195,29 @@ export function PacingAnalyzerPage() {
           </div>
         </Card>
       </div>
+
+      {/* Inline Pacing Analysis Panel */}
+      {showAnalysisPanel && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: tokens.colorNeutralBackground1,
+            zIndex: 1000,
+            overflow: 'auto',
+          }}
+        >
+          <PacingOptimizerPanel
+            script={scriptText}
+            scenes={[]} // Empty scenes - analyzer will parse script
+            brief={brief}
+            onClose={() => setShowAnalysisPanel(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
