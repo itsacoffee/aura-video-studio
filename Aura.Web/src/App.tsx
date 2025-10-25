@@ -3,8 +3,6 @@ import {
   FluentProvider,
   webLightTheme,
   webDarkTheme,
-  makeStyles,
-  tokens,
 } from '@fluentui/react-components';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
@@ -27,7 +25,7 @@ import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard'
 import { AssetLibrary } from './pages/Assets/AssetLibrary';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { CommandPalette } from './components/CommandPalette';
-import { NotificationsToaster, useNotifications } from './components/Notifications/Toasts';
+import { NotificationsToaster } from './components/Notifications/Toasts';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
 import { JobProgressDrawer } from './components/JobProgressDrawer';
 import { useJobState } from './state/jobState';
@@ -37,15 +35,6 @@ import { PlatformDashboard } from './components/Platform';
 import { QualityDashboard } from './components/dashboard';
 import { ContentPlanningDashboard } from './components/contentPlanning/ContentPlanningDashboard';
 import { VideoEditorPage } from './pages/VideoEditorPage';
-
-const useStyles = makeStyles({
-  root: {
-    height: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
-});
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -62,8 +51,6 @@ export const ThemeContext = createContext<ThemeContextType>({
 export const useTheme = () => useContext(ThemeContext);
 
 function App() {
-  const styles = useStyles();
-  
   // Initialize dark mode from localStorage or system preference
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
@@ -76,7 +63,7 @@ function App() {
   
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const { toasterId } = useNotifications();
+  const toasterId = 'notifications-toaster'; // Hardcoded to avoid hook context issues
 
   // Job state for status bar
   const { currentJobId, status, progress, message } = useJobState();
@@ -188,7 +175,7 @@ function App() {
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
       <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
-        <div className={styles.root}>
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
           <BrowserRouter>
             {/* Status bar for job progress */}
             <JobStatusBar
@@ -225,17 +212,19 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Layout>
-          </BrowserRouter>
-          <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
-          <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
-          <NotificationsToaster toasterId={toasterId} />
+            
+            {/* These components need to be inside BrowserRouter for navigation hooks */}
+            <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+            <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+            <NotificationsToaster toasterId={toasterId} />
 
-          {/* Job progress drawer */}
-          <JobProgressDrawer
-            isOpen={showDrawer}
-            onClose={() => setShowDrawer(false)}
-            jobId={currentJobId || ''}
-          />
+            {/* Job progress drawer */}
+            <JobProgressDrawer
+              isOpen={showDrawer}
+              onClose={() => setShowDrawer(false)}
+              jobId={currentJobId || ''}
+            />
+          </BrowserRouter>
         </div>
       </FluentProvider>
     </ThemeContext.Provider>
