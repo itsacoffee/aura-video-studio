@@ -239,6 +239,7 @@ export function EditorLayout({
             <div className={styles.mediaLibraryPanel} style={{ width: `${mediaLibraryWidth}px` }}>
               {mediaLibrary}
             </div>
+            {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
             <div 
               className={styles.resizer} 
@@ -246,6 +247,18 @@ export function EditorLayout({
               role="separator" 
               aria-orientation="vertical"
               aria-label="Resize media library panel"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  setMediaLibraryWidth((prev) => Math.max(240, prev - 10));
+                  savePanelSize(STORAGE_KEYS.mediaLibraryWidth, Math.max(240, mediaLibraryWidth - 10));
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  setMediaLibraryWidth((prev) => Math.min(350, prev + 10));
+                  savePanelSize(STORAGE_KEYS.mediaLibraryWidth, Math.min(350, mediaLibraryWidth + 10));
+                }
+              }}
             />
           </>
         )}
@@ -253,6 +266,7 @@ export function EditorLayout({
           <div className={styles.previewPanel} style={{ flex: previewHeight }}>
             {preview}
           </div>
+          {/* Interactive resizer - intentionally uses mouse and keyboard events */}
           {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
           <div 
             className={styles.horizontalResizer} 
@@ -260,6 +274,18 @@ export function EditorLayout({
             role="separator" 
             aria-orientation="horizontal"
             aria-label="Resize preview panel"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setPreviewHeight((prev) => Math.min(80, prev + 5));
+                savePanelSize(STORAGE_KEYS.previewHeight, Math.min(80, previewHeight + 5));
+              } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setPreviewHeight((prev) => Math.max(40, prev - 5));
+                savePanelSize(STORAGE_KEYS.previewHeight, Math.max(40, previewHeight - 5));
+              }
+            }}
           />
           <div className={styles.timelinePanel} style={{ flex: 100 - previewHeight }}>
             {timeline}
@@ -267,6 +293,7 @@ export function EditorLayout({
         </div>
         {properties && (
           <>
+            {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
             <div 
               className={styles.resizer} 
@@ -274,6 +301,18 @@ export function EditorLayout({
               role="separator" 
               aria-orientation="vertical"
               aria-label="Resize properties panel"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  setPropertiesWidth((prev) => Math.min(400, prev + 10));
+                  savePanelSize(STORAGE_KEYS.propertiesWidth, Math.min(400, propertiesWidth + 10));
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  setPropertiesWidth((prev) => Math.max(280, prev - 10));
+                  savePanelSize(STORAGE_KEYS.propertiesWidth, Math.max(280, propertiesWidth - 10));
+                }
+              }}
             />
             <div className={styles.propertiesPanel} style={{ width: `${propertiesWidth}px` }}>
               {properties}

@@ -380,6 +380,7 @@ export function TimelinePanel({
           aria-label="Timeline tracks"
         >
           {tracks.map((track) => (
+            /* Timeline track - intentionally clickable for seeking playhead */
             /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
             <div 
               key={track.id} 
