@@ -41,7 +41,7 @@ This repository contains:
 - **Aura.Web** - React + Fluent UI frontend (dev on port 5173)
 - **Aura.App** - WinUI 3 standalone app (coexists as alternative)
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for complete details.
+See [Architecture Documentation](./docs/architecture/ARCHITECTURE.md) for complete details.
 
 ## ⚙️ System Requirements
 
@@ -115,46 +115,31 @@ dotnet add package <PackageName>
 
 This policy ensures maximum flexibility and compatibility. Users can extract and run the application anywhere without system-level installation or administrator privileges.
 
-For more information, see [PORTABLE.md](./PORTABLE.md)
+For more information, see [Portable Mode Guide](./docs/user-guide/PORTABLE.md)
 
 ## 📚 Documentation
 
-Comprehensive documentation is available in the [docs/](./docs/) directory:
+Comprehensive documentation is available in the [docs/](./docs/) directory. See the [Documentation Index](./docs/INDEX.md) for a complete map of all documentation.
 
-### For Users
+### Quick Links
 
-- **[Getting Started](./docs/getting-started/README.md)** - Installation, setup, and first video
-  - [Installation Guide](./docs/getting-started/INSTALLATION.md)
-  - [Quick Start](./docs/getting-started/QUICK_START.md)
-  - [First Run Guide](./docs/getting-started/FIRST_RUN_GUIDE.md)
-  - [FAQ](./docs/getting-started/FIRST_RUN_FAQ.md)
+**For Users:**
+- [Quick Start Guide](./docs/user-guide/QUICKSTART.md) - Get started quickly
+- [Portable Mode Guide](./docs/workflows/PORTABLE_MODE_GUIDE.md) - Running in portable mode
+- [User Guides](./docs/user-guide/) - Feature-specific user documentation
+- [Troubleshooting](./docs/troubleshooting/README.md) - Common issues and solutions
 
-- **[Features](./docs/features/README.md)** - Complete feature documentation
-  - [Video Generation Engines](./docs/features/ENGINES.md)
-  - [Timeline Editor](./docs/features/TIMELINE.md)
-  - [Text-to-Speech & Captions](./docs/features/TTS-and-Captions.md)
-  - [CLI Usage](./docs/features/CLI.md)
+**For Developers:**
+- [Contributing Guide](./CONTRIBUTING.md) - Development guidelines and standards
+- [Build & Run Guide](./docs/developer/BUILD_AND_RUN.md) - Development setup
+- [Architecture Documentation](./docs/architecture/ARCHITECTURE.md) - System architecture overview
+- [API Reference](./docs/api/README.md) - REST API documentation
+- [Security Policy](./SECURITY.md) - Security practices and reporting
 
-- **[Workflows](./docs/workflows/README.md)** - Common workflows and use cases
-  - [Quick Demo](./docs/workflows/QUICK_DEMO.md)
-  - [Portable Mode](./docs/workflows/PORTABLE_MODE_GUIDE.md)
-  - [Settings Configuration](./docs/workflows/SETTINGS_SCHEMA.md)
-
-- **[Troubleshooting](./docs/troubleshooting/README.md)** - Common issues and solutions
-  - [Troubleshooting Guide](./docs/troubleshooting/Troubleshooting.md)
-
-- **[Best Practices](./docs/best-practices/README.md)** - Optimization and guidelines
-
-### For Developers
-
-- **[API Reference](./docs/api/README.md)** - REST API and code documentation
-  - [API Contract v1](./docs/api/API_CONTRACT_V1.md)
-  - [Error Handling](./docs/api/errors.md)
-  - [Provider System](./docs/api/providers.md)
-
-- **[Architecture](./ARCHITECTURE.md)** - System architecture overview
-- **[Contributing](./CONTRIBUTING.md)** - Development guidelines
-- **[Build & Run](./BUILD_AND_RUN.md)** - Development setup
+**Additional Resources:**
+- [Workflows](./docs/workflows/README.md) - Common workflows and use cases
+- [Best Practices](./docs/best-practices/README.md) - Optimization and guidelines
+- [CI/CD Documentation](./docs/CI.md) - Continuous integration setup
 
 ### Building Documentation
 
