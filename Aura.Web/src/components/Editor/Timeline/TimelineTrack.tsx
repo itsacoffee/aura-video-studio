@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { makeStyles, tokens, Spinner } from '@fluentui/react-components';
+import WaveSurfer from 'wavesurfer.js';
 
 const useStyles = makeStyles({
   track: {
@@ -29,6 +30,16 @@ const useStyles = makeStyles({
     ':active': {
       cursor: 'grabbing',
     },
+  },
+  waveformContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+    border: `2px solid transparent`,
+    transition: 'border-color 0.2s',
+  },
+  waveformContainerSelected: {
+    border: `2px solid ${tokens.colorBrandBackground}`,
   },
   canvas: {
     width: '100%',
@@ -85,16 +96,16 @@ export function TimelineTrack({
   name,
   type,
   audioPath,
-  duration,
+  duration: _duration, // Not used - WaveSurfer.js automatically determines duration from audio file
   zoom,
   onSeek,
   muted = false,
   selected = false,
 }: TimelineTrackProps) {
   const styles = useStyles();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const waveformRef = useRef<HTMLDivElement>(null);
+  const waveSurferRef = useRef<WaveSurfer | null>(null);
   const trackContentRef = useRef<HTMLDivElement>(null);
-  const [waveformData, setWaveformData] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [scrubPosition, setScrubPosition] = useState(0);
@@ -108,67 +119,51 @@ export function TimelineTrack({
         ? 'rgba(112, 173, 71, 0.8)' // Green
         : 'rgba(237, 125, 49, 0.8)'; // Orange
 
-  // Load waveform data
+  // Initialize WaveSurfer.js
   useEffect(() => {
-    if (!audioPath) return;
+    if (!waveformRef.current || !audioPath) return;
 
-    const loadWaveform = async () => {
-      setIsLoading(true);
-      try {
-        // In a real implementation, this would call the backend API
-        // For now, generate mock data
-        const samples = Math.floor(duration * zoom);
-        const mockData = Array.from({ length: samples }, () => Math.random() * 0.5 + 0.2);
-        setWaveformData(mockData);
-      } catch (error) {
-        console.error('Failed to load waveform:', error);
-      } finally {
-        setIsLoading(false);
-      }
+    setIsLoading(true);
+
+    const waveSurfer = WaveSurfer.create({
+      container: waveformRef.current,
+      height: 80,
+      waveColor: trackColor,
+      progressColor: muted ? 'rgba(128, 128, 128, 0.5)' : trackColor,
+      cursorColor: 'transparent',
+      barWidth: 2,
+      barGap: 1,
+      barRadius: 2,
+      normalize: true,
+      interact: false, // We handle interactions manually for better control
+    });
+
+    waveSurferRef.current = waveSurfer;
+
+    // Load audio file
+    waveSurfer.load(audioPath).then(() => {
+      setIsLoading(false);
+    }).catch((error) => {
+      console.error('Failed to load waveform:', error);
+      setIsLoading(false);
+    });
+
+    // Cleanup
+    return () => {
+      waveSurfer?.destroy();
     };
+  }, [audioPath, trackColor, muted]);
 
-    loadWaveform();
-  }, [audioPath, duration, zoom]);
-
-  // Draw waveform
+  // Update waveform color when muted state changes
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || waveformData.length === 0) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, width, height);
-
-    // Draw background
-    ctx.fillStyle = muted ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.1)';
-    ctx.fillRect(0, 0, width, height);
-
-    // Draw waveform
-    const barWidth = Math.max(1, width / waveformData.length);
-    const centerY = height / 2;
-
-    ctx.fillStyle = muted ? 'rgba(128, 128, 128, 0.5)' : trackColor;
-
-    for (let i = 0; i < waveformData.length; i++) {
-      const x = i * barWidth;
-      const amplitude = waveformData[i];
-      const barHeight = amplitude * centerY;
-
-      ctx.fillRect(x, centerY - barHeight, barWidth, barHeight * 2);
-    }
-
-    // Draw selection highlight if selected
-    if (selected) {
-      ctx.strokeStyle = tokens.colorBrandBackground;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(0, 0, width, height);
-    }
-  }, [waveformData, muted, selected, trackColor]);
+    if (!waveSurferRef.current) return;
+    
+    const color = muted ? 'rgba(128, 128, 128, 0.5)' : trackColor;
+    waveSurferRef.current.setOptions({
+      waveColor: color,
+      progressColor: color,
+    });
+  }, [muted, trackColor]);
 
   // Handle scrubbing
   const handleMouseDown = useCallback(
@@ -234,7 +229,10 @@ export function TimelineTrack({
         </div>
       </div>
       <div ref={trackContentRef} className={styles.trackContent} onMouseDown={handleMouseDown}>
-        <canvas ref={canvasRef} className={styles.canvas} width={duration * zoom} height={80} />
+        <div 
+          ref={waveformRef} 
+          className={`${styles.waveformContainer} ${selected ? styles.waveformContainerSelected : ''}`}
+        />
         {isLoading && (
           <div className={styles.loadingOverlay}>
             <Spinner size="small" label="Loading waveform..." />
