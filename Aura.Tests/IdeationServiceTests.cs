@@ -82,7 +82,33 @@ public class IdeationServiceTests
             Audience: "Content creators"
         );
 
-        var jsonResponse = @"{
+        var jsonResponse = GetSampleBrainstormJsonResponse();
+
+        _mockLlmProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Core.Models.Brief>(), It.IsAny<Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(jsonResponse);
+
+        // Act
+        var response = await _service.BrainstormConceptsAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Equal(3, response.Concepts.Count);
+        
+        var firstConcept = response.Concepts[0];
+        Assert.Equal("AI Tools for Video Editing", firstConcept.Title);
+        Assert.Equal("Tutorial", firstConcept.Angle);
+        Assert.Equal(85, firstConcept.AppealScore);
+        Assert.NotNull(firstConcept.TalkingPoints);
+        Assert.Equal(5, firstConcept.TalkingPoints.Count);
+        Assert.Contains("Introduction to AI editing", firstConcept.TalkingPoints);
+        Assert.Equal(3, firstConcept.Pros.Count);
+        Assert.Equal(3, firstConcept.Cons.Count);
+    }
+
+    private static string GetSampleBrainstormJsonResponse()
+    {
+        return @"{
             ""concepts"": [
                 {
                     ""title"": ""AI Tools for Video Editing"",
@@ -119,27 +145,6 @@ public class IdeationServiceTests
                 }
             ]
         }";
-
-        _mockLlmProvider
-            .Setup(p => p.DraftScriptAsync(It.IsAny<Core.Models.Brief>(), It.IsAny<Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(jsonResponse);
-
-        // Act
-        var response = await _service.BrainstormConceptsAsync(request, CancellationToken.None);
-
-        // Assert
-        Assert.NotNull(response);
-        Assert.Equal(3, response.Concepts.Count);
-        
-        var firstConcept = response.Concepts[0];
-        Assert.Equal("AI Tools for Video Editing", firstConcept.Title);
-        Assert.Equal("Tutorial", firstConcept.Angle);
-        Assert.Equal(85, firstConcept.AppealScore);
-        Assert.NotNull(firstConcept.TalkingPoints);
-        Assert.Equal(5, firstConcept.TalkingPoints.Count);
-        Assert.Contains("Introduction to AI editing", firstConcept.TalkingPoints);
-        Assert.Equal(3, firstConcept.Pros.Count);
-        Assert.Equal(3, firstConcept.Cons.Count);
     }
 
     [Fact]
