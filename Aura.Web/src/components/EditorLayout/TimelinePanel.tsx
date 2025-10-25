@@ -366,7 +366,7 @@ export function TimelinePanel({
 
       // Create a new timeline clip from the media clip
       const newClip: TimelineClip = {
-        id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `clip-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         trackId,
         startTime: dropTime,
         duration: mediaClip.duration || 3, // Use media duration or default to 3
@@ -402,7 +402,7 @@ export function TimelinePanel({
       
       if (dropData.type === 'effect') {
         // Apply effect to clip
-        const effectDef = EFFECT_DEFINITIONS.find((e: { type: string }) => e.type === dropData.effectType);
+        const effectDef = EFFECT_DEFINITIONS.find(e => e.type === dropData.effectType);
         if (!effectDef) return;
 
         const clip = clips.find(c => c.id === clipId);
@@ -410,10 +410,10 @@ export function TimelinePanel({
 
         // Create new effect with default parameters
         const newEffect: AppliedEffect = {
-          id: `effect-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: `effect-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
           effectType: effectDef.type,
           enabled: true,
-          parameters: effectDef.parameters.reduce((acc: Record<string, string | number | boolean>, param: { name: string; defaultValue: string | number | boolean }) => {
+          parameters: effectDef.parameters.reduce((acc, param) => {
             acc[param.name] = param.defaultValue;
             return acc;
           }, {} as Record<string, number | boolean | string>),

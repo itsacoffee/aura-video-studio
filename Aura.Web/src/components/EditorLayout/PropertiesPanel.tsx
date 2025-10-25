@@ -151,7 +151,7 @@ export function PropertiesPanel({
 
         // Create new effect with default parameters
         const newEffect: AppliedEffect = {
-          id: `effect-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: `effect-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
           effectType: effectDef.type,
           enabled: true,
           parameters: effectDef.parameters.reduce((acc, param) => {

@@ -186,7 +186,7 @@ export function VideoEditorPage() {
 
     // Apply preset effects to selected clip
     const presetEffects: AppliedEffect[] = preset.effects.map((presetEffect, index) => ({
-      id: `effect-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `effect-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 11)}`,
       effectType: presetEffect.effectType,
       enabled: true,
       parameters: presetEffect.parameters,
