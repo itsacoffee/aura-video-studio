@@ -10,6 +10,8 @@ Welcome to the Aura Video Studio documentation. This index provides a roadmap to
 
 ## User Documentation
 
+**[User Guide Overview](user-guide/README.md)** - Complete index of user documentation
+
 ### Getting Started
 - [Portable Mode Guide](workflows/PORTABLE_MODE_GUIDE.md) - Running Aura in portable mode
 - [Quick Demo](workflows/QUICK_DEMO.md) - Quick demonstration workflow
@@ -36,12 +38,16 @@ Welcome to the Aura Video Studio documentation. This index provides a roadmap to
 
 ## Developer Documentation
 
+**[Developer Documentation Overview](developer/README.md)** - Complete index of developer docs
+
 ### Getting Started with Development
 - [Build and Run Guide](developer/BUILD_AND_RUN.md)
 - [Installation Guide](developer/INSTALL.md)
 - [Deployment Guide](developer/DEPLOYMENT.md)
 
 ### Architecture
+
+**[Architecture Overview](architecture/README.md)** - Complete index of architecture documentation
 - [System Architecture](architecture/ARCHITECTURE.md)
 - [Provider Selection Architecture](architecture/PROVIDER_SELECTION_ARCHITECTURE.md)
 - [Service Initialization Order](architecture/SERVICE_INITIALIZATION_ORDER.md)
@@ -101,9 +107,12 @@ Welcome to the Aura Video Studio documentation. This index provides a roadmap to
 ## Security
 
 - [Security Policy](../SECURITY.md) - Main security policy and reporting
+- [Security Documentation Overview](security/README.md) - Security documentation index
 - [Security Summaries](security/) - Detailed security reviews by feature
 
 ## Historical Documentation
+
+**[Archive Overview](archive/README.md)** - Index of historical documentation
 
 Implementation notes, PR summaries, and historical documentation are archived in [docs/archive/](archive/).
 

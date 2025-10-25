@@ -67,8 +67,8 @@ Across the codebase, we implement:
 
 If you discover a security vulnerability, please:
 1. **Do not** disclose it publicly
-2. Create an issue on GitHub with the `security` label
-3. Provide detailed information and reproduction steps
+2. Use GitHub's Security Advisory feature (preferred): Repository → Security → Advisories → New draft security advisory
+3. Or create a private issue with detailed information and reproduction steps
 
 See the [Main Security Policy](../../SECURITY.md) for more details.
 

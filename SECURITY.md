@@ -8,9 +8,12 @@ Aura Video Studio is committed to maintaining the security and integrity of our 
 
 If you discover a security vulnerability, please report it by:
 
-1. **Email**: Create an issue on our GitHub repository with the tag `security`
-2. **Do not** disclose the vulnerability publicly until it has been addressed
-3. Provide detailed information about the vulnerability and steps to reproduce
+1. **Preferred Method**: Use GitHub's Security Advisory feature
+   - Go to Repository → Security → Advisories → New draft security advisory
+   - This keeps the vulnerability private until it's addressed
+2. **Alternative**: Contact the maintainers privately (do not open public issues)
+3. **Do not** disclose the vulnerability publicly until it has been addressed
+4. Provide detailed information about the vulnerability and steps to reproduce
 
 ## Security Features
 
