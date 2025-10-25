@@ -301,7 +301,20 @@ export function GlobalStatusFooter() {
 
   return (
     <div className={`${styles.footer} ${!isExpanded ? styles.collapsed : ''}`}>
-      <div className={styles.header} onClick={() => setIsExpanded(!isExpanded)}>
+      <div 
+        className={styles.header} 
+        onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        aria-label="Toggle activity status footer"
+      >
         <div className={styles.headerLeft}>
           {isExpanded ? <ChevronDown24Regular /> : <ChevronUp24Regular />}
           <Text weight="semibold">Activity Status</Text>

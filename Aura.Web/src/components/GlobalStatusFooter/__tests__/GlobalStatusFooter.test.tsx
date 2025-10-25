@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { ActivityProvider } from '../../../state/activityContext';
 import { GlobalStatusFooter } from '../GlobalStatusFooter';
