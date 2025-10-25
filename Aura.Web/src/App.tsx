@@ -52,14 +52,14 @@ export const ThemeContext = createContext<ThemeContextType>({
 export const useTheme = () => useContext(ThemeContext);
 
 function App() {
-  // Initialize dark mode from localStorage or system preference
+  // Initialize dark mode - default to dark on first run, then use localStorage
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     if (saved !== null) {
       return JSON.parse(saved);
     }
-    // Detect system preference if no saved preference
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Default to dark mode for first-run users (creative app standard)
+    return true;
   });
   
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -80,25 +80,6 @@ function App() {
     }
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
-
-  // Listen for OS theme changes (only if user hasn't explicitly set preference)
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleChange = (e: MediaQueryListEvent) => {
-      const saved = localStorage.getItem('darkMode');
-      // Only update if user hasn't explicitly saved a preference
-      if (saved === null) {
-        setIsDarkMode(e.matches);
-      }
-    };
-    
-    // Use addEventListener for modern browsers
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-  }, []);
 
   // Poll job progress when a job is active
   useEffect(() => {
