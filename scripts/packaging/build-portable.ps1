@@ -171,7 +171,7 @@ try {
             
             # Check for development path (should NOT be present)
             if ($indexContent -match 'src="/src/main\.tsx"') {
-                $validationErrors += "HTML not transformed: still contains development path 'src=""/src/main.tsx""'"
+                $validationErrors += "HTML not transformed: still contains development path 'src=`"/src/main.tsx`"'"
                 # Show actual script tags for diagnostics
                 $scriptTags = Select-String -Path "dist\index.html" -Pattern '<script[^>]*>' -AllMatches | ForEach-Object { $_.Matches.Value }
                 Write-Host "      Found script tags in index.html:" -ForegroundColor Yellow
@@ -182,7 +182,7 @@ try {
             
             # Check for production path (should be present)
             if ($indexContent -notmatch 'src="/assets/') {
-                $validationErrors += "HTML not transformed: does not contain production path 'src=""/assets/""'"
+                $validationErrors += "HTML not transformed: does not contain production path 'src=`"/assets/`"'"
             }
         }
         
