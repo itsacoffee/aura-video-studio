@@ -61,6 +61,39 @@ const useStyles = makeStyles({
   lifecycleBadge: {
     marginLeft: 'auto',
   },
+  aiInsights: {
+    marginTop: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground1Hover,
+    borderRadius: tokens.borderRadiusMedium,
+    borderLeft: `3px solid ${tokens.colorBrandForeground1}`,
+  },
+  insightSection: {
+    marginBottom: tokens.spacingVerticalS,
+  },
+  insightLabel: {
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorBrandForeground1,
+    marginBottom: tokens.spacingVerticalXXS,
+  },
+  insightText: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+    lineHeight: '1.5',
+  },
+  contentAngles: {
+    paddingLeft: tokens.spacingHorizontalM,
+    marginTop: tokens.spacingVerticalXXS,
+  },
+  angleItem: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground2,
+    marginBottom: tokens.spacingVerticalXXS,
+  },
+  viralityBadge: {
+    marginTop: tokens.spacingVerticalS,
+  },
 });
 
 interface TrendingTopicCardProps {
@@ -182,6 +215,62 @@ export const TrendingTopicCard: React.FC<TrendingTopicCardProps> = ({ topic, onS
                 </Badge>
               ))}
             </div>
+          </div>
+        )}
+
+        {topic.hashtags && topic.hashtags.length > 0 && (
+          <div className={styles.relatedTopics}>
+            <Text className={styles.metadataLabel}>Suggested Hashtags:</Text>
+            <div className={styles.tags}>
+              {topic.hashtags.map((tag, index) => (
+                <Badge key={index} appearance="tint" size="small" color="brand">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {topic.aiInsights && (
+          <div className={styles.aiInsights}>
+            <div className={styles.insightSection}>
+              <div className={styles.insightLabel}>🔥 Why It's Trending</div>
+              <Text className={styles.insightText}>{topic.aiInsights.whyTrending}</Text>
+            </div>
+
+            <div className={styles.insightSection}>
+              <div className={styles.insightLabel}>👥 Audience Engagement</div>
+              <Text className={styles.insightText}>{topic.aiInsights.audienceEngagement}</Text>
+            </div>
+
+            {topic.aiInsights.contentAngles && topic.aiInsights.contentAngles.length > 0 && (
+              <div className={styles.insightSection}>
+                <div className={styles.insightLabel}>💡 Content Angle Ideas</div>
+                <div className={styles.contentAngles}>
+                  {topic.aiInsights.contentAngles.map((angle, index) => (
+                    <div key={index} className={styles.angleItem}>
+                      • {angle}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className={styles.insightSection}>
+              <div className={styles.insightLabel}>🎯 Target Demographics</div>
+              <Text className={styles.insightText}>{topic.aiInsights.demographicAppeal}</Text>
+            </div>
+
+            {topic.aiInsights.viralityScore > 0 && (
+              <div className={styles.viralityBadge}>
+                <Badge
+                  appearance="filled"
+                  color={topic.aiInsights.viralityScore >= 75 ? 'success' : topic.aiInsights.viralityScore >= 50 ? 'warning' : 'informative'}
+                >
+                  Virality Potential: {Math.round(topic.aiInsights.viralityScore)}/100
+                </Badge>
+              </div>
+            )}
           </div>
         )}
       </div>

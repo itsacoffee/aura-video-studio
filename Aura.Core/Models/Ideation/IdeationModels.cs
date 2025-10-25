@@ -46,7 +46,22 @@ public record TrendingTopic(
     string? Seasonality,             // Seasonal relevance
     string? Lifecycle,               // rising, peak, declining
     List<string>? RelatedTopics,     // Clustered related topics
-    DateTime? DetectedAt = null
+    DateTime? DetectedAt = null,
+    TrendingTopicInsights? AiInsights = null,  // AI-generated analysis
+    List<string>? Hashtags = null,   // Suggested hashtags
+    double? TrendVelocity = null,    // Rate of growth/decline
+    long? EstimatedAudience = null   // Estimated potential audience size
+);
+
+/// <summary>
+/// AI-generated insights about a trending topic
+/// </summary>
+public record TrendingTopicInsights(
+    string WhyTrending,              // Explanation of why this topic is trending
+    string AudienceEngagement,       // Insights about audience engagement patterns
+    List<string> ContentAngles,      // Recommended content angles for creators
+    string DemographicAppeal,        // Target demographic information
+    double ViralityScore             // 0-100 score for potential virality
 );
 
 /// <summary>

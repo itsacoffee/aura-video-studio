@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models.Ideation;
 using Aura.Core.Providers;
 using Aura.Core.Services.Conversation;
 using Aura.Core.Services.Ideation;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -33,11 +35,24 @@ public class IdeationServiceTests
         var mockProjectLogger = new Mock<ILogger<ProjectContextManager>>();
         var projectManager = new ProjectContextManager(mockProjectLogger.Object, persistence);
         
+        // Create mocks for TrendingTopicsService dependencies
+        var mockTrendingLogger = new Mock<ILogger<TrendingTopicsService>>();
+        var mockHttpClientFactory = new Mock<System.Net.Http.IHttpClientFactory>();
+        var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        
+        var trendingTopicsService = new TrendingTopicsService(
+            mockTrendingLogger.Object,
+            _mockLlmProvider.Object,
+            mockHttpClientFactory.Object,
+            memoryCache
+        );
+        
         _service = new IdeationService(
             _mockLogger.Object,
             _mockLlmProvider.Object,
             projectManager,
-            conversationManager
+            conversationManager,
+            trendingTopicsService
         );
     }
 
