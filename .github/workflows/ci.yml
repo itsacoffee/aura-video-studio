@@ -126,11 +126,17 @@ jobs:
     - name: Verify Source Maps Hidden
       working-directory: Aura.Web
       run: |
-        if grep -r "sourceMappingURL" dist/assets/*.js 2>/dev/null; then
-          echo "ERROR: Source maps should be hidden in production!"
-          exit 1
+        # Check if any .js files exist in dist/assets before grepping
+        if find dist/assets -name "*.js" -type f | grep -q .; then
+          if grep -r "sourceMappingURL" dist/assets/*.js 2>/dev/null; then
+            echo "ERROR: Source maps should be hidden in production!"
+            exit 1
+          else
+            echo "✓ Source maps are properly hidden"
+          fi
         else
-          echo "✓ Source maps are properly hidden"
+          echo "WARNING: No JavaScript files found in dist/assets"
+          exit 1
         fi
       
     - name: Upload Build Stats
