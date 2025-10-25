@@ -65,6 +65,7 @@ function Write-DiagFix {
 
 # Get script directory and navigate to root
 $rootDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$originalLocation = Get-Location
 Set-Location $rootDir
 
 Write-DiagHeader "AURA VIDEO STUDIO - WHITE SCREEN DIAGNOSTIC"
@@ -252,7 +253,7 @@ if (Test-Path "artifacts\portable\build\Api") {
             # Check first JS file to ensure it's not HTML
             if ($jsFiles.Count -gt 0) {
                 $firstJs = $jsFiles[0]
-                $firstJsContent = Get-Content $firstJs.FullName -First 3 -Raw
+                $firstJsContent = Get-Content $firstJs.FullName -First 10 -Raw
                 
                 if ($firstJsContent -match "<!DOCTYPE" -or $firstJsContent -match "<html") {
                     Write-DiagError "JavaScript file '$($firstJs.Name)' contains HTML!"
@@ -379,9 +380,16 @@ if ($Fix) {
         
         # Step 4: Build frontend
         Write-DiagFix "Building frontend..."
-        Set-Location "Aura.Web"
-        npm run build
-        Set-Location $rootDir
+        Push-Location "Aura.Web"
+        try {
+            npm run build
+            if ($LASTEXITCODE -ne 0) {
+                throw "npm build failed with exit code $LASTEXITCODE"
+            }
+        }
+        finally {
+            Pop-Location
+        }
         
         # Step 5: Verify dist folder
         if (Test-Path "Aura.Web\dist\index.html") {
@@ -402,6 +410,11 @@ if ($Fix) {
         Write-DiagFix "Building API with integrated frontend..."
         dotnet publish Aura.Api\Aura.Api.csproj -c Release -r win-x64 --self-contained -o artifacts\portable\build\Api
         
+        if ($LASTEXITCODE -ne 0) {
+            Write-DiagError "API build failed with exit code $LASTEXITCODE"
+            exit 1
+        }
+        
         # Step 7: Verify wwwroot
         if (Test-Path "artifacts\portable\build\Api\wwwroot\index.html") {
             Write-DiagSuccess "wwwroot contains index.html"
@@ -411,7 +424,7 @@ if ($Fix) {
                 $scriptSrc = $Matches[1]
                 Write-DiagSuccess "wwwroot index.html contains script tag"
                 
-                $scriptPath = "artifacts\portable\build\Api\wwwroot" + $scriptSrc.Replace('/', '\')
+                $scriptPath = Join-Path "artifacts\portable\build\Api\wwwroot" ($scriptSrc.TrimStart('/').Replace('/', '\'))
                 if (Test-Path $scriptPath) {
                     Write-DiagSuccess "Script file exists in wwwroot"
                 } else {
@@ -480,3 +493,6 @@ Write-Host "  - PORTABLE.md (troubleshooting section)" -ForegroundColor White
 Write-Host "  - /diag endpoint (http://127.0.0.1:5005/diag)" -ForegroundColor White
 Write-Host ""
 Write-DiagHeader "DIAGNOSTIC COMPLETE"
+
+# Restore original location
+Set-Location $originalLocation
