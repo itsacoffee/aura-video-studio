@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { makeStyles, tokens, Text, Button, Spinner } from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Button } from '@fluentui/react-components';
 import { LightbulbRegular, LightbulbFilamentRegular } from '@fluentui/react-icons';
 import { BrainstormInput, BrainstormOptions } from '../../components/ideation/BrainstormInput';
 import { ConceptCard } from '../../components/ideation/ConceptCard';
@@ -9,6 +9,7 @@ import {
   type ConceptIdea,
   type BrainstormRequest,
 } from '../../services/ideationService';
+import { SkeletonCard, ErrorState } from '../../components/Loading';
 
 const useStyles = makeStyles({
   container: {
@@ -64,12 +65,6 @@ const useStyles = makeStyles({
   },
   emptyIcon: {
     fontSize: '64px',
-  },
-  errorContainer: {
-    padding: tokens.spacingVerticalL,
-    backgroundColor: tokens.colorPaletteRedBackground1,
-    borderRadius: tokens.borderRadiusMedium,
-    color: tokens.colorPaletteRedForeground1,
   },
 });
 
@@ -140,10 +135,12 @@ export const IdeationDashboard: React.FC = () => {
         <BrainstormInput onBrainstorm={handleBrainstorm} loading={loading} />
 
         {error && (
-          <div className={styles.errorContainer}>
-            <Text weight="semibold">Error:</Text>
-            <Text>{error}</Text>
-          </div>
+          <ErrorState
+            title="Failed to generate concepts"
+            message={error}
+            onRetry={handleRefresh}
+            withCard={true}
+          />
         )}
 
         {concepts.length > 0 && (
@@ -181,12 +178,8 @@ export const IdeationDashboard: React.FC = () => {
         )}
 
         {loading && (
-          <div className={styles.emptyState}>
-            <Spinner size="extra-large" />
-            <Text size={500} weight="semibold">
-              Generating creative concepts...
-            </Text>
-            <Text>Our AI is analyzing multiple creative angles for your topic</Text>
+          <div className={styles.conceptsGrid}>
+            <SkeletonCard count={4} showFooter={true} ariaLabel="Generating creative concepts" />
           </div>
         )}
       </div>
