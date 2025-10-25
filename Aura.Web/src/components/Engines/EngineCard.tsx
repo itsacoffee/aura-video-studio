@@ -50,6 +50,7 @@ import { useEnginesStore } from '../../state/engines';
 import { AttachEngineDialog } from './AttachEngineDialog';
 import { ModelManager } from './ModelManager';
 import { useNotifications } from '../Notifications/Toasts';
+import { useEngineInstallProgress } from '../../hooks/useEngineInstallProgress';
 
 const useStyles = makeStyles({
   card: {
@@ -149,7 +150,6 @@ export function EngineCard({ engine }: EngineCardProps) {
   const [urlVerificationMessage, setUrlVerificationMessage] = useState<string>('');
 
   const {
-    installEngine,
     verifyEngine,
     repairEngine,
     removeEngine,
@@ -158,6 +158,8 @@ export function EngineCard({ engine }: EngineCardProps) {
     fetchEngineStatus,
     getDiagnostics,
   } = useEnginesStore();
+
+  const { installWithProgress, isInstalling, progress, error: installError } = useEngineInstallProgress();
 
   useEffect(() => {
     loadStatus();
@@ -264,14 +266,26 @@ export function EngineCard({ engine }: EngineCardProps) {
   };
 
   const handleInstall = async () => {
-    setIsProcessing(true);
     try {
-      await installEngine(engine.id);
-      await loadStatus();
+      const success = await installWithProgress(engine.id);
+      if (success) {
+        showSuccessToast({
+          title: 'Installation Complete',
+          message: `${engine.name} installed successfully!`,
+        });
+        await loadStatus();
+      } else {
+        showFailureToast({
+          title: 'Installation Failed',
+          message: installError || 'Installation failed',
+        });
+      }
     } catch (error) {
       console.error('Installation failed:', error);
-    } finally {
-      setIsProcessing(false);
+      showFailureToast({
+        title: 'Installation Error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   };
 
@@ -283,29 +297,24 @@ export function EngineCard({ engine }: EngineCardProps) {
       });
       return;
     }
-    setIsProcessing(true);
     setShowCustomUrlDialog(false);
     try {
-      // Call API with custom URL
-      const response = await fetch(apiUrl('/api/engines/install'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          engineId: engine.id,
-          customUrl: customUrl.trim(),
-        }),
+      const success = await installWithProgress(engine.id, {
+        customUrl: customUrl.trim(),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Installation failed');
+      if (success) {
+        showSuccessToast({
+          title: 'Installation Complete',
+          message: 'Installation from custom URL completed successfully!',
+        });
+        await loadStatus();
+      } else {
+        showFailureToast({
+          title: 'Installation Failed',
+          message: installError || 'Installation from custom URL failed',
+        });
       }
-
-      await loadStatus();
-      showSuccessToast({
-        title: 'Installation Complete',
-        message: 'Installation from custom URL completed successfully!',
-      });
     } catch (error) {
       console.error('Custom URL installation failed:', error);
       showFailureToast({
@@ -313,7 +322,6 @@ export function EngineCard({ engine }: EngineCardProps) {
         message: `Installation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     } finally {
-      setIsProcessing(false);
       setCustomUrl('');
     }
   };
@@ -326,29 +334,24 @@ export function EngineCard({ engine }: EngineCardProps) {
       });
       return;
     }
-    setIsProcessing(true);
     setShowLocalFileDialog(false);
     try {
-      // Call API with local file path
-      const response = await fetch(apiUrl('/api/engines/install'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          engineId: engine.id,
-          localFilePath: localFilePath.trim(),
-        }),
+      const success = await installWithProgress(engine.id, {
+        localFilePath: localFilePath.trim(),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Installation failed');
+      if (success) {
+        showSuccessToast({
+          title: 'Installation Complete',
+          message: 'Installation from local file completed successfully!',
+        });
+        await loadStatus();
+      } else {
+        showFailureToast({
+          title: 'Installation Failed',
+          message: installError || 'Installation from local file failed',
+        });
       }
-
-      await loadStatus();
-      showSuccessToast({
-        title: 'Installation Complete',
-        message: 'Installation from local file completed successfully!',
-      });
     } catch (error) {
       console.error('Local file installation failed:', error);
       showFailureToast({
@@ -356,7 +359,6 @@ export function EngineCard({ engine }: EngineCardProps) {
         message: `Installation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     } finally {
-      setIsProcessing(false);
       setLocalFilePath('');
     }
   };
@@ -366,8 +368,16 @@ export function EngineCard({ engine }: EngineCardProps) {
     try {
       await startEngine(engine.id);
       await loadStatus();
+      showSuccessToast({
+        title: 'Engine Started',
+        message: `${engine.name} started successfully`,
+      });
     } catch (error) {
       console.error('Start failed:', error);
+      showFailureToast({
+        title: 'Failed to Start Engine',
+        message: error instanceof Error ? error.message : 'Failed to start engine',
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -378,8 +388,16 @@ export function EngineCard({ engine }: EngineCardProps) {
     try {
       await stopEngine(engine.id);
       await loadStatus();
+      showSuccessToast({
+        title: 'Engine Stopped',
+        message: `${engine.name} stopped successfully`,
+      });
     } catch (error) {
       console.error('Stop failed:', error);
+      showFailureToast({
+        title: 'Failed to Stop Engine',
+        message: error instanceof Error ? error.message : 'Failed to stop engine',
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -712,6 +730,48 @@ export function EngineCard({ engine }: EngineCardProps) {
           </div>
         )}
 
+        {/* Installation Progress */}
+        {isInstalling && progress && (
+          <div style={{
+            padding: tokens.spacingVerticalM,
+            backgroundColor: tokens.colorNeutralBackground2,
+            borderRadius: tokens.borderRadiusMedium,
+            marginBottom: tokens.spacingVerticalM,
+          }}>
+            <div style={{ marginBottom: tokens.spacingVerticalS }}>
+              <Text weight="semibold">Installing {engine.name}...</Text>
+              <Text size={200} block style={{ color: tokens.colorNeutralForeground3 }}>
+                {progress.phase === 'downloading' && 'Downloading files...'}
+                {progress.phase === 'extracting' && 'Extracting archive...'}
+                {progress.phase === 'verifying' && 'Verifying installation...'}
+                {progress.message && ` • ${progress.message}`}
+              </Text>
+            </div>
+            <div style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: tokens.colorNeutralBackground3,
+              borderRadius: tokens.borderRadiusLarge,
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                width: `${progress.percentComplete}%`,
+                height: '100%',
+                backgroundColor: tokens.colorBrandBackground,
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
+            <div style={{ marginTop: tokens.spacingVerticalXS, display: 'flex', justifyContent: 'space-between' }}>
+              <Text size={200}>{progress.percentComplete.toFixed(1)}%</Text>
+              {progress.totalBytes > 0 && (
+                <Text size={200}>
+                  {formatBytes(progress.bytesProcessed)} / {formatBytes(progress.totalBytes)}
+                </Text>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className={styles.row}>
           <div className={styles.actions}>
             {!isInstalled && (
@@ -721,10 +781,10 @@ export function EngineCard({ engine }: EngineCardProps) {
                     <Button
                       appearance="primary"
                       icon={<ArrowDownload24Regular />}
-                      disabled={isProcessing}
+                      disabled={isProcessing || isInstalling}
                       title={engine.gatingReason || undefined}
                     >
-                      {isProcessing ? (
+                      {isProcessing || isInstalling ? (
                         <Spinner size="tiny" />
                       ) : engine.isGated && !engine.canAutoStart ? (
                         'Install (for later)'
