@@ -119,6 +119,21 @@ export function DownloadsPage() {
     setSelectedTab(data.value as string);
   };
 
+  // Helper function to extract error message from response
+  const extractErrorMessage = async (response: Response, defaultMessage: string): Promise<string> => {
+    try {
+      const errorData = await response.json();
+      return errorData.message || errorData.error || defaultMessage;
+    } catch {
+      return `${defaultMessage} (HTTP ${response.status})`;
+    }
+  };
+
+  // Helper function to get error message from caught errors
+  const getErrorMessage = (error: unknown, fallback: string): string => {
+    return error instanceof Error ? error.message : fallback;
+  };
+
   const fetchManifest = async () => {
     try {
       const response = await fetch(apiUrl('/api/downloads/manifest'));
@@ -231,13 +246,7 @@ export function DownloadsPage() {
         // Check status again after install
         await checkComponentStatus(componentName);
       } else {
-        let errorMessage = 'Installation failed';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch {
-          errorMessage = `Installation failed with HTTP ${response.status}`;
-        }
+        const errorMessage = await extractErrorMessage(response, 'Installation failed');
         
         showFailureToast({
           title: 'Installation Failed',
@@ -257,7 +266,7 @@ export function DownloadsPage() {
       }
     } catch (error) {
       console.error(`Error installing ${componentName}:`, error);
-      const errorMessage = error instanceof Error ? error.message : 'Network error';
+      const errorMessage = getErrorMessage(error, 'Network error');
       
       showFailureToast({
         title: 'Installation Error',
@@ -299,13 +308,7 @@ export function DownloadsPage() {
         });
         await checkComponentStatus(componentName);
       } else {
-        let errorMessage = 'Repair failed';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch {
-          errorMessage = `Repair failed with HTTP ${response.status}`;
-        }
+        const errorMessage = await extractErrorMessage(response, 'Repair failed');
         
         showFailureToast({
           title: 'Repair Failed',
@@ -323,7 +326,7 @@ export function DownloadsPage() {
       }
     } catch (error) {
       console.error(`Error repairing ${componentName}:`, error);
-      const errorMessage = error instanceof Error ? error.message : 'Network error during repair';
+      const errorMessage = getErrorMessage(error, 'Network error during repair');
       
       showFailureToast({
         title: 'Repair Error',
@@ -358,13 +361,7 @@ export function DownloadsPage() {
         });
         await checkComponentStatus(componentName);
       } else {
-        let errorMessage = 'Failed to remove component';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch {
-          errorMessage = `Remove failed with HTTP ${response.status}`;
-        }
+        const errorMessage = await extractErrorMessage(response, 'Failed to remove component');
         
         showFailureToast({
           title: 'Remove Failed',
@@ -375,7 +372,7 @@ export function DownloadsPage() {
       console.error(`Error removing ${componentName}:`, error);
       showFailureToast({
         title: 'Network Error',
-        message: error instanceof Error ? error.message : 'Network error during removal',
+        message: getErrorMessage(error, 'Network error during removal'),
       });
     }
   };
@@ -399,7 +396,7 @@ export function DownloadsPage() {
       console.error(`Error getting folder for ${componentName}:`, error);
       showFailureToast({
         title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to get component folder',
+        message: getErrorMessage(error, 'Failed to get component folder'),
       });
     }
   };
@@ -430,7 +427,7 @@ export function DownloadsPage() {
       console.error(`Error getting manual instructions for ${componentName}:`, error);
       showFailureToast({
         title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to get manual instructions',
+        message: getErrorMessage(error, 'Failed to get manual instructions'),
       });
     }
   };
