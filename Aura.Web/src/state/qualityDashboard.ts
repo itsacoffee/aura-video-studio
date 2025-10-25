@@ -95,8 +95,16 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
   fetchMetrics: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch(`${apiUrl}/api/dashboard/metrics`);
-      if (!response.ok) throw new Error('Failed to fetch metrics');
+      const response = await fetch(apiUrl('/api/dashboard/metrics'));
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || errorData.message || 'Failed to fetch metrics');
+        } else {
+          throw new Error(`Failed to fetch metrics: ${response.status} ${response.statusText}`);
+        }
+      }
       const data = await response.json();
       set({ 
         metrics: data.metrics,
@@ -119,8 +127,16 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
       if (endDate) params.append('endDate', endDate.toISOString());
       params.append('granularity', granularity);
 
-      const response = await fetch(`${apiUrl}/api/dashboard/historical-data?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch historical data');
+      const response = await fetch(apiUrl(`/api/dashboard/historical-data?${params}`));
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || errorData.message || 'Failed to fetch historical data');
+        } else {
+          throw new Error(`Failed to fetch historical data: ${response.status} ${response.statusText}`);
+        }
+      }
       const data = await response.json();
       set({ 
         historicalTrends: data,
@@ -137,8 +153,16 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
   fetchPlatformCompliance: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch(`${apiUrl}/api/dashboard/platform-compliance`);
-      if (!response.ok) throw new Error('Failed to fetch platform compliance');
+      const response = await fetch(apiUrl('/api/dashboard/platform-compliance'));
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || errorData.message || 'Failed to fetch platform compliance');
+        } else {
+          throw new Error(`Failed to fetch platform compliance: ${response.status} ${response.statusText}`);
+        }
+      }
       const data = await response.json();
       set({ 
         platformCompliance: data.platforms,
@@ -155,8 +179,16 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
   fetchRecommendations: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch(`${apiUrl}/api/dashboard/recommendations`);
-      if (!response.ok) throw new Error('Failed to fetch recommendations');
+      const response = await fetch(apiUrl('/api/dashboard/recommendations'));
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || errorData.message || 'Failed to fetch recommendations');
+        } else {
+          throw new Error(`Failed to fetch recommendations: ${response.status} ${response.statusText}`);
+        }
+      }
       const data = await response.json();
       set({ 
         recommendations: data.recommendations,
@@ -172,13 +204,21 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
 
   exportReport: async (format: 'json' | 'csv' | 'markdown') => {
     try {
-      const response = await fetch(`${apiUrl}/api/dashboard/export`, {
+      const response = await fetch(apiUrl('/api/dashboard/export'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format })
       });
 
-      if (!response.ok) throw new Error('Failed to export report');
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || errorData.message || 'Failed to export report');
+        } else {
+          throw new Error(`Failed to export report: ${response.status} ${response.statusText}`);
+        }
+      }
 
       // Download the file
       const blob = await response.blob();

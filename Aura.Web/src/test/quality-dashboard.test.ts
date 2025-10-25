@@ -8,6 +8,12 @@ import { useQualityDashboardStore } from '../state/qualityDashboard';
 // Mock the fetch API
 global.fetch = vi.fn();
 
+// Mock the apiUrl function
+vi.mock('../config/api', () => ({
+  apiUrl: (path: string) => `http://127.0.0.1:5005${path}`,
+  API_BASE_URL: 'http://127.0.0.1:5005',
+}));
+
 describe('Quality Dashboard Store', () => {
   beforeEach(() => {
     // Reset store state before each test
@@ -81,6 +87,9 @@ describe('Quality Dashboard Store', () => {
 
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
+      headers: {
+        get: () => 'application/json',
+      },
       json: async () => ({ metrics: mockMetrics, breakdown: mockBreakdown }),
     } as Response);
 
@@ -93,15 +102,44 @@ describe('Quality Dashboard Store', () => {
     expect(state.error).toBeNull();
   });
 
-  it('should handle fetch metrics error', async () => {
+  it('should handle fetch metrics error with JSON response', async () => {
+    const mockError = {
+      detail: 'Failed to retrieve dashboard metrics',
+      title: 'Dashboard Metrics Failed',
+      status: 500,
+    };
+
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      headers: {
+        get: (name: string) => (name === 'content-type' ? 'application/json' : null),
+      },
+      json: async () => mockError,
     } as Response);
 
     await useQualityDashboardStore.getState().fetchMetrics();
 
     const state = useQualityDashboardStore.getState();
-    expect(state.error).toBeTruthy();
+    expect(state.error).toBe('Failed to retrieve dashboard metrics');
+    expect(state.isLoading).toBe(false);
+  });
+
+  it('should handle fetch metrics error with HTML response', async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      headers: {
+        get: (name: string) => (name === 'content-type' ? 'text/html' : null),
+      },
+    } as Response);
+
+    await useQualityDashboardStore.getState().fetchMetrics();
+
+    const state = useQualityDashboardStore.getState();
+    expect(state.error).toContain('Failed to fetch metrics: 404 Not Found');
     expect(state.isLoading).toBe(false);
   });
 
@@ -121,6 +159,9 @@ describe('Quality Dashboard Store', () => {
 
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
+      headers: {
+        get: () => 'application/json',
+      },
       json: async () => ({ recommendations: mockRecommendations }),
     } as Response);
 
@@ -144,6 +185,9 @@ describe('Quality Dashboard Store', () => {
 
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
+      headers: {
+        get: () => 'application/json',
+      },
       json: async () => ({ platforms: mockCompliance }),
     } as Response);
 

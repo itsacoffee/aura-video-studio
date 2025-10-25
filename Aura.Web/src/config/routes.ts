@@ -14,6 +14,7 @@ export const ROUTES = {
   CREATE_LEGACY: '/create/legacy',
   TIMELINE: '/timeline',
   EDITOR: '/editor/:jobId',
+  PACING: '/pacing',
   RENDER: '/render',
   PUBLISH: '/publish',
   PROJECTS: '/projects',
