@@ -249,6 +249,28 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Handle unsaved changes warning before closing window
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Check if we're on the video editor page and have unsaved changes
+      // This is a simple check - in a real implementation, you'd want to check the actual state
+      const currentPath = window.location.pathname;
+      const isEditorPage = currentPath === '/editor' || currentPath === '/timeline';
+      
+      if (isEditorPage) {
+        // Check localStorage for unsaved project data
+        const autosaveData = localStorage.getItem('aura-project-autosave');
+        if (autosaveData) {
+          e.preventDefault();
+          e.returnValue = '';
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
   };
