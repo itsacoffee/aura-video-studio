@@ -342,6 +342,10 @@ builder.Services.AddSingleton<Aura.Core.Planner.HeuristicRecommendationService>(
 builder.Services.AddSingleton<Aura.Providers.Validation.ProviderValidationService>();
 builder.Services.AddSingleton<Aura.Api.Services.PreflightService>();
 
+// Register API key validation and secure storage services
+builder.Services.AddSingleton<Aura.Api.Services.ApiKeyValidationService>();
+builder.Services.AddSingleton<Aura.Core.Services.ISecureStorageService, Aura.Core.Services.SecureStorageService>();
+
 // Register content analysis services
 builder.Services.AddSingleton<Aura.Core.Services.Content.ContentAnalyzer>(sp =>
 {
