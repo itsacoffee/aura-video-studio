@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react';
 import {
   FluentProvider,
   webLightTheme,
@@ -17,7 +17,6 @@ import { RenderPage } from './pages/RenderPage';
 import { PublishPage } from './pages/PublishPage';
 import { DownloadsPage } from './pages/DownloadsPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { LogViewerPage } from './pages/LogViewerPage';
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
@@ -42,10 +41,14 @@ import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
 import { hasCompletedFirstRun, migrateLegacyFirstRunStatus } from './services/firstRunService';
 import { ActivityProvider } from './state/activityContext';
 import { GlobalStatusFooter } from './components/GlobalStatusFooter';
-import { ActivityDemoPage } from './pages/ActivityDemoPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { loggingService } from './services/loggingService';
+import { env } from './config/env';
+
+// Lazy load development-only features to reduce production bundle size
+const LogViewerPage = lazy(() => import('./pages/LogViewerPage').then(m => ({ default: m.LogViewerPage })));
+const ActivityDemoPage = lazy(() => import('./pages/ActivityDemoPage').then(m => ({ default: m.ActivityDemoPage })));
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -382,9 +385,28 @@ function App() {
                     <Route path="/jobs" element={<RecentJobsPage />} />
                     <Route path="/downloads" element={<DownloadsPage />} />
                     <Route path="/health" element={<ProviderHealthDashboard />} />
-                    <Route path="/logs" element={<LogViewerPage />} />
+                    {/* Development-only routes - lazy loaded */}
+                    {env.enableDevTools && (
+                      <>
+                        <Route 
+                          path="/logs" 
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LogViewerPage />
+                            </Suspense>
+                          } 
+                        />
+                        <Route 
+                          path="/activity-demo" 
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <ActivityDemoPage />
+                            </Suspense>
+                          } 
+                        />
+                      </>
+                    )}
                     <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/activity-demo" element={<ActivityDemoPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </ErrorBoundary>
