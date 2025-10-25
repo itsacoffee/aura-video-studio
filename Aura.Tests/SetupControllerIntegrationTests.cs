@@ -130,8 +130,8 @@ public class SetupControllerIntegrationTests : IClassFixture<WebApplicationFacto
         // Arrange
         var keys = new Dictionary<string, string>
         {
-            { "openai", "sk-test-" + Guid.NewGuid() },
-            { "gemini", "AIza-test-" + Guid.NewGuid() }
+            { "openai", "test-openai-key-" + Guid.NewGuid() },
+            { "gemini", "test-gemini-key-" + Guid.NewGuid() }
         };
 
         var request = new { Keys = keys };
@@ -162,12 +162,12 @@ public class SetupControllerIntegrationTests : IClassFixture<WebApplicationFacto
     public async Task DeleteApiKey_ValidProvider_ReturnsSuccess()
     {
         // Arrange - First save a key
+        var providerName = "test-provider-" + Guid.NewGuid();
         var keys = new Dictionary<string, string>
         {
-            { "test-provider-" + Guid.NewGuid(), "test-key" }
+            { providerName, "test-key" }
         };
         await _client.PostAsJsonAsync("/api/setup/save-api-keys", new { Keys = keys });
-        var providerName = keys.Keys.GetEnumerator().Current;
 
         // Act
         var response = await _client.DeleteAsync($"/api/setup/delete-key/{providerName}");
