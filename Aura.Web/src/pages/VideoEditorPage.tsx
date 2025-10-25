@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { EditorLayout } from '../components/EditorLayout/EditorLayout';
 import { VideoPreviewPanel } from '../components/EditorLayout/VideoPreviewPanel';
 import { TimelinePanel } from '../components/EditorLayout/TimelinePanel';
@@ -7,6 +8,8 @@ import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel'
 import { EffectsLibraryPanel } from '../components/EditorLayout/EffectsLibraryPanel';
 import { AppliedEffect, EffectPreset } from '../types/effects';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
+import { useProjectState } from '../hooks/useProjectState';
+import { ProjectFile, ProjectMediaItem } from '../types/project';
 
 export interface TimelineClip {
   id: string;
@@ -41,6 +44,7 @@ interface TimelineTrack {
 }
 
 export function VideoEditorPage() {
+  const [searchParams] = useSearchParams();
   const [currentTime, setCurrentTime] = useState(0);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [clips, setClips] = useState<TimelineClip[]>([]);
@@ -56,6 +60,55 @@ export function VideoEditorPage() {
     { id: 'audio1', label: 'Audio 1', type: 'audio', visible: true, locked: false },
     { id: 'audio2', label: 'Audio 2', type: 'audio', visible: true, locked: false },
   ]);
+  const [mediaLibrary, setMediaLibrary] = useState<ProjectMediaItem[]>([]);
+
+  // Project state management with autosave
+  const handleProjectLoaded = useCallback((project: ProjectFile) => {
+    // Restore clips
+    setClips(project.clips.map(clip => ({
+      ...clip,
+      file: undefined, // Files can't be serialized, will need to be re-added
+    })));
+    
+    // Restore tracks
+    if (project.tracks) {
+      setTracks(project.tracks);
+    }
+    
+    // Restore media library
+    if (project.mediaLibrary) {
+      setMediaLibrary(project.mediaLibrary);
+    }
+    
+    // Restore player position
+    if (project.playerPosition !== undefined) {
+      setCurrentTime(project.playerPosition);
+    }
+  }, []);
+
+  const {
+    projectName,
+    isDirty,
+    autosaveStatus,
+    lastSaved,
+    saveCurrentProject,
+    exportProject,
+    loadProject,
+  } = useProjectState(clips, tracks, mediaLibrary, currentTime, handleProjectLoaded);
+
+  // Load project from URL parameter
+  useEffect(() => {
+    const projectId = searchParams.get('projectId');
+    if (projectId) {
+      loadProject(projectId).catch((error) => {
+        console.error('Failed to load project:', error);
+        // Better error message based on error type
+        const errorMessage = error.message || 'An unknown error occurred';
+        // TODO: Replace with toast notification system when available
+        console.error(`Failed to load project: ${errorMessage}`);
+      });
+    }
+  }, [searchParams, loadProject]);
 
   // Log state changes for debugging
   useEffect(() => {
@@ -287,13 +340,23 @@ export function VideoEditorPage() {
           handleExportVideo();
         },
       },
+      {
+        id: 'save-project',
+        keys: 'Ctrl+S',
+        description: 'Save project',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          handleSaveProject();
+        },
+      },
     ]);
 
     // Clean up on unmount
     return () => {
       keyboardShortcutManager.unregisterContext('video-editor');
     };
-    // handleDeleteClip and handleExportVideo are stable functions
+    // handleDeleteClip, handleExportVideo, and handleSaveProject are stable functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTime, selectedClipId]);
 
@@ -346,7 +409,27 @@ export function VideoEditorPage() {
   };
 
   const handleExportVideo = () => {
-    // TODO: Implement video export
+    // Export project as .aura file
+    exportProject();
+  };
+
+  const handleSaveProject = async () => {
+    try {
+      if (!projectName) {
+        const name = prompt('Enter project name:', 'Untitled Project');
+        if (!name) return;
+        await saveCurrentProject(name, true);
+      } else {
+        await saveCurrentProject(projectName, true);
+      }
+      // Success feedback via console (TODO: use toast notification)
+      console.log('Project saved successfully!');
+    } catch (error) {
+      console.error('Failed to save project:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      // TODO: Replace with toast notification system when available
+      console.error(`Failed to save project: ${errorMessage}`);
+    }
   };
 
   const handleApplyPreset = (preset: EffectPreset) => {
@@ -406,6 +489,11 @@ export function VideoEditorPage() {
       onImportMedia={handleImportMedia}
       onExportVideo={handleExportVideo}
       onShowKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
+      onSaveProject={handleSaveProject}
+      projectName={projectName}
+      isDirty={isDirty}
+      autosaveStatus={autosaveStatus}
+      lastSaved={lastSaved}
     />
   );
 }

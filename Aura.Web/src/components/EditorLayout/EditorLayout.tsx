@@ -111,6 +111,11 @@ interface EditorLayoutProps {
   onImportMedia?: () => void;
   onExportVideo?: () => void;
   onShowKeyboardShortcuts?: () => void;
+  onSaveProject?: () => void;
+  projectName?: string | null;
+  isDirty?: boolean;
+  autosaveStatus?: 'idle' | 'saving' | 'saved' | 'error';
+  lastSaved?: Date | null;
 }
 
 // LocalStorage keys for panel sizes
@@ -149,6 +154,11 @@ export function EditorLayout({
   onImportMedia,
   onExportVideo,
   onShowKeyboardShortcuts,
+  onSaveProject,
+  projectName,
+  isDirty,
+  autosaveStatus = 'idle',
+  lastSaved,
 }: EditorLayoutProps) {
   const styles = useStyles();
   const [propertiesWidth, setPropertiesWidth] = useState(() => 
@@ -272,6 +282,11 @@ export function EditorLayout({
         onImportMedia={onImportMedia}
         onExportVideo={onExportVideo}
         onShowKeyboardShortcuts={onShowKeyboardShortcuts}
+        onSaveProject={onSaveProject}
+        projectName={projectName}
+        isDirty={isDirty}
+        autosaveStatus={autosaveStatus}
+        lastSaved={lastSaved}
       />
       <div className={styles.content}>
         {mediaLibrary && (
