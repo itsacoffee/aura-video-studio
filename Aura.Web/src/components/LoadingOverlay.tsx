@@ -1,4 +1,5 @@
 import { makeStyles, tokens, Spinner, Text } from '@fluentui/react-components';
+import { ProgressIndicator } from './Loading/ProgressIndicator';
 
 const useStyles = makeStyles({
   overlay: {
@@ -42,26 +43,6 @@ const useStyles = makeStyles({
     width: '100%',
     marginTop: tokens.spacingVerticalM,
   },
-  progressBar: {
-    width: '100%',
-    height: '8px',
-    backgroundColor: tokens.colorNeutralBackground3,
-    borderRadius: tokens.borderRadiusCircular,
-    overflow: 'hidden',
-    marginBottom: tokens.spacingVerticalS,
-  },
-  progressFill: {
-    height: '100%',
-    background: `linear-gradient(90deg, ${tokens.colorBrandBackground}, ${tokens.colorPalettePurpleBackground2})`,
-    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: `0 0 10px ${tokens.colorBrandBackground}`,
-  },
-  progressText: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
-    textAlign: 'center',
-    fontFamily: 'monospace',
-  },
 });
 
 interface LoadingOverlayProps {
@@ -70,6 +51,8 @@ interface LoadingOverlayProps {
   message?: string;
   progress?: number;
   showProgress?: boolean;
+  estimatedTimeRemaining?: number;
+  status?: string;
 }
 
 export function LoadingOverlay({
@@ -78,6 +61,8 @@ export function LoadingOverlay({
   message,
   progress = 0,
   showProgress = false,
+  estimatedTimeRemaining,
+  status,
 }: LoadingOverlayProps) {
   const styles = useStyles();
 
@@ -86,17 +71,21 @@ export function LoadingOverlay({
   }
 
   return (
-    <div className={styles.overlay}>
+    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={title}>
       <div className={styles.content}>
-        <Spinner size="extra-large" />
+        <Spinner size="extra-large" aria-label={title} />
         <Text className={styles.title}>{title}</Text>
         {message && <Text className={styles.message}>{message}</Text>}
         {showProgress && (
           <div className={styles.progressContainer}>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: `${progress}%` }} />
-            </div>
-            <Text className={styles.progressText}>{progress}%</Text>
+            <ProgressIndicator 
+              progress={progress}
+              title=""
+              status={status}
+              estimatedTimeRemaining={estimatedTimeRemaining}
+              showPercentage={true}
+              showTimeRemaining={estimatedTimeRemaining !== undefined}
+            />
           </div>
         )}
       </div>

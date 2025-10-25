@@ -13,7 +13,6 @@ import {
   TableHeaderCell,
   TableBody,
   TableCell,
-  Spinner,
   Menu,
   MenuTrigger,
   MenuPopover,
@@ -36,6 +35,7 @@ import { useJobsStore } from '../../state/jobs';
 import { useNavigate } from 'react-router-dom';
 import { getProjects, deleteProject, duplicateProject } from '../../services/projectService';
 import { ProjectListItem } from '../../types/project';
+import { SkeletonTable, ErrorState } from '../../components/Loading';
 
 const useStyles = makeStyles({
   container: {
@@ -88,6 +88,7 @@ export function ProjectsPage() {
   const [selectedTab, setSelectedTab] = useState<'editor' | 'generated'>('editor');
   const [editorProjects, setEditorProjects] = useState<ProjectListItem[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
 
   useEffect(() => {
     listJobs();
@@ -96,11 +97,13 @@ export function ProjectsPage() {
 
   const loadEditorProjects = async () => {
     setLoadingProjects(true);
+    setProjectsError(null);
     try {
       const projects = await getProjects();
       setEditorProjects(projects);
     } catch (error) {
       console.error('Failed to load editor projects:', error);
+      setProjectsError(error instanceof Error ? error.message : 'Failed to load projects');
     } finally {
       setLoadingProjects(false);
     }
@@ -193,14 +196,26 @@ export function ProjectsPage() {
       {selectedTab === 'editor' && (
         <>
           {loadingProjects && (
-            <div
-              style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXL }}
-            >
-              <Spinner label="Loading projects..." />
-            </div>
+            <Card>
+              <SkeletonTable 
+                columns={['Name', 'Last Modified', 'Duration', 'Clips', 'Actions']}
+                rowCount={5}
+                columnWidths={['35%', '20%', '15%', '10%', '20%']}
+                ariaLabel="Loading editor projects"
+              />
+            </Card>
           )}
 
-          {!loadingProjects && editorProjects.length === 0 && (
+          {!loadingProjects && projectsError && (
+            <ErrorState
+              title="Failed to load projects"
+              message={projectsError}
+              onRetry={loadEditorProjects}
+              withCard={true}
+            />
+          )}
+
+          {!loadingProjects && !projectsError && editorProjects.length === 0 && (
             <Card>
               <div className={styles.emptyState}>
                 <Edit24Regular style={{ fontSize: '64px' }} />
@@ -213,7 +228,7 @@ export function ProjectsPage() {
             </Card>
           )}
 
-          {!loadingProjects && editorProjects.length > 0 && (
+          {!loadingProjects && !projectsError && editorProjects.length > 0 && (
             <Card>
               <Table className={styles.table}>
                 <TableHeader>
@@ -298,11 +313,14 @@ export function ProjectsPage() {
       {selectedTab === 'generated' && (
         <>
           {loading && (
-            <div
-              style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXL }}
-            >
-              <Spinner label="Loading projects..." />
-            </div>
+            <Card>
+              <SkeletonTable 
+                columns={['Date', 'Topic', 'Status', 'Stage', 'Duration', 'Actions']}
+                rowCount={5}
+                columnWidths={['18%', '20%', '15%', '15%', '12%', '20%']}
+                ariaLabel="Loading generated videos"
+              />
+            </Card>
           )}
 
           {!loading && jobs.length === 0 && (
