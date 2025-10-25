@@ -369,8 +369,16 @@ export function EngineCard({ engine }: EngineCardProps) {
     try {
       await startEngine(engine.id);
       await loadStatus();
+      showSuccessToast({
+        title: 'Engine Started',
+        message: `${engine.name} started successfully`,
+      });
     } catch (error) {
       console.error('Start failed:', error);
+      showFailureToast({
+        title: 'Failed to Start Engine',
+        message: error instanceof Error ? error.message : 'Failed to start engine',
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -381,8 +389,16 @@ export function EngineCard({ engine }: EngineCardProps) {
     try {
       await stopEngine(engine.id);
       await loadStatus();
+      showSuccessToast({
+        title: 'Engine Stopped',
+        message: `${engine.name} stopped successfully`,
+      });
     } catch (error) {
       console.error('Stop failed:', error);
+      showFailureToast({
+        title: 'Failed to Stop Engine',
+        message: error instanceof Error ? error.message : 'Failed to stop engine',
+      });
     } finally {
       setIsProcessing(false);
     }
