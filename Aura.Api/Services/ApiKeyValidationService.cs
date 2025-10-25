@@ -510,6 +510,7 @@ public class ApiKeyValidationService
 
     /// <summary>
     /// Masks an API key for logging purposes (shows only first 8 and last 4 characters)
+    /// Also sanitizes input to prevent log injection
     /// </summary>
     private string MaskApiKey(string apiKey)
     {
@@ -517,6 +518,9 @@ public class ApiKeyValidationService
         {
             return "[empty]";
         }
+
+        // Remove any control characters or newlines for safety
+        apiKey = System.Text.RegularExpressions.Regex.Replace(apiKey, @"[\r\n\t\x00-\x1F\x7F]", "");
 
         if (apiKey.Length <= 12)
         {

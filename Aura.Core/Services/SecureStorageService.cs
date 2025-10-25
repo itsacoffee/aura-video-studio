@@ -81,7 +81,8 @@ public class SecureStorageService : ISecureStorageService
 
         try
         {
-            _logger.LogInformation("Saving API key for provider: {Provider}", providerName);
+            var sanitizedProvider = SanitizeForLogging(providerName);
+            _logger.LogInformation("Saving API key for provider: {Provider}", sanitizedProvider);
 
             // Load existing keys
             var keys = await LoadKeysAsync().ConfigureAwait(false);
@@ -92,11 +93,12 @@ public class SecureStorageService : ISecureStorageService
             // Save encrypted
             await SaveKeysAsync(keys).ConfigureAwait(false);
 
-            _logger.LogInformation("API key saved successfully for provider: {Provider}", providerName);
+            _logger.LogInformation("API key saved successfully for provider: {Provider}", sanitizedProvider);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save API key for provider: {Provider}", providerName);
+            var sanitizedProvider = SanitizeForLogging(providerName);
+            _logger.LogError(ex, "Failed to save API key for provider: {Provider}", sanitizedProvider);
             throw;
         }
     }
@@ -148,23 +150,25 @@ public class SecureStorageService : ISecureStorageService
 
         try
         {
-            _logger.LogInformation("Deleting API key for provider: {Provider}", providerName);
+            var sanitizedProvider = SanitizeForLogging(providerName);
+            _logger.LogInformation("Deleting API key for provider: {Provider}", sanitizedProvider);
 
             var keys = await LoadKeysAsync().ConfigureAwait(false);
 
             if (keys.Remove(providerName))
             {
                 await SaveKeysAsync(keys).ConfigureAwait(false);
-                _logger.LogInformation("API key deleted successfully for provider: {Provider}", providerName);
+                _logger.LogInformation("API key deleted successfully for provider: {Provider}", sanitizedProvider);
             }
             else
             {
-                _logger.LogWarning("No API key found to delete for provider: {Provider}", providerName);
+                _logger.LogWarning("No API key found to delete for provider: {Provider}", sanitizedProvider);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete API key for provider: {Provider}", providerName);
+            var sanitizedProvider = SanitizeForLogging(providerName);
+            _logger.LogError(ex, "Failed to delete API key for provider: {Provider}", sanitizedProvider);
             throw;
         }
     }
@@ -446,5 +450,19 @@ public class SecureStorageService : ISecureStorageService
             _logger.LogWarning(ex, "Failed to use Windows DPAPI, falling back to AES decryption");
             return DecryptWithAes(encryptedData);
         }
+    }
+
+    /// <summary>
+    /// Sanitizes user input for safe logging to prevent log injection
+    /// </summary>
+    private static string SanitizeForLogging(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return "[empty]";
+        }
+
+        // Remove newlines and control characters to prevent log forging
+        return System.Text.RegularExpressions.Regex.Replace(input, @"[\r\n\t\x00-\x1F\x7F]", "");
     }
 }

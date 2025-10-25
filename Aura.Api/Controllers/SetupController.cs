@@ -192,7 +192,9 @@ public class SetupController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Validating API key for provider: {Provider}", request.Provider);
+            // Sanitize provider name for logging
+            var sanitizedProvider = SanitizeForLogging(request.Provider);
+            _logger.LogInformation("Validating API key for provider: {Provider}", sanitizedProvider);
 
             ValidationResult result;
 
@@ -460,15 +462,31 @@ public class SetupController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Deleting API key for provider: {Provider}", provider);
+            var sanitizedProvider = SanitizeForLogging(provider);
+            _logger.LogInformation("Deleting API key for provider: {Provider}", sanitizedProvider);
             await _secureStorage.DeleteApiKeyAsync(provider).ConfigureAwait(false);
             return Ok(new { success = true });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete API key for provider: {Provider}", provider);
+            var sanitizedProvider = SanitizeForLogging(provider);
+            _logger.LogError(ex, "Failed to delete API key for provider: {Provider}", sanitizedProvider);
             return StatusCode(500, new { success = false, error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Sanitizes user input for safe logging to prevent log injection
+    /// </summary>
+    private static string? SanitizeForLogging(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return "[empty]";
+        }
+
+        // Remove newlines and control characters to prevent log forging
+        return System.Text.RegularExpressions.Regex.Replace(input, @"[\r\n\t\x00-\x1F\x7F]", "");
     }
 
     private static string? EncryptString(string? plainText)
