@@ -1,4 +1,5 @@
 import { apiUrl } from '../config/api';
+import { get } from './api/apiClient';
 
 interface ProviderHealthSummary {
   totalProviders: number;
@@ -136,11 +137,8 @@ class HealthNotificationService {
     if (!this.isActive) return;
 
     try {
-      // Fetch current provider status
-      const response = await fetch(`${apiUrl}/health/providers`);
-      if (!response.ok) return;
-
-      const providers: ProviderHealth[] = await response.json();
+      // Fetch current provider status using API client
+      const providers = await get<ProviderHealth[]>(`${apiUrl}/health/providers`);
       const providersMap = Object.fromEntries(providers.map((p) => [p.providerName, p]));
 
       // Compare with previous state

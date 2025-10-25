@@ -11,6 +11,7 @@ import {
   CreateCollectionRequest,
   StockImageDownloadRequest,
 } from '../types/assets';
+import { get, post, del, uploadFile } from './api/apiClient';
 
 const API_BASE = '/api/assets';
 
@@ -36,49 +37,29 @@ export const assetService = {
     params.append('sortBy', sortBy);
     params.append('sortDescending', sortDescending.toString());
 
-    const response = await fetch(`${API_BASE}?${params}`);
-    if (!response.ok) throw new Error('Failed to fetch assets');
-    return response.json();
+    return get<AssetSearchResult>(`${API_BASE}?${params}`);
   },
 
   /**
    * Get asset by ID
    */
   async getAsset(id: string): Promise<Asset> {
-    const response = await fetch(`${API_BASE}/${id}`);
-    if (!response.ok) throw new Error('Failed to fetch asset');
-    return response.json();
+    return get<Asset>(`${API_BASE}/${id}`);
   },
 
   /**
    * Upload asset to library
    */
-  async uploadAsset(file: File, type?: string): Promise<Asset> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (type) formData.append('type', type);
-
-    const response = await fetch(`${API_BASE}/upload`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) throw new Error('Failed to upload asset');
-    return response.json();
+  async uploadAsset(file: File, type?: string, onProgress?: (progress: number) => void): Promise<Asset> {
+    const url = type ? `${API_BASE}/upload?type=${type}` : `${API_BASE}/upload`;
+    return uploadFile<Asset>(url, file, onProgress);
   },
 
   /**
    * Add tags to an asset
    */
   async addTags(assetId: string, tags: string[]): Promise<Asset> {
-    const response = await fetch(`${API_BASE}/${assetId}/tags`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tags),
-    });
-
-    if (!response.ok) throw new Error('Failed to add tags');
-    return response.json();
+    return post<Asset>(`${API_BASE}/${assetId}/tags`, tags);
   },
 
   /**
@@ -88,14 +69,7 @@ export const assetService = {
     const params = new URLSearchParams();
     params.append('deleteFromDisk', deleteFromDisk.toString());
 
-    const response = await fetch(`${API_BASE}/${assetId}?${params}`, {
-      method: 'DELETE',
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to delete asset');
-    }
+    return del<void>(`${API_BASE}/${assetId}?${params}`);
   },
 
   /**
@@ -106,73 +80,41 @@ export const assetService = {
     params.append('query', query);
     params.append('count', count.toString());
 
-    const response = await fetch(`${API_BASE}/stock/search?${params}`);
-    if (!response.ok) throw new Error('Failed to search stock images');
-    return response.json();
+    return get<StockImage[]>(`${API_BASE}/stock/search?${params}`);
   },
 
   /**
    * Download and add stock image to library
    */
   async downloadStockImage(request: StockImageDownloadRequest): Promise<Asset> {
-    const response = await fetch(`${API_BASE}/stock/download`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) throw new Error('Failed to download stock image');
-    return response.json();
+    return post<Asset>(`${API_BASE}/stock/download`, request);
   },
 
   /**
    * Generate AI image
    */
   async generateAIImage(request: AIImageGenerationRequest): Promise<Asset> {
-    const response = await fetch(`${API_BASE}/ai/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to generate AI image');
-    }
-    return response.json();
+    return post<Asset>(`${API_BASE}/ai/generate`, request);
   },
 
   /**
    * Get all collections
    */
   async getCollections(): Promise<AssetCollection[]> {
-    const response = await fetch(`${API_BASE}/collections`);
-    if (!response.ok) throw new Error('Failed to fetch collections');
-    return response.json();
+    return get<AssetCollection[]>(`${API_BASE}/collections`);
   },
 
   /**
    * Create a collection
    */
   async createCollection(request: CreateCollectionRequest): Promise<AssetCollection> {
-    const response = await fetch(`${API_BASE}/collections`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) throw new Error('Failed to create collection');
-    return response.json();
+    return post<AssetCollection>(`${API_BASE}/collections`, request);
   },
 
   /**
    * Add asset to collection
    */
   async addToCollection(collectionId: string, assetId: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/collections/${collectionId}/assets/${assetId}`, {
-      method: 'POST',
-    });
-
-    if (!response.ok) throw new Error('Failed to add asset to collection');
+    return post<void>(`${API_BASE}/collections/${collectionId}/assets/${assetId}`);
   },
 };

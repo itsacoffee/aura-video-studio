@@ -7,6 +7,7 @@ import {
   ProjectListItem,
   LoadProjectResponse,
 } from '../types/project';
+import { get, post, del } from './api/apiClient';
 
 const API_BASE_URL = '/api/project';
 
@@ -14,22 +15,14 @@ const API_BASE_URL = '/api/project';
  * Get all projects
  */
 export async function getProjects(): Promise<ProjectListItem[]> {
-  const response = await fetch(API_BASE_URL);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch projects: ${response.statusText}`);
-  }
-  return response.json();
+  return get<ProjectListItem[]>(API_BASE_URL);
 }
 
 /**
  * Get a specific project by ID
  */
 export async function getProject(id: string): Promise<LoadProjectResponse> {
-  const response = await fetch(`${API_BASE_URL}/${id}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch project: ${response.statusText}`);
-  }
-  return response.json();
+  return get<LoadProjectResponse>(`${API_BASE_URL}/${id}`);
 }
 
 /**
@@ -50,33 +43,14 @@ export async function saveProject(
     projectData: JSON.stringify(projectFile),
   };
 
-  const response = await fetch(API_BASE_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(error.detail || 'Failed to save project');
-  }
-
-  return response.json();
+  return post<{ id: string; name: string; lastModifiedAt: string }>(API_BASE_URL, body);
 }
 
 /**
  * Delete a project
  */
 export async function deleteProject(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/${id}`, {
-    method: 'DELETE',
-  });
-
-  if (!response.ok && response.status !== 404) {
-    throw new Error(`Failed to delete project: ${response.statusText}`);
-  }
+  return del<void>(`${API_BASE_URL}/${id}`);
 }
 
 /**
@@ -85,15 +59,9 @@ export async function deleteProject(id: string): Promise<void> {
 export async function duplicateProject(
   id: string
 ): Promise<{ id: string; name: string; lastModifiedAt: string }> {
-  const response = await fetch(`${API_BASE_URL}/${id}/duplicate`, {
-    method: 'POST',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to duplicate project: ${response.statusText}`);
-  }
-
-  return response.json();
+  return post<{ id: string; name: string; lastModifiedAt: string }>(
+    `${API_BASE_URL}/${id}/duplicate`
+  );
 }
 
 /**

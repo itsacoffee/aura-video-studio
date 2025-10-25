@@ -2,6 +2,8 @@
  * Conversation API service for AI context management
  */
 
+import { get, post, put, del } from './api/apiClient';
+
 export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -91,19 +93,10 @@ export const conversationService = {
    * Send a message with full context
    */
   async sendMessage(projectId: string, message: string): Promise<SendMessageResponse> {
-    const response = await fetch(`${API_BASE}/${projectId}/message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ message } as SendMessageRequest),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to send message');
-    }
-
-    return response.json();
+    return post<SendMessageResponse>(
+      `${API_BASE}/${projectId}/message`,
+      { message } as SendMessageRequest
+    );
   },
 
   /**
@@ -115,73 +108,35 @@ export const conversationService = {
       params.append('maxMessages', maxMessages.toString());
     }
 
-    const response = await fetch(`${API_BASE}/${projectId}/history?${params}`);
-
-    if (!response.ok) {
-      throw new Error('Failed to get conversation history');
-    }
-
-    return response.json();
+    return get<GetHistoryResponse>(`${API_BASE}/${projectId}/history?${params}`);
   },
 
   /**
    * Clear conversation context
    */
   async clearConversation(projectId: string): Promise<void> {
-    const response = await fetch(`${API_BASE}/${projectId}`, {
-      method: 'DELETE',
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to clear conversation');
-    }
+    return del<void>(`${API_BASE}/${projectId}`);
   },
 
   /**
    * Get full project context
    */
   async getContext(projectId: string): Promise<GetContextResponse> {
-    const response = await fetch(`${API_BASE}/${projectId}/context`);
-
-    if (!response.ok) {
-      throw new Error('Failed to get context');
-    }
-
-    return response.json();
+    return get<GetContextResponse>(`${API_BASE}/${projectId}/context`);
   },
 
   /**
    * Update project metadata
    */
   async updateContext(projectId: string, metadata: UpdateContextRequest): Promise<void> {
-    const response = await fetch(`${API_BASE}/${projectId}/context`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(metadata),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to update context');
-    }
+    return put<void>(`${API_BASE}/${projectId}/context`, metadata);
   },
 
   /**
    * Record AI decision and user response
    */
   async recordDecision(projectId: string, decision: RecordDecisionRequest): Promise<void> {
-    const response = await fetch(`${API_BASE}/${projectId}/decision`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(decision),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to record decision');
-    }
+    return post<void>(`${API_BASE}/${projectId}/decision`, decision);
   },
 
   /**
