@@ -84,4 +84,3 @@ describe('mediaProcessing', () => {
   // are difficult to unit test due to browser API dependencies (HTMLVideoElement, AudioContext, etc.)
   // These would be better tested as E2E tests or in a browser environment
 });
-

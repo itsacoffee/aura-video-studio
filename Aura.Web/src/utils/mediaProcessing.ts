@@ -79,6 +79,8 @@ export async function generateVideoThumbnails(
       captureFrame();
     };
 
+    // Using URL.createObjectURL with a File object is safe - it creates a blob URL
+    // for the file content, not reinterpreting DOM text as HTML
     video.src = URL.createObjectURL(file);
   });
 }
@@ -156,6 +158,8 @@ export async function getMediaDuration(file: File): Promise<number> {
       reject(new Error('Failed to load media file'));
     };
 
+    // Using URL.createObjectURL with a File object is safe - it creates a blob URL
+    // for the file content, not reinterpreting DOM text as HTML
     element.src = URL.createObjectURL(file);
   });
 }
