@@ -59,11 +59,23 @@ public class ValidationController : ControllerBase
 
             Log.Information("[{CorrelationId}] Validation result: IsValid={IsValid}, Issues={IssueCount}", 
                 correlationId, result.IsValid, result.Issues.Count);
+            
+            // Log each validation issue for debugging
+            if (!result.IsValid)
+            {
+                Log.Warning("[{CorrelationId}] Validation failed with {IssueCount} issues:", 
+                    correlationId, result.Issues.Count);
+                foreach (var issue in result.Issues)
+                {
+                    Log.Warning("[{CorrelationId}]   - {Issue}", correlationId, issue);
+                }
+            }
 
             return Ok(new
             {
                 isValid = result.IsValid,
-                issues = result.Issues
+                issues = result.Issues,
+                issueCount = result.Issues.Count
             });
         }
         catch (Exception ex)

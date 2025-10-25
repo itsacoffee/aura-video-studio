@@ -44,6 +44,7 @@ import type {
 } from '../../types';
 import type { PreflightReport, PerStageProviderSelection } from '../../state/providers';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../../utils/enumNormalizer';
+import { validateBriefRequest } from '../../utils/formValidation';
 import { PreflightPanel } from '../../components/PreflightPanel';
 import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
 import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
@@ -451,35 +452,73 @@ export function CreateWizard() {
     console.log('[QUICK DEMO] Button clicked - starting demo generation');
     try {
       setGenerating(true);
+      
+      // Prepare complete validation request with all required fields
+      const validationRequest = {
+        topic: 'Welcome to Aura Video Studio',
+        audience: 'General',
+        goal: 'Demonstrate',
+        tone: 'Informative',
+        language: 'en-US',
+        durationMinutes: 0.2, // 12 seconds (0.2 minutes)
+      };
+      
+      console.log('[QUICK DEMO] Validating with request:', validationRequest);
+      
+      // Frontend validation before API call
+      const frontendValidation = validateBriefRequest(validationRequest);
+      if (!frontendValidation.valid) {
+        console.warn('[QUICK DEMO] Frontend validation failed:', frontendValidation.errors);
+        showFailureToast({
+          title: 'Invalid Quick Demo Request',
+          message: 'The demo request failed frontend validation:\n' + frontendValidation.errors.join('\n'),
+        });
+        setGenerating(false);
+        return;
+      }
+      
+      console.log('[QUICK DEMO] Frontend validation passed');
+      
       // Validate before starting generation
       const validationUrl = apiUrl('/api/validation/brief');
       
       const validationResponse = await fetch(validationUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic: 'AI Video Generation Demo',
-          durationMinutes: 0.5,
-        }),
+        body: JSON.stringify(validationRequest),
       });
 
       if (validationResponse.ok) {
         const validationData = await validationResponse.json();
+        console.log('[QUICK DEMO] Validation response:', validationData);
         
         if (!validationData.isValid) {
-          console.warn('[QUICK DEMO] Validation failed:', validationData.issues);
+          console.warn('[QUICK DEMO] Validation failed with issues:', validationData.issues);
+          
+          // Format error message with specific issues
+          const errorMessage = validationData.issues && validationData.issues.length > 0
+            ? validationData.issues.join('\n')
+            : 'Validation failed. Please check system requirements.';
+            
           showFailureToast({
-            title: 'Validation Failed',
-            message: validationData.issues.join('\n'),
+            title: 'Quick Demo System Check Failed',
+            message: errorMessage,
+            errorDetails: `Validation returned ${validationData.issueCount || validationData.issues?.length || 0} issue(s). Please ensure FFmpeg is installed and system requirements are met.`,
           });
           setGenerating(false);
           return;
         }
+        
+        console.log('[QUICK DEMO] Validation passed, proceeding with demo generation');
       } else {
         console.error('[QUICK DEMO] Validation request failed:', validationResponse.status, validationResponse.statusText);
+        const errorText = await validationResponse.text();
+        console.error('[QUICK DEMO] Error response:', errorText);
+        
         showFailureToast({
           title: 'Validation Failed',
           message: `Could not validate quick demo request. Server returned status ${validationResponse.status}`,
+          errorDetails: errorText,
         });
         setGenerating(false);
         return;
