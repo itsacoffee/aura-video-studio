@@ -6,6 +6,7 @@ import { PropertiesPanel } from '../components/EditorLayout/PropertiesPanel';
 import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
 import { EffectsLibraryPanel } from '../components/EditorLayout/EffectsLibraryPanel';
 import { AppliedEffect, EffectPreset } from '../types/effects';
+import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 
 export interface TimelineClip {
   id: string;
@@ -45,12 +46,37 @@ export function VideoEditorPage() {
   const [clips, setClips] = useState<TimelineClip[]>([]);
   const [, setShowKeyboardShortcuts] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const [inPoint, setInPoint] = useState<number | null>(null);
+  const [outPoint, setOutPoint] = useState<number | null>(null);
+  const [selectedTool, setSelectedTool] = useState<'select' | 'razor' | 'hand'>('select');
   const [tracks, setTracks] = useState<TimelineTrack[]>([
     { id: 'video1', label: 'Video 1', type: 'video', visible: true, locked: false },
     { id: 'video2', label: 'Video 2', type: 'video', visible: true, locked: false },
     { id: 'audio1', label: 'Audio 1', type: 'audio', visible: true, locked: false },
     { id: 'audio2', label: 'Audio 2', type: 'audio', visible: true, locked: false },
   ]);
+
+  // Log state changes for debugging
+  useEffect(() => {
+    if (playbackSpeed !== 1.0) {
+      console.log('Playback speed:', playbackSpeed);
+    }
+  }, [playbackSpeed]);
+
+  useEffect(() => {
+    if (inPoint !== null || outPoint !== null) {
+      console.log('In/Out points:', { inPoint, outPoint });
+    }
+  }, [inPoint, outPoint]);
+
+  useEffect(() => {
+    console.log('Selected tool:', selectedTool);
+  }, [selectedTool]);
+
+  useEffect(() => {
+    console.log('Playing:', isPlaying);
+  }, [isPlaying]);
   
   // Ref to track video preview controls
   const videoPreviewRef = useRef<{
@@ -58,76 +84,218 @@ export function VideoEditorPage() {
     pause: () => void;
     stepForward: () => void;
     stepBackward: () => void;
+    setPlaybackRate: (rate: number) => void;
   } | null>(null);
 
   // Ref to media library panel for triggering file picker
   const mediaLibraryRef = useRef<{ openFilePicker: () => void } | null>(null);
 
-  // Keyboard shortcuts
+  // Register keyboard shortcuts for video editor
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts if user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
+    // Set the active context
+    keyboardShortcutManager.setActiveContext('video-editor');
 
-      // Space for play/pause
-      if (e.code === 'Space' && !e.ctrlKey && !e.shiftKey) {
-        e.preventDefault();
-        setIsPlaying((prev) => !prev);
-      }
-      // J for reverse shuttle (step backward)
-      else if (e.key === 'j' && !e.ctrlKey && !e.shiftKey) {
-        e.preventDefault();
-        videoPreviewRef.current?.stepBackward();
-      }
-      // K for pause
-      else if (e.key === 'k' && !e.ctrlKey && !e.shiftKey) {
-        e.preventDefault();
-        setIsPlaying(false);
-      }
-      // L for forward shuttle (step forward)
-      else if (e.key === 'l' && !e.ctrlKey && !e.shiftKey) {
-        e.preventDefault();
-        videoPreviewRef.current?.stepForward();
-      }
-      // Arrow left for frame step backward
-      else if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.shiftKey) {
-        e.preventDefault();
-        videoPreviewRef.current?.stepBackward();
-      }
-      // Arrow right for frame step forward
-      else if (e.key === 'ArrowRight' && !e.ctrlKey && !e.shiftKey) {
-        e.preventDefault();
-        videoPreviewRef.current?.stepForward();
-      }
-      // Ctrl+K for keyboard shortcuts
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        setShowKeyboardShortcuts(true);
-      }
-      // Ctrl+S for save (prevent browser save)
-      else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        // TODO: Implement project save
-      }
-      // Ctrl+E for export
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-        e.preventDefault();
-        handleExportVideo();
-      }
-      // Delete key to delete selected clip
-      else if (e.key === 'Delete' && selectedClipId) {
-        e.preventDefault();
-        handleDeleteClip();
-      }
+    // Register video editor specific shortcuts
+    keyboardShortcutManager.registerMultiple([
+      // Playback controls
+      {
+        id: 'play-pause',
+        keys: 'Space',
+        description: 'Play/Pause',
+        context: 'video-editor',
+        handler: () => {
+          setIsPlaying((prev) => !prev);
+        },
+      },
+      // J/K/L Shuttle control
+      {
+        id: 'shuttle-reverse',
+        keys: 'J',
+        description: 'Reverse playback (press multiple times for faster)',
+        context: 'video-editor',
+        handler: () => {
+          setPlaybackSpeed((speed) => {
+            let newSpeed = speed - 0.5;
+            if (newSpeed < -4.0) newSpeed = -4.0;
+            videoPreviewRef.current?.setPlaybackRate(newSpeed);
+            setIsPlaying(true);
+            return newSpeed;
+          });
+        },
+      },
+      {
+        id: 'shuttle-pause',
+        keys: 'K',
+        description: 'Pause/Reset playback speed',
+        context: 'video-editor',
+        handler: () => {
+          setIsPlaying(false);
+          setPlaybackSpeed(1.0);
+          videoPreviewRef.current?.setPlaybackRate(1.0);
+        },
+      },
+      {
+        id: 'shuttle-forward',
+        keys: 'L',
+        description: 'Forward playback (press multiple times for faster)',
+        context: 'video-editor',
+        handler: () => {
+          setPlaybackSpeed((speed) => {
+            let newSpeed = speed + 0.5;
+            if (newSpeed > 4.0) newSpeed = 4.0;
+            videoPreviewRef.current?.setPlaybackRate(newSpeed);
+            setIsPlaying(true);
+            return newSpeed;
+          });
+        },
+      },
+      // Frame navigation
+      {
+        id: 'frame-backward',
+        keys: 'ArrowLeft',
+        description: 'Previous frame',
+        context: 'video-editor',
+        handler: () => {
+          videoPreviewRef.current?.stepBackward();
+        },
+      },
+      {
+        id: 'frame-forward',
+        keys: 'ArrowRight',
+        description: 'Next frame',
+        context: 'video-editor',
+        handler: () => {
+          videoPreviewRef.current?.stepForward();
+        },
+      },
+      // In/Out points
+      {
+        id: 'set-in-point',
+        keys: 'I',
+        description: 'Set In point',
+        context: 'video-editor',
+        handler: () => {
+          setInPoint(currentTime);
+          console.log('In point set at:', currentTime);
+        },
+      },
+      {
+        id: 'set-out-point',
+        keys: 'O',
+        description: 'Set Out point',
+        context: 'video-editor',
+        handler: () => {
+          setOutPoint(currentTime);
+          console.log('Out point set at:', currentTime);
+        },
+      },
+      {
+        id: 'clear-in-out',
+        keys: 'Ctrl+Shift+X',
+        description: 'Clear In/Out points',
+        context: 'video-editor',
+        handler: () => {
+          setInPoint(null);
+          setOutPoint(null);
+        },
+      },
+      // Tool switching (numeric keys)
+      {
+        id: 'tool-select',
+        keys: '1',
+        description: 'Select Tool (V)',
+        context: 'video-editor',
+        handler: () => {
+          setSelectedTool('select');
+        },
+      },
+      {
+        id: 'tool-razor',
+        keys: '2',
+        description: 'Razor Tool (C)',
+        context: 'video-editor',
+        handler: () => {
+          setSelectedTool('razor');
+        },
+      },
+      {
+        id: 'tool-hand',
+        keys: '3',
+        description: 'Hand Tool (H)',
+        context: 'video-editor',
+        handler: () => {
+          setSelectedTool('hand');
+        },
+      },
+      // Alternative tool shortcuts (common in video editors)
+      {
+        id: 'tool-select-v',
+        keys: 'V',
+        description: 'Select Tool',
+        context: 'video-editor',
+        handler: () => {
+          setSelectedTool('select');
+        },
+      },
+      {
+        id: 'tool-razor-c',
+        keys: 'C',
+        description: 'Razor Tool',
+        context: 'video-editor',
+        handler: () => {
+          setSelectedTool('razor');
+        },
+      },
+      {
+        id: 'tool-hand-h',
+        keys: 'H',
+        description: 'Hand Tool',
+        context: 'video-editor',
+        handler: () => {
+          setSelectedTool('hand');
+        },
+      },
+      // Clip operations
+      {
+        id: 'delete-clip',
+        keys: 'Delete',
+        description: 'Delete selected clip',
+        context: 'video-editor',
+        handler: () => {
+          if (selectedClipId) {
+            handleDeleteClip();
+          }
+        },
+      },
+      {
+        id: 'delete-clip-backspace',
+        keys: 'Backspace',
+        description: 'Delete selected clip',
+        context: 'video-editor',
+        handler: () => {
+          if (selectedClipId) {
+            handleDeleteClip();
+          }
+        },
+      },
+      {
+        id: 'export-video',
+        keys: 'Ctrl+E',
+        description: 'Export video',
+        context: 'video-editor',
+        handler: () => {
+          handleExportVideo();
+        },
+      },
+    ]);
+
+    // Clean up on unmount
+    return () => {
+      keyboardShortcutManager.unregisterContext('video-editor');
     };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-    // handleDeleteClip and handleExportVideo are stable functions and don't need to be in deps
+    // handleDeleteClip and handleExportVideo are stable functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClipId, isPlaying]);
+  }, [currentTime, selectedClipId]);
 
   const handleUpdateClip = (updates: Partial<TimelineClip>) => {
     if (!selectedClipId) return;

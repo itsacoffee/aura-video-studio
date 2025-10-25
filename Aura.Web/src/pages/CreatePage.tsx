@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../config/api';
 import {
@@ -27,6 +27,7 @@ import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormali
 import { PreflightPanel } from '../components/PreflightPanel';
 import { useActivity } from '../state/activityContext';
 import { useNotifications } from '../components/Notifications/Toasts';
+import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 
 const useStyles = makeStyles({
   container: {
@@ -304,6 +305,61 @@ export function CreatePage() {
       setGenerating(false);
     }
   };
+
+  // Register Create workflow shortcuts
+  useEffect(() => {
+    // Set the active context
+    keyboardShortcutManager.setActiveContext('create');
+
+    // Register create-specific shortcuts
+    keyboardShortcutManager.registerMultiple([
+      {
+        id: 'create-next-step',
+        keys: 'Ctrl+Enter',
+        description: 'Next step',
+        context: 'create',
+        handler: () => {
+          if (currentStep < 3) {
+            if (currentStep === 1 && !brief.topic) {
+              return; // Don't proceed if topic is empty
+            }
+            setCurrentStep(currentStep + 1);
+          } else if (currentStep === 3 && preflightReport && (preflightReport.ok || overridePreflightGate)) {
+            handleGenerate();
+          }
+        },
+      },
+      {
+        id: 'create-previous-step',
+        keys: 'Ctrl+Shift+Enter',
+        description: 'Previous step',
+        context: 'create',
+        handler: () => {
+          if (currentStep > 1) {
+            setCurrentStep(currentStep - 1);
+          }
+        },
+      },
+      {
+        id: 'create-cancel',
+        keys: 'Escape',
+        description: 'Cancel/Go back',
+        context: 'create',
+        handler: () => {
+          if (currentStep > 1) {
+            setCurrentStep(currentStep - 1);
+          } else {
+            navigate('/');
+          }
+        },
+      },
+    ]);
+
+    // Clean up on unmount
+    return () => {
+      keyboardShortcutManager.unregisterContext('create');
+    };
+  }, [currentStep, brief.topic, preflightReport, overridePreflightGate, navigate]);
 
   return (
     <div className={styles.container}>
