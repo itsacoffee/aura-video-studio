@@ -64,6 +64,9 @@ const useStyles = makeStyles({
     position: 'relative',
     display: 'flex',
   },
+  trackDragOver: {
+    backgroundColor: tokens.colorBrandBackground2,
+  },
   trackLabel: {
     width: '100px',
     padding: tokens.spacingVerticalS,
@@ -154,6 +157,7 @@ interface TimelinePanelProps {
   onTimeChange?: (time: number) => void;
   onClipSelect?: (clipId: string | null) => void;
   selectedClipId?: string | null;
+  onClipAdd?: (trackId: string, clip: TimelineClip) => void;
 }
 
 export function TimelinePanel({
@@ -168,10 +172,12 @@ export function TimelinePanel({
   onTimeChange,
   onClipSelect,
   selectedClipId = null,
+  onClipAdd,
 }: TimelinePanelProps) {
   const styles = useStyles();
   const [zoom, setZoom] = useState(50); // pixels per second
   const [snapping, setSnapping] = useState(true);
+  const [dragOverTrack, setDragOverTrack] = useState<string | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const isDraggingPlayhead = useRef(false);
 
@@ -235,6 +241,54 @@ export function TimelinePanel({
     const secs = Math.floor(seconds % 60);
     const frames = Math.floor((seconds % 1) * 30);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
+  };
+
+  const handleTrackDragOver = (e: React.DragEvent, trackId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverTrack(trackId);
+  };
+
+  const handleTrackDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverTrack(null);
+  };
+
+  const handleTrackDrop = (e: React.DragEvent, trackId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverTrack(null);
+
+    try {
+      const data = e.dataTransfer.getData('application/json');
+      if (!data) return;
+
+      const mediaClip = JSON.parse(data);
+      
+      // Calculate drop position based on mouse position
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      let dropTime = Math.max(0, (x - 100) / pixelsPerSecond); // Account for track label width
+
+      if (snapping) {
+        dropTime = Math.round(dropTime * 2) / 2; // Snap to 0.5 second intervals
+      }
+
+      // Create a new timeline clip from the media clip
+      const newClip: TimelineClip = {
+        id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        trackId,
+        startTime: dropTime,
+        duration: 3, // Default duration
+        label: mediaClip.name,
+        type: mediaClip.type,
+      };
+
+      onClipAdd?.(trackId, newClip);
+    } catch (error) {
+      console.error('Failed to parse dropped data:', error);
+    }
   };
 
   const renderRuler = () => {
@@ -302,7 +356,13 @@ export function TimelinePanel({
 
         <div className={styles.tracksContainer} onClick={handleTimelineClick} role="region" aria-label="Timeline tracks">
           {tracks.map((track) => (
-            <div key={track.id} className={styles.track}>
+            <div 
+              key={track.id} 
+              className={`${styles.track} ${dragOverTrack === track.id ? styles.trackDragOver : ''}`}
+              onDragOver={(e) => handleTrackDragOver(e, track.id)}
+              onDragLeave={handleTrackDragLeave}
+              onDrop={(e) => handleTrackDrop(e, track.id)}
+            >
               <div className={styles.trackLabel}>{track.label}</div>
               <div className={styles.trackContent} style={{ width: `${timelineWidth}px` }}>
                 {clips

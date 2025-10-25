@@ -48,6 +48,16 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
   },
+  mediaLibraryPanel: {
+    width: '280px',
+    minWidth: '240px',
+    maxWidth: '350px',
+    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+  },
   resizer: {
     width: '4px',
     cursor: 'ew-resize',
@@ -78,6 +88,7 @@ interface EditorLayoutProps {
   preview?: ReactNode;
   timeline?: ReactNode;
   properties?: ReactNode;
+  mediaLibrary?: ReactNode;
   onImportMedia?: () => void;
   onExportVideo?: () => void;
   onShowKeyboardShortcuts?: () => void;
@@ -87,12 +98,14 @@ export function EditorLayout({
   preview,
   timeline,
   properties,
+  mediaLibrary,
   onImportMedia,
   onExportVideo,
   onShowKeyboardShortcuts,
 }: EditorLayoutProps) {
   const styles = useStyles();
   const [propertiesWidth, setPropertiesWidth] = useState(320);
+  const [mediaLibraryWidth, setMediaLibraryWidth] = useState(280);
   const [previewHeight, setPreviewHeight] = useState(60); // Percentage
 
   // Handle resizing properties panel
@@ -140,6 +153,26 @@ export function EditorLayout({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  // Handle resizing media library panel
+  const handleMediaLibraryResize = (e: React.MouseEvent) => {
+    const startX = e.clientX;
+    const startWidth = mediaLibraryWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const newWidth = Math.max(240, Math.min(350, startWidth + delta));
+      setMediaLibraryWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   return (
     <div className={styles.container}>
       <MenuBar
@@ -148,6 +181,14 @@ export function EditorLayout({
         onShowKeyboardShortcuts={onShowKeyboardShortcuts}
       />
       <div className={styles.content}>
+        {mediaLibrary && (
+          <>
+            <div className={styles.mediaLibraryPanel} style={{ width: `${mediaLibraryWidth}px` }}>
+              {mediaLibrary}
+            </div>
+            <div className={styles.resizer} onMouseDown={handleMediaLibraryResize} role="separator" aria-orientation="vertical" />
+          </>
+        )}
         <div className={styles.mainArea}>
           <div className={styles.previewPanel} style={{ flex: previewHeight }}>
             {preview}

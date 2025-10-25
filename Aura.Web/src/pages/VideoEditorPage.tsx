@@ -3,6 +3,7 @@ import { EditorLayout } from '../components/EditorLayout/EditorLayout';
 import { VideoPreviewPanel } from '../components/EditorLayout/VideoPreviewPanel';
 import { TimelinePanel } from '../components/EditorLayout/TimelinePanel';
 import { PropertiesPanel } from '../components/EditorLayout/PropertiesPanel';
+import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
 
 interface TimelineClip {
   id: string;
@@ -18,34 +19,7 @@ interface TimelineClip {
 export function VideoEditorPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
-  const [clips, setClips] = useState<TimelineClip[]>([
-    {
-      id: 'clip1',
-      trackId: 'video1',
-      startTime: 0,
-      duration: 3,
-      label: 'Sample Video 1',
-      type: 'video',
-      prompt: 'AI-generated landscape',
-    },
-    {
-      id: 'clip2',
-      trackId: 'video1',
-      startTime: 3.5,
-      duration: 2.5,
-      label: 'Sample Video 2',
-      type: 'video',
-      prompt: 'AI-generated cityscape',
-    },
-    {
-      id: 'audio1',
-      trackId: 'audio1',
-      startTime: 0,
-      duration: 5.5,
-      label: 'Background Music',
-      type: 'audio',
-    },
-  ]);
+  const [clips, setClips] = useState<TimelineClip[]>([]);
   const [, setShowKeyboardShortcuts] = useState(false);
 
   // Keyboard shortcuts
@@ -97,6 +71,10 @@ export function VideoEditorPage() {
     setSelectedClipId(null);
   };
 
+  const handleAddClip = (_trackId: string, clip: TimelineClip) => {
+    setClips((prevClips) => [...prevClips, clip]);
+  };
+
   const selectedClip = clips.find((clip) => clip.id === selectedClipId);
 
   const handleImportMedia = () => {
@@ -111,6 +89,7 @@ export function VideoEditorPage() {
 
   return (
     <EditorLayout
+      mediaLibrary={<MediaLibraryPanel />}
       preview={
         <VideoPreviewPanel
           currentTime={currentTime}
@@ -124,6 +103,7 @@ export function VideoEditorPage() {
           onTimeChange={setCurrentTime}
           onClipSelect={setSelectedClipId}
           selectedClipId={selectedClipId}
+          onClipAdd={handleAddClip}
         />
       }
       properties={
