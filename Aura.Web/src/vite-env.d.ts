@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_ENV: string;
   readonly VITE_ENABLE_ANALYTICS: string;
   readonly VITE_ENABLE_DEBUG: string;
+  readonly VITE_ENABLE_DEV_TOOLS: string;
   readonly DEV: boolean;
   readonly PROD: boolean;
   readonly MODE: string;

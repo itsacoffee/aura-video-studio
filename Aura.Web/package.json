@@ -8,8 +8,12 @@
   },
   "scripts": {
     "dev": "vite --open",
-    "build": "tsc && vite build",
+    "build": "npm run build:prod",
+    "build:dev": "vite build --mode development",
+    "build:prod": "npm run type-check && vite build --mode production",
     "build:clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && npm run build",
+    "build:analyze": "npm run build:prod && open dist/stats.html",
+    "validate": "npm run type-check && npm run lint",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 150",
     "lint:fix": "eslint . --ext ts,tsx --fix",
@@ -62,10 +66,13 @@
     "jsdom": "^27.0.0",
     "postcss": "^8.4.33",
     "prettier": "^3.1.1",
+    "rollup-plugin-visualizer": "^6.0.5",
     "tailwindcss": "^3.4.1",
+    "terser": "^5.44.0",
     "typedoc": "^0.25.0",
     "typescript": "^5.3.3",
     "vite": "^6.4.1",
+    "vite-plugin-compression": "^0.5.1",
     "vitest": "^3.2.4"
   }
 }

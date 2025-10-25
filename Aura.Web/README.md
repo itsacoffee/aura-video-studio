@@ -129,17 +129,61 @@ npm run dev
 ### Build for Production
 
 ```bash
-# Type check first
-npm run type-check
+# Build optimized production bundle (recommended)
+npm run build:prod
 
-# Build optimized production bundle
-npm run build
+# Or build development bundle with visible source maps
+npm run build:dev
 
 # Output will be in dist/
 # - Code splitting for better performance
-# - Source maps enabled for debugging
-# - Assets optimized and minified
+# - Minified with Terser
+# - Console logs removed in production
+# - Hidden source maps in production
+# - Pre-compressed assets (gzip + brotli)
+# - Bundle analysis report in dist/stats.html
 ```
+
+### Build Scripts
+
+```bash
+# Development build (source maps visible)
+npm run build:dev
+
+# Production build (optimized, validated)
+npm run build:prod
+
+# Clean build (removes dist/ first)
+npm run build:clean
+
+# Build with bundle analysis
+npm run build:analyze
+
+# Validate code (type-check + lint)
+npm run validate
+```
+
+### Build Optimizations
+
+The production build includes several optimizations:
+
+1. **Code Splitting**: Separate chunks for vendors (React, Fluent UI, etc.) and app code
+2. **Minification**: Terser minification with console.log removal
+3. **Tree Shaking**: Removes unused code from bundles
+4. **Source Maps**: Generated as "hidden" - not served to users but available for debugging
+5. **Compression**: Pre-compressed with gzip and brotli for faster delivery
+6. **Lazy Loading**: Development-only features loaded on demand
+7. **Asset Optimization**: Images and fonts optimized for size
+
+#### Bundle Sizes (Production)
+
+- Main app bundle: ~636KB (143KB gzipped, 108KB brotli)
+- React vendor: ~153KB (50KB gzipped, 42KB brotli)
+- Fluent UI icons: ~66KB (21KB gzipped, 17KB brotli)
+- Other vendors: ~635KB (168KB gzipped, 126KB brotli)
+- **Total download (compressed)**: ~370KB
+
+See `BUILD_OPTIMIZATION_TEST_RESULTS.md` for detailed metrics.
 
 ### Preview Production Build
 
@@ -214,21 +258,26 @@ Strict mode is enabled for type safety.
 
 ### Environment Variables
 
-Environment variables are managed through `.env` files. Create a `.env` file based on `.env.example`:
+Environment variables are managed through `.env` files:
 
-```bash
-# Copy the example file
-cp .env.example .env
-```
+- `.env.development` - Development settings (debug enabled, dev tools enabled)
+- `.env.production` - Production settings (debug disabled, optimized)
+- `.env.example` - Example configuration file
+
+The correct `.env` file is automatically loaded based on build mode:
+- `npm run dev` → `.env.development`
+- `npm run build:prod` → `.env.production`
+- `npm run build:dev` → `.env.development`
 
 Available environment variables:
 
-- `VITE_API_BASE_URL` - Backend API URL (default: http://localhost:5272)
+- `VITE_API_BASE_URL` - Backend API URL (production: `/api`, development: `http://localhost:5005`)
 - `VITE_APP_VERSION` - Application version
 - `VITE_APP_NAME` - Application name
 - `VITE_ENV` - Environment (development/production)
 - `VITE_ENABLE_ANALYTICS` - Enable analytics (true/false)
 - `VITE_ENABLE_DEBUG` - Enable debug logging (true/false)
+- `VITE_ENABLE_DEV_TOOLS` - Enable development tools like log viewer (true/false)
 
 Access environment variables in code:
 
@@ -237,7 +286,13 @@ import { env } from './config/env';
 
 console.log(env.apiBaseUrl);  // Type-safe access
 console.log(env.isDevelopment);
+console.log(env.enableDevTools); // Only true in development
 ```
+
+**Note**: Development-only features (like LogViewerPage) are:
+- Lazy loaded to keep the main bundle small
+- Only included when `VITE_ENABLE_DEV_TOOLS=true`
+- Automatically tree-shaken from production builds
 
 ### Code Quality Tools
 
@@ -447,13 +502,27 @@ function HardwareStatus() {
 ### Building for Production
 
 ```bash
-npm run build
+npm run build:prod
 ```
 
 This creates an optimized build in `dist/` with:
-- Minified JavaScript and CSS
+- Minified JavaScript and CSS with Terser
 - Code splitting for faster loading
 - Asset optimization
+- Pre-compressed assets (gzip + brotli)
+- Hidden source maps (not served to users)
+- Console logs removed
+- Development features excluded
+
+### Server Configuration
+
+For optimal performance, configure your web server to:
+
+1. **Serve pre-compressed files** - Use the `.gz` or `.br` files when available
+2. **Set cache headers** - Cache hashed assets for 1 year, don't cache index.html
+3. **Enable SPA routing** - Redirect all routes to index.html
+
+See `PRODUCTION_DEPLOYMENT.md` for detailed server configuration examples (Nginx, Apache).
 
 ### Serving from Aura.Api
 
@@ -469,6 +538,15 @@ app.UseStaticFiles(new StaticFileOptions
 ```
 
 Copy the `dist/` contents to the API's `wwwroot/` folder.
+
+### Environment Variables in Production
+
+Ensure production environment variables are set:
+- `VITE_ENV=production`
+- `VITE_ENABLE_DEBUG=false`
+- `VITE_ENABLE_DEV_TOOLS=false`
+
+These are configured in `.env.production` and automatically applied when using `--mode production`.
 
 ### Hosting in Windows Shell
 

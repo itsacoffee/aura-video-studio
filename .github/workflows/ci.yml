@@ -95,6 +95,10 @@ jobs:
       working-directory: Aura.Web
       run: npm ci
       
+    - name: Run Type Check
+      working-directory: Aura.Web
+      run: npm run type-check
+      
     - name: Run Vitest
       working-directory: Aura.Web
       run: npm test
@@ -102,6 +106,46 @@ jobs:
     - name: Run Vitest with Coverage
       working-directory: Aura.Web
       run: npm run test:coverage
+      
+    - name: Build Production Bundle
+      working-directory: Aura.Web
+      run: npm run build:prod
+      
+    - name: Check Bundle Size
+      working-directory: Aura.Web
+      run: |
+        echo "=== Production Bundle Sizes ==="
+        du -sh dist/
+        echo ""
+        echo "=== Main Chunks (Largest 5) ==="
+        find dist/assets -name "*.js" -not -name "*.map.js" -not -name "*.gz" -not -name "*.br" | xargs du -h | sort -h | tail -5
+        echo ""
+        echo "=== Compressed Sizes (Brotli) ==="
+        find dist/assets -name "*.js.br" | xargs du -h | sort -h | tail -5
+      
+    - name: Verify Source Maps Hidden
+      working-directory: Aura.Web
+      run: |
+        # Check if any .js files exist in dist/assets before grepping
+        if find dist/assets -name "*.js" -type f | grep -q .; then
+          if grep -r "sourceMappingURL" dist/assets/*.js 2>/dev/null; then
+            echo "ERROR: Source maps should be hidden in production!"
+            exit 1
+          else
+            echo "✓ Source maps are properly hidden"
+          fi
+        else
+          echo "WARNING: No JavaScript files found in dist/assets"
+          exit 1
+        fi
+      
+    - name: Upload Build Stats
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: bundle-stats
+        path: Aura.Web/dist/stats.html
+        retention-days: 7
       
     - name: Install Playwright
       working-directory: Aura.Web

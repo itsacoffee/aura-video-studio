@@ -10,6 +10,7 @@ lerna-debug.log*
 dist/
 dist-ssr/
 *.local
+stats.html
 
 # Test output
 coverage/

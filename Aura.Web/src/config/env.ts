@@ -10,6 +10,7 @@ export const env = {
   environment: import.meta.env.VITE_ENV || 'development',
   enableAnalytics: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
   enableDebug: import.meta.env.VITE_ENABLE_DEBUG === 'true',
+  enableDevTools: import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true',
   isDevelopment: import.meta.env.DEV,
   isProduction: import.meta.env.PROD,
   mode: import.meta.env.MODE,
