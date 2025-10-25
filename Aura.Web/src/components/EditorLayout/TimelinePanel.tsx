@@ -18,6 +18,7 @@ import {
   LockClosed24Regular,
   LockOpen24Regular,
 } from '@fluentui/react-icons';
+import { AppliedEffect } from '../../types/effects';
 
 const useStyles = makeStyles({
   container: {
@@ -163,6 +164,17 @@ const useStyles = makeStyles({
     zIndex: 1,
     textShadow: '0 1px 2px rgba(0,0,0,0.5)',
   },
+  effectIndicator: {
+    position: 'absolute',
+    top: '2px',
+    right: '2px',
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: tokens.colorPalettePurpleBackground2,
+    border: `1px solid ${tokens.colorNeutralForegroundOnBrand}`,
+    zIndex: 2,
+  },
   playhead: {
     position: 'absolute',
     top: 0,
@@ -195,6 +207,7 @@ interface TimelineClip {
   duration: number;
   label: string;
   type: 'video' | 'audio' | 'image';
+  effects?: AppliedEffect[];
   // Media source reference
   mediaId?: string;
   file?: File;
@@ -523,6 +536,11 @@ export function TimelinePanel({
                       )}
                       
                       <span className={styles.clipLabel}>{clip.label}</span>
+                      
+                      {/* Effect indicator */}
+                      {clip.effects && clip.effects.length > 0 && (
+                        <div className={styles.effectIndicator} title={`${clip.effects.length} effect(s) applied`} />
+                      )}
                     </div>
                   ))}
               </div>

@@ -4,6 +4,8 @@ import { VideoPreviewPanel } from '../components/EditorLayout/VideoPreviewPanel'
 import { TimelinePanel } from '../components/EditorLayout/TimelinePanel';
 import { PropertiesPanel } from '../components/EditorLayout/PropertiesPanel';
 import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
+import { EffectsLibraryPanel } from '../components/EditorLayout/EffectsLibraryPanel';
+import { AppliedEffect, EffectPreset } from '../types/effects';
 
 export interface TimelineClip {
   id: string;
@@ -13,7 +15,7 @@ export interface TimelineClip {
   label: string;
   type: 'video' | 'audio' | 'image';
   prompt?: string;
-  effects?: string[];
+  effects?: AppliedEffect[];
   transform?: {
     x?: number;
     y?: number;
@@ -173,9 +175,30 @@ export function VideoEditorPage() {
     // TODO: Implement video export
   };
 
+  const handleApplyPreset = (preset: EffectPreset) => {
+    if (!selectedClipId) return;
+
+    // Apply preset effects to selected clip
+    const presetEffects: AppliedEffect[] = preset.effects.map((presetEffect, index) => ({
+      id: `effect-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+      effectType: presetEffect.effectType,
+      enabled: true,
+      parameters: presetEffect.parameters,
+    }));
+
+    setClips((prevClips) =>
+      prevClips.map((clip) =>
+        clip.id === selectedClipId
+          ? { ...clip, effects: [...(clip.effects || []), ...presetEffects] }
+          : clip
+      )
+    );
+  };
+
   return (
     <EditorLayout
       mediaLibrary={<MediaLibraryPanel ref={mediaLibraryRef} />}
+      effects={<EffectsLibraryPanel onPresetApply={handleApplyPreset} />}
       preview={
         <VideoPreviewPanel
           currentTime={currentTime}

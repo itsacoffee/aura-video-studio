@@ -58,6 +58,16 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
   },
+  effectsLibraryPanel: {
+    width: '280px',
+    minWidth: '240px',
+    maxWidth: '350px',
+    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+  },
   resizer: {
     width: '4px',
     cursor: 'ew-resize',
@@ -97,6 +107,7 @@ interface EditorLayoutProps {
   timeline?: ReactNode;
   properties?: ReactNode;
   mediaLibrary?: ReactNode;
+  effects?: ReactNode;
   onImportMedia?: () => void;
   onExportVideo?: () => void;
   onShowKeyboardShortcuts?: () => void;
@@ -106,6 +117,7 @@ interface EditorLayoutProps {
 const STORAGE_KEYS = {
   propertiesWidth: 'editor-properties-width',
   mediaLibraryWidth: 'editor-media-library-width',
+  effectsLibraryWidth: 'editor-effects-library-width',
   previewHeight: 'editor-preview-height',
 };
 
@@ -133,6 +145,7 @@ export function EditorLayout({
   timeline,
   properties,
   mediaLibrary,
+  effects,
   onImportMedia,
   onExportVideo,
   onShowKeyboardShortcuts,
@@ -143,6 +156,9 @@ export function EditorLayout({
   );
   const [mediaLibraryWidth, setMediaLibraryWidth] = useState(() =>
     loadPanelSize(STORAGE_KEYS.mediaLibraryWidth, 280)
+  );
+  const [effectsLibraryWidth, setEffectsLibraryWidth] = useState(() =>
+    loadPanelSize(STORAGE_KEYS.effectsLibraryWidth, 280)
   );
   const [previewHeight, setPreviewHeight] = useState(() =>
     loadPanelSize(STORAGE_KEYS.previewHeight, 60)
@@ -160,6 +176,10 @@ export function EditorLayout({
   useEffect(() => {
     savePanelSize(STORAGE_KEYS.previewHeight, previewHeight);
   }, [previewHeight]);
+
+  useEffect(() => {
+    savePanelSize(STORAGE_KEYS.effectsLibraryWidth, effectsLibraryWidth);
+  }, [effectsLibraryWidth]);
 
   // Handle resizing properties panel
   const handlePropertiesResize = (e: React.MouseEvent) => {
@@ -226,6 +246,26 @@ export function EditorLayout({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  // Handle resizing effects library panel
+  const handleEffectsLibraryResize = (e: React.MouseEvent) => {
+    const startX = e.clientX;
+    const startWidth = effectsLibraryWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const newWidth = Math.max(240, Math.min(350, startWidth + delta));
+      setEffectsLibraryWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   return (
     <div className={styles.container}>
       <MenuBar
@@ -257,6 +297,34 @@ export function EditorLayout({
                   e.preventDefault();
                   setMediaLibraryWidth((prev) => Math.min(350, prev + 10));
                   savePanelSize(STORAGE_KEYS.mediaLibraryWidth, Math.min(350, mediaLibraryWidth + 10));
+                }
+              }}
+            />
+          </>
+        )}
+        {effects && (
+          <>
+            <div className={styles.effectsLibraryPanel} style={{ width: `${effectsLibraryWidth}px` }}>
+              {effects}
+            </div>
+            {/* Interactive resizer - intentionally uses mouse and keyboard events */}
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+            <div 
+              className={styles.resizer} 
+              onMouseDown={handleEffectsLibraryResize} 
+              role="separator" 
+              aria-orientation="vertical"
+              aria-label="Resize effects library panel"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  setEffectsLibraryWidth((prev) => Math.max(240, prev - 10));
+                  savePanelSize(STORAGE_KEYS.effectsLibraryWidth, Math.max(240, effectsLibraryWidth - 10));
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  setEffectsLibraryWidth((prev) => Math.min(350, prev + 10));
+                  savePanelSize(STORAGE_KEYS.effectsLibraryWidth, Math.min(350, effectsLibraryWidth + 10));
                 }
               }}
             />
