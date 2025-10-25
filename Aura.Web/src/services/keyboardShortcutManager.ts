@@ -129,7 +129,6 @@ class KeyboardShortcutManager {
     this.enabledContexts.clear();
     this.enabledContexts.add('global'); // Global shortcuts always active
     this.enabledContexts.add(context);
-    console.log(`Keyboard shortcut context changed to: ${context}`);
   }
 
   /**

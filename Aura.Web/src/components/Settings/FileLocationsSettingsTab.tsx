@@ -57,7 +57,7 @@ export function FileLocationsSettingsTab({
     onChange({ ...settings, [key]: value });
   };
 
-  const handleBrowse = async (key: keyof FileLocationsSettings) => {
+  const handleBrowse = async (_key: keyof FileLocationsSettings) => {
     // Note: File browser dialogs would need to be implemented via backend API
     // For now, this is a placeholder
     alert('File browser dialog would open here. Please enter path manually for now.');

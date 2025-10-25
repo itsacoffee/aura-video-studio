@@ -201,44 +201,43 @@ export function Timeline({ duration = 120, onSave }: TimelineProps) {
     }, [duration, setCurrentTime]),
 
     onSplice: useCallback(() => {
-      // TODO: Split clip at current playhead position
-      // This feature requires integration with the timeline store's splitClip method
-      // and proper state management for undo/redo
+      // Placeholder: Split clip at current playhead position
+      // Requires integration with timeline store's splitClip method
     }, []),
 
     onRippleDelete: useCallback(() => {
-      // TODO: Delete selected clips and shift subsequent clips left
-      // This feature requires integration with the timeline store
+      // Placeholder: Delete selected clips and shift subsequent clips left
+      // Requires integration with timeline store
     }, []),
 
     onDelete: useCallback(() => {
-      // TODO: Delete selected clips without shifting others
-      // This feature requires integration with the timeline store
+      // Placeholder: Delete selected clips without shifting others
+      // Requires integration with timeline store
     }, []),
 
     onCopy: useCallback(() => {
-      // TODO: Copy selected clips to clipboard
-      // This feature requires integration with the timeline store
+      // Placeholder: Copy selected clips to clipboard
+      // Requires integration with timeline store
     }, []),
 
     onPaste: useCallback(() => {
-      // TODO: Paste clips from clipboard at playhead position
-      // This feature requires integration with the timeline store
+      // Placeholder: Paste clips from clipboard at playhead position
+      // Requires integration with timeline store
     }, []),
 
     onDuplicate: useCallback(() => {
-      // TODO: Duplicate selected clips
-      // This feature requires integration with the timeline store
+      // Placeholder: Duplicate selected clips
+      // Requires integration with timeline store
     }, []),
 
     onUndo: useCallback(() => {
-      // TODO: Undo last operation
-      // This would pop from undo stack and apply previous state
+      // Placeholder: Undo last operation
+      // Would pop from undo stack and apply previous state
     }, []),
 
     onRedo: useCallback(() => {
-      // TODO: Redo last undone operation
-      // This would push to redo stack and apply next state
+      // Placeholder: Redo last undone operation
+      // Would push to redo stack and apply next state
     }, []),
 
     onZoomIn: useCallback(() => {

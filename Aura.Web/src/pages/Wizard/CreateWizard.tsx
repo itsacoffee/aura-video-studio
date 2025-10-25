@@ -209,20 +209,7 @@ export function CreateWizard() {
     }
   }, [settings]);
 
-  // Log Generate Video button state for debugging
-  useEffect(() => {
-    if (currentStep === 3 && preflightReport) {
-      const isDisabled = generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate);
-      console.log('[GENERATE BUTTON] State:', {
-        disabled: isDisabled,
-        generating,
-        hasReport: !!preflightReport,
-        reportOk: preflightReport?.ok,
-        overrideEnabled: overridePreflightGate,
-        preflightReport: preflightReport
-      });
-    }
-  }, [currentStep, preflightReport, generating, overridePreflightGate]);
+
 
   // Update brief
   const updateBrief = (updates: Partial<Brief>) => {
@@ -297,15 +284,12 @@ export function CreateWizard() {
   };
 
   const handleRunPreflight = async () => {
-    console.log('[PREFLIGHT] Starting preflight check with profile:', selectedProfile);
     setIsRunningPreflight(true);
     try {
       const response = await fetch(`/api/preflight?profile=${encodeURIComponent(selectedProfile)}`);
 
       if (response.ok) {
         const data = await response.json();
-        console.log('[PREFLIGHT] Preflight report received:', data);
-        console.log('[PREFLIGHT] Report OK status:', data.ok);
         setPreflightReport(data);
       } else {
         console.error('[PREFLIGHT] Preflight check failed with status:', response.status);
@@ -351,7 +335,6 @@ export function CreateWizard() {
   };
 
   const handleGenerate = async () => {
-    console.log('[GENERATE VIDEO] Button clicked - starting generation');
     try {
       setGenerating(true);
       validateAndWarnEnums(settings.brief, settings.planSpec);
@@ -444,7 +427,6 @@ export function CreateWizard() {
   };
 
   const handleQuickDemo = async () => {
-    console.log('[QUICK DEMO] Button clicked - starting demo generation');
     try {
       setGenerating(true);
       
@@ -458,8 +440,6 @@ export function CreateWizard() {
         durationMinutes: 0.2, // 12 seconds (0.2 minutes)
       };
       
-      console.log('[QUICK DEMO] Validating with request:', validationRequest);
-      
       // Frontend validation before API call
       const frontendValidation = validateBriefRequest(validationRequest);
       if (!frontendValidation.valid) {
@@ -472,8 +452,6 @@ export function CreateWizard() {
         return;
       }
       
-      console.log('[QUICK DEMO] Frontend validation passed');
-      
       // Validate before starting generation
       const validationUrl = apiUrl('/api/validation/brief');
       
@@ -485,7 +463,6 @@ export function CreateWizard() {
 
       if (validationResponse.ok) {
         const validationData = await validationResponse.json();
-        console.log('[QUICK DEMO] Validation response:', validationData);
         
         if (!validationData.isValid) {
           console.warn('[QUICK DEMO] Validation failed with issues:', validationData.issues);
@@ -503,8 +480,6 @@ export function CreateWizard() {
           setGenerating(false);
           return;
         }
-        
-        console.log('[QUICK DEMO] Validation passed, proceeding with demo generation');
       } else {
         console.error('[QUICK DEMO] Validation request failed:', validationResponse.status, validationResponse.statusText);
         const errorText = await validationResponse.text();
