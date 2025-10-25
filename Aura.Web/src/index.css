@@ -372,3 +372,23 @@ select:focus {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+/* Footer spacing to prevent content obstruction */
+body {
+  /* Add padding at bottom to ensure content is not hidden by fixed footer */
+  padding-bottom: 80px;
+}
+
+/* Animation for footer collapse/expand */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.footer-enter {
+  animation: slideUp var(--transition-base) ease-out;
+}
