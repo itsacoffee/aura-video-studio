@@ -202,6 +202,7 @@ export function VideoEditorPage() {
       preview={
         <VideoPreviewPanel
           currentTime={currentTime}
+          effects={selectedClip?.effects}
           onTimeUpdate={setCurrentTime}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
