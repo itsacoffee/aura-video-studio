@@ -7,11 +7,16 @@ import {
   Label,
   Text,
   Switch,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
   Subtract24Regular,
   Cut24Regular,
+  Eye24Regular,
+  EyeOff24Regular,
+  LockClosed24Regular,
+  LockOpen24Regular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -69,16 +74,25 @@ const useStyles = makeStyles({
   },
   trackLabel: {
     width: '100px',
-    padding: tokens.spacingVerticalS,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingVerticalS}`,
     borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground3,
     fontWeight: tokens.fontWeightSemibold,
-    fontSize: tokens.fontSizeBase300,
+    fontSize: tokens.fontSizeBase200,
     display: 'flex',
-    alignItems: 'center',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXXS,
     position: 'sticky',
     left: 0,
     zIndex: 5,
+  },
+  trackLabelText: {
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  trackControls: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalXXS,
   },
   trackContent: {
     flex: 1,
@@ -148,6 +162,8 @@ interface TimelineTrack {
   id: string;
   label: string;
   type: 'video' | 'audio';
+  visible?: boolean;
+  locked?: boolean;
 }
 
 interface TimelinePanelProps {
@@ -158,21 +174,25 @@ interface TimelinePanelProps {
   onClipSelect?: (clipId: string | null) => void;
   selectedClipId?: string | null;
   onClipAdd?: (trackId: string, clip: TimelineClip) => void;
+  onTrackToggleVisibility?: (trackId: string) => void;
+  onTrackToggleLock?: (trackId: string) => void;
 }
 
 export function TimelinePanel({
   clips = [],
   tracks = [
-    { id: 'video1', label: 'Video 1', type: 'video' },
-    { id: 'video2', label: 'Video 2', type: 'video' },
-    { id: 'audio1', label: 'Audio 1', type: 'audio' },
-    { id: 'audio2', label: 'Audio 2', type: 'audio' },
+    { id: 'video1', label: 'Video 1', type: 'video', visible: true, locked: false },
+    { id: 'video2', label: 'Video 2', type: 'video', visible: true, locked: false },
+    { id: 'audio1', label: 'Audio 1', type: 'audio', visible: true, locked: false },
+    { id: 'audio2', label: 'Audio 2', type: 'audio', visible: true, locked: false },
   ],
   currentTime = 0,
   onTimeChange,
   onClipSelect,
   selectedClipId = null,
   onClipAdd,
+  onTrackToggleVisibility,
+  onTrackToggleLock,
 }: TimelinePanelProps) {
   const styles = useStyles();
   const [zoom, setZoom] = useState(50); // pixels per second
@@ -354,16 +374,47 @@ export function TimelinePanel({
           {renderRuler()}
         </div>
 
-        <div className={styles.tracksContainer} onClick={handleTimelineClick} role="region" aria-label="Timeline tracks">
+        <div 
+          className={styles.tracksContainer}
+          role="region" 
+          aria-label="Timeline tracks"
+        >
           {tracks.map((track) => (
+            /* Timeline track - intentionally clickable for seeking playhead */
+            /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
             <div 
               key={track.id} 
               className={`${styles.track} ${dragOverTrack === track.id ? styles.trackDragOver : ''}`}
               onDragOver={(e) => handleTrackDragOver(e, track.id)}
               onDragLeave={handleTrackDragLeave}
               onDrop={(e) => handleTrackDrop(e, track.id)}
+              onClick={handleTimelineClick}
             >
-              <div className={styles.trackLabel}>{track.label}</div>
+              <div className={styles.trackLabel}>
+                <Text className={styles.trackLabelText}>{track.label}</Text>
+                <div className={styles.trackControls}>
+                  <Tooltip content={track.visible ? 'Hide track' : 'Show track'} relationship="label">
+                    <Button
+                      appearance="subtle"
+                      size="small"
+                      icon={track.visible ? <Eye24Regular /> : <EyeOff24Regular />}
+                      onClick={() => onTrackToggleVisibility?.(track.id)}
+                      aria-label={track.visible ? 'Hide track' : 'Show track'}
+                      style={{ minWidth: '20px', minHeight: '20px', padding: '2px' }}
+                    />
+                  </Tooltip>
+                  <Tooltip content={track.locked ? 'Unlock track' : 'Lock track'} relationship="label">
+                    <Button
+                      appearance="subtle"
+                      size="small"
+                      icon={track.locked ? <LockClosed24Regular /> : <LockOpen24Regular />}
+                      onClick={() => onTrackToggleLock?.(track.id)}
+                      aria-label={track.locked ? 'Unlock track' : 'Lock track'}
+                      style={{ minWidth: '20px', minHeight: '20px', padding: '2px' }}
+                    />
+                  </Tooltip>
+                </div>
+              </div>
               <div className={styles.trackContent} style={{ width: `${timelineWidth}px` }}>
                 {clips
                   .filter((clip) => clip.trackId === track.id)
@@ -399,7 +450,16 @@ export function TimelinePanel({
 
           {/* Playhead */}
           <div className={styles.playhead} style={{ left: `${currentTime * pixelsPerSecond + 100}px` }}>
-            <div className={styles.playheadHandle} onMouseDown={handlePlayheadDrag} role="slider" aria-label="Playhead" />
+            <div 
+              className={styles.playheadHandle} 
+              onMouseDown={handlePlayheadDrag} 
+              role="slider" 
+              aria-label="Playhead" 
+              aria-valuenow={currentTime}
+              aria-valuemin={0}
+              aria-valuemax={maxTime}
+              tabIndex={0}
+            />
           </div>
         </div>
       </div>

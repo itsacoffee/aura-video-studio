@@ -8,6 +8,11 @@ import {
   Card,
   CardHeader,
   CardPreview,
+  Menu,
+  MenuTrigger,
+  MenuList,
+  MenuItem,
+  MenuPopover,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
@@ -15,6 +20,8 @@ import {
   MusicNote224Regular,
   Image24Regular,
   Dismiss24Regular,
+  Delete24Regular,
+  Rename24Regular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -114,6 +121,11 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase100,
     color: tokens.colorNeutralForeground3,
   },
+  clipMetadata: {
+    fontSize: tokens.fontSizeBase100,
+    color: tokens.colorNeutralForeground3,
+    marginTop: '2px',
+  },
   removeButton: {
     position: 'absolute',
     top: '4px',
@@ -147,6 +159,8 @@ export interface MediaClip {
   type: 'video' | 'audio' | 'image';
   file: File;
   duration?: number;
+  fileSize?: number;
+  resolution?: string;
 }
 
 interface MediaLibraryPanelProps {
@@ -160,6 +174,12 @@ export function MediaLibraryPanel({ onClipDragStart, onClipDragEnd }: MediaLibra
   const [clips, setClips] = useState<MediaClip[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   const getClipType = (file: File): 'video' | 'audio' | 'image' => {
     if (file.type.startsWith('video/')) return 'video';
@@ -192,6 +212,7 @@ export function MediaLibraryPanel({ onClipDragStart, onClipDragEnd }: MediaLibra
       name: file.name,
       type: getClipType(file),
       file,
+      fileSize: file.size,
     }));
 
     setClips((prev) => [...prev, ...newClips]);
@@ -242,6 +263,12 @@ export function MediaLibraryPanel({ onClipDragStart, onClipDragEnd }: MediaLibra
 
   const handleRemoveClip = (clipId: string) => {
     setClips((prev) => prev.filter((c) => c.id !== clipId));
+  };
+
+  const handleRenameClip = (clipId: string, newName: string) => {
+    setClips((prev) =>
+      prev.map((c) => (c.id === clipId ? { ...c, name: newName } : c))
+    );
   };
 
   return (
@@ -300,39 +327,68 @@ export function MediaLibraryPanel({ onClipDragStart, onClipDragEnd }: MediaLibra
         {!isUploading && clips.length > 0 && (
           <div className={styles.clipGrid}>
             {clips.map((clip) => (
-              <Card
-                key={clip.id}
-                className={styles.clipCard}
-                draggable
-                onDragStart={(e) => handleClipDragStart(e, clip)}
-                onDragEnd={handleClipDragEnd}
-              >
-                <Button
-                  className={styles.removeButton}
-                  appearance="subtle"
-                  size="small"
-                  icon={<Dismiss24Regular />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveClip(clip.id);
-                  }}
-                  aria-label="Remove clip"
-                />
-                <CardPreview className={styles.clipPreview}>
-                  {getClipIcon(clip.type)}
-                </CardPreview>
-                <CardHeader
-                  className={styles.clipHeader}
-                  header={
-                    <div>
-                      <Text className={styles.clipName} title={clip.name}>
-                        {clip.name}
-                      </Text>
-                      <Text className={styles.clipType}>{clip.type}</Text>
-                    </div>
-                  }
-                />
-              </Card>
+              <Menu key={clip.id}>
+                <MenuTrigger disableButtonEnhancement>
+                  <Card
+                    className={styles.clipCard}
+                    draggable
+                    onDragStart={(e) => handleClipDragStart(e, clip)}
+                    onDragEnd={handleClipDragEnd}
+                  >
+                    <Button
+                      className={styles.removeButton}
+                      appearance="subtle"
+                      size="small"
+                      icon={<Dismiss24Regular />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveClip(clip.id);
+                      }}
+                      aria-label="Remove clip"
+                    />
+                    <CardPreview className={styles.clipPreview}>
+                      {getClipIcon(clip.type)}
+                    </CardPreview>
+                    <CardHeader
+                      className={styles.clipHeader}
+                      header={
+                        <div>
+                          <Text className={styles.clipName} title={clip.name}>
+                            {clip.name}
+                          </Text>
+                          <Text className={styles.clipType}>{clip.type}</Text>
+                          {clip.fileSize && (
+                            <Text className={styles.clipMetadata}>
+                              {formatFileSize(clip.fileSize)}
+                            </Text>
+                          )}
+                        </div>
+                      }
+                    />
+                  </Card>
+                </MenuTrigger>
+                <MenuPopover>
+                  <MenuList>
+                    <MenuItem
+                      icon={<Rename24Regular />}
+                      onClick={() => {
+                        const newName = prompt('Enter new name:', clip.name);
+                        if (newName && newName.trim()) {
+                          handleRenameClip(clip.id, newName.trim());
+                        }
+                      }}
+                    >
+                      Rename
+                    </MenuItem>
+                    <MenuItem
+                      icon={<Delete24Regular />}
+                      onClick={() => handleRemoveClip(clip.id)}
+                    >
+                      Delete
+                    </MenuItem>
+                  </MenuList>
+                </MenuPopover>
+              </Menu>
             ))}
           </div>
         )}
