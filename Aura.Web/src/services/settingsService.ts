@@ -1,6 +1,7 @@
 import { apiUrl } from '../config/api';
 import type { UserSettings } from '../types/settings';
 import { createDefaultSettings } from '../types/settings';
+import { get, post } from './api/apiClient';
 
 const STORAGE_KEY = 'aura-user-settings';
 const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
@@ -28,25 +29,22 @@ export class SettingsService {
     }
 
     try {
-      const response = await fetch(apiUrl('/api/settings/user'));
-      if (response.ok) {
-        const settings = await response.json();
-        this.saveToCache(settings);
-        this.saveToLocalStorage(settings);
-        return settings;
-      }
+      const settings = await get<UserSettings>(apiUrl('/api/settings/user'));
+      this.saveToCache(settings);
+      this.saveToLocalStorage(settings);
+      return settings;
     } catch (error) {
       console.error('Error loading settings from backend:', error);
-    }
+      
+      // Fallback to localStorage
+      const localSettings = this.getFromLocalStorage();
+      if (localSettings) {
+        return localSettings;
+      }
 
-    // Fallback to localStorage
-    const localSettings = this.getFromLocalStorage();
-    if (localSettings) {
-      return localSettings;
+      // Last resort: return defaults
+      return createDefaultSettings();
     }
-
-    // Last resort: return defaults
-    return createDefaultSettings();
   }
 
   /**
@@ -54,18 +52,10 @@ export class SettingsService {
    */
   async saveSettings(settings: UserSettings): Promise<boolean> {
     try {
-      const response = await fetch(apiUrl('/api/settings/user'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-      });
-
-      if (response.ok) {
-        this.saveToCache(settings);
-        this.saveToLocalStorage(settings);
-        return true;
-      }
-      return false;
+      await post<void>(apiUrl('/api/settings/user'), settings);
+      this.saveToCache(settings);
+      this.saveToLocalStorage(settings);
+      return true;
     } catch (error) {
       console.error('Error saving settings:', error);
       // Still save to localStorage even if backend fails
