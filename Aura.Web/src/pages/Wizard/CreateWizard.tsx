@@ -213,6 +213,21 @@ export function CreateWizard() {
     }
   }, [settings]);
 
+  // Log Generate Video button state for debugging
+  useEffect(() => {
+    if (currentStep === 3 && preflightReport) {
+      const isDisabled = generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate);
+      console.log('[GENERATE BUTTON] State:', {
+        disabled: isDisabled,
+        generating,
+        hasReport: !!preflightReport,
+        reportOk: preflightReport?.ok,
+        overrideEnabled: overridePreflightGate,
+        preflightReport: preflightReport
+      });
+    }
+  }, [currentStep, preflightReport, generating, overridePreflightGate]);
+
   // Update brief
   const updateBrief = (updates: Partial<Brief>) => {
     setSettings({ ...settings, brief: { ...settings.brief, ...updates } });
@@ -286,14 +301,18 @@ export function CreateWizard() {
   };
 
   const handleRunPreflight = async () => {
+    console.log('[PREFLIGHT] Starting preflight check with profile:', selectedProfile);
     setIsRunningPreflight(true);
     try {
       const response = await fetch(`/api/preflight?profile=${encodeURIComponent(selectedProfile)}`);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('[PREFLIGHT] Preflight report received:', data);
+        console.log('[PREFLIGHT] Report OK status:', data.ok);
         setPreflightReport(data);
       } else {
+        console.error('[PREFLIGHT] Preflight check failed with status:', response.status);
         alert('Failed to run preflight check');
       }
     } catch (error) {
@@ -336,6 +355,7 @@ export function CreateWizard() {
   };
 
   const handleGenerate = async () => {
+    console.log('[GENERATE VIDEO] Button clicked - starting generation');
     setGenerating(true);
     try {
       validateAndWarnEnums(settings.brief, settings.planSpec);
@@ -428,6 +448,7 @@ export function CreateWizard() {
   };
 
   const handleQuickDemo = async () => {
+    console.log('[QUICK DEMO] Button clicked - starting demo generation');
     setGenerating(true);
     try {
       // Validate before starting generation
