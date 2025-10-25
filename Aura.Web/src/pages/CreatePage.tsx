@@ -25,6 +25,8 @@ import type { Brief, PlanSpec, PlannerRecommendations } from '../types';
 import type { PreflightReport } from '../state/providers';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormalizer';
 import { PreflightPanel } from '../components/PreflightPanel';
+import { useActivity } from '../state/activityContext';
+import { useNotifications } from '../components/Notifications/Toasts';
 
 const useStyles = makeStyles({
   container: {
@@ -64,6 +66,8 @@ const useStyles = makeStyles({
 export function CreatePage() {
   const styles = useStyles();
   const navigate = useNavigate();
+  const { addActivity, updateActivity } = useActivity();
+  const { showSuccessToast, showFailureToast } = useNotifications();
   const [currentStep, setCurrentStep] = useState(1);
   const [brief, setBrief] = useState<Partial<Brief>>({
     topic: '',
@@ -176,6 +180,20 @@ export function CreatePage() {
 
   const handleGenerate = async () => {
     setGenerating(true);
+    
+    // Add activity to tracker
+    const activityId = addActivity({
+      type: 'video-generation',
+      title: 'Generating Video',
+      message: `Creating video about "${brief.topic}"`,
+      canCancel: true,
+      canRetry: true,
+      metadata: { topic: brief.topic },
+    });
+
+    // Update to running
+    updateActivity(activityId, { status: 'running', progress: 0 });
+
     try {
       // Validate and warn about legacy enum values
       validateAndWarnEnums(brief, planSpec);
@@ -206,6 +224,8 @@ export function CreatePage() {
         enableSceneCut: true,
       };
 
+      updateActivity(activityId, { progress: 10, message: 'Sending request to server...' });
+
       // Create a full video generation job via JobsController
       const response = await fetch('/api/jobs', {
         method: 'POST',
@@ -232,24 +252,54 @@ export function CreatePage() {
 
       if (response.ok) {
         const data = await response.json();
-        alert(
-          `Video generation started! Job ID: ${data.jobId}\n\nYou can track progress in the jobs panel.`
-        );
+        
+        // Update activity as completed
+        updateActivity(activityId, {
+          status: 'completed',
+          progress: 100,
+          message: `Video generation job created: ${data.jobId}`,
+          metadata: { jobId: data.jobId },
+        });
+
+        // Show success toast
+        showSuccessToast({
+          title: 'Video Generation Started',
+          message: `Job ID: ${data.jobId}. You can track progress in the jobs panel.`,
+        });
 
         // Navigate to recent jobs page to see the progress
         navigate('/jobs');
       } else {
         const errorText = await response.text();
         console.error('Failed to create job:', response.status, errorText);
-        alert(
-          `Failed to start video generation: ${response.status} ${response.statusText}\n\nCheck console for details.`
-        );
+        
+        // Update activity as failed
+        updateActivity(activityId, {
+          status: 'failed',
+          message: 'Failed to start video generation',
+          error: `${response.status} ${response.statusText}: ${errorText}`,
+        });
+
+        showFailureToast({
+          title: 'Video Generation Failed',
+          message: `Failed to start video generation: ${response.status} ${response.statusText}`,
+          errorDetails: errorText,
+        });
       }
     } catch (error) {
       console.error('Error creating video generation job:', error);
-      alert(
-        `Error starting video generation: ${error instanceof Error ? error.message : 'Unknown error'}\n\nCheck console for details.`
-      );
+      
+      // Update activity as failed
+      updateActivity(activityId, {
+        status: 'failed',
+        message: 'Error starting video generation',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      showFailureToast({
+        title: 'Video Generation Error',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
     } finally {
       setGenerating(false);
     }
