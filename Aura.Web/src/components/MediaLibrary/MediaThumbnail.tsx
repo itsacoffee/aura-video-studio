@@ -12,6 +12,7 @@ import {
   MenuItem,
   MenuPopover,
 } from '@fluentui/react-components';
+import { memo } from 'react';
 import {
   VideoClip24Regular,
   MusicNote224Regular,
@@ -90,6 +91,7 @@ interface MediaThumbnailProps {
   onDragEnd?: () => void;
   onRemove?: () => void;
   onRevealInFinder?: () => void;
+  onClick?: () => void;
 }
 
 const getMediaIcon = (type: 'video' | 'audio' | 'image') => {
@@ -109,7 +111,7 @@ const formatFileSize = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
+export const MediaThumbnail = memo(function MediaThumbnail({
   name,
   type,
   preview,
@@ -119,7 +121,8 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
   onDragEnd,
   onRemove,
   onRevealInFinder,
-}) => {
+  onClick,
+}: MediaThumbnailProps) {
   const styles = useStyles();
 
   return (
@@ -129,6 +132,7 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
         draggable
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
+        onClick={onClick}
       >
         <MenuTrigger disableButtonEnhancement>
           <Button
@@ -180,4 +184,4 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
       </MenuPopover>
     </Menu>
   );
-};
+});

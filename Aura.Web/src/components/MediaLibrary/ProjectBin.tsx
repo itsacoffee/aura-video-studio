@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import {
   makeStyles,
   tokens,
@@ -44,7 +45,7 @@ const useStyles = makeStyles({
   },
   content: {
     flex: 1,
-    overflow: 'auto',
+    overflow: 'hidden', // Changed from 'auto' to work with Virtuoso
   },
   mediaGrid: {
     padding: tokens.spacingVerticalM,
@@ -101,10 +102,15 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
   onRemoveAsset,
   onAssetDragStart,
   onAssetDragEnd,
+  onAssetSelect,
 }) => {
   const styles = useStyles();
   const [viewMode, setViewMode] = useState<ViewMode>('thumbnail');
   const [selectedCollection, setSelectedCollection] = useState<string>('all');
+  const virtuosoRef = useRef(null);
+
+  // Use virtual scrolling for large asset lists (> 100 items)
+  const useVirtualScrolling = useMemo(() => assets.length > 100, [assets.length]);
 
   // Create smart collections based on assets
   const collections: MediaCollection[] = [
@@ -140,13 +146,42 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
       ? assets
       : assets.filter((a) => a.type === selectedCollection);
 
-  const handleRevealInFinder = (asset: MediaAsset) => {
+  const handleRevealInFinder = useCallback((asset: MediaAsset) => {
     // In a real implementation, this would call a native API to reveal the file
     console.log('Reveal in finder:', asset.filePath || asset.file.name);
     // For demo purposes, show an alert with the path
     // This would be replaced with a proper notification system
     alert(`File location: ${asset.filePath || 'Not available'}`);
-  };
+  }, []);
+
+  const handleAssetClick = useCallback((asset: MediaAsset) => {
+    onAssetSelect?.(asset);
+  }, [onAssetSelect]);
+
+  // Memoize item renderer for virtual scrolling
+  const renderAsset = useCallback((index: number) => {
+    const asset = filteredAssets[index];
+    return (
+      <MediaThumbnail
+        key={asset.id}
+        id={asset.id}
+        name={asset.name}
+        type={asset.type}
+        preview={asset.preview}
+        duration={asset.duration}
+        fileSize={asset.fileSize}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = 'copy';
+          e.dataTransfer.setData('application/json', JSON.stringify(asset));
+          onAssetDragStart?.(asset);
+        }}
+        onDragEnd={onAssetDragEnd}
+        onRemove={() => onRemoveAsset?.(asset.id)}
+        onRevealInFinder={() => handleRevealInFinder(asset)}
+        onClick={() => handleAssetClick(asset)}
+      />
+    );
+  }, [filteredAssets, onAssetDragStart, onAssetDragEnd, onRemoveAsset, handleRevealInFinder, handleAssetClick]);
 
   return (
     <div className={styles.container}>
@@ -195,8 +230,16 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
             <Text>No media in this collection</Text>
             <Text size={200}>Add files to get started</Text>
           </div>
+        ) : useVirtualScrolling && viewMode === 'list' ? (
+          // Use virtual scrolling for large lists
+          <Virtuoso
+            ref={virtuosoRef}
+            totalCount={filteredAssets.length}
+            itemContent={renderAsset}
+            style={{ height: '100%' }}
+          />
         ) : (
-          <div className={viewMode === 'list' ? styles.mediaList : styles.mediaGrid}>
+          <div className={viewMode === 'list' ? styles.mediaList : styles.mediaGrid} style={{ overflow: 'auto', height: '100%' }}>
             {filteredAssets.map((asset) => (
               <MediaThumbnail
                 key={asset.id}
@@ -214,6 +257,7 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
                 onDragEnd={onAssetDragEnd}
                 onRemove={() => onRemoveAsset?.(asset.id)}
                 onRevealInFinder={() => handleRevealInFinder(asset)}
+                onClick={() => handleAssetClick(asset)}
               />
             ))}
           </div>
