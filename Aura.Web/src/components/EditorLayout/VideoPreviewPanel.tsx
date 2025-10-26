@@ -120,13 +120,15 @@ const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewP
       playbackEngineRef.current?.stepBackward();
     },
     setPlaybackRate: (rate: number) => {
-      // Map rate to closest PlaybackSpeed
+      // Map continuous rate to discrete PlaybackSpeed values
+      // Uses midpoints between speeds for better user experience
+      // e.g., 0.25-0.375 -> 0.25, 0.375-0.75 -> 0.5, etc.
       let speed: PlaybackSpeed = 1.0;
-      if (rate <= 0.375) speed = 0.25;
-      else if (rate <= 0.75) speed = 0.5;
-      else if (rate <= 1.5) speed = 1.0;
-      else if (rate <= 3.0) speed = 2.0;
-      else speed = 4.0;
+      if (rate <= 0.375) speed = 0.25;        // Below midpoint of 0.25 and 0.5
+      else if (rate <= 0.75) speed = 0.5;     // Below midpoint of 0.5 and 1.0
+      else if (rate <= 1.5) speed = 1.0;      // Below midpoint of 1.0 and 2.0
+      else if (rate <= 3.0) speed = 2.0;      // Below midpoint of 2.0 and 4.0
+      else speed = 4.0;                       // Above 3.0
       
       playbackEngineRef.current?.setPlaybackSpeed(speed);
     },
