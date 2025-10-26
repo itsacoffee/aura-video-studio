@@ -448,10 +448,20 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       styles.commandItem,
                       index === selectedIndex && styles.selectedItem
                     )}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       command.action();
                       onClose();
                       setSearchQuery('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        command.action();
+                        onClose();
+                        setSearchQuery('');
+                      }
                     }}
                     onMouseEnter={() => setSelectedIndex(index)}
                   >

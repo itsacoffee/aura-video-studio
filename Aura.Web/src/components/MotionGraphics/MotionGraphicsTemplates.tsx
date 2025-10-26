@@ -306,6 +306,12 @@ export function MotionGraphicsTemplates({ onTemplateCreated }: MotionGraphicsTem
               key={type}
               className={`${styles.templateCard} ${selectedType === type ? styles.templateCardSelected : ''}`}
               onClick={() => setSelectedType(type)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedType(type);
+                }
+              }}
               role="button"
               tabIndex={0}
               aria-label={`Select ${def.name} template`}

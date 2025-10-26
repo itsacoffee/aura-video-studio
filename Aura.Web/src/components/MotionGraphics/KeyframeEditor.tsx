@@ -229,6 +229,13 @@ export function KeyframeEditor({
             e.stopPropagation();
             setSelectedKeyframeTime(keyframe.time);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelectedKeyframeTime(keyframe.time);
+            }
+          }}
           role="button"
           tabIndex={0}
           aria-label={`Keyframe at ${keyframe.time.toFixed(2)}s`}
@@ -260,6 +267,12 @@ export function KeyframeEditor({
                 selectedProperty === prop.name ? styles.propertyItemSelected : ''
               }`}
               onClick={() => setSelectedProperty(prop.name)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedProperty(prop.name);
+                }
+              }}
               role="button"
               tabIndex={0}
               aria-label={`Select ${prop.label}`}

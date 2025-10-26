@@ -261,6 +261,7 @@ export function ProjectsPage() {
                       <TableCell>{formatProjectDuration(project.duration)}</TableCell>
                       <TableCell>{project.clipCount}</TableCell>
                       <TableCell>
+                        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
                         <div
                           style={{ display: 'flex', gap: tokens.spacingHorizontalS }}
                           onClick={(e) => e.stopPropagation()}

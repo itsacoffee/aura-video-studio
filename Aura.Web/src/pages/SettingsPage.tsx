@@ -1048,7 +1048,15 @@ export function SettingsPage() {
                 <div
                   key={profile.name}
                   className={styles.profileCard}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => applyProfile(profile.name)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      applyProfile(profile.name);
+                    }
+                  }}
                 >
                   <Text weight="semibold">{profile.name}</Text>
                   <br />
@@ -1553,7 +1561,18 @@ export function SettingsPage() {
               Quick-start templates with pre-configured provider settings for common use cases
             </Text>
             <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
-              <div className={styles.profileCard} onClick={() => applyProfileTemplate('free-only')}>
+              <div 
+                className={styles.profileCard} 
+                role="button"
+                tabIndex={0}
+                onClick={() => applyProfileTemplate('free-only')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    applyProfileTemplate('free-only');
+                  }
+                }}
+              >
                 <Text weight="semibold">Free-Only</Text>
                 <br />
                 <Text size={200}>
@@ -1563,7 +1582,15 @@ export function SettingsPage() {
               </div>
               <div
                 className={styles.profileCard}
+                role="button"
+                tabIndex={0}
                 onClick={() => applyProfileTemplate('balanced-mix')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    applyProfileTemplate('balanced-mix');
+                  }
+                }}
               >
                 <Text weight="semibold">Balanced Mix</Text>
                 <br />
@@ -1572,7 +1599,18 @@ export function SettingsPage() {
                   ElevenLabs for voice (requires key), and free stock sources.
                 </Text>
               </div>
-              <div className={styles.profileCard} onClick={() => applyProfileTemplate('pro-max')}>
+              <div 
+                className={styles.profileCard} 
+                role="button"
+                tabIndex={0}
+                onClick={() => applyProfileTemplate('pro-max')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    applyProfileTemplate('pro-max');
+                  }
+                }}
+              >
                 <Text weight="semibold">Pro-Max</Text>
                 <br />
                 <Text size={200}>

@@ -436,7 +436,15 @@ export function TimelineEditor() {
                   style={{
                     width: `${getSceneWidth(scene)}px`,
                   }}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedSceneIndex(index)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedSceneIndex(index);
+                    }
+                  }}
                 >
                   <div className={styles.sceneHeading}>
                     {scene.heading || `Scene ${scene.index + 1}`}

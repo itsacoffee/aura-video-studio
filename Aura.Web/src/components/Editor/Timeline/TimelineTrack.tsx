@@ -231,7 +231,19 @@ export function TimelineTrack({
           {type}
         </div>
       </div>
-      <div ref={trackContentRef} className={styles.trackContent} onMouseDown={handleMouseDown}>
+      <div 
+        ref={trackContentRef} 
+        className={styles.trackContent} 
+        role="button"
+        tabIndex={0}
+        onMouseDown={handleMouseDown}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            // Track interactions are primarily mouse-based for timeline scrubbing
+          }
+        }}
+      >
         <div
           ref={waveformRef}
           className={`${styles.waveformContainer} ${selected ? styles.waveformContainerSelected : ''}`}

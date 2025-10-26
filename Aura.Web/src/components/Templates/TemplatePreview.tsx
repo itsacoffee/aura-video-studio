@@ -138,6 +138,12 @@ export function TemplatePreview({ template, open, onClose, onUseTemplate }: Temp
                   alt={template.name}
                   className={styles.previewImage}
                   onClick={() => template.previewVideo && setIsVideoPlaying(true)}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && template.previewVideo) {
+                      e.preventDefault();
+                      setIsVideoPlaying(true);
+                    }
+                  }}
                   style={{ cursor: template.previewVideo ? 'pointer' : 'default' }}
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '';

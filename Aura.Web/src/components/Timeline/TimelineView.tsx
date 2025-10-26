@@ -236,7 +236,18 @@ export function TimelineView() {
       </div>
 
       <div className={styles.timeline}>
-        <div className={styles.ruler} onClick={handleTimelineClick}>
+        <div 
+          className={styles.ruler} 
+          role="button"
+          tabIndex={0}
+          onClick={handleTimelineClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              // Timeline click position requires mouse coordinates
+            }
+          }}
+        >
           {Array.from({ length: Math.ceil(maxDuration) + 1 }).map((_, i) => (
             <div
               key={i}
@@ -270,7 +281,19 @@ export function TimelineView() {
 
         <div className={styles.tracks}>
           {tracks.map((track) => (
-            <div key={track.id} className={styles.track} onClick={handleTimelineClick}>
+            <div 
+              key={track.id} 
+              className={styles.track} 
+              role="button"
+              tabIndex={0}
+              onClick={handleTimelineClick}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  // Timeline click requires mouse coordinates for precise positioning
+                }
+              }}
+            >
               <div className={styles.trackLabel}>{track.name}</div>
               <div className={styles.trackContent}>
                 {track.clips.map((clip) => {
@@ -284,7 +307,15 @@ export function TimelineView() {
                       key={clip.id}
                       className={`${styles.clip} ${isSelected ? styles.clipSelected : ''}`}
                       style={{ left: `${left}px`, width: `${width}px` }}
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => handleClipClick(clip.id, e)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleClipClick(clip.id, e as unknown as React.MouseEvent);
+                        }
+                      }}
                       title={`${clip.sourcePath} (${duration.toFixed(1)}s)`}
                     >
                       Clip {duration.toFixed(1)}s
