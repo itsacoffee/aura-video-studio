@@ -1,6 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { MenuBar } from '../MenuBar/MenuBar';
+import { snapToBreakpoint } from '../../services/workspaceLayoutService';
 
 const useStyles = makeStyles({
   container: {
@@ -8,7 +9,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     height: '100vh',
     overflow: 'hidden',
-    backgroundColor: tokens.colorNeutralBackground1,
+    backgroundColor: 'var(--color-background)',
   },
   content: {
     display: 'flex',
@@ -26,79 +27,92 @@ const useStyles = makeStyles({
     minHeight: '300px',
     display: 'flex',
     flexDirection: 'column',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground3,
+    borderBottom: `1px solid var(--panel-border, ${tokens.colorNeutralStroke1})`,
+    backgroundColor: 'var(--panel-bg, ${tokens.colorNeutralBackground3})',
     overflow: 'hidden',
+    transition: 'flex var(--transition-panel)',
   },
   timelinePanel: {
     flex: 4,
     minHeight: '200px',
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: tokens.colorNeutralBackground2,
+    backgroundColor: 'var(--panel-bg, ${tokens.colorNeutralBackground2})',
     overflow: 'hidden',
+    transition: 'flex var(--transition-panel)',
   },
   propertiesPanel: {
     width: '320px',
     minWidth: '280px',
     maxWidth: '400px',
-    borderLeft: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground2,
+    borderLeft: `1px solid var(--panel-border, ${tokens.colorNeutralStroke1})`,
+    backgroundColor: 'var(--panel-bg, ${tokens.colorNeutralBackground2})',
     overflow: 'auto',
     display: 'flex',
     flexDirection: 'column',
+    transition: 'width var(--transition-panel)',
   },
   mediaLibraryPanel: {
     width: '280px',
     minWidth: '240px',
     maxWidth: '350px',
-    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground2,
+    borderRight: `1px solid var(--panel-border, ${tokens.colorNeutralStroke1})`,
+    backgroundColor: 'var(--panel-bg, ${tokens.colorNeutralBackground2})',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+    transition: 'width var(--transition-panel)',
   },
   effectsLibraryPanel: {
     width: '280px',
     minWidth: '240px',
     maxWidth: '350px',
-    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
-    backgroundColor: tokens.colorNeutralBackground2,
+    borderRight: `1px solid var(--panel-border, ${tokens.colorNeutralStroke1})`,
+    backgroundColor: 'var(--panel-bg, ${tokens.colorNeutralBackground2})',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+    transition: 'width var(--transition-panel)',
   },
   resizer: {
     width: '4px',
     cursor: 'ew-resize',
     backgroundColor: 'transparent',
     position: 'relative',
+    transition: 'background-color var(--transition-fast)',
     '&:hover': {
-      backgroundColor: tokens.colorBrandBackground,
+      backgroundColor: 'var(--color-primary)',
     },
     '&:active': {
-      backgroundColor: tokens.colorBrandBackground,
+      backgroundColor: 'var(--color-primary)',
     },
     '&:focus': {
-      outline: `2px solid ${tokens.colorBrandBackground}`,
+      outline: `2px solid var(--color-primary)`,
       outlineOffset: '2px',
     },
+  },
+  resizerDragging: {
+    backgroundColor: 'var(--color-primary)',
   },
   horizontalResizer: {
     height: '4px',
     cursor: 'ns-resize',
     backgroundColor: 'transparent',
     position: 'relative',
+    transition: 'background-color var(--transition-fast)',
     '&:hover': {
-      backgroundColor: tokens.colorBrandBackground,
+      backgroundColor: 'var(--color-primary)',
     },
     '&:active': {
-      backgroundColor: tokens.colorBrandBackground,
+      backgroundColor: 'var(--color-primary)',
     },
     '&:focus': {
-      outline: `2px solid ${tokens.colorBrandBackground}`,
+      outline: `2px solid var(--color-primary)`,
       outlineOffset: '2px',
     },
+  },
+  horizontalResizerDragging: {
+    backgroundColor: 'var(--color-primary)',
   },
 });
 
@@ -180,6 +194,10 @@ export function EditorLayout({
     loadPanelSize(STORAGE_KEYS.previewHeight, 60)
   ); // Percentage
 
+  // Track dragging state for visual feedback
+  const [isDraggingHorizontal, setIsDraggingHorizontal] = useState(false);
+  const [isDraggingVertical, setIsDraggingVertical] = useState(false);
+
   // Persist panel sizes to localStorage
   useEffect(() => {
     savePanelSize(STORAGE_KEYS.propertiesWidth, propertiesWidth);
@@ -205,14 +223,18 @@ export function EditorLayout({
   const handlePropertiesResize = (e: React.MouseEvent) => {
     const startX = e.clientX;
     const startWidth = propertiesWidth;
+    setIsDraggingHorizontal(true);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = startX - moveEvent.clientX;
-      const newWidth = Math.max(280, Math.min(400, startWidth + delta));
+      let newWidth = Math.max(280, Math.min(400, startWidth + delta));
+      // Apply snap-to-breakpoint
+      newWidth = snapToBreakpoint(newWidth, 280, 400);
       setPropertiesWidth(newWidth);
     };
 
     const handleMouseUp = () => {
+      setIsDraggingHorizontal(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -229,15 +251,26 @@ export function EditorLayout({
     const startY = e.clientY;
     const containerHeight = container.clientHeight;
     const startHeight = previewHeight;
+    setIsDraggingVertical(true);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientY - startY;
       const deltaPercent = (delta / containerHeight) * 100;
-      const newHeight = Math.max(40, Math.min(80, startHeight + deltaPercent));
+      let newHeight = Math.max(40, Math.min(80, startHeight + deltaPercent));
+      // Apply snap-to-breakpoint for percentage values
+      const snapPoints = [40, 50, 60, 66, 70, 75, 80];
+      const threshold = 3; // 3% threshold
+      for (const point of snapPoints) {
+        if (Math.abs(newHeight - point) < threshold) {
+          newHeight = point;
+          break;
+        }
+      }
       setPreviewHeight(newHeight);
     };
 
     const handleMouseUp = () => {
+      setIsDraggingVertical(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -250,14 +283,18 @@ export function EditorLayout({
   const handleMediaLibraryResize = (e: React.MouseEvent) => {
     const startX = e.clientX;
     const startWidth = mediaLibraryWidth;
+    setIsDraggingHorizontal(true);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;
-      const newWidth = Math.max(240, Math.min(350, startWidth + delta));
+      let newWidth = Math.max(240, Math.min(350, startWidth + delta));
+      // Apply snap-to-breakpoint
+      newWidth = snapToBreakpoint(newWidth, 240, 350);
       setMediaLibraryWidth(newWidth);
     };
 
     const handleMouseUp = () => {
+      setIsDraggingHorizontal(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -270,14 +307,18 @@ export function EditorLayout({
   const handleEffectsLibraryResize = (e: React.MouseEvent) => {
     const startX = e.clientX;
     const startWidth = effectsLibraryWidth;
+    setIsDraggingHorizontal(true);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = moveEvent.clientX - startX;
-      const newWidth = Math.max(240, Math.min(350, startWidth + delta));
+      let newWidth = Math.max(240, Math.min(350, startWidth + delta));
+      // Apply snap-to-breakpoint
+      newWidth = snapToBreakpoint(newWidth, 240, 350);
       setEffectsLibraryWidth(newWidth);
     };
 
     const handleMouseUp = () => {
+      setIsDraggingHorizontal(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -290,14 +331,18 @@ export function EditorLayout({
   const handleHistoryResize = (e: React.MouseEvent) => {
     const startX = e.clientX;
     const startWidth = historyWidth;
+    setIsDraggingHorizontal(true);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const delta = startX - moveEvent.clientX;
-      const newWidth = Math.max(280, Math.min(400, startWidth + delta));
+      let newWidth = Math.max(280, Math.min(400, startWidth + delta));
+      // Apply snap-to-breakpoint
+      newWidth = snapToBreakpoint(newWidth, 280, 400);
       setHistoryWidth(newWidth);
     };
 
     const handleMouseUp = () => {
+      setIsDraggingHorizontal(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -327,7 +372,7 @@ export function EditorLayout({
             {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
             <div 
-              className={styles.resizer} 
+              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`} 
               onMouseDown={handleMediaLibraryResize} 
               role="separator" 
               aria-orientation="vertical"
@@ -355,7 +400,7 @@ export function EditorLayout({
             {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
             <div 
-              className={styles.resizer} 
+              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`} 
               onMouseDown={handleEffectsLibraryResize} 
               role="separator" 
               aria-orientation="vertical"
@@ -382,7 +427,7 @@ export function EditorLayout({
           {/* Interactive resizer - intentionally uses mouse and keyboard events */}
           {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
           <div 
-            className={styles.horizontalResizer} 
+            className={`${styles.horizontalResizer} ${isDraggingVertical ? styles.horizontalResizerDragging : ''}`} 
             onMouseDown={handlePreviewResize} 
             role="separator" 
             aria-orientation="horizontal"
@@ -409,7 +454,7 @@ export function EditorLayout({
             {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
             <div 
-              className={styles.resizer} 
+              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`} 
               onMouseDown={handlePropertiesResize} 
               role="separator" 
               aria-orientation="vertical"
@@ -437,7 +482,7 @@ export function EditorLayout({
             {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
             <div 
-              className={styles.resizer} 
+              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`} 
               onMouseDown={handleHistoryResize} 
               role="separator" 
               aria-orientation="vertical"

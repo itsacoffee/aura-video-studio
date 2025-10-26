@@ -11,7 +11,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Spacing scale tokens */
+  /* Professional NLE Spacing System - 4/8/12/16px base */
   --space-0: 4px;
   --space-1: 8px;
   --space-2: 12px;
@@ -26,6 +26,11 @@
   --heading-1-size: 24px;
   --heading-2-size: 20px;
   --heading-3-size: 16px;
+
+  /* Border radius for modern look */
+  --border-radius-sm: 2px;
+  --border-radius-md: 4px;
+  --border-radius-lg: 6px;
 
   /* CSS custom properties for theming - Light mode */
   --color-primary: #0ea5e9;
@@ -47,32 +52,45 @@
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   
-  /* Transition timing for smooth interactions */
+  /* Professional NLE Animation Timing */
+  --transition-panel: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-button: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-modal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Dark mode color overrides - Professional video editor aesthetic */
+/* Dark mode - Professional NLE Theme (Premiere Pro / CapCut inspired) */
 .dark {
-  --color-primary: #38bdf8;
+  /* Professional NLE Color Palette */
+  --color-background: #0D0D0D;        /* Deep background */
+  --color-surface: #1A1A1A;           /* Panel background */
+  --color-panel-header: #252525;      /* Panel headers */
+  --color-primary: #0078D4;           /* Accent blue */
+  --color-text-primary: #E8E8E8;      /* Primary text */
+  --color-text-secondary: #A0A0A0;    /* Secondary text */
+  --color-border: #2D2D2D;            /* Panel borders */
+  --card-bg: #1A1A1A;
+  
+  /* Adjusted semantic colors for dark theme */
   --color-secondary: #c084fc;
   --color-success: #4ade80;
   --color-warning: #fbbf24;
   --color-error: #f87171;
-  --color-background: #0a0e17;
-  --color-surface: #151921;
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --color-border: #1e293b;
-  --card-bg: #0f1724;
   
-  /* Enhanced shadows for dark mode */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
-  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  /* Enhanced shadows for dark mode depth */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 10px 10px -5px rgba(0, 0, 0, 0.7);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
+  
+  /* Panel-specific colors */
+  --panel-bg: #1A1A1A;
+  --panel-header-bg: #252525;
+  --panel-border: #2D2D2D;
+  --panel-hover: #2A2A2A;
 }
 
 * {
@@ -126,15 +144,34 @@ ul, ol {
   padding: 0;
 }
 
-/* Section and card styling */
+/* Section and card styling with professional spacing */
 .section {
-  padding: var(--space-4);
-  margin-bottom: var(--space-4);
+  padding: var(--space-2);
+  margin-bottom: var(--space-3);
   background: var(--card-bg);
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border);
 }
 
-/* Form controls */
+/* Professional panel styles */
+.panel {
+  background: var(--panel-bg, var(--color-surface));
+  border: 1px solid var(--panel-border, var(--color-border));
+  border-radius: var(--border-radius-md);
+  padding: var(--space-2);
+}
+
+.panel-header {
+  background: var(--panel-header-bg, var(--color-surface));
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--panel-border, var(--color-border));
+  border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+/* Form controls with consistent spacing */
 .form-row {
   margin-bottom: var(--space-2);
 }
@@ -144,10 +181,17 @@ textarea,
 select {
   padding: var(--space-1);
   font-size: var(--font-size-base);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  transition: all var(--transition-fast);
 }
 
 button {
-  padding: calc(var(--space-1) + 2px) var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--border-radius-md);
+  transition: all var(--transition-button);
 }
 
 /* Utility spacing classes */
@@ -194,7 +238,7 @@ button {
   color: white;
 }
 
-/* Smooth transitions for all interactive elements */
+/* Smooth transitions for all interactive elements - Professional NLE timing */
 button,
 a,
 input,
@@ -205,15 +249,17 @@ select,
   transition: all var(--transition-base);
 }
 
-/* Enhanced button hover effects */
+/* Enhanced button hover effects with smooth timing */
 button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+  transition: all var(--transition-button);
 }
 
 button:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: var(--shadow-sm);
+  transition: all var(--transition-button);
 }
 
 button:disabled {
