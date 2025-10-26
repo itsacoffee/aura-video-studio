@@ -15,6 +15,7 @@ import { ProjectFile, ProjectMediaItem } from '../types/project';
 import { CommandHistory } from '../services/commandHistory';
 import { useActivity } from '../state/activityContext';
 import { startExport, pollExportStatus } from '../services/exportService';
+import { getHardwareInfo, HardwareInfo } from '../services/hardwareService';
 import {
   AddClipCommand,
   DeleteClipCommand,
@@ -73,6 +74,7 @@ export function VideoEditorPage() {
   ]);
   const [mediaLibrary, setMediaLibrary] = useState<ProjectMediaItem[]>([]);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | null>(null);
   
   // Access activity context for progress tracking
   const { addActivity, updateActivity } = useActivity();
@@ -145,6 +147,23 @@ export function VideoEditorPage() {
     }
   }, [searchParams, loadProject]);
 
+  // Detect hardware capabilities on mount
+  useEffect(() => {
+    getHardwareInfo()
+      .then(setHardwareInfo)
+      .catch((error) => {
+        console.error('Failed to detect hardware:', error);
+        // Set fallback values
+        setHardwareInfo({
+          cpuCores: 4,
+          ramGB: 8,
+          gpu: null,
+          hardwareAccelerationAvailable: false,
+          hardwareType: 'None',
+          encoderType: 'Software (CPU)',
+        });
+      });
+  }, []);
 
   
   // Ref to track video preview controls
@@ -616,8 +635,8 @@ export function VideoEditorPage() {
           onExport={handleStartExport}
           onAddToQueue={handleAddToQueue}
           timeline={{ totalDuration: 180 }}
-          hardwareAccelerationAvailable={false}
-          hardwareType="None"
+          hardwareAccelerationAvailable={hardwareInfo?.hardwareAccelerationAvailable ?? false}
+          hardwareType={hardwareInfo?.hardwareType ?? 'None'}
         />
       )}
     </>
