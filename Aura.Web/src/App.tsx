@@ -51,6 +51,7 @@ import { env } from './config/env';
 // Lazy load development-only features to reduce production bundle size
 const LogViewerPage = lazy(() => import('./pages/LogViewerPage').then(m => ({ default: m.LogViewerPage })));
 const ActivityDemoPage = lazy(() => import('./pages/ActivityDemoPage').then(m => ({ default: m.ActivityDemoPage })));
+const LayoutDemoPage = lazy(() => import('./pages/LayoutDemoPage').then(m => ({ default: m.LayoutDemoPage })));
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -405,6 +406,14 @@ function App() {
                           element={
                             <Suspense fallback={<Spinner label="Loading..." />}>
                               <ActivityDemoPage />
+                            </Suspense>
+                          } 
+                        />
+                        <Route 
+                          path="/layout-demo" 
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LayoutDemoPage />
                             </Suspense>
                           } 
                         />
