@@ -94,16 +94,16 @@ export interface ExportDialogProps {
 
 export interface ExportOptions {
   preset: string;
-  resolution: { width: number; height: number };
+  resolution: { width: number; height: number }; // Preset resolution or custom if advanced settings used
   fps: number;
-  videoBitrate: number;
+  videoBitrate: number; // Preset bitrate or custom if advanced settings used
   audioBitrate: number;
   quality: 'draft' | 'good' | 'high' | 'maximum';
   exportRange: 'entire' | 'selection';
   selectionStart?: number;
   selectionEnd?: number;
   outputPath: string;
-  codec?: string;
+  codec?: string; // Preset codec or custom if advanced settings used
 }
 
 const PRESETS = {
@@ -218,7 +218,9 @@ export function ExportDialog({
     customHeight: 0,
   });
 
-  // Helper to determine if advanced settings should be enabled
+  // Helper to determine if advanced settings should be considered active
+  // Note: Codec selection is always available and doesn't require "enabling" advanced mode
+  // Advanced mode only tracks custom bitrate/resolution overrides
   const shouldEnableAdvanced = (settings: typeof advancedSettings) => {
     return settings.customBitrate > 0 || settings.customWidth > 0 || settings.customHeight > 0;
   };
@@ -252,17 +254,17 @@ export function ExportDialog({
     const [width, height] = presetInfo.resolution.split('x').map(Number);
     
     // Determine resolution (custom or preset)
-    const resolution = advancedSettings.enabled && advancedSettings.customWidth > 0 && advancedSettings.customHeight > 0
+    const resolution = advancedSettings.customWidth > 0 && advancedSettings.customHeight > 0
       ? { width: advancedSettings.customWidth, height: advancedSettings.customHeight }
       : { width, height };
     
     // Determine bitrate (custom or preset)
-    const videoBitrate = advancedSettings.enabled && advancedSettings.customBitrate > 0
+    const videoBitrate = advancedSettings.customBitrate > 0
       ? advancedSettings.customBitrate
       : parseInt(presetInfo.bitrate) * 1000;
     
-    // Determine codec (custom or preset)
-    const codec = advancedSettings.enabled ? advancedSettings.codec : presetInfo.codec;
+    // Always use the codec from advanced settings dropdown (defaults to H.264 same as most presets)
+    const codec = advancedSettings.codec;
     
     return {
       preset: selectedPreset,
