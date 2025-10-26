@@ -234,7 +234,7 @@ export const TrendingTopicCard: React.FC<TrendingTopicCardProps> = ({ topic, onS
         {topic.aiInsights && (
           <div className={styles.aiInsights}>
             <div className={styles.insightSection}>
-              <div className={styles.insightLabel}>🔥 Why It's Trending</div>
+              <div className={styles.insightLabel}>🔥 Why It&apos;s Trending</div>
               <Text className={styles.insightText}>{topic.aiInsights.whyTrending}</Text>
             </div>
 

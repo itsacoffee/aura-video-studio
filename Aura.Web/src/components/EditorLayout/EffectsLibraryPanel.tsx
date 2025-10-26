@@ -282,7 +282,7 @@ export function EffectsLibraryPanel({
 
         {filteredEffects.length === 0 && (
           <div className={styles.emptyState}>
-            <Text>No effects found matching "{searchQuery}"</Text>
+            <Text>No effects found matching &quot;{searchQuery}&quot;</Text>
           </div>
         )}
       </div>

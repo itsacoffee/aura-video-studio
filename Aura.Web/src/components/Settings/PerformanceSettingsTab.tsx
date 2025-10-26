@@ -466,8 +466,8 @@ export function PerformanceSettingsTab() {
 
         <Card className={styles.infoCard}>
           <Text size={200}>
-            Run a benchmark to test your system's rendering performance and get recommendations for
-            optimal settings.
+            Run a benchmark to test your system&apos;s rendering performance and get recommendations
+            for optimal settings.
           </Text>
           <Button
             appearance="secondary"

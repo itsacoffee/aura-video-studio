@@ -1758,7 +1758,7 @@ export function SettingsPage() {
               }}
             >
               <Text weight="semibold" size={300}>
-                📋 What's Included
+                📋 What&apos;s Included
               </Text>
               <ul style={{ marginTop: tokens.spacingVerticalS, paddingLeft: '20px' }}>
                 <li>

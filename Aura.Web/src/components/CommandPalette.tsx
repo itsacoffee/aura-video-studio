@@ -434,7 +434,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           <div className={styles.results}>
             {filteredCommands.length === 0 ? (
               <div className={styles.emptyState}>
-                <Text>No commands found for "{searchQuery}"</Text>
+                <Text>No commands found for &quot;{searchQuery}&quot;</Text>
               </div>
             ) : (
               filteredCommands.map((command, index) => {
