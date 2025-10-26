@@ -12,19 +12,21 @@ describe('MediaLibraryPanel', () => {
   it('should render the media library header', () => {
     renderWithProvider(<MediaLibraryPanel />);
     expect(screen.getByText('Media Library')).toBeDefined();
-    expect(screen.getByText('Drag clips to timeline')).toBeDefined();
+    expect(screen.getByText('Browse and manage your media assets')).toBeDefined();
   });
 
-  it('should render the upload area', () => {
-    renderWithProvider(<MediaLibraryPanel />);
-    expect(screen.getByText('Drop files here or click to upload')).toBeDefined();
-    expect(screen.getByText('Supports video, audio, and image files')).toBeDefined();
+  it('should render dual view by default', () => {
+    const { container } = renderWithProvider(<MediaLibraryPanel />);
+    const tabList = container.querySelector('[role="tablist"]');
+    expect(tabList).toBeTruthy();
+    const tabs = container.querySelectorAll('[role="tab"]');
+    expect(tabs.length).toBe(2);
   });
 
   it('should show empty state when no clips are present', () => {
     renderWithProvider(<MediaLibraryPanel />);
-    expect(screen.getByText('No clips in library')).toBeDefined();
-    expect(screen.getByText('Upload files to get started')).toBeDefined();
+    expect(screen.getByText('No media in this collection')).toBeDefined();
+    expect(screen.getByText('Add files to get started')).toBeDefined();
   });
 
   it('should handle file upload', async () => {
@@ -56,13 +58,9 @@ describe('MediaLibraryPanel', () => {
     expect(clipCards.length).toBeGreaterThan(0);
   });
 
-  it('should have proper accessibility attributes on upload area', () => {
-    const { container } = renderWithProvider(<MediaLibraryPanel />);
-    
-    const uploadArea = container.querySelector('[aria-label="Upload media files"]');
-    expect(uploadArea).toBeTruthy();
-    expect(uploadArea?.getAttribute('role')).toBe('button');
-    expect(uploadArea?.getAttribute('tabIndex')).toBe('0');
+  it('should render file browser in dual view', () => {
+    renderWithProvider(<MediaLibraryPanel />);
+    expect(screen.getByText('File Browser')).toBeDefined();
   });
 
   it('should accept multiple file types', () => {

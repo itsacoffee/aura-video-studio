@@ -1,29 +1,12 @@
-import { useState, useRef, DragEvent, forwardRef, useImperativeHandle } from 'react';
+import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
   makeStyles,
   tokens,
   Text,
-  Button,
   Spinner,
-  Card,
-  CardHeader,
-  CardPreview,
-  Menu,
-  MenuTrigger,
-  MenuList,
-  MenuItem,
-  MenuPopover,
-  ProgressBar,
+  Tab,
+  TabList,
 } from '@fluentui/react-components';
-import {
-  Add24Regular,
-  VideoClip24Regular,
-  MusicNote224Regular,
-  Image24Regular,
-  Dismiss24Regular,
-  Delete24Regular,
-  Rename24Regular,
-} from '@fluentui/react-icons';
 import {
   generateVideoThumbnails,
   generateWaveform,
@@ -31,6 +14,9 @@ import {
   isSupportedMediaType,
   getMediaPreview,
 } from '../../utils/mediaProcessing';
+import { ProjectBin, MediaAsset } from '../MediaLibrary/ProjectBin';
+import { FileSystemBrowser } from '../MediaLibrary/FileSystemBrowser';
+import { MetadataPanel } from '../MediaLibrary/MetadataPanel';
 
 const useStyles = makeStyles({
   container: {
@@ -54,6 +40,44 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground3,
   },
+  tabContainer: {
+    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  dualPane: {
+    display: 'flex',
+    flex: 1,
+    overflow: 'hidden',
+  },
+  leftPane: {
+    flex: 1,
+    minWidth: '200px',
+    borderRight: `1px solid ${tokens.colorNeutralStroke1}`,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  rightPane: {
+    flex: 1,
+    minWidth: '200px',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  singlePane: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  loadingContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: tokens.spacingVerticalXXL,
+    gap: tokens.spacingVerticalM,
+  },
   uploadArea: {
     margin: tokens.spacingVerticalM,
     padding: tokens.spacingVerticalXXL,
@@ -74,91 +98,6 @@ const useStyles = makeStyles({
     border: `2px dashed ${tokens.colorBrandStroke1}`,
     backgroundColor: tokens.colorBrandBackground2,
   },
-  uploadIcon: {
-    fontSize: '48px',
-    color: tokens.colorNeutralForeground3,
-    marginBottom: tokens.spacingVerticalM,
-  },
-  uploadText: {
-    fontSize: tokens.fontSizeBase300,
-    color: tokens.colorNeutralForeground2,
-    marginBottom: tokens.spacingVerticalS,
-  },
-  uploadHint: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
-  },
-  libraryContent: {
-    flex: 1,
-    overflow: 'auto',
-    padding: tokens.spacingVerticalM,
-  },
-  clipGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-    gap: tokens.spacingHorizontalM,
-  },
-  clipCard: {
-    cursor: 'grab',
-    position: 'relative',
-    '&:hover': {
-      boxShadow: tokens.shadow8,
-    },
-    '&:active': {
-      cursor: 'grabbing',
-    },
-  },
-  clipPreview: {
-    height: '80px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorNeutralBackground4,
-    fontSize: '32px',
-  },
-  clipHeader: {
-    padding: tokens.spacingVerticalXS,
-  },
-  clipName: {
-    fontSize: tokens.fontSizeBase200,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  clipType: {
-    fontSize: tokens.fontSizeBase100,
-    color: tokens.colorNeutralForeground3,
-  },
-  clipMetadata: {
-    fontSize: tokens.fontSizeBase100,
-    color: tokens.colorNeutralForeground3,
-    marginTop: '2px',
-  },
-  removeButton: {
-    position: 'absolute',
-    top: '4px',
-    right: '4px',
-    minWidth: '24px',
-    minHeight: '24px',
-    padding: '4px',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: tokens.spacingVerticalXXL,
-    gap: tokens.spacingVerticalM,
-  },
-  emptyState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: tokens.spacingVerticalXXL,
-    color: tokens.colorNeutralForeground3,
-    textAlign: 'center',
-  },
 });
 
 export interface MediaClip {
@@ -173,6 +112,10 @@ export interface MediaClip {
   waveform?: { peaks: number[]; duration: number };
   preview?: string;
   uploadProgress?: number;
+  filePath?: string;
+  frameRate?: number;
+  codec?: string;
+  creationDate?: string;
 }
 
 interface MediaLibraryPanelProps {
@@ -189,8 +132,9 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
   const styles = useStyles();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [clips, setClips] = useState<MediaClip[]>([]);
-  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<'dual' | 'project'>('dual');
+  const [selectedAsset, setSelectedAsset] = useState<MediaClip | null>(null);
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -199,12 +143,6 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
     },
   }));
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
   const getClipType = (file: File): 'video' | 'audio' | 'image' => {
     if (file.type.startsWith('video/')) return 'video';
     if (file.type.startsWith('audio/')) return 'audio';
@@ -212,16 +150,21 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
     return 'video'; // default
   };
 
-  const getClipIcon = (type: 'video' | 'audio' | 'image') => {
-    switch (type) {
-      case 'video':
-        return <VideoClip24Regular />;
-      case 'audio':
-        return <MusicNote224Regular />;
-      case 'image':
-        return <Image24Regular />;
-    }
-  };
+  // Convert MediaClip to MediaAsset for ProjectBin
+  const assetsFromClips: MediaAsset[] = clips.map((clip) => ({
+    id: clip.id,
+    name: clip.name,
+    type: clip.type,
+    file: clip.file,
+    preview: clip.preview,
+    duration: clip.duration,
+    fileSize: clip.fileSize,
+    filePath: clip.filePath,
+    resolution: clip.resolution,
+    frameRate: clip.frameRate,
+    codec: clip.codec,
+    creationDate: clip.creationDate,
+  }));
 
   const processMediaFile = async (file: File, clipId: string, type: 'video' | 'audio' | 'image') => {
     try {
@@ -346,7 +289,6 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
     }
 
     setIsUploading(false);
-    setIsUploading(false);
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -356,35 +298,16 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
     }
   };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingOver(true);
-  };
-
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingOver(false);
-  };
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingOver(false);
-
-    const files = e.dataTransfer.files;
-    handleFiles(files);
-  };
-
   const handleUploadAreaClick = () => {
     fileInputRef.current?.click();
   };
 
-  const handleClipDragStart = (e: DragEvent<HTMLDivElement>, clip: MediaClip) => {
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/json', JSON.stringify(clip));
-    onClipDragStart?.(clip);
+  const handleClipDragStart = (asset: MediaAsset) => {
+    // Find the original clip
+    const clip = clips.find((c) => c.id === asset.id);
+    if (clip) {
+      onClipDragStart?.(clip);
+    }
   };
 
   const handleClipDragEnd = () => {
@@ -393,19 +316,33 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
 
   const handleRemoveClip = (clipId: string) => {
     setClips((prev) => prev.filter((c) => c.id !== clipId));
+    if (selectedAsset?.id === clipId) {
+      setSelectedAsset(null);
+    }
   };
 
-  const handleRenameClip = (clipId: string, newName: string) => {
-    setClips((prev) =>
-      prev.map((c) => (c.id === clipId ? { ...c, name: newName } : c))
-    );
+  const handleAssetSelect = (asset: MediaAsset) => {
+    const clip = clips.find((c) => c.id === asset.id);
+    if (clip) {
+      setSelectedAsset(clip);
+    }
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <Text className={styles.title}>Media Library</Text>
-        <Text className={styles.subtitle}>Drag clips to timeline</Text>
+        <Text className={styles.subtitle}>Browse and manage your media assets</Text>
+      </div>
+
+      <div className={styles.tabContainer}>
+        <TabList
+          selectedValue={selectedTab}
+          onTabSelect={(_, data) => setSelectedTab(data.value as 'dual' | 'project')}
+        >
+          <Tab value="dual">Dual View</Tab>
+          <Tab value="project">Project Only</Tab>
+        </TabList>
       </div>
 
       <input
@@ -417,128 +354,67 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
         onChange={handleFileInputChange}
       />
 
-      <div
-        className={`${styles.uploadArea} ${isDraggingOver ? styles.uploadAreaDragging : ''}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={handleUploadAreaClick}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleUploadAreaClick();
-          }
-        }}
-        aria-label="Upload media files"
-      >
-        <div className={styles.uploadIcon}>
-          <Add24Regular />
+      {isUploading && (
+        <div className={styles.loadingContainer}>
+          <Spinner size="large" label="Processing files..." />
         </div>
-        <Text className={styles.uploadText}>Drop files here or click to upload</Text>
-        <Text className={styles.uploadHint}>Supports video, audio, and image files</Text>
-      </div>
+      )}
 
-      <div className={styles.libraryContent}>
-        {isUploading && (
-          <div className={styles.loadingContainer}>
-            <Spinner size="large" label="Processing files..." />
+      {!isUploading && selectedTab === 'dual' && (
+        <div className={styles.dualPane}>
+          <div className={styles.leftPane}>
+            <FileSystemBrowser
+              onFileSelect={(file) => console.log('File selected:', file)}
+              onFileDragStart={(file) => console.log('File drag start:', file)}
+            />
           </div>
-        )}
+          <div className={styles.rightPane}>
+            <ProjectBin
+              assets={assetsFromClips}
+              onAddAssets={handleUploadAreaClick}
+              onRemoveAsset={handleRemoveClip}
+              onAssetDragStart={handleClipDragStart}
+              onAssetDragEnd={handleClipDragEnd}
+              onAssetSelect={handleAssetSelect}
+            />
+            {selectedAsset && (
+              <MetadataPanel
+                filePath={selectedAsset.filePath}
+                fileSize={selectedAsset.fileSize}
+                resolution={selectedAsset.resolution}
+                duration={selectedAsset.duration}
+                frameRate={selectedAsset.frameRate}
+                codec={selectedAsset.codec}
+                creationDate={selectedAsset.creationDate}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
-        {!isUploading && clips.length === 0 && (
-          <div className={styles.emptyState}>
-            <Text>No clips in library</Text>
-            <Text size={200}>Upload files to get started</Text>
-          </div>
-        )}
-
-        {!isUploading && clips.length > 0 && (
-          <div className={styles.clipGrid}>
-            {clips.map((clip) => (
-              <Menu key={clip.id}>
-                <MenuTrigger disableButtonEnhancement>
-                  <Card
-                    className={styles.clipCard}
-                    draggable
-                    onDragStart={(e) => handleClipDragStart(e, clip)}
-                    onDragEnd={handleClipDragEnd}
-                  >
-                    <Button
-                      className={styles.removeButton}
-                      appearance="subtle"
-                      size="small"
-                      icon={<Dismiss24Regular />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveClip(clip.id);
-                      }}
-                      aria-label="Remove clip"
-                    />
-                    <CardPreview className={styles.clipPreview}>
-                      {clip.preview ? (
-                        <img 
-                          src={clip.preview} 
-                          alt={clip.name} 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        getClipIcon(clip.type)
-                      )}
-                    </CardPreview>
-                    <CardHeader
-                      className={styles.clipHeader}
-                      header={
-                        <div>
-                          <Text className={styles.clipName} title={clip.name}>
-                            {clip.name}
-                          </Text>
-                          <Text className={styles.clipType}>{clip.type}</Text>
-                          {clip.duration && (
-                            <Text className={styles.clipMetadata}>
-                              {Math.floor(clip.duration)}s
-                            </Text>
-                          )}
-                          {clip.fileSize && (
-                            <Text className={styles.clipMetadata}>
-                              {formatFileSize(clip.fileSize)}
-                            </Text>
-                          )}
-                          {clip.uploadProgress !== undefined && clip.uploadProgress < 100 && (
-                            <ProgressBar value={clip.uploadProgress / 100} />
-                          )}
-                        </div>
-                      }
-                    />
-                  </Card>
-                </MenuTrigger>
-                <MenuPopover>
-                  <MenuList>
-                    <MenuItem
-                      icon={<Rename24Regular />}
-                      onClick={() => {
-                        const newName = prompt('Enter new name:', clip.name);
-                        if (newName && newName.trim()) {
-                          handleRenameClip(clip.id, newName.trim());
-                        }
-                      }}
-                    >
-                      Rename
-                    </MenuItem>
-                    <MenuItem
-                      icon={<Delete24Regular />}
-                      onClick={() => handleRemoveClip(clip.id)}
-                    >
-                      Delete
-                    </MenuItem>
-                  </MenuList>
-                </MenuPopover>
-              </Menu>
-            ))}
-          </div>
-        )}
-      </div>
+      {!isUploading && selectedTab === 'project' && (
+        <div className={styles.singlePane}>
+          <ProjectBin
+            assets={assetsFromClips}
+            onAddAssets={handleUploadAreaClick}
+            onRemoveAsset={handleRemoveClip}
+            onAssetDragStart={handleClipDragStart}
+            onAssetDragEnd={handleClipDragEnd}
+            onAssetSelect={handleAssetSelect}
+          />
+          {selectedAsset && (
+            <MetadataPanel
+              filePath={selectedAsset.filePath}
+              fileSize={selectedAsset.fileSize}
+              resolution={selectedAsset.resolution}
+              duration={selectedAsset.duration}
+              frameRate={selectedAsset.frameRate}
+              codec={selectedAsset.codec}
+              creationDate={selectedAsset.creationDate}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 });
