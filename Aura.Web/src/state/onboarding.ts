@@ -52,6 +52,15 @@ export interface OnboardingState {
   apiKeys: Record<string, string>;
   apiKeyValidationStatus: Record<string, 'idle' | 'validating' | 'valid' | 'invalid'>;
   apiKeyErrors: Record<string, string>;
+  workspacePreferences: {
+    defaultSaveLocation: string;
+    cacheLocation: string;
+    autosaveInterval: number;
+    theme: 'light' | 'dark' | 'auto';
+  };
+  selectedTemplate: string | null;
+  showTutorial: boolean;
+  tutorialCompleted: boolean;
 }
 
 export const initialOnboardingState: OnboardingState = {
@@ -97,6 +106,15 @@ export const initialOnboardingState: OnboardingState = {
   apiKeys: {},
   apiKeyValidationStatus: {},
   apiKeyErrors: {},
+  workspacePreferences: {
+    defaultSaveLocation: '',
+    cacheLocation: '',
+    autosaveInterval: 3,
+    theme: 'auto',
+  },
+  selectedTemplate: null,
+  showTutorial: false,
+  tutorialCompleted: false,
 };
 
 // Action types
@@ -120,6 +138,10 @@ export type OnboardingAction =
   | { type: 'START_API_KEY_VALIDATION'; payload: string }
   | { type: 'API_KEY_VALID'; payload: { provider: string; accountInfo?: string } }
   | { type: 'API_KEY_INVALID'; payload: { provider: string; error: string } }
+  | { type: 'SET_WORKSPACE_PREFERENCES'; payload: OnboardingState['workspacePreferences'] }
+  | { type: 'SET_TEMPLATE'; payload: string | null }
+  | { type: 'TOGGLE_TUTORIAL' }
+  | { type: 'COMPLETE_TUTORIAL' }
   | { type: 'LOAD_FROM_STORAGE'; payload: Partial<OnboardingState> };
 
 // Reducer
@@ -293,6 +315,31 @@ export function onboardingReducer(
           ...state.apiKeyErrors,
           [action.payload.provider]: action.payload.error,
         },
+      };
+
+    case 'SET_WORKSPACE_PREFERENCES':
+      return {
+        ...state,
+        workspacePreferences: action.payload,
+      };
+
+    case 'SET_TEMPLATE':
+      return {
+        ...state,
+        selectedTemplate: action.payload,
+      };
+
+    case 'TOGGLE_TUTORIAL':
+      return {
+        ...state,
+        showTutorial: !state.showTutorial,
+      };
+
+    case 'COMPLETE_TUTORIAL':
+      return {
+        ...state,
+        tutorialCompleted: true,
+        showTutorial: false,
       };
 
     case 'LOAD_FROM_STORAGE':

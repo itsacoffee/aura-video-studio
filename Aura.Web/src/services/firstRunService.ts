@@ -131,6 +131,7 @@ export async function markFirstRunCompleted(): Promise<void> {
 
 /**
  * Reset first-run status (for testing or re-running wizard)
+ * This function is now exported for use in Settings to allow users to re-run the wizard
  */
 export async function resetFirstRunStatus(): Promise<void> {
   // Clear localStorage
@@ -145,6 +146,21 @@ export async function resetFirstRunStatus(): Promise<void> {
     console.error('Failed to reset first-run status in backend:', error);
     // Don't throw - localStorage clearing is sufficient
   }
+}
+
+/**
+ * Allow users to mark wizard as seen for the current session without persisting
+ * Useful for "Never show again" checkbox
+ */
+export function markWizardNeverShowAgain(): void {
+  localStorage.setItem('wizardNeverShowAgain', 'true');
+}
+
+/**
+ * Check if user has chosen to never show the wizard again
+ */
+export function shouldNeverShowWizard(): boolean {
+  return localStorage.getItem('wizardNeverShowAgain') === 'true';
 }
 
 /**
