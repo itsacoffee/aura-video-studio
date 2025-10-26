@@ -401,7 +401,7 @@ apiClient.interceptors.response.use(
       }
     } else if (error.request) {
       // Request made but no response received
-      userMessage = 'Unable to reach the server. Please check your connection.';
+      userMessage = 'Network connection lost - Retrying...';
       errorCode = 'NETWORK_ERROR';
       technicalDetails = {
         request: error.request,
