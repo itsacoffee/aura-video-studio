@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Data;
 using Aura.Core.Models;
 using Aura.Core.Models.Export;
 using Aura.Core.Services.FFmpeg;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Export;
@@ -70,6 +72,28 @@ public record ExportResult
 }
 
 /// <summary>
+/// DTO for export history
+/// </summary>
+public record ExportHistoryDto
+{
+    public required string Id { get; init; }
+    public required string InputFile { get; init; }
+    public required string OutputFile { get; init; }
+    public required string PresetName { get; init; }
+    public required string Status { get; init; }
+    public double Progress { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime? StartedAt { get; init; }
+    public DateTime? CompletedAt { get; init; }
+    public string? ErrorMessage { get; init; }
+    public long? FileSize { get; init; }
+    public double? DurationSeconds { get; init; }
+    public string? Platform { get; init; }
+    public string? Resolution { get; init; }
+    public string? Codec { get; init; }
+}
+
+/// <summary>
 /// Service for orchestrating video export operations
 /// </summary>
 public interface IExportOrchestrationService
@@ -101,6 +125,13 @@ public interface IExportOrchestrationService
     /// Get all queued and processing jobs
     /// </summary>
     Task<IReadOnlyList<ExportJob>> GetActiveJobsAsync();
+    
+    /// <summary>
+    /// Get export history
+    /// </summary>
+    /// <param name="status">Optional status filter</param>
+    /// <param name="limit">Maximum number of records to return</param>
+    Task<IReadOnlyList<ExportHistoryDto>> GetExportHistoryAsync(string? status = null, int limit = 100);
 }
 
 /// <summary>
@@ -113,6 +144,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
     private readonly IResolutionService _resolutionService;
     private readonly IBitrateOptimizationService _bitrateOptimizationService;
     private readonly ILogger<ExportOrchestrationService> _logger;
+    private readonly AuraDbContext _dbContext;
     private readonly Dictionary<string, ExportJob> _jobs = new();
     private readonly SemaphoreSlim _jobLock = new(1, 1);
 
@@ -121,13 +153,15 @@ public class ExportOrchestrationService : IExportOrchestrationService
         IFormatConversionService formatConversionService,
         IResolutionService resolutionService,
         IBitrateOptimizationService bitrateOptimizationService,
-        ILogger<ExportOrchestrationService> logger)
+        ILogger<ExportOrchestrationService> logger,
+        AuraDbContext dbContext)
     {
         _ffmpegService = ffmpegService ?? throw new ArgumentNullException(nameof(ffmpegService));
         _formatConversionService = formatConversionService ?? throw new ArgumentNullException(nameof(formatConversionService));
         _resolutionService = resolutionService ?? throw new ArgumentNullException(nameof(resolutionService));
         _bitrateOptimizationService = bitrateOptimizationService ?? throw new ArgumentNullException(nameof(bitrateOptimizationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }
 
     public async Task<ExportResult> ExportAsync(
@@ -279,6 +313,24 @@ public class ExportOrchestrationService : IExportOrchestrationService
 
             _jobs[job.Id] = job;
             
+            // Save to database
+            var historyEntity = new ExportHistoryEntity
+            {
+                Id = job.Id,
+                InputFile = job.InputFile,
+                OutputFile = job.OutputFile,
+                PresetName = job.Preset.Name,
+                Status = job.Status.ToString(),
+                Progress = job.Progress,
+                CreatedAt = job.CreatedAt,
+                Platform = job.TargetPlatform.ToString(),
+                Resolution = $"{job.Preset.Resolution.Width}x{job.Preset.Resolution.Height}",
+                Codec = job.Preset.VideoCodec
+            };
+            
+            _dbContext.ExportHistory.Add(historyEntity);
+            await _dbContext.SaveChangesAsync();
+            
             _logger.LogInformation("Queued export job {JobId}", job.Id);
 
             // Start processing in background (in a real implementation, this would use a proper queue/worker)
@@ -356,6 +408,15 @@ public class ExportOrchestrationService : IExportOrchestrationService
                 StartedAt = DateTime.UtcNow 
             };
             job = _jobs[jobId];
+            
+            // Update database
+            var entity = await _dbContext.ExportHistory.FindAsync(jobId);
+            if (entity != null)
+            {
+                entity.Status = ExportJobStatus.Processing.ToString();
+                entity.StartedAt = job.StartedAt;
+                await _dbContext.SaveChangesAsync();
+            }
         }
         finally
         {
@@ -402,6 +463,22 @@ public class ExportOrchestrationService : IExportOrchestrationService
                         ErrorMessage = result.ErrorMessage,
                         Progress = 100
                     };
+                    
+                    // Update database
+                    var entity = await _dbContext.ExportHistory.FindAsync(jobId);
+                    if (entity != null)
+                    {
+                        entity.Status = (result.Success ? ExportJobStatus.Completed : ExportJobStatus.Failed).ToString();
+                        entity.CompletedAt = DateTime.UtcNow;
+                        entity.ErrorMessage = result.ErrorMessage;
+                        entity.Progress = 100;
+                        if (result.Success && result.FileSize > 0)
+                        {
+                            entity.FileSize = result.FileSize;
+                            entity.DurationSeconds = result.Duration.TotalSeconds;
+                        }
+                        await _dbContext.SaveChangesAsync();
+                    }
                 }
             }
             finally
@@ -424,6 +501,16 @@ public class ExportOrchestrationService : IExportOrchestrationService
                         CompletedAt = DateTime.UtcNow,
                         ErrorMessage = ex.Message
                     };
+                    
+                    // Update database
+                    var entity = await _dbContext.ExportHistory.FindAsync(jobId);
+                    if (entity != null)
+                    {
+                        entity.Status = ExportJobStatus.Failed.ToString();
+                        entity.CompletedAt = DateTime.UtcNow;
+                        entity.ErrorMessage = ex.Message;
+                        await _dbContext.SaveChangesAsync();
+                    }
                 }
             }
             finally
@@ -431,5 +518,42 @@ public class ExportOrchestrationService : IExportOrchestrationService
                 _jobLock.Release();
             }
         }
+    }
+
+    public async Task<IReadOnlyList<ExportHistoryDto>> GetExportHistoryAsync(string? status = null, int limit = 100)
+    {
+        var query = _dbContext.ExportHistory.AsQueryable();
+        
+        // Filter by status if provided
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(e => e.Status == status);
+        }
+        
+        // Order by most recent first and limit results
+        var entities = await query
+            .OrderByDescending(e => e.CreatedAt)
+            .Take(limit)
+            .ToListAsync();
+        
+        // Map to DTOs
+        return entities.Select(e => new ExportHistoryDto
+        {
+            Id = e.Id,
+            InputFile = e.InputFile,
+            OutputFile = e.OutputFile,
+            PresetName = e.PresetName,
+            Status = e.Status,
+            Progress = e.Progress,
+            CreatedAt = e.CreatedAt,
+            StartedAt = e.StartedAt,
+            CompletedAt = e.CompletedAt,
+            ErrorMessage = e.ErrorMessage,
+            FileSize = e.FileSize,
+            DurationSeconds = e.DurationSeconds,
+            Platform = e.Platform,
+            Resolution = e.Resolution,
+            Codec = e.Codec
+        }).ToList();
     }
 }
