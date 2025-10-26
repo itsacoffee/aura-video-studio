@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, memo, useMemo } from 'react';
+import { useState, useRef, useEffect, memo, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { makeStyles, tokens, Text } from '@fluentui/react-components';
 import { AppliedEffect } from '../../types/effects';
 import { applyEffectsToFrame } from '../../utils/effectsEngine';
@@ -53,14 +53,23 @@ interface VideoPreviewPanelProps {
   onStop?: () => void;
 }
 
-export const VideoPreviewPanel = memo(function VideoPreviewPanel({
+export interface VideoPreviewPanelHandle {
+  play: () => void;
+  pause: () => void;
+  stepForward: () => void;
+  stepBackward: () => void;
+  setPlaybackRate: (rate: number) => void;
+  playAround: (secondsBefore?: number, secondsAfter?: number) => void;
+}
+
+const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewPanelProps>(function VideoPreviewPanel({
   videoUrl,
   currentTime = 0,
   effects = [],
   onTimeUpdate,
   onPlay,
   onPause,
-}: VideoPreviewPanelProps) {
+}: VideoPreviewPanelProps, ref) {
   const styles = useStyles();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -95,6 +104,36 @@ export const VideoPreviewPanel = memo(function VideoPreviewPanel({
   // Memoize effects to prevent unnecessary re-renders
   const memoizedEffects = useMemo(() => effects, [effects]);
   const hasEffects = useMemo(() => memoizedEffects.length > 0, [memoizedEffects]);
+
+  // Expose imperative methods via ref
+  useImperativeHandle(ref, () => ({
+    play: () => {
+      playbackEngineRef.current?.play();
+    },
+    pause: () => {
+      playbackEngineRef.current?.pause();
+    },
+    stepForward: () => {
+      playbackEngineRef.current?.stepForward();
+    },
+    stepBackward: () => {
+      playbackEngineRef.current?.stepBackward();
+    },
+    setPlaybackRate: (rate: number) => {
+      // Map rate to closest PlaybackSpeed
+      let speed: PlaybackSpeed = 1.0;
+      if (rate <= 0.375) speed = 0.25;
+      else if (rate <= 0.75) speed = 0.5;
+      else if (rate <= 1.5) speed = 1.0;
+      else if (rate <= 3.0) speed = 2.0;
+      else speed = 4.0;
+      
+      playbackEngineRef.current?.setPlaybackSpeed(speed);
+    },
+    playAround: (secondsBefore = 2, secondsAfter = 2) => {
+      playbackEngineRef.current?.playAround(secondsBefore, secondsAfter);
+    },
+  }), []);
 
   // Initialize playback engine
   useEffect(() => {
@@ -312,3 +351,6 @@ export const VideoPreviewPanel = memo(function VideoPreviewPanel({
     </div>
   );
 });
+
+// Export memoized component with ref forwarding
+export const VideoPreviewPanel = memo(VideoPreviewPanelInner);
