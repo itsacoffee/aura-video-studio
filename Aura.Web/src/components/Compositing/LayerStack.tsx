@@ -160,6 +160,13 @@ export function LayerStack({
             key={layer.id}
             className={`${styles.layer} ${selectedLayerId === layer.id ? styles.layerSelected : ''}`}
             onClick={() => onSelectLayer(layer.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                onSelectLayer(layer.id);
+              }
+            }}
+            role="button"
+            tabIndex={0}
           >
             <div className={styles.layerInfo}>
               <Label weight="semibold">{layer.name}</Label>
