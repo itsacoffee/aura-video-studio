@@ -1,6 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { MenuBar } from '../MenuBar/MenuBar';
+import { TopMenuBar } from '../Layout/TopMenuBar';
 import { snapToBreakpoint } from '../../services/workspaceLayoutService';
 
 const useStyles = makeStyles({
@@ -131,6 +132,7 @@ interface EditorLayoutProps {
   isDirty?: boolean;
   autosaveStatus?: 'idle' | 'saving' | 'saved' | 'error';
   lastSaved?: Date | null;
+  useTopMenuBar?: boolean; // New prop to use professional top menu bar
 }
 
 // LocalStorage keys for panel sizes
@@ -176,6 +178,7 @@ export function EditorLayout({
   isDirty,
   autosaveStatus = 'idle',
   lastSaved,
+  useTopMenuBar = false,
 }: EditorLayoutProps) {
   const styles = useStyles();
   const [propertiesWidth, setPropertiesWidth] = useState(() => 
@@ -353,16 +356,25 @@ export function EditorLayout({
 
   return (
     <div className={styles.container}>
-      <MenuBar
-        onImportMedia={onImportMedia}
-        onExportVideo={onExportVideo}
-        onShowKeyboardShortcuts={onShowKeyboardShortcuts}
-        onSaveProject={onSaveProject}
-        projectName={projectName}
-        isDirty={isDirty}
-        autosaveStatus={autosaveStatus}
-        lastSaved={lastSaved}
-      />
+      {useTopMenuBar ? (
+        <TopMenuBar
+          onImportMedia={onImportMedia}
+          onExportVideo={onExportVideo}
+          onSaveProject={onSaveProject}
+          onShowKeyboardShortcuts={onShowKeyboardShortcuts}
+        />
+      ) : (
+        <MenuBar
+          onImportMedia={onImportMedia}
+          onExportVideo={onExportVideo}
+          onShowKeyboardShortcuts={onShowKeyboardShortcuts}
+          onSaveProject={onSaveProject}
+          projectName={projectName}
+          isDirty={isDirty}
+          autosaveStatus={autosaveStatus}
+          lastSaved={lastSaved}
+        />
+      )}
       <div className={styles.content}>
         {mediaLibrary && (
           <>
