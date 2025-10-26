@@ -9,7 +9,7 @@ export interface ProblemDetails {
   type?: string;
   correlationId?: string;
   errorCode?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ParsedApiError {
@@ -18,13 +18,13 @@ export interface ParsedApiError {
   errorDetails?: string;
   correlationId?: string;
   errorCode?: string;
-  originalError: any;
+  originalError: unknown;
 }
 
 /**
  * Parse an error response from the API and extract ProblemDetails
  */
-export async function parseApiError(error: any): Promise<ParsedApiError> {
+export async function parseApiError(error: unknown): Promise<ParsedApiError> {
   // If it's a Response object (from fetch)
   if (error instanceof Response) {
     try {

@@ -1,4 +1,5 @@
 import MockAdapter from 'axios-mock-adapter';
+import { AxiosError } from 'axios';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import apiClient, {
   get,
@@ -9,6 +10,14 @@ import apiClient, {
   resetCircuitBreaker,
   getCircuitBreakerState,
 } from '../services/api/apiClient';
+
+/**
+ * Extended AxiosError type for testing with custom properties
+ */
+interface ExtendedAxiosError extends AxiosError {
+  userMessage?: string;
+  errorCode?: string;
+}
 
 // Create mock adapter for the actual apiClient instance
 let mock: MockAdapter;
@@ -78,9 +87,10 @@ describe('API Client', () => {
       try {
         await get('/api/test', { _skipRetry: true });
         expect.fail('Should have thrown error');
-      } catch (error: any) {
-        expect(error.response.status).toBe(404);
-        expect(error.userMessage).toBeTruthy();
+      } catch (error) {
+        const axiosError = error as ExtendedAxiosError;
+        expect(axiosError.response?.status).toBe(404);
+        expect(axiosError.userMessage).toBeTruthy();
       }
     });
 
@@ -90,9 +100,10 @@ describe('API Client', () => {
       try {
         await get('/api/test', { _skipRetry: true });
         expect.fail('Should have thrown error');
-      } catch (error: any) {
-        expect(error.response.status).toBe(500);
-        expect(error.userMessage).toBeTruthy();
+      } catch (error) {
+        const axiosError = error as ExtendedAxiosError;
+        expect(axiosError.response?.status).toBe(500);
+        expect(axiosError.userMessage).toBeTruthy();
       }
     });
 
@@ -105,8 +116,9 @@ describe('API Client', () => {
       try {
         await get('/api/test', { _skipRetry: true });
         expect.fail('Should have thrown error');
-      } catch (error: any) {
-        expect(error.errorCode).toBe('E300');
+      } catch (error) {
+        const axiosError = error as ExtendedAxiosError;
+        expect(axiosError.errorCode).toBe('E300');
       }
     });
   });
@@ -137,9 +149,10 @@ describe('API Client', () => {
       try {
         await get('/api/test');
         expect.fail('Should have thrown error');
-      } catch (error: any) {
+      } catch (error) {
+        const axiosError = error as ExtendedAxiosError;
         expect(attempts).toBe(1);
-        expect(error.response.status).toBe(400);
+        expect(axiosError.response?.status).toBe(400);
       }
     });
   });
@@ -215,8 +228,9 @@ describe('API Client', () => {
       try {
         await get('/api/protected', { _skipRetry: true });
         expect.fail('Should have thrown error');
-      } catch (error: any) {
-        expect(error.response.status).toBe(401);
+      } catch (error) {
+        const axiosError = error as ExtendedAxiosError;
+        expect(axiosError.response?.status).toBe(401);
       }
 
       // Token should be cleared

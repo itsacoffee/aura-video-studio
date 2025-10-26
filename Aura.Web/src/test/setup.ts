@@ -19,7 +19,7 @@ const localStorageMock = {
   key: (_index: number) => null,
 };
 
-(globalThis as any).localStorage = localStorageMock;
+(globalThis as typeof globalThis & { localStorage: Storage }).localStorage = localStorageMock;
 
 // Mock ResizeObserver
 class ResizeObserverMock {
@@ -28,4 +28,5 @@ class ResizeObserverMock {
   disconnect() {}
 }
 
-(globalThis as any).ResizeObserver = ResizeObserverMock;
+(globalThis as typeof globalThis & { ResizeObserver: typeof ResizeObserver }).ResizeObserver =
+  ResizeObserverMock;
