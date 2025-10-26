@@ -12,6 +12,7 @@ using Aura.Providers.Tts;
 using Aura.Providers.Video;
 using Aura.Providers.Validation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Serilog;
 using System.Text.Json;
@@ -71,6 +72,13 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Configure database
+var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
+builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
+    options.UseSqlite($"Data Source={dbPath}", 
+        sqliteOptions => sqliteOptions.MigrationsAssembly("Aura.Api")));
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -704,6 +712,15 @@ var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL")
 builder.WebHost.UseUrls(apiUrl);
 
 var app = builder.Build();
+
+// Apply database migrations
+Log.Information("Applying database migrations...");
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<Aura.Core.Data.AuraDbContext>();
+    db.Database.Migrate();
+}
+Log.Information("Database migrations applied successfully");
 
 Log.Information("=== Aura Video Studio API Starting ===");
 Log.Information("Initialization Phase 1: Service Registration Complete");
