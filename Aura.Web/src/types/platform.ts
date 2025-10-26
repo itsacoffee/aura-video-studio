@@ -105,7 +105,7 @@ export interface OptimizedMetadata {
   hashtags: string[];
   category: string;
   callToAction: string;
-  customFields: Record<string, any>;
+  customFields: Record<string, unknown>;
 }
 
 export interface MetadataGenerationRequest {

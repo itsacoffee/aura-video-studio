@@ -88,7 +88,7 @@ export interface MusicTrack {
   duration: string; // ISO 8601 duration
   filePath: string;
   beatTimestamps?: number[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface VoiceDirection {

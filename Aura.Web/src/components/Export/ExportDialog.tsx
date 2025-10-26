@@ -89,7 +89,7 @@ export interface ExportDialogProps {
   onClose: () => void;
   onExport: (options: ExportOptions) => void;
   onAddToQueue: (options: ExportOptions) => void;
-  timeline?: any;
+  timeline?: { totalDuration: number };
   hardwareAccelerationAvailable?: boolean;
   hardwareType?: string;
 }
@@ -448,7 +448,7 @@ export function ExportDialog({
               <Field label="Timeline Range">
                 <Dropdown
                   value={exportRange}
-                  onOptionSelect={(_, data) => setExportRange(data.optionValue as any)}
+                  onOptionSelect={(_, data) => setExportRange(data.optionValue as 'entire' | 'selection')}
                 >
                   <Option value="entire">Entire Timeline</Option>
                   <Option value="selection">Selected Region</Option>

@@ -416,5 +416,5 @@ if (import.meta.env.DEV) {
 
 // Expose to window for debugging
 if (typeof window !== 'undefined') {
-  (window as any).performanceMonitor = performanceMonitor;
+  (window as typeof window & { performanceMonitor?: typeof performanceMonitor }).performanceMonitor = performanceMonitor;
 }

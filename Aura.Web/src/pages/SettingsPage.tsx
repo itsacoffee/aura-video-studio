@@ -86,12 +86,24 @@ const useStyles = makeStyles({
   },
 });
 
+interface ValidationResult {
+  name: string;
+  ok: boolean;
+  details: string;
+  durationMs?: number;
+}
+
+interface ValidationResults {
+  ok: boolean;
+  results: ValidationResult[];
+}
+
 export function SettingsPage() {
   const styles = useStyles();
   const [activeTab, setActiveTab] = useState('general');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [offlineMode, setOfflineMode] = useState(false);
-  const [settings, setSettings] = useState<any>({});
+  const [settings, setSettings] = useState<Record<string, unknown>>({});
 
   // Comprehensive user settings (new)
   const [userSettings, setUserSettings] = useState<UserSettings>(createDefaultSettings());
@@ -130,7 +142,7 @@ export function SettingsPage() {
 
   // Provider validation state
   const [validating, setValidating] = useState(false);
-  const [validationResults, setValidationResults] = useState<any>(null);
+  const [validationResults, setValidationResults] = useState<ValidationResults | null>(null);
 
   // Profile templates state
   const [customProfileName, setCustomProfileName] = useState('');
@@ -416,7 +428,7 @@ export function SettingsPage() {
     if (!validationResults) return;
 
     let text = 'Provider Validation Results\n\n';
-    validationResults.results.forEach((result: any) => {
+    validationResults.results.forEach((result: ValidationResult) => {
       text += `${result.name}: ${result.ok ? 'OK' : 'Failed'} - ${result.details} (${result.elapsedMs}ms)\n`;
     });
     text += `\nOverall: ${validationResults.ok ? 'All providers validated successfully' : 'Some providers failed'}`;
@@ -1142,7 +1154,7 @@ export function SettingsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {validationResults.results.map((result: any) => (
+                        {validationResults.results.map((result: ValidationResult) => (
                           <tr key={result.name}>
                             <td
                               style={{

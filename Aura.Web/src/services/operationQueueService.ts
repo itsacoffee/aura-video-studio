@@ -307,7 +307,7 @@ class OperationQueueService {
       const stored = localStorage.getItem(this.logStorageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
-        this.operationLog = parsed.map((entry: any) => ({
+        this.operationLog = parsed.map((entry: { timestamp: string }) => ({
           ...entry,
           timestamp: new Date(entry.timestamp),
         }));

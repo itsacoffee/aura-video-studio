@@ -95,7 +95,7 @@ const useStyles = makeStyles({
 
 export interface AutoEditPanelProps {
   videoPath?: string;
-  onApply?: (feature: string, data: any) => void;
+  onApply?: (feature: string, data: unknown) => void;
 }
 
 export function AutoEditPanel({ videoPath, onApply }: AutoEditPanelProps) {

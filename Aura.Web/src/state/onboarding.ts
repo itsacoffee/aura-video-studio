@@ -467,7 +467,7 @@ export async function installItemThunk(
     // Map itemId to API endpoint
     let apiEndpoint: string;
     let statusEndpoint: string;
-    let requestBody: any;
+    let requestBody: { mode: string } | undefined;
 
     switch (itemId) {
       case 'ffmpeg':

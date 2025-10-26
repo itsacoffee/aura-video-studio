@@ -58,6 +58,37 @@ interface TimelineTrack {
   locked: boolean;
 }
 
+interface ExportAsset {
+  id: string;
+  type: string;
+  filePath: string;
+  start: string;
+  duration: string;
+  position: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  zIndex: number;
+  opacity: number;
+  effects?: {
+    brightness?: number;
+    contrast?: number;
+    saturation?: number;
+  };
+}
+
+interface ExportScene {
+  index: number;
+  heading: string;
+  script: string;
+  start: string;
+  duration: string;
+  visualAssets: ExportAsset[];
+  transitionType: string;
+}
+
 export function VideoEditorPage() {
   const [searchParams] = useSearchParams();
   const [currentTime, setCurrentTime] = useState(0);
@@ -494,7 +525,7 @@ export function VideoEditorPage() {
   // Convert timeline clips to EditableTimeline format for export
   const buildTimelineForExport = () => {
     // Group clips by track and time to create scenes
-    const scenes: any[] = [];
+    const scenes: ExportScene[] = [];
 
     // Sort clips by start time
     const sortedClips = [...clips].sort((a, b) => a.startTime - b.startTime);
@@ -514,7 +545,7 @@ export function VideoEditorPage() {
       // Create scenes from clips
       // For simplicity, we'll create one scene per clip for now
       sortedClips.forEach((clip, index) => {
-        const assets: any[] = [];
+        const assets: ExportAsset[] = [];
 
         // If clip has a media reference, add it as an asset
         if (clip.file || clip.preview) {

@@ -235,7 +235,7 @@ describe('Engine Validation Workflows', () => {
     expect(preflightResults.offlineCapable).toBe(true);
 
     // Validate provider structure
-    Object.values(preflightResults.providers).forEach((provider: any) => {
+    Object.values(preflightResults.providers).forEach((provider: { provider: string; status: string }) => {
       expect(provider).toHaveProperty('provider');
       expect(provider).toHaveProperty('status');
       expect(['Ready', 'NotReady', 'Error']).toContain(provider.status);

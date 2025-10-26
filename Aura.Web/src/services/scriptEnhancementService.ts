@@ -93,7 +93,7 @@ export interface ToneProfile {
   emotionLevel: number;
   personalityTraits: string[];
   brandVoice?: string;
-  customAttributes?: Record<string, any>;
+  customAttributes?: Record<string, unknown>;
 }
 
 export interface EmotionalArc {
