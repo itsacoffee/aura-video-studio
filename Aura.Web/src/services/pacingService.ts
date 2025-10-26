@@ -123,7 +123,9 @@ export async function getAnalysis(analysisId: string): Promise<PacingAnalysisRes
  * Handles formats like "PT15S", "PT1M30S", "PT1H30M45S"
  */
 export function durationToSeconds(duration: string): number {
-  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
+  // Pattern is safe: anchored with ^ and $, optional groups are non-overlapping
+  // eslint-disable-next-line security/detect-unsafe-regex
+  const match = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?$/);
   if (!match) return 0;
 
   const hours = parseInt(match[1] || '0', 10);

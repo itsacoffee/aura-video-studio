@@ -389,6 +389,8 @@ export function EditorLayout({
               role="separator"
               aria-orientation="vertical"
               aria-label="Resize media library panel"
+              // Separator role is interactive and requires tabIndex for keyboard accessibility
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'ArrowLeft') {
@@ -426,6 +428,8 @@ export function EditorLayout({
               role="separator"
               aria-orientation="vertical"
               aria-label="Resize effects library panel"
+              // Separator role is interactive and requires tabIndex for keyboard accessibility
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'ArrowLeft') {
@@ -459,6 +463,8 @@ export function EditorLayout({
             role="separator"
             aria-orientation="horizontal"
             aria-label="Resize preview panel"
+            // Separator role is interactive and requires tabIndex for keyboard accessibility
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
             tabIndex={0}
             onKeyDown={(e) => {
               if (e.key === 'ArrowUp') {
@@ -486,6 +492,8 @@ export function EditorLayout({
               role="separator"
               aria-orientation="vertical"
               aria-label="Resize properties panel"
+              // Separator role is interactive and requires tabIndex for keyboard accessibility
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'ArrowLeft') {
@@ -514,6 +522,8 @@ export function EditorLayout({
               role="separator"
               aria-orientation="vertical"
               aria-label="Resize history panel"
+              // Separator role is interactive and requires tabIndex for keyboard accessibility
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'ArrowLeft') {
