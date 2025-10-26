@@ -72,7 +72,7 @@ describe('EnumNormalizer', () => {
 
     it('should warn about deprecated density', () => {
       const brief = {};
-      const planSpec = { density: 'Normal' as any };
+      const planSpec = { density: 'Normal' as unknown as 'Balanced' };
 
       validateAndWarnEnums(brief, planSpec);
 
@@ -95,7 +95,7 @@ describe('EnumNormalizer', () => {
 
     it('should handle case sensitivity for density', () => {
       const brief = {};
-      const planSpec = { density: 'NORMAL' as any };
+      const planSpec = { density: 'NORMAL' as unknown as 'Balanced' };
 
       validateAndWarnEnums(brief, planSpec);
 
@@ -106,7 +106,7 @@ describe('EnumNormalizer', () => {
   describe('normalizeEnumsForApi', () => {
     it('should normalize both aspect and density', () => {
       const brief = { aspect: '16:9' as const, topic: 'Test' };
-      const planSpec = { density: 'Normal' as any, pacing: 'Fast' as const };
+      const planSpec = { density: 'Normal' as unknown as 'Balanced', pacing: 'Fast' as const };
 
       const result = normalizeEnumsForApi(brief, planSpec);
 
@@ -138,7 +138,7 @@ describe('EnumNormalizer', () => {
 
     it('should not mutate original objects', () => {
       const brief = { aspect: '16:9' as const, topic: 'Test' };
-      const planSpec = { density: 'Normal' as any };
+      const planSpec = { density: 'Normal' as unknown as 'Balanced' };
 
       normalizeEnumsForApi(brief, planSpec);
 

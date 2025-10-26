@@ -28,7 +28,7 @@ export interface UseFormValidationReturn<T> {
   errors: FieldValidationState;
   isFormValid: boolean;
   isValidating: boolean;
-  setValue: (field: keyof T, value: any) => void;
+  setValue: (field: keyof T, value: T[keyof T]) => void;
   setValues: (values: Partial<T>) => void;
   validateField: (field: keyof T) => Promise<ValidationState>;
   validateForm: () => Promise<boolean>;
@@ -51,7 +51,7 @@ export interface UseFormValidationReturn<T> {
  * });
  * ```
  */
-export function useFormValidation<T extends Record<string, any>>({
+export function useFormValidation<T extends Record<string, unknown>>({
   schema,
   initialValues = {} as Partial<T>,
   debounceMs = 300,
@@ -143,7 +143,7 @@ export function useFormValidation<T extends Record<string, any>>({
 
   // Set a single field value with debounced validation
   const setValue = useCallback(
-    (field: keyof T, value: any) => {
+    (field: keyof T, value: T[keyof T]) => {
       setValuesState((prev) => ({ ...prev, [field]: value }));
 
       // Clear existing timer for this field
