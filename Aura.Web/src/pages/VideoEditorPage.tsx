@@ -7,11 +7,14 @@ import { PropertiesPanel } from '../components/EditorLayout/PropertiesPanel';
 import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
 import { EffectsLibraryPanel } from '../components/EditorLayout/EffectsLibraryPanel';
 import { HistoryPanel } from '../components/EditorLayout/HistoryPanel';
+import { ExportDialog, ExportOptions } from '../components/Export/ExportDialog';
 import { AppliedEffect, EffectPreset } from '../types/effects';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 import { useProjectState } from '../hooks/useProjectState';
 import { ProjectFile, ProjectMediaItem } from '../types/project';
 import { CommandHistory } from '../services/commandHistory';
+import { useActivity } from '../state/activityContext';
+import { startExport, pollExportStatus } from '../services/exportService';
 import {
   AddClipCommand,
   DeleteClipCommand,
@@ -69,6 +72,10 @@ export function VideoEditorPage() {
     { id: 'audio2', label: 'Audio 2', type: 'audio', visible: true, locked: false },
   ]);
   const [mediaLibrary, setMediaLibrary] = useState<ProjectMediaItem[]>([]);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  
+  // Access activity context for progress tracking
+  const { addActivity, updateActivity } = useActivity();
   
   // Command history for undo/redo
   const commandHistory = useMemo(() => new CommandHistory(50), []);
@@ -121,9 +128,12 @@ export function VideoEditorPage() {
     autosaveStatus,
     lastSaved,
     saveCurrentProject,
-    exportProject,
+    exportProject, // Keep for potential future use (project file export)
     loadProject,
   } = useProjectState(clips, tracks, mediaLibrary, currentTime, handleProjectLoaded);
+  
+  // Prevent unused variable warning
+  void exportProject;
 
   // Load project from URL parameter
   useEffect(() => {
@@ -444,8 +454,82 @@ export function VideoEditorPage() {
   };
 
   const handleExportVideo = () => {
-    // Export project as .aura file
-    exportProject();
+    // Show export dialog
+    setShowExportDialog(true);
+  };
+
+  const handleExportDialogClose = () => {
+    setShowExportDialog(false);
+  };
+
+  const handleStartExport = async (options: ExportOptions) => {
+    try {
+      // Close the dialog
+      setShowExportDialog(false);
+
+      // For now, use a placeholder input file (in real implementation, this would be the rendered timeline)
+      // In a complete implementation, we'd first render the timeline to a temporary file
+      const inputFile = '/tmp/timeline_render.mp4'; // Placeholder
+      
+      // Create export request
+      const exportRequest = {
+        inputFile,
+        outputFile: options.outputPath,
+        presetName: options.preset,
+      };
+
+      // Start the export
+      const response = await startExport(exportRequest);
+      
+      // Add activity to track progress
+      const activityId = addActivity({
+        type: 'render',
+        title: `Exporting ${options.preset}`,
+        message: `Starting export to ${options.outputPath}`,
+        canCancel: true,
+        canRetry: false,
+      });
+
+      // Update activity to running state
+      updateActivity(activityId, {
+        status: 'running',
+        progress: 0,
+      });
+
+      // Poll for progress
+      try {
+        await pollExportStatus(response.jobId, (job) => {
+          updateActivity(activityId, {
+            status: 'running',
+            progress: Math.round(job.progress),
+            message: `Exporting... ${Math.round(job.progress)}%`,
+          });
+        });
+
+        // Export completed successfully
+        updateActivity(activityId, {
+          status: 'completed',
+          progress: 100,
+          message: `Export completed: ${options.outputPath}`,
+        });
+      } catch (error) {
+        // Export failed
+        updateActivity(activityId, {
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Export failed',
+          message: 'Export failed',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to start export:', error);
+      // Could show a toast notification here
+    }
+  };
+
+  const handleAddToQueue = async (options: ExportOptions) => {
+    // Same as handleStartExport for now
+    // In a full implementation, this would add to a queue without starting immediately
+    await handleStartExport(options);
   };
 
   const handleSaveProject = async () => {
@@ -481,48 +565,61 @@ export function VideoEditorPage() {
   };
 
   return (
-    <EditorLayout
-      mediaLibrary={<MediaLibraryPanel ref={mediaLibraryRef} />}
-      effects={<EffectsLibraryPanel onPresetApply={handleApplyPreset} />}
-      history={<HistoryPanel commandHistory={commandHistory} />}
-      preview={
-        <VideoPreviewPanel
-          currentTime={currentTime}
-          effects={selectedClip?.effects}
-          onTimeUpdate={setCurrentTime}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
+    <>
+      <EditorLayout
+        mediaLibrary={<MediaLibraryPanel ref={mediaLibraryRef} />}
+        effects={<EffectsLibraryPanel onPresetApply={handleApplyPreset} />}
+        history={<HistoryPanel commandHistory={commandHistory} />}
+        preview={
+          <VideoPreviewPanel
+            currentTime={currentTime}
+            effects={selectedClip?.effects}
+            onTimeUpdate={setCurrentTime}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+          />
+        }
+        timeline={
+          <TimelinePanel
+            clips={clips}
+            tracks={tracks}
+            currentTime={currentTime}
+            onTimeChange={setCurrentTime}
+            onClipSelect={setSelectedClipId}
+            selectedClipId={selectedClipId}
+            onClipAdd={handleAddClip}
+            onClipUpdate={handleUpdateClipById}
+            onTrackToggleVisibility={handleTrackToggleVisibility}
+            onTrackToggleLock={handleTrackToggleLock}
+          />
+        }
+        properties={
+          <PropertiesPanel
+            selectedClip={selectedClip}
+            onUpdateClip={handleUpdateClip}
+            onDeleteClip={handleDeleteClip}
+          />
+        }
+        onImportMedia={handleImportMedia}
+        onExportVideo={handleExportVideo}
+        onShowKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
+        onSaveProject={handleSaveProject}
+        projectName={projectName}
+        isDirty={isDirty}
+        autosaveStatus={autosaveStatus}
+        lastSaved={lastSaved}
+      />
+      {showExportDialog && (
+        <ExportDialog
+          open={showExportDialog}
+          onClose={handleExportDialogClose}
+          onExport={handleStartExport}
+          onAddToQueue={handleAddToQueue}
+          timeline={{ totalDuration: 180 }}
+          hardwareAccelerationAvailable={false}
+          hardwareType="None"
         />
-      }
-      timeline={
-        <TimelinePanel
-          clips={clips}
-          tracks={tracks}
-          currentTime={currentTime}
-          onTimeChange={setCurrentTime}
-          onClipSelect={setSelectedClipId}
-          selectedClipId={selectedClipId}
-          onClipAdd={handleAddClip}
-          onClipUpdate={handleUpdateClipById}
-          onTrackToggleVisibility={handleTrackToggleVisibility}
-          onTrackToggleLock={handleTrackToggleLock}
-        />
-      }
-      properties={
-        <PropertiesPanel
-          selectedClip={selectedClip}
-          onUpdateClip={handleUpdateClip}
-          onDeleteClip={handleDeleteClip}
-        />
-      }
-      onImportMedia={handleImportMedia}
-      onExportVideo={handleExportVideo}
-      onShowKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
-      onSaveProject={handleSaveProject}
-      projectName={projectName}
-      isDirty={isDirty}
-      autosaveStatus={autosaveStatus}
-      lastSaved={lastSaved}
-    />
+      )}
+    </>
   );
 }
