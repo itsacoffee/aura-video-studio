@@ -1,3 +1,4 @@
+using Aura.Api.Filters;
 using Aura.Api.Helpers;
 using Aura.Api.Middleware;
 using Aura.Api.Serialization;
@@ -67,7 +68,11 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        // Add validation filter to all controllers
+        options.Filters.Add<ValidationFilter>();
+    })
     .AddJsonOptions(options =>
     {
         // Add all tolerant enum converters for controller endpoints
@@ -76,6 +81,7 @@ builder.Services.AddControllers()
 
 // Add FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<ScriptRequestValidator>();
+builder.Services.AddScoped<ValidationFilter>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -484,6 +490,9 @@ builder.Services.AddSingleton<Aura.Api.Services.HealthCheckService>();
 builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
 builder.Services.AddSingleton<Aura.Api.Services.FirstRunDiagnostics>();
 builder.Services.AddSingleton<ConfigurationValidator>();
+
+// Register Startup Initialization Service - runs first to ensure critical services are ready
+builder.Services.AddHostedService<Aura.Api.HostedServices.StartupInitializationService>();
 
 // Register Provider Warmup Service - warms up providers in background, never crashes startup
 builder.Services.AddHostedService<Aura.Api.HostedServices.ProviderWarmupService>();
