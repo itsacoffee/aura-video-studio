@@ -319,7 +319,7 @@ export function OperationHistory({
                       icon={<Open24Regular />}
                       onClick={() => {
                         // In production, this would open the file
-                        console.log('Open file:', activity.artifactPath);
+                        // TODO: Implement file opening functionality
                       }}
                     />
                   </Tooltip>

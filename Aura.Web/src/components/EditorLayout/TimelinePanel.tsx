@@ -372,7 +372,7 @@ export function TimelinePanel({
 
       // Remove original and add split clips
       // This would need to be implemented via callbacks
-      console.log('Split clip at', time, firstClip, secondClip);
+      // TODO: Implement split functionality
     },
     [clips]
   );

@@ -167,8 +167,12 @@ export function LayoutDemoPage() {
           <div className={styles.tabsDemo}>
             <PanelTabs
               tabs={demoTabs}
-              onTabClose={(id) => console.log('Close tab:', id)}
-              onTabReorder={(tabs) => console.log('Reorder tabs:', tabs)}
+              onTabClose={() => {
+                /* Tab close handled by parent */
+              }}
+              onTabReorder={() => {
+                /* Tab reorder handled by parent */
+              }}
             />
           </div>
         </section>

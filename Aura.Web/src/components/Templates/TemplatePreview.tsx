@@ -120,6 +120,8 @@ export function TemplatePreview({ template, open, onClose, onUseTemplate }: Temp
           <DialogContent>
             <div className={styles.previewContainer}>
               {template.previewVideo && isVideoPlaying ? (
+                // Preview video without captions as it's a silent demo video
+                // eslint-disable-next-line jsx-a11y/media-has-caption
                 <video
                   className={styles.video}
                   src={template.previewVideo}

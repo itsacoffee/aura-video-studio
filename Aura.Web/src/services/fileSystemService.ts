@@ -78,7 +78,7 @@ export const browseFolderContents = async (path: string): Promise<FileSystemItem
   await new Promise((resolve) => setTimeout(resolve, 200));
 
   // Mock implementation - would actually read directory contents
-  console.log('Browsing folder:', path);
+  // TODO: Implement actual file system browsing
   return [];
 };
 
@@ -90,7 +90,6 @@ export const browseFolderContents = async (path: string): Promise<FileSystemItem
 export const revealInFinder = async (
   filePath: string
 ): Promise<{ success: boolean; message?: string }> => {
-  console.log('Revealing file in finder:', filePath);
   // In a real implementation, this would call:
   // - Windows: explorer.exe /select,"path"
   // - macOS: open -R "path"
@@ -129,10 +128,8 @@ export const consolidateMedia = async (
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  console.log('Consolidating media to:', targetFolder);
-  console.log('Files:', mediaPaths);
-
   // Mock implementation - would actually copy files
+  // TODO: Implement actual media consolidation
   return {
     success: true,
     errors: [],

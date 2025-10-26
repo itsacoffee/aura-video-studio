@@ -58,7 +58,7 @@ export const searchForFile = async (file: MediaFile): Promise<string[]> => {
 
   // Mock implementation - would actually search filesystem
   // In a real implementation, check these locations and return existing files
-  console.log('Searching for file:', file.name);
+  // TODO: Implement actual file system search
   return [];
 };
 
