@@ -13,4 +13,6 @@ export { ExportSettingsEditor } from './ExportSettingsEditor';
 export type { ExportSettingsEditorProps } from './ExportSettingsEditor';
 export { ExportPresetsManager } from './ExportPresetsManager';
 export type { ExportPresetsManagerProps, CustomPreset } from './ExportPresetsManager';
+export { PostExportActions } from './PostExportActions';
+export type { PostExportActionsProps } from './PostExportActions';
 
