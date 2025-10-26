@@ -1,6 +1,8 @@
 using Aura.Api.Helpers;
 using Aura.Api.Middleware;
 using Aura.Api.Serialization;
+using Aura.Api.Validation;
+using Aura.Api.Validators;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
@@ -11,6 +13,7 @@ using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
 using Aura.Providers.Validation;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -70,6 +73,10 @@ builder.Services.AddControllers()
         // Add all tolerant enum converters for controller endpoints
         EnumJsonConverters.AddToOptions(options.JsonSerializerOptions);
     });
+
+// Add FluentValidation
+builder.Services.AddValidatorsFromAssemblyContaining<ScriptRequestValidator>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -476,6 +483,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Platform.SchedulingOptimization
 builder.Services.AddSingleton<Aura.Api.Services.HealthCheckService>();
 builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
 builder.Services.AddSingleton<Aura.Api.Services.FirstRunDiagnostics>();
+builder.Services.AddSingleton<ConfigurationValidator>();
 
 // Register Provider Warmup Service - warms up providers in background, never crashes startup
 builder.Services.AddHostedService<Aura.Api.HostedServices.ProviderWarmupService>();
@@ -747,8 +755,20 @@ catch (Exception ex)
 Log.Information("=== Aura Video Studio API Starting ===");
 Log.Information("Initialization Phase 1: Service Registration Complete");
 
+// Perform configuration validation
+Log.Information("Initialization Phase 2: Configuration Validation");
+var configValidator = app.Services.GetRequiredService<ConfigurationValidator>();
+var configResult = configValidator.Validate();
+if (!configResult.IsValid)
+{
+    Log.Error("Configuration validation failed with critical issues. Application cannot start.");
+    Log.Error("Please fix the configuration issues listed above and restart the application.");
+    // Exit if configuration validation has critical issues
+    Environment.Exit(1);
+}
+
 // Perform startup validation - warn on non-critical issues but continue
-Log.Information("Initialization Phase 2: Running Startup Validation");
+Log.Information("Initialization Phase 3: Running Startup Validation");
 var startupValidator = app.Services.GetRequiredService<Aura.Api.Services.StartupValidator>();
 if (!startupValidator.Validate())
 {
@@ -766,6 +786,12 @@ else
 
 // Add correlation ID middleware early in the pipeline
 app.UseCorrelationId();
+
+// Add request logging middleware (after correlation ID)
+app.UseRequestLogging();
+
+// Add rate limiting middleware
+app.UseRateLimiting();
 
 // Add global exception handling middleware
 app.UseExceptionHandling();
@@ -2976,7 +3002,7 @@ var healthMonitorStarted = false;
 
 lifetime.ApplicationStarted.Register(() =>
 {
-    Log.Information("Initialization Phase 3: Application started, beginning background service initialization");
+    Log.Information("Initialization Phase 4: Application started, beginning background service initialization");
     
     // Start Engine Lifecycle Manager first (deterministic ordering)
     _ = Task.Run(async () =>
@@ -3026,7 +3052,7 @@ lifetime.ApplicationStarted.Register(() =>
     });
     
     initializationComplete = true;
-    Log.Information("Initialization Phase 4: Background services initialization started");
+    Log.Information("Initialization Phase 5: Background services initialization started");
 });
 
 lifetime.ApplicationStopping.Register(() =>
