@@ -28,7 +28,7 @@ Enable magnetic timeline to automatically close gaps between clips:
 
 - **Auto-Snap**: Clips automatically snap to adjacent clips when moved
 - **Gap Closing**: Gaps between clips are automatically eliminated
-- **Toggle**: Enable/disable via toolbar switch
+- **Toggle**: Enable/disable via the "Magnetic" switch in the timeline toolbar
 
 ### Professional Trim Modes
 
@@ -75,7 +75,7 @@ Smart snapping with visual feedback:
 - **Snap Points**: Clip edges, playhead, markers, in/out points
 - **Visual Guides**: Dashed blue lines appear when near snap points
 - **Offset Display**: Shows distance in frames when near snap points
-- **Toggle**: Enable/disable snapping with toolbar switch
+- **Toggle**: Enable/disable snapping with the "Snapping" switch in the timeline toolbar
 
 ### Playback Controls
 
@@ -92,7 +92,6 @@ Professional shuttle controls for variable-speed playback:
 - **Right Arrow**: Step forward 1 frame
 - **Up Arrow**: Jump forward 10 frames
 - **Down Arrow**: Jump back 10 frames
-- **Shift + Left/Right**: Step back/forward 10 frames
 
 ### Zoom Controls
 
@@ -184,7 +183,7 @@ findGaps(clips, trackId?): Gap[]
 ### Basic Usage
 
 ```typescript
-import { TimelinePanel } from './components/EditorLayout/TimelinePanel';
+import { TimelinePanel } from '@/components/EditorLayout/TimelinePanel';
 
 function MyEditor() {
   const [currentTime, setCurrentTime] = useState(0);
@@ -206,7 +205,7 @@ function MyEditor() {
 ### Using Timeline Engine
 
 ```typescript
-import { snapToFrame, formatTimecode, applyRippleEdit } from './services/timelineEngine';
+import { snapToFrame, formatTimecode, applyRippleEdit } from '@/services/timelineEngine';
 
 // Snap time to nearest frame
 const snappedTime = snapToFrame(1.234, 30); // 1.233... (37 frames)
