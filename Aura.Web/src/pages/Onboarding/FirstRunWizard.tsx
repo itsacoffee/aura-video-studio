@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -29,15 +29,20 @@ import {
   clearWizardStateFromStorage,
 } from '../../state/onboarding';
 import type { FixAction } from '../../state/providers';
-import { InstallItemCard } from '../../components/Onboarding/InstallItemCard';
+import type { Dependency } from '../../components/Onboarding/DependencyCheck';
+import type { WorkspacePreferences } from '../../components/Onboarding/WorkspaceSetup';
 import { FileLocationsSummary } from '../../components/Onboarding/FileLocationsSummary';
 import { WizardProgress } from '../../components/WizardProgress';
-import { WelcomeStep } from './WelcomeStep';
+import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
+import { DependencyCheck } from '../../components/Onboarding/DependencyCheck';
+import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
+import { QuickTutorial, defaultTutorialSteps } from '../../components/Onboarding/QuickTutorial';
+import { TemplateSelection, defaultTemplates } from '../../components/Onboarding/TemplateSelection';
+import { CompletionScreen } from '../../components/Onboarding/CompletionScreen';
 import { ChooseTierStep } from './ChooseTierStep';
 import { ApiKeySetupStep } from './ApiKeySetupStep';
-import { CompletionStep } from './CompletionStep';
-import { useEnginesStore } from '../../state/engines';
-import { markFirstRunCompleted, getLocalFirstRunStatus } from '../../services/firstRunService';
+import { markFirstRunCompleted, getLocalFirstRunStatus, markWizardNeverShowAgain } from '../../services/firstRunService';
+import { wizardAnalytics } from '../../services/analytics';
 
 const useStyles = makeStyles({
   container: {
@@ -59,6 +64,20 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalL,
     overflow: 'auto',
     paddingBottom: tokens.spacingVerticalL,
+    position: 'relative',
+  },
+  stepContent: {
+    animation: 'slideIn 0.4s ease-out',
+  },
+  '@keyframes slideIn': {
+    from: {
+      opacity: 0,
+      transform: 'translateX(20px)',
+    },
+    to: {
+      opacity: 1,
+      transform: 'translateX(0)',
+    },
   },
   footer: {
     display: 'flex',
@@ -100,12 +119,28 @@ export function FirstRunWizard() {
   const styles = useStyles();
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(onboardingReducer, initialOnboardingState);
-  const { attachEngine } = useEnginesStore();
+  const [stepStartTime, setStepStartTime] = useState<number>(Date.now());
+  const [wizardStartTime] = useState<number>(Date.now());
 
-  const totalSteps = 7;
-  const stepLabels = ['Welcome', 'Choose Tier', 'API Keys', 'Hardware', 'Dependencies', 'Validation', 'Complete'];
+  // Enhanced step labels for the new wizard flow
+  const totalSteps = 10;
+  const stepLabels = [
+    'Welcome',
+    'Choose Tier',
+    'API Keys',
+    'Dependencies',
+    'Workspace',
+    'Templates',
+    'Hardware',
+    'Validation',
+    'Tutorial',
+    'Complete'
+  ];
 
   useEffect(() => {
+    // Track wizard start
+    wizardAnalytics.started();
+
     // Check if this is truly first run
     const hasSeenOnboarding = getLocalFirstRunStatus();
     if (hasSeenOnboarding) {
@@ -126,6 +161,21 @@ export function FirstRunWizard() {
       }
     }
   }, [navigate]);
+
+  // Track step changes
+  useEffect(() => {
+    const currentTime = Date.now();
+    const timeSpent = (currentTime - stepStartTime) / 1000; // Convert to seconds
+
+    if (state.step > 0 && timeSpent > 1) {
+      // Track previous step completion
+      wizardAnalytics.stepCompleted(state.step - 1, stepLabels[state.step - 1] || 'Unknown', timeSpent);
+    }
+
+    // Track new step view
+    wizardAnalytics.stepViewed(state.step, stepLabels[state.step] || 'Unknown');
+    setStepStartTime(currentTime);
+  }, [state.step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save progress on state changes
   useEffect(() => {
@@ -283,6 +333,7 @@ export function FirstRunWizard() {
     }
   };
 
+  /* Kept for potential future use with manual dependency installation
   const handleAttachExisting = async (
     itemId: string,
     installPath: string,
@@ -307,6 +358,7 @@ export function FirstRunWizard() {
       throw error;
     }
   };
+  */
 
   const handleSkipItem = (itemId: string) => {
     dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
@@ -331,10 +383,92 @@ export function FirstRunWizard() {
 
   const handleSelectTier = (tier: 'free' | 'pro') => {
     dispatch({ type: 'SET_TIER', payload: tier });
+    wizardAnalytics.tierSelected(tier);
   };
 
-  const renderStep0 = () => <WelcomeStep />;
+  // New handlers for enhanced wizard components
+  const handleWorkspacePreferencesChange = (preferences: WorkspacePreferences) => {
+    dispatch({ type: 'SET_WORKSPACE_PREFERENCES', payload: preferences });
+  };
 
+  const handleBrowseFolder = async (type: 'save' | 'cache'): Promise<string | null> => {
+    // For now, return a mock path. In production, this would use Electron's dialog API
+    // or a web-based folder picker
+    const mockPath = type === 'save' 
+      ? 'C:\\Users\\YourName\\Videos\\Aura'
+      : 'C:\\Users\\YourName\\AppData\\Local\\Aura\\Cache';
+    
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(mockPath), 100);
+    });
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    dispatch({ type: 'SET_TEMPLATE', payload: templateId });
+    wizardAnalytics.templateSelected(templateId);
+  };
+
+  const handleUseTemplate = (templateId: string) => {
+    dispatch({ type: 'SET_TEMPLATE', payload: templateId });
+    wizardAnalytics.templateSelected(templateId);
+    handleNext(); // Auto-advance after template selection
+  };
+
+  const handleSkipTemplate = () => {
+    dispatch({ type: 'SET_TEMPLATE', payload: null });
+    handleNext();
+  };
+
+  const handleStartTutorial = () => {
+    dispatch({ type: 'TOGGLE_TUTORIAL' });
+    wizardAnalytics.tutorialStarted();
+  };
+
+  const handleCompleteTutorial = () => {
+    dispatch({ type: 'COMPLETE_TUTORIAL' });
+    wizardAnalytics.tutorialCompleted();
+    handleNext(); // Auto-advance after tutorial
+  };
+
+  const handleSkipTutorial = () => {
+    const currentTutorialStep = 0; // Simplified for now
+    wizardAnalytics.tutorialSkipped(currentTutorialStep);
+    dispatch({ type: 'COMPLETE_TUTORIAL' });
+    handleNext();
+  };
+
+  const handleDependencyAutoInstall = async (dependencyId: string): Promise<void> => {
+    wizardAnalytics.dependencyInstalled(dependencyId, 'auto');
+    await installItemThunk(dependencyId, dispatch);
+  };
+
+  const handleDependencyManualInstall = (dependencyId: string) => {
+    // Navigate to download page or show instructions
+    navigate(`/downloads?item=${dependencyId}`);
+  };
+
+  const handleDependencySkip = (dependencyId: string) => {
+    handleSkipItem(dependencyId);
+  };
+
+  const handleNeverShowAgain = (checked: boolean) => {
+    if (checked) {
+      markWizardNeverShowAgain();
+    }
+  };
+
+  // Render step 0: Enhanced Welcome Screen
+  const renderStep0 = () => (
+    <WelcomeScreen 
+      onGetStarted={handleNext}
+      onImportProject={() => {
+        // Future: implement project import
+        alert('Project import coming soon!');
+      }}
+    />
+  );
+
+  // Render step 1: Tier Selection (unchanged)
   const renderStep1 = () => (
     <ChooseTierStep
       selectedTier={state.selectedTier}
@@ -342,6 +476,7 @@ export function FirstRunWizard() {
     />
   );
 
+  // Render step 2: API Keys (unchanged)
   const renderStep2 = () => (
     <ApiKeySetupStep
       apiKeys={state.apiKeys}
@@ -353,7 +488,54 @@ export function FirstRunWizard() {
     />
   );
 
-  const renderStep3 = () => (
+  // Render step 3: Dependencies with new DependencyCheck component
+  const renderStep3 = () => {
+    const dependencies: Dependency[] = state.installItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description || '',
+      required: item.required,
+      status: item.installing ? 'checking' : item.installed ? 'installed' : 'missing',
+      canAutoInstall: true,
+      installing: item.installing,
+      installProgress: item.installing ? 50 : undefined,
+    }));
+
+    return (
+      <DependencyCheck
+        dependencies={dependencies}
+        onAutoInstall={handleDependencyAutoInstall}
+        onManualInstall={handleDependencyManualInstall}
+        onSkip={handleDependencySkip}
+        onRescan={async () => {
+          await checkAllInstallationStatusesThunk(dispatch);
+        }}
+      />
+    );
+  };
+
+  // Render step 4: Workspace Setup
+  const renderStep4 = () => (
+    <WorkspaceSetup
+      preferences={state.workspacePreferences}
+      onPreferencesChange={handleWorkspacePreferencesChange}
+      onBrowseFolder={handleBrowseFolder}
+    />
+  );
+
+  // Render step 5: Template Selection
+  const renderStep5 = () => (
+    <TemplateSelection
+      templates={defaultTemplates}
+      selectedTemplateId={state.selectedTemplate}
+      onSelectTemplate={handleTemplateSelect}
+      onSkip={handleSkipTemplate}
+      onUseTemplate={handleUseTemplate}
+    />
+  );
+
+  // Render step 6: Hardware Detection
+  const renderStep6 = () => (
     <>
       <Title2>Hardware Detection</Title2>
 
@@ -395,86 +577,8 @@ export function FirstRunWizard() {
     </>
   );
 
-  const renderStep4 = () => (
-    <>
-      <Title2>Install Required Components</Title2>
-      <Text>We&apos;ll help you install the necessary tools for your chosen mode.</Text>
-
-      <div className={styles.installList}>
-        {state.installItems.map((item) => (
-          <InstallItemCard
-            key={item.id}
-            item={item}
-            onInstall={() => installItemThunk(item.id, dispatch)}
-            onAttachExisting={async (installPath, executablePath) => {
-              await handleAttachExisting(item.id, installPath, executablePath);
-            }}
-            onSkip={!item.required ? () => handleSkipItem(item.id) : undefined}
-          />
-        ))}
-      </div>
-
-      <Card style={{ backgroundColor: tokens.colorNeutralBackground3 }}>
-        <Text weight="semibold" style={{ marginBottom: tokens.spacingVerticalS }}>
-          📌 Installation Options
-        </Text>
-        <Text style={{ marginBottom: tokens.spacingVerticalM }}>
-          For each component, you have three options:
-        </Text>
-        <ul style={{ marginLeft: tokens.spacingHorizontalL, marginBottom: 0 }}>
-          <li>
-            <Text>
-              <strong>Install:</strong> Automatically download and install to the default location
-            </Text>
-          </li>
-          <li>
-            <Text>
-              <strong>Use Existing:</strong> If you already have it installed, point Aura to its location
-            </Text>
-          </li>
-          <li>
-            <Text>
-              <strong>Skip:</strong> Skip optional components (you can install them later)
-            </Text>
-          </li>
-        </ul>
-      </Card>
-
-      {state.errors.length > 0 && (
-        <Card
-          style={{
-            backgroundColor: tokens.colorPaletteRedBackground1,
-            padding: tokens.spacingVerticalM,
-          }}
-        >
-          <Text
-            weight="semibold"
-            style={{
-              color: tokens.colorPaletteRedForeground1,
-              marginBottom: tokens.spacingVerticalS,
-            }}
-          >
-            ⚠️ Installation Errors
-          </Text>
-          {state.errors.map((error, index) => (
-            <Text
-              key={index}
-              size={200}
-              style={{
-                color: tokens.colorPaletteRedForeground1,
-                display: 'block',
-                marginTop: tokens.spacingVerticalXS,
-              }}
-            >
-              • {error}
-            </Text>
-          ))}
-        </Card>
-      )}
-    </>
-  );
-
-  const renderStep5 = () => (
+  // Render step 7: Validation & Preflight Checks
+  const renderStep7 = () => (
     <>
       <Title2>Validation & Preflight Checks</Title2>
 
@@ -573,7 +677,38 @@ export function FirstRunWizard() {
     </>
   );
 
-  const renderStep6 = () => {
+  // Render step 8: Quick Tutorial
+  const renderStep8 = () => {
+    if (state.showTutorial) {
+      return (
+        <QuickTutorial
+          steps={defaultTutorialSteps}
+          onComplete={handleCompleteTutorial}
+          onSkip={handleSkipTutorial}
+        />
+      );
+    }
+
+    return (
+      <div style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL }}>
+        <Title2 style={{ marginBottom: tokens.spacingVerticalL }}>Quick Tutorial</Title2>
+        <Text style={{ marginBottom: tokens.spacingVerticalXL }}>
+          Would you like a quick tour of the main features? This will only take 2-3 minutes.
+        </Text>
+        <div style={{ display: 'flex', gap: tokens.spacingHorizontalL, justifyContent: 'center' }}>
+          <Button appearance="primary" onClick={handleStartTutorial}>
+            Show Me Around
+          </Button>
+          <Button appearance="secondary" onClick={handleSkipTutorial}>
+            Skip Tutorial
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  // Render step 9: Enhanced Completion
+  const renderStep9 = () => {
     const validApiKeys = Object.entries(state.apiKeyValidationStatus)
       .filter(([_, status]) => status === 'valid')
       .map(([provider]) => provider);
@@ -582,20 +717,40 @@ export function FirstRunWizard() {
       .filter((item) => item.installed)
       .map((item) => item.name);
 
+    const templateName = state.selectedTemplate
+      ? defaultTemplates.find((t) => t.id === state.selectedTemplate)?.name
+      : undefined;
+
     return (
-      <CompletionStep
+      <CompletionScreen
         summary={{
           tier: state.selectedTier || 'free',
           apiKeysConfigured: validApiKeys,
           hardwareDetected: !!state.hardware,
           componentsInstalled: installedComponents,
+          workspaceConfigured: true,
+          tutorialCompleted: state.tutorialCompleted,
+          templateSelected: templateName,
         }}
         onCreateFirstVideo={completeOnboarding}
         onExploreApp={async () => {
           clearWizardStateFromStorage();
           await markFirstRunCompleted();
+          
+          // Track completion
+          const totalTime = (Date.now() - wizardStartTime) / 1000;
+          wizardAnalytics.completed(totalTime, {
+            tier: state.selectedTier || 'free',
+            api_keys_count: validApiKeys.length,
+            components_installed: installedComponents.length,
+            template_selected: !!state.selectedTemplate,
+            tutorial_completed: state.tutorialCompleted,
+          });
+          
           navigate('/');
         }}
+        onNeverShowAgain={handleNeverShowAgain}
+        showNeverShowAgain={true}
       />
     );
   };
@@ -616,6 +771,12 @@ export function FirstRunWizard() {
         return renderStep5();
       case 6:
         return renderStep6();
+      case 7:
+        return renderStep7();
+      case 8:
+        return renderStep8();
+      case 9:
+        return renderStep9();
       default:
         return null;
     }
@@ -643,7 +804,11 @@ export function FirstRunWizard() {
         />
       </div>
 
-      <div className={styles.content}>{renderStepContent()}</div>
+      <div className={styles.content}>
+        <div className={styles.stepContent} key={state.step}>
+          {renderStepContent()}
+        </div>
+      </div>
 
       {state.step < totalSteps - 1 && (
         <div className={styles.footer}>
