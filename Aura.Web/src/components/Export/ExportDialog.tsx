@@ -103,10 +103,7 @@ export interface ExportOptions {
   selectionStart?: number;
   selectionEnd?: number;
   outputPath: string;
-  // Advanced settings
   codec?: string;
-  customBitrate?: number;
-  customResolution?: { width: number; height: number };
 }
 
 const PRESETS = {
@@ -221,6 +218,11 @@ export function ExportDialog({
     customHeight: 0,
   });
 
+  // Helper to determine if advanced settings should be enabled
+  const shouldEnableAdvanced = (settings: typeof advancedSettings) => {
+    return settings.customBitrate > 0 || settings.customWidth > 0 || settings.customHeight > 0;
+  };
+
   const presetInfo = PRESETS[selectedPreset as keyof typeof PRESETS];
 
   // Calculate estimates
@@ -246,52 +248,41 @@ export function ExportDialog({
     return `${minutes}m ${seconds}s`;
   }, [timelineDuration, hardwareAccelerationAvailable]);
 
-  const handleExport = () => {
+  const buildExportOptions = (): ExportOptions => {
     const [width, height] = presetInfo.resolution.split('x').map(Number);
-    const options: ExportOptions = {
+    
+    // Determine resolution (custom or preset)
+    const resolution = advancedSettings.enabled && advancedSettings.customWidth > 0 && advancedSettings.customHeight > 0
+      ? { width: advancedSettings.customWidth, height: advancedSettings.customHeight }
+      : { width, height };
+    
+    // Determine bitrate (custom or preset)
+    const videoBitrate = advancedSettings.enabled && advancedSettings.customBitrate > 0
+      ? advancedSettings.customBitrate
+      : parseInt(presetInfo.bitrate) * 1000;
+    
+    // Determine codec (custom or preset)
+    const codec = advancedSettings.enabled ? advancedSettings.codec : presetInfo.codec;
+    
+    return {
       preset: selectedPreset,
-      resolution: advancedSettings.enabled && advancedSettings.customWidth > 0 && advancedSettings.customHeight > 0
-        ? { width: advancedSettings.customWidth, height: advancedSettings.customHeight }
-        : { width, height },
+      resolution,
       fps: 30,
-      videoBitrate: advancedSettings.enabled && advancedSettings.customBitrate > 0
-        ? advancedSettings.customBitrate
-        : parseInt(presetInfo.bitrate) * 1000,
+      videoBitrate,
       audioBitrate: 192,
       quality: 'high',
       exportRange,
       outputPath: outputPath || `export_${Date.now()}.mp4`,
-      codec: advancedSettings.enabled ? advancedSettings.codec : presetInfo.codec,
-      customBitrate: advancedSettings.enabled && advancedSettings.customBitrate > 0 ? advancedSettings.customBitrate : undefined,
-      customResolution: advancedSettings.enabled && advancedSettings.customWidth > 0 && advancedSettings.customHeight > 0
-        ? { width: advancedSettings.customWidth, height: advancedSettings.customHeight }
-        : undefined,
+      codec,
     };
-    onExport(options);
+  };
+
+  const handleExport = () => {
+    onExport(buildExportOptions());
   };
 
   const handleAddToQueue = () => {
-    const [width, height] = presetInfo.resolution.split('x').map(Number);
-    const options: ExportOptions = {
-      preset: selectedPreset,
-      resolution: advancedSettings.enabled && advancedSettings.customWidth > 0 && advancedSettings.customHeight > 0
-        ? { width: advancedSettings.customWidth, height: advancedSettings.customHeight }
-        : { width, height },
-      fps: 30,
-      videoBitrate: advancedSettings.enabled && advancedSettings.customBitrate > 0
-        ? advancedSettings.customBitrate
-        : parseInt(presetInfo.bitrate) * 1000,
-      audioBitrate: 192,
-      quality: 'high',
-      exportRange,
-      outputPath: outputPath || `export_${Date.now()}.mp4`,
-      codec: advancedSettings.enabled ? advancedSettings.codec : presetInfo.codec,
-      customBitrate: advancedSettings.enabled && advancedSettings.customBitrate > 0 ? advancedSettings.customBitrate : undefined,
-      customResolution: advancedSettings.enabled && advancedSettings.customWidth > 0 && advancedSettings.customHeight > 0
-        ? { width: advancedSettings.customWidth, height: advancedSettings.customHeight }
-        : undefined,
-    };
-    onAddToQueue(options);
+    onAddToQueue(buildExportOptions());
   };
 
   // Group presets by platform
@@ -417,7 +408,8 @@ export function ExportDialog({
                           value={advancedSettings.customBitrate > 0 ? advancedSettings.customBitrate.toString() : ''}
                           onChange={(_, data) => {
                             const value = parseInt(data.value) || 0;
-                            setAdvancedSettings({ ...advancedSettings, customBitrate: value, enabled: value > 0 || advancedSettings.customWidth > 0 || advancedSettings.customHeight > 0 });
+                            const newSettings = { ...advancedSettings, customBitrate: value };
+                            setAdvancedSettings({ ...newSettings, enabled: shouldEnableAdvanced(newSettings) });
                           }}
                           placeholder="Auto"
                         />
@@ -431,7 +423,8 @@ export function ExportDialog({
                           value={advancedSettings.customWidth > 0 ? advancedSettings.customWidth.toString() : ''}
                           onChange={(_, data) => {
                             const value = parseInt(data.value) || 0;
-                            setAdvancedSettings({ ...advancedSettings, customWidth: value, enabled: value > 0 || advancedSettings.customHeight > 0 || advancedSettings.customBitrate > 0 });
+                            const newSettings = { ...advancedSettings, customWidth: value };
+                            setAdvancedSettings({ ...newSettings, enabled: shouldEnableAdvanced(newSettings) });
                           }}
                           placeholder="Auto"
                         />
@@ -442,7 +435,8 @@ export function ExportDialog({
                           value={advancedSettings.customHeight > 0 ? advancedSettings.customHeight.toString() : ''}
                           onChange={(_, data) => {
                             const value = parseInt(data.value) || 0;
-                            setAdvancedSettings({ ...advancedSettings, customHeight: value, enabled: value > 0 || advancedSettings.customWidth > 0 || advancedSettings.customBitrate > 0 });
+                            const newSettings = { ...advancedSettings, customHeight: value };
+                            setAdvancedSettings({ ...newSettings, enabled: shouldEnableAdvanced(newSettings) });
                           }}
                           placeholder="Auto"
                         />
