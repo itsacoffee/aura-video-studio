@@ -69,22 +69,23 @@ export async function parseApiError(error: unknown): Promise<ParsedApiError> {
 
   // If it's already a parsed ProblemDetails object
   if (error && typeof error === 'object') {
-    if (error.title || error.detail || error.status) {
+    const errorObj = error as Partial<ProblemDetails & { message?: string }>;
+    if (errorObj.title || errorObj.detail || errorObj.status) {
       return {
-        title: error.title || 'Error',
-        message: error.detail || error.message || 'An error occurred',
-        errorDetails: error.detail,
-        correlationId: error.correlationId,
-        errorCode: error.errorCode || extractErrorCodeFromType(error.type),
+        title: errorObj.title || 'Error',
+        message: errorObj.detail || errorObj.message || 'An error occurred',
+        errorDetails: errorObj.detail,
+        correlationId: errorObj.correlationId,
+        errorCode: errorObj.errorCode || extractErrorCodeFromType(errorObj.type),
         originalError: error,
       };
     }
 
     // Standard Error object
-    if (error.message) {
+    if (errorObj.message) {
       return {
         title: 'Error',
-        message: error.message,
+        message: errorObj.message,
         originalError: error,
       };
     }

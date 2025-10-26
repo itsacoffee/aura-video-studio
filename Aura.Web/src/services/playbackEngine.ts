@@ -10,14 +10,18 @@
  */
 
 /**
+ * Video quality metrics returned by non-standard API
+ */
+interface VideoQualityMetrics {
+  droppedVideoFrames: number;
+  totalVideoFrames: number;
+  decodedVideoFrames: number;
+}
+
+/**
  * Extended HTMLVideoElement interface for non-standard properties
  */
-interface ExtendedHTMLVideoElement extends HTMLVideoElement {
-  getVideoPlaybackQuality?: () => {
-    droppedVideoFrames: number;
-    totalVideoFrames: number;
-    decodedVideoFrames: number;
-  };
+interface ExtendedVideoProperties {
   preservesPitch?: boolean;
   mozPreservesPitch?: boolean;
   webkitPreservesPitch?: boolean;
@@ -209,10 +213,9 @@ export class PlaybackEngine {
    */
   private setupPerformanceMonitoring(): void {
     // Monitor video playback quality
-    const extendedVideoElement = this.videoElement as ExtendedHTMLVideoElement;
     if ('getVideoPlaybackQuality' in this.videoElement) {
       setInterval(() => {
-        const quality = extendedVideoElement.getVideoPlaybackQuality?.();
+        const quality = this.videoElement.getVideoPlaybackQuality() as unknown as VideoQualityMetrics;
         if (quality) {
           this.metrics.droppedFrames = quality.droppedVideoFrames || 0;
           this.metrics.totalFrames = quality.totalVideoFrames || 0;
@@ -474,13 +477,13 @@ export class PlaybackEngine {
     this.videoElement.playbackRate = speed;
 
     // Preserve audio pitch at different speeds
-    const extendedVideoElement = this.videoElement as ExtendedHTMLVideoElement;
+    const extendedVideo = this.videoElement as HTMLVideoElement & ExtendedVideoProperties;
     if ('preservesPitch' in this.videoElement) {
-      extendedVideoElement.preservesPitch = true;
+      extendedVideo.preservesPitch = true;
     } else if ('mozPreservesPitch' in this.videoElement) {
-      extendedVideoElement.mozPreservesPitch = true;
+      extendedVideo.mozPreservesPitch = true;
     } else if ('webkitPreservesPitch' in this.videoElement) {
-      extendedVideoElement.webkitPreservesPitch = true;
+      extendedVideo.webkitPreservesPitch = true;
     }
 
     this.notifyStateChange();
