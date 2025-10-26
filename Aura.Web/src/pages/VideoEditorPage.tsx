@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { EditorLayout } from '../components/EditorLayout/EditorLayout';
 import { VideoPreviewPanel } from '../components/EditorLayout/VideoPreviewPanel';
@@ -6,10 +6,18 @@ import { TimelinePanel } from '../components/EditorLayout/TimelinePanel';
 import { PropertiesPanel } from '../components/EditorLayout/PropertiesPanel';
 import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
 import { EffectsLibraryPanel } from '../components/EditorLayout/EffectsLibraryPanel';
+import { HistoryPanel } from '../components/EditorLayout/HistoryPanel';
 import { AppliedEffect, EffectPreset } from '../types/effects';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 import { useProjectState } from '../hooks/useProjectState';
 import { ProjectFile, ProjectMediaItem } from '../types/project';
+import { CommandHistory } from '../services/commandHistory';
+import {
+  AddClipCommand,
+  DeleteClipCommand,
+  UpdatePropertyCommand,
+  AddEffectCommand,
+} from '../commands/clipCommands';
 
 export interface TimelineClip {
   id: string;
@@ -61,9 +69,30 @@ export function VideoEditorPage() {
     { id: 'audio2', label: 'Audio 2', type: 'audio', visible: true, locked: false },
   ]);
   const [mediaLibrary, setMediaLibrary] = useState<ProjectMediaItem[]>([]);
+  
+  // Command history for undo/redo
+  const commandHistory = useMemo(() => new CommandHistory(50), []);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  // Subscribe to command history changes
+  useEffect(() => {
+    const unsubscribe = commandHistory.subscribe((undo, redo) => {
+      setCanUndo(undo);
+      setCanRedo(redo);
+    });
+    return unsubscribe;
+  }, [commandHistory]);
+  
+  // Prevent unused variable warnings - these will be used for UI indicators
+  void canUndo;
+  void canRedo;
 
   // Project state management with autosave
   const handleProjectLoaded = useCallback((project: ProjectFile) => {
+    // Clear command history on project load
+    commandHistory.clear();
+    
     // Restore clips
     setClips(project.clips.map(clip => ({
       ...clip,
@@ -84,7 +113,7 @@ export function VideoEditorPage() {
     if (project.playerPosition !== undefined) {
       setCurrentTime(project.playerPosition);
     }
-  }, []);
+  }, [commandHistory]);
 
   const {
     projectName,
@@ -127,6 +156,37 @@ export function VideoEditorPage() {
 
     // Register video editor specific shortcuts
     keyboardShortcutManager.registerMultiple([
+      // Undo/Redo
+      {
+        id: 'undo',
+        keys: 'Ctrl+Z',
+        description: 'Undo',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          commandHistory.undo();
+        },
+      },
+      {
+        id: 'redo',
+        keys: 'Ctrl+Y',
+        description: 'Redo',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          commandHistory.redo();
+        },
+      },
+      {
+        id: 'redo-shift',
+        keys: 'Ctrl+Shift+Z',
+        description: 'Redo',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          commandHistory.redo();
+        },
+      },
       // Playback controls
       {
         id: 'play-pause',
@@ -333,31 +393,31 @@ export function VideoEditorPage() {
     };
     // handleDeleteClip, handleExportVideo, and handleSaveProject are stable functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTime, selectedClipId]);
+  }, [currentTime, selectedClipId, commandHistory]);
 
   const handleUpdateClip = (updates: Partial<TimelineClip>) => {
     if (!selectedClipId) return;
 
-    setClips((prevClips) =>
-      prevClips.map((clip) => (clip.id === selectedClipId ? { ...clip, ...updates } : clip))
-    );
+    const command = new UpdatePropertyCommand(selectedClipId, updates, clips, setClips);
+    commandHistory.execute(command);
   };
 
   const handleUpdateClipById = (clipId: string, updates: Partial<TimelineClip>) => {
-    setClips((prevClips) =>
-      prevClips.map((clip) => (clip.id === clipId ? { ...clip, ...updates } : clip))
-    );
+    const command = new UpdatePropertyCommand(clipId, updates, clips, setClips);
+    commandHistory.execute(command);
   };
 
   const handleDeleteClip = () => {
     if (!selectedClipId) return;
 
-    setClips((prevClips) => prevClips.filter((clip) => clip.id !== selectedClipId));
+    const command = new DeleteClipCommand(selectedClipId, clips, setClips);
+    commandHistory.execute(command);
     setSelectedClipId(null);
   };
 
   const handleAddClip = (_trackId: string, clip: TimelineClip) => {
-    setClips((prevClips) => [...prevClips, clip]);
+    const command = new AddClipCommand(clip, setClips);
+    commandHistory.execute(command);
   };
 
   const handleTrackToggleVisibility = (trackId: string) => {
@@ -405,7 +465,7 @@ export function VideoEditorPage() {
   const handleApplyPreset = (preset: EffectPreset) => {
     if (!selectedClipId) return;
 
-    // Apply preset effects to selected clip
+    // Apply preset effects to selected clip as a batch
     const presetEffects: AppliedEffect[] = preset.effects.map((presetEffect, index) => ({
       id: `effect-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 11)}`,
       effectType: presetEffect.effectType,
@@ -413,19 +473,18 @@ export function VideoEditorPage() {
       parameters: presetEffect.parameters,
     }));
 
-    setClips((prevClips) =>
-      prevClips.map((clip) =>
-        clip.id === selectedClipId
-          ? { ...clip, effects: [...(clip.effects || []), ...presetEffects] }
-          : clip
-      )
-    );
+    // Use command for each effect
+    presetEffects.forEach((effect) => {
+      const command = new AddEffectCommand(selectedClipId, effect, setClips);
+      commandHistory.execute(command);
+    });
   };
 
   return (
     <EditorLayout
       mediaLibrary={<MediaLibraryPanel ref={mediaLibraryRef} />}
       effects={<EffectsLibraryPanel onPresetApply={handleApplyPreset} />}
+      history={<HistoryPanel commandHistory={commandHistory} />}
       preview={
         <VideoPreviewPanel
           currentTime={currentTime}

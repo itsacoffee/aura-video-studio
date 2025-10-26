@@ -108,6 +108,7 @@ interface EditorLayoutProps {
   properties?: ReactNode;
   mediaLibrary?: ReactNode;
   effects?: ReactNode;
+  history?: ReactNode;
   onImportMedia?: () => void;
   onExportVideo?: () => void;
   onShowKeyboardShortcuts?: () => void;
@@ -123,6 +124,7 @@ const STORAGE_KEYS = {
   propertiesWidth: 'editor-properties-width',
   mediaLibraryWidth: 'editor-media-library-width',
   effectsLibraryWidth: 'editor-effects-library-width',
+  historyWidth: 'editor-history-width',
   previewHeight: 'editor-preview-height',
 };
 
@@ -151,6 +153,7 @@ export function EditorLayout({
   properties,
   mediaLibrary,
   effects,
+  history,
   onImportMedia,
   onExportVideo,
   onShowKeyboardShortcuts,
@@ -169,6 +172,9 @@ export function EditorLayout({
   );
   const [effectsLibraryWidth, setEffectsLibraryWidth] = useState(() =>
     loadPanelSize(STORAGE_KEYS.effectsLibraryWidth, 280)
+  );
+  const [historyWidth, setHistoryWidth] = useState(() =>
+    loadPanelSize(STORAGE_KEYS.historyWidth, 320)
   );
   const [previewHeight, setPreviewHeight] = useState(() =>
     loadPanelSize(STORAGE_KEYS.previewHeight, 60)
@@ -190,6 +196,10 @@ export function EditorLayout({
   useEffect(() => {
     savePanelSize(STORAGE_KEYS.effectsLibraryWidth, effectsLibraryWidth);
   }, [effectsLibraryWidth]);
+
+  useEffect(() => {
+    savePanelSize(STORAGE_KEYS.historyWidth, historyWidth);
+  }, [historyWidth]);
 
   // Handle resizing properties panel
   const handlePropertiesResize = (e: React.MouseEvent) => {
@@ -265,6 +275,26 @@ export function EditorLayout({
       const delta = moveEvent.clientX - startX;
       const newWidth = Math.max(240, Math.min(350, startWidth + delta));
       setEffectsLibraryWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // Handle resizing history panel
+  const handleHistoryResize = (e: React.MouseEvent) => {
+    const startX = e.clientX;
+    const startWidth = historyWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = startX - moveEvent.clientX;
+      const newWidth = Math.max(280, Math.min(400, startWidth + delta));
+      setHistoryWidth(newWidth);
     };
 
     const handleMouseUp = () => {
@@ -399,6 +429,40 @@ export function EditorLayout({
             />
             <div className={styles.propertiesPanel} style={{ width: `${propertiesWidth}px` }}>
               {properties}
+            </div>
+          </>
+        )}
+        {history && (
+          <>
+            {/* Interactive resizer - intentionally uses mouse and keyboard events */}
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+            <div 
+              className={styles.resizer} 
+              onMouseDown={handleHistoryResize} 
+              role="separator" 
+              aria-orientation="vertical"
+              aria-label="Resize history panel"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  setHistoryWidth((prev) => {
+                    const newWidth = Math.min(400, prev + 10);
+                    savePanelSize(STORAGE_KEYS.historyWidth, newWidth);
+                    return newWidth;
+                  });
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  setHistoryWidth((prev) => {
+                    const newWidth = Math.max(280, prev - 10);
+                    savePanelSize(STORAGE_KEYS.historyWidth, newWidth);
+                    return newWidth;
+                  });
+                }
+              }}
+            />
+            <div className={styles.propertiesPanel} style={{ width: `${historyWidth}px` }}>
+              {history}
             </div>
           </>
         )}

@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { makeStyles, tokens, Title1, Text } from '@fluentui/react-components';
 import { TimelineView } from '../components/Timeline/TimelineView';
 import { OverlayPanel } from '../components/Overlays/OverlayPanel';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
+import { CommandHistory } from '../services/commandHistory';
 
 const useStyles = makeStyles({
   container: {
@@ -40,6 +41,24 @@ const useStyles = makeStyles({
 
 export function TimelinePage() {
   const styles = useStyles();
+  
+  // Command history for undo/redo
+  const commandHistory = useMemo(() => new CommandHistory(50), []);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  // Subscribe to command history changes
+  useEffect(() => {
+    const unsubscribe = commandHistory.subscribe((undo, redo) => {
+      setCanUndo(undo);
+      setCanRedo(redo);
+    });
+    return unsubscribe;
+  }, [commandHistory]);
+  
+  // Prevent unused variable warnings - these will be used for UI indicators
+  void canUndo;
+  void canRedo;
 
   // Register timeline shortcuts
   useEffect(() => {
@@ -48,6 +67,36 @@ export function TimelinePage() {
 
     // Register timeline-specific shortcuts
     keyboardShortcutManager.registerMultiple([
+      {
+        id: 'timeline-undo',
+        keys: 'Ctrl+Z',
+        description: 'Undo',
+        context: 'timeline',
+        handler: (e) => {
+          e.preventDefault();
+          commandHistory.undo();
+        },
+      },
+      {
+        id: 'timeline-redo',
+        keys: 'Ctrl+Y',
+        description: 'Redo',
+        context: 'timeline',
+        handler: (e) => {
+          e.preventDefault();
+          commandHistory.redo();
+        },
+      },
+      {
+        id: 'timeline-redo-shift',
+        keys: 'Ctrl+Shift+Z',
+        description: 'Redo',
+        context: 'timeline',
+        handler: (e) => {
+          e.preventDefault();
+          commandHistory.redo();
+        },
+      },
       {
         id: 'timeline-play-pause',
         keys: 'Space',
@@ -129,31 +178,13 @@ export function TimelinePage() {
           // Placeholder for go to end functionality
         },
       },
-      {
-        id: 'timeline-undo',
-        keys: 'Ctrl+Z',
-        description: 'Undo',
-        context: 'timeline',
-        handler: () => {
-          // Placeholder for undo functionality
-        },
-      },
-      {
-        id: 'timeline-redo',
-        keys: 'Ctrl+Y',
-        description: 'Redo',
-        context: 'timeline',
-        handler: () => {
-          // Placeholder for redo functionality
-        },
-      },
     ]);
 
     // Clean up on unmount
     return () => {
       keyboardShortcutManager.unregisterContext('timeline');
     };
-  }, []);
+  }, [commandHistory]);
 
   return (
     <div className={styles.container}>
