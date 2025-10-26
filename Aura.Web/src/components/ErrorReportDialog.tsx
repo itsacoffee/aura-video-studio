@@ -3,7 +3,6 @@
  * Displays detailed error information and allows users to report errors to support
  */
 
-import { useState } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -26,6 +25,7 @@ import {
   Dismiss24Regular,
   CheckmarkCircle24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { loggingService } from '../services/loggingService';
 
 const useStyles = makeStyles({
@@ -133,7 +133,12 @@ export function ErrorReportDialog({
       loggingService.info('Error details copied to clipboard', 'ErrorReportDialog', 'copy');
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      loggingService.error('Failed to copy error details', err as Error, 'ErrorReportDialog', 'copy');
+      loggingService.error(
+        'Failed to copy error details',
+        err as Error,
+        'ErrorReportDialog',
+        'copy'
+      );
     }
   };
 
@@ -162,7 +167,7 @@ export function ErrorReportDialog({
 
       loggingService.info('Error report submitted successfully', 'ErrorReportDialog', 'submit');
       setSubmitSuccess(true);
-      
+
       // Close dialog after a short delay
       setTimeout(() => {
         onOpenChange(false);
@@ -172,7 +177,12 @@ export function ErrorReportDialog({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setSubmitError(errorMessage);
-      loggingService.error('Failed to submit error report', err as Error, 'ErrorReportDialog', 'submit');
+      loggingService.error(
+        'Failed to submit error report',
+        err as Error,
+        'ErrorReportDialog',
+        'submit'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -212,9 +222,7 @@ export function ErrorReportDialog({
 
             <div className={styles.detailsSection}>
               <Text weight="semibold">Error Details</Text>
-              <Caption1>
-                This technical information will be included in your report
-              </Caption1>
+              <Caption1>This technical information will be included in your report</Caption1>
               <div className={styles.codeBlock}>
                 <div>
                   <strong>Error:</strong> {error.name}

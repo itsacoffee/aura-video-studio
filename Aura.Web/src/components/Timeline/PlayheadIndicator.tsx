@@ -137,9 +137,7 @@ export function PlayheadIndicator({
           }
         }}
       />
-      {showTooltip && timeTooltip && (
-        <div className={styles.timeTooltip}>{timeTooltip}</div>
-      )}
+      {showTooltip && timeTooltip && <div className={styles.timeTooltip}>{timeTooltip}</div>}
     </div>
   );
 }

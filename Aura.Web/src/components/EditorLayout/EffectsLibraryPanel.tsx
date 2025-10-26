@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -19,7 +18,14 @@ import {
   PanelLeftRegular,
   StarRegular,
 } from '@fluentui/react-icons';
-import { EFFECT_DEFINITIONS, EFFECT_PRESETS, EffectCategory, EffectDefinition, EffectPreset } from '../../types/effects';
+import { useState } from 'react';
+import {
+  EFFECT_DEFINITIONS,
+  EFFECT_PRESETS,
+  EffectCategory,
+  EffectDefinition,
+  EffectPreset,
+} from '../../types/effects';
 
 const useStyles = makeStyles({
   container: {
@@ -130,7 +136,10 @@ interface EffectsLibraryPanelProps {
   onPresetApply?: (preset: EffectPreset) => void;
 }
 
-export function EffectsLibraryPanel({ onEffectDragStart, onPresetApply }: EffectsLibraryPanelProps) {
+export function EffectsLibraryPanel({
+  onEffectDragStart,
+  onPresetApply,
+}: EffectsLibraryPanelProps) {
   const styles = useStyles();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -210,8 +219,8 @@ export function EffectsLibraryPanel({ onEffectDragStart, onPresetApply }: Effect
                   content={`${preset.effects.length} effects: ${preset.description}`}
                   relationship="description"
                 >
-                  <div 
-                    className={styles.presetItem} 
+                  <div
+                    className={styles.presetItem}
                     onClick={() => handlePresetClick(preset)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {

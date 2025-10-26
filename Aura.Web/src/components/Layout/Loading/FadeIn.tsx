@@ -3,8 +3,8 @@
  * Smooth fade-in animation for content loading
  */
 
-import { ReactNode, useState, useEffect } from 'react';
 import { makeStyles } from '@fluentui/react-components';
+import { ReactNode, useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   fadeIn: {

@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -17,6 +16,7 @@ import {
   TableHeaderCell,
 } from '@fluentui/react-components';
 import { Save24Regular, ArrowReset24Regular, Keyboard24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({
@@ -61,42 +61,222 @@ interface ShortcutMapping {
 
 const DEFAULT_SHORTCUTS: ShortcutMapping[] = [
   // Playback
-  { action: 'play-pause', description: 'Play/Pause', defaultShortcut: 'Space', currentShortcut: 'Space', category: 'Playback' },
-  { action: 'forward', description: 'Forward 5s', defaultShortcut: 'ArrowRight', currentShortcut: 'ArrowRight', category: 'Playback' },
-  { action: 'backward', description: 'Backward 5s', defaultShortcut: 'ArrowLeft', currentShortcut: 'ArrowLeft', category: 'Playback' },
-  { action: 'frame-forward', description: 'Next Frame', defaultShortcut: 'Period', currentShortcut: 'Period', category: 'Playback' },
-  { action: 'frame-backward', description: 'Previous Frame', defaultShortcut: 'Comma', currentShortcut: 'Comma', category: 'Playback' },
-  { action: 'speed-faster', description: 'Increase Speed', defaultShortcut: 'L', currentShortcut: 'L', category: 'Playback' },
-  { action: 'speed-slower', description: 'Decrease Speed', defaultShortcut: 'J', currentShortcut: 'J', category: 'Playback' },
-  { action: 'speed-normal', description: 'Normal Speed', defaultShortcut: 'K', currentShortcut: 'K', category: 'Playback' },
-  
+  {
+    action: 'play-pause',
+    description: 'Play/Pause',
+    defaultShortcut: 'Space',
+    currentShortcut: 'Space',
+    category: 'Playback',
+  },
+  {
+    action: 'forward',
+    description: 'Forward 5s',
+    defaultShortcut: 'ArrowRight',
+    currentShortcut: 'ArrowRight',
+    category: 'Playback',
+  },
+  {
+    action: 'backward',
+    description: 'Backward 5s',
+    defaultShortcut: 'ArrowLeft',
+    currentShortcut: 'ArrowLeft',
+    category: 'Playback',
+  },
+  {
+    action: 'frame-forward',
+    description: 'Next Frame',
+    defaultShortcut: 'Period',
+    currentShortcut: 'Period',
+    category: 'Playback',
+  },
+  {
+    action: 'frame-backward',
+    description: 'Previous Frame',
+    defaultShortcut: 'Comma',
+    currentShortcut: 'Comma',
+    category: 'Playback',
+  },
+  {
+    action: 'speed-faster',
+    description: 'Increase Speed',
+    defaultShortcut: 'L',
+    currentShortcut: 'L',
+    category: 'Playback',
+  },
+  {
+    action: 'speed-slower',
+    description: 'Decrease Speed',
+    defaultShortcut: 'J',
+    currentShortcut: 'J',
+    category: 'Playback',
+  },
+  {
+    action: 'speed-normal',
+    description: 'Normal Speed',
+    defaultShortcut: 'K',
+    currentShortcut: 'K',
+    category: 'Playback',
+  },
+
   // Timeline
-  { action: 'split-clip', description: 'Split Clip', defaultShortcut: 'S', currentShortcut: 'S', category: 'Timeline' },
-  { action: 'delete-clip', description: 'Delete Clip', defaultShortcut: 'Delete', currentShortcut: 'Delete', category: 'Timeline' },
-  { action: 'undo', description: 'Undo', defaultShortcut: 'Ctrl+Z', currentShortcut: 'Ctrl+Z', category: 'Timeline' },
-  { action: 'redo', description: 'Redo', defaultShortcut: 'Ctrl+Y', currentShortcut: 'Ctrl+Y', category: 'Timeline' },
-  { action: 'copy', description: 'Copy', defaultShortcut: 'Ctrl+C', currentShortcut: 'Ctrl+C', category: 'Timeline' },
-  { action: 'paste', description: 'Paste', defaultShortcut: 'Ctrl+V', currentShortcut: 'Ctrl+V', category: 'Timeline' },
-  { action: 'cut', description: 'Cut', defaultShortcut: 'Ctrl+X', currentShortcut: 'Ctrl+X', category: 'Timeline' },
-  { action: 'select-all', description: 'Select All', defaultShortcut: 'Ctrl+A', currentShortcut: 'Ctrl+A', category: 'Timeline' },
-  { action: 'zoom-in', description: 'Zoom In', defaultShortcut: 'Plus', currentShortcut: 'Plus', category: 'Timeline' },
-  { action: 'zoom-out', description: 'Zoom Out', defaultShortcut: 'Minus', currentShortcut: 'Minus', category: 'Timeline' },
-  { action: 'zoom-fit', description: 'Zoom to Fit', defaultShortcut: 'Backslash', currentShortcut: 'Backslash', category: 'Timeline' },
-  
+  {
+    action: 'split-clip',
+    description: 'Split Clip',
+    defaultShortcut: 'S',
+    currentShortcut: 'S',
+    category: 'Timeline',
+  },
+  {
+    action: 'delete-clip',
+    description: 'Delete Clip',
+    defaultShortcut: 'Delete',
+    currentShortcut: 'Delete',
+    category: 'Timeline',
+  },
+  {
+    action: 'undo',
+    description: 'Undo',
+    defaultShortcut: 'Ctrl+Z',
+    currentShortcut: 'Ctrl+Z',
+    category: 'Timeline',
+  },
+  {
+    action: 'redo',
+    description: 'Redo',
+    defaultShortcut: 'Ctrl+Y',
+    currentShortcut: 'Ctrl+Y',
+    category: 'Timeline',
+  },
+  {
+    action: 'copy',
+    description: 'Copy',
+    defaultShortcut: 'Ctrl+C',
+    currentShortcut: 'Ctrl+C',
+    category: 'Timeline',
+  },
+  {
+    action: 'paste',
+    description: 'Paste',
+    defaultShortcut: 'Ctrl+V',
+    currentShortcut: 'Ctrl+V',
+    category: 'Timeline',
+  },
+  {
+    action: 'cut',
+    description: 'Cut',
+    defaultShortcut: 'Ctrl+X',
+    currentShortcut: 'Ctrl+X',
+    category: 'Timeline',
+  },
+  {
+    action: 'select-all',
+    description: 'Select All',
+    defaultShortcut: 'Ctrl+A',
+    currentShortcut: 'Ctrl+A',
+    category: 'Timeline',
+  },
+  {
+    action: 'zoom-in',
+    description: 'Zoom In',
+    defaultShortcut: 'Plus',
+    currentShortcut: 'Plus',
+    category: 'Timeline',
+  },
+  {
+    action: 'zoom-out',
+    description: 'Zoom Out',
+    defaultShortcut: 'Minus',
+    currentShortcut: 'Minus',
+    category: 'Timeline',
+  },
+  {
+    action: 'zoom-fit',
+    description: 'Zoom to Fit',
+    defaultShortcut: 'Backslash',
+    currentShortcut: 'Backslash',
+    category: 'Timeline',
+  },
+
   // Markers
-  { action: 'add-marker', description: 'Add Marker', defaultShortcut: 'M', currentShortcut: 'M', category: 'Markers' },
-  { action: 'prev-marker', description: 'Previous Marker', defaultShortcut: 'Ctrl+ArrowLeft', currentShortcut: 'Ctrl+ArrowLeft', category: 'Markers' },
-  { action: 'next-marker', description: 'Next Marker', defaultShortcut: 'Ctrl+ArrowRight', currentShortcut: 'Ctrl+ArrowRight', category: 'Markers' },
-  
+  {
+    action: 'add-marker',
+    description: 'Add Marker',
+    defaultShortcut: 'M',
+    currentShortcut: 'M',
+    category: 'Markers',
+  },
+  {
+    action: 'prev-marker',
+    description: 'Previous Marker',
+    defaultShortcut: 'Ctrl+ArrowLeft',
+    currentShortcut: 'Ctrl+ArrowLeft',
+    category: 'Markers',
+  },
+  {
+    action: 'next-marker',
+    description: 'Next Marker',
+    defaultShortcut: 'Ctrl+ArrowRight',
+    currentShortcut: 'Ctrl+ArrowRight',
+    category: 'Markers',
+  },
+
   // General
-  { action: 'save', description: 'Save Project', defaultShortcut: 'Ctrl+S', currentShortcut: 'Ctrl+S', category: 'General' },
-  { action: 'save-as', description: 'Save As', defaultShortcut: 'Ctrl+Shift+S', currentShortcut: 'Ctrl+Shift+S', category: 'General' },
-  { action: 'export', description: 'Export/Render', defaultShortcut: 'Ctrl+M', currentShortcut: 'Ctrl+M', category: 'General' },
-  { action: 'new-project', description: 'New Project', defaultShortcut: 'Ctrl+N', currentShortcut: 'Ctrl+N', category: 'General' },
-  { action: 'open-project', description: 'Open Project', defaultShortcut: 'Ctrl+O', currentShortcut: 'Ctrl+O', category: 'General' },
-  { action: 'shortcuts', description: 'Show Shortcuts', defaultShortcut: 'Ctrl+K', currentShortcut: 'Ctrl+K', category: 'General' },
-  { action: 'search', description: 'Search/Command Palette', defaultShortcut: 'Ctrl+P', currentShortcut: 'Ctrl+P', category: 'General' },
-  { action: 'fullscreen', description: 'Toggle Fullscreen', defaultShortcut: 'F11', currentShortcut: 'F11', category: 'General' },
+  {
+    action: 'save',
+    description: 'Save Project',
+    defaultShortcut: 'Ctrl+S',
+    currentShortcut: 'Ctrl+S',
+    category: 'General',
+  },
+  {
+    action: 'save-as',
+    description: 'Save As',
+    defaultShortcut: 'Ctrl+Shift+S',
+    currentShortcut: 'Ctrl+Shift+S',
+    category: 'General',
+  },
+  {
+    action: 'export',
+    description: 'Export/Render',
+    defaultShortcut: 'Ctrl+M',
+    currentShortcut: 'Ctrl+M',
+    category: 'General',
+  },
+  {
+    action: 'new-project',
+    description: 'New Project',
+    defaultShortcut: 'Ctrl+N',
+    currentShortcut: 'Ctrl+N',
+    category: 'General',
+  },
+  {
+    action: 'open-project',
+    description: 'Open Project',
+    defaultShortcut: 'Ctrl+O',
+    currentShortcut: 'Ctrl+O',
+    category: 'General',
+  },
+  {
+    action: 'shortcuts',
+    description: 'Show Shortcuts',
+    defaultShortcut: 'Ctrl+K',
+    currentShortcut: 'Ctrl+K',
+    category: 'General',
+  },
+  {
+    action: 'search',
+    description: 'Search/Command Palette',
+    defaultShortcut: 'Ctrl+P',
+    currentShortcut: 'Ctrl+P',
+    category: 'General',
+  },
+  {
+    action: 'fullscreen',
+    description: 'Toggle Fullscreen',
+    defaultShortcut: 'F11',
+    currentShortcut: 'F11',
+    category: 'General',
+  },
 ];
 
 export function KeyboardShortcutsTab() {
@@ -172,18 +352,23 @@ export function KeyboardShortcutsTab() {
     }
   };
 
-  const groupedShortcuts = shortcuts.reduce((acc, shortcut) => {
-    if (!acc[shortcut.category]) {
-      acc[shortcut.category] = [];
-    }
-    acc[shortcut.category].push(shortcut);
-    return acc;
-  }, {} as Record<string, ShortcutMapping[]>);
+  const groupedShortcuts = shortcuts.reduce(
+    (acc, shortcut) => {
+      if (!acc[shortcut.category]) {
+        acc[shortcut.category] = [];
+      }
+      acc[shortcut.category].push(shortcut);
+      return acc;
+    },
+    {} as Record<string, ShortcutMapping[]>
+  );
 
   return (
     <Card className={styles.section}>
       <Title2>
-        <Keyboard24Regular style={{ marginRight: tokens.spacingHorizontalS, verticalAlign: 'middle' }} />
+        <Keyboard24Regular
+          style={{ marginRight: tokens.spacingHorizontalS, verticalAlign: 'middle' }}
+        />
         Keyboard Shortcuts
       </Title2>
       <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
@@ -219,9 +404,7 @@ export function KeyboardShortcutsTab() {
               setModified(true);
             }}
           />
-          <Text size={200}>
-            {enableKeyboardShortcuts ? 'Enabled' : 'Disabled'}
-          </Text>
+          <Text size={200}>{enableKeyboardShortcuts ? 'Enabled' : 'Disabled'}</Text>
         </Field>
 
         {Object.entries(groupedShortcuts).map(([category, categoryShortcuts]) => (
@@ -292,11 +475,7 @@ export function KeyboardShortcutsTab() {
         )}
 
         <div className={styles.actions}>
-          <Button
-            appearance="secondary"
-            icon={<ArrowReset24Regular />}
-            onClick={resetToDefaults}
-          >
+          <Button appearance="secondary" icon={<ArrowReset24Regular />} onClick={resetToDefaults}>
             Reset All to Defaults
           </Button>
           <Button

@@ -33,7 +33,7 @@ describe('Quality Dashboard Store', () => {
 
   it('should initialize with empty state', () => {
     const state = useQualityDashboardStore.getState();
-    
+
     expect(state.metrics).toBeNull();
     expect(state.breakdown).toBeNull();
     expect(state.historicalTrends).toBeNull();

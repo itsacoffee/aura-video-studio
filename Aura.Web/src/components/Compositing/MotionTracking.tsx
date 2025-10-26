@@ -3,21 +3,14 @@
  * Track objects and lock graphics/effects to movement
  */
 
-import { useState } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Button,
-  Label,
-  Card,
-  Input,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Button, Label, Card, Input } from '@fluentui/react-components';
 import {
   Location24Regular,
   Delete24Regular,
   Play24Regular,
   Stop24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { TrackingPath } from '../../services/motionTrackingService';
 
 const useStyles = makeStyles({
@@ -132,8 +125,8 @@ export function MotionTracking({
               <div className={styles.trackingInfo}>
                 <Label weight="semibold">{path.name}</Label>
                 <Label size="small">
-                  {path.points.length} frames tracked • Start: {path.startFrame.toFixed(2)}s •
-                  End: {path.endFrame.toFixed(2)}s
+                  {path.points.length} frames tracked • Start: {path.startFrame.toFixed(2)}s • End:{' '}
+                  {path.endFrame.toFixed(2)}s
                 </Label>
               </div>
               <div className={styles.controls}>

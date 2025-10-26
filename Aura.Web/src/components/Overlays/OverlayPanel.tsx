@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -12,6 +11,7 @@ import {
   Slider,
 } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { useTimelineStore, TextOverlay } from '../../state/timeline';
 
 const useStyles = makeStyles({

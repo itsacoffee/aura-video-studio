@@ -246,7 +246,9 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
   addMarker: (marker: ChapterMarker) =>
     set((state) => ({
-      markers: [...state.markers, marker].sort((a: ChapterMarker, b: ChapterMarker) => a.time - b.time),
+      markers: [...state.markers, marker].sort(
+        (a: ChapterMarker, b: ChapterMarker) => a.time - b.time
+      ),
     })),
 
   removeMarker: (markerId: string) =>
@@ -256,7 +258,9 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
 
   addOverlay: (overlay: TextOverlay) =>
     set((state) => ({
-      overlays: [...state.overlays, overlay].sort((a: TextOverlay, b: TextOverlay) => a.inTime - b.inTime),
+      overlays: [...state.overlays, overlay].sort(
+        (a: TextOverlay, b: TextOverlay) => a.inTime - b.inTime
+      ),
     })),
 
   updateOverlay: (overlay: TextOverlay) =>

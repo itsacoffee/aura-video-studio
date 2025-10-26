@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -29,8 +28,9 @@ import {
   ErrorCircle24Regular,
   Clock24Regular,
 } from '@fluentui/react-icons';
-import { getExportHistory, ExportHistoryItem, startExport } from '../../services/exportService';
+import { useEffect, useState } from 'react';
 import { SkeletonTable, ErrorState } from '../../components/Loading';
+import { getExportHistory, ExportHistoryItem, startExport } from '../../services/exportService';
 import { formatFileSize, formatDuration } from '../../utils/formatters';
 
 const useStyles = makeStyles({
@@ -177,9 +177,18 @@ export function ExportHistoryPage() {
         <div className={styles.header}>
           <Title1>Export History</Title1>
         </div>
-        <SkeletonTable 
-          columns={['Status', 'Preset', 'Platform', 'Resolution', 'Created', 'Duration', 'Size', 'Actions']} 
-          rowCount={5} 
+        <SkeletonTable
+          columns={[
+            'Status',
+            'Preset',
+            'Platform',
+            'Resolution',
+            'Created',
+            'Duration',
+            'Size',
+            'Actions',
+          ]}
+          rowCount={5}
         />
       </div>
     );
@@ -234,9 +243,7 @@ export function ExportHistoryPage() {
                 <TableCell>{getStatusBadge(item.status)}</TableCell>
                 <TableCell>
                   <Text weight="semibold">{item.presetName}</Text>
-                  {item.errorMessage && (
-                    <div className={styles.errorText}>{item.errorMessage}</div>
-                  )}
+                  {item.errorMessage && <div className={styles.errorText}>{item.errorMessage}</div>}
                 </TableCell>
                 <TableCell>{item.platform || '-'}</TableCell>
                 <TableCell>{item.resolution || '-'}</TableCell>
@@ -246,9 +253,7 @@ export function ExportHistoryPage() {
                 <TableCell>
                   {item.durationSeconds ? formatDuration(item.durationSeconds) : '-'}
                 </TableCell>
-                <TableCell>
-                  {item.fileSize ? formatFileSize(item.fileSize) : '-'}
-                </TableCell>
+                <TableCell>{item.fileSize ? formatFileSize(item.fileSize) : '-'}</TableCell>
                 <TableCell>
                   <Menu>
                     <MenuTrigger>

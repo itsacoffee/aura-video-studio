@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -20,6 +18,8 @@ import {
   Folder24Regular,
   Search24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 import { retryJob } from '../features/render/api/jobs';
 
 const useStyles = makeStyles({
@@ -214,7 +214,7 @@ export function RecentJobsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path }),
       });
-      
+
       if (!response.ok) {
         console.error('Failed to open folder:', await response.text());
         alert('Failed to open folder. This feature requires backend API support.');

@@ -3,7 +3,6 @@
  * Displays quality control issues and recommendations
  */
 
-import React from 'react';
 import {
   Card,
   makeStyles,
@@ -17,6 +16,7 @@ import {
   MessageBarTitle,
 } from '@fluentui/react-components';
 import { Warning24Regular, Info24Regular, ErrorCircle24Regular } from '@fluentui/react-icons';
+import React from 'react';
 import { QualityIssue } from '../../../services/editingIntelligenceService';
 
 interface QualityPanelProps {

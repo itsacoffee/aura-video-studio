@@ -3,7 +3,6 @@
  * Main container for pacing analysis visualization and suggestion management
  */
 
-import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Button,
@@ -30,13 +29,14 @@ import {
   Settings24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
-import { Brief } from '../../types';
-import { Scene, PacingSettings as PacingSettingsType } from '../../types/pacing';
+import { useState, useEffect, useCallback } from 'react';
 import { usePacingAnalysis } from '../../hooks/usePacingAnalysis';
 import { getPlatformPresets } from '../../services/pacingService';
+import { Brief } from '../../types';
+import { Scene, PacingSettings as PacingSettingsType } from '../../types/pacing';
 import { AttentionCurveChart } from './AttentionCurveChart';
-import { SceneSuggestionCard } from './SceneSuggestionCard';
 import { PacingSettings } from './PacingSettings';
+import { SceneSuggestionCard } from './SceneSuggestionCard';
 
 const useStyles = makeStyles({
   container: {
@@ -175,9 +175,9 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
 
   const handleReanalyze = useCallback(async () => {
     const optimizationLevelMap: Record<string, 'Low' | 'Medium' | 'High'> = {
-      'Conservative': 'Low',
-      'Moderate': 'Medium',
-      'Aggressive': 'High',
+      Conservative: 'Low',
+      Moderate: 'Medium',
+      Aggressive: 'High',
     };
 
     await reanalyzePacing({
@@ -187,10 +187,10 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
   }, [settings, reanalyzePacing]);
 
   const handleAcceptSuggestion = (sceneIndex: number) => {
-    const suggestion = data?.suggestions.find(s => s.sceneIndex === sceneIndex);
+    const suggestion = data?.suggestions.find((s) => s.sceneIndex === sceneIndex);
     if (!suggestion) return;
 
-    setAppliedSuggestions(prev => new Set(prev).add(sceneIndex));
+    setAppliedSuggestions((prev) => new Set(prev).add(sceneIndex));
     setSuccessMessage(`Applied pacing suggestion for Scene ${sceneIndex + 1}`);
 
     // Clear success message after 3 seconds
@@ -205,7 +205,7 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
 
   const handleRejectSuggestion = (sceneIndex: number) => {
     // Just remove from applied if it was applied
-    setAppliedSuggestions(prev => {
+    setAppliedSuggestions((prev) => {
       const next = new Set(prev);
       next.delete(sceneIndex);
       return next;
@@ -216,10 +216,10 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
     if (!data?.suggestions) return;
 
     const highConfidenceSuggestions = data.suggestions.filter(
-      s => s.confidence >= settings.minConfidence
+      (s) => s.confidence >= settings.minConfidence
     );
 
-    const newApplied = new Set(highConfidenceSuggestions.map(s => s.sceneIndex));
+    const newApplied = new Set(highConfidenceSuggestions.map((s) => s.sceneIndex));
     setAppliedSuggestions(newApplied);
     setSuccessMessage(`Applied ${newApplied.size} pacing suggestions`);
 
@@ -243,9 +243,23 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
   };
 
   const getScoreBadge = (score: number) => {
-    if (score >= 80) return <Badge appearance="filled" color="success">Excellent</Badge>;
-    if (score >= 60) return <Badge appearance="filled" color="warning">Good</Badge>;
-    return <Badge appearance="filled" color="danger">Needs Improvement</Badge>;
+    if (score >= 80)
+      return (
+        <Badge appearance="filled" color="success">
+          Excellent
+        </Badge>
+      );
+    if (score >= 60)
+      return (
+        <Badge appearance="filled" color="warning">
+          Good
+        </Badge>
+      );
+    return (
+      <Badge appearance="filled" color="danger">
+        Needs Improvement
+      </Badge>
+    );
   };
 
   return (
@@ -287,13 +301,7 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
               {loading ? 'Analyzing...' : 'Analyze Pacing'}
             </Button>
           )}
-          {onClose && (
-            <Button
-              appearance="subtle"
-              icon={<Dismiss24Regular />}
-              onClick={onClose}
-            />
-          )}
+          {onClose && <Button appearance="subtle" icon={<Dismiss24Regular />} onClick={onClose} />}
         </div>
       </div>
 
@@ -329,9 +337,13 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
       {/* Empty State */}
       {!loading && !data && !error && (
         <Card className={styles.emptyState}>
-          <ChartMultiple24Regular style={{ fontSize: '64px', marginBottom: tokens.spacingVerticalL }} />
+          <ChartMultiple24Regular
+            style={{ fontSize: '64px', marginBottom: tokens.spacingVerticalL }}
+          />
           <Title3>Ready to optimize your video pacing</Title3>
-          <Body1>Click &quot;Analyze Pacing&quot; to get AI-powered suggestions for scene timing</Body1>
+          <Body1>
+            Click &quot;Analyze Pacing&quot; to get AI-powered suggestions for scene timing
+          </Body1>
         </Card>
       )}
 
@@ -368,9 +380,7 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
           </div>
 
           {/* Attention Curve */}
-          {data.attentionCurve && (
-            <AttentionCurveChart data={data.attentionCurve} />
-          )}
+          {data.attentionCurve && <AttentionCurveChart data={data.attentionCurve} />}
 
           {/* Warnings */}
           {data.warnings.length > 0 && (
@@ -387,20 +397,18 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
           {/* Scene Suggestions */}
           {data.suggestions.length > 0 && (
             <div className={styles.suggestionsContainer}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
                 <Title3>Scene-by-Scene Suggestions</Title3>
-                <Button
-                  appearance="primary"
-                  icon={<Checkmark24Regular />}
-                  onClick={handleApplyAll}
-                >
+                <Button appearance="primary" icon={<Checkmark24Regular />} onClick={handleApplyAll}>
                   Apply All High-Confidence
                 </Button>
               </div>
 
               {data.suggestions
-                .filter(s => s.confidence >= settings.minConfidence)
-                .map(suggestion => (
+                .filter((s) => s.confidence >= settings.minConfidence)
+                .map((suggestion) => (
                   <SceneSuggestionCard
                     key={suggestion.sceneIndex}
                     suggestion={suggestion}

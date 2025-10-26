@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { autoSaveService } from '../autoSaveService';
 import { createEmptyProject, ProjectFile } from '../../types/project';
+import { autoSaveService } from '../autoSaveService';
 
 describe('AutoSaveService', () => {
   let mockProject: ProjectFile;
@@ -23,13 +23,13 @@ describe('AutoSaveService', () => {
 
   it('should start and stop auto-save service', () => {
     const callback = vi.fn(() => mockProject);
-    
+
     expect(autoSaveService.isRunning()).toBe(false);
-    
+
     autoSaveService.start(callback);
     expect(autoSaveService.isRunning()).toBe(true);
     expect(callback).toHaveBeenCalled();
-    
+
     autoSaveService.stop();
     expect(autoSaveService.isRunning()).toBe(false);
   });
@@ -40,7 +40,7 @@ describe('AutoSaveService', () => {
     expect(typeof autoSaveService.getLatestVersion).toBe('function');
     expect(typeof autoSaveService.getVersion).toBe('function');
     expect(typeof autoSaveService.getMetadata).toBe('function');
-    
+
     const versions = autoSaveService.getVersions();
     expect(Array.isArray(versions)).toBe(true);
   });
@@ -51,9 +51,9 @@ describe('AutoSaveService', () => {
       project.metadata.lastModifiedAt = new Date().toISOString();
       return project;
     });
-    
+
     autoSaveService.start(callback);
-    
+
     const result = autoSaveService.saveNow();
     expect(typeof result).toBe('boolean');
   });
@@ -61,7 +61,7 @@ describe('AutoSaveService', () => {
   it('should provide API for clearing data', () => {
     expect(typeof autoSaveService.clearAll).toBe('function');
     expect(typeof autoSaveService.hasRecoverableData).toBe('function');
-    
+
     // Should not throw
     autoSaveService.clearAll();
     const hasData = autoSaveService.hasRecoverableData();

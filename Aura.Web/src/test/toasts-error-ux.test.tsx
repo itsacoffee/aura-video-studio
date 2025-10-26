@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { renderHook } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { useNotifications, FailureToastOptions } from '../components/Notifications/Toasts';
 
 // Wrapper for testing with FluentProvider

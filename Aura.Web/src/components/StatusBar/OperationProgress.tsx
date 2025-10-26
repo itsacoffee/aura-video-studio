@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -25,6 +24,7 @@ import {
   Lightbulb24Regular,
   Star24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { Activity, ActivityCategory, ActivityStatus } from '../../state/activityContext';
 
 const useStyles = makeStyles({
@@ -213,8 +213,9 @@ export function OperationProgress({
     }
   };
 
-  const estimatedTimeRemaining = activity.details?.timeRemaining || 
-    (activity.progress > 0 && activity.progress < 100 
+  const estimatedTimeRemaining =
+    activity.details?.timeRemaining ||
+    (activity.progress > 0 && activity.progress < 100
       ? (timeElapsed / activity.progress) * (100 - activity.progress)
       : undefined);
 
@@ -252,21 +253,21 @@ export function OperationProgress({
                 />
               </Tooltip>
             )}
-            {(activity.status === 'running' || activity.status === 'paused') && activity.canCancel && onCancel && (
-              <Tooltip content="Cancel" relationship="label">
-                <Button
-                  appearance="subtle"
-                  size="small"
-                  icon={<DismissCircle24Regular />}
-                  onClick={() => onCancel(activity.id)}
-                />
-              </Tooltip>
-            )}
+            {(activity.status === 'running' || activity.status === 'paused') &&
+              activity.canCancel &&
+              onCancel && (
+                <Tooltip content="Cancel" relationship="label">
+                  <Button
+                    appearance="subtle"
+                    size="small"
+                    icon={<DismissCircle24Regular />}
+                    onClick={() => onCancel(activity.id)}
+                  />
+                </Tooltip>
+              )}
           </div>
         </div>
-        {activity.status === 'running' && (
-          <ProgressBar value={activity.progress / 100} />
-        )}
+        {activity.status === 'running' && <ProgressBar value={activity.progress / 100} />}
       </div>
     );
   }
@@ -300,16 +301,18 @@ export function OperationProgress({
               />
             </Tooltip>
           )}
-          {(activity.status === 'running' || activity.status === 'paused') && activity.canCancel && onCancel && (
-            <Tooltip content="Cancel" relationship="label">
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<DismissCircle24Regular />}
-                onClick={() => onCancel(activity.id)}
-              />
-            </Tooltip>
-          )}
+          {(activity.status === 'running' || activity.status === 'paused') &&
+            activity.canCancel &&
+            onCancel && (
+              <Tooltip content="Cancel" relationship="label">
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<DismissCircle24Regular />}
+                  onClick={() => onCancel(activity.id)}
+                />
+              </Tooltip>
+            )}
           {activity.status === 'failed' && activity.canRetry && onRetry && (
             <Tooltip content="Retry" relationship="label">
               <Button
@@ -364,11 +367,13 @@ export function OperationProgress({
       )}
 
       {activity.error && (
-        <div style={{ 
-          padding: tokens.spacingVerticalS,
-          backgroundColor: tokens.colorPaletteRedBackground1,
-          borderRadius: tokens.borderRadiusSmall,
-        }}>
+        <div
+          style={{
+            padding: tokens.spacingVerticalS,
+            backgroundColor: tokens.colorPaletteRedBackground1,
+            borderRadius: tokens.borderRadiusSmall,
+          }}
+        >
           <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
             {activity.error}
           </Text>
@@ -395,7 +400,8 @@ export function OperationProgress({
             <div className={styles.detailRow}>
               <Text>Data:</Text>
               <Text>
-                {formatBytes(activity.details.bytesProcessed)} / {formatBytes(activity.details.bytesTotal)}
+                {formatBytes(activity.details.bytesProcessed)} /{' '}
+                {formatBytes(activity.details.bytesTotal)}
               </Text>
             </div>
           )}

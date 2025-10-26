@@ -1,12 +1,5 @@
+import { makeStyles, tokens, Text, Slider, Card, Badge } from '@fluentui/react-components';
 import { useState } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Slider,
-  Card,
-  Badge,
-} from '@fluentui/react-components';
 
 const useStyles = makeStyles({
   container: {
@@ -121,7 +114,7 @@ export const EmotionAdjuster: React.FC<EmotionAdjusterProps> = ({
     return 'Strong';
   };
 
-  const selectedEmotionData = emotions.find(e => e.name === selectedEmotion);
+  const selectedEmotionData = emotions.find((e) => e.name === selectedEmotion);
 
   return (
     <div className={styles.container}>
@@ -129,13 +122,11 @@ export const EmotionAdjuster: React.FC<EmotionAdjusterProps> = ({
         <Text weight="semibold" size={400}>
           Select Emotion
         </Text>
-        <Text className={styles.description}>
-          Choose the emotional tone for the voice
-        </Text>
+        <Text className={styles.description}>Choose the emotional tone for the voice</Text>
       </div>
 
       <div className={styles.emotionGrid}>
-        {emotions.map(emo => (
+        {emotions.map((emo) => (
           <Card
             key={emo.name}
             className={`${styles.emotionCard} ${
@@ -162,9 +153,7 @@ export const EmotionAdjuster: React.FC<EmotionAdjusterProps> = ({
         <div className={styles.sliderHeader}>
           <Text className={styles.sliderLabel}>Emotion Intensity</Text>
           <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' }}>
-            <Text className={styles.sliderValue}>
-              {(emotionIntensity * 100).toFixed(0)}%
-            </Text>
+            <Text className={styles.sliderValue}>{(emotionIntensity * 100).toFixed(0)}%</Text>
             <Badge appearance="tint" color="brand">
               {getIntensityLabel(emotionIntensity)}
             </Badge>
@@ -188,9 +177,7 @@ export const EmotionAdjuster: React.FC<EmotionAdjusterProps> = ({
         </Text>
         <ul style={{ marginTop: tokens.spacingVerticalS, paddingLeft: '20px' }}>
           <li>
-            <Text size={200}>
-              Higher intensity creates more expressive and emotional speech
-            </Text>
+            <Text size={200}>Higher intensity creates more expressive and emotional speech</Text>
           </li>
           <li>
             <Text size={200}>
@@ -198,9 +185,7 @@ export const EmotionAdjuster: React.FC<EmotionAdjusterProps> = ({
             </Text>
           </li>
           <li>
-            <Text size={200}>
-              Combine with prosody adjustments for best results
-            </Text>
+            <Text size={200}>Combine with prosody adjustments for best results</Text>
           </li>
         </ul>
       </div>

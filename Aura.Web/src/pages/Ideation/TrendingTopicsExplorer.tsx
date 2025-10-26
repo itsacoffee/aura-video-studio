@@ -1,7 +1,15 @@
+import {
+  makeStyles,
+  tokens,
+  Text,
+  Button,
+  Spinner,
+  Dropdown,
+  Option,
+} from '@fluentui/react-components';
+import { DataTrendingRegular, SearchRegular, ArrowClockwiseRegular } from '@fluentui/react-icons';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { makeStyles, tokens, Text, Button, Spinner, Dropdown, Option } from '@fluentui/react-components';
-import { DataTrendingRegular, SearchRegular, ArrowClockwiseRegular } from '@fluentui/react-icons';
 import { TrendingTopicCard } from '../../components/ideation/TrendingTopicCard';
 import { ideationService, type TrendingTopic } from '../../services/ideationService';
 

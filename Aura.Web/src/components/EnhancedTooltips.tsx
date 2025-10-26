@@ -1,9 +1,4 @@
-import {
-  Tooltip,
-  TooltipProps,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
+import { Tooltip, TooltipProps, makeStyles, tokens } from '@fluentui/react-components';
 import { Keyboard24Regular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({

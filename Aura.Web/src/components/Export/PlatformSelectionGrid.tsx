@@ -1,11 +1,4 @@
-import {
-  makeStyles,
-  tokens,
-  Card,
-  Text,
-  Badge,
-  mergeClasses,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Card, Text, Badge, mergeClasses } from '@fluentui/react-components';
 import { Checkmark24Regular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -145,36 +138,20 @@ export function PlatformSelectionGrid({
         return (
           <Card
             key={platform.id}
-            className={mergeClasses(
-              styles.platformCard,
-              isSelected && styles.selected
-            )}
+            className={mergeClasses(styles.platformCard, isSelected && styles.selected)}
             onClick={() => onPlatformToggle(platform.id)}
           >
-            {isSelected && (
-              <Checkmark24Regular className={styles.checkmark} />
-            )}
+            {isSelected && <Checkmark24Regular className={styles.checkmark} />}
             <div className={styles.cardContent}>
-              <div
-                className={styles.platformIcon}
-                style={{ color: platform.color }}
-              >
+              <div className={styles.platformIcon} style={{ color: platform.color }}>
                 {platform.icon}
               </div>
               <Text className={styles.platformName}>{platform.name}</Text>
               <div className={styles.platformSpecs}>
-                <Badge
-                  size="small"
-                  appearance="outline"
-                  className={styles.specBadge}
-                >
+                <Badge size="small" appearance="outline" className={styles.specBadge}>
                   {platform.recommendedResolution}
                 </Badge>
-                <Badge
-                  size="small"
-                  appearance="outline"
-                  className={styles.specBadge}
-                >
+                <Badge size="small" appearance="outline" className={styles.specBadge}>
                   {platform.aspectRatio}
                 </Badge>
                 {platform.maxDuration && (

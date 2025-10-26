@@ -2,20 +2,9 @@
  * History Panel - Shows recent operations with undo/redo capabilities
  */
 
+import { makeStyles, tokens, Button, Text, Title3, Divider } from '@fluentui/react-components';
+import { History24Regular, ArrowUndo24Regular, ArrowRedo24Regular } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Button,
-  Text,
-  Title3,
-  Divider,
-} from '@fluentui/react-components';
-import {
-  History24Regular,
-  ArrowUndo24Regular,
-  ArrowRedo24Regular,
-} from '@fluentui/react-icons';
 import { CommandHistory } from '../../services/commandHistory';
 
 const useStyles = makeStyles({
@@ -159,7 +148,7 @@ export function HistoryPanel({ commandHistory }: HistoryPanelProps) {
         </div>
       </div>
       <Divider />
-      
+
       {history.length === 0 ? (
         <div className={styles.emptyState}>
           <History24Regular style={{ fontSize: '48px' }} />
@@ -169,15 +158,10 @@ export function HistoryPanel({ commandHistory }: HistoryPanelProps) {
       ) : (
         <div className={styles.historyList}>
           {history.map((item, index) => (
-            <div
-              key={`${item.timestamp.getTime()}-${index}`}
-              className={styles.historyItem}
-            >
+            <div key={`${item.timestamp.getTime()}-${index}`} className={styles.historyItem}>
               <div className={styles.historyItemText}>
                 <Text weight="semibold">{item.description}</Text>
-                <div className={styles.historyItemTime}>
-                  {formatTime(item.timestamp)}
-                </div>
+                <div className={styles.historyItemTime}>{formatTime(item.timestamp)}</div>
               </div>
             </div>
           ))}

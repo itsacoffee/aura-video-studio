@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   Drawer,
   DrawerHeader,
@@ -9,6 +8,7 @@ import {
   makeStyles,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   drawer: {

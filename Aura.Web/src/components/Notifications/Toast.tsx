@@ -80,12 +80,7 @@ export function ToastNotification({
       {(showOpenButton || onOpenFile) && (
         <ToastFooter className={styles.toastFooter}>
           {onOpenFile && (
-            <Button
-              size="small"
-              appearance="primary"
-              icon={<Open24Regular />}
-              onClick={onOpenFile}
-            >
+            <Button size="small" appearance="primary" icon={<Open24Regular />} onClick={onOpenFile}>
               Open File
             </Button>
           )}

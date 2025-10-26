@@ -3,23 +3,16 @@
  * Timeline-based keyframe animation editor
  */
 
-import { useState } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Button,
-  Label,
-  Card,
-  Select,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Button, Label, Card, Select } from '@fluentui/react-components';
 import {
   Add24Regular,
   Delete24Regular,
   Diamond24Regular,
   DiamondFilled,
 } from '@fluentui/react-icons';
-import { Keyframe } from '../../types/effects';
+import { useState } from 'react';
 import { AnimationUtils } from '../../services/animationEngine';
+import { Keyframe } from '../../types/effects';
 
 const useStyles = makeStyles({
   container: {
@@ -271,7 +264,9 @@ export function KeyframeEditor({
               tabIndex={0}
               aria-label={`Select ${prop.label}`}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+              >
                 {prop.keyframes.length > 0 ? (
                   <DiamondFilled fontSize={16} color={tokens.colorBrandForeground1} />
                 ) : (

@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -12,11 +10,9 @@ import {
   Spinner,
   Badge,
 } from '@fluentui/react-components';
-import {
-  MicRegular,
-  SearchRegular,
-  PlayRegular,
-} from '@fluentui/react-icons';
+import { MicRegular, SearchRegular, PlayRegular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({
   container: {
@@ -156,41 +152,41 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
             provider: 'Azure',
             locale: 'en-US',
             gender: 'Female',
-          voiceType: 'Neural',
-          availableStyles: ['cheerful', 'sad', 'angry', 'friendly'],
-          description: 'Natural female voice with emotion support',
-        },
-        {
-          id: 'azure-guy',
-          name: 'Guy',
-          provider: 'Azure',
-          locale: 'en-US',
-          gender: 'Male',
-          voiceType: 'Neural',
-          availableStyles: ['newscast', 'friendly', 'shouting'],
-          description: 'Professional male voice for narration',
-        },
-        {
-          id: 'elevenlabs-rachel',
-          name: 'Rachel',
-          provider: 'ElevenLabs',
-          locale: 'en-US',
-          gender: 'Female',
-          voiceType: 'Neural',
-          description: 'High-quality AI voice with natural inflection',
-        },
-        {
-          id: 'playht-james',
-          name: 'James',
-          provider: 'PlayHT',
-          locale: 'en-GB',
-          gender: 'Male',
-          voiceType: 'Neural',
-          description: 'British English male voice',
-        },
-      ];
+            voiceType: 'Neural',
+            availableStyles: ['cheerful', 'sad', 'angry', 'friendly'],
+            description: 'Natural female voice with emotion support',
+          },
+          {
+            id: 'azure-guy',
+            name: 'Guy',
+            provider: 'Azure',
+            locale: 'en-US',
+            gender: 'Male',
+            voiceType: 'Neural',
+            availableStyles: ['newscast', 'friendly', 'shouting'],
+            description: 'Professional male voice for narration',
+          },
+          {
+            id: 'elevenlabs-rachel',
+            name: 'Rachel',
+            provider: 'ElevenLabs',
+            locale: 'en-US',
+            gender: 'Female',
+            voiceType: 'Neural',
+            description: 'High-quality AI voice with natural inflection',
+          },
+          {
+            id: 'playht-james',
+            name: 'James',
+            provider: 'PlayHT',
+            locale: 'en-GB',
+            gender: 'Male',
+            voiceType: 'Neural',
+            description: 'British English male voice',
+          },
+        ];
 
-      setVoices(mockVoices);
+        setVoices(mockVoices);
       }
     } catch (error) {
       console.error('Failed to load voices:', error);
@@ -205,22 +201,20 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        v =>
-          v.name.toLowerCase().includes(query) ||
-          v.description?.toLowerCase().includes(query)
+        (v) => v.name.toLowerCase().includes(query) || v.description?.toLowerCase().includes(query)
       );
     }
 
     if (providerFilter !== 'all') {
-      filtered = filtered.filter(v => v.provider === providerFilter);
+      filtered = filtered.filter((v) => v.provider === providerFilter);
     }
 
     if (genderFilter !== 'all') {
-      filtered = filtered.filter(v => v.gender === genderFilter);
+      filtered = filtered.filter((v) => v.gender === genderFilter);
     }
 
     if (localeFilter !== 'all') {
-      filtered = filtered.filter(v => v.locale === localeFilter);
+      filtered = filtered.filter((v) => v.locale === localeFilter);
     }
 
     setFilteredVoices(filtered);
@@ -233,7 +227,7 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
       const response = await fetch(`${apiUrl}/api/v1/voices/${voiceId}/sample`, {
         method: 'POST',
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.audioUrl) {
@@ -243,7 +237,9 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
         }
       } else {
         console.warn('Voice sample not available for:', voiceId);
-        alert('Voice sample preview not available. Try selecting the voice to hear it in your video.');
+        alert(
+          'Voice sample preview not available. Try selecting the voice to hear it in your video.'
+        );
       }
     } catch (error) {
       console.error('Error playing voice sample:', error);
@@ -309,7 +305,7 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
         </div>
       ) : (
         <div className={styles.voiceGrid}>
-          {filteredVoices.map(voice => (
+          {filteredVoices.map((voice) => (
             <Card
               key={voice.id}
               className={`${styles.voiceCard} ${
@@ -334,9 +330,7 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
                   </Badge>
                   <Badge appearance="outline">{voice.voiceType}</Badge>
                   {voice.availableStyles && voice.availableStyles.length > 0 && (
-                    <Badge appearance="outline">
-                      {voice.availableStyles.length} styles
-                    </Badge>
+                    <Badge appearance="outline">{voice.availableStyles.length} styles</Badge>
                   )}
                 </div>
               </div>
@@ -345,7 +339,7 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
                 appearance="subtle"
                 size="small"
                 icon={<PlayRegular />}
-                onClick={e => handlePlaySample(voice.id, e)}
+                onClick={(e) => handlePlaySample(voice.id, e)}
               >
                 Play Sample
               </Button>

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
 import { Card, Title3, Body1, Button, makeStyles, tokens } from '@fluentui/react-components';
 import { CheckmarkCircle24Regular, Circle24Regular } from '@fluentui/react-icons';
+import React, { useState, useEffect } from 'react';
+import platformService from '../../services/platform/platformService';
 import type { PlatformProfile, SupportedPlatform } from '../../types/platform';
 import { PLATFORM_ICONS } from '../../types/platform';
-import platformService from '../../services/platform/platformService';
 
 const useStyles = makeStyles({
   container: {

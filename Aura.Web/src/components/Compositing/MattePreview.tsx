@@ -3,16 +3,9 @@
  * Split-view showing original, matte (alpha channel), and composited result
  */
 
-import { useEffect, useRef, useState } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Label,
-  Button,
-  ToggleButton,
-  Card,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Label, Button, ToggleButton, Card } from '@fluentui/react-components';
 import { Grid24Regular, SplitVertical24Regular } from '@fluentui/react-icons';
+import { useEffect, useRef, useState } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -105,20 +98,20 @@ export function MattePreview({
         if (ctx) {
           matteRef.current.width = matteCanvas.width;
           matteRef.current.height = matteCanvas.height;
-          
+
           // Draw matte as grayscale based on alpha channel
           ctx.drawImage(matteCanvas, 0, 0);
           const imageData = ctx.getImageData(0, 0, matteRef.current.width, matteRef.current.height);
           const data = imageData.data;
-          
+
           for (let i = 0; i < data.length; i += 4) {
             const alpha = data[i + 3];
-            data[i] = alpha;     // R
+            data[i] = alpha; // R
             data[i + 1] = alpha; // G
             data[i + 2] = alpha; // B
-            data[i + 3] = 255;   // Full opacity
+            data[i + 3] = 255; // Full opacity
           }
-          
+
           ctx.putImageData(imageData, 0, 0);
         }
       }
@@ -129,10 +122,10 @@ export function MattePreview({
         if (ctx) {
           compositeRef.current.width = compositeCanvas.width;
           compositeRef.current.height = compositeCanvas.height;
-          
+
           // Draw background first
           ctx.drawImage(backgroundCanvas, 0, 0);
-          
+
           // Then draw keyed foreground on top
           ctx.drawImage(compositeCanvas, 0, 0);
         }
@@ -168,9 +161,14 @@ export function MattePreview({
           if (displayMode === 'matte') {
             // Visualize alpha channel
             ctx.drawImage(targetCanvas, 0, 0);
-            const imageData = ctx.getImageData(0, 0, targetRef.current.width, targetRef.current.height);
+            const imageData = ctx.getImageData(
+              0,
+              0,
+              targetRef.current.width,
+              targetRef.current.height
+            );
             const data = imageData.data;
-            
+
             for (let i = 0; i < data.length; i += 4) {
               const alpha = data[i + 3];
               data[i] = alpha;
@@ -178,7 +176,7 @@ export function MattePreview({
               data[i + 2] = alpha;
               data[i + 3] = 255;
             }
-            
+
             ctx.putImageData(imageData, 0, 0);
           } else if (displayMode === 'composite' && backgroundCanvas) {
             // Composite with background
@@ -263,11 +261,21 @@ export function MattePreview({
         ) : (
           <div className={styles.previewItem}>
             <canvas
-              ref={displayMode === 'original' ? originalRef : displayMode === 'matte' ? matteRef : compositeRef}
+              ref={
+                displayMode === 'original'
+                  ? originalRef
+                  : displayMode === 'matte'
+                    ? matteRef
+                    : compositeRef
+              }
               className={styles.canvas}
             />
             <Label className={styles.label}>
-              {displayMode === 'original' ? 'Original' : displayMode === 'matte' ? 'Matte' : 'Composite'}
+              {displayMode === 'original'
+                ? 'Original'
+                : displayMode === 'matte'
+                  ? 'Matte'
+                  : 'Composite'}
             </Label>
           </div>
         )}

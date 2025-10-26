@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -18,6 +17,7 @@ import {
   ArrowDownload24Regular,
   Settings24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -138,9 +138,7 @@ export function DependencyCheck({
 
   useEffect(() => {
     // Auto-expand first missing required dependency
-    const firstMissing = dependencies.find(
-      (dep) => dep.required && dep.status === 'missing'
-    );
+    const firstMissing = dependencies.find((dep) => dep.required && dep.status === 'missing');
     if (firstMissing && !expandedId) {
       setExpandedId(firstMissing.id);
     }
@@ -219,8 +217,8 @@ export function DependencyCheck({
       <div className={styles.header}>
         <Title2>Dependency Validation</Title2>
         <Text>
-          Checking for required components to ensure the best experience. We&apos;ll help you install
-          anything that&apos;s missing.
+          Checking for required components to ensure the best experience. We&apos;ll help you
+          install anything that&apos;s missing.
         </Text>
       </div>
 
@@ -229,7 +227,9 @@ export function DependencyCheck({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Title3>
-              {allRequiredInstalled ? '✓ All Required Dependencies Installed' : 'Dependencies Status'}
+              {allRequiredInstalled
+                ? '✓ All Required Dependencies Installed'
+                : 'Dependencies Status'}
             </Title3>
             <Text size={300} style={{ marginTop: tokens.spacingVerticalXS }}>
               {installedCount} of {dependencies.length} components installed
@@ -274,9 +274,7 @@ export function DependencyCheck({
                   </Text>
                 </div>
               </div>
-              <div className={styles.actionsContainer}>
-                {getStatusBadge(dep)}
-              </div>
+              <div className={styles.actionsContainer}>{getStatusBadge(dep)}</div>
             </div>
 
             {/* Installation Progress */}
@@ -312,7 +310,9 @@ export function DependencyCheck({
                     <Text weight="semibold" style={{ marginBottom: tokens.spacingVerticalS }}>
                       Installation Options:
                     </Text>
-                    <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' }}>
+                    <div
+                      style={{ display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' }}
+                    >
                       {dep.canAutoInstall && (
                         <Button
                           appearance="primary"

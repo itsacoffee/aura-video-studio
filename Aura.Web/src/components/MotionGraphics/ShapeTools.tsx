@@ -3,7 +3,6 @@
  * Drawing tools for creating vector shapes on canvas
  */
 
-import { useState, useRef, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -21,6 +20,7 @@ import {
   Checkmark24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
+import { useState, useRef, useEffect } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -434,18 +434,10 @@ export function ShapeTools({
             <>
               <Divider />
               <div className={styles.actions}>
-                <Button
-                  appearance="secondary"
-                  icon={<Dismiss24Regular />}
-                  onClick={handleCancel}
-                >
+                <Button appearance="secondary" icon={<Dismiss24Regular />} onClick={handleCancel}>
                   Cancel
                 </Button>
-                <Button
-                  appearance="primary"
-                  icon={<Checkmark24Regular />}
-                  onClick={handleConfirm}
-                >
+                <Button appearance="primary" icon={<Checkmark24Regular />} onClick={handleConfirm}>
                   Create Shape
                 </Button>
               </div>

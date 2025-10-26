@@ -3,10 +3,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import {
-  hexToRgb,
-  colorDistance,
-} from '../chromaKeyService';
+import { hexToRgb, colorDistance } from '../chromaKeyService';
 
 // Mock ImageData for tests
 beforeAll(() => {

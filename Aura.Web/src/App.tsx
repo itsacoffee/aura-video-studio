@@ -1,59 +1,60 @@
+import { FluentProvider, webLightTheme, webDarkTheme, Spinner } from '@fluentui/react-components';
 import { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react';
-import {
-  FluentProvider,
-  webLightTheme,
-  webDarkTheme,
-  Spinner,
-} from '@fluentui/react-components';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { CommandPalette } from './components/CommandPalette';
+import { ContentPlanningDashboard } from './components/contentPlanning/ContentPlanningDashboard';
+import { QualityDashboard } from './components/dashboard';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { GlobalStatusFooter } from './components/GlobalStatusFooter';
+import { JobProgressDrawer } from './components/JobProgressDrawer';
+import { KeyboardShortcutsPanel } from './components/KeyboardShortcuts/KeyboardShortcutsPanel';
+import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { Layout } from './components/Layout';
-import { WelcomePage } from './pages/WelcomePage';
-import { DashboardPage } from './pages/DashboardPage';
+import { NotificationsToaster } from './components/Notifications/Toasts';
+import { PlatformDashboard } from './components/Platform';
+import { JobStatusBar } from './components/StatusBar/JobStatusBar';
+import { env } from './config/env';
+import { AssetLibrary } from './pages/Assets/AssetLibrary';
 import { CreatePage } from './pages/CreatePage';
-import { CreateWizard } from './pages/Wizard/CreateWizard';
-import { TimelinePage } from './pages/TimelinePage';
-import { TimelineEditor } from './pages/Editor/TimelineEditor';
-import { RenderPage } from './pages/RenderPage';
-import { PublishPage } from './pages/PublishPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { DownloadsPage } from './pages/DownloadsPage';
+import { TimelineEditor } from './pages/Editor/TimelineEditor';
+import { PublishPage } from './pages/PublishPage';
+import { RenderPage } from './pages/RenderPage';
+import { TimelinePage } from './pages/TimelinePage';
+import { WelcomePage } from './pages/WelcomePage';
+import { CreateWizard } from './pages/Wizard/CreateWizard';
 import { SettingsPage } from './pages/SettingsPage';
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { SetupWizard } from './pages/Setup/SetupWizard';
 import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard';
-import { AssetLibrary } from './pages/Assets/AssetLibrary';
-import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
-import { KeyboardShortcutsPanel } from './components/KeyboardShortcuts/KeyboardShortcutsPanel';
-import { CommandPalette } from './components/CommandPalette';
+import { errorReportingService } from './services/errorReportingService';
+import { hasCompletedFirstRun, migrateLegacyFirstRunStatus } from './services/firstRunService';
+import { healthMonitorService } from './services/healthMonitorService';
 import { keyboardShortcutManager } from './services/keyboardShortcutManager';
-import { NotificationsToaster } from './components/Notifications/Toasts';
-import { JobStatusBar } from './components/StatusBar/JobStatusBar';
-import { JobProgressDrawer } from './components/JobProgressDrawer';
+import { loggingService } from './services/loggingService';
+import { ActivityProvider } from './state/activityContext';
 import { useJobState } from './state/jobState';
 import { IdeationDashboard } from './pages/Ideation/IdeationDashboard';
 import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer';
-import { PlatformDashboard } from './components/Platform';
-import { QualityDashboard } from './components/dashboard';
-import { ContentPlanningDashboard } from './components/contentPlanning/ContentPlanningDashboard';
 import { VideoEditorPage } from './pages/VideoEditorPage';
 import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
 import { ExportHistoryPage } from './pages/Export/ExportHistoryPage';
 import TemplatesLibrary from './pages/Templates/TemplatesLibrary';
-import { hasCompletedFirstRun, migrateLegacyFirstRunStatus } from './services/firstRunService';
-import { ActivityProvider } from './state/activityContext';
-import { GlobalStatusFooter } from './components/GlobalStatusFooter';
 import { NotFoundPage } from './pages/NotFoundPage';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { loggingService } from './services/loggingService';
-import { healthMonitorService } from './services/healthMonitorService';
-import { errorReportingService } from './services/errorReportingService';
-import { env } from './config/env';
 
 // Lazy load development-only features to reduce production bundle size
-const LogViewerPage = lazy(() => import('./pages/LogViewerPage').then(m => ({ default: m.LogViewerPage })));
-const ActivityDemoPage = lazy(() => import('./pages/ActivityDemoPage').then(m => ({ default: m.ActivityDemoPage })));
-const LayoutDemoPage = lazy(() => import('./pages/LayoutDemoPage').then(m => ({ default: m.LayoutDemoPage })));
+const LogViewerPage = lazy(() =>
+  import('./pages/LogViewerPage').then((m) => ({ default: m.LogViewerPage }))
+);
+const ActivityDemoPage = lazy(() =>
+  import('./pages/ActivityDemoPage').then((m) => ({ default: m.ActivityDemoPage }))
+);
+const LayoutDemoPage = lazy(() =>
+  import('./pages/LayoutDemoPage').then((m) => ({ default: m.LayoutDemoPage }))
+);
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -79,7 +80,7 @@ function App() {
     // Default to dark mode for first-run users (creative app standard)
     return true;
   });
-  
+
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -119,32 +120,20 @@ function App() {
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
       event.preventDefault(); // Prevent default browser error handling
-      loggingService.error(
-        'Uncaught error',
-        event.error,
-        'window',
-        'error',
-        {
-          message: event.message,
-          filename: event.filename,
-          lineno: event.lineno,
-          colno: event.colno,
-        }
-      );
+      loggingService.error('Uncaught error', event.error, 'window', 'error', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+      });
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       event.preventDefault(); // Prevent default browser error handling
       const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
-      loggingService.error(
-        'Unhandled promise rejection',
-        error,
-        'window',
-        'unhandledrejection',
-        {
-          reason: event.reason,
-        }
-      );
+      loggingService.error('Unhandled promise rejection', error, 'window', 'unhandledrejection', {
+        reason: event.reason,
+      });
     };
 
     window.addEventListener('error', handleError);
@@ -159,16 +148,12 @@ function App() {
   // Start health monitoring on app mount
   useEffect(() => {
     healthMonitorService.start();
-    
+
     // Add listener for health warnings
     const handleHealthWarning = (warning: any) => {
-      errorReportingService.warning(
-        warning.message,
-        warning.suggestion,
-        { duration: 10000 }
-      );
+      errorReportingService.warning(warning.message, warning.suggestion, { duration: 10000 });
     };
-    
+
     healthMonitorService.addWarningListener(handleHealthWarning);
 
     return () => {
@@ -248,12 +233,12 @@ function App() {
     const pollInterval = setInterval(async () => {
       // Skip if component unmounted or job completed
       if (!isActive) return;
-      
+
       try {
         const response = await fetch(`/api/jobs/${currentJobId}/progress`);
         if (response.ok && isActive) {
           const data = await response.json();
-          
+
           // Update progress only if still active
           if (isActive) {
             useJobState.getState().updateProgress(data.progress, data.currentStage);
@@ -333,7 +318,7 @@ function App() {
       // This is a simple check - in a real implementation, you'd want to check the actual state
       const currentPath = window.location.pathname;
       const isEditorPage = currentPath === '/editor' || currentPath === '/timeline';
-      
+
       if (isEditorPage) {
         // Check localStorage for unsaved project data
         const autosaveData = localStorage.getItem('aura-project-autosave');
@@ -357,7 +342,14 @@ function App() {
     return (
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
         <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
-          <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div
+            style={{
+              height: '100vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <Spinner size="large" label="Loading..." />
           </div>
         </FluentProvider>
@@ -383,13 +375,19 @@ function App() {
                   <Routes>
                     {/* First-run onboarding route - highest priority */}
                     <Route path="/onboarding" element={<FirstRunWizard />} />
-                    
+
                     {/* Redirect to onboarding if first run */}
-                    <Route 
-                      path="/" 
-                      element={shouldShowOnboarding ? <Navigate to="/onboarding" replace /> : <WelcomePage />} 
+                    <Route
+                      path="/"
+                      element={
+                        shouldShowOnboarding ? (
+                          <Navigate to="/onboarding" replace />
+                        ) : (
+                          <WelcomePage />
+                        )
+                      }
                     />
-                    
+
                     {/* All other routes */}
                     <Route path="/setup" element={<SetupWizard />} />
                     <Route path="/dashboard" element={<DashboardPage />} />
@@ -416,29 +414,29 @@ function App() {
                     {/* Development-only routes - lazy loaded */}
                     {env.enableDevTools && (
                       <>
-                        <Route 
-                          path="/logs" 
+                        <Route
+                          path="/logs"
                           element={
                             <Suspense fallback={<Spinner label="Loading..." />}>
                               <LogViewerPage />
                             </Suspense>
-                          } 
+                          }
                         />
-                        <Route 
-                          path="/activity-demo" 
+                        <Route
+                          path="/activity-demo"
                           element={
                             <Suspense fallback={<Spinner label="Loading..." />}>
                               <ActivityDemoPage />
                             </Suspense>
-                          } 
+                          }
                         />
-                        <Route 
-                          path="/layout-demo" 
+                        <Route
+                          path="/layout-demo"
                           element={
                             <Suspense fallback={<Spinner label="Loading..." />}>
                               <LayoutDemoPage />
                             </Suspense>
-                          } 
+                          }
                         />
                       </>
                     )}
@@ -447,11 +445,20 @@ function App() {
                   </Routes>
                 </ErrorBoundary>
               </Layout>
-              
+
               {/* These components need to be inside BrowserRouter for navigation hooks */}
-              <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
-              <KeyboardShortcutsPanel isOpen={showShortcutsPanel} onClose={() => setShowShortcutsPanel(false)} />
-              <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+              <KeyboardShortcutsModal
+                isOpen={showShortcuts}
+                onClose={() => setShowShortcuts(false)}
+              />
+              <KeyboardShortcutsPanel
+                isOpen={showShortcutsPanel}
+                onClose={() => setShowShortcutsPanel(false)}
+              />
+              <CommandPalette
+                isOpen={showCommandPalette}
+                onClose={() => setShowCommandPalette(false)}
+              />
               <NotificationsToaster toasterId={toasterId} />
 
               {/* Job progress drawer */}

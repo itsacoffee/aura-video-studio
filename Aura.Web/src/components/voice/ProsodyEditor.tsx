@@ -1,13 +1,6 @@
-import { useState, useEffect } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Slider,
-  Button,
-  Card,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Slider, Button, Card } from '@fluentui/react-components';
 import { ArrowResetRegular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -142,14 +135,9 @@ const presets = [
   },
 ];
 
-export const ProsodyEditor: React.FC<ProsodyEditorProps> = ({
-  prosody,
-  onChange,
-}) => {
+export const ProsodyEditor: React.FC<ProsodyEditorProps> = ({ prosody, onChange }) => {
   const styles = useStyles();
-  const [settings, setSettings] = useState<ProsodySettings>(
-    prosody || defaultProsody
-  );
+  const [settings, setSettings] = useState<ProsodySettings>(prosody || defaultProsody);
 
   useEffect(() => {
     if (prosody) {
@@ -168,7 +156,7 @@ export const ProsodyEditor: React.FC<ProsodyEditorProps> = ({
     onChange(defaultProsody);
   };
 
-  const handlePresetSelect = (preset: typeof presets[0]) => {
+  const handlePresetSelect = (preset: (typeof presets)[0]) => {
     setSettings(preset.settings);
     onChange(preset.settings);
   };
@@ -194,7 +182,7 @@ export const ProsodyEditor: React.FC<ProsodyEditorProps> = ({
       <div className={styles.section}>
         <Text className={styles.sectionTitle}>Presets</Text>
         <div className={styles.presetsGrid}>
-          {presets.map(preset => (
+          {presets.map((preset) => (
             <Card
               key={preset.name}
               className={styles.presetCard}
@@ -215,9 +203,7 @@ export const ProsodyEditor: React.FC<ProsodyEditorProps> = ({
           <div className={styles.sliderRow}>
             <div className={styles.sliderHeader}>
               <Text className={styles.sliderLabel}>Pitch</Text>
-              <Text className={styles.sliderValue}>
-                {formatPitch(settings.pitchShift)}
-              </Text>
+              <Text className={styles.sliderValue}>{formatPitch(settings.pitchShift)}</Text>
             </div>
             <Slider
               min={-12}
@@ -226,17 +212,13 @@ export const ProsodyEditor: React.FC<ProsodyEditorProps> = ({
               value={settings.pitchShift}
               onChange={(_, data) => handleChange('pitchShift', data.value)}
             />
-            <Text className={styles.description}>
-              Adjust voice pitch up or down
-            </Text>
+            <Text className={styles.description}>Adjust voice pitch up or down</Text>
           </div>
 
           <div className={styles.sliderRow}>
             <div className={styles.sliderHeader}>
               <Text className={styles.sliderLabel}>Speaking Rate</Text>
-              <Text className={styles.sliderValue}>
-                {formatRate(settings.rateMultiplier)}
-              </Text>
+              <Text className={styles.sliderValue}>{formatRate(settings.rateMultiplier)}</Text>
             </div>
             <Slider
               min={0.5}
@@ -245,17 +227,13 @@ export const ProsodyEditor: React.FC<ProsodyEditorProps> = ({
               value={settings.rateMultiplier}
               onChange={(_, data) => handleChange('rateMultiplier', data.value)}
             />
-            <Text className={styles.description}>
-              Adjust speech speed (50% to 200%)
-            </Text>
+            <Text className={styles.description}>Adjust speech speed (50% to 200%)</Text>
           </div>
 
           <div className={styles.sliderRow}>
             <div className={styles.sliderHeader}>
               <Text className={styles.sliderLabel}>Emphasis</Text>
-              <Text className={styles.sliderValue}>
-                {formatEmphasis(settings.emphasisLevel)}
-              </Text>
+              <Text className={styles.sliderValue}>{formatEmphasis(settings.emphasisLevel)}</Text>
             </div>
             <Slider
               min={0}
@@ -264,17 +242,13 @@ export const ProsodyEditor: React.FC<ProsodyEditorProps> = ({
               value={settings.emphasisLevel}
               onChange={(_, data) => handleChange('emphasisLevel', data.value)}
             />
-            <Text className={styles.description}>
-              Adjust speech emphasis and energy
-            </Text>
+            <Text className={styles.description}>Adjust speech emphasis and energy</Text>
           </div>
 
           <div className={styles.sliderRow}>
             <div className={styles.sliderHeader}>
               <Text className={styles.sliderLabel}>Volume</Text>
-              <Text className={styles.sliderValue}>
-                {formatVolume(settings.volumeAdjustment)}
-              </Text>
+              <Text className={styles.sliderValue}>{formatVolume(settings.volumeAdjustment)}</Text>
             </div>
             <Slider
               min={-20}
@@ -283,9 +257,7 @@ export const ProsodyEditor: React.FC<ProsodyEditorProps> = ({
               value={settings.volumeAdjustment}
               onChange={(_, data) => handleChange('volumeAdjustment', data.value)}
             />
-            <Text className={styles.description}>
-              Adjust overall volume level
-            </Text>
+            <Text className={styles.description}>Adjust overall volume level</Text>
           </div>
 
           <div className={styles.sliderRow}>
@@ -300,23 +272,15 @@ export const ProsodyEditor: React.FC<ProsodyEditorProps> = ({
               max={2.0}
               step={0.1}
               value={settings.pauseDurationMultiplier}
-              onChange={(_, data) =>
-                handleChange('pauseDurationMultiplier', data.value)
-              }
+              onChange={(_, data) => handleChange('pauseDurationMultiplier', data.value)}
             />
-            <Text className={styles.description}>
-              Adjust duration of pauses between sentences
-            </Text>
+            <Text className={styles.description}>Adjust duration of pauses between sentences</Text>
           </div>
         </div>
       </div>
 
       <div className={styles.controls}>
-        <Button
-          appearance="subtle"
-          icon={<ArrowResetRegular />}
-          onClick={handleReset}
-        >
+        <Button appearance="subtle" icon={<ArrowResetRegular />} onClick={handleReset}>
           Reset to Default
         </Button>
       </div>

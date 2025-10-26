@@ -28,7 +28,7 @@ describe('FrameCache', () => {
   it('should track cache misses', () => {
     const frame = cache.getFrame(1.0);
     expect(frame).toBe(null);
-    
+
     const stats = cache.getStats();
     expect(stats.missCount).toBe(1);
     expect(stats.hitCount).toBe(0);

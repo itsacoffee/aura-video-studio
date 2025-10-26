@@ -95,7 +95,9 @@ export const validators = {
         (val) => {
           try {
             const url = new URL(val);
-            return url.hostname && (url.port || url.protocol === 'http:' || url.protocol === 'https:');
+            return (
+              url.hostname && (url.port || url.protocol === 'http:' || url.protocol === 'https:')
+            );
           } catch {
             return false;
           }
@@ -109,8 +111,7 @@ export const validators = {
       .min(minSeconds / 60, message || `Duration must be at least ${minSeconds} seconds`)
       .max(maxMinutes, message || `Duration must be no more than ${maxMinutes} minutes`),
 
-  nonEmptyArray: (message = 'At least one item is required') =>
-    z.array(z.any()).min(1, message),
+  nonEmptyArray: (message = 'At least one item is required') => z.array(z.any()).min(1, message),
 
   hexColor: (message = 'Invalid hex color') =>
     z.string().regex(/^[0-9A-Fa-f]{6}$/, message || 'Must be a 6-digit hex color (e.g., FF0000)'),
@@ -214,9 +215,7 @@ export function validateBriefRequest(request: {
     return { valid: true, errors: [] };
   }
 
-  const errors = result.error.errors.map(
-    (err) => `${err.path.join('.')}: ${err.message}`
-  );
+  const errors = result.error.errors.map((err) => `${err.path.join('.')}: ${err.message}`);
 
   return { valid: false, errors };
 }
@@ -225,7 +224,10 @@ export function validateBriefRequest(request: {
  * Video creation form validation schema
  */
 export const createVideoSchema = z.object({
-  topic: z.string().min(3, 'Topic must be at least 3 characters').max(100, 'Topic must be no more than 100 characters'),
+  topic: z
+    .string()
+    .min(3, 'Topic must be at least 3 characters')
+    .max(100, 'Topic must be no more than 100 characters'),
   audience: z.string().optional(),
   goal: z.string().optional(),
   tone: z.string().optional(),
@@ -241,44 +243,60 @@ export const createVideoSchema = z.object({
  * API Keys validation schema
  */
 export const apiKeysSchema = z.object({
-  openai: z.string().optional().refine(
-    (val) => !val || val.length === 0 || (val.startsWith('sk-') && val.length > 20),
-    { message: 'OpenAI API key must start with "sk-" and be at least 20 characters' }
-  ),
-  elevenlabs: z.string().optional().refine(
-    (val) => !val || val.length === 0 || val.length >= 32,
-    { message: 'ElevenLabs API key must be at least 32 characters' }
-  ),
-  pexels: z.string().optional().refine(
-    (val) => !val || val.length === 0 || val.length >= 20,
-    { message: 'Pexels API key must be at least 20 characters' }
-  ),
-  pixabay: z.string().optional().refine(
-    (val) => !val || val.length === 0 || val.length >= 15,
-    { message: 'Pixabay API key must be at least 15 characters' }
-  ),
-  unsplash: z.string().optional().refine(
-    (val) => !val || val.length === 0 || val.length >= 30,
-    { message: 'Unsplash API key must be at least 30 characters' }
-  ),
-  stabilityai: z.string().optional().refine(
-    (val) => !val || val.length === 0 || (val.startsWith('sk-') && val.length > 20),
-    { message: 'Stability AI API key must start with "sk-" and be at least 20 characters' }
-  ),
+  openai: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length === 0 || (val.startsWith('sk-') && val.length > 20), {
+      message: 'OpenAI API key must start with "sk-" and be at least 20 characters',
+    }),
+  elevenlabs: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length === 0 || val.length >= 32, {
+      message: 'ElevenLabs API key must be at least 32 characters',
+    }),
+  pexels: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length === 0 || val.length >= 20, {
+      message: 'Pexels API key must be at least 20 characters',
+    }),
+  pixabay: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length === 0 || val.length >= 15, {
+      message: 'Pixabay API key must be at least 15 characters',
+    }),
+  unsplash: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length === 0 || val.length >= 30, {
+      message: 'Unsplash API key must be at least 30 characters',
+    }),
+  stabilityai: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length === 0 || (val.startsWith('sk-') && val.length > 20), {
+      message: 'Stability AI API key must start with "sk-" and be at least 20 characters',
+    }),
 });
 
 /**
  * Provider paths validation schema
  */
 export const providerPathsSchema = z.object({
-  stableDiffusionUrl: z.string().optional().refine(
-    (val) => !val || val.length === 0 || /^https?:\/\/.+:\d+/.test(val),
-    { message: 'Must be a valid URL with protocol and port (e.g., http://127.0.0.1:7860)' }
-  ),
-  ollamaUrl: z.string().optional().refine(
-    (val) => !val || val.length === 0 || /^https?:\/\/.+:\d+/.test(val),
-    { message: 'Must be a valid URL with protocol and port (e.g., http://127.0.0.1:11434)' }
-  ),
+  stableDiffusionUrl: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length === 0 || /^https?:\/\/.+:\d+/.test(val), {
+      message: 'Must be a valid URL with protocol and port (e.g., http://127.0.0.1:7860)',
+    }),
+  ollamaUrl: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length === 0 || /^https?:\/\/.+:\d+/.test(val), {
+      message: 'Must be a valid URL with protocol and port (e.g., http://127.0.0.1:11434)',
+    }),
   ffmpegPath: z.string().optional(),
   ffprobePath: z.string().optional(),
   outputDirectory: z.string().optional(),

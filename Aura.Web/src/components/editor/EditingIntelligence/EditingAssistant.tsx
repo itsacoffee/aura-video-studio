@@ -3,7 +3,6 @@
  * Main AI editing intelligence panel for timeline optimization
  */
 
-import React, { useState, useCallback } from 'react';
 import {
   Button,
   Card,
@@ -30,15 +29,16 @@ import {
   Shield24Regular,
   Sparkle24Regular,
 } from '@fluentui/react-icons';
+import React, { useState, useCallback } from 'react';
 import {
   analyzeTimeline,
   TimelineAnalysisResult,
 } from '../../../services/editingIntelligenceService';
 import { CutPointPanel } from './CutPointPanel';
-import { PacingPanel } from './PacingPanel';
-import { TransitionPanel } from './TransitionPanel';
 import { EngagementPanel } from './EngagementPanel';
+import { PacingPanel } from './PacingPanel';
 import { QualityPanel } from './QualityPanel';
+import { TransitionPanel } from './TransitionPanel';
 
 interface EditingAssistantProps {
   jobId: string;

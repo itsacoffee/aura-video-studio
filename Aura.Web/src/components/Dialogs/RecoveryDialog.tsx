@@ -3,7 +3,6 @@
  * Provides recovery flows for common failures
  */
 
-import { useState } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -24,6 +23,7 @@ import {
   Folder24Regular,
   DocumentSave24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { autoSaveService } from '../../services/autoSaveService';
 import { loggingService } from '../../services/loggingService';
 
@@ -80,7 +80,11 @@ const useStyles = makeStyles({
   },
 });
 
-export type RecoveryType = 'missing-media' | 'corrupted-project' | 'out-of-memory' | 'auto-save-recovery';
+export type RecoveryType =
+  | 'missing-media'
+  | 'corrupted-project'
+  | 'out-of-memory'
+  | 'auto-save-recovery';
 
 export interface RecoveryDialogProps {
   open: boolean;
@@ -152,10 +156,10 @@ export function RecoveryDialog({ open, onOpenChange, type, onRecover }: Recovery
   const handleReduceQuality = async () => {
     setIsRecovering(true);
     loggingService.info('User reducing preview quality', 'RecoveryDialog', 'reduceQuality');
-    
+
     // Simulate quality reduction
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     if (onRecover) {
       onRecover({ action: 'reduce-quality' });
     }
@@ -165,16 +169,20 @@ export function RecoveryDialog({ open, onOpenChange, type, onRecover }: Recovery
 
   const handleRestoreVersion = async () => {
     if (selectedVersion === null) return;
-    
+
     setIsRecovering(true);
-    loggingService.info(`User restoring version ${selectedVersion}`, 'RecoveryDialog', 'restoreVersion');
-    
+    loggingService.info(
+      `User restoring version ${selectedVersion}`,
+      'RecoveryDialog',
+      'restoreVersion'
+    );
+
     const version = autoSaveService.getVersion(selectedVersion);
     if (version && onRecover) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       onRecover({ action: 'restore', version: version.projectState });
     }
-    
+
     setIsRecovering(false);
     onOpenChange(false);
   };
@@ -203,7 +211,11 @@ export function RecoveryDialog({ open, onOpenChange, type, onRecover }: Recovery
             <Button appearance="secondary" onClick={handleContinueWithout} disabled={isRecovering}>
               Continue Without Files
             </Button>
-            <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={isRecovering}>
+            <Button
+              appearance="secondary"
+              onClick={() => onOpenChange(false)}
+              disabled={isRecovering}
+            >
               Cancel
             </Button>
           </>
@@ -224,7 +236,11 @@ export function RecoveryDialog({ open, onOpenChange, type, onRecover }: Recovery
             <Button appearance="secondary" onClick={handleContinueWithout} disabled={isRecovering}>
               Discard Changes
             </Button>
-            <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={isRecovering}>
+            <Button
+              appearance="secondary"
+              onClick={() => onOpenChange(false)}
+              disabled={isRecovering}
+            >
               Cancel
             </Button>
           </>
@@ -244,7 +260,11 @@ export function RecoveryDialog({ open, onOpenChange, type, onRecover }: Recovery
             <Button appearance="secondary" onClick={() => window.location.reload()}>
               Reload Page
             </Button>
-            <Button appearance="secondary" onClick={() => onOpenChange(false)} disabled={isRecovering}>
+            <Button
+              appearance="secondary"
+              onClick={() => onOpenChange(false)}
+              disabled={isRecovering}
+            >
               Cancel
             </Button>
           </>
@@ -272,33 +292,32 @@ export function RecoveryDialog({ open, onOpenChange, type, onRecover }: Recovery
               </div>
             </div>
 
-            {(type === 'corrupted-project' || type === 'auto-save-recovery') && versions.length > 0 && (
-              <div>
-                <Text weight="semibold" style={{ marginBottom: '0.5rem', display: 'block' }}>
-                  Available Versions:
-                </Text>
-                <div className={styles.versionList}>
-                  {versions.map((version) => (
-                    <div
-                      key={version.version}
-                      className={`${styles.versionItem} ${
-                        selectedVersion === version.version ? styles.versionItemSelected : ''
-                      }`}
-                      onClick={() => setSelectedVersion(version.version)}
-                    >
-                      <Text weight="semibold">Version {version.version}</Text>
-                      <Caption1>
-                        Saved: {new Date(version.timestamp).toLocaleString()}
-                      </Caption1>
-                      <Caption1>
-                        Clips: {version.projectState.clips.length} | Tracks:{' '}
-                        {version.projectState.tracks.length}
-                      </Caption1>
-                    </div>
-                  ))}
+            {(type === 'corrupted-project' || type === 'auto-save-recovery') &&
+              versions.length > 0 && (
+                <div>
+                  <Text weight="semibold" style={{ marginBottom: '0.5rem', display: 'block' }}>
+                    Available Versions:
+                  </Text>
+                  <div className={styles.versionList}>
+                    {versions.map((version) => (
+                      <div
+                        key={version.version}
+                        className={`${styles.versionItem} ${
+                          selectedVersion === version.version ? styles.versionItemSelected : ''
+                        }`}
+                        onClick={() => setSelectedVersion(version.version)}
+                      >
+                        <Text weight="semibold">Version {version.version}</Text>
+                        <Caption1>Saved: {new Date(version.timestamp).toLocaleString()}</Caption1>
+                        <Caption1>
+                          Clips: {version.projectState.clips.length} | Tracks:{' '}
+                          {version.projectState.tracks.length}
+                        </Caption1>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </DialogContent>
           <DialogActions className={styles.actions}>{renderActions()}</DialogActions>
         </DialogBody>

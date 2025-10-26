@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -26,10 +24,12 @@ import {
   CheckmarkCircle24Filled,
   ErrorCircle24Filled,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { EnginesTab } from '../components/Engines/EnginesTab';
-import { RescanPanel } from './DownloadCenter/RescanPanel';
 import { TroubleshootingPanel } from '../components/Engines/TroubleshootingPanel';
 import { useNotifications } from '../components/Notifications/Toasts';
+import { apiUrl } from '../config/api';
+import { RescanPanel } from './DownloadCenter/RescanPanel';
 
 interface DependencyComponent {
   name: string;
@@ -120,7 +120,10 @@ export function DownloadsPage() {
   };
 
   // Helper function to extract error message from response
-  const extractErrorMessage = async (response: Response, defaultMessage: string): Promise<string> => {
+  const extractErrorMessage = async (
+    response: Response,
+    defaultMessage: string
+  ): Promise<string> => {
     try {
       const errorData = await response.json();
       return errorData.message || errorData.error || defaultMessage;
@@ -154,7 +157,8 @@ export function DownloadsPage() {
           console.error('Invalid response format (expected JSON):', text.substring(0, 200));
           showFailureToast({
             title: 'Failed to Load Manifest',
-            message: 'Server returned invalid response format. The API may not be configured correctly.',
+            message:
+              'Server returned invalid response format. The API may not be configured correctly.',
           });
         }
       } else {
@@ -168,7 +172,8 @@ export function DownloadsPage() {
       if (error instanceof Error && error.message.includes('JSON')) {
         showFailureToast({
           title: 'Failed to Parse Response',
-          message: 'Unable to parse server response. The server may have returned HTML instead of JSON.',
+          message:
+            'Unable to parse server response. The server may have returned HTML instead of JSON.',
         });
       } else {
         showFailureToast({
@@ -247,12 +252,12 @@ export function DownloadsPage() {
         await checkComponentStatus(componentName);
       } else {
         const errorMessage = await extractErrorMessage(response, 'Installation failed');
-        
+
         showFailureToast({
           title: 'Installation Failed',
           message: errorMessage,
         });
-        
+
         setComponentStatus((prev) => ({
           ...prev,
           [componentName]: {
@@ -267,12 +272,12 @@ export function DownloadsPage() {
     } catch (error) {
       console.error(`Error installing ${componentName}:`, error);
       const errorMessage = getErrorMessage(error, 'Network error');
-      
+
       showFailureToast({
         title: 'Installation Error',
         message: errorMessage,
       });
-      
+
       setComponentStatus((prev) => ({
         ...prev,
         [componentName]: {
@@ -309,12 +314,12 @@ export function DownloadsPage() {
         await checkComponentStatus(componentName);
       } else {
         const errorMessage = await extractErrorMessage(response, 'Repair failed');
-        
+
         showFailureToast({
           title: 'Repair Failed',
           message: errorMessage,
         });
-        
+
         setComponentStatus((prev) => ({
           ...prev,
           [componentName]: {
@@ -327,12 +332,12 @@ export function DownloadsPage() {
     } catch (error) {
       console.error(`Error repairing ${componentName}:`, error);
       const errorMessage = getErrorMessage(error, 'Network error during repair');
-      
+
       showFailureToast({
         title: 'Repair Error',
         message: errorMessage,
       });
-      
+
       setComponentStatus((prev) => ({
         ...prev,
         [componentName]: {
@@ -362,7 +367,7 @@ export function DownloadsPage() {
         await checkComponentStatus(componentName);
       } else {
         const errorMessage = await extractErrorMessage(response, 'Failed to remove component');
-        
+
         showFailureToast({
           title: 'Remove Failed',
           message: errorMessage,
@@ -552,8 +557,7 @@ export function DownloadsPage() {
                   <li>✓ Repair corrupted or incomplete installations</li>
                   <li>✓ Post-install validation checks</li>
                   <li>
-                    ✓ Offline mode: Click &quot;Manual&quot; for manual installation
-                    instructions
+                    ✓ Offline mode: Click &quot;Manual&quot; for manual installation instructions
                   </li>
                 </ul>
               </div>

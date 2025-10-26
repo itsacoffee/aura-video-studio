@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { apiUrl } from '../config/api';
 import type {
   EngineManifestEntry,
   EngineStatus,
@@ -6,7 +7,6 @@ import type {
   AttachEngineRequest,
   ReconfigureEngineRequest,
 } from '../types/engines';
-import { apiUrl } from '../config/api';
 
 interface EnginesState {
   engines: EngineManifestEntry[];
@@ -128,8 +128,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         throw new Error(errorData.error || 'Verification failed');
       }
 
-      const result = await response.json();
-      return result;
+      return await response.json();
     } catch (error) {
       console.error(`Failed to verify ${engineId}:`, error);
       throw error;
@@ -252,8 +251,7 @@ export const useEnginesStore = create<EnginesState>((set, get) => ({
         throw new Error(errorData.error || 'Failed to get diagnostics');
       }
 
-      const result = await response.json();
-      return result;
+      return await response.json();
     } catch (error) {
       console.error(`Failed to get diagnostics for ${engineId}:`, error);
       throw error;

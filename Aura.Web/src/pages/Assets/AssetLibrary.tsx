@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import {
   Button,
   Input,
@@ -17,10 +16,11 @@ import {
   ImageAdd24Regular,
   Image24Regular,
 } from '@fluentui/react-icons';
+import React, { useState, useEffect } from 'react';
+import { CollectionsPanel } from '../../components/Assets/CollectionsPanel';
+import { StockImageSearch } from '../../components/Assets/StockImageSearch';
 import { assetService } from '../../services/assetService';
 import { Asset, AssetType } from '../../types/assets';
-import { StockImageSearch } from '../../components/Assets/StockImageSearch';
-import { CollectionsPanel } from '../../components/Assets/CollectionsPanel';
 
 const useStyles = makeStyles({
   container: {

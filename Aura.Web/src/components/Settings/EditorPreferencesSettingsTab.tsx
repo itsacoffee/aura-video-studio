@@ -73,9 +73,7 @@ export function EditorPreferencesSettingsTab({
               checked={settings.timelineSnapEnabled}
               onChange={(_, data) => updateSetting('timelineSnapEnabled', data.checked)}
               label={
-                settings.timelineSnapEnabled
-                  ? 'Snap to grid enabled'
-                  : 'Snap to grid disabled'
+                settings.timelineSnapEnabled ? 'Snap to grid enabled' : 'Snap to grid disabled'
               }
             />
             {settings.timelineSnapEnabled && (
@@ -114,11 +112,7 @@ export function EditorPreferencesSettingsTab({
           <Switch
             checked={settings.showTimecode}
             onChange={(_, data) => updateSetting('showTimecode', data.checked)}
-            label={
-              settings.showTimecode
-                ? 'Display timecode on timeline'
-                : 'Hide timecode display'
-            }
+            label={settings.showTimecode ? 'Display timecode on timeline' : 'Hide timecode display'}
           />
         </Field>
 

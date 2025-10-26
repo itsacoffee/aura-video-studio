@@ -13,7 +13,7 @@ describe('AudioSyncService', () => {
     // Create mock video element
     mockVideo = document.createElement('video');
     mockVideo.src = 'test-video.mp4';
-    
+
     // Mock video properties
     Object.defineProperty(mockVideo, 'duration', {
       value: 60,

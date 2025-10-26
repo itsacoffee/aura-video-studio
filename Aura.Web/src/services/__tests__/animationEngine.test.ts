@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import type { Keyframe } from '../../types/effects';
 import {
   Easing,
   getEasingFunction,
@@ -13,8 +14,12 @@ import {
   calculateWorldTransform,
   AnimationUtils,
 } from '../animationEngine';
-import type { Keyframe } from '../../types/effects';
-import type { MotionPath, MotionPathPoint, TransformProperties, LayerParent } from '../animationEngine';
+import type {
+  MotionPath,
+  MotionPathPoint,
+  TransformProperties,
+  LayerParent,
+} from '../animationEngine';
 
 describe('Animation Engine', () => {
   describe('Easing Functions', () => {
@@ -209,9 +214,7 @@ describe('Animation Engine', () => {
       const parentMap = new Map<string, LayerParent>([
         ['child1', { layerId: 'child1', parentId: 'parent1' }],
       ]);
-      const transformMap = new Map<string, TransformProperties>([
-        ['parent1', parentTransform],
-      ]);
+      const transformMap = new Map<string, TransformProperties>([['parent1', parentTransform]]);
 
       const result = calculateWorldTransform('child1', childTransform, parentMap, transformMap);
 

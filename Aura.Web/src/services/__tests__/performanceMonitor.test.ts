@@ -22,7 +22,7 @@ describe('PerformanceMonitor', () => {
 
     it('should track render metrics', () => {
       performanceMonitor.onRenderCallback('TestComponent', 'mount', 10, 8, 100, 110);
-      
+
       const metrics = performanceMonitor.getMetrics();
       expect(metrics.length).toBe(1);
       expect(metrics[0].id).toBe('TestComponent');
@@ -32,10 +32,10 @@ describe('PerformanceMonitor', () => {
     it('should update render metrics on multiple renders', () => {
       performanceMonitor.onRenderCallback('TestComponent', 'mount', 10, 8, 100, 110);
       performanceMonitor.onRenderCallback('TestComponent', 'update', 5, 8, 200, 205);
-      
+
       const renderMetrics = performanceMonitor.getRenderMetrics();
-      const testMetric = renderMetrics.find(m => m.componentName === 'TestComponent');
-      
+      const testMetric = renderMetrics.find((m) => m.componentName === 'TestComponent');
+
       expect(testMetric).toBeDefined();
       expect(testMetric?.renderCount).toBe(2);
       expect(testMetric?.averageDuration).toBe(7.5); // (10 + 5) / 2
@@ -46,7 +46,7 @@ describe('PerformanceMonitor', () => {
     it('should not track metrics when disabled', () => {
       performanceMonitor.setEnabled(false);
       performanceMonitor.onRenderCallback('TestComponent', 'mount', 10, 8, 100, 110);
-      
+
       const metrics = performanceMonitor.getMetrics();
       expect(metrics.length).toBe(0);
     });
@@ -56,7 +56,7 @@ describe('PerformanceMonitor', () => {
     it('should have default budgets', () => {
       const budgets = performanceMonitor.getBudgets();
       expect(budgets.length).toBeGreaterThan(0);
-      expect(budgets.find(b => b.name === 'TimelinePanel')).toBeDefined();
+      expect(budgets.find((b) => b.name === 'TimelinePanel')).toBeDefined();
     });
 
     it('should add custom budgets', () => {
@@ -67,7 +67,7 @@ describe('PerformanceMonitor', () => {
       });
 
       const budgets = performanceMonitor.getBudgets();
-      const customBudget = budgets.find(b => b.name === 'CustomComponent');
+      const customBudget = budgets.find((b) => b.name === 'CustomComponent');
       expect(customBudget).toBeDefined();
       expect(customBudget?.maxRenderTime).toBe(20);
     });
@@ -80,7 +80,7 @@ describe('PerformanceMonitor', () => {
 
       // TimelinePanel budget is 16ms
       performanceMonitor.onRenderCallback('TimelinePanel', 'mount', 20, 8, 100, 120);
-      
+
       expect(warnings.length).toBe(1);
       expect(warnings[0].warning).toContain('Performance Budget Exceeded');
       expect(warnings[0].warning).toContain('TimelinePanel');
@@ -94,17 +94,17 @@ describe('PerformanceMonitor', () => {
       performanceMonitor.mark('test-start');
       const marks = performance.getEntriesByName('test-start');
       expect(marks.length).toBeGreaterThan(0);
-      
+
       performanceMonitor.clearMarks('test-start');
     });
 
     it('should measure time between marks', () => {
       performanceMonitor.mark('test-start');
       performanceMonitor.mark('test-end');
-      
+
       const duration = performanceMonitor.measure('test-operation', 'test-start', 'test-end');
       expect(duration).toBeGreaterThanOrEqual(0);
-      
+
       performanceMonitor.clearMarks();
     });
   });
@@ -147,9 +147,9 @@ describe('PerformanceMonitor', () => {
     it('should provide performance summary', () => {
       performanceMonitor.onRenderCallback('Component1', 'mount', 10, 8, 100, 110);
       performanceMonitor.onRenderCallback('Component2', 'mount', 5, 4, 200, 205);
-      
+
       const summary = performanceMonitor.getSummary();
-      
+
       expect(summary.totalComponents).toBe(2);
       expect(summary.totalRenders).toBe(2);
       expect(summary.averageRenderTime).toBe(7.5);
@@ -159,10 +159,10 @@ describe('PerformanceMonitor', () => {
 
     it('should export metrics as JSON', () => {
       performanceMonitor.onRenderCallback('TestComponent', 'mount', 10, 8, 100, 110);
-      
+
       const json = performanceMonitor.exportMetrics();
       const data = JSON.parse(json);
-      
+
       expect(data.metrics).toBeDefined();
       expect(data.renderMetrics).toBeDefined();
       expect(data.budgets).toBeDefined();
@@ -177,7 +177,7 @@ describe('PerformanceMonitor', () => {
       for (let i = 0; i < 10; i++) {
         performanceMonitor.onRenderCallback('TestComponent', 'update', 16, 8, i * 16, (i + 1) * 16);
       }
-      
+
       const fps = performanceMonitor.getFPS();
       expect(fps).toBeGreaterThan(50); // Should be close to 60
       expect(fps).toBeLessThan(70);
@@ -187,7 +187,7 @@ describe('PerformanceMonitor', () => {
   describe('Memory Usage', () => {
     it('should get memory usage if available', () => {
       const memory = performanceMonitor.getMemoryUsage();
-      
+
       // Memory API might not be available in all environments
       if ('memory' in performance) {
         expect(memory.usedJSHeapSize).toBeDefined();
@@ -205,7 +205,7 @@ describe('PerformanceMonitor', () => {
       for (let i = 0; i < 1500; i++) {
         performanceMonitor.onRenderCallback('TestComponent', 'update', 5, 4, i * 10, (i + 1) * 10);
       }
-      
+
       const metrics = performanceMonitor.getMetrics();
       expect(metrics.length).toBeLessThanOrEqual(1000);
     });

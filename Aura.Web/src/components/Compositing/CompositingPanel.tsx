@@ -3,20 +3,14 @@
  * Integrated panel combining chroma key, layer compositing, and motion tracking
  */
 
+import { makeStyles, tokens, Tab, TabList, Card } from '@fluentui/react-components';
 import { useState } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Tab,
-  TabList,
-  Card,
-} from '@fluentui/react-components';
+import { TrackingPath } from '../../services/motionTrackingService';
+import { AppliedEffect } from '../../types/effects';
 import { ChromaKeyEffect } from '../Effects/ChromaKeyEffect';
 import { LayerStack, VideoLayer } from './LayerStack';
 import { MattePreview } from './MattePreview';
 import { MotionTracking } from './MotionTracking';
-import { AppliedEffect } from '../../types/effects';
-import { TrackingPath } from '../../services/motionTrackingService';
 
 const useStyles = makeStyles({
   container: {

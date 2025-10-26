@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   Card,
   Title2,
@@ -10,8 +9,9 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Video24Regular, TagMultiple24Regular, DataTrending24Regular } from '@fluentui/react-icons';
-import { PlatformSelector } from './PlatformSelector';
+import React, { useState } from 'react';
 import { MetadataGenerator } from './MetadataGenerator';
+import { PlatformSelector } from './PlatformSelector';
 
 const useStyles = makeStyles({
   container: {
@@ -87,8 +87,8 @@ export const PlatformDashboard: React.FC = () => {
                 <div className={styles.featureIcon}>🎬</div>
                 <Title3>Video Optimization</Title3>
                 <Body1>
-                  Automatically adapt aspect ratios, duration, and format for each
-                  platform&apos;s requirements.
+                  Automatically adapt aspect ratios, duration, and format for each platform&apos;s
+                  requirements.
                 </Body1>
               </Card>
 

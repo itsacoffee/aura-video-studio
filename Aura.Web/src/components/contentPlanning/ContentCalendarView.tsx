@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -11,6 +10,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { CalendarRegular } from '@fluentui/react-icons';
+import React, { useState, useEffect } from 'react';
 import { contentPlanningService, ScheduledContent } from '../../services/contentPlanningService';
 
 const useStyles = makeStyles({
@@ -154,9 +154,7 @@ export const ContentCalendarView: React.FC = () => {
   };
 
   const navigateMonth = (direction: number) => {
-    setCurrentMonth(
-      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + direction, 1)
-    );
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + direction, 1));
   };
 
   const monthName = currentMonth.toLocaleDateString('en-US', {

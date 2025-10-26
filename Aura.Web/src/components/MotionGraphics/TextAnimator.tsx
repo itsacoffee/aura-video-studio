@@ -3,7 +3,6 @@
  * Animated text effects with presets
  */
 
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -15,11 +14,8 @@ import {
   Slider,
   Divider,
 } from '@fluentui/react-components';
-import {
-  Play24Regular,
-  Stop24Regular,
-  Checkmark24Regular,
-} from '@fluentui/react-icons';
+import { Play24Regular, Stop24Regular, Checkmark24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useStyles = makeStyles({
   container: {

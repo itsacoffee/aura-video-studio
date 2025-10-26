@@ -68,7 +68,11 @@ class CircuitBreaker {
       if (Date.now() >= this.nextAttempt) {
         this.state = CircuitState.HALF_OPEN;
         this.successCount = 0;
-        loggingService.info('Circuit breaker entering half-open state', 'apiClient', 'circuitBreaker');
+        loggingService.info(
+          'Circuit breaker entering half-open state',
+          'apiClient',
+          'circuitBreaker'
+        );
         return true;
       }
       return false;
@@ -88,7 +92,11 @@ class CircuitBreaker {
       this.successCount++;
       if (this.successCount >= this.config.successThreshold) {
         this.state = CircuitState.CLOSED;
-        loggingService.info('Circuit breaker closed - service recovered', 'apiClient', 'circuitBreaker');
+        loggingService.info(
+          'Circuit breaker closed - service recovered',
+          'apiClient',
+          'circuitBreaker'
+        );
       }
     }
   }
@@ -189,7 +197,9 @@ class RequestQueue {
       const timeSinceLastRequest = now - this.lastRequestTime;
 
       if (timeSinceLastRequest < this.minInterval) {
-        await new Promise((resolve) => setTimeout(resolve, this.minInterval - timeSinceLastRequest));
+        await new Promise((resolve) =>
+          setTimeout(resolve, this.minInterval - timeSinceLastRequest)
+        );
       }
 
       const request = this.queue.shift();
@@ -250,12 +260,9 @@ apiClient.interceptors.request.use(
     if (!extendedConfig._skipCircuitBreaker && !circuitBreaker.canAttempt()) {
       const error = new Error('Circuit breaker is open - service unavailable');
       (error as any).isCircuitBreakerError = true;
-      loggingService.warn(
-        'Request blocked by circuit breaker',
-        'apiClient',
-        'circuitBreaker',
-        { url: config.url }
-      );
+      loggingService.warn('Request blocked by circuit breaker', 'apiClient', 'circuitBreaker', {
+        url: config.url,
+      });
       return Promise.reject(error);
     }
 
@@ -355,9 +362,7 @@ apiClient.interceptors.response.use(
       errorCode = responseData?.errorCode || responseData?.code;
 
       // Get user-friendly message
-      const errorMessage = errorCode
-        ? getAppErrorMessage(errorCode)
-        : getHttpErrorMessage(status);
+      const errorMessage = errorCode ? getAppErrorMessage(errorCode) : getHttpErrorMessage(status);
 
       userMessage = errorMessage.message;
 
@@ -392,12 +397,10 @@ apiClient.interceptors.response.use(
       if (status === 429) {
         const retryAfter = error.response.headers['retry-after'];
         technicalDetails.retryAfter = retryAfter;
-        loggingService.warn(
-          'Rate limit exceeded',
-          'apiClient',
-          'rateLimit',
-          { retryAfter, url: error.config?.url }
-        );
+        loggingService.warn('Rate limit exceeded', 'apiClient', 'rateLimit', {
+          retryAfter,
+          url: error.config?.url,
+        });
       }
     } else if (error.request) {
       // Request made but no response received
@@ -534,10 +537,7 @@ export async function requestWithRetry<T>(
 /**
  * Generic GET request
  */
-export async function get<T>(
-  url: string,
-  config?: ExtendedAxiosRequestConfig
-): Promise<T> {
+export async function get<T>(url: string, config?: ExtendedAxiosRequestConfig): Promise<T> {
   const response = await apiClient.get<T>(url, config);
   return response.data;
 }
@@ -581,10 +581,7 @@ export async function patch<T>(
 /**
  * Generic DELETE request
  */
-export async function del<T>(
-  url: string,
-  config?: ExtendedAxiosRequestConfig
-): Promise<T> {
+export async function del<T>(url: string, config?: ExtendedAxiosRequestConfig): Promise<T> {
   const response = await apiClient.delete<T>(url, config);
   return response.data;
 }
@@ -614,10 +611,7 @@ export async function getCancellable<T>(
 /**
  * Queue a request to prevent rate limiting
  */
-export async function queuedRequest<T>(
-  queueKey: string,
-  requestFn: () => Promise<T>
-): Promise<T> {
+export async function queuedRequest<T>(queueKey: string, requestFn: () => Promise<T>): Promise<T> {
   const queue = getRequestQueue(queueKey);
   return queue.enqueue(requestFn);
 }

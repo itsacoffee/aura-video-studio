@@ -3,7 +3,6 @@
  * Component for displaying transition options between scenes
  */
 
-import { useState, useEffect } from 'react';
 import {
   Card,
   makeStyles,
@@ -21,6 +20,7 @@ import {
   Info24Regular,
   Lightbulb24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { Scene } from '../../types';
 
 interface TransitionSuggestionCardProps {
@@ -118,12 +118,12 @@ export const TransitionSuggestionCard = ({
 
   const analyzeTransitions = async () => {
     setLoading(true);
-    
+
     try {
       // Simulate transition analysis
       // In production, this would call the TransitionRecommendationService API
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       const transitionTypes = ['Cut', 'Dissolve', 'Fade to Black', 'Wipe', 'Zoom'];
       const mockTransitions: TransitionSuggestion[] = [];
 
@@ -149,11 +149,11 @@ export const TransitionSuggestionCard = ({
 
   const generateReasoning = (type: string): string => {
     const reasons: Record<string, string> = {
-      'Cut': 'Quick transition maintains energy and flow between similar scenes',
-      'Dissolve': 'Smooth blend recommended for moderate content shift',
+      Cut: 'Quick transition maintains energy and flow between similar scenes',
+      Dissolve: 'Smooth blend recommended for moderate content shift',
       'Fade to Black': 'Significant mood change detected, fade creates dramatic separation',
-      'Wipe': 'Dynamic transition suitable for pace change',
-      'Zoom': 'Engaging transition for building momentum',
+      Wipe: 'Dynamic transition suitable for pace change',
+      Zoom: 'Engaging transition for building momentum',
     };
 
     return reasons[type] || 'Recommended based on content analysis';
@@ -161,14 +161,18 @@ export const TransitionSuggestionCard = ({
 
   const getTransitionBadge = (type: string) => {
     const colorMap: Record<string, any> = {
-      'Cut': 'brand',
-      'Dissolve': 'informative',
+      Cut: 'brand',
+      Dissolve: 'informative',
       'Fade to Black': 'severe',
-      'Wipe': 'success',
-      'Zoom': 'warning',
+      Wipe: 'success',
+      Zoom: 'warning',
     };
 
-    return <Badge appearance="tint" color={colorMap[type] || 'subtle'}>{type}</Badge>;
+    return (
+      <Badge appearance="tint" color={colorMap[type] || 'subtle'}>
+        {type}
+      </Badge>
+    );
   };
 
   const formatDuration = (seconds: number): string => {
@@ -196,7 +200,9 @@ export const TransitionSuggestionCard = ({
   if (transitions.length === 0) {
     return (
       <div className={styles.emptyState}>
-        <VideoClipMultiple24Regular style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }} />
+        <VideoClipMultiple24Regular
+          style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }}
+        />
         <Body1>Need at least 2 scenes to suggest transitions</Body1>
       </div>
     );
@@ -227,13 +233,21 @@ export const TransitionSuggestionCard = ({
 
             <div className={styles.transitionDetails}>
               <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
-                <Caption1><strong>Duration:</strong> {formatDuration(transition.duration)}</Caption1>
+                <Caption1>
+                  <strong>Duration:</strong> {formatDuration(transition.duration)}
+                </Caption1>
                 <Caption1>
                   <strong>Confidence:</strong> {(transition.confidence * 100).toFixed(0)}%
                 </Caption1>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: tokens.spacingHorizontalXS }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: tokens.spacingHorizontalXS,
+                }}
+              >
                 <Tooltip content="AI Reasoning" relationship="label">
                   <Lightbulb24Regular style={{ fontSize: '16px', marginTop: '2px' }} />
                 </Tooltip>

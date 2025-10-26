@@ -2,7 +2,6 @@
  * Service for managing project templates
  */
 
-import { get, post, del } from './api/apiClient';
 import {
   TemplateListItem,
   ProjectTemplate,
@@ -13,6 +12,7 @@ import {
   TitleTemplate,
   TemplateCategory,
 } from '../types/templates';
+import { get, post, del } from './api/apiClient';
 
 const API_BASE_URL = '/api/templates';
 

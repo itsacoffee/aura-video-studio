@@ -9,11 +9,7 @@ describe('OperationQueueService', () => {
   });
 
   it('should add an operation to the queue', () => {
-    const id = operationQueueService.addOperation(
-      'Test Operation',
-      { param1: 'value1' },
-      5
-    );
+    const id = operationQueueService.addOperation('Test Operation', { param1: 'value1' }, 5);
 
     expect(id).toBeDefined();
     expect(id).toMatch(/^op-/);
@@ -87,8 +83,8 @@ describe('OperationQueueService', () => {
 
     const running = operationQueueService.getRunningOperations();
     expect(running).toHaveLength(2);
-    expect(running.find(op => op.id === id1)).toBeDefined();
-    expect(running.find(op => op.id === id2)).toBeDefined();
+    expect(running.find((op) => op.id === id1)).toBeDefined();
+    expect(running.find((op) => op.id === id2)).toBeDefined();
   });
 
   it('should clear completed operations', () => {
@@ -116,9 +112,9 @@ describe('OperationQueueService', () => {
 
     const log = operationQueueService.getOperationLog();
     expect(log.length).toBeGreaterThan(0);
-    
+
     // Should have log entries for: queued, running, completed
-    const opLogs = log.filter(entry => entry.operationId === id);
+    const opLogs = log.filter((entry) => entry.operationId === id);
     expect(opLogs.length).toBeGreaterThan(0);
   });
 
@@ -128,7 +124,7 @@ describe('OperationQueueService', () => {
 
     const exported = operationQueueService.exportLog();
     expect(exported).toBeDefined();
-    
+
     const parsed = JSON.parse(exported);
     expect(Array.isArray(parsed)).toBe(true);
   });

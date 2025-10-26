@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { makeStyles, tokens, Text, Button } from '@fluentui/react-components';
 import { LightbulbRegular, LightbulbFilamentRegular } from '@fluentui/react-icons';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BrainstormInput, BrainstormOptions } from '../../components/ideation/BrainstormInput';
 import { ConceptCard } from '../../components/ideation/ConceptCard';
+import { SkeletonCard, ErrorState } from '../../components/Loading';
 import {
   ideationService,
   type ConceptIdea,
   type BrainstormRequest,
 } from '../../services/ideationService';
-import { SkeletonCard, ErrorState } from '../../components/Loading';
 
 const useStyles = makeStyles({
   container: {

@@ -1,4 +1,3 @@
-
 import {
   makeStyles,
   tokens,
@@ -99,9 +98,7 @@ export function ExportSettingsEditor({
 
   const getCurrentResolutionKey = () => {
     const { width, height } = settings.resolution;
-    const preset = RESOLUTION_PRESETS.find(
-      (p) => p.width === width && p.height === height
-    );
+    const preset = RESOLUTION_PRESETS.find((p) => p.width === width && p.height === height);
     return preset?.key || 'custom';
   };
 
@@ -116,12 +113,8 @@ export function ExportSettingsEditor({
           <div className={styles.fieldGrid}>
             <Field label="Quality Preset">
               <Dropdown
-                value={
-                  QUALITY_OPTIONS.find((q) => q.key === settings.quality)?.text
-                }
-                onOptionSelect={(_, data) =>
-                  handleQualityChange(data.optionValue as string)
-                }
+                value={QUALITY_OPTIONS.find((q) => q.key === settings.quality)?.text}
+                onOptionSelect={(_, data) => handleQualityChange(data.optionValue as string)}
               >
                 {QUALITY_OPTIONS.map((option) => (
                   <Option key={option.key} value={option.key} text={option.text}>
@@ -134,12 +127,8 @@ export function ExportSettingsEditor({
 
             <Field label="Output Format">
               <Dropdown
-                value={
-                  FORMAT_OPTIONS.find((f) => f.key === settings.format)?.text
-                }
-                onOptionSelect={(_, data) =>
-                  handleFormatChange(data.optionValue as string)
-                }
+                value={FORMAT_OPTIONS.find((f) => f.key === settings.format)?.text}
+                onOptionSelect={(_, data) => handleFormatChange(data.optionValue as string)}
               >
                 {FORMAT_OPTIONS.map((option) => (
                   <Option key={option.key} value={option.key} text={option.text}>
@@ -153,12 +142,10 @@ export function ExportSettingsEditor({
             <Field label="Resolution" className={styles.fullWidth}>
               <Dropdown
                 value={
-                  RESOLUTION_PRESETS.find((r) => r.key === getCurrentResolutionKey())
-                    ?.text || 'Custom'
+                  RESOLUTION_PRESETS.find((r) => r.key === getCurrentResolutionKey())?.text ||
+                  'Custom'
                 }
-                onOptionSelect={(_, data) =>
-                  handleResolutionChange(data.optionValue as string)
-                }
+                onOptionSelect={(_, data) => handleResolutionChange(data.optionValue as string)}
               >
                 {RESOLUTION_PRESETS.map((option) => (
                   <Option key={option.key} value={option.key} text={option.text}>
@@ -174,28 +161,20 @@ export function ExportSettingsEditor({
           <Field>
             <Switch
               checked={settings.optimizeForPlatform}
-              onChange={(_, data) =>
-                onChange({ optimizeForPlatform: data.checked })
-              }
+              onChange={(_, data) => onChange({ optimizeForPlatform: data.checked })}
               label="Platform-specific optimization"
             />
-            <Caption1>
-              Automatically adjust settings for each platform&apos;s requirements
-            </Caption1>
+            <Caption1>Automatically adjust settings for each platform&apos;s requirements</Caption1>
           </Field>
 
           {showAdvanced && (
             <Field>
               <Switch
                 checked={settings.hardwareAcceleration ?? true}
-                onChange={(_, data) =>
-                  onChange({ hardwareAcceleration: data.checked })
-                }
+                onChange={(_, data) => onChange({ hardwareAcceleration: data.checked })}
                 label="Hardware acceleration (GPU)"
               />
-              <Caption1>
-                Use GPU encoding for faster exports (if available)
-              </Caption1>
+              <Caption1>Use GPU encoding for faster exports (if available)</Caption1>
             </Field>
           )}
         </div>
@@ -208,13 +187,9 @@ export function ExportSettingsEditor({
                 max={320}
                 step={64}
                 value={settings.audioBitrate || 192}
-                onChange={(_, data) =>
-                  onChange({ audioBitrate: data.value })
-                }
+                onChange={(_, data) => onChange({ audioBitrate: data.value })}
               />
-              <Caption1>
-                Higher bitrate = better audio quality but larger file size
-              </Caption1>
+              <Caption1>Higher bitrate = better audio quality but larger file size</Caption1>
             </Field>
           </div>
         )}

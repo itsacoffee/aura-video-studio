@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -20,6 +19,7 @@ import {
   Wrench24Regular,
   Settings24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { JobFailure } from '../../state/jobs';
 import { openLogsFolder } from '../../utils/apiErrorHandler';
 import { useNotifications } from '../Notifications/Toasts';

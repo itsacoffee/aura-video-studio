@@ -1,9 +1,4 @@
-import {
-  makeStyles,
-  tokens,
-  Button,
-  Text,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Button, Text } from '@fluentui/react-components';
 import { Checkmark16Regular, SaveRegular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -93,14 +88,11 @@ export function WizardProgress({
     <div className={styles.container}>
       <div className={styles.header}>
         <div style={{ width: '120px' }}>{/* Spacer for alignment */}</div>
-        <Text weight="semibold">Step {currentStep + 1} of {totalSteps}</Text>
+        <Text weight="semibold">
+          Step {currentStep + 1} of {totalSteps}
+        </Text>
         {onSaveAndExit && (
-          <Button
-            appearance="subtle"
-            icon={<SaveRegular />}
-            onClick={onSaveAndExit}
-            size="small"
-          >
+          <Button appearance="subtle" icon={<SaveRegular />} onClick={onSaveAndExit} size="small">
             Save and Exit
           </Button>
         )}
@@ -117,9 +109,7 @@ export function WizardProgress({
               key={index}
               className={`${styles.step} ${
                 isActive ? styles.stepActive : ''
-              } ${isCompleted ? styles.stepCompleted : ''} ${
-                !canClick ? styles.stepInactive : ''
-              }`}
+              } ${isCompleted ? styles.stepCompleted : ''} ${!canClick ? styles.stepInactive : ''}`}
               onClick={() => handleStepClick(index)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {

@@ -73,9 +73,7 @@ export const getCommonFolders = async (): Promise<FileSystemItem[]> => {
  * Browse folder contents
  * In a real implementation, this would interface with a native API
  */
-export const browseFolderContents = async (
-  path: string
-): Promise<FileSystemItem[]> => {
+export const browseFolderContents = async (path: string): Promise<FileSystemItem[]> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 200));
 
@@ -89,13 +87,15 @@ export const browseFolderContents = async (
  * In a real implementation, this would call a native API
  * Returns success status for the calling component to handle
  */
-export const revealInFinder = async (filePath: string): Promise<{ success: boolean; message?: string }> => {
+export const revealInFinder = async (
+  filePath: string
+): Promise<{ success: boolean; message?: string }> => {
   console.log('Revealing file in finder:', filePath);
   // In a real implementation, this would call:
   // - Windows: explorer.exe /select,"path"
   // - macOS: open -R "path"
   // - Linux: xdg-open "path"
-  
+
   // For now, return success for the caller to handle notification
   return {
     success: true,
@@ -106,9 +106,7 @@ export const revealInFinder = async (filePath: string): Promise<{ success: boole
 /**
  * Get storage location information
  */
-export const getStorageLocation = async (
-  projectPath: string
-): Promise<StorageLocation> => {
+export const getStorageLocation = async (projectPath: string): Promise<StorageLocation> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 100));
 

@@ -78,7 +78,11 @@ export function TroubleshootingPanel() {
         FFmpeg Troubleshooting Guide
       </Text>
 
-      <Accordion openItems={openItems} onToggle={(_, data) => handleToggle(data.value as string)} multiple>
+      <Accordion
+        openItems={openItems}
+        onToggle={(_, data) => handleToggle(data.value as string)}
+        multiple
+      >
         <AccordionItem value="json-error">
           <AccordionHeader icon={<ChevronRight24Regular />}>
             <Text weight="semibold">&quot;Unexpected token &apos;&lt;&apos;&quot; JSON Error</Text>
@@ -98,7 +102,9 @@ export function TroubleshootingPanel() {
                 Solutions:
               </Text>
               <div className={styles.stepsList}>
-                <Text>1. Verify the API server is running (check port 5000 or configured port)</Text>
+                <Text>
+                  1. Verify the API server is running (check port 5000 or configured port)
+                </Text>
                 <Text>2. Check browser console for actual error responses</Text>
                 <Text>3. Try refreshing the page after ensuring the API is running</Text>
                 <Text>4. Use the Manual Install Guide button to bypass automatic installation</Text>
@@ -130,7 +136,10 @@ export function TroubleshootingPanel() {
                       }
                     />
                   </div>
-                  <div className={styles.codeBlock} style={{ marginTop: tokens.spacingVerticalXXS }}>
+                  <div
+                    className={styles.codeBlock}
+                    style={{ marginTop: tokens.spacingVerticalXXS }}
+                  >
                     %LOCALAPPDATA%\Aura\dependencies\bin\ffmpeg.exe
                     <Button
                       className={styles.copyButton}
@@ -171,9 +180,7 @@ export function TroubleshootingPanel() {
                 <Text>1. Check your internet connection</Text>
                 <Text>2. Temporarily disable antivirus and try again</Text>
                 <Text>3. Ensure you have write permissions to %LOCALAPPDATA%\Aura</Text>
-                <Text>
-                  4. Use the Manual Install Guide button to download and install manually
-                </Text>
+                <Text>4. Use the Manual Install Guide button to download and install manually</Text>
                 <Text>5. Try a different mirror using the custom URL option (advanced)</Text>
               </div>
             </div>
@@ -247,7 +254,9 @@ export function TroubleshootingPanel() {
           <AccordionPanel>
             <div className={styles.section}>
               <div className={styles.stepsList}>
-                <Text>• Always use the &quot;essentials&quot; build unless you need GPL features</Text>
+                <Text>
+                  • Always use the &quot;essentials&quot; build unless you need GPL features
+                </Text>
                 <Text>
                   • Download from trusted sources (gyan.dev, ffmpeg.org, or official GitHub)
                 </Text>

@@ -81,33 +81,56 @@ class LoggingService {
   /**
    * Log a debug message
    */
-  public debug(message: string, component?: string, action?: string, context?: Record<string, unknown>): void {
+  public debug(
+    message: string,
+    component?: string,
+    action?: string,
+    context?: Record<string, unknown>
+  ): void {
     this.log('debug', message, component, action, context);
   }
 
   /**
    * Log an info message
    */
-  public info(message: string, component?: string, action?: string, context?: Record<string, unknown>): void {
+  public info(
+    message: string,
+    component?: string,
+    action?: string,
+    context?: Record<string, unknown>
+  ): void {
     this.log('info', message, component, action, context);
   }
 
   /**
    * Log a warning message
    */
-  public warn(message: string, component?: string, action?: string, context?: Record<string, unknown>): void {
+  public warn(
+    message: string,
+    component?: string,
+    action?: string,
+    context?: Record<string, unknown>
+  ): void {
     this.log('warn', message, component, action, context);
   }
 
   /**
    * Log an error message
    */
-  public error(message: string, error?: Error, component?: string, action?: string, context?: Record<string, unknown>): void {
-    const errorInfo = error ? {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-    } : undefined;
+  public error(
+    message: string,
+    error?: Error,
+    component?: string,
+    action?: string,
+    context?: Record<string, unknown>
+  ): void {
+    const errorInfo = error
+      ? {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        }
+      : undefined;
 
     this.log('error', message, component, action, context, errorInfo);
   }
@@ -115,7 +138,12 @@ class LoggingService {
   /**
    * Log performance metric
    */
-  public performance(operation: string, duration: number, component?: string, context?: Record<string, unknown>): void {
+  public performance(
+    operation: string,
+    duration: number,
+    component?: string,
+    context?: Record<string, unknown>
+  ): void {
     const message = `Performance: ${operation} took ${duration}ms`;
     this.log('info', message, component, 'performance', context, undefined, {
       operation,

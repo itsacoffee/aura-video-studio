@@ -3,7 +3,6 @@
  * Displays pacing analysis and recommendations
  */
 
-import React from 'react';
 import {
   Card,
   makeStyles,
@@ -14,6 +13,7 @@ import {
   Caption1,
   Title3,
 } from '@fluentui/react-components';
+import React from 'react';
 import { PacingAnalysis } from '../../../services/editingIntelligenceService';
 
 interface PacingPanelProps {

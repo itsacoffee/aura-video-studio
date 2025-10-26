@@ -1,8 +1,14 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 
-export type ActivityStatus = 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
+export type ActivityStatus =
+  | 'pending'
+  | 'running'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
 
-export type ActivityType = 
+export type ActivityType =
   | 'video-generation'
   | 'api-call'
   | 'file-upload'
@@ -80,87 +86,98 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
   // Update history whenever activities change to completed/failed/cancelled
   useEffect(() => {
-    const completedOrFailed = activities.filter(
-      a => ['completed', 'failed', 'cancelled'].includes(a.status)
+    const completedOrFailed = activities.filter((a) =>
+      ['completed', 'failed', 'cancelled'].includes(a.status)
     );
-    
+
     // Merge with existing history and limit to MAX_HISTORY
-    setHistory(prev => {
+    setHistory((prev) => {
       const merged = [...completedOrFailed, ...prev];
-      const unique = Array.from(new Map(merged.map(a => [a.id, a])).values());
+      const unique = Array.from(new Map(merged.map((a) => [a.id, a])).values());
       return unique
         .sort((a, b) => (b.endTime?.getTime() || 0) - (a.endTime?.getTime() || 0))
         .slice(0, MAX_HISTORY);
     });
   }, [activities]);
 
-  const addActivity = useCallback((activity: Omit<Activity, 'id' | 'startTime' | 'status' | 'progress'>) => {
-    const id = `activity-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const newActivity: Activity = {
-      ...activity,
-      id,
-      status: 'pending',
-      progress: 0,
-      startTime: new Date(),
-    };
-    
-    setActivities(prev => [...prev, newActivity]);
-    return id;
-  }, []);
+  const addActivity = useCallback(
+    (activity: Omit<Activity, 'id' | 'startTime' | 'status' | 'progress'>) => {
+      const id = `activity-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const newActivity: Activity = {
+        ...activity,
+        id,
+        status: 'pending',
+        progress: 0,
+        startTime: new Date(),
+      };
+
+      setActivities((prev) => [...prev, newActivity]);
+      return id;
+    },
+    []
+  );
 
   const updateActivity = useCallback((id: string, updates: Partial<Activity>) => {
-    setActivities(prev => prev.map(activity => {
-      if (activity.id === id) {
-        const updated = { ...activity, ...updates };
-        
-        // Set endTime when status changes to completed, failed, or cancelled
-        if (
-          updates.status && 
-          ['completed', 'failed', 'cancelled'].includes(updates.status) &&
-          !updated.endTime
-        ) {
-          updated.endTime = new Date();
+    setActivities((prev) =>
+      prev.map((activity) => {
+        if (activity.id === id) {
+          const updated = { ...activity, ...updates };
+
+          // Set endTime when status changes to completed, failed, or cancelled
+          if (
+            updates.status &&
+            ['completed', 'failed', 'cancelled'].includes(updates.status) &&
+            !updated.endTime
+          ) {
+            updated.endTime = new Date();
+          }
+
+          return updated;
         }
-        
-        return updated;
-      }
-      return activity;
-    }));
+        return activity;
+      })
+    );
   }, []);
 
   const removeActivity = useCallback((id: string) => {
-    setActivities(prev => prev.filter(activity => activity.id !== id));
+    setActivities((prev) => prev.filter((activity) => activity.id !== id));
   }, []);
 
   const pauseActivity = useCallback((id: string) => {
-    setActivities(prev => prev.map(activity => {
-      if (activity.id === id && activity.status === 'running') {
-        return { ...activity, status: 'paused' as ActivityStatus };
-      }
-      return activity;
-    }));
+    setActivities((prev) =>
+      prev.map((activity) => {
+        if (activity.id === id && activity.status === 'running') {
+          return { ...activity, status: 'paused' as ActivityStatus };
+        }
+        return activity;
+      })
+    );
   }, []);
 
   const resumeActivity = useCallback((id: string) => {
-    setActivities(prev => prev.map(activity => {
-      if (activity.id === id && activity.status === 'paused') {
-        return { ...activity, status: 'running' as ActivityStatus };
-      }
-      return activity;
-    }));
+    setActivities((prev) =>
+      prev.map((activity) => {
+        if (activity.id === id && activity.status === 'paused') {
+          return { ...activity, status: 'running' as ActivityStatus };
+        }
+        return activity;
+      })
+    );
   }, []);
 
   const setPriority = useCallback((id: string, priority: number) => {
-    setActivities(prev => prev.map(activity => {
-      if (activity.id === id) {
-        return { ...activity, priority: Math.max(1, Math.min(10, priority)) };
-      }
-      return activity;
-    }));
+    setActivities((prev) =>
+      prev.map((activity) => {
+        if (activity.id === id) {
+          return { ...activity, priority: Math.max(1, Math.min(10, priority)) };
+        }
+        return activity;
+      })
+    );
   }, []);
 
   const clearCompleted = useCallback(() => {
-    setActivities(prev => prev.filter(activity => activity.status !== 'completed'));
+    setActivities((prev) => prev.filter((activity) => activity.status !== 'completed'));
   }, []);
 
   const clearAll = useCallback(() => {
@@ -171,37 +188,37 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     setHistory([]);
   }, []);
 
-  const getActivity = useCallback((id: string) => {
-    return activities.find(activity => activity.id === id);
-  }, [activities]);
+  const getActivity = useCallback(
+    (id: string) => {
+      return activities.find((activity) => activity.id === id);
+    },
+    [activities]
+  );
 
-  const getBatchOperations = useCallback((batchId: string) => {
-    return activities.filter(activity => activity.batchId === batchId);
-  }, [activities]);
+  const getBatchOperations = useCallback(
+    (batchId: string) => {
+      return activities.filter((activity) => activity.batchId === batchId);
+    },
+    [activities]
+  );
 
   const activeActivities = activities.filter(
-    a => a.status === 'pending' || a.status === 'running'
+    (a) => a.status === 'pending' || a.status === 'running'
   );
 
-  const completedActivities = activities.filter(
-    a => a.status === 'completed'
-  );
+  const completedActivities = activities.filter((a) => a.status === 'completed');
 
-  const failedActivities = activities.filter(
-    a => a.status === 'failed'
-  );
+  const failedActivities = activities.filter((a) => a.status === 'failed');
 
-  const queuedActivities = activities.filter(
-    a => a.status === 'pending'
-  ).sort((a, b) => (b.priority || 5) - (a.priority || 5));
+  const queuedActivities = activities
+    .filter((a) => a.status === 'pending')
+    .sort((a, b) => (b.priority || 5) - (a.priority || 5));
 
-  const pausedActivities = activities.filter(
-    a => a.status === 'paused'
-  );
+  const pausedActivities = activities.filter((a) => a.status === 'paused');
 
   // Group activities by batchId
   const batchOperations = new Map<string, Activity[]>();
-  activities.forEach(activity => {
+  activities.forEach((activity) => {
     if (activity.batchId) {
       const batch = batchOperations.get(activity.batchId) || [];
       batch.push(activity);
@@ -231,11 +248,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     getBatchOperations,
   };
 
-  return (
-    <ActivityContext.Provider value={value}>
-      {children}
-    </ActivityContext.Provider>
-  );
+  return <ActivityContext.Provider value={value}>{children}</ActivityContext.Provider>;
 }
 
 export function useActivity() {

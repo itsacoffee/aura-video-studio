@@ -3,7 +3,6 @@
  * Professional desktop-style menu bar matching Adobe Premiere Pro conventions
  */
 
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -15,6 +14,7 @@ import {
   MenuDivider,
   Button,
 } from '@fluentui/react-components';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const useStyles = makeStyles({
@@ -81,10 +81,7 @@ export function TopMenuBar({
   return (
     <div className={styles.menuBar}>
       {/* File Menu */}
-      <Menu
-        open={openMenus.file}
-        onOpenChange={(_, data) => handleMenuToggle('file', data.open)}
-      >
+      <Menu open={openMenus.file} onOpenChange={(_, data) => handleMenuToggle('file', data.open)}>
         <MenuTrigger>
           <Button appearance="subtle" className={styles.menuButton}>
             File
@@ -131,21 +128,14 @@ export function TopMenuBar({
               </div>
             </MenuItem>
             <MenuDivider />
-            <MenuItem onClick={() => navigate('/export-history')}>
-              Export History
-            </MenuItem>
-            <MenuItem onClick={() => navigate('/projects')}>
-              Project Settings
-            </MenuItem>
+            <MenuItem onClick={() => navigate('/export-history')}>Export History</MenuItem>
+            <MenuItem onClick={() => navigate('/projects')}>Project Settings</MenuItem>
           </MenuList>
         </MenuPopover>
       </Menu>
 
       {/* Edit Menu */}
-      <Menu
-        open={openMenus.edit}
-        onOpenChange={(_, data) => handleMenuToggle('edit', data.open)}
-      >
+      <Menu open={openMenus.edit} onOpenChange={(_, data) => handleMenuToggle('edit', data.open)}>
         <MenuTrigger>
           <Button appearance="subtle" className={styles.menuButton}>
             Edit
@@ -202,10 +192,7 @@ export function TopMenuBar({
       </Menu>
 
       {/* View Menu */}
-      <Menu
-        open={openMenus.view}
-        onOpenChange={(_, data) => handleMenuToggle('view', data.open)}
-      >
+      <Menu open={openMenus.view} onOpenChange={(_, data) => handleMenuToggle('view', data.open)}>
         <MenuTrigger>
           <Button appearance="subtle" className={styles.menuButton}>
             View
@@ -261,10 +248,7 @@ export function TopMenuBar({
       </Menu>
 
       {/* Help Menu */}
-      <Menu
-        open={openMenus.help}
-        onOpenChange={(_, data) => handleMenuToggle('help', data.open)}
-      >
+      <Menu open={openMenus.help} onOpenChange={(_, data) => handleMenuToggle('help', data.open)}>
         <MenuTrigger>
           <Button appearance="subtle" className={styles.menuButton}>
             Help
@@ -272,16 +256,16 @@ export function TopMenuBar({
         </MenuTrigger>
         <MenuPopover>
           <MenuList>
-            <MenuItem onClick={onShowKeyboardShortcuts}>
-              Keyboard Shortcuts
-            </MenuItem>
-            <MenuItem onClick={() => window.open('https://github.com/Saiyan9001/aura-video-studio', '_blank')}>
+            <MenuItem onClick={onShowKeyboardShortcuts}>Keyboard Shortcuts</MenuItem>
+            <MenuItem
+              onClick={() =>
+                window.open('https://github.com/Saiyan9001/aura-video-studio', '_blank')
+              }
+            >
               Documentation
             </MenuItem>
             <MenuDivider />
-            <MenuItem onClick={() => navigate('/health')}>
-              System Health
-            </MenuItem>
+            <MenuItem onClick={() => navigate('/health')}>System Health</MenuItem>
             <MenuItem>About Aura Studio</MenuItem>
           </MenuList>
         </MenuPopover>

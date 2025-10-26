@@ -4,9 +4,9 @@
  * navigating to the Create page as per PR3 requirements.
  */
 
-import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { describe, it, expect, vi } from 'vitest';
 import { PacingAnalyzerPage } from '../pages/PacingAnalyzerPage';
 
 // Mock the PacingOptimizerPanel component

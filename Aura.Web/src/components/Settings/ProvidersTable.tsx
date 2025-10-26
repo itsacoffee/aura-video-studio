@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -19,6 +18,7 @@ import {
   DismissCircle20Regular,
   Info20Regular,
 } from '@fluentui/react-icons';
+import { useEffect, useState } from 'react';
 
 const useStyles = makeStyles({
   container: {

@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../../config/api';
 import {
   Card,
   CardHeader,
@@ -45,12 +43,14 @@ import {
   LinkRegular,
   ShieldCheckmark24Regular,
 } from '@fluentui/react-icons';
-import type { EngineManifestEntry, EngineStatus } from '../../types/engines';
+import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
+import { useEngineInstallProgress } from '../../hooks/useEngineInstallProgress';
 import { useEnginesStore } from '../../state/engines';
+import type { EngineManifestEntry, EngineStatus } from '../../types/engines';
+import { useNotifications } from '../Notifications/Toasts';
 import { AttachEngineDialog } from './AttachEngineDialog';
 import { ModelManager } from './ModelManager';
-import { useNotifications } from '../Notifications/Toasts';
-import { useEngineInstallProgress } from '../../hooks/useEngineInstallProgress';
 
 const useStyles = makeStyles({
   card: {
@@ -159,7 +159,12 @@ export function EngineCard({ engine }: EngineCardProps) {
     getDiagnostics,
   } = useEnginesStore();
 
-  const { installWithProgress, isInstalling, progress, error: installError } = useEngineInstallProgress();
+  const {
+    installWithProgress,
+    isInstalling,
+    progress,
+    error: installError,
+  } = useEngineInstallProgress();
 
   useEffect(() => {
     loadStatus();
@@ -611,8 +616,8 @@ export function EngineCard({ engine }: EngineCardProps) {
                 block
                 style={{ color: tokens.colorNeutralForeground3 }}
               >
-                💡 You can still install this engine for future use. It won&apos;t auto-start without
-                meeting hardware requirements.
+                💡 You can still install this engine for future use. It won&apos;t auto-start
+                without meeting hardware requirements.
               </Text>
             )}
           </div>
@@ -732,12 +737,14 @@ export function EngineCard({ engine }: EngineCardProps) {
 
         {/* Installation Progress */}
         {isInstalling && progress && (
-          <div style={{
-            padding: tokens.spacingVerticalM,
-            backgroundColor: tokens.colorNeutralBackground2,
-            borderRadius: tokens.borderRadiusMedium,
-            marginBottom: tokens.spacingVerticalM,
-          }}>
+          <div
+            style={{
+              padding: tokens.spacingVerticalM,
+              backgroundColor: tokens.colorNeutralBackground2,
+              borderRadius: tokens.borderRadiusMedium,
+              marginBottom: tokens.spacingVerticalM,
+            }}
+          >
             <div style={{ marginBottom: tokens.spacingVerticalS }}>
               <Text weight="semibold">Installing {engine.name}...</Text>
               <Text size={200} block style={{ color: tokens.colorNeutralForeground3 }}>
@@ -747,21 +754,31 @@ export function EngineCard({ engine }: EngineCardProps) {
                 {progress.message && ` • ${progress.message}`}
               </Text>
             </div>
-            <div style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: tokens.colorNeutralBackground3,
-              borderRadius: tokens.borderRadiusLarge,
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                width: `${progress.percentComplete}%`,
-                height: '100%',
-                backgroundColor: tokens.colorBrandBackground,
-                transition: 'width 0.3s ease',
-              }} />
+            <div
+              style={{
+                width: '100%',
+                height: '8px',
+                backgroundColor: tokens.colorNeutralBackground3,
+                borderRadius: tokens.borderRadiusLarge,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${progress.percentComplete}%`,
+                  height: '100%',
+                  backgroundColor: tokens.colorBrandBackground,
+                  transition: 'width 0.3s ease',
+                }}
+              />
             </div>
-            <div style={{ marginTop: tokens.spacingVerticalXS, display: 'flex', justifyContent: 'space-between' }}>
+            <div
+              style={{
+                marginTop: tokens.spacingVerticalXS,
+                display: 'flex',
+                justifyContent: 'space-between',
+              }}
+            >
               <Text size={200}>{progress.percentComplete.toFixed(1)}%</Text>
               {progress.totalBytes > 0 && (
                 <Text size={200}>

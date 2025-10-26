@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -21,6 +20,7 @@ import {
   Checkmark24Regular,
   ErrorCircle24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { useRenderStore } from '../state/render';
 
 const useStyles = makeStyles({

@@ -40,9 +40,7 @@ export function useEngineInstallProgress() {
       });
 
       return new Promise((resolve) => {
-        const eventSource = new EventSource(
-          apiUrl('/api/engines/install-stream')
-        );
+        const eventSource = new EventSource(apiUrl('/api/engines/install-stream'));
 
         // Send install request via POST by creating a hidden form
         // (EventSource only supports GET, so we use a workaround)

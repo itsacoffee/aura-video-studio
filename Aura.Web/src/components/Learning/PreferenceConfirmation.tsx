@@ -72,7 +72,10 @@ export const PreferenceConfirmation: React.FC<PreferenceConfirmationProps> = ({
 
           {showCorrection && (
             <div className="mb-3">
-              <label htmlFor="correction-value" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="correction-value"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 What should the value be?
               </label>
               <input

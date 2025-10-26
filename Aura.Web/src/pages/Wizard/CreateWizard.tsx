@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -32,6 +30,15 @@ import {
   Info24Regular,
   ArrowReset24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { GenerationPanel } from '../../components/Generation/GenerationPanel';
+import { useNotifications } from '../../components/Notifications/Toasts';
+import { PreflightPanel } from '../../components/PreflightPanel';
+import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
+import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
+import { apiUrl } from '../../config/api';
+import { useJobState } from '../../state/jobState';
+import type { PreflightReport, PerStageProviderSelection } from '../../state/providers';
 import type {
   Brief,
   PlanSpec,
@@ -41,16 +48,9 @@ import type {
   CaptionsConfig,
   StockSourcesConfig,
 } from '../../types';
-import type { PreflightReport, PerStageProviderSelection } from '../../state/providers';
+import { parseApiError, openLogsFolder } from '../../utils/apiErrorHandler';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../../utils/enumNormalizer';
 import { validateBriefRequest } from '../../utils/formValidation';
-import { PreflightPanel } from '../../components/PreflightPanel';
-import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
-import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
-import { GenerationPanel } from '../../components/Generation/GenerationPanel';
-import { parseApiError, openLogsFolder } from '../../utils/apiErrorHandler';
-import { useNotifications } from '../../components/Notifications/Toasts';
-import { useJobState } from '../../state/jobState';
 
 const useStyles = makeStyles({
   container: {
@@ -208,8 +208,6 @@ export function CreateWizard() {
       console.error('Failed to save settings to localStorage:', error);
     }
   }, [settings]);
-
-
 
   // Update brief
   const updateBrief = (updates: Partial<Brief>) => {
@@ -429,7 +427,7 @@ export function CreateWizard() {
   const handleQuickDemo = async () => {
     try {
       setGenerating(true);
-      
+
       // Prepare complete validation request with all required fields
       const validationRequest = {
         topic: 'Welcome to Aura Video Studio',
@@ -439,22 +437,23 @@ export function CreateWizard() {
         language: 'en-US',
         durationMinutes: 0.2, // 12 seconds (0.2 minutes)
       };
-      
+
       // Frontend validation before API call
       const frontendValidation = validateBriefRequest(validationRequest);
       if (!frontendValidation.valid) {
         console.warn('[QUICK DEMO] Frontend validation failed:', frontendValidation.errors);
         showFailureToast({
           title: 'Invalid Quick Demo Request',
-          message: 'The demo request failed frontend validation:\n' + frontendValidation.errors.join('\n'),
+          message:
+            'The demo request failed frontend validation:\n' + frontendValidation.errors.join('\n'),
         });
         setGenerating(false);
         return;
       }
-      
+
       // Validate before starting generation
       const validationUrl = apiUrl('/api/validation/brief');
-      
+
       const validationResponse = await fetch(validationUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -463,15 +462,16 @@ export function CreateWizard() {
 
       if (validationResponse.ok) {
         const validationData = await validationResponse.json();
-        
+
         if (!validationData.isValid) {
           console.warn('[QUICK DEMO] Validation failed with issues:', validationData.issues);
-          
+
           // Format error message with specific issues
-          const errorMessage = validationData.issues && validationData.issues.length > 0
-            ? validationData.issues.join('\n')
-            : 'Validation failed. Please check system requirements.';
-            
+          const errorMessage =
+            validationData.issues && validationData.issues.length > 0
+              ? validationData.issues.join('\n')
+              : 'Validation failed. Please check system requirements.';
+
           showFailureToast({
             title: 'Quick Demo System Check Failed',
             message: errorMessage,
@@ -481,10 +481,14 @@ export function CreateWizard() {
           return;
         }
       } else {
-        console.error('[QUICK DEMO] Validation request failed:', validationResponse.status, validationResponse.statusText);
+        console.error(
+          '[QUICK DEMO] Validation request failed:',
+          validationResponse.status,
+          validationResponse.statusText
+        );
         const errorText = await validationResponse.text();
         console.error('[QUICK DEMO] Error response:', errorText);
-        
+
         showFailureToast({
           title: 'Validation Failed',
           message: `Could not validate quick demo request. Server returned status ${validationResponse.status}`,
@@ -497,7 +501,7 @@ export function CreateWizard() {
       // Validation passed, proceed with generation
       const demoUrl = apiUrl('/api/quick/demo');
       const requestData = { topic: settings.brief.topic || null };
-      
+
       const response = await fetch(demoUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

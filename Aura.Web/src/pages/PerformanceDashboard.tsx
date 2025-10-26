@@ -1,11 +1,10 @@
 /**
  * Performance Dashboard
- * 
+ *
  * Developer tool for monitoring application performance.
  * Shows render times, bundle sizes, memory usage, and performance metrics.
  */
 
-import { useState, useEffect, useMemo } from 'react';
 import {
   makeStyles,
   tokens,
@@ -21,11 +20,8 @@ import {
   Switch,
   Badge,
 } from '@fluentui/react-components';
-import {
-  ArrowSync24Regular,
-  Delete24Regular,
-  ArrowDownload24Regular,
-} from '@fluentui/react-icons';
+import { ArrowSync24Regular, Delete24Regular, ArrowDownload24Regular } from '@fluentui/react-icons';
+import { useState, useEffect, useMemo } from 'react';
 import { performanceMonitor } from '../services/performanceMonitor';
 
 const useStyles = makeStyles({
@@ -106,7 +102,7 @@ export function PerformanceDashboard() {
   // Force re-render every second to show live data
   useEffect(() => {
     const interval = setInterval(() => {
-      setUpdateCounter(prev => prev + 1);
+      setUpdateCounter((prev) => prev + 1);
     }, 1000);
 
     return () => clearInterval(interval);
@@ -125,7 +121,7 @@ export function PerformanceDashboard() {
 
   const handleClearMetrics = () => {
     performanceMonitor.clearMetrics();
-    setUpdateCounter(prev => prev + 1);
+    setUpdateCounter((prev) => prev + 1);
   };
 
   const handleExportMetrics = () => {
@@ -150,7 +146,7 @@ export function PerformanceDashboard() {
   };
 
   const getBudgetStatus = (componentName: string, actualTime: number) => {
-    const budget = budgets.find(b => b.name === componentName);
+    const budget = budgets.find((b) => b.name === componentName);
     if (!budget) return 'unknown';
     return actualTime > budget.maxRenderTime ? 'over' : 'under';
   };
@@ -173,15 +169,11 @@ export function PerformanceDashboard() {
         <Button
           appearance="subtle"
           icon={<ArrowSync24Regular />}
-          onClick={() => setUpdateCounter(prev => prev + 1)}
+          onClick={() => setUpdateCounter((prev) => prev + 1)}
         >
           Refresh
         </Button>
-        <Button
-          appearance="subtle"
-          icon={<Delete24Regular />}
-          onClick={handleClearMetrics}
-        >
+        <Button appearance="subtle" icon={<Delete24Regular />} onClick={handleClearMetrics}>
           Clear Metrics
         </Button>
         <Button
@@ -290,9 +282,13 @@ export function PerformanceDashboard() {
                     <TableCell>{formatMs(metric.minDuration)}</TableCell>
                     <TableCell>
                       {getBudgetStatus(metric.componentName, metric.maxDuration) === 'over' ? (
-                        <Badge appearance="filled" color="danger">Over Budget</Badge>
+                        <Badge appearance="filled" color="danger">
+                          Over Budget
+                        </Badge>
                       ) : getBudgetStatus(metric.componentName, metric.maxDuration) === 'under' ? (
-                        <Badge appearance="filled" color="success">Under Budget</Badge>
+                        <Badge appearance="filled" color="success">
+                          Under Budget
+                        </Badge>
                       ) : (
                         <Badge appearance="outline">No Budget</Badge>
                       )}

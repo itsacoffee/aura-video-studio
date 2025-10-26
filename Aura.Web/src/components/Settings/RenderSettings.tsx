@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -24,6 +22,8 @@ import {
   FolderOpen24Regular,
   DocumentText24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
+import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({
   container: {
@@ -129,7 +129,7 @@ export function RenderSettings() {
           framerate,
         }),
       });
-      
+
       if (response.ok) {
         alert('Settings saved successfully!');
       } else {
@@ -152,7 +152,7 @@ export function RenderSettings() {
         const response = await fetch(`${apiUrl}/api/v1/cache/clear`, {
           method: 'POST',
         });
-        
+
         if (response.ok) {
           alert('Cache cleared successfully!');
         } else {
@@ -174,7 +174,7 @@ export function RenderSettings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: 'Select Cache Location' }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.path) {
@@ -197,7 +197,7 @@ export function RenderSettings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: 'Select Export Location' }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.path) {

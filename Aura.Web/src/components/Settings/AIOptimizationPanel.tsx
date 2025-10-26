@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -15,10 +13,9 @@ import {
   Checkbox,
   Spinner,
 } from '@fluentui/react-components';
-import {
-  Save24Regular,
-  ArrowReset24Regular,
-} from '@fluentui/react-icons';
+import { Save24Regular, ArrowReset24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({
   panel: {
@@ -110,7 +107,7 @@ export function AIOptimizationPanel() {
       setLoading(true);
       const response = await fetch(`${apiUrl}/settings/ai-optimization`);
       const data = await response.json();
-      
+
       if (data.success && data.settings) {
         setSettings(data.settings);
       }
@@ -133,7 +130,7 @@ export function AIOptimizationPanel() {
       });
 
       const data = await response.json();
-      
+
       if (!data.success) {
         console.error('Failed to save settings:', data.error);
       }
@@ -152,7 +149,7 @@ export function AIOptimizationPanel() {
       });
 
       const data = await response.json();
-      
+
       if (data.success && data.settings) {
         setSettings(data.settings);
       }
@@ -202,9 +199,7 @@ export function AIOptimizationPanel() {
         <Field className={styles.field}>
           <Switch
             checked={settings.enabled}
-            onChange={(_, data) =>
-              setSettings((prev) => ({ ...prev, enabled: data.checked }))
-            }
+            onChange={(_, data) => setSettings((prev) => ({ ...prev, enabled: data.checked }))}
             label="Enable AI content optimization"
           />
           <Text size={200} className={styles.subtitle}>
@@ -218,9 +213,7 @@ export function AIOptimizationPanel() {
           <div className={styles.section}>
             <div className={styles.sectionHeader}>
               <Title3>Optimization Level</Title3>
-              <Text className={styles.subtitle}>
-                How aggressively to optimize content
-              </Text>
+              <Text className={styles.subtitle}>How aggressively to optimize content</Text>
             </div>
 
             <RadioGroup
@@ -287,9 +280,7 @@ export function AIOptimizationPanel() {
           <div className={styles.section}>
             <div className={styles.sectionHeader}>
               <Title3>Optimize For</Title3>
-              <Text className={styles.subtitle}>
-                Select which metrics to prioritize
-              </Text>
+              <Text className={styles.subtitle}>Select which metrics to prioritize</Text>
             </div>
 
             <div className={styles.checkboxGroup}>

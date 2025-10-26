@@ -72,7 +72,10 @@ export function createMockTextOverlay(overrides?: Partial<TextOverlay>): TextOve
 /**
  * Test data factory for creating multiple clips at once
  */
-export function createMockClips(count: number, baseOverrides?: Partial<TimelineClip>): TimelineClip[] {
+export function createMockClips(
+  count: number,
+  baseOverrides?: Partial<TimelineClip>
+): TimelineClip[] {
   return Array.from({ length: count }, (_, index) =>
     createMockTimelineClip({
       ...baseOverrides,

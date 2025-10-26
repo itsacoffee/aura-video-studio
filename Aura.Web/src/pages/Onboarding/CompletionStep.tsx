@@ -1,12 +1,4 @@
-import {
-  makeStyles,
-  tokens,
-  Title1,
-  Title3,
-  Text,
-  Card,
-  Button,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Title1, Title3, Text, Card, Button } from '@fluentui/react-components';
 import {
   Checkmark24Regular,
   VideoClip24Regular,
@@ -101,11 +93,7 @@ export interface CompletionStepProps {
   onExploreApp: () => void;
 }
 
-export function CompletionStep({
-  summary,
-  onCreateFirstVideo,
-  onExploreApp,
-}: CompletionStepProps) {
+export function CompletionStep({ summary, onCreateFirstVideo, onExploreApp }: CompletionStepProps) {
   const styles = useStyles();
 
   const quickStartTips = [
@@ -117,8 +105,7 @@ export function CompletionStep({
     {
       icon: <BookOpen24Regular className={styles.tipIcon} />,
       title: 'Explore Templates',
-      description:
-        'Use our pre-built templates to jumpstart your projects with proven structures.',
+      description: 'Use our pre-built templates to jumpstart your projects with proven structures.',
     },
     {
       icon: <Settings24Regular className={styles.tipIcon} />,
@@ -176,14 +163,19 @@ export function CompletionStep({
 
       <div style={{ width: '100%' }}>
         <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
-          <Lightbulb24Regular style={{ verticalAlign: 'middle', marginRight: tokens.spacingHorizontalS }} />
+          <Lightbulb24Regular
+            style={{ verticalAlign: 'middle', marginRight: tokens.spacingHorizontalS }}
+          />
           Quick Start Tips
         </Title3>
         <div className={styles.tipsContainer}>
           {quickStartTips.map((tip, index) => (
             <Card key={index} className={styles.tipCard}>
               {tip.icon}
-              <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}>
+              <Text
+                weight="semibold"
+                style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
+              >
                 {tip.title}
               </Text>
               <Text size={200}>{tip.description}</Text>
@@ -201,12 +193,7 @@ export function CompletionStep({
         >
           Create Your First Video
         </Button>
-        <Button
-          appearance="secondary"
-          size="large"
-          icon={<Apps24Regular />}
-          onClick={onExploreApp}
-        >
+        <Button appearance="secondary" size="large" icon={<Apps24Regular />} onClick={onExploreApp}>
           Explore the App
         </Button>
       </div>

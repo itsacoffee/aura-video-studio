@@ -106,15 +106,15 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
         }
       }
       const data = await response.json();
-      set({ 
+      set({
         metrics: data.metrics,
         breakdown: data.breakdown,
-        isLoading: false 
+        isLoading: false,
       });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Unknown error',
-        isLoading: false 
+        isLoading: false,
       });
     }
   },
@@ -132,20 +132,24 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const errorData = await response.json();
-          throw new Error(errorData.detail || errorData.message || 'Failed to fetch historical data');
+          throw new Error(
+            errorData.detail || errorData.message || 'Failed to fetch historical data'
+          );
         } else {
-          throw new Error(`Failed to fetch historical data: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch historical data: ${response.status} ${response.statusText}`
+          );
         }
       }
       const data = await response.json();
-      set({ 
+      set({
         historicalTrends: data,
-        isLoading: false 
+        isLoading: false,
       });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Unknown error',
-        isLoading: false 
+        isLoading: false,
       });
     }
   },
@@ -158,20 +162,24 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const errorData = await response.json();
-          throw new Error(errorData.detail || errorData.message || 'Failed to fetch platform compliance');
+          throw new Error(
+            errorData.detail || errorData.message || 'Failed to fetch platform compliance'
+          );
         } else {
-          throw new Error(`Failed to fetch platform compliance: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch platform compliance: ${response.status} ${response.statusText}`
+          );
         }
       }
       const data = await response.json();
-      set({ 
+      set({
         platformCompliance: data.platforms,
-        isLoading: false 
+        isLoading: false,
       });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Unknown error',
-        isLoading: false 
+        isLoading: false,
       });
     }
   },
@@ -184,20 +192,24 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const errorData = await response.json();
-          throw new Error(errorData.detail || errorData.message || 'Failed to fetch recommendations');
+          throw new Error(
+            errorData.detail || errorData.message || 'Failed to fetch recommendations'
+          );
         } else {
-          throw new Error(`Failed to fetch recommendations: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch recommendations: ${response.status} ${response.statusText}`
+          );
         }
       }
       const data = await response.json();
-      set({ 
+      set({
         recommendations: data.recommendations,
-        isLoading: false 
+        isLoading: false,
       });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Unknown error',
-        isLoading: false 
+        isLoading: false,
       });
     }
   },
@@ -207,7 +219,7 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
       const response = await fetch(apiUrl('/api/dashboard/export'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format })
+        body: JSON.stringify({ format }),
       });
 
       if (!response.ok) {
@@ -231,8 +243,8 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Unknown error'
+      set({
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   },
@@ -243,7 +255,7 @@ export const useQualityDashboardStore = create<QualityDashboardState>((set, get)
       state.fetchMetrics(),
       state.fetchHistoricalData(),
       state.fetchPlatformCompliance(),
-      state.fetchRecommendations()
+      state.fetchRecommendations(),
     ]);
-  }
+  },
 }));

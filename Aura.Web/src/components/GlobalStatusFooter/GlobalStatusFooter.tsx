@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -10,14 +9,12 @@ import {
   useId,
   Toaster,
 } from '@fluentui/react-components';
-import {
-  ChevronUp24Regular,
-  ChevronDown24Regular,
-} from '@fluentui/react-icons';
+import { ChevronUp24Regular, ChevronDown24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { useActivity, type Activity } from '../../state/activityContext';
+import { ToastNotification } from '../Notifications/Toast';
 import { ActivityDrawer } from '../StatusBar/ActivityDrawer';
 import { ResourceMonitor } from '../StatusBar/ResourceMonitor';
-import { ToastNotification } from '../Notifications/Toast';
 
 const useStyles = makeStyles({
   footer: {
@@ -82,7 +79,7 @@ const useStyles = makeStyles({
 function formatDuration(startTime: Date, endTime?: Date): string {
   const end = endTime || new Date();
   const duration = Math.floor((end.getTime() - startTime.getTime()) / 1000);
-  
+
   if (duration < 60) {
     return `${duration}s`;
   } else if (duration < 3600) {
@@ -101,10 +98,10 @@ export function GlobalStatusFooter() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const toasterId = useId('status-toaster');
   const { dispatchToast } = useToastController(toasterId);
-  
-  const { 
+
+  const {
     activities,
-    activeActivities, 
+    activeActivities,
     queuedActivities,
     pausedActivities,
     completedActivities,
@@ -125,13 +122,13 @@ export function GlobalStatusFooter() {
 
   // Show toast notifications when activities complete or fail
   useEffect(() => {
-    activities.forEach(activity => {
+    activities.forEach((activity) => {
       const previousState = previousActivityStates.get(activity.id);
-      
+
       // Check if activity just completed
       if (
-        activity.status === 'completed' && 
-        previousState && 
+        activity.status === 'completed' &&
+        previousState &&
         previousState.status !== 'completed'
       ) {
         const duration = formatDuration(activity.startTime, activity.endTime);
@@ -141,22 +138,22 @@ export function GlobalStatusFooter() {
             title="Operation Completed"
             message={activity.title}
             duration={duration}
-            onOpenFile={activity.artifactPath ? () => {
-              // In production, this would open the file location
-              // console.log('Open file:', activity.artifactPath);
-            } : undefined}
+            onOpenFile={
+              activity.artifactPath
+                ? () => {
+                    // In production, this would open the file location
+                    // console.log('Open file:', activity.artifactPath);
+                  }
+                : undefined
+            }
             showOpenButton={!!activity.artifactPath}
           />,
           { intent: 'success', timeout: 5000 }
         );
       }
-      
+
       // Check if activity just failed
-      if (
-        activity.status === 'failed' && 
-        previousState && 
-        previousState.status !== 'failed'
-      ) {
+      if (activity.status === 'failed' && previousState && previousState.status !== 'failed') {
         dispatchToast(
           <ToastNotification
             type="error"
@@ -212,8 +209,8 @@ export function GlobalStatusFooter() {
   return (
     <>
       <div className={styles.footer}>
-        <div 
-          className={styles.header} 
+        <div
+          className={styles.header}
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -228,22 +225,29 @@ export function GlobalStatusFooter() {
         >
           <div className={styles.headerLeft}>
             {isDrawerOpen ? <ChevronDown24Regular /> : <ChevronUp24Regular />}
-            
+
             {primaryOperation && primaryOperation.status === 'running' && (
               <div className={styles.compactProgress}>
-                <ProgressBar 
+                <ProgressBar
                   className={styles.progressBar}
-                  value={primaryOperation.progress / 100} 
+                  value={primaryOperation.progress / 100}
                 />
-                <Text weight="semibold" size={200}>{primaryOperation.progress}%</Text>
+                <Text weight="semibold" size={200}>
+                  {primaryOperation.progress}%
+                </Text>
               </div>
             )}
-            
+
             <Text className={styles.statusText}>{getSummaryText()}</Text>
-            
+
             {primaryOperation?.details?.timeRemaining && (
               <Text className={styles.statusText}>
-                ~{formatDuration(new Date(), new Date(Date.now() + primaryOperation.details.timeRemaining * 1000))} remaining
+                ~
+                {formatDuration(
+                  new Date(),
+                  new Date(Date.now() + primaryOperation.details.timeRemaining * 1000)
+                )}{' '}
+                remaining
               </Text>
             )}
 
@@ -258,7 +262,7 @@ export function GlobalStatusFooter() {
               </Badge>
             )}
           </div>
-          
+
           <div className={styles.headerRight}>
             <ResourceMonitor compact />
             <Button

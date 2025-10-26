@@ -1,13 +1,13 @@
 /**
  * LazyLoad Component
- * 
+ *
  * Wrapper component that lazy loads heavy components only when they become visible
  * or when explicitly triggered. Helps reduce initial bundle size and improves
  * initial page load performance.
  */
 
-import { Suspense, lazy, ComponentType, ReactNode } from 'react';
 import { Spinner, makeStyles, tokens } from '@fluentui/react-components';
+import { Suspense, lazy, ComponentType, ReactNode } from 'react';
 
 const useStyles = makeStyles({
   loadingContainer: {
@@ -29,17 +29,17 @@ interface LazyLoadProps {
    * Factory function that returns a dynamic import
    */
   factory: () => Promise<{ default: ComponentType<any> }>;
-  
+
   /**
    * Props to pass to the lazy-loaded component
    */
   componentProps?: any;
-  
+
   /**
    * Custom loading fallback
    */
   fallback?: ReactNode;
-  
+
   /**
    * Loading message to display
    */
@@ -86,7 +86,7 @@ export function createLazyComponent<T = any>(
  */
 export function preloadLazyComponent(factory: () => Promise<any>) {
   // Trigger the import without rendering
-  factory().catch(err => {
+  factory().catch((err) => {
     console.error('Failed to preload component:', err);
   });
 }

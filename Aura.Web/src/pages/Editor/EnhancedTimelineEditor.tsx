@@ -3,13 +3,13 @@
  * This demonstrates how to integrate the new Timeline component with advanced features
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { makeStyles, tokens, Button, Spinner, Text, Title3 } from '@fluentui/react-components';
 import { Save24Regular, Play24Regular, ArrowLeft24Regular } from '@fluentui/react-icons';
-import { VideoPreviewPlayer } from '../../components/Editor/VideoPreviewPlayer';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ScenePropertiesPanel } from '../../components/Editor/ScenePropertiesPanel';
 import { Timeline } from '../../components/Editor/Timeline/Timeline';
+import { VideoPreviewPlayer } from '../../components/Editor/VideoPreviewPlayer';
 import type { EditableTimeline, TimelineScene, TimelineAsset } from '../../types/timeline';
 
 const useStyles = makeStyles({

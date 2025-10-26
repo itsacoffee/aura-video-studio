@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -8,13 +7,12 @@ import {
   TabList,
   Divider,
 } from '@fluentui/react-components';
-import {
-  Dismiss24Regular,
-} from '@fluentui/react-icons';
+import { Dismiss24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { Activity } from '../../state/activityContext';
+import { OperationHistory } from './OperationHistory';
 import { OperationProgress } from './OperationProgress';
 import { ResourceMonitor } from './ResourceMonitor';
-import { OperationHistory } from './OperationHistory';
 
 const useStyles = makeStyles({
   drawer: {
@@ -140,9 +138,11 @@ export function ActivityDrawer({
 
   // Group activities into batches
   const batchIds = Array.from(batchOperations.keys());
-  const unbatchedActivities = [...activeActivities, ...queuedActivities, ...pausedActivities].filter(
-    a => !a.batchId
-  );
+  const unbatchedActivities = [
+    ...activeActivities,
+    ...queuedActivities,
+    ...pausedActivities,
+  ].filter((a) => !a.batchId);
 
   const calculateBatchProgress = (activities: Activity[]): number => {
     if (activities.length === 0) return 0;
@@ -151,8 +151,8 @@ export function ActivityDrawer({
   };
 
   const getBatchStatus = (activities: Activity[]): string => {
-    const running = activities.filter(a => a.status === 'running').length;
-    const completed = activities.filter(a => a.status === 'completed').length;
+    const running = activities.filter((a) => a.status === 'running').length;
+    const completed = activities.filter((a) => a.status === 'completed').length;
     const total = activities.length;
 
     if (completed === total) return 'All completed';
@@ -173,9 +173,13 @@ export function ActivityDrawer({
       </div>
 
       <div className={styles.tabs}>
-        <TabList selectedValue={selectedTab} onTabSelect={(_, data) => setSelectedTab(data.value as any)}>
+        <TabList
+          selectedValue={selectedTab}
+          onTabSelect={(_, data) => setSelectedTab(data.value as any)}
+        >
           <Tab value="active">
-            Active Operations ({activeActivities.length + queuedActivities.length + pausedActivities.length})
+            Active Operations (
+            {activeActivities.length + queuedActivities.length + pausedActivities.length})
           </Tab>
           <Tab value="history">History ({recentHistory.length})</Tab>
           <Tab value="resources">Resources</Tab>
@@ -189,11 +193,11 @@ export function ActivityDrawer({
             {batchIds.length > 0 && (
               <div className={styles.section}>
                 <Text className={styles.sectionTitle}>Batch Operations</Text>
-                {batchIds.map(batchId => {
+                {batchIds.map((batchId) => {
                   const batchActivities = batchOperations.get(batchId) || [];
                   const batchProgress = calculateBatchProgress(batchActivities);
                   const batchStatus = getBatchStatus(batchActivities);
-                  
+
                   return (
                     <div key={batchId} className={styles.batchSection}>
                       <div className={styles.batchHeader}>
@@ -205,7 +209,7 @@ export function ActivityDrawer({
                         </Text>
                       </div>
                       <Divider />
-                      {batchActivities.map(activity => (
+                      {batchActivities.map((activity) => (
                         <OperationProgress
                           key={activity.id}
                           activity={activity}
@@ -224,56 +228,62 @@ export function ActivityDrawer({
             )}
 
             {/* Active Operations */}
-            {activeActivities.filter(a => !a.batchId).length > 0 && (
+            {activeActivities.filter((a) => !a.batchId).length > 0 && (
               <div className={styles.section}>
                 <Text className={styles.sectionTitle}>Active</Text>
-                {activeActivities.filter(a => !a.batchId).map(activity => (
-                  <OperationProgress
-                    key={activity.id}
-                    activity={activity}
-                    onPause={onPause}
-                    onResume={onResume}
-                    onCancel={onCancel}
-                    onRetry={() => onRetry?.(activity)}
-                    onPriorityChange={onPriorityChange}
-                  />
-                ))}
+                {activeActivities
+                  .filter((a) => !a.batchId)
+                  .map((activity) => (
+                    <OperationProgress
+                      key={activity.id}
+                      activity={activity}
+                      onPause={onPause}
+                      onResume={onResume}
+                      onCancel={onCancel}
+                      onRetry={() => onRetry?.(activity)}
+                      onPriorityChange={onPriorityChange}
+                    />
+                  ))}
               </div>
             )}
 
             {/* Paused Operations */}
-            {pausedActivities.filter(a => !a.batchId).length > 0 && (
+            {pausedActivities.filter((a) => !a.batchId).length > 0 && (
               <div className={styles.section}>
                 <Text className={styles.sectionTitle}>Paused</Text>
-                {pausedActivities.filter(a => !a.batchId).map(activity => (
-                  <OperationProgress
-                    key={activity.id}
-                    activity={activity}
-                    onPause={onPause}
-                    onResume={onResume}
-                    onCancel={onCancel}
-                    onRetry={() => onRetry?.(activity)}
-                    onPriorityChange={onPriorityChange}
-                  />
-                ))}
+                {pausedActivities
+                  .filter((a) => !a.batchId)
+                  .map((activity) => (
+                    <OperationProgress
+                      key={activity.id}
+                      activity={activity}
+                      onPause={onPause}
+                      onResume={onResume}
+                      onCancel={onCancel}
+                      onRetry={() => onRetry?.(activity)}
+                      onPriorityChange={onPriorityChange}
+                    />
+                  ))}
               </div>
             )}
 
             {/* Queued Operations */}
-            {queuedActivities.filter(a => !a.batchId).length > 0 && (
+            {queuedActivities.filter((a) => !a.batchId).length > 0 && (
               <div className={styles.section}>
                 <Text className={styles.sectionTitle}>Queued</Text>
-                {queuedActivities.filter(a => !a.batchId).map(activity => (
-                  <OperationProgress
-                    key={activity.id}
-                    activity={activity}
-                    onPause={onPause}
-                    onResume={onResume}
-                    onCancel={onCancel}
-                    onRetry={() => onRetry?.(activity)}
-                    onPriorityChange={onPriorityChange}
-                  />
-                ))}
+                {queuedActivities
+                  .filter((a) => !a.batchId)
+                  .map((activity) => (
+                    <OperationProgress
+                      key={activity.id}
+                      activity={activity}
+                      onPause={onPause}
+                      onResume={onResume}
+                      onCancel={onCancel}
+                      onRetry={() => onRetry?.(activity)}
+                      onPriorityChange={onPriorityChange}
+                    />
+                  ))}
               </div>
             )}
 
@@ -281,7 +291,7 @@ export function ActivityDrawer({
             {completedActivities.length > 0 && (
               <div className={styles.section}>
                 <Text className={styles.sectionTitle}>Recently Completed</Text>
-                {completedActivities.slice(0, 5).map(activity => (
+                {completedActivities.slice(0, 5).map((activity) => (
                   <OperationProgress
                     key={activity.id}
                     activity={activity}
@@ -296,11 +306,13 @@ export function ActivityDrawer({
               </div>
             )}
 
-            {unbatchedActivities.length === 0 && batchIds.length === 0 && completedActivities.length === 0 && (
-              <div className={styles.emptyState}>
-                <Text>No active operations</Text>
-              </div>
-            )}
+            {unbatchedActivities.length === 0 &&
+              batchIds.length === 0 &&
+              completedActivities.length === 0 && (
+                <div className={styles.emptyState}>
+                  <Text>No active operations</Text>
+                </div>
+              )}
           </div>
         )}
 
@@ -313,9 +325,7 @@ export function ActivityDrawer({
           />
         )}
 
-        {selectedTab === 'resources' && (
-          <ResourceMonitor />
-        )}
+        {selectedTab === 'resources' && <ResourceMonitor />}
       </div>
     </div>
   );

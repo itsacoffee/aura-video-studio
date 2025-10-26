@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import {
   Text,
   Slider,
@@ -10,6 +9,7 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import { Speaker224Regular, Info16Regular } from '@fluentui/react-icons';
+import React, { useState, useEffect } from 'react';
 import {
   audioIntelligenceService,
   AudioMixing,

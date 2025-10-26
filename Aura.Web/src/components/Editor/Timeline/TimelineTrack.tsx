@@ -2,8 +2,8 @@
  * Timeline track component with waveform display and scrubbing
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
 import { makeStyles, tokens, Spinner } from '@fluentui/react-components';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 
 const useStyles = makeStyles({
@@ -141,12 +141,15 @@ export function TimelineTrack({
     waveSurferRef.current = waveSurfer;
 
     // Load audio file
-    waveSurfer.load(audioPath).then(() => {
-      setIsLoading(false);
-    }).catch((error) => {
-      console.error('Failed to load waveform:', error);
-      setIsLoading(false);
-    });
+    waveSurfer
+      .load(audioPath)
+      .then(() => {
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error('Failed to load waveform:', error);
+        setIsLoading(false);
+      });
 
     // Cleanup
     return () => {
@@ -157,7 +160,7 @@ export function TimelineTrack({
   // Update waveform color when muted state changes
   useEffect(() => {
     if (!waveSurferRef.current) return;
-    
+
     const color = muted ? 'rgba(128, 128, 128, 0.5)' : trackColor;
     waveSurferRef.current.setOptions({
       waveColor: color,
@@ -229,8 +232,8 @@ export function TimelineTrack({
         </div>
       </div>
       <div ref={trackContentRef} className={styles.trackContent} onMouseDown={handleMouseDown}>
-        <div 
-          ref={waveformRef} 
+        <div
+          ref={waveformRef}
           className={`${styles.waveformContainer} ${selected ? styles.waveformContainerSelected : ''}`}
         />
         {isLoading && (

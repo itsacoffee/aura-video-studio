@@ -48,7 +48,7 @@ describe('LoggingService', () => {
   describe('Basic Logging', () => {
     it('should log debug messages', () => {
       loggingService.debug('Test debug message', 'TestComponent', 'testAction', { key: 'value' });
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(1);
       expect(logs[0].level).toBe('debug');
@@ -60,7 +60,7 @@ describe('LoggingService', () => {
 
     it('should log info messages', () => {
       loggingService.info('Test info message');
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(1);
       expect(logs[0].level).toBe('info');
@@ -69,7 +69,7 @@ describe('LoggingService', () => {
 
     it('should log warning messages', () => {
       loggingService.warn('Test warning message', 'Component');
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(1);
       expect(logs[0].level).toBe('warn');
@@ -80,7 +80,7 @@ describe('LoggingService', () => {
     it('should log error messages with error objects', () => {
       const error = new Error('Test error');
       loggingService.error('Error occurred', error, 'ErrorComponent');
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(1);
       expect(logs[0].level).toBe('error');
@@ -91,7 +91,7 @@ describe('LoggingService', () => {
 
     it('should include timestamp in log entries', () => {
       loggingService.info('Test message');
-      
+
       const logs = loggingService.getLogs();
       expect(logs[0].timestamp).toBeDefined();
       expect(new Date(logs[0].timestamp).getTime()).toBeGreaterThan(0);
@@ -100,8 +100,10 @@ describe('LoggingService', () => {
 
   describe('Performance Logging', () => {
     it('should log performance metrics', () => {
-      loggingService.performance('testOperation', 1500, 'PerformanceComponent', { operationId: '123' });
-      
+      loggingService.performance('testOperation', 1500, 'PerformanceComponent', {
+        operationId: '123',
+      });
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(1);
       expect(logs[0].level).toBe('info');
@@ -112,12 +114,12 @@ describe('LoggingService', () => {
 
     it('should measure async operation performance', async () => {
       const testFn = async () => {
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
         return 'result';
       };
 
       const result = await loggingService.measurePerformance('asyncOp', testFn, 'Component');
-      
+
       expect(result).toBe('result');
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(1);
@@ -135,7 +137,7 @@ describe('LoggingService', () => {
       };
 
       const result = loggingService.measurePerformanceSync('syncOp', testFn, 'Component');
-      
+
       expect(result).toBe(4950);
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(1);
@@ -150,7 +152,7 @@ describe('LoggingService', () => {
       await expect(
         loggingService.measurePerformance('failingOp', testFn, 'Component')
       ).rejects.toThrow('Operation failed');
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(1);
       expect(logs[0].context?.error).toBe(true);
@@ -160,12 +162,12 @@ describe('LoggingService', () => {
   describe('Log Configuration', () => {
     it('should respect minimum log level', () => {
       loggingService.configure({ minLogLevel: 'warn' });
-      
+
       loggingService.debug('Debug message');
       loggingService.info('Info message');
       loggingService.warn('Warning message');
       loggingService.error('Error message', new Error('test'));
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(2);
       expect(logs[0].level).toBe('warn');
@@ -174,11 +176,11 @@ describe('LoggingService', () => {
 
     it('should limit stored logs to maxStoredLogs', () => {
       loggingService.configure({ maxStoredLogs: 5 });
-      
+
       for (let i = 0; i < 10; i++) {
         loggingService.info(`Message ${i}`);
       }
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(5);
       expect(logs[0].message).toBe('Message 5');
@@ -215,14 +217,14 @@ describe('LoggingService', () => {
     it('should filter logs by component', () => {
       const componentALogs = loggingService.getLogsByComponent('ComponentA');
       expect(componentALogs).toHaveLength(2);
-      expect(componentALogs.every(log => log.component === 'ComponentA')).toBe(true);
+      expect(componentALogs.every((log) => log.component === 'ComponentA')).toBe(true);
     });
 
     it('should filter logs by time range', () => {
       const now = new Date();
       const oneMinuteAgo = new Date(now.getTime() - 60000);
       const oneMinuteFromNow = new Date(now.getTime() + 60000);
-      
+
       const logs = loggingService.getLogsByTimeRange(oneMinuteAgo, oneMinuteFromNow);
       expect(logs.length).toBeGreaterThan(0);
     });
@@ -232,10 +234,10 @@ describe('LoggingService', () => {
     it('should persist logs to localStorage when enabled', () => {
       loggingService.configure({ enablePersistence: true });
       loggingService.info('Persisted message');
-      
+
       const stored = localStorage.getItem('app_logs');
       expect(stored).toBeDefined();
-      
+
       const logs = JSON.parse(stored!);
       expect(logs).toHaveLength(1);
       expect(logs[0].message).toBe('Persisted message');
@@ -245,7 +247,7 @@ describe('LoggingService', () => {
       localStorage.clear();
       loggingService.configure({ enablePersistence: false });
       loggingService.info('Non-persisted message');
-      
+
       const stored = localStorage.getItem('app_logs');
       expect(stored).toBeNull();
     });
@@ -261,7 +263,7 @@ describe('LoggingService', () => {
     it('should export logs as JSON', () => {
       const exported = loggingService.exportLogs();
       const logs = JSON.parse(exported);
-      
+
       expect(Array.isArray(logs)).toBe(true);
       expect(logs).toHaveLength(3);
       expect(logs[0].message).toBe('Message 1');
@@ -269,10 +271,10 @@ describe('LoggingService', () => {
 
     it('should clear all logs', () => {
       loggingService.clearLogs();
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(0);
-      
+
       const stored = localStorage.getItem('app_logs');
       expect(stored).toBeNull();
     });
@@ -281,21 +283,21 @@ describe('LoggingService', () => {
   describe('Scoped Logger', () => {
     it('should create scoped logger for component', () => {
       const componentLogger = createLogger('TestComponent');
-      
+
       componentLogger.info('Info from component');
       componentLogger.error('Error from component', new Error('test'));
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(2);
-      expect(logs.every(log => log.component === 'TestComponent')).toBe(true);
+      expect(logs.every((log) => log.component === 'TestComponent')).toBe(true);
     });
 
     it('should use component logger method', () => {
       const logger = loggingService.createLogger('MyComponent');
-      
+
       logger.debug('Debug message', 'action1');
       logger.info('Info message', 'action2', { key: 'value' });
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(2);
       expect(logs[0].component).toBe('MyComponent');
@@ -305,9 +307,9 @@ describe('LoggingService', () => {
 
     it('should measure performance with scoped logger', () => {
       const logger = loggingService.createLogger('PerfComponent');
-      
+
       logger.performance('testOp', 100, { metadata: 'test' });
-      
+
       const logs = loggingService.getLogs();
       expect(logs).toHaveLength(1);
       expect(logs[0].component).toBe('PerfComponent');
@@ -319,9 +321,9 @@ describe('LoggingService', () => {
     it('should notify listeners of new log entries', () => {
       const listener = vi.fn();
       const unsubscribe = loggingService.subscribe(listener);
-      
+
       loggingService.info('Test message');
-      
+
       expect(listener).toHaveBeenCalledTimes(1);
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -329,17 +331,17 @@ describe('LoggingService', () => {
           message: 'Test message',
         })
       );
-      
+
       unsubscribe();
     });
 
     it('should unsubscribe listeners', () => {
       const listener = vi.fn();
       const unsubscribe = loggingService.subscribe(listener);
-      
+
       unsubscribe();
       loggingService.info('Test message');
-      
+
       expect(listener).not.toHaveBeenCalled();
     });
 
@@ -347,9 +349,9 @@ describe('LoggingService', () => {
       const faultyListener = () => {
         throw new Error('Listener error');
       };
-      
+
       loggingService.subscribe(faultyListener);
-      
+
       // Should not throw
       expect(() => loggingService.info('Test message')).not.toThrow();
     });

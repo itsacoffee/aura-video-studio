@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import {
   Card,
   Text,
@@ -12,6 +11,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { Search24Regular, MusicNote224Regular, Play24Regular } from '@fluentui/react-icons';
+import React, { useState, useEffect } from 'react';
 import {
   audioIntelligenceService,
   MusicTrack,

@@ -3,7 +3,6 @@
  * Draw and edit motion paths for object animation
  */
 
-import { useState, useRef, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -13,11 +12,8 @@ import {
   Switch,
   Divider,
 } from '@fluentui/react-components';
-import {
-  Delete24Regular,
-  Checkmark24Regular,
-  Dismiss24Regular,
-} from '@fluentui/react-icons';
+import { Delete24Regular, Checkmark24Regular, Dismiss24Regular } from '@fluentui/react-icons';
+import { useState, useRef, useEffect } from 'react';
 import { MotionPath, MotionPathPoint } from '../../services/animationEngine';
 
 const useStyles = makeStyles({
@@ -253,7 +249,9 @@ export function MotionPathTool({
                 ))}
               </div>
             ) : (
-              <p style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>
+              <p
+                style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}
+              >
                 No points added yet
               </p>
             )}
@@ -270,11 +268,7 @@ export function MotionPathTool({
             >
               Delete Last
             </Button>
-            <Button
-              appearance="secondary"
-              onClick={handleClearPath}
-              disabled={points.length === 0}
-            >
+            <Button appearance="secondary" onClick={handleClearPath} disabled={points.length === 0}>
               Clear All
             </Button>
           </div>
@@ -286,11 +280,7 @@ export function MotionPathTool({
                 <Button appearance="secondary" icon={<Dismiss24Regular />} onClick={handleCancel}>
                   Cancel
                 </Button>
-                <Button
-                  appearance="primary"
-                  icon={<Checkmark24Regular />}
-                  onClick={handleConfirm}
-                >
+                <Button appearance="primary" icon={<Checkmark24Regular />} onClick={handleConfirm}>
                   Create Path
                 </Button>
               </div>

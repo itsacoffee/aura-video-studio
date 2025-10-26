@@ -1,4 +1,3 @@
-import { useState, useCallback, useEffect } from 'react';
 import {
   makeStyles,
   Menu,
@@ -26,6 +25,7 @@ import {
   SpeakerOff24Regular,
   TopSpeed24Regular,
 } from '@fluentui/react-icons';
+import { useState, useCallback, useEffect } from 'react';
 
 const useStyles = makeStyles({
   menu: {
@@ -226,18 +226,14 @@ export function TimelineContextMenu({
                   <MenuItem onClick={() => handleAction('applyEffect', 'fade-out')}>
                     Fade Out
                   </MenuItem>
-                  <MenuItem onClick={() => handleAction('applyEffect', 'blur')}>
-                    Blur
-                  </MenuItem>
+                  <MenuItem onClick={() => handleAction('applyEffect', 'blur')}>Blur</MenuItem>
                   <MenuItem onClick={() => handleAction('applyEffect', 'sharpen')}>
                     Sharpen
                   </MenuItem>
                   <MenuItem onClick={() => handleAction('applyEffect', 'grayscale')}>
                     Grayscale
                   </MenuItem>
-                  <MenuItem onClick={() => handleAction('applyEffect', 'sepia')}>
-                    Sepia
-                  </MenuItem>
+                  <MenuItem onClick={() => handleAction('applyEffect', 'sepia')}>Sepia</MenuItem>
                   <MenuItem onClick={() => handleAction('applyEffect', 'vignette')}>
                     Vignette
                   </MenuItem>
@@ -270,9 +266,7 @@ export function TimelineContextMenu({
                   <MenuItem onClick={() => handleAction('colorCorrection', 'temperature')}>
                     Color Temperature
                   </MenuItem>
-                  <MenuItem onClick={() => handleAction('colorCorrection', 'tint')}>
-                    Tint
-                  </MenuItem>
+                  <MenuItem onClick={() => handleAction('colorCorrection', 'tint')}>Tint</MenuItem>
                   <MenuDivider />
                   <MenuItem onClick={() => handleAction('colorCorrection', 'auto')}>
                     Auto Color Correct
@@ -298,32 +292,64 @@ export function TimelineContextMenu({
                 <MenuList>
                   <MenuGroup>
                     <MenuGroupHeader>Before Clip</MenuGroupHeader>
-                    <MenuItem onClick={() => handleAction('addTransition', { type: 'crossfade', position: 'before' })}>
+                    <MenuItem
+                      onClick={() =>
+                        handleAction('addTransition', { type: 'crossfade', position: 'before' })
+                      }
+                    >
                       Crossfade
                     </MenuItem>
-                    <MenuItem onClick={() => handleAction('addTransition', { type: 'dip-to-black', position: 'before' })}>
+                    <MenuItem
+                      onClick={() =>
+                        handleAction('addTransition', { type: 'dip-to-black', position: 'before' })
+                      }
+                    >
                       Dip to Black
                     </MenuItem>
-                    <MenuItem onClick={() => handleAction('addTransition', { type: 'wipe', position: 'before' })}>
+                    <MenuItem
+                      onClick={() =>
+                        handleAction('addTransition', { type: 'wipe', position: 'before' })
+                      }
+                    >
                       Wipe
                     </MenuItem>
-                    <MenuItem onClick={() => handleAction('addTransition', { type: 'slide', position: 'before' })}>
+                    <MenuItem
+                      onClick={() =>
+                        handleAction('addTransition', { type: 'slide', position: 'before' })
+                      }
+                    >
                       Slide
                     </MenuItem>
                   </MenuGroup>
                   <MenuDivider />
                   <MenuGroup>
                     <MenuGroupHeader>After Clip</MenuGroupHeader>
-                    <MenuItem onClick={() => handleAction('addTransition', { type: 'crossfade', position: 'after' })}>
+                    <MenuItem
+                      onClick={() =>
+                        handleAction('addTransition', { type: 'crossfade', position: 'after' })
+                      }
+                    >
                       Crossfade
                     </MenuItem>
-                    <MenuItem onClick={() => handleAction('addTransition', { type: 'dip-to-black', position: 'after' })}>
+                    <MenuItem
+                      onClick={() =>
+                        handleAction('addTransition', { type: 'dip-to-black', position: 'after' })
+                      }
+                    >
                       Dip to Black
                     </MenuItem>
-                    <MenuItem onClick={() => handleAction('addTransition', { type: 'wipe', position: 'after' })}>
+                    <MenuItem
+                      onClick={() =>
+                        handleAction('addTransition', { type: 'wipe', position: 'after' })
+                      }
+                    >
                       Wipe
                     </MenuItem>
-                    <MenuItem onClick={() => handleAction('addTransition', { type: 'slide', position: 'after' })}>
+                    <MenuItem
+                      onClick={() =>
+                        handleAction('addTransition', { type: 'slide', position: 'after' })
+                      }
+                    >
                       Slide
                     </MenuItem>
                   </MenuGroup>

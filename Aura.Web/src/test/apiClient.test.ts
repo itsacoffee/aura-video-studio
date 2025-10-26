@@ -1,3 +1,4 @@
+import MockAdapter from 'axios-mock-adapter';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import apiClient, {
   get,
@@ -8,7 +9,6 @@ import apiClient, {
   resetCircuitBreaker,
   getCircuitBreakerState,
 } from '../services/api/apiClient';
-import MockAdapter from 'axios-mock-adapter';
 
 // Create mock adapter for the actual apiClient instance
 let mock: MockAdapter;

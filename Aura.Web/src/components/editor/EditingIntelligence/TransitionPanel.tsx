@@ -3,7 +3,6 @@
  * Displays transition recommendations
  */
 
-import React, { useState, useEffect } from 'react';
 import {
   Button,
   Card,
@@ -15,6 +14,7 @@ import {
   Caption1,
 } from '@fluentui/react-components';
 import { Checkmark24Regular } from '@fluentui/react-icons';
+import React, { useState, useEffect } from 'react';
 import {
   recommendTransitions,
   TransitionSuggestion,

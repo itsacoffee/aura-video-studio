@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -21,6 +19,8 @@ import {
   ChevronDown24Regular,
   ChevronUp24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({
   container: {
