@@ -130,7 +130,7 @@ export interface CreateABTestRequest {
     variantName: string;
     description?: string;
     projectId?: string;
-    configuration?: Record<string, any>;
+    configuration?: Record<string, unknown>;
   }[];
 }
 

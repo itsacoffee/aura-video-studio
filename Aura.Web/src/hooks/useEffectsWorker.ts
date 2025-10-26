@@ -10,7 +10,7 @@ import { useEffect, useRef, useCallback } from 'react';
 interface EffectMessage {
   type: 'apply-effects';
   imageData: ImageData;
-  effects: any[];
+  effects: Array<{ type: string; parameters: Record<string, unknown> }>;
   timestamp: number;
 }
 

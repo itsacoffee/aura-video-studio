@@ -99,7 +99,7 @@ describe('firstRunService', () => {
       localStorage.setItem('hasSeenOnboarding', 'true');
 
       // Mock backend call to succeed
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
         json: async () => ({ success: true }),
       });
@@ -114,7 +114,7 @@ describe('firstRunService', () => {
       localStorage.setItem('hasCompletedFirstRun', 'true');
 
       // Mock backend call to fail
-      (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
+      (global.fetch as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Network error'));
 
       await expect(resetFirstRunStatus()).resolves.not.toThrow();
 

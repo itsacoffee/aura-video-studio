@@ -1,5 +1,5 @@
-import MockAdapter from 'axios-mock-adapter';
 import { AxiosError } from 'axios';
+import MockAdapter from 'axios-mock-adapter';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import apiClient, {
   get,
@@ -179,8 +179,8 @@ describe('API Client', () => {
       try {
         await get('/api/test', { _skipRetry: true });
         expect.fail('Should have been blocked by circuit breaker');
-      } catch (error: any) {
-        expect(error.message).toContain('Circuit breaker');
+      } catch (error: unknown) {
+        expect((error as Error).message).toContain('Circuit breaker');
       }
     });
 

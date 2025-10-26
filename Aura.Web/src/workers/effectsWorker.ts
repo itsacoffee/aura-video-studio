@@ -9,7 +9,7 @@
 interface EffectMessage {
   type: 'apply-effects';
   imageData: ImageData;
-  effects: any[];
+  effects: Array<{ effectType: string; enabled: boolean; parameters: Record<string, number> }>;
   timestamp: number;
 }
 
@@ -60,7 +60,7 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
 /**
  * Apply multiple effects to an ImageData object
  */
-function applyEffects(imageData: ImageData, effects: any[]): ImageData {
+function applyEffects(imageData: ImageData, effects: Array<{ effectType: string; enabled: boolean; parameters: Record<string, number> }>): ImageData {
   let result = cloneImageData(imageData);
 
   for (const effect of effects) {

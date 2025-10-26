@@ -73,7 +73,7 @@ describe('PerformanceMonitor', () => {
     });
 
     it('should warn when budget is exceeded', () => {
-      const warnings: any[] = [];
+      const warnings: Array<{ warning: string; metric: unknown }> = [];
       const unsubscribe = performanceMonitor.onWarning((warning, metric) => {
         warnings.push({ warning, metric });
       });
