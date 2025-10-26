@@ -17,8 +17,8 @@ const useStyles = makeStyles({
     },
   },
   selected: {
-    borderColor: tokens.colorBrandBackground as any,
-    borderWidth: '2px' as any,
+    borderColor: tokens.colorBrandBackground as string,
+    borderWidth: '2px' as string,
     backgroundColor: tokens.colorBrandBackground2,
   },
   cardContent: {

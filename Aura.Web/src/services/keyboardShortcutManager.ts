@@ -45,7 +45,7 @@ class KeyboardShortcutManager {
       if (saved) {
         const data = JSON.parse(saved);
         if (data.shortcuts && Array.isArray(data.shortcuts)) {
-          data.shortcuts.forEach((s: any) => {
+          data.shortcuts.forEach((s: { action?: string; currentShortcut?: string }) => {
             if (s.action && s.currentShortcut) {
               this.customKeyMappings.set(s.action, s.currentShortcut);
             }

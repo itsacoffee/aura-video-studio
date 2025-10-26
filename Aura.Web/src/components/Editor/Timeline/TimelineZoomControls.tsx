@@ -66,7 +66,7 @@ export function TimelineZoomControls({
     onZoomChange?.(newZoom);
   };
 
-  const handleSliderChange = (_: any, data: { value: number }) => {
+  const handleSliderChange = (_: unknown, data: { value: number }) => {
     const newZoom = sliderToZoom(data.value);
     onZoomChange?.(newZoom);
   };

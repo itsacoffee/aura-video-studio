@@ -28,12 +28,12 @@ interface LazyLoadProps {
   /**
    * Factory function that returns a dynamic import
    */
-  factory: () => Promise<{ default: ComponentType<any> }>;
+  factory: () => Promise<{ default: ComponentType<Record<string, unknown>> }>;
 
   /**
    * Props to pass to the lazy-loaded component
    */
-  componentProps?: any;
+  componentProps?: Record<string, unknown>;
 
   /**
    * Custom loading fallback

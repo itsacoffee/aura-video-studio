@@ -112,9 +112,25 @@ const useStyles = makeStyles({
   },
 });
 
+interface JobArtifact {
+  type: string;
+  sizeBytes: number;
+  url?: string;
+}
+
+interface Job {
+  id: string;
+  status: string;
+  startedAt: string;
+  finishedAt?: string;
+  correlationId?: string;
+  errorMessage?: string;
+  artifacts?: JobArtifact[];
+}
+
 export function RecentJobsPage() {
   const styles = useStyles();
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -326,7 +342,7 @@ export function RecentJobsPage() {
                 <div className={styles.artifactsSection}>
                   <Text weight="semibold">Artifacts ({job.artifacts.length})</Text>
                   <div className={styles.artifactsList}>
-                    {job.artifacts.map((artifact: any, index: number) => (
+                    {job.artifacts.map((artifact: JobArtifact, index: number) => (
                       <div key={index} className={styles.artifactItem}>
                         <div className={styles.artifactInfo}>
                           <Video24Regular />

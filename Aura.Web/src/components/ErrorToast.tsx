@@ -25,7 +25,7 @@ export interface ErrorDetails {
   correlationId?: string;
   errorCode?: string;
   timestamp?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ErrorToastOptions {

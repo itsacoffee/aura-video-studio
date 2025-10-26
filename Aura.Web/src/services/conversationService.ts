@@ -8,7 +8,7 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface VideoMetadata {
@@ -35,7 +35,7 @@ export interface ConversationContext {
   messages: Message[];
   createdAt: string;
   updatedAt: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ProjectContext {
@@ -44,7 +44,7 @@ export interface ProjectContext {
   decisionHistory: AiDecision[];
   createdAt: string;
   updatedAt: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SendMessageRequest {

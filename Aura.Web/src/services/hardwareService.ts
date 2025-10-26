@@ -24,10 +24,10 @@ export interface GpuInfo {
  */
 export async function getHardwareInfo(): Promise<HardwareInfo> {
   try {
-    const response = await get<any>('/api/diagnostics/hardware');
+    const response = await get<Record<string, unknown>>('/api/diagnostics/hardware');
 
     // Map the API response to our HardwareInfo interface
-    const gpu = response.gpu;
+    const gpu = response.gpu as { vendor?: string } | undefined;
     const hasNvidia = gpu?.vendor?.toUpperCase().includes('NVIDIA') || false;
     const hasAmd = gpu?.vendor?.toUpperCase().includes('AMD') || false;
     const hasIntel = gpu?.vendor?.toUpperCase().includes('INTEL') || false;

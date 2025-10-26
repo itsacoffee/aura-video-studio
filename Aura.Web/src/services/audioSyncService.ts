@@ -65,7 +65,7 @@ export class AudioSyncService {
   private initialize(): void {
     try {
       // Create audio context for timing analysis
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (AudioContextClass) {
         this.audioContext = new AudioContextClass();
 
