@@ -54,6 +54,7 @@ Error Response Format:
 ### 2. Rate Limiting
 
 #### RateLimitingMiddleware
+Custom implementation using IMemoryCache:
 - **General Endpoints**: 100 requests/minute
 - **Processing Endpoints**: 10 requests/minute (export, render, jobs, quick)
 - **Health Endpoints**: Unlimited (for monitoring)
@@ -220,7 +221,6 @@ Test Coverage:
 
 ## NuGet Packages Added
 - FluentValidation.AspNetCore 11.3.0
-- AspNetCoreRateLimit 5.0.0 (for rate limiting support)
 
 ## Middleware Pipeline Order
 
