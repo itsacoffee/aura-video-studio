@@ -14,13 +14,13 @@ export interface TrendData {
   direction: 'Rising' | 'Stable' | 'Declining';
   analyzedAt: string;
   dataPoints: TrendDataPoint[];
-  metrics: Record<string, any>;
+  metrics: Record<string, unknown>;
 }
 
 export interface TrendDataPoint {
   timestamp: string;
   value: number;
-  additionalData?: Record<string, any>;
+  additionalData?: Record<string, unknown>;
 }
 
 export interface TrendAnalysisRequest {
@@ -49,7 +49,7 @@ export interface TopicSuggestion {
   keywords: string[];
   recommendedPlatforms: string[];
   generatedAt: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface TopicSuggestionRequest {
@@ -107,7 +107,7 @@ export interface ScheduledContent {
   predictedReach: number;
   status: 'Pending' | 'Ready' | 'Published' | 'Failed' | 'Cancelled';
   tags: string[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface SchedulingRecommendation {
@@ -115,7 +115,7 @@ export interface SchedulingRecommendation {
   confidenceScore: number;
   reasoning: string;
   predictedEngagement: number;
-  metrics: Record<string, any>;
+  metrics: Record<string, unknown>;
 }
 
 export interface ContentSchedulingRequest {
@@ -222,7 +222,7 @@ export const contentPlanningService = {
     endDate: string,
     platform?: string
   ): Promise<{ success: boolean; content: ScheduledContent[]; count: number }> {
-    const params: any = { startDate, endDate };
+    const params: Record<string, string> = { startDate, endDate };
     if (platform) params.platform = platform;
 
     const response = await apiClient.get('/api/ContentPlanning/schedule/calendar', { params });

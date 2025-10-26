@@ -9,6 +9,31 @@
  * - Performance monitoring and optimization
  */
 
+/**
+ * Extended HTMLVideoElement interface for non-standard properties
+ */
+interface ExtendedHTMLVideoElement extends HTMLVideoElement {
+  getVideoPlaybackQuality?: () => {
+    droppedVideoFrames: number;
+    totalVideoFrames: number;
+    decodedVideoFrames: number;
+  };
+  preservesPitch?: boolean;
+  mozPreservesPitch?: boolean;
+  webkitPreservesPitch?: boolean;
+}
+
+/**
+ * Extended Performance interface with memory property (Chrome)
+ */
+interface PerformanceWithMemory extends Performance {
+  memory?: {
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  };
+}
+
 export type PlaybackQuality = 'full' | 'half' | 'quarter';
 export type PlaybackSpeed = 0.25 | 0.5 | 1.0 | 2.0 | 4.0;
 
@@ -184,9 +209,10 @@ export class PlaybackEngine {
    */
   private setupPerformanceMonitoring(): void {
     // Monitor video playback quality
+    const extendedVideoElement = this.videoElement as ExtendedHTMLVideoElement;
     if ('getVideoPlaybackQuality' in this.videoElement) {
       setInterval(() => {
-        const quality = (this.videoElement as any).getVideoPlaybackQuality?.();
+        const quality = extendedVideoElement.getVideoPlaybackQuality?.();
         if (quality) {
           this.metrics.droppedFrames = quality.droppedVideoFrames || 0;
           this.metrics.totalFrames = quality.totalVideoFrames || 0;
@@ -201,10 +227,13 @@ export class PlaybackEngine {
     }
 
     // Monitor memory usage
+    const perfWithMemory = performance as PerformanceWithMemory;
     if ('memory' in performance) {
       setInterval(() => {
-        const memory = (performance as any).memory;
-        this.metrics.memoryUsage = memory.usedJSHeapSize / (1024 * 1024); // Convert to MB
+        const memory = perfWithMemory.memory;
+        if (memory) {
+          this.metrics.memoryUsage = memory.usedJSHeapSize / (1024 * 1024); // Convert to MB
+        }
       }, 2000);
     }
   }
@@ -445,12 +474,13 @@ export class PlaybackEngine {
     this.videoElement.playbackRate = speed;
 
     // Preserve audio pitch at different speeds
+    const extendedVideoElement = this.videoElement as ExtendedHTMLVideoElement;
     if ('preservesPitch' in this.videoElement) {
-      (this.videoElement as any).preservesPitch = true;
+      extendedVideoElement.preservesPitch = true;
     } else if ('mozPreservesPitch' in this.videoElement) {
-      (this.videoElement as any).mozPreservesPitch = true;
+      extendedVideoElement.mozPreservesPitch = true;
     } else if ('webkitPreservesPitch' in this.videoElement) {
-      (this.videoElement as any).webkitPreservesPitch = true;
+      extendedVideoElement.webkitPreservesPitch = true;
     }
 
     this.notifyStateChange();
