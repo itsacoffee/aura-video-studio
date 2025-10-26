@@ -276,6 +276,116 @@ public class ExportController : ControllerBase
             return StatusCode(500, new { error = "Failed to get export history", details = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Get hardware encoding capabilities
+    /// </summary>
+    /// <returns>Available hardware encoders</returns>
+    [HttpGet("hardware-capabilities")]
+    public IActionResult GetHardwareCapabilities()
+    {
+        try
+        {
+            // TODO: This would need HardwareEncoder service injected
+            // For now, return a placeholder response
+            return Ok(new
+            {
+                hasNVENC = false,
+                hasAMF = false,
+                hasQSV = false,
+                hasVideoToolbox = false,
+                availableEncoders = new[] { "libx264", "libx265" },
+                recommendation = "Software encoding (CPU)"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get hardware capabilities");
+            return StatusCode(500, new { error = "Failed to get hardware capabilities", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Pause an export job
+    /// </summary>
+    /// <param name="jobId">Job ID</param>
+    /// <returns>Success status</returns>
+    [HttpPost("pause/{jobId}")]
+    public async Task<IActionResult> PauseJob(string jobId)
+    {
+        try
+        {
+            // TODO: Implement pause functionality in export service
+            _logger.LogInformation("Pause requested for job {JobId}", jobId);
+            return Ok(new { message = "Pause functionality not yet implemented" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to pause job {JobId}", jobId);
+            return StatusCode(500, new { error = "Failed to pause job", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Resume a paused export job
+    /// </summary>
+    /// <param name="jobId">Job ID</param>
+    /// <returns>Success status</returns>
+    [HttpPost("resume/{jobId}")]
+    public async Task<IActionResult> ResumeJob(string jobId)
+    {
+        try
+        {
+            // TODO: Implement resume functionality in export service
+            _logger.LogInformation("Resume requested for job {JobId}", jobId);
+            return Ok(new { message = "Resume functionality not yet implemented" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resume job {JobId}", jobId);
+            return StatusCode(500, new { error = "Failed to resume job", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Retry a failed export job
+    /// </summary>
+    /// <param name="jobId">Job ID</param>
+    /// <returns>New job ID</returns>
+    [HttpPost("retry/{jobId}")]
+    public async Task<IActionResult> RetryJob(string jobId)
+    {
+        try
+        {
+            var job = await _exportService.GetJobStatusAsync(jobId);
+            if (job == null)
+            {
+                return NotFound(new { error = "Job not found" });
+            }
+
+            if (job.Status != ExportJobStatus.Failed)
+            {
+                return BadRequest(new { error = "Only failed jobs can be retried" });
+            }
+
+            // Create a new export request from the failed job
+            var request = new ExportRequest
+            {
+                InputFile = job.InputFile,
+                OutputFile = job.OutputFile,
+                Preset = job.Preset,
+                TargetPlatform = job.TargetPlatform
+            };
+
+            var newJobId = await _exportService.QueueExportAsync(request);
+            return Ok(new { jobId = newJobId, message = "Export job retried successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retry job {JobId}", jobId);
+            return StatusCode(500, new { error = "Failed to retry job", details = ex.Message });
+        }
+    }
 }
 
 /// <summary>

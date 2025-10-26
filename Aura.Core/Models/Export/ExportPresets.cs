@@ -301,6 +301,66 @@ public static class ExportPresets
     );
 
     /// <summary>
+    /// WebM VP9 preset (1920x1080, VP9, optimized for web)
+    /// </summary>
+    public static ExportPreset WebMVP9 => new(
+        Name: "WebM VP9",
+        Description: "Web-optimized format with excellent compression",
+        Platform: Platform.Generic,
+        Container: "webm",
+        VideoCodec: "libvpx-vp9",
+        AudioCodec: "libopus",
+        Resolution: new Resolution(1920, 1080),
+        FrameRate: 30,
+        VideoBitrate: 6000,
+        AudioBitrate: 128,
+        PixelFormat: "yuv420p",
+        ColorSpace: "bt709",
+        AspectRatio: AspectRatio.SixteenByNine,
+        Quality: QualityLevel.High
+    );
+
+    /// <summary>
+    /// ProRes 422 HQ preset (1920x1080, ProRes for professional editing)
+    /// </summary>
+    public static ExportPreset ProRes422HQ => new(
+        Name: "ProRes 422 HQ",
+        Description: "Professional quality for editing and mastering",
+        Platform: Platform.Generic,
+        Container: "mov",
+        VideoCodec: "prores_ks",
+        AudioCodec: "pcm_s16le",
+        Resolution: new Resolution(1920, 1080),
+        FrameRate: 30,
+        VideoBitrate: 120000, // ProRes uses very high bitrate
+        AudioBitrate: 1536, // Uncompressed audio
+        PixelFormat: "yuv422p10le",
+        ColorSpace: "bt709",
+        AspectRatio: AspectRatio.SixteenByNine,
+        Quality: QualityLevel.Maximum
+    );
+
+    /// <summary>
+    /// Podcast audio-only preset (MP3, 128kbps)
+    /// </summary>
+    public static ExportPreset PodcastAudio => new(
+        Name: "Podcast Audio",
+        Description: "Audio-only export for podcasts",
+        Platform: Platform.Generic,
+        Container: "mp3",
+        VideoCodec: "none", // Audio only
+        AudioCodec: "libmp3lame",
+        Resolution: new Resolution(0, 0), // No video
+        FrameRate: 0,
+        VideoBitrate: 0,
+        AudioBitrate: 128,
+        PixelFormat: "none",
+        ColorSpace: "none",
+        AspectRatio: AspectRatio.SixteenByNine,
+        Quality: QualityLevel.Good
+    );
+
+    /// <summary>
     /// Gets all available presets
     /// </summary>
     public static IReadOnlyList<ExportPreset> GetAllPresets()
@@ -317,7 +377,10 @@ public static class ExportPresets
             LinkedIn,
             EmailWeb,
             DraftPreview,
-            MasterArchive
+            MasterArchive,
+            WebMVP9,
+            ProRes422HQ,
+            PodcastAudio
         };
     }
 
@@ -360,6 +423,9 @@ public static class ExportPresets
             "emailweb" or "email" or "web" => EmailWeb,
             "draftpreview" or "draft" or "preview" => DraftPreview,
             "masterarchive" or "master" or "archive" => MasterArchive,
+            "webmvp9" or "webm" or "vp9" => WebMVP9,
+            "prores422hq" or "prores" or "prores422" => ProRes422HQ,
+            "podcastaudio" or "podcast" or "audioonly" => PodcastAudio,
             _ => null
         };
     }

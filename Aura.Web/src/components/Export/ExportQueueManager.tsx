@@ -14,6 +14,8 @@ import {
   ErrorCircle24Regular,
   Clock24Regular,
   Play24Regular,
+  Pause24Regular,
+  ArrowRepeatAll24Regular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -78,11 +80,12 @@ const useStyles = makeStyles({
 interface ExportJob {
   id: string;
   platform: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
+  status: 'queued' | 'processing' | 'paused' | 'completed' | 'failed';
   progress: number;
   fileName: string;
   createdAt: Date;
   estimatedTimeRemaining?: string;
+  encodingSpeed?: number;
   error?: string;
 }
 
@@ -114,6 +117,32 @@ export function ExportQueueManager() {
     setJobs((prev) => prev.filter((job) => job.id !== jobId));
   };
 
+  const handlePause = (jobId: string) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === jobId ? { ...job, status: 'paused' as const } : job
+      )
+    );
+  };
+
+  const handleResume = (jobId: string) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === jobId ? { ...job, status: 'processing' as const } : job
+      )
+    );
+  };
+
+  const handleRetry = (jobId: string) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === jobId
+          ? { ...job, status: 'queued' as const, progress: 0, error: undefined }
+          : job
+      )
+    );
+  };
+
   const getStatusIcon = (status: ExportJob['status']) => {
     switch (status) {
       case 'completed':
@@ -122,6 +151,8 @@ export function ExportQueueManager() {
         return <ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />;
       case 'processing':
         return <Play24Regular style={{ color: tokens.colorBrandForeground1 }} />;
+      case 'paused':
+        return <Pause24Regular style={{ color: tokens.colorPaletteYellowForeground1 }} />;
       case 'queued':
         return <Clock24Regular style={{ color: tokens.colorNeutralForeground3 }} />;
     }
@@ -135,6 +166,8 @@ export function ExportQueueManager() {
         return 'danger';
       case 'processing':
         return 'brand';
+      case 'paused':
+        return 'warning';
       case 'queued':
         return 'subtle';
       default:
@@ -183,6 +216,42 @@ export function ExportQueueManager() {
                   aria-label="Cancel export"
                 />
               )}
+              {job.status === 'processing' && (
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<Pause24Regular />}
+                  onClick={() => handlePause(job.id)}
+                  aria-label="Pause export"
+                />
+              )}
+              {job.status === 'paused' && (
+                <>
+                  <Button
+                    appearance="subtle"
+                    size="small"
+                    icon={<Play24Regular />}
+                    onClick={() => handleResume(job.id)}
+                    aria-label="Resume export"
+                  />
+                  <Button
+                    appearance="subtle"
+                    size="small"
+                    icon={<Dismiss24Regular />}
+                    onClick={() => handleCancel(job.id)}
+                    aria-label="Cancel export"
+                  />
+                </>
+              )}
+              {job.status === 'failed' && (
+                <Button
+                  appearance="subtle"
+                  size="small"
+                  icon={<ArrowRepeatAll24Regular />}
+                  onClick={() => handleRetry(job.id)}
+                  aria-label="Retry export"
+                />
+              )}
             </div>
           </div>
 
@@ -195,7 +264,16 @@ export function ExportQueueManager() {
                 )}
               </div>
               <ProgressBar value={job.progress / 100} />
+              {job.encodingSpeed && (
+                <Caption1>{job.encodingSpeed.toFixed(1)} FPS encoding speed</Caption1>
+              )}
             </div>
+          )}
+
+          {job.status === 'paused' && (
+            <Caption1 style={{ color: tokens.colorPaletteYellowForeground1 }}>
+              Export paused - Click resume to continue
+            </Caption1>
           )}
 
           {job.status === 'failed' && job.error && (
