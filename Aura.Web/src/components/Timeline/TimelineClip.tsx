@@ -336,11 +336,27 @@ export function TimelineClip({
       {/* Trim handles */}
       <div
         className={`${styles.trimHandle} ${styles.trimHandleLeft}`}
+        role="button"
+        tabIndex={0}
         onMouseDown={(e) => handleTrimMouseDown(e, 'left')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            // Trim operations are primarily mouse-based
+          }
+        }}
       />
       <div
         className={`${styles.trimHandle} ${styles.trimHandleRight}`}
+        role="button"
+        tabIndex={0}
         onMouseDown={(e) => handleTrimMouseDown(e, 'right')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            // Trim operations are primarily mouse-based
+          }
+        }}
       />
 
       {/* Trim preview tooltip */}

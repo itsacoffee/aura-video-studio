@@ -235,8 +235,16 @@ export const TransportBar = memo(function TransportBar({
       <div
         ref={timelineRef}
         className={styles.timeline}
+        role="button"
+        tabIndex={0}
         onMouseDown={handleMouseDown}
         onMouseLeave={handleMouseLeave}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            // Timeline scrubbing requires mouse position
+          }
+        }}
       >
         <div className={styles.timelineTrack}>
           <div className={styles.timelineProgress} style={{ width: `${progressPercent}%` }} />

@@ -41,7 +41,15 @@ export const PatternList: React.FC<PatternListProps> = ({ patterns, onPatternSel
         <div
           key={pattern.patternId}
           className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+          role="button"
+          tabIndex={0}
           onClick={() => onPatternSelect?.(pattern)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onPatternSelect?.(pattern);
+            }
+          }}
         >
           <div className="flex items-start justify-between">
             <div className="flex-1">

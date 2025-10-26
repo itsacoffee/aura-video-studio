@@ -305,7 +305,15 @@ export function RecoveryDialog({ open, onOpenChange, type, onRecover }: Recovery
                         className={`${styles.versionItem} ${
                           selectedVersion === version.version ? styles.versionItemSelected : ''
                         }`}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setSelectedVersion(version.version)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedVersion(version.version);
+                          }
+                        }}
                       >
                         <Text weight="semibold">Version {version.version}</Text>
                         <Caption1>Saved: {new Date(version.timestamp).toLocaleString()}</Caption1>

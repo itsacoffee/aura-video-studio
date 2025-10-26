@@ -184,6 +184,12 @@ export function StatusBar({ messages = [], onDismiss, onDismissAll }: StatusBarP
       <div
         className={styles.statusBarHeader}
         onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }
+        }}
         role="button"
         tabIndex={0}
       >
