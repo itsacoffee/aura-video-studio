@@ -508,30 +508,45 @@ export function VideoEditorPage() {
         
         // If clip has a media reference, add it as an asset
         if (clip.file || clip.preview) {
-          // In a real implementation, we'd need the actual file path
-          // For now, we'll use a placeholder or the preview URL
-          const filePath = clip.preview || '/tmp/placeholder.mp4';
+          // For timeline rendering, we need actual file paths
+          // In a real scenario, uploaded files would be available on the server
+          // For now, we'll only include clips with preview URLs (which are server-accessible)
+          const filePath = clip.preview;
           
-          assets.push({
-            id: clip.id,
-            type: clip.type === 'video' ? 'Video' : clip.type === 'audio' ? 'Audio' : 'Image',
-            filePath: filePath,
-            start: '00:00:00',
-            duration: formatTimeSpan(clip.duration),
-            position: {
-              x: clip.transform?.x || 0,
-              y: clip.transform?.y || 0,
-              width: 100,
-              height: 100,
-            },
-            zIndex: 0,
-            opacity: 1.0,
-            effects: clip.effects && clip.effects.length > 0 ? {
-              brightness: 1.0,
-              contrast: 1.0,
-              saturation: 1.0,
-            } : undefined,
-          });
+          if (filePath) {
+            // Map asset type
+            const assetType = clip.type === 'video' ? 'Video' : 
+                             clip.type === 'audio' ? 'Audio' : 'Image';
+            
+            // Build effects object from clip effects if present
+            let effectsConfig = undefined;
+            if (clip.effects && clip.effects.length > 0) {
+              // For now, we'll use default values as effect mapping would require
+              // knowing the specific effect types and their parameters
+              effectsConfig = {
+                brightness: 1.0,
+                contrast: 1.0,
+                saturation: 1.0,
+              };
+            }
+            
+            assets.push({
+              id: clip.id,
+              type: assetType,
+              filePath: filePath,
+              start: '00:00:00',
+              duration: formatTimeSpan(clip.duration),
+              position: {
+                x: clip.transform?.x || 0,
+                y: clip.transform?.y || 0,
+                width: 100,
+                height: 100,
+              },
+              zIndex: 0,
+              opacity: 1.0,
+              effects: effectsConfig,
+            });
+          }
         }
         
         scenes.push({
