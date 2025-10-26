@@ -251,6 +251,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
   return <ActivityContext.Provider value={value}>{children}</ActivityContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- Hook for ActivityProvider component
 export function useActivity() {
   const context = useContext(ActivityContext);
   if (!context) {

@@ -286,6 +286,7 @@ export function QuickTutorial({ steps, onComplete, onSkip }: QuickTutorialProps)
 }
 
 // Default tutorial steps for the main application
+// eslint-disable-next-line react-refresh/only-export-components -- Default data for QuickTutorial component
 export const defaultTutorialSteps: TutorialStep[] = [
   {
     id: 'media-library',

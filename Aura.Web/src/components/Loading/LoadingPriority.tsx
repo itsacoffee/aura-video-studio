@@ -7,6 +7,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+// eslint-disable-next-line react-refresh/only-export-components -- Enum definition for LoadingPriorityProvider component
 export enum LoadingPriority {
   CRITICAL = 0, // Must load immediately (layout, navigation)
   HIGH = 1, // Important for initial view (preview, timeline)
@@ -118,6 +119,7 @@ export function LoadingPriorityProvider({
 /**
  * Hook to access loading priority context
  */
+// eslint-disable-next-line react-refresh/only-export-components -- Hook for LoadingPriorityProvider component
 export function useLoadingPriority() {
   const context = useContext(LoadingPriorityContext);
   if (!context) {

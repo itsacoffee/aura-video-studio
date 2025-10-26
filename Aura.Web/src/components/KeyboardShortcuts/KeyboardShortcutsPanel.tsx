@@ -93,7 +93,7 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
   // Get all shortcut groups from the manager
   const allGroups = useMemo(() => {
     return keyboardShortcutManager.getShortcutGroups();
-  }, [isOpen]); // Refresh when dialog opens
+  }, []); // Shortcut groups are static, no need to refresh
 
   // Filter shortcuts based on search query
   const filteredGroups = useMemo(() => {

@@ -288,6 +288,7 @@ export function TemplateSelection({
 }
 
 // Default templates
+// eslint-disable-next-line react-refresh/only-export-components -- Default data for TemplateSelection component
 export const defaultTemplates: VideoTemplate[] = [
   {
     id: 'podcast',
