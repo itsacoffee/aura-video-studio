@@ -296,6 +296,8 @@ export function EditorLayout({
       setMediaLibraryWidth(newWidth);
     };
 
+    // Identical cleanup logic is acceptable for drag handlers
+    // eslint-disable-next-line sonarjs/no-identical-functions
     const handleMouseUp = () => {
       setIsDraggingHorizontal(false);
       document.removeEventListener('mousemove', handleMouseMove);
@@ -320,6 +322,8 @@ export function EditorLayout({
       setEffectsLibraryWidth(newWidth);
     };
 
+    // Identical cleanup logic is acceptable for drag handlers
+    // eslint-disable-next-line sonarjs/no-identical-functions
     const handleMouseUp = () => {
       setIsDraggingHorizontal(false);
       document.removeEventListener('mousemove', handleMouseMove);
@@ -344,6 +348,8 @@ export function EditorLayout({
       setHistoryWidth(newWidth);
     };
 
+    // Identical cleanup logic is acceptable for drag handlers
+    // eslint-disable-next-line sonarjs/no-identical-functions
     const handleMouseUp = () => {
       setIsDraggingHorizontal(false);
       document.removeEventListener('mousemove', handleMouseMove);

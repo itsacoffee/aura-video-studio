@@ -357,13 +357,13 @@ export function TimelinePanel({
       const splitPoint = time - clipToSplit.startTime;
 
       // Create two new clips
-      const firstClip: TimelineClip = {
+      const _firstClip: TimelineClip = {
         ...clipToSplit,
         id: `${clipToSplit.id}-1`,
         duration: splitPoint,
       };
 
-      const secondClip: TimelineClip = {
+      const _secondClip: TimelineClip = {
         ...clipToSplit,
         id: `${clipToSplit.id}-2`,
         startTime: time,
@@ -372,7 +372,7 @@ export function TimelinePanel({
 
       // Remove original and add split clips
       // This would need to be implemented via callbacks
-      console.log('Split clip at', time, firstClip, secondClip);
+      // TODO: Implement split functionality with firstClip and secondClip
     },
     [clips]
   );

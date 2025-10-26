@@ -73,12 +73,12 @@ export const getCommonFolders = async (): Promise<FileSystemItem[]> => {
  * Browse folder contents
  * In a real implementation, this would interface with a native API
  */
-export const browseFolderContents = async (path: string): Promise<FileSystemItem[]> => {
+export const browseFolderContents = async (_path: string): Promise<FileSystemItem[]> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 200));
 
   // Mock implementation - would actually read directory contents
-  console.log('Browsing folder:', path);
+  // TODO: Implement actual file system browsing with path parameter
   return [];
 };
 
@@ -90,7 +90,6 @@ export const browseFolderContents = async (path: string): Promise<FileSystemItem
 export const revealInFinder = async (
   filePath: string
 ): Promise<{ success: boolean; message?: string }> => {
-  console.log('Revealing file in finder:', filePath);
   // In a real implementation, this would call:
   // - Windows: explorer.exe /select,"path"
   // - macOS: open -R "path"
@@ -123,16 +122,14 @@ export const getStorageLocation = async (projectPath: string): Promise<StorageLo
  * Consolidate media files to a single folder
  */
 export const consolidateMedia = async (
-  mediaPaths: string[],
-  targetFolder: string
+  _mediaPaths: string[],
+  _targetFolder: string
 ): Promise<{ success: boolean; errors: string[] }> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  console.log('Consolidating media to:', targetFolder);
-  console.log('Files:', mediaPaths);
-
   // Mock implementation - would actually copy files
+  // TODO: Implement actual media consolidation with mediaPaths and targetFolder
   return {
     success: true,
     errors: [],

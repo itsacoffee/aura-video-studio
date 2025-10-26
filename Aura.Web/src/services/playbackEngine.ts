@@ -169,7 +169,9 @@ export class PlaybackEngine {
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
     const hasWebGL = !!gl;
 
+    // Intentional logging for hardware capability diagnostics
     if (hasMediaSource && hasWebGL) {
+      // eslint-disable-next-line no-console
       console.log('✓ Hardware acceleration available');
     } else {
       console.warn('⚠ Limited hardware acceleration support');

@@ -357,8 +357,12 @@ export const MediaLibraryPanel = forwardRef<MediaLibraryPanelRef, MediaLibraryPa
           <div className={styles.dualPane}>
             <div className={styles.leftPane}>
               <FileSystemBrowser
-                onFileSelect={(file) => console.log('File selected:', file)}
-                onFileDragStart={(file) => console.log('File drag start:', file)}
+                onFileSelect={() => {
+                  /* File selection handled by parent component */
+                }}
+                onFileDragStart={() => {
+                  /* Drag start handled by parent component */
+                }}
               />
             </div>
             <div className={styles.rightPane}>

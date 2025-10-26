@@ -250,6 +250,8 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
               </Button>
             </div>
 
+            {/* Audio preview without captions as it's a TTS voice sample for evaluation */}
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <audio
               ref={audioRef}
               src={audioUrl}

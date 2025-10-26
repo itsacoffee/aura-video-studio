@@ -207,6 +207,7 @@ class LoggingService {
   private logToConsole(entry: LogEntry): void {
     const prefix = `[${entry.timestamp}]${entry.component ? ` [${entry.component}]` : ''}${entry.action ? ` [${entry.action}]` : ''}`;
 
+    // Intentional console output - this is the logging service's purpose
     switch (entry.level) {
       case 'error':
         console.error(prefix, entry.message, entry.error || '', entry.context || {});
@@ -219,6 +220,7 @@ class LoggingService {
         break;
       case 'debug':
       default:
+        // eslint-disable-next-line no-console
         console.log(prefix, entry.message, entry.context || {});
         break;
     }
