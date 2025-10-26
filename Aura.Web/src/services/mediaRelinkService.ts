@@ -52,13 +52,13 @@ export const detectMissingMedia = async (mediaFiles: MediaFile[]): Promise<Missi
 /**
  * Search for a missing file in common locations
  */
-export const searchForFile = async (file: MediaFile): Promise<string[]> => {
+export const searchForFile = async (_file: MediaFile): Promise<string[]> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 200));
 
   // Mock implementation - would actually search filesystem
   // In a real implementation, check these locations and return existing files
-  // TODO: Implement actual file system search
+  // TODO: Implement actual file system search using file parameter
   return [];
 };
 
