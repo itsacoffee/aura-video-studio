@@ -142,7 +142,8 @@ export function GlobalStatusFooter() {
             message={activity.title}
             duration={duration}
             onOpenFile={activity.artifactPath ? () => {
-              console.log('Open file:', activity.artifactPath);
+              // In production, this would open the file location
+              // console.log('Open file:', activity.artifactPath);
             } : undefined}
             showOpenButton={!!activity.artifactPath}
           />,
