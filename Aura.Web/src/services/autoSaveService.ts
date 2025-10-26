@@ -68,6 +68,10 @@ class AutoSaveService {
    * Perform a manual save
    */
   public saveNow(): boolean {
+    if (!this.saveCallback) {
+      return false;
+    }
+    
     return this.performSave();
   }
 
@@ -75,7 +79,7 @@ class AutoSaveService {
    * Internal method to perform the save operation
    */
   private performSave(): boolean {
-    if (!this.saveCallback || !this.isEnabled) {
+    if (!this.saveCallback) {
       return false;
     }
 

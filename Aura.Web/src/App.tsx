@@ -46,6 +46,8 @@ import { GlobalStatusFooter } from './components/GlobalStatusFooter';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { loggingService } from './services/loggingService';
+import { healthMonitorService } from './services/healthMonitorService';
+import { errorReportingService } from './services/errorReportingService';
 import { env } from './config/env';
 
 // Lazy load development-only features to reduce production bundle size
@@ -151,6 +153,27 @@ function App() {
     return () => {
       window.removeEventListener('error', handleError);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
+  // Start health monitoring on app mount
+  useEffect(() => {
+    healthMonitorService.start();
+    
+    // Add listener for health warnings
+    const handleHealthWarning = (warning: any) => {
+      errorReportingService.warning(
+        warning.message,
+        warning.suggestion,
+        { duration: 10000 }
+      );
+    };
+    
+    healthMonitorService.addWarningListener(handleHealthWarning);
+
+    return () => {
+      healthMonitorService.removeWarningListener(handleHealthWarning);
+      healthMonitorService.stop();
     };
   }, []);
 
