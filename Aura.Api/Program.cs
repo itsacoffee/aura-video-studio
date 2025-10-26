@@ -669,6 +669,9 @@ builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.SoundEffectSe
 builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.AudioMixingService>();
 builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.AudioContinuityService>();
 
+// Register Template Service
+builder.Services.AddScoped<Aura.Core.Services.TemplateService>();
+
 // Register Quality Validation services
 builder.Services.AddSingleton<Aura.Api.Services.QualityValidation.ResolutionValidationService>();
 builder.Services.AddSingleton<Aura.Api.Services.QualityValidation.AudioQualityService>();

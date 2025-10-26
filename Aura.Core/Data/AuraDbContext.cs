@@ -17,6 +17,11 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<ExportHistoryEntity> ExportHistory { get; set; } = null!;
 
+    /// <summary>
+    /// Project templates
+    /// </summary>
+    public DbSet<TemplateEntity> Templates { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -28,6 +33,16 @@ public class AuraDbContext : DbContext
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => new { e.Status, e.CreatedAt });
+        });
+
+        // Configure TemplateEntity
+        modelBuilder.Entity<TemplateEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.IsSystemTemplate);
+            entity.HasIndex(e => e.IsCommunityTemplate);
+            entity.HasIndex(e => new { e.Category, e.SubCategory });
         });
     }
 }
