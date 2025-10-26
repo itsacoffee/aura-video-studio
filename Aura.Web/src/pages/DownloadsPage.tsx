@@ -24,7 +24,7 @@ import {
   CheckmarkCircle24Filled,
   ErrorCircle24Filled,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { EnginesTab } from '../components/Engines/EnginesTab';
 import { TroubleshootingPanel } from '../components/Engines/TroubleshootingPanel';
 import { useNotifications } from '../components/Notifications/Toasts';
@@ -186,7 +186,7 @@ export function DownloadsPage() {
     }
   };
 
-  const checkComponentStatus = async (componentName: string) => {
+  const checkComponentStatus = useCallback(async (componentName: string) => {
     try {
       const statusResponse = await fetch(apiUrl(`/api/downloads/${componentName}/status`));
       if (statusResponse.ok) {
@@ -224,7 +224,7 @@ export function DownloadsPage() {
     } catch (error) {
       console.error(`Error checking status for ${componentName}:`, error);
     }
-  };
+  }, []);
 
   const installComponent = async (componentName: string) => {
     try {
