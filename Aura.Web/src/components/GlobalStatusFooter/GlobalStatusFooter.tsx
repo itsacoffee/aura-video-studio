@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -6,19 +6,18 @@ import {
   Button,
   ProgressBar,
   Badge,
-  Tooltip,
+  useToastController,
+  useId,
+  Toaster,
 } from '@fluentui/react-components';
 import {
   ChevronUp24Regular,
   ChevronDown24Regular,
-  Dismiss24Regular,
-  CheckmarkCircle24Regular,
-  ErrorCircle24Regular,
-  Clock24Regular,
-  ArrowClockwise24Regular,
-  DismissCircle24Regular,
 } from '@fluentui/react-icons';
 import { useActivity, type Activity } from '../../state/activityContext';
+import { ActivityDrawer } from '../StatusBar/ActivityDrawer';
+import { ResourceMonitor } from '../StatusBar/ResourceMonitor';
+import { ToastNotification } from '../Notifications/Toast';
 
 const useStyles = makeStyles({
   footer: {
@@ -30,20 +29,16 @@ const useStyles = makeStyles({
     borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
     boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.1)',
     zIndex: 1000,
-    display: 'flex',
-    flexDirection: 'column',
-    maxHeight: '60vh',
+    minHeight: '48px',
+    maxHeight: '48px',
     transition: 'all 0.3s ease-in-out',
-  },
-  collapsed: {
-    maxHeight: '60px',
   },
   header: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '12px 20px',
-    minHeight: '60px',
+    padding: '8px 20px',
+    minHeight: '48px',
     cursor: 'pointer',
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground3,
@@ -58,72 +53,21 @@ const useStyles = makeStyles({
   headerRight: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-  },
-  activityList: {
-    overflowY: 'auto',
-    padding: '0 20px 20px 20px',
-    display: 'flex',
-    flexDirection: 'column',
     gap: '12px',
   },
-  activityItem: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    padding: '12px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  activityItemRunning: {
-    borderLeft: `4px solid ${tokens.colorBrandBackground}`,
-  },
-  activityItemCompleted: {
-    borderLeft: `4px solid ${tokens.colorPaletteGreenBorder2}`,
-  },
-  activityItemFailed: {
-    borderLeft: `4px solid ${tokens.colorPaletteRedBorder2}`,
-  },
-  activityHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '8px',
-  },
-  activityTitle: {
+  compactProgress: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    minWidth: '200px',
+  },
+  progressBar: {
     flex: 1,
+    minWidth: '120px',
   },
-  activityActions: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  activityMessage: {
+  statusText: {
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground3,
-  },
-  activityProgress: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  activityTime: {
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground3,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  errorMessage: {
-    padding: '8px',
-    backgroundColor: tokens.colorPaletteRedBackground1,
-    borderRadius: tokens.borderRadiusSmall,
-    color: tokens.colorPaletteRedForeground1,
-    fontSize: tokens.fontSizeBase200,
   },
   emptyState: {
     padding: '20px',
@@ -152,40 +96,110 @@ function formatDuration(startTime: Date, endTime?: Date): string {
   }
 }
 
-function ActivityItemComponent({ activity }: { activity: Activity }) {
+export function GlobalStatusFooter() {
   const styles = useStyles();
-  const { updateActivity, removeActivity } = useActivity();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const toasterId = useId('status-toaster');
+  const { dispatchToast } = useToastController(toasterId);
+  
+  const { 
+    activities,
+    activeActivities, 
+    queuedActivities,
+    pausedActivities,
+    completedActivities,
+    failedActivities,
+    recentHistory,
+    batchOperations,
+    updateActivity,
+    pauseActivity,
+    resumeActivity,
+    removeActivity,
+    setPriority,
+    clearCompleted,
+    clearHistory,
+  } = useActivity();
 
-  const getIcon = () => {
-    switch (activity.status) {
-      case 'completed':
-        return <CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />;
-      case 'failed':
-        return <ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />;
-      default:
-        return <Clock24Regular style={{ color: tokens.colorBrandForeground1 }} />;
+  // Track previously completed/failed activities to show toasts
+  const [previousActivityStates] = useState<Map<string, Activity>>(new Map());
+
+  // Show toast notifications when activities complete or fail
+  useEffect(() => {
+    activities.forEach(activity => {
+      const previousState = previousActivityStates.get(activity.id);
+      
+      // Check if activity just completed
+      if (
+        activity.status === 'completed' && 
+        previousState && 
+        previousState.status !== 'completed'
+      ) {
+        const duration = formatDuration(activity.startTime, activity.endTime);
+        dispatchToast(
+          <ToastNotification
+            type="success"
+            title="Operation Completed"
+            message={activity.title}
+            duration={duration}
+            onOpenFile={activity.artifactPath ? () => {
+              console.log('Open file:', activity.artifactPath);
+            } : undefined}
+            showOpenButton={!!activity.artifactPath}
+          />,
+          { intent: 'success', timeout: 5000 }
+        );
+      }
+      
+      // Check if activity just failed
+      if (
+        activity.status === 'failed' && 
+        previousState && 
+        previousState.status !== 'failed'
+      ) {
+        dispatchToast(
+          <ToastNotification
+            type="error"
+            title="Operation Failed"
+            message={`${activity.title}: ${activity.error || 'Unknown error'}`}
+          />,
+          { intent: 'error', timeout: 10000 }
+        );
+      }
+
+      // Update previous state
+      previousActivityStates.set(activity.id, { ...activity });
+    });
+  }, [activities, dispatchToast, previousActivityStates]);
+
+  // Don't render footer if there are no activities
+  if (activities.length === 0 && recentHistory.length === 0) {
+    return (
+      <>
+        <Toaster toasterId={toasterId} position="top-end" />
+      </>
+    );
+  }
+
+  // Get the primary active operation to show in collapsed state
+  const primaryOperation = activeActivities[0] || pausedActivities[0] || queuedActivities[0];
+
+  const activeCount = activeActivities.length + pausedActivities.length;
+  const failedCount = failedActivities.length;
+
+  const getSummaryText = () => {
+    if (primaryOperation) {
+      return primaryOperation.title;
     }
-  };
-
-  const getItemClass = () => {
-    switch (activity.status) {
-      case 'running':
-        return styles.activityItemRunning;
-      case 'completed':
-        return styles.activityItemCompleted;
-      case 'failed':
-        return styles.activityItemFailed;
-      default:
-        return '';
+    if (activeCount > 0) {
+      return `${activeCount} active operation${activeCount > 1 ? 's' : ''}`;
     }
+    if (failedCount > 0) {
+      return `${failedCount} failed operation${failedCount > 1 ? 's' : ''}`;
+    }
+    return 'All operations complete';
   };
 
-  const handleCancel = () => {
-    updateActivity(activity.id, { status: 'cancelled' });
-  };
-
-  const handleRetry = () => {
-    // Reset activity to pending state
+  const handleRetryActivity = (activity: Activity) => {
     updateActivity(activity.id, {
       status: 'pending',
       progress: 0,
@@ -194,172 +208,91 @@ function ActivityItemComponent({ activity }: { activity: Activity }) {
     });
   };
 
-  const handleDismiss = () => {
-    removeActivity(activity.id);
-  };
-
   return (
-    <div className={`${styles.activityItem} ${getItemClass()}`}>
-      <div className={styles.activityHeader}>
-        <div className={styles.activityTitle}>
-          {getIcon()}
-          <Text weight="semibold">{activity.title}</Text>
-        </div>
-        <div className={styles.activityActions}>
-          {activity.status === 'running' && activity.canCancel && (
-            <Tooltip content="Cancel" relationship="label">
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<DismissCircle24Regular />}
-                onClick={handleCancel}
-              />
-            </Tooltip>
-          )}
-          {activity.status === 'failed' && activity.canRetry && (
-            <Tooltip content="Retry" relationship="label">
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<ArrowClockwise24Regular />}
-                onClick={handleRetry}
-              />
-            </Tooltip>
-          )}
-          {(activity.status === 'completed' || activity.status === 'failed') && (
-            <Tooltip content="Dismiss" relationship="label">
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<Dismiss24Regular />}
-                onClick={handleDismiss}
-              />
-            </Tooltip>
-          )}
-        </div>
-      </div>
+    <>
+      <div className={styles.footer}>
+        <div 
+          className={styles.header} 
+          onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsDrawerOpen(!isDrawerOpen);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-expanded={isDrawerOpen}
+          aria-label="Toggle activity drawer"
+        >
+          <div className={styles.headerLeft}>
+            {isDrawerOpen ? <ChevronDown24Regular /> : <ChevronUp24Regular />}
+            
+            {primaryOperation && primaryOperation.status === 'running' && (
+              <div className={styles.compactProgress}>
+                <ProgressBar 
+                  className={styles.progressBar}
+                  value={primaryOperation.progress / 100} 
+                />
+                <Text weight="semibold" size={200}>{primaryOperation.progress}%</Text>
+              </div>
+            )}
+            
+            <Text className={styles.statusText}>{getSummaryText()}</Text>
+            
+            {primaryOperation?.details?.timeRemaining && (
+              <Text className={styles.statusText}>
+                ~{formatDuration(new Date(), new Date(Date.now() + primaryOperation.details.timeRemaining * 1000))} remaining
+              </Text>
+            )}
 
-      {activity.message && (
-        <Text className={styles.activityMessage}>{activity.message}</Text>
-      )}
-
-      {activity.status === 'running' && (
-        <div className={styles.activityProgress}>
-          <ProgressBar value={activity.progress / 100} />
-          <Text size={200}>{activity.progress}%</Text>
-        </div>
-      )}
-
-      {activity.error && (
-        <div className={styles.errorMessage}>
-          <Text size={200}>{activity.error}</Text>
-        </div>
-      )}
-
-      <div className={styles.activityTime}>
-        <Clock24Regular fontSize={14} />
-        <Text size={200}>
-          {formatDuration(activity.startTime, activity.endTime)}
-          {activity.endTime && ` (completed)`}
-        </Text>
-      </div>
-    </div>
-  );
-}
-
-export function GlobalStatusFooter() {
-  const styles = useStyles();
-  const [isExpanded, setIsExpanded] = useState(true);
-  const { 
-    activities, 
-    activeActivities, 
-    failedActivities,
-    clearCompleted,
-  } = useActivity();
-
-  // Don't render footer if there are no activities
-  if (activities.length === 0) {
-    return null;
-  }
-
-  const activeCount = activeActivities.length;
-  const failedCount = failedActivities.length;
-
-  const getSummaryText = () => {
-    const parts = [];
-    if (activeCount > 0) {
-      parts.push(`${activeCount} active`);
-    }
-    if (failedCount > 0) {
-      parts.push(`${failedCount} failed`);
-    }
-    if (parts.length === 0) {
-      parts.push('All tasks complete');
-    }
-    return parts.join(', ');
-  };
-
-  return (
-    <div className={`${styles.footer} ${!isExpanded ? styles.collapsed : ''}`}>
-      <div 
-        className={styles.header} 
-        onClick={() => setIsExpanded(!isExpanded)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setIsExpanded(!isExpanded);
-          }
-        }}
-        role="button"
-        tabIndex={0}
-        aria-expanded={isExpanded}
-        aria-label="Toggle activity status footer"
-      >
-        <div className={styles.headerLeft}>
-          {isExpanded ? <ChevronDown24Regular /> : <ChevronUp24Regular />}
-          <Text weight="semibold">Activity Status</Text>
-          <Text className={styles.badge}>{getSummaryText()}</Text>
-          {activeCount > 0 && (
-            <Badge appearance="filled" color="informative">
-              {activeCount}
-            </Badge>
-          )}
-          {failedCount > 0 && (
-            <Badge appearance="filled" color="danger">
-              {failedCount}
-            </Badge>
-          )}
-        </div>
-        <div className={styles.headerRight}>
-          <Button
-            appearance="subtle"
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              clearCompleted();
-            }}
-          >
-            Clear Completed
-          </Button>
+            {activeCount > 0 && (
+              <Badge appearance="filled" color="informative" size="small">
+                {activeCount}
+              </Badge>
+            )}
+            {failedCount > 0 && (
+              <Badge appearance="filled" color="danger" size="small">
+                {failedCount}
+              </Badge>
+            )}
+          </div>
+          
+          <div className={styles.headerRight}>
+            <ResourceMonitor compact />
+            <Button
+              appearance="subtle"
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                clearCompleted();
+              }}
+            >
+              Clear Completed
+            </Button>
+          </div>
         </div>
       </div>
 
-      {isExpanded && (
-        <div className={styles.activityList}>
-          {activities.length === 0 ? (
-            <div className={styles.emptyState}>
-              <Text>No activities to display</Text>
-            </div>
-          ) : (
-            activities
-              .slice()
-              .reverse()
-              .map(activity => (
-                <ActivityItemComponent key={activity.id} activity={activity} />
-              ))
-          )}
-        </div>
-      )}
-    </div>
+      <ActivityDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        activeActivities={activeActivities}
+        queuedActivities={queuedActivities}
+        pausedActivities={pausedActivities}
+        completedActivities={completedActivities}
+        recentHistory={recentHistory}
+        batchOperations={batchOperations}
+        onPause={pauseActivity}
+        onResume={resumeActivity}
+        onCancel={(id) => updateActivity(id, { status: 'cancelled' })}
+        onRetry={handleRetryActivity}
+        onPriorityChange={setPriority}
+        onClearHistory={clearHistory}
+        onRemoveFromHistory={removeActivity}
+      />
+
+      <Toaster toasterId={toasterId} position="top-end" />
+    </>
   );
 }
