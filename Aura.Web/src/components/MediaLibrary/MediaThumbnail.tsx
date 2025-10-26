@@ -12,7 +12,6 @@ import {
   MenuItem,
   MenuPopover,
 } from '@fluentui/react-components';
-import { memo } from 'react';
 import {
   VideoClip24Regular,
   MusicNote224Regular,
@@ -21,6 +20,7 @@ import {
   Folder24Regular,
   Delete24Regular,
 } from '@fluentui/react-icons';
+import { memo } from 'react';
 
 const useStyles = makeStyles({
   card: {
@@ -158,12 +158,8 @@ export const MediaThumbnail = memo(function MediaThumbnail({
                 {name}
               </Text>
               <Text className={styles.metadata}>{type}</Text>
-              {duration && (
-                <Text className={styles.metadata}>{Math.floor(duration)}s</Text>
-              )}
-              {fileSize && (
-                <Text className={styles.metadata}>{formatFileSize(fileSize)}</Text>
-              )}
+              {duration && <Text className={styles.metadata}>{Math.floor(duration)}s</Text>}
+              {fileSize && <Text className={styles.metadata}>{formatFileSize(fileSize)}</Text>}
             </div>
           }
         />

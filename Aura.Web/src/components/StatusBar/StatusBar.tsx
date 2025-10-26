@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { makeStyles, tokens, Button, Badge, Text } from '@fluentui/react-components';
 import {
   ErrorCircle24Filled,
@@ -8,6 +7,7 @@ import {
   Copy24Regular,
   ArrowClockwise24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   statusBar: {

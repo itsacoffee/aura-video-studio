@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -19,6 +18,7 @@ import {
   Next24Regular,
   FullScreenMaximize24Regular,
 } from '@fluentui/react-icons';
+import { useEffect, useRef, useState } from 'react';
 
 const useStyles = makeStyles({
   container: {

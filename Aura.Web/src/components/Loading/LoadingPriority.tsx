@@ -1,6 +1,6 @@
 /**
  * Loading Priority System
- * 
+ *
  * Manages the loading order of components to ensure critical UI elements
  * load first while deferring non-critical components.
  */
@@ -8,11 +8,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export enum LoadingPriority {
-  CRITICAL = 0,    // Must load immediately (layout, navigation)
-  HIGH = 1,        // Important for initial view (preview, timeline)
-  MEDIUM = 2,      // Visible but can be deferred (effects panels)
-  LOW = 3,         // Below the fold or optional (advanced features)
-  IDLE = 4,        // Load when browser is idle (analytics, non-essential)
+  CRITICAL = 0, // Must load immediately (layout, navigation)
+  HIGH = 1, // Important for initial view (preview, timeline)
+  MEDIUM = 2, // Visible but can be deferred (effects panels)
+  LOW = 3, // Below the fold or optional (advanced features)
+  IDLE = 4, // Load when browser is idle (analytics, non-essential)
 }
 
 interface LoadingPriorityContextValue {
@@ -47,21 +47,27 @@ export function LoadingPriorityProvider({
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     // Load CRITICAL immediately (already set)
-    
+
     // Load HIGH after delay
-    timers.push(setTimeout(() => {
-      setCurrentPriority(LoadingPriority.HIGH);
-    }, priorityDelay));
+    timers.push(
+      setTimeout(() => {
+        setCurrentPriority(LoadingPriority.HIGH);
+      }, priorityDelay)
+    );
 
     // Load MEDIUM after more delay
-    timers.push(setTimeout(() => {
-      setCurrentPriority(LoadingPriority.MEDIUM);
-    }, priorityDelay * 2));
+    timers.push(
+      setTimeout(() => {
+        setCurrentPriority(LoadingPriority.MEDIUM);
+      }, priorityDelay * 2)
+    );
 
     // Load LOW after more delay
-    timers.push(setTimeout(() => {
-      setCurrentPriority(LoadingPriority.LOW);
-    }, priorityDelay * 3));
+    timers.push(
+      setTimeout(() => {
+        setCurrentPriority(LoadingPriority.LOW);
+      }, priorityDelay * 3)
+    );
 
     // Load IDLE when browser is idle or after final delay
     if ('requestIdleCallback' in window) {
@@ -73,9 +79,11 @@ export function LoadingPriorityProvider({
         cancelIdleCallback(idleId);
       };
     } else {
-      timers.push(setTimeout(() => {
-        setCurrentPriority(LoadingPriority.IDLE);
-      }, priorityDelay * 4));
+      timers.push(
+        setTimeout(() => {
+          setCurrentPriority(LoadingPriority.IDLE);
+        }, priorityDelay * 4)
+      );
     }
 
     return () => {
@@ -103,9 +111,7 @@ export function LoadingPriorityProvider({
   };
 
   return (
-    <LoadingPriorityContext.Provider value={value}>
-      {children}
-    </LoadingPriorityContext.Provider>
+    <LoadingPriorityContext.Provider value={value}>{children}</LoadingPriorityContext.Provider>
   );
 }
 

@@ -1,18 +1,11 @@
-import { useState } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Input,
-  Button,
-  Text,
-  Spinner,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Input, Button, Text, Spinner } from '@fluentui/react-components';
 import {
   Eye20Regular,
   EyeOff20Regular,
   Checkmark20Regular,
   Dismiss20Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useStyles = makeStyles({
   container: {

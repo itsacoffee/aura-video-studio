@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Card,
   CardHeader,
@@ -9,6 +8,7 @@ import {
   ProgressBar,
 } from '@fluentui/react-components';
 import { DataTrendingRegular, CalendarRegular } from '@fluentui/react-icons';
+import React from 'react';
 import type { TrendingTopic } from '../../services/ideationService';
 
 const useStyles = makeStyles({
@@ -234,7 +234,7 @@ export const TrendingTopicCard: React.FC<TrendingTopicCardProps> = ({ topic, onS
         {topic.aiInsights && (
           <div className={styles.aiInsights}>
             <div className={styles.insightSection}>
-              <div className={styles.insightLabel}>🔥 Why It's Trending</div>
+              <div className={styles.insightLabel}>🔥 Why It&apos;s Trending</div>
               <Text className={styles.insightText}>{topic.aiInsights.whyTrending}</Text>
             </div>
 
@@ -265,7 +265,13 @@ export const TrendingTopicCard: React.FC<TrendingTopicCardProps> = ({ topic, onS
               <div className={styles.viralityBadge}>
                 <Badge
                   appearance="filled"
-                  color={topic.aiInsights.viralityScore >= 75 ? 'success' : topic.aiInsights.viralityScore >= 50 ? 'warning' : 'informative'}
+                  color={
+                    topic.aiInsights.viralityScore >= 75
+                      ? 'success'
+                      : topic.aiInsights.viralityScore >= 50
+                        ? 'warning'
+                        : 'informative'
+                  }
                 >
                   Virality Potential: {Math.round(topic.aiInsights.viralityScore)}/100
                 </Badge>

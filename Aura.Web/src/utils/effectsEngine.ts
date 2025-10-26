@@ -2,18 +2,21 @@
  * Effects Engine - Renders video effects using Canvas 2D API
  */
 
-import { AppliedEffect, Keyframe } from '../types/effects';
 import {
   applyChromaKey as chromaKeyProcessor,
   applyEdgeRefinement,
   applyEdgeFeather,
   applyMatteCleanup,
 } from '../services/chromaKeyService';
+import { AppliedEffect, Keyframe } from '../types/effects';
 
 /**
  * Interpolates between keyframes at a given time
  */
-function interpolateKeyframes(keyframes: Keyframe[], currentTime: number): number | boolean | string {
+function interpolateKeyframes(
+  keyframes: Keyframe[],
+  currentTime: number
+): number | boolean | string {
   if (keyframes.length === 0) return 0;
   if (keyframes.length === 1) return keyframes[0].value;
 
@@ -34,13 +37,13 @@ function interpolateKeyframes(keyframes: Keyframe[], currentTime: number): numbe
     if (currentTime >= kf1.time && currentTime <= kf2.time) {
       // Linear interpolation for now (can be extended with easing functions)
       const t = (currentTime - kf1.time) / (kf2.time - kf1.time);
-      
+
       if (typeof kf1.value === 'number' && typeof kf2.value === 'number') {
         // Apply easing
         const easedT = applyEasing(t, kf1.easing || 'linear', kf1.bezier);
         return kf1.value + (kf2.value - kf1.value) * easedT;
       }
-      
+
       // For non-numeric values, just use the first keyframe's value
       return kf1.value;
     }
@@ -97,7 +100,7 @@ export function getEffectiveParameterValue(
   if (effect.keyframes && effect.keyframes[paramName]) {
     return interpolateKeyframes(effect.keyframes[paramName], currentTime);
   }
-  
+
   // Otherwise use the static parameter value
   return effect.parameters[paramName];
 }
@@ -114,7 +117,7 @@ export function applyEffectsToFrame(
   outputCanvas.width = sourceCanvas.width;
   outputCanvas.height = sourceCanvas.height;
   const ctx = outputCanvas.getContext('2d');
-  
+
   if (!ctx) return sourceCanvas;
 
   // Start with the source image
@@ -179,17 +182,21 @@ export function applyEffectsToFrame(
   return outputCanvas;
 }
 
-function applyBrightness(ctx: CanvasRenderingContext2D, effect: AppliedEffect, currentTime: number) {
+function applyBrightness(
+  ctx: CanvasRenderingContext2D,
+  effect: AppliedEffect,
+  currentTime: number
+) {
   const value = getEffectiveParameterValue(effect, 'value', currentTime) as number;
   const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
   const data = imageData.data;
-  
+
   for (let i = 0; i < data.length; i += 4) {
-    data[i] = Math.max(0, Math.min(255, data[i] + value));     // R
+    data[i] = Math.max(0, Math.min(255, data[i] + value)); // R
     data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + value)); // G
     data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + value)); // B
   }
-  
+
   ctx.putImageData(imageData, 0, 0);
 }
 
@@ -198,35 +205,39 @@ function applyContrast(ctx: CanvasRenderingContext2D, effect: AppliedEffect, cur
   const factor = (259 * (value + 255)) / (255 * (259 - value));
   const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
   const data = imageData.data;
-  
+
   for (let i = 0; i < data.length; i += 4) {
     data[i] = Math.max(0, Math.min(255, factor * (data[i] - 128) + 128));
     data[i + 1] = Math.max(0, Math.min(255, factor * (data[i + 1] - 128) + 128));
     data[i + 2] = Math.max(0, Math.min(255, factor * (data[i + 2] - 128) + 128));
   }
-  
+
   ctx.putImageData(imageData, 0, 0);
 }
 
-function applySaturation(ctx: CanvasRenderingContext2D, effect: AppliedEffect, currentTime: number) {
+function applySaturation(
+  ctx: CanvasRenderingContext2D,
+  effect: AppliedEffect,
+  currentTime: number
+) {
   const value = getEffectiveParameterValue(effect, 'value', currentTime) as number;
   const saturation = 1 + value / 100;
   const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
   const data = imageData.data;
-  
+
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
-    
+
     // Calculate gray value
-    const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
-    
+    const gray = 0.2989 * r + 0.587 * g + 0.114 * b;
+
     data[i] = Math.max(0, Math.min(255, gray + saturation * (r - gray)));
     data[i + 1] = Math.max(0, Math.min(255, gray + saturation * (g - gray)));
     data[i + 2] = Math.max(0, Math.min(255, gray + saturation * (b - gray)));
   }
-  
+
   ctx.putImageData(imageData, 0, 0);
 }
 
@@ -234,29 +245,29 @@ function applyHue(ctx: CanvasRenderingContext2D, effect: AppliedEffect, currentT
   const value = getEffectiveParameterValue(effect, 'value', currentTime) as number;
   const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
   const data = imageData.data;
-  
+
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i] / 255;
     const g = data[i + 1] / 255;
     const b = data[i + 2] / 255;
-    
+
     // Convert RGB to HSL
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     let h = 0;
     const l = (max + min) / 2;
     const d = max - min;
-    
+
     if (d !== 0) {
       const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      
+
       if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
       else if (max === g) h = ((b - r) / d + 2) / 6;
       else h = ((r - g) / d + 4) / 6;
-      
+
       // Rotate hue
       h = (h + value / 360) % 1;
-      
+
       // Convert back to RGB
       const hue2rgb = (p: number, q: number, t: number) => {
         if (t < 0) t += 1;
@@ -266,20 +277,24 @@ function applyHue(ctx: CanvasRenderingContext2D, effect: AppliedEffect, currentT
         if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
         return p;
       };
-      
+
       const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
       const p = 2 * l - q;
-      
+
       data[i] = Math.round(hue2rgb(p, q, h + 1 / 3) * 255);
       data[i + 1] = Math.round(hue2rgb(p, q, h) * 255);
       data[i + 2] = Math.round(hue2rgb(p, q, h - 1 / 3) * 255);
     }
   }
-  
+
   ctx.putImageData(imageData, 0, 0);
 }
 
-function applyGaussianBlur(ctx: CanvasRenderingContext2D, effect: AppliedEffect, currentTime: number) {
+function applyGaussianBlur(
+  ctx: CanvasRenderingContext2D,
+  effect: AppliedEffect,
+  currentTime: number
+) {
   const radius = getEffectiveParameterValue(effect, 'radius', currentTime) as number;
   if (radius > 0) {
     // Use canvas filter for blur (modern browsers)
@@ -297,22 +312,31 @@ function applyGaussianBlur(ctx: CanvasRenderingContext2D, effect: AppliedEffect,
   }
 }
 
-function applyMotionBlur(_ctx: CanvasRenderingContext2D, _effect: AppliedEffect, _currentTime: number) {
+function applyMotionBlur(
+  _ctx: CanvasRenderingContext2D,
+  _effect: AppliedEffect,
+  _currentTime: number
+) {
   // Motion blur is complex - simplified implementation
   // In production, would use directional blur shader or multiple frame blending
 }
 
-function applyScale(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, effect: AppliedEffect, currentTime: number) {
+function applyScale(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  effect: AppliedEffect,
+  currentTime: number
+) {
   const scaleX = getEffectiveParameterValue(effect, 'scaleX', currentTime) as number;
   const scaleY = getEffectiveParameterValue(effect, 'scaleY', currentTime) as number;
-  
+
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvas.width;
   tempCanvas.height = canvas.height;
   const tempCtx = tempCanvas.getContext('2d');
   if (tempCtx) {
     tempCtx.drawImage(canvas, 0, 0);
-    
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -323,16 +347,21 @@ function applyScale(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, ef
   }
 }
 
-function applyRotate(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, effect: AppliedEffect, currentTime: number) {
+function applyRotate(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  effect: AppliedEffect,
+  currentTime: number
+) {
   const angle = getEffectiveParameterValue(effect, 'angle', currentTime) as number;
-  
+
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvas.width;
   tempCanvas.height = canvas.height;
   const tempCtx = tempCanvas.getContext('2d');
   if (tempCtx) {
     tempCtx.drawImage(canvas, 0, 0);
-    
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -343,17 +372,22 @@ function applyRotate(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, e
   }
 }
 
-function applyPosition(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, effect: AppliedEffect, currentTime: number) {
+function applyPosition(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  effect: AppliedEffect,
+  currentTime: number
+) {
   const x = getEffectiveParameterValue(effect, 'x', currentTime) as number;
   const y = getEffectiveParameterValue(effect, 'y', currentTime) as number;
-  
+
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvas.width;
   tempCanvas.height = canvas.height;
   const tempCtx = tempCanvas.getContext('2d');
   if (tempCtx) {
     tempCtx.drawImage(canvas, 0, 0);
-    
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(tempCanvas, x, y);
   }
@@ -362,7 +396,7 @@ function applyPosition(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement,
 function applyFade(ctx: CanvasRenderingContext2D, effect: AppliedEffect, currentTime: number) {
   const opacity = getEffectiveParameterValue(effect, 'opacity', currentTime) as number;
   ctx.globalAlpha = opacity;
-  
+
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = ctx.canvas.width;
   tempCanvas.height = ctx.canvas.height;
@@ -377,7 +411,7 @@ function applyFade(ctx: CanvasRenderingContext2D, effect: AppliedEffect, current
 
 function applyDissolve(ctx: CanvasRenderingContext2D, effect: AppliedEffect, currentTime: number) {
   const amount = getEffectiveParameterValue(effect, 'amount', currentTime) as number;
-  
+
   // Dissolve using opacity
   ctx.globalAlpha = 1 - amount;
   const tempCanvas = document.createElement('canvas');
@@ -392,20 +426,25 @@ function applyDissolve(ctx: CanvasRenderingContext2D, effect: AppliedEffect, cur
   }
 }
 
-function applyWipe(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, effect: AppliedEffect, currentTime: number) {
+function applyWipe(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  effect: AppliedEffect,
+  currentTime: number
+) {
   const progress = getEffectiveParameterValue(effect, 'progress', currentTime) as number;
   const direction = getEffectiveParameterValue(effect, 'direction', currentTime) as string;
-  
+
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvas.width;
   tempCanvas.height = canvas.height;
   const tempCtx = tempCanvas.getContext('2d');
   if (tempCtx) {
     tempCtx.drawImage(canvas, 0, 0);
-    
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
-    
+
     // Create clipping region based on direction
     ctx.beginPath();
     switch (direction) {
@@ -428,37 +467,51 @@ function applyWipe(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, eff
   }
 }
 
-function applyVignette(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, effect: AppliedEffect, currentTime: number) {
+function applyVignette(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  effect: AppliedEffect,
+  currentTime: number
+) {
   const intensity = getEffectiveParameterValue(effect, 'intensity', currentTime) as number;
   const radius = getEffectiveParameterValue(effect, 'radius', currentTime) as number;
-  
+
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
   const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY);
-  
+
   const gradient = ctx.createRadialGradient(
-    centerX, centerY, maxRadius * radius,
-    centerX, centerY, maxRadius
+    centerX,
+    centerY,
+    maxRadius * radius,
+    centerX,
+    centerY,
+    maxRadius
   );
   gradient.addColorStop(0, `rgba(0, 0, 0, 0)`);
   gradient.addColorStop(1, `rgba(0, 0, 0, ${intensity})`);
-  
+
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-function applyGrain(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, effect: AppliedEffect, currentTime: number) {
+function applyGrain(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  effect: AppliedEffect,
+  currentTime: number
+) {
   const intensity = getEffectiveParameterValue(effect, 'intensity', currentTime) as number;
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
-  
+
   for (let i = 0; i < data.length; i += 4) {
     const noise = (Math.random() - 0.5) * intensity * 255;
     data[i] = Math.max(0, Math.min(255, data[i] + noise));
     data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise));
     data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise));
   }
-  
+
   ctx.putImageData(imageData, 0, 0);
 }
 
@@ -466,7 +519,11 @@ function applyChromaKey(ctx: CanvasRenderingContext2D, effect: AppliedEffect, cu
   const keyColor = getEffectiveParameterValue(effect, 'keyColor', currentTime) as string;
   const similarity = getEffectiveParameterValue(effect, 'similarity', currentTime) as number;
   const smoothness = getEffectiveParameterValue(effect, 'smoothness', currentTime) as number;
-  const spillSuppression = getEffectiveParameterValue(effect, 'spillSuppression', currentTime) as number;
+  const spillSuppression = getEffectiveParameterValue(
+    effect,
+    'spillSuppression',
+    currentTime
+  ) as number;
   const edgeThickness = getEffectiveParameterValue(effect, 'edgeThickness', currentTime) as number;
   const edgeFeather = getEffectiveParameterValue(effect, 'edgeFeather', currentTime) as number;
   const choke = getEffectiveParameterValue(effect, 'choke', currentTime) as number;
@@ -521,4 +578,3 @@ function applyBlendMode(ctx: CanvasRenderingContext2D, effect: AppliedEffect, cu
 
   ctx.globalAlpha = opacity / 100;
 }
-

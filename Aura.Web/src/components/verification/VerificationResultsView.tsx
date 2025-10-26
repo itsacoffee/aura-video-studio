@@ -2,7 +2,7 @@ import {
   DismissCircle20Regular as XCircle,
   Warning20Regular as AlertTriangle,
   Info20Regular as Info,
-  Open20Regular as ExternalLink
+  Open20Regular as ExternalLink,
 } from '@fluentui/react-icons';
 import { ConfidenceMeter } from './ConfidenceMeter';
 
@@ -57,7 +57,9 @@ export const VerificationResultsView: React.FC<VerificationResultsViewProps> = (
     };
 
     return (
-      <span className={`px-2 py-1 rounded text-xs font-semibold border ${styles[statusLower] || styles.unknown}`}>
+      <span
+        className={`px-2 py-1 rounded text-xs font-semibold border ${styles[statusLower] || styles.unknown}`}
+      >
         {status}
       </span>
     );
@@ -72,7 +74,9 @@ export const VerificationResultsView: React.FC<VerificationResultsViewProps> = (
     };
 
     return (
-      <span className={`px-2 py-1 rounded text-xs font-semibold ${styles[level.toLowerCase()] || styles.low}`}>
+      <span
+        className={`px-2 py-1 rounded text-xs font-semibold ${styles[level.toLowerCase()] || styles.low}`}
+      >
         {level} Risk
       </span>
     );
@@ -93,8 +97,8 @@ export const VerificationResultsView: React.FC<VerificationResultsViewProps> = (
 
       {/* Overall Confidence */}
       <div className="bg-white p-4 rounded-lg border">
-        <ConfidenceMeter 
-          confidence={result.overallConfidence} 
+        <ConfidenceMeter
+          confidence={result.overallConfidence}
           label="Overall Confidence"
           size="lg"
         />
@@ -141,7 +145,7 @@ export const VerificationResultsView: React.FC<VerificationResultsViewProps> = (
                       <div className="mt-2 flex items-center gap-2">
                         <span className="text-xs text-red-700">Severity:</span>
                         <div className="flex-1 bg-red-200 rounded-full h-1.5">
-                          <div 
+                          <div
                             className="bg-red-600 h-1.5 rounded-full"
                             style={{ width: `${flag.severity * 100}%` }}
                           />
@@ -200,7 +204,7 @@ export const VerificationResultsView: React.FC<VerificationResultsViewProps> = (
                       </p>
                     )}
                     <div className="mt-2">
-                      <ConfidenceMeter 
+                      <ConfidenceMeter
                         confidence={source.credibilityScore}
                         label="Credibility"
                         size="sm"

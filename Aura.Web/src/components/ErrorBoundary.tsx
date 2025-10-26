@@ -1,7 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { loggingService } from '../services/loggingService';
-import { ErrorReportDialog } from './ErrorReportDialog';
 import { ErrorFallback } from './ErrorBoundary/ErrorFallback';
+import { ErrorReportDialog } from './ErrorReportDialog';
 
 interface Props {
   children: ReactNode;

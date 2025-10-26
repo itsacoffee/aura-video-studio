@@ -1,5 +1,5 @@
-import React from 'react';
 import { Card, Text, makeStyles, tokens } from '@fluentui/react-components';
+import React from 'react';
 import type {
   EmotionalArc,
   EmotionalPoint,

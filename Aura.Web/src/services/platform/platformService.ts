@@ -1,4 +1,3 @@
-import apiClient from '../api/apiClient';
 import type {
   PlatformProfile,
   PlatformOptimizationRequest,
@@ -17,6 +16,7 @@ import type {
   MultiPlatformExportResult,
   PlatformTrend,
 } from '../../types/platform';
+import apiClient from '../api/apiClient';
 
 /**
  * Service for platform optimization API calls

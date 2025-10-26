@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -25,6 +24,7 @@ import {
   Question24Regular,
   Keyboard24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const useStyles = makeStyles({
@@ -119,9 +119,9 @@ interface MenuBarProps {
   lastSaved?: Date | null;
 }
 
-export function MenuBar({ 
-  onImportMedia, 
-  onExportVideo, 
+export function MenuBar({
+  onImportMedia,
+  onExportVideo,
   onShowKeyboardShortcuts,
   onSaveProject,
   projectName,
@@ -298,17 +298,23 @@ export function MenuBar({
       <div className={styles.statusSection}>
         {projectName && (
           <span className={styles.projectName}>
-            {projectName}{isDirty ? ' *' : ''}
+            {projectName}
+            {isDirty ? ' *' : ''}
           </span>
         )}
         {autosaveStatus !== 'idle' && (
           <span className={styles.statusText}>
-            <span className={`${styles.statusDot} ${
-              autosaveStatus === 'saving' ? styles.statusSaving :
-              autosaveStatus === 'saved' ? styles.statusSaved :
-              autosaveStatus === 'error' ? styles.statusError :
-              styles.statusIdle
-            }`} />
+            <span
+              className={`${styles.statusDot} ${
+                autosaveStatus === 'saving'
+                  ? styles.statusSaving
+                  : autosaveStatus === 'saved'
+                    ? styles.statusSaved
+                    : autosaveStatus === 'error'
+                      ? styles.statusError
+                      : styles.statusIdle
+              }`}
+            />
             {autosaveStatus === 'saving' && 'Saving...'}
             {autosaveStatus === 'saved' && 'All changes saved'}
             {autosaveStatus === 'error' && 'Save failed'}
@@ -329,14 +335,14 @@ function formatLastSaved(date: Date): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
-  
+
   if (diffMins < 1) return 'just now';
   if (diffMins === 1) return '1 minute ago';
   if (diffMins < 60) return `${diffMins} minutes ago`;
-  
+
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours === 1) return '1 hour ago';
   if (diffHours < 24) return `${diffHours} hours ago`;
-  
+
   return date.toLocaleString();
 }

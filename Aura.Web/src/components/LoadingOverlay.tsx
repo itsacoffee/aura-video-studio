@@ -78,7 +78,7 @@ export function LoadingOverlay({
         {message && <Text className={styles.message}>{message}</Text>}
         {showProgress && (
           <div className={styles.progressContainer}>
-            <ProgressIndicator 
+            <ProgressIndicator
               progress={progress}
               title=""
               status={status}

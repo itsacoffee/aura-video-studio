@@ -3,7 +3,6 @@
  * Displays engagement curve and viewer retention predictions
  */
 
-import React from 'react';
 import {
   Card,
   makeStyles,
@@ -14,6 +13,7 @@ import {
   Caption1,
   Title3,
 } from '@fluentui/react-components';
+import React from 'react';
 import { EngagementCurve } from '../../../services/editingIntelligenceService';
 
 interface EngagementPanelProps {

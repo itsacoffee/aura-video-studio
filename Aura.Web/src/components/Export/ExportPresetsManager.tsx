@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -28,6 +27,7 @@ import {
   Edit24Regular,
   Save24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   dialogSurface: {
@@ -191,9 +191,7 @@ export function ExportPresetsManager({
 
     if (selectedPreset) {
       // Update existing
-      setPresets((prev) =>
-        prev.map((p) => (p.id === selectedPreset.id ? newPreset : p))
-      );
+      setPresets((prev) => prev.map((p) => (p.id === selectedPreset.id ? newPreset : p)));
     } else {
       // Add new
       setPresets((prev) => [...prev, newPreset]);
@@ -235,9 +233,7 @@ export function ExportPresetsManager({
                 <Field label="Preset Name" required>
                   <Input
                     value={editForm.name}
-                    onChange={(_, data) =>
-                      setEditForm({ ...editForm, name: data.value })
-                    }
+                    onChange={(_, data) => setEditForm({ ...editForm, name: data.value })}
                     placeholder="My Custom Preset"
                   />
                 </Field>
@@ -245,9 +241,7 @@ export function ExportPresetsManager({
                 <Field label="Description" required>
                   <Textarea
                     value={editForm.description}
-                    onChange={(_, data) =>
-                      setEditForm({ ...editForm, description: data.value })
-                    }
+                    onChange={(_, data) => setEditForm({ ...editForm, description: data.value })}
                     placeholder="Describe the purpose of this preset"
                     rows={2}
                   />
@@ -287,9 +281,7 @@ export function ExportPresetsManager({
                   <Field label="Resolution" className={styles.field}>
                     <Input
                       value={editForm.resolution}
-                      onChange={(_, data) =>
-                        setEditForm({ ...editForm, resolution: data.value })
-                      }
+                      onChange={(_, data) => setEditForm({ ...editForm, resolution: data.value })}
                       placeholder="1920x1080"
                     />
                   </Field>
@@ -310,9 +302,7 @@ export function ExportPresetsManager({
                     <Input
                       type="number"
                       value={editForm.bitrate}
-                      onChange={(_, data) =>
-                        setEditForm({ ...editForm, bitrate: data.value })
-                      }
+                      onChange={(_, data) => setEditForm({ ...editForm, bitrate: data.value })}
                       placeholder="8000"
                     />
                   </Field>
@@ -335,9 +325,7 @@ export function ExportPresetsManager({
                     <Input
                       type="number"
                       value={editForm.audioBitrate}
-                      onChange={(_, data) =>
-                        setEditForm({ ...editForm, audioBitrate: data.value })
-                      }
+                      onChange={(_, data) => setEditForm({ ...editForm, audioBitrate: data.value })}
                       placeholder="192"
                     />
                   </Field>
@@ -443,10 +431,7 @@ export function ExportPresetsManager({
                 Create New Preset
               </Button>
               {selectedPreset && (
-                <Button
-                  appearance="primary"
-                  onClick={() => handleUsePreset(selectedPreset)}
-                >
+                <Button appearance="primary" onClick={() => handleUsePreset(selectedPreset)}>
                   Use This Preset
                 </Button>
               )}

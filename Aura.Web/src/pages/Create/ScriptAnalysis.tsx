@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -18,6 +17,7 @@ import {
   ArrowSync24Regular,
   Sparkle24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({

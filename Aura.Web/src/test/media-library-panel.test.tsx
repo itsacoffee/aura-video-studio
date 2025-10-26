@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
-import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { describe, it, expect } from 'vitest';
+import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
 
 const renderWithProvider = (component: React.ReactElement) => {
   return render(<FluentProvider theme={webLightTheme}>{component}</FluentProvider>);
@@ -37,7 +37,7 @@ describe('MediaLibraryPanel', () => {
     expect(fileInput).toBeTruthy();
 
     const file = new File(['dummy content'], 'test-video.mp4', { type: 'video/mp4' });
-    
+
     await userEvent.upload(fileInput, file);
 
     // Wait for the clip to be processed and rendered using a more deterministic approach
@@ -65,7 +65,7 @@ describe('MediaLibraryPanel', () => {
 
   it('should accept multiple file types', () => {
     const { container } = renderWithProvider(<MediaLibraryPanel />);
-    
+
     const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput).toBeTruthy();
     expect(fileInput?.getAttribute('accept')).toBe('video/*,audio/*,image/*');

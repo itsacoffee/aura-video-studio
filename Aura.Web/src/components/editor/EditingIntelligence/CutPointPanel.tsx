@@ -3,7 +3,6 @@
  * Displays and manages cut point suggestions
  */
 
-import React from 'react';
 import {
   Button,
   Card,
@@ -15,6 +14,7 @@ import {
   Caption1,
 } from '@fluentui/react-components';
 import { Checkmark24Regular, Dismiss24Regular } from '@fluentui/react-icons';
+import React from 'react';
 import { CutPoint } from '../../../services/editingIntelligenceService';
 
 interface CutPointPanelProps {

@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
 import { makeStyles, tokens, Title1, Text } from '@fluentui/react-components';
-import { TimelineView } from '../components/Timeline/TimelineView';
+import { useEffect, useMemo, useState } from 'react';
 import { OverlayPanel } from '../components/Overlays/OverlayPanel';
-import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
+import { TimelineView } from '../components/Timeline/TimelineView';
 import { CommandHistory } from '../services/commandHistory';
+import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 
 const useStyles = makeStyles({
   container: {
@@ -41,7 +41,7 @@ const useStyles = makeStyles({
 
 export function TimelinePage() {
   const styles = useStyles();
-  
+
   // Command history for undo/redo
   const commandHistory = useMemo(() => new CommandHistory(50), []);
   const [canUndo, setCanUndo] = useState(false);
@@ -49,13 +49,12 @@ export function TimelinePage() {
 
   // Subscribe to command history changes
   useEffect(() => {
-    const unsubscribe = commandHistory.subscribe((undo, redo) => {
+    return commandHistory.subscribe((undo, redo) => {
       setCanUndo(undo);
       setCanRedo(redo);
     });
-    return unsubscribe;
   }, [commandHistory]);
-  
+
   // Prevent unused variable warnings - these will be used for UI indicators
   void canUndo;
   void canRedo;

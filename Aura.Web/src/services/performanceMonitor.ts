@@ -1,6 +1,6 @@
 /**
  * Performance Monitoring Service
- * 
+ *
  * Provides performance tracking using React Profiler API, custom performance marks,
  * and metrics collection for component render times and bundle sizes.
  */
@@ -127,7 +127,8 @@ class PerformanceMonitor {
         componentName: metric.id,
         renderCount: existing.renderCount + 1,
         totalDuration: existing.totalDuration + metric.actualDuration,
-        averageDuration: (existing.totalDuration + metric.actualDuration) / (existing.renderCount + 1),
+        averageDuration:
+          (existing.totalDuration + metric.actualDuration) / (existing.renderCount + 1),
         maxDuration: Math.max(existing.maxDuration, metric.actualDuration),
         minDuration: Math.min(existing.minDuration, metric.actualDuration),
         lastRenderTime: metric.timestamp,
@@ -150,7 +151,7 @@ class PerformanceMonitor {
    * Check if metric exceeds budget and trigger warnings
    */
   private checkBudgets(metric: PerformanceMetric): void {
-    const budget = this.budgets.find(b => b.name === metric.id);
+    const budget = this.budgets.find((b) => b.name === metric.id);
     if (!budget) return;
 
     if (metric.actualDuration > budget.maxRenderTime) {
@@ -212,7 +213,7 @@ class PerformanceMonitor {
   addBundleMetric(metric: BundleMetric): void {
     this.bundleMetrics.push(metric);
 
-    const budget = this.budgets.find(b => b.name === metric.name || b.name === 'TotalBundle');
+    const budget = this.budgets.find((b) => b.name === metric.name || b.name === 'TotalBundle');
     if (budget && metric.size > budget.maxBundleSize) {
       const warning = `Bundle Size Budget Exceeded: ${metric.name} is ${(metric.size / 1024).toFixed(2)}KB (budget: ${(budget.maxBundleSize / 1024).toFixed(2)}KB)`;
       console.warn(warning, metric);
@@ -266,7 +267,7 @@ class PerformanceMonitor {
    * Add a single budget
    */
   addBudget(budget: PerformanceBudget): void {
-    const existingIndex = this.budgets.findIndex(b => b.name === budget.name);
+    const existingIndex = this.budgets.findIndex((b) => b.name === budget.name);
     if (existingIndex >= 0) {
       this.budgets[existingIndex] = budget;
     } else {
@@ -277,7 +278,11 @@ class PerformanceMonitor {
   /**
    * Get memory usage (if available)
    */
-  getMemoryUsage(): { usedJSHeapSize?: number; totalJSHeapSize?: number; jsHeapSizeLimit?: number } {
+  getMemoryUsage(): {
+    usedJSHeapSize?: number;
+    totalJSHeapSize?: number;
+    jsHeapSizeLimit?: number;
+  } {
     if ('memory' in performance) {
       const memory = (performance as any).memory;
       return {
@@ -296,7 +301,8 @@ class PerformanceMonitor {
     const recentMetrics = this.metrics.slice(-10);
     if (recentMetrics.length === 0) return 60; // Default
 
-    const avgDuration = recentMetrics.reduce((sum, m) => sum + m.actualDuration, 0) / recentMetrics.length;
+    const avgDuration =
+      recentMetrics.reduce((sum, m) => sum + m.actualDuration, 0) / recentMetrics.length;
     return avgDuration > 0 ? Math.round(1000 / avgDuration) : 60;
   }
 
@@ -318,7 +324,7 @@ class PerformanceMonitor {
    * Notify all warning callbacks
    */
   private notifyWarning(warning: string, metric: any): void {
-    this.warningCallbacks.forEach(callback => {
+    this.warningCallbacks.forEach((callback) => {
       try {
         callback(warning, metric);
       } catch (error) {
@@ -350,15 +356,12 @@ class PerformanceMonitor {
     const renderMetrics = this.getRenderMetrics();
     const totalRenders = renderMetrics.reduce((sum, m) => sum + m.renderCount, 0);
     const totalDuration = renderMetrics.reduce((sum, m) => sum + m.totalDuration, 0);
-    const slowestComponent = renderMetrics.reduce<RenderMetric | null>(
-      (slowest, current) => {
-        if (!slowest || current.maxDuration > slowest.maxDuration) {
-          return current;
-        }
-        return slowest;
-      },
-      null
-    );
+    const slowestComponent = renderMetrics.reduce<RenderMetric | null>((slowest, current) => {
+      if (!slowest || current.maxDuration > slowest.maxDuration) {
+        return current;
+      }
+      return slowest;
+    }, null);
 
     return {
       totalComponents: renderMetrics.length,
@@ -374,14 +377,18 @@ class PerformanceMonitor {
    * Export metrics to JSON
    */
   exportMetrics(): string {
-    return JSON.stringify({
-      metrics: this.metrics,
-      renderMetrics: Array.from(this.renderMetrics.entries()),
-      bundleMetrics: this.bundleMetrics,
-      budgets: this.budgets,
-      summary: this.getSummary(),
-      timestamp: Date.now(),
-    }, null, 2);
+    return JSON.stringify(
+      {
+        metrics: this.metrics,
+        renderMetrics: Array.from(this.renderMetrics.entries()),
+        bundleMetrics: this.bundleMetrics,
+        budgets: this.budgets,
+        summary: this.getSummary(),
+        timestamp: Date.now(),
+      },
+      null,
+      2
+    );
   }
 }
 

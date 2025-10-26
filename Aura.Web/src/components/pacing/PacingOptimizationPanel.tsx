@@ -3,7 +3,6 @@
  * Main UI component for visual selection and pacing optimization
  */
 
-import { useState, useCallback } from 'react';
 import {
   Card,
   Button,
@@ -22,11 +21,12 @@ import {
   ChartMultiple24Regular,
   Beaker24Regular as TestBeaker24Regular,
 } from '@fluentui/react-icons';
+import { useState, useCallback } from 'react';
 import { Scene } from '../../types';
 import { FrameSelectionView } from './FrameSelectionView';
+import { OptimizationResultsView } from './OptimizationResultsView';
 import { PaceAdjustmentSlider } from './PaceAdjustmentSlider';
 import { TransitionSuggestionCard } from './TransitionSuggestionCard';
-import { OptimizationResultsView } from './OptimizationResultsView';
 
 interface PacingOptimizationPanelProps {
   scenes: Scene[];
@@ -75,11 +75,11 @@ export const PacingOptimizationPanel = ({
   const handleOptimize = useCallback(async () => {
     setLoading(true);
     setOptimizationActive(true);
-    
+
     try {
       // Trigger optimization process
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulated delay
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulated delay
+
       // In production, this would call the optimization services
     } catch (error) {
       console.error('Optimization failed:', error);
@@ -148,7 +148,7 @@ export const PacingOptimizationPanel = ({
             optimizationActive={optimizationActive}
           />
         )}
-        
+
         {selectedTab === 'pacing' && (
           <PaceAdjustmentSlider
             scenes={scenes}
@@ -156,19 +156,13 @@ export const PacingOptimizationPanel = ({
             optimizationActive={optimizationActive}
           />
         )}
-        
+
         {selectedTab === 'transitions' && (
-          <TransitionSuggestionCard
-            scenes={scenes}
-            optimizationActive={optimizationActive}
-          />
+          <TransitionSuggestionCard scenes={scenes} optimizationActive={optimizationActive} />
         )}
-        
+
         {selectedTab === 'results' && (
-          <OptimizationResultsView
-            scenes={scenes}
-            optimizationActive={optimizationActive}
-          />
+          <OptimizationResultsView scenes={scenes} optimizationActive={optimizationActive} />
         )}
       </div>
     </Card>

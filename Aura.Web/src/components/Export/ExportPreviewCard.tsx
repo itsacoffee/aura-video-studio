@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import {
   makeStyles,
   tokens,
@@ -9,9 +8,8 @@ import {
   Body1,
   Badge,
 } from '@fluentui/react-components';
-import {
-  VideoClip24Regular,
-} from '@fluentui/react-icons';
+import { VideoClip24Regular } from '@fluentui/react-icons';
+import { useMemo } from 'react';
 
 const useStyles = makeStyles({
   card: {
@@ -153,21 +151,21 @@ export function ExportPreviewCard({
 
   const estimatedFileSize = useMemo(() => {
     if (!spec) return '~100 MB';
-    
+
     // Parse bitrate (e.g., "5 Mbps" -> 5000)
     const bitrateMbps = parseInt(spec.bitrate);
     const bitrateKbps = bitrateMbps * 1000;
-    
+
     // Calculate size: (bitrate * duration) / 8 / 1024
     const sizeKB = (bitrateKbps * duration) / 8;
     const sizeMB = sizeKB / 1024;
-    
+
     return `~${Math.round(sizeMB)} MB`;
   }, [spec, duration]);
 
   const aspectRatioClass = useMemo(() => {
     if (!spec) return '';
-    
+
     if (spec.aspectRatio === '9:16') {
       return styles.previewVertical;
     } else if (spec.aspectRatio === '1:1') {

@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -16,28 +14,30 @@ import {
   Slider,
 } from '@fluentui/react-components';
 import { Save24Regular, ArrowDownload24Regular, ArrowUpload24Regular } from '@fluentui/react-icons';
-import type { Profile } from '../types';
-import { LocalEngines } from '../components/Settings/LocalEngines';
-import { ProvidersTable } from '../components/Settings/ProvidersTable';
-import { RescanPanel } from './DownloadCenter/RescanPanel';
+import { useState, useEffect } from 'react';
+import { ValidatedInput } from '../components/forms/ValidatedInput';
 import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel';
+import { ApiKeysSettingsTab } from '../components/Settings/ApiKeysSettingsTab';
+import { EditorPreferencesSettingsTab } from '../components/Settings/EditorPreferencesSettingsTab';
+import { FileLocationsSettingsTab } from '../components/Settings/FileLocationsSettingsTab';
+import { GeneralSettingsTab } from '../components/Settings/GeneralSettingsTab';
+import { KeyboardShortcutsTab } from '../components/Settings/KeyboardShortcutsTab';
+import { LocalEngines } from '../components/Settings/LocalEngines';
+import { LoggingSettingsTab } from '../components/Settings/LoggingSettingsTab';
 import { OutputSettingsTab } from '../components/Settings/OutputSettingsTab';
 import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettingsTab';
-import { KeyboardShortcutsTab } from '../components/Settings/KeyboardShortcutsTab';
+import { ProvidersTable } from '../components/Settings/ProvidersTable';
 import { ThemeCustomizationTab } from '../components/Settings/ThemeCustomizationTab';
-import { GeneralSettingsTab } from '../components/Settings/GeneralSettingsTab';
-import { FileLocationsSettingsTab } from '../components/Settings/FileLocationsSettingsTab';
 import { VideoDefaultsSettingsTab } from '../components/Settings/VideoDefaultsSettingsTab';
-import { EditorPreferencesSettingsTab } from '../components/Settings/EditorPreferencesSettingsTab';
-import { ApiKeysSettingsTab } from '../components/Settings/ApiKeysSettingsTab';
-import { LoggingSettingsTab } from '../components/Settings/LoggingSettingsTab';
-import { resetFirstRunStatus } from '../services/firstRunService';
-import { ValidatedInput } from '../components/forms/ValidatedInput';
+import { apiUrl } from '../config/api';
 import { useFormValidation } from '../hooks/useFormValidation';
-import { apiKeysSchema, providerPathsSchema } from '../utils/formValidation';
+import { resetFirstRunStatus } from '../services/firstRunService';
 import { settingsService } from '../services/settingsService';
+import type { Profile } from '../types';
 import type { UserSettings } from '../types/settings';
 import { createDefaultSettings } from '../types/settings';
+import { apiKeysSchema, providerPathsSchema } from '../utils/formValidation';
+import { RescanPanel } from './DownloadCenter/RescanPanel';
 
 const useStyles = makeStyles({
   container: {
@@ -1244,7 +1244,9 @@ export function SettingsPage() {
               />
               <Button
                 size="small"
-                onClick={() => testProvider('stablediffusion', providerPathValues.stableDiffusionUrl || '')}
+                onClick={() =>
+                  testProvider('stablediffusion', providerPathValues.stableDiffusionUrl || '')
+                }
                 style={{ marginTop: tokens.spacingVerticalXS }}
               >
                 Test Connection
@@ -1502,9 +1504,7 @@ export function SettingsPage() {
         </Card>
       )}
 
-      {activeTab === 'aioptimization' && (
-        <AIOptimizationPanel />
-      )}
+      {activeTab === 'aioptimization' && <AIOptimizationPanel />}
 
       {activeTab === 'templates' && (
         <>
@@ -1589,8 +1589,8 @@ export function SettingsPage() {
                 color: tokens.colorNeutralForeground3,
               }}
             >
-              Applying a template will update your provider selections but won&apos;t overwrite your API
-              keys.
+              Applying a template will update your provider selections but won&apos;t overwrite your
+              API keys.
             </Text>
           </Card>
 
@@ -1758,7 +1758,7 @@ export function SettingsPage() {
               }}
             >
               <Text weight="semibold" size={300}>
-                📋 What's Included
+                📋 What&apos;s Included
               </Text>
               <ul style={{ marginTop: tokens.spacingVerticalS, paddingLeft: '20px' }}>
                 <li>
@@ -1789,7 +1789,12 @@ export function SettingsPage() {
       )}
 
       <div className={styles.actions}>
-        <Button appearance="primary" icon={<Save24Regular />} onClick={saveUserSettings} disabled={!hasUnsavedChanges}>
+        <Button
+          appearance="primary"
+          icon={<Save24Regular />}
+          onClick={saveUserSettings}
+          disabled={!hasUnsavedChanges}
+        >
           Save All Settings
         </Button>
         {hasUnsavedChanges && (

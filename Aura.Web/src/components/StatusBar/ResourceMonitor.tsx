@@ -1,17 +1,11 @@
-import { useState, useEffect } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Text,
-  ProgressBar,
-  Tooltip,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Text, ProgressBar, Tooltip } from '@fluentui/react-components';
 import {
   Window24Regular,
   DataArea24Regular,
   HardDrive24Regular,
   Warning24Filled,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -131,18 +125,22 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
     if (value < 75) return null;
 
     const suggestions: Record<string, string> = {
-      cpu: value >= 90 
-        ? 'Close other applications to improve performance'
-        : 'Consider reducing video quality or effects complexity',
-      memory: value >= 90
-        ? 'Close unused browser tabs and applications'
-        : 'Consider working with lower resolution proxies',
-      gpu: value >= 90
-        ? 'Disable GPU-intensive effects temporarily'
-        : 'Reduce preview quality to free up GPU resources',
-      diskIO: value >= 90
-        ? 'Move working files to faster storage (SSD)'
-        : 'Consider reducing simultaneous operations',
+      cpu:
+        value >= 90
+          ? 'Close other applications to improve performance'
+          : 'Consider reducing video quality or effects complexity',
+      memory:
+        value >= 90
+          ? 'Close unused browser tabs and applications'
+          : 'Consider working with lower resolution proxies',
+      gpu:
+        value >= 90
+          ? 'Disable GPU-intensive effects temporarily'
+          : 'Reduce preview quality to free up GPU resources',
+      diskIO:
+        value >= 90
+          ? 'Move working files to faster storage (SSD)'
+          : 'Consider reducing simultaneous operations',
     };
 
     return suggestions[metric] || null;
@@ -191,10 +189,7 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
             <Text className={getUsageClass(metrics.cpu)}>{metrics.cpu.toFixed(1)}%</Text>
           </div>
         </div>
-        <ProgressBar 
-          value={metrics.cpu / 100} 
-          color={getUsageColor(metrics.cpu)}
-        />
+        <ProgressBar value={metrics.cpu / 100} color={getUsageColor(metrics.cpu)} />
         {getSuggestion('cpu', metrics.cpu) && (
           <Text className={styles.suggestion}>{getSuggestion('cpu', metrics.cpu)}</Text>
         )}
@@ -212,10 +207,7 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
             <Text className={getUsageClass(metrics.memory)}>{metrics.memory.toFixed(1)}%</Text>
           </div>
         </div>
-        <ProgressBar 
-          value={metrics.memory / 100} 
-          color={getUsageColor(metrics.memory)}
-        />
+        <ProgressBar value={metrics.memory / 100} color={getUsageColor(metrics.memory)} />
         {getSuggestion('memory', metrics.memory) && (
           <Text className={styles.suggestion}>{getSuggestion('memory', metrics.memory)}</Text>
         )}
@@ -234,10 +226,7 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
               <Text className={getUsageClass(metrics.gpu)}>{metrics.gpu.toFixed(1)}%</Text>
             </div>
           </div>
-          <ProgressBar 
-            value={metrics.gpu / 100} 
-            color={getUsageColor(metrics.gpu)}
-          />
+          <ProgressBar value={metrics.gpu / 100} color={getUsageColor(metrics.gpu)} />
           {getSuggestion('gpu', metrics.gpu) && (
             <Text className={styles.suggestion}>{getSuggestion('gpu', metrics.gpu)}</Text>
           )}

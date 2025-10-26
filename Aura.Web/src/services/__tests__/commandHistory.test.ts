@@ -108,11 +108,11 @@ describe('CommandHistory', () => {
       commandHistory.execute(cmd1);
       commandHistory.execute(cmd2);
       commandHistory.undo();
-      
+
       expect(commandHistory.canRedo()).toBe(true);
 
       commandHistory.execute(cmd3);
-      
+
       expect(commandHistory.canRedo()).toBe(false);
     });
 
@@ -130,10 +130,10 @@ describe('CommandHistory', () => {
 
       commandHistory.undo();
       expect(commandHistory.getHistorySize()).toBe(2);
-      
+
       commandHistory.undo();
       expect(commandHistory.getHistorySize()).toBe(1);
-      
+
       commandHistory.redo();
       expect(commandHistory.getHistorySize()).toBe(2);
     });
@@ -249,7 +249,7 @@ describe('CommandHistory', () => {
     it('should notify listeners on undo', () => {
       const listener = vi.fn();
       commandHistory.execute(new MockCommand('Test'));
-      
+
       listener.mockClear();
       commandHistory.subscribe(listener);
 
@@ -323,9 +323,27 @@ describe('CommandHistory', () => {
       // Verify reverse order
       const order: number[] = [];
       const trackingBatch = new BatchCommandImpl('Tracking Batch');
-      trackingBatch.addCommand(new MockCommand('1', () => {}, () => order.push(1)));
-      trackingBatch.addCommand(new MockCommand('2', () => {}, () => order.push(2)));
-      trackingBatch.addCommand(new MockCommand('3', () => {}, () => order.push(3)));
+      trackingBatch.addCommand(
+        new MockCommand(
+          '1',
+          () => {},
+          () => order.push(1)
+        )
+      );
+      trackingBatch.addCommand(
+        new MockCommand(
+          '2',
+          () => {},
+          () => order.push(2)
+        )
+      );
+      trackingBatch.addCommand(
+        new MockCommand(
+          '3',
+          () => {},
+          () => order.push(3)
+        )
+      );
 
       commandHistory.execute(trackingBatch);
       commandHistory.undo();

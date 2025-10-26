@@ -2,10 +2,10 @@
  * Tests for ValidatedInput component
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { describe, it, expect, vi } from 'vitest';
 import { ValidatedInput } from '../ValidatedInput';
 
 const renderWithProvider = (component: React.ReactElement) => {
@@ -19,7 +19,9 @@ describe('ValidatedInput', () => {
   });
 
   it('should show required indicator', () => {
-    renderWithProvider(<ValidatedInput label="Required Field" required value="" onChange={() => {}} />);
+    renderWithProvider(
+      <ValidatedInput label="Required Field" required value="" onChange={() => {}} />
+    );
     expect(screen.getByText('*')).toBeInTheDocument();
   });
 
@@ -45,12 +47,12 @@ describe('ValidatedInput', () => {
   it('should call onChange handler', async () => {
     const handleChange = vi.fn();
     const user = userEvent.setup();
-    
+
     renderWithProvider(<ValidatedInput label="Name" value="" onChange={handleChange} />);
-    
+
     const input = screen.getByRole('textbox');
     await user.type(input, 'John');
-    
+
     expect(handleChange).toHaveBeenCalled();
   });
 
@@ -92,12 +94,7 @@ describe('ValidatedInput', () => {
 
   it('should render with placeholder', () => {
     renderWithProvider(
-      <ValidatedInput
-        label="Field"
-        value=""
-        onChange={() => {}}
-        placeholder="Enter value here"
-      />
+      <ValidatedInput label="Field" value="" onChange={() => {}} placeholder="Enter value here" />
     );
     expect(screen.getByPlaceholderText('Enter value here')).toBeInTheDocument();
   });

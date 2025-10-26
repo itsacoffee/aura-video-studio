@@ -2,9 +2,9 @@
  * Tests for VideoThumbnail component
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { VideoThumbnail } from '../components/Editor/Timeline/VideoThumbnail';
 
 // Mock FFmpeg
@@ -43,13 +43,16 @@ describe('VideoThumbnail', () => {
 
   it('should show loading state initially when video path is provided', async () => {
     renderComponent({ videoPath: '/test/video.mp4' });
-    
-    await waitFor(() => {
-      const spinner = screen.queryByText(/Loading thumbnail/i);
-      if (spinner) {
-        expect(spinner).toBeDefined();
-      }
-    }, { timeout: 1000 });
+
+    await waitFor(
+      () => {
+        const spinner = screen.queryByText(/Loading thumbnail/i);
+        if (spinner) {
+          expect(spinner).toBeDefined();
+        }
+      },
+      { timeout: 1000 }
+    );
   });
 
   it('should render with custom dimensions', () => {
@@ -58,7 +61,7 @@ describe('VideoThumbnail', () => {
       width: 200,
       height: 120,
     });
-    
+
     expect(container.querySelector('.container')).toBeDefined();
   });
 
@@ -77,12 +80,15 @@ describe('VideoThumbnail', () => {
   it('should render placeholder icon when FFmpeg initialization fails', async () => {
     // This test validates graceful degradation
     const { container } = renderComponent({ videoPath: '/test/video.mp4' });
-    
-    await waitFor(() => {
-      const placeholder = container.querySelector('.placeholder');
-      if (placeholder) {
-        expect(placeholder.textContent).toContain('📹');
-      }
-    }, { timeout: 2000 });
+
+    await waitFor(
+      () => {
+        const placeholder = container.querySelector('.placeholder');
+        if (placeholder) {
+          expect(placeholder.textContent).toContain('📹');
+        }
+      },
+      { timeout: 2000 }
+    );
   });
 });

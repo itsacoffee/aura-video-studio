@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -12,6 +11,7 @@ import {
   AccordionPanel,
   Badge,
 } from '@fluentui/react-components';
+import { useState } from 'react';
 import { ApiKeyInput } from '../../components/ApiKeyInput';
 import { ProviderHelpPanel } from '../../components/ProviderHelpPanel';
 
@@ -131,7 +131,7 @@ const providers: ProviderConfig[] = [
     name: 'Google Gemini',
     logo: '✨',
     description: 'Gemini Pro for script generation',
-    usedFor: 'Script generation with Google\'s Gemini Pro model',
+    usedFor: "Script generation with Google's Gemini Pro model",
     signupUrl: 'https://makersuite.google.com/app/apikey',
     steps: [
       'Sign in with your Google account',

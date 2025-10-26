@@ -30,13 +30,13 @@ export const useJobState = create<JobState>((set, get) => ({
 
   setJob: (jobId: string) => {
     const currentStatus = get().status;
-    
+
     // Prevent starting a new job if one is already running
     if (currentStatus === 'running') {
       console.warn('Cannot start new job: a job is already running');
       return;
     }
-    
+
     set({
       currentJobId: jobId,
       status: 'running',
@@ -47,37 +47,37 @@ export const useJobState = create<JobState>((set, get) => ({
 
   updateProgress: (progress: number, message: string) => {
     const currentStatus = get().status;
-    
+
     // Only update progress if job is running
     if (currentStatus !== 'running') {
       console.warn(`Cannot update progress: job is ${currentStatus}`);
       return;
     }
-    
+
     set({ progress, message });
   },
 
   setStatus: (status: JobStatus) => {
     const currentStatus = get().status;
-    
+
     // Validate state transition
     if (!VALID_TRANSITIONS[currentStatus]?.includes(status)) {
       console.warn(`Invalid state transition from ${currentStatus} to ${status}`);
       return;
     }
-    
+
     set({ status });
   },
 
   clearJob: () => {
     const currentStatus = get().status;
-    
+
     // Only allow clearing if job is completed, failed, or idle
     if (currentStatus === 'running') {
       console.warn('Cannot clear job while it is still running');
       return;
     }
-    
+
     set({
       currentJobId: null,
       status: 'idle',

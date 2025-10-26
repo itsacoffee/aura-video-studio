@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import {
   CheckmarkCircle20Regular as CheckCircle,
   DismissCircle20Regular as XCircle,
   Warning20Regular as AlertTriangle,
-  Info20Regular as Info
+  Info20Regular as Info,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 interface Claim {
   claimId: string;
@@ -123,26 +123,18 @@ export const FactCheckPanel: React.FC<FactCheckPanelProps> = ({ content, onVerif
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
-          {error}
-        </div>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-800">{error}</div>
       )}
 
       {result && (
         <div className="space-y-4">
           {/* Overall Status */}
-          <div
-            className={`p-4 rounded-md border ${getStatusColor(result.overallStatus)}`}
-          >
+          <div className={`p-4 rounded-md border ${getStatusColor(result.overallStatus)}`}>
             <div className="flex items-center gap-2 mb-2">
               {getStatusIcon(result.overallStatus)}
-              <h4 className="font-semibold">
-                Overall Status: {result.overallStatus}
-              </h4>
+              <h4 className="font-semibold">Overall Status: {result.overallStatus}</h4>
             </div>
-            <p className="text-sm">
-              Confidence: {(result.overallConfidence * 100).toFixed(1)}%
-            </p>
+            <p className="text-sm">Confidence: {(result.overallConfidence * 100).toFixed(1)}%</p>
             <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
               <div
                 className="bg-blue-600 h-2 rounded-full transition-all"
@@ -168,9 +160,7 @@ export const FactCheckPanel: React.FC<FactCheckPanelProps> = ({ content, onVerif
 
           {/* Fact Checks */}
           <div>
-            <h4 className="font-semibold mb-2">
-              Fact Checks ({result.factChecks.length})
-            </h4>
+            <h4 className="font-semibold mb-2">Fact Checks ({result.factChecks.length})</h4>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {result.factChecks.map((factCheck) => (
                 <div
@@ -199,9 +189,23 @@ export const FactCheckPanel: React.FC<FactCheckPanelProps> = ({ content, onVerif
             <h4 className="font-semibold mb-2">Summary</h4>
             <ul className="space-y-1 text-gray-700">
               <li>Total Claims: {result.claims.length}</li>
-              <li>Verified: {result.factChecks.filter(fc => fc.status === 'Verified').length}</li>
-              <li>Disputed: {result.factChecks.filter(fc => fc.status === 'Disputed' || fc.status === 'False').length}</li>
-              <li>Unverified: {result.factChecks.filter(fc => fc.status === 'Unverified' || fc.status === 'Unknown').length}</li>
+              <li>Verified: {result.factChecks.filter((fc) => fc.status === 'Verified').length}</li>
+              <li>
+                Disputed:{' '}
+                {
+                  result.factChecks.filter(
+                    (fc) => fc.status === 'Disputed' || fc.status === 'False'
+                  ).length
+                }
+              </li>
+              <li>
+                Unverified:{' '}
+                {
+                  result.factChecks.filter(
+                    (fc) => fc.status === 'Unverified' || fc.status === 'Unknown'
+                  ).length
+                }
+              </li>
             </ul>
           </div>
         </div>

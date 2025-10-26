@@ -2,7 +2,6 @@
  * Component for displaying and applying effect presets
  */
 
-import { useState, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -14,8 +13,9 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { CheckmarkCircle24Filled } from '@fluentui/react-icons';
-import { EffectPreset } from '../../types/templates';
+import { useState, useEffect } from 'react';
 import { getEffectPresets } from '../../services/templatesService';
+import { EffectPreset } from '../../types/templates';
 
 const useStyles = makeStyles({
   container: {
@@ -123,7 +123,7 @@ export function EffectPresets({ onApplyPreset }: EffectPresetsProps) {
   const handleApplyPreset = (preset: EffectPreset) => {
     setSelectedPreset(preset.id);
     onApplyPreset?.(preset);
-    
+
     // Clear selection after a delay
     setTimeout(() => setSelectedPreset(null), 2000);
   };
@@ -154,9 +154,7 @@ export function EffectPresets({ onApplyPreset }: EffectPresetsProps) {
         {presets.map((preset) => (
           <Card
             key={preset.id}
-            className={`${styles.card} ${
-              selectedPreset === preset.id ? styles.cardSelected : ''
-            }`}
+            className={`${styles.card} ${selectedPreset === preset.id ? styles.cardSelected : ''}`}
             onClick={() => handleApplyPreset(preset)}
           >
             <CardPreview className={styles.preview}>
@@ -182,11 +180,7 @@ export function EffectPresets({ onApplyPreset }: EffectPresetsProps) {
                   <Button
                     appearance={selectedPreset === preset.id ? 'primary' : 'secondary'}
                     className={styles.applyButton}
-                    icon={
-                      selectedPreset === preset.id ? (
-                        <CheckmarkCircle24Filled />
-                      ) : undefined
-                    }
+                    icon={selectedPreset === preset.id ? <CheckmarkCircle24Filled /> : undefined}
                   >
                     {selectedPreset === preset.id ? 'Applied!' : 'Apply'}
                   </Button>

@@ -1,10 +1,4 @@
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Button,
-  Badge,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Button, Badge } from '@fluentui/react-components';
 import {
   VideoClip24Regular,
   MusicNote224Regular,

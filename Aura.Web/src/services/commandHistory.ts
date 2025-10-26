@@ -153,12 +153,10 @@ export class CommandHistory {
    * Get the full undo history (most recent first)
    */
   getUndoHistory(): Array<{ description: string; timestamp: Date }> {
-    return [...this.undoStack]
-      .reverse()
-      .map((cmd) => ({
-        description: cmd.getDescription(),
-        timestamp: cmd.getTimestamp(),
-      }));
+    return [...this.undoStack].reverse().map((cmd) => ({
+      description: cmd.getDescription(),
+      timestamp: cmd.getTimestamp(),
+    }));
   }
 
   /**

@@ -3,7 +3,6 @@
  * Manage hierarchical relationships between layers
  */
 
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -19,6 +18,7 @@ import {
   Delete24Regular,
   Link24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -75,11 +75,7 @@ interface LayerParentingProps {
   onLayerReorder?: (layerId: string, direction: 'up' | 'down') => void;
 }
 
-export function LayerParenting({
-  layers,
-  onLayerParent,
-  onLayerReorder,
-}: LayerParentingProps) {
+export function LayerParenting({ layers, onLayerParent, onLayerReorder }: LayerParentingProps) {
   const styles = useStyles();
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
 
@@ -126,9 +122,7 @@ export function LayerParenting({
 
   const getAvailableParents = () => {
     if (!selectedLayerId) return [];
-    return layers.filter(
-      (l) => l.id !== selectedLayerId && !isDescendant(selectedLayerId, l.id)
-    );
+    return layers.filter((l) => l.id !== selectedLayerId && !isDescendant(selectedLayerId, l.id));
   };
 
   const hierarchy = getLayerHierarchy();
@@ -158,7 +152,8 @@ export function LayerParenting({
                 </Label>
                 <Label size="small" style={{ color: tokens.colorNeutralForeground3 }}>
                   {layer.type}
-                  {layer.parentId && ` • Parent: ${layers.find((l) => l.id === layer.parentId)?.name}`}
+                  {layer.parentId &&
+                    ` • Parent: ${layers.find((l) => l.id === layer.parentId)?.name}`}
                 </Label>
               </div>
 

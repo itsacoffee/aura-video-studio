@@ -1,5 +1,3 @@
-import { useState, useRef, useEffect } from 'react';
-import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -15,6 +13,8 @@ import {
   ArrowDownloadRegular,
   SoundWaveCircle24Regular as WaveformRegular,
 } from '@fluentui/react-icons';
+import { useState, useRef, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 import type { VoiceEnhancementConfig } from './VoiceStudioPanel';
 
 const useStyles = makeStyles({
@@ -137,7 +137,7 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
           enhancement: enhancementConfig,
         }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setAudioUrl(data.audioUrl || '');
@@ -191,13 +191,7 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
     // Generate mock waveform bars
     const bars = Array.from({ length: 50 }, (_, i) => {
       const height = Math.random() * 60 + 20;
-      return (
-        <div
-          key={i}
-          className={styles.waveformBar}
-          style={{ height: `${height}%` }}
-        />
-      );
+      return <div key={i} className={styles.waveformBar} style={{ height: `${height}%` }} />;
     });
 
     return <div className={styles.waveformBars}>{bars}</div>;
@@ -225,7 +219,7 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
 
       <div className={styles.playerSection}>
         <Text weight="semibold">Audio Preview</Text>
-        
+
         {isLoading ? (
           <div className={styles.loading}>
             <Spinner />
@@ -233,15 +227,10 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
           </div>
         ) : audioUrl ? (
           <>
-            <div className={styles.waveform}>
-              {renderWaveform()}
-            </div>
-            
-            <ProgressBar
-              value={currentTime}
-              max={duration}
-            />
-            
+            <div className={styles.waveform}>{renderWaveform()}</div>
+
+            <ProgressBar value={currentTime} max={duration} />
+
             <div className={styles.timeDisplay}>
               <Text>{formatTime(currentTime)}</Text>
               <Text>{formatTime(duration)}</Text>
@@ -256,11 +245,7 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
               >
                 {isPlaying ? 'Pause' : 'Play'}
               </Button>
-              <Button
-                appearance="subtle"
-                icon={<ArrowDownloadRegular />}
-                onClick={handleDownload}
-              >
+              <Button appearance="subtle" icon={<ArrowDownloadRegular />} onClick={handleDownload}>
                 Download
               </Button>
             </div>
@@ -268,9 +253,9 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
             <audio
               ref={audioRef}
               src={audioUrl}
-              onTimeUpdate={e => setCurrentTime(e.currentTarget.currentTime)}
+              onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
               onEnded={() => setIsPlaying(false)}
-              onLoadedMetadata={e => setDuration(e.currentTarget.duration)}
+              onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
             />
           </>
         ) : (
@@ -291,19 +276,13 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
               </Text>
             )}
             {enhancementConfig.enableEqualization && (
-              <Text size={200}>
-                ✓ Equalization ({enhancementConfig.equalizationPreset})
-              </Text>
+              <Text size={200}>✓ Equalization ({enhancementConfig.equalizationPreset})</Text>
             )}
             {enhancementConfig.enableProsodyAdjustment && (
-              <Text size={200}>
-                ✓ Prosody Adjustment
-              </Text>
+              <Text size={200}>✓ Prosody Adjustment</Text>
             )}
             {enhancementConfig.enableEmotionEnhancement && (
-              <Text size={200}>
-                ✓ Emotion: {enhancementConfig.targetEmotion?.emotion}
-              </Text>
+              <Text size={200}>✓ Emotion: {enhancementConfig.targetEmotion?.emotion}</Text>
             )}
           </div>
         </div>

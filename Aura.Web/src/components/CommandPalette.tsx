@@ -1,5 +1,3 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -25,6 +23,8 @@ import {
   HeartPulse24Regular,
   Keyboard24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const useStyles = makeStyles({
   surface: {
@@ -115,36 +115,245 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   // Define all available commands
   const allCommands: Command[] = [
     // Navigation
-    { id: 'nav-create', name: 'Create Video', description: 'Start creating a new video', category: 'Navigation', icon: VideoClip24Regular, action: () => navigate('/create') },
-    { id: 'nav-projects', name: 'Projects', description: 'View all projects', category: 'Navigation', icon: Folder24Regular, action: () => navigate('/projects') },
-    { id: 'nav-timeline', name: 'Timeline Editor', description: 'Open timeline editor', category: 'Navigation', icon: Timeline24Regular, action: () => navigate('/timeline') },
-    { id: 'nav-render', name: 'Render & Export', description: 'Configure and render videos', category: 'Navigation', icon: Play24Regular, action: () => navigate('/render') },
-    { id: 'nav-publish', name: 'Publish', description: 'Publish to platforms', category: 'Navigation', icon: Share24Regular, action: () => navigate('/publish') },
-    { id: 'nav-assets', name: 'Asset Library', description: 'Manage video assets', category: 'Navigation', icon: Image24Regular, action: () => navigate('/assets') },
-    { id: 'nav-downloads', name: 'Program Dependencies', description: 'Manage program dependencies and engines', category: 'Navigation', icon: CloudArrowDown24Regular, action: () => navigate('/downloads') },
-    { id: 'nav-health', name: 'Provider Health', description: 'Check provider status', category: 'Navigation', icon: HeartPulse24Regular, action: () => navigate('/health') },
-    { id: 'nav-ideation', name: 'Ideation', description: 'Generate video ideas', category: 'Navigation', icon: Lightbulb24Regular, action: () => navigate('/ideation') },
-    { id: 'nav-settings', name: 'Settings', description: 'Open settings', category: 'Navigation', icon: Settings24Regular, shortcut: 'Ctrl+,', action: () => navigate('/settings') },
-    
+    {
+      id: 'nav-create',
+      name: 'Create Video',
+      description: 'Start creating a new video',
+      category: 'Navigation',
+      icon: VideoClip24Regular,
+      action: () => navigate('/create'),
+    },
+    {
+      id: 'nav-projects',
+      name: 'Projects',
+      description: 'View all projects',
+      category: 'Navigation',
+      icon: Folder24Regular,
+      action: () => navigate('/projects'),
+    },
+    {
+      id: 'nav-timeline',
+      name: 'Timeline Editor',
+      description: 'Open timeline editor',
+      category: 'Navigation',
+      icon: Timeline24Regular,
+      action: () => navigate('/timeline'),
+    },
+    {
+      id: 'nav-render',
+      name: 'Render & Export',
+      description: 'Configure and render videos',
+      category: 'Navigation',
+      icon: Play24Regular,
+      action: () => navigate('/render'),
+    },
+    {
+      id: 'nav-publish',
+      name: 'Publish',
+      description: 'Publish to platforms',
+      category: 'Navigation',
+      icon: Share24Regular,
+      action: () => navigate('/publish'),
+    },
+    {
+      id: 'nav-assets',
+      name: 'Asset Library',
+      description: 'Manage video assets',
+      category: 'Navigation',
+      icon: Image24Regular,
+      action: () => navigate('/assets'),
+    },
+    {
+      id: 'nav-downloads',
+      name: 'Program Dependencies',
+      description: 'Manage program dependencies and engines',
+      category: 'Navigation',
+      icon: CloudArrowDown24Regular,
+      action: () => navigate('/downloads'),
+    },
+    {
+      id: 'nav-health',
+      name: 'Provider Health',
+      description: 'Check provider status',
+      category: 'Navigation',
+      icon: HeartPulse24Regular,
+      action: () => navigate('/health'),
+    },
+    {
+      id: 'nav-ideation',
+      name: 'Ideation',
+      description: 'Generate video ideas',
+      category: 'Navigation',
+      icon: Lightbulb24Regular,
+      action: () => navigate('/ideation'),
+    },
+    {
+      id: 'nav-settings',
+      name: 'Settings',
+      description: 'Open settings',
+      category: 'Navigation',
+      icon: Settings24Regular,
+      shortcut: 'Ctrl+,',
+      action: () => navigate('/settings'),
+    },
+
     // Settings
-    { id: 'settings-output', name: 'Output Settings', description: 'Configure video output parameters', category: 'Settings', icon: Settings24Regular, action: () => { navigate('/settings'); setTimeout(() => { const tab = document.querySelector('[value="output"]') as HTMLElement; tab?.click(); }, 100); } },
-    { id: 'settings-performance', name: 'Performance Settings', description: 'Optimize rendering performance', category: 'Settings', icon: Settings24Regular, action: () => { navigate('/settings'); setTimeout(() => { const tab = document.querySelector('[value="performance"]') as HTMLElement; tab?.click(); }, 100); } },
-    { id: 'settings-shortcuts', name: 'Keyboard Shortcuts', description: 'Customize keyboard shortcuts', category: 'Settings', icon: Keyboard24Regular, action: () => { navigate('/settings'); setTimeout(() => { const tab = document.querySelector('[value="shortcuts"]') as HTMLElement; tab?.click(); }, 100); } },
-    { id: 'settings-providers', name: 'Provider Settings', description: 'Configure AI providers', category: 'Settings', icon: Settings24Regular, action: () => { navigate('/settings'); setTimeout(() => { const tab = document.querySelector('[value="providers"]') as HTMLElement; tab?.click(); }, 100); } },
-    { id: 'settings-apikeys', name: 'API Keys', description: 'Manage API keys', category: 'Settings', icon: Settings24Regular, action: () => { navigate('/settings'); setTimeout(() => { const tab = document.querySelector('[value="apikeys"]') as HTMLElement; tab?.click(); }, 100); } },
-    
+    {
+      id: 'settings-output',
+      name: 'Output Settings',
+      description: 'Configure video output parameters',
+      category: 'Settings',
+      icon: Settings24Regular,
+      action: () => {
+        navigate('/settings');
+        setTimeout(() => {
+          const tab = document.querySelector('[value="output"]') as HTMLElement;
+          tab?.click();
+        }, 100);
+      },
+    },
+    {
+      id: 'settings-performance',
+      name: 'Performance Settings',
+      description: 'Optimize rendering performance',
+      category: 'Settings',
+      icon: Settings24Regular,
+      action: () => {
+        navigate('/settings');
+        setTimeout(() => {
+          const tab = document.querySelector('[value="performance"]') as HTMLElement;
+          tab?.click();
+        }, 100);
+      },
+    },
+    {
+      id: 'settings-shortcuts',
+      name: 'Keyboard Shortcuts',
+      description: 'Customize keyboard shortcuts',
+      category: 'Settings',
+      icon: Keyboard24Regular,
+      action: () => {
+        navigate('/settings');
+        setTimeout(() => {
+          const tab = document.querySelector('[value="shortcuts"]') as HTMLElement;
+          tab?.click();
+        }, 100);
+      },
+    },
+    {
+      id: 'settings-providers',
+      name: 'Provider Settings',
+      description: 'Configure AI providers',
+      category: 'Settings',
+      icon: Settings24Regular,
+      action: () => {
+        navigate('/settings');
+        setTimeout(() => {
+          const tab = document.querySelector('[value="providers"]') as HTMLElement;
+          tab?.click();
+        }, 100);
+      },
+    },
+    {
+      id: 'settings-apikeys',
+      name: 'API Keys',
+      description: 'Manage API keys',
+      category: 'Settings',
+      icon: Settings24Regular,
+      action: () => {
+        navigate('/settings');
+        setTimeout(() => {
+          const tab = document.querySelector('[value="apikeys"]') as HTMLElement;
+          tab?.click();
+        }, 100);
+      },
+    },
+
     // Actions
-    { id: 'action-new-project', name: 'New Project', description: 'Create a new video project', category: 'Actions', shortcut: 'Ctrl+N', action: () => navigate('/create') },
-    { id: 'action-open-project', name: 'Open Project', description: 'Open an existing project', category: 'Actions', shortcut: 'Ctrl+O', action: () => navigate('/projects') },
-    { id: 'action-export', name: 'Export Video', description: 'Render and export current video', category: 'Actions', shortcut: 'Ctrl+M', action: () => navigate('/render') },
-    { id: 'action-validate-providers', name: 'Validate Providers', description: 'Test all provider connections', category: 'Actions', action: async () => { await fetch('/api/providers/validate', { method: 'POST' }); alert('Provider validation complete'); } },
-    { id: 'action-run-benchmark', name: 'Run Benchmark', description: 'Test system performance', category: 'Actions', action: async () => { await fetch('/api/hardware/benchmark', { method: 'POST' }); } },
-    { id: 'action-clear-cache', name: 'Clear Cache', description: 'Clear preview and render cache', category: 'Actions', action: async () => { if (confirm('Clear all cache?')) { await fetch('/api/cache/clear', { method: 'POST' }); alert('Cache cleared'); } } },
-    
+    {
+      id: 'action-new-project',
+      name: 'New Project',
+      description: 'Create a new video project',
+      category: 'Actions',
+      shortcut: 'Ctrl+N',
+      action: () => navigate('/create'),
+    },
+    {
+      id: 'action-open-project',
+      name: 'Open Project',
+      description: 'Open an existing project',
+      category: 'Actions',
+      shortcut: 'Ctrl+O',
+      action: () => navigate('/projects'),
+    },
+    {
+      id: 'action-export',
+      name: 'Export Video',
+      description: 'Render and export current video',
+      category: 'Actions',
+      shortcut: 'Ctrl+M',
+      action: () => navigate('/render'),
+    },
+    {
+      id: 'action-validate-providers',
+      name: 'Validate Providers',
+      description: 'Test all provider connections',
+      category: 'Actions',
+      action: async () => {
+        await fetch('/api/providers/validate', { method: 'POST' });
+        alert('Provider validation complete');
+      },
+    },
+    {
+      id: 'action-run-benchmark',
+      name: 'Run Benchmark',
+      description: 'Test system performance',
+      category: 'Actions',
+      action: async () => {
+        await fetch('/api/hardware/benchmark', { method: 'POST' });
+      },
+    },
+    {
+      id: 'action-clear-cache',
+      name: 'Clear Cache',
+      description: 'Clear preview and render cache',
+      category: 'Actions',
+      action: async () => {
+        if (confirm('Clear all cache?')) {
+          await fetch('/api/cache/clear', { method: 'POST' });
+          alert('Cache cleared');
+        }
+      },
+    },
+
     // Quick Generators
-    { id: 'quick-youtube', name: 'Quick YouTube Video', description: 'Generate a video optimized for YouTube', category: 'Quick Actions', action: () => { navigate('/create'); /* Preset selection not yet implemented */ } },
-    { id: 'quick-shorts', name: 'Quick YouTube Shorts', description: 'Generate a vertical short video', category: 'Quick Actions', action: () => { navigate('/create'); /* Preset selection not yet implemented */ } },
-    { id: 'quick-social', name: 'Quick Social Media Post', description: 'Generate a square social media video', category: 'Quick Actions', action: () => { navigate('/create'); /* Preset selection not yet implemented */ } },
+    {
+      id: 'quick-youtube',
+      name: 'Quick YouTube Video',
+      description: 'Generate a video optimized for YouTube',
+      category: 'Quick Actions',
+      action: () => {
+        navigate('/create'); /* Preset selection not yet implemented */
+      },
+    },
+    {
+      id: 'quick-shorts',
+      name: 'Quick YouTube Shorts',
+      description: 'Generate a vertical short video',
+      category: 'Quick Actions',
+      action: () => {
+        navigate('/create'); /* Preset selection not yet implemented */
+      },
+    },
+    {
+      id: 'quick-social',
+      name: 'Quick Social Media Post',
+      description: 'Generate a square social media video',
+      category: 'Quick Actions',
+      action: () => {
+        navigate('/create'); /* Preset selection not yet implemented */
+      },
+    },
   ];
 
   // Filter commands based on search query
@@ -225,7 +434,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           <div className={styles.results}>
             {filteredCommands.length === 0 ? (
               <div className={styles.emptyState}>
-                <Text>No commands found for "{searchQuery}"</Text>
+                <Text>No commands found for &quot;{searchQuery}&quot;</Text>
               </div>
             ) : (
               filteredCommands.map((command, index) => {

@@ -66,10 +66,10 @@ class HealthMonitorService {
     }
 
     this.isMonitoring = true;
-    
+
     // Start FPS monitoring
     this.startFpsMonitoring();
-    
+
     // Start long task monitoring
     this.startLongTaskMonitoring();
 
@@ -146,24 +146,24 @@ class HealthMonitorService {
 
       const now = performance.now();
       const delta = now - this.lastFrameTime;
-      
+
       if (delta >= 1000) {
         const fps = Math.round((this.frameCount * 1000) / delta);
         this.fpsHistory.push(fps);
-        
+
         // Keep only last 10 measurements
         if (this.fpsHistory.length > 10) {
           this.fpsHistory.shift();
         }
-        
+
         // Calculate average FPS
         const avgFps = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
         this.metrics.fps = Math.round(avgFps);
-        
+
         this.frameCount = 0;
         this.lastFrameTime = now;
       }
-      
+
       this.frameCount++;
       requestAnimationFrame(measureFps);
     };
@@ -191,7 +191,11 @@ class HealthMonitorService {
           this.longTaskObserver.observe({ entryTypes: ['longtask'] });
         } catch (e) {
           // longtask not supported in this browser
-          loggingService.debug('Long task monitoring not supported', 'healthMonitorService', 'startLongTaskMonitoring');
+          loggingService.debug(
+            'Long task monitoring not supported',
+            'healthMonitorService',
+            'startLongTaskMonitoring'
+          );
         }
       }
     } catch (error) {
@@ -210,10 +214,10 @@ class HealthMonitorService {
   private checkHealth(): void {
     // Check memory usage
     this.checkMemoryHealth();
-    
+
     // Check performance
     this.checkPerformanceHealth();
-    
+
     // Determine overall status
     this.updateHealthStatus();
   }
@@ -240,7 +244,8 @@ class HealthMonitorService {
             type: 'memory',
             severity: 'critical',
             message: `Memory usage critical: ${Math.round(percentage)}%`,
-            suggestion: 'Consider closing unused clips, reducing preview quality, or reloading the page.',
+            suggestion:
+              'Consider closing unused clips, reducing preview quality, or reloading the page.',
             timestamp: new Date().toISOString(),
           });
         } else if (percentage >= MEMORY_WARNING_THRESHOLD) {
@@ -273,7 +278,8 @@ class HealthMonitorService {
         type: 'performance',
         severity: 'critical',
         message: `Performance critical: ${this.metrics.fps} FPS`,
-        suggestion: 'Reduce preview quality, close other applications, or disable real-time effects.',
+        suggestion:
+          'Reduce preview quality, close other applications, or disable real-time effects.',
         timestamp: new Date().toISOString(),
       });
     } else if (this.metrics.fps < FPS_WARNING_THRESHOLD) {
@@ -292,10 +298,11 @@ class HealthMonitorService {
         type: 'long-task',
         severity: 'warning',
         message: `${this.longTaskCount} long-running tasks detected`,
-        suggestion: 'The application may be processing heavy operations. Performance may be degraded.',
+        suggestion:
+          'The application may be processing heavy operations. Performance may be degraded.',
         timestamp: new Date().toISOString(),
       });
-      
+
       // Reset counter after warning
       this.longTaskCount = 0;
     }
@@ -306,11 +313,11 @@ class HealthMonitorService {
    */
   private updateHealthStatus(): void {
     const recentWarnings = this.warnings.filter(
-      w => Date.now() - new Date(w.timestamp).getTime() < 60000 // Last minute
+      (w) => Date.now() - new Date(w.timestamp).getTime() < 60000 // Last minute
     );
 
-    const hasCritical = recentWarnings.some(w => w.severity === 'critical');
-    const hasWarning = recentWarnings.some(w => w.severity === 'warning');
+    const hasCritical = recentWarnings.some((w) => w.severity === 'critical');
+    const hasWarning = recentWarnings.some((w) => w.severity === 'warning');
 
     if (hasCritical) {
       this.metrics.status = 'critical';
@@ -327,7 +334,7 @@ class HealthMonitorService {
   private addWarning(warning: HealthWarning): void {
     // Avoid duplicate warnings within 30 seconds
     const isDuplicate = this.warnings.some(
-      w =>
+      (w) =>
         w.type === warning.type &&
         w.severity === warning.severity &&
         Date.now() - new Date(w.timestamp).getTime() < 30000
@@ -338,22 +345,20 @@ class HealthMonitorService {
     }
 
     this.warnings.push(warning);
-    
+
     // Keep only last 20 warnings
     if (this.warnings.length > 20) {
       this.warnings.shift();
     }
 
     // Log warning
-    loggingService.warn(
-      warning.message,
-      'healthMonitorService',
-      'warning',
-      { type: warning.type, suggestion: warning.suggestion }
-    );
+    loggingService.warn(warning.message, 'healthMonitorService', 'warning', {
+      type: warning.type,
+      suggestion: warning.suggestion,
+    });
 
     // Notify listeners
-    this.listeners.forEach(listener => {
+    this.listeners.forEach((listener) => {
       try {
         listener(warning);
       } catch (error) {
@@ -372,14 +377,15 @@ class HealthMonitorService {
    */
   public recordRenderTime(timeMs: number): void {
     this.renderTimeHistory.push(timeMs);
-    
+
     // Keep only last 10 measurements
     if (this.renderTimeHistory.length > 10) {
       this.renderTimeHistory.shift();
     }
-    
+
     // Calculate average render time
-    const avgRenderTime = this.renderTimeHistory.reduce((a, b) => a + b, 0) / this.renderTimeHistory.length;
+    const avgRenderTime =
+      this.renderTimeHistory.reduce((a, b) => a + b, 0) / this.renderTimeHistory.length;
     this.metrics.renderTime = Math.round(avgRenderTime);
 
     // Check render time thresholds

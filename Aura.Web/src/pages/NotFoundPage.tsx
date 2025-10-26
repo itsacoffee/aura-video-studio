@@ -1,12 +1,6 @@
-import { useNavigate } from 'react-router-dom';
-import {
-  makeStyles,
-  tokens,
-  Title1,
-  Body1,
-  Button,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Title1, Body1, Button } from '@fluentui/react-components';
 import { Home24Regular, ArrowLeft24Regular } from '@fluentui/react-icons';
+import { useNavigate } from 'react-router-dom';
 
 const useStyles = makeStyles({
   container: {
@@ -58,16 +52,11 @@ export function NotFoundPage() {
       <div className={styles.errorCode}>404</div>
       <Title1 className={styles.title}>Page Not Found</Title1>
       <Body1 className={styles.message}>
-        The page you&apos;re looking for doesn&apos;t exist or has been moved. 
-        Please check the URL or navigate back to a known page.
+        The page you&apos;re looking for doesn&apos;t exist or has been moved. Please check the URL
+        or navigate back to a known page.
       </Body1>
       <div className={styles.actions}>
-        <Button
-          appearance="primary"
-          icon={<Home24Regular />}
-          onClick={handleGoHome}
-          size="large"
-        >
+        <Button appearance="primary" icon={<Home24Regular />} onClick={handleGoHome} size="large">
           Go to Home
         </Button>
         <Button

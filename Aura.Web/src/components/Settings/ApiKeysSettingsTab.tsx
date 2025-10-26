@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -10,6 +9,7 @@ import {
   Field,
 } from '@fluentui/react-components';
 import { CheckmarkCircle24Filled, DismissCircle24Filled } from '@fluentui/react-icons';
+import { useState } from 'react';
 import type { ApiKeysSettings } from '../../types/settings';
 
 const useStyles = makeStyles({
@@ -44,7 +44,10 @@ interface ApiKeysSettingsTabProps {
   settings: ApiKeysSettings;
   onChange: (settings: ApiKeysSettings) => void;
   onSave: () => void;
-  onTestApiKey: (provider: string, apiKey: string) => Promise<{ success: boolean; message: string }>;
+  onTestApiKey: (
+    provider: string,
+    apiKey: string
+  ) => Promise<{ success: boolean; message: string }>;
   hasChanges: boolean;
 }
 
@@ -64,10 +67,7 @@ export function ApiKeysSettingsTab({
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
   const [testing, setTesting] = useState<Record<string, boolean>>({});
 
-  const updateSetting = <K extends keyof ApiKeysSettings>(
-    key: K,
-    value: ApiKeysSettings[K]
-  ) => {
+  const updateSetting = <K extends keyof ApiKeysSettings>(key: K, value: ApiKeysSettings[K]) => {
     onChange({ ...settings, [key]: value });
     // Clear test result when value changes
     setTestResults((prev) => ({ ...prev, [key]: undefined as any }));
@@ -247,10 +247,7 @@ export function ApiKeysSettingsTab({
           />
         </Field>
 
-        <Field
-          label="Google API Key"
-          hint="For Google Cloud services (optional)"
-        >
+        <Field label="Google API Key" hint="For Google Cloud services (optional)">
           <Input
             type="password"
             value={settings.google}
@@ -259,10 +256,7 @@ export function ApiKeysSettingsTab({
           />
         </Field>
 
-        <Field
-          label="Azure API Key"
-          hint="For Azure Cognitive Services (optional)"
-        >
+        <Field label="Azure API Key" hint="For Azure Cognitive Services (optional)">
           <Input
             type="password"
             value={settings.azure}

@@ -3,9 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  isSupportedMediaType,
-} from '../mediaProcessing';
+import { isSupportedMediaType } from '../mediaProcessing';
 
 describe('mediaProcessing', () => {
   describe('isSupportedMediaType', () => {

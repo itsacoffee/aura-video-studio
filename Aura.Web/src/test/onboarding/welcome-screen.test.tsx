@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { describe, it, expect, vi } from 'vitest';
 import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
 
 describe('WelcomeScreen', () => {
@@ -11,7 +11,7 @@ describe('WelcomeScreen', () => {
 
   it('should render welcome message and branding', () => {
     const mockOnGetStarted = vi.fn();
-    
+
     renderWithProvider(<WelcomeScreen onGetStarted={mockOnGetStarted} />);
 
     expect(screen.getByText(/Welcome to Aura Video Studio!/i)).toBeInTheDocument();
@@ -20,7 +20,7 @@ describe('WelcomeScreen', () => {
 
   it('should display value propositions', () => {
     const mockOnGetStarted = vi.fn();
-    
+
     renderWithProvider(<WelcomeScreen onGetStarted={mockOnGetStarted} />);
 
     expect(screen.getByText(/Create Professional Videos/i)).toBeInTheDocument();
@@ -30,7 +30,7 @@ describe('WelcomeScreen', () => {
 
   it('should display time estimate', () => {
     const mockOnGetStarted = vi.fn();
-    
+
     renderWithProvider(<WelcomeScreen onGetStarted={mockOnGetStarted} />);
 
     expect(screen.getByText(/3-5 minutes/i)).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe('WelcomeScreen', () => {
   it('should call onGetStarted when Get Started button is clicked', async () => {
     const user = userEvent.setup();
     const mockOnGetStarted = vi.fn();
-    
+
     renderWithProvider(<WelcomeScreen onGetStarted={mockOnGetStarted} />);
 
     const getStartedButton = screen.getByRole('button', { name: /Get Started/i });
@@ -52,12 +52,9 @@ describe('WelcomeScreen', () => {
   it('should show Import Project button when handler is provided', () => {
     const mockOnGetStarted = vi.fn();
     const mockOnImportProject = vi.fn();
-    
+
     renderWithProvider(
-      <WelcomeScreen 
-        onGetStarted={mockOnGetStarted} 
-        onImportProject={mockOnImportProject}
-      />
+      <WelcomeScreen onGetStarted={mockOnGetStarted} onImportProject={mockOnImportProject} />
     );
 
     const importButton = screen.getByRole('button', { name: /Import Existing Project/i });
@@ -66,7 +63,7 @@ describe('WelcomeScreen', () => {
 
   it('should not show Import Project button when handler is not provided', () => {
     const mockOnGetStarted = vi.fn();
-    
+
     renderWithProvider(<WelcomeScreen onGetStarted={mockOnGetStarted} />);
 
     const importButton = screen.queryByRole('button', { name: /Import Existing Project/i });
@@ -77,12 +74,9 @@ describe('WelcomeScreen', () => {
     const user = userEvent.setup();
     const mockOnGetStarted = vi.fn();
     const mockOnImportProject = vi.fn();
-    
+
     renderWithProvider(
-      <WelcomeScreen 
-        onGetStarted={mockOnGetStarted} 
-        onImportProject={mockOnImportProject}
-      />
+      <WelcomeScreen onGetStarted={mockOnGetStarted} onImportProject={mockOnImportProject} />
     );
 
     const importButton = screen.getByRole('button', { name: /Import Existing Project/i });

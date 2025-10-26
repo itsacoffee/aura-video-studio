@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -22,6 +21,7 @@ import {
   Copy24Regular,
   Delete24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { Activity } from '../../state/activityContext';
 
 const useStyles = makeStyles({
@@ -120,7 +120,7 @@ interface OperationHistoryProps {
 function formatDuration(startTime: Date, endTime?: Date): string {
   const end = endTime || new Date();
   const duration = Math.floor((end.getTime() - startTime.getTime()) / 1000);
-  
+
   if (duration < 60) {
     return `${duration}s`;
   } else if (duration < 3600) {
@@ -144,7 +144,7 @@ export function OperationHistory({
   const styles = useStyles();
   const [filter, setFilter] = useState<'all' | 'completed' | 'failed' | 'cancelled'>('all');
 
-  const filteredHistory = history.filter(activity => {
+  const filteredHistory = history.filter((activity) => {
     if (filter === 'all') return true;
     return activity.status === filter;
   });
@@ -152,11 +152,26 @@ export function OperationHistory({
   const getIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckmarkCircle24Regular className={styles.icon} style={{ color: tokens.colorPaletteGreenForeground1 }} />;
+        return (
+          <CheckmarkCircle24Regular
+            className={styles.icon}
+            style={{ color: tokens.colorPaletteGreenForeground1 }}
+          />
+        );
       case 'failed':
-        return <ErrorCircle24Regular className={styles.icon} style={{ color: tokens.colorPaletteRedForeground1 }} />;
+        return (
+          <ErrorCircle24Regular
+            className={styles.icon}
+            style={{ color: tokens.colorPaletteRedForeground1 }}
+          />
+        );
       case 'cancelled':
-        return <DismissCircle24Regular className={styles.icon} style={{ color: tokens.colorNeutralForeground3 }} />;
+        return (
+          <DismissCircle24Regular
+            className={styles.icon}
+            style={{ color: tokens.colorNeutralForeground3 }}
+          />
+        );
       default:
         return null;
     }
@@ -178,11 +193,23 @@ export function OperationHistory({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Badge appearance="filled" color="success" size="small">Success</Badge>;
+        return (
+          <Badge appearance="filled" color="success" size="small">
+            Success
+          </Badge>
+        );
       case 'failed':
-        return <Badge appearance="filled" color="danger" size="small">Failed</Badge>;
+        return (
+          <Badge appearance="filled" color="danger" size="small">
+            Failed
+          </Badge>
+        );
       case 'cancelled':
-        return <Badge appearance="outline" size="small">Cancelled</Badge>;
+        return (
+          <Badge appearance="outline" size="small">
+            Cancelled
+          </Badge>
+        );
       default:
         return null;
     }
@@ -203,20 +230,16 @@ export function OperationHistory({
     navigator.clipboard.writeText(JSON.stringify(details, null, 2));
   };
 
-  const completedCount = history.filter(a => a.status === 'completed').length;
-  const failedCount = history.filter(a => a.status === 'failed').length;
-  const cancelledCount = history.filter(a => a.status === 'cancelled').length;
+  const completedCount = history.filter((a) => a.status === 'completed').length;
+  const failedCount = history.filter((a) => a.status === 'failed').length;
+  const cancelledCount = history.filter((a) => a.status === 'cancelled').length;
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <Text className={styles.title}>Operation History ({history.length}/50)</Text>
         {onClearHistory && history.length > 0 && (
-          <Button
-            appearance="subtle"
-            size="small"
-            onClick={onClearHistory}
-          >
+          <Button appearance="subtle" size="small" onClick={onClearHistory}>
             Clear History
           </Button>
         )}
@@ -261,10 +284,13 @@ export function OperationHistory({
         </div>
       ) : (
         <div className={styles.historyList}>
-          {filteredHistory.map(activity => (
-            <div key={activity.id} className={`${styles.historyItem} ${getItemClass(activity.status)}`}>
+          {filteredHistory.map((activity) => (
+            <div
+              key={activity.id}
+              className={`${styles.historyItem} ${getItemClass(activity.status)}`}
+            >
               {getIcon(activity.status)}
-              
+
               <div className={styles.content}>
                 <Text className={styles.itemTitle}>{activity.title}</Text>
                 <div className={styles.itemDetails}>
@@ -300,19 +326,12 @@ export function OperationHistory({
                 )}
                 <Menu>
                   <MenuTrigger disableButtonEnhancement>
-                    <Button
-                      appearance="subtle"
-                      size="small"
-                      icon={<MoreVertical24Regular />}
-                    />
+                    <Button appearance="subtle" size="small" icon={<MoreVertical24Regular />} />
                   </MenuTrigger>
                   <MenuPopover>
                     <MenuList>
                       {onViewDetails && (
-                        <MenuItem
-                          icon={<Open24Regular />}
-                          onClick={() => onViewDetails(activity)}
-                        >
+                        <MenuItem icon={<Open24Regular />} onClick={() => onViewDetails(activity)}>
                           View Details
                         </MenuItem>
                       )}

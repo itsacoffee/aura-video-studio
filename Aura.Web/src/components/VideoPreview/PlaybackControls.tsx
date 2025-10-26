@@ -1,6 +1,6 @@
 /**
  * Professional Playback Controls Component
- * 
+ *
  * Provides comprehensive playback controls including:
  * - Variable speed selection
  * - Preview quality settings
@@ -8,7 +8,6 @@
  * - Performance metrics display
  */
 
-import { memo } from 'react';
 import {
   makeStyles,
   tokens,
@@ -31,6 +30,7 @@ import {
   VideoClip24Regular,
   Gauge24Regular,
 } from '@fluentui/react-icons';
+import { memo } from 'react';
 import type { PlaybackSpeed, PlaybackQuality } from '../../services/playbackEngine';
 
 const useStyles = makeStyles({
@@ -159,8 +159,8 @@ export const PlaybackControls = memo(function PlaybackControls({
   const speedOptions: PlaybackSpeed[] = [0.25, 0.5, 1.0, 2.0, 4.0];
   const qualityOptions: PlaybackQuality[] = ['quarter', 'half', 'full'];
 
-  const fpsStatus = currentFPS >= targetFPS * 0.9 ? 'success' : 
-                    currentFPS >= targetFPS * 0.7 ? 'warning' : 'error';
+  const fpsStatus =
+    currentFPS >= targetFPS * 0.9 ? 'success' : currentFPS >= targetFPS * 0.7 ? 'warning' : 'error';
 
   return (
     <div className={styles.container}>
@@ -177,7 +177,7 @@ export const PlaybackControls = memo(function PlaybackControls({
           />
         </Tooltip>
 
-        <Tooltip content={isPlaying ? "Pause (Space)" : "Play (Space)"} relationship="label">
+        <Tooltip content={isPlaying ? 'Pause (Space)' : 'Play (Space)'} relationship="label">
           <Button
             appearance="primary"
             icon={isPlaying ? <Pause24Regular /> : <Play24Regular />}
@@ -243,7 +243,8 @@ export const PlaybackControls = memo(function PlaybackControls({
                 disabled={disabled}
                 size="small"
               >
-                {getQualityIcon(quality)} {quality === 'full' ? 'Full' : quality === 'half' ? '50%' : '25%'}
+                {getQualityIcon(quality)}{' '}
+                {quality === 'full' ? 'Full' : quality === 'half' ? '50%' : '25%'}
               </Button>
             </Tooltip>
           </MenuTrigger>
@@ -267,8 +268,8 @@ export const PlaybackControls = memo(function PlaybackControls({
 
       {/* Loop Control */}
       <div className={styles.controlGroup}>
-        <Tooltip 
-          content={hasInOutPoints ? "Loop between In/Out points" : "Loop entire video"} 
+        <Tooltip
+          content={hasInOutPoints ? 'Loop between In/Out points' : 'Loop entire video'}
           relationship="label"
         >
           <Button
@@ -287,10 +288,12 @@ export const PlaybackControls = memo(function PlaybackControls({
       <div className={styles.metricsGroup}>
         <div className={styles.metricItem}>
           <Text className={styles.metricLabel}>FPS</Text>
-          <Badge appearance={fpsStatus === 'success' ? 'filled' : 'outline'} color={
-            fpsStatus === 'success' ? 'success' : 
-            fpsStatus === 'warning' ? 'warning' : 'danger'
-          }>
+          <Badge
+            appearance={fpsStatus === 'success' ? 'filled' : 'outline'}
+            color={
+              fpsStatus === 'success' ? 'success' : fpsStatus === 'warning' ? 'warning' : 'danger'
+            }
+          >
             <Text className={styles.metricValue}>
               {currentFPS}/{targetFPS}
             </Text>

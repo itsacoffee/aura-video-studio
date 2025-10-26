@@ -2,8 +2,6 @@
  * Templates Library page for browsing and selecting project templates
  */
 
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -25,15 +23,17 @@ import {
   DialogContent,
   Field,
 } from '@fluentui/react-components';
-import {
-  Search24Regular,
-  Add24Regular,
-  VideoClip24Regular,
-} from '@fluentui/react-icons';
+import { Search24Regular, Add24Regular, VideoClip24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TemplateCard } from '../../components/Templates/TemplateCard';
 import { TemplatePreview } from '../../components/Templates/TemplatePreview';
+import {
+  getTemplates,
+  createFromTemplate,
+  seedSampleTemplates,
+} from '../../services/templatesService';
 import { TemplateListItem, TemplateCategory } from '../../types/templates';
-import { getTemplates, createFromTemplate, seedSampleTemplates } from '../../services/templatesService';
 
 const useStyles = makeStyles({
   container: {
@@ -94,7 +94,7 @@ const useStyles = makeStyles({
 export default function TemplatesLibrary() {
   const styles = useStyles();
   const navigate = useNavigate();
-  
+
   const [templates, setTemplates] = useState<TemplateListItem[]>([]);
   const [filteredTemplates, setFilteredTemplates] = useState<TemplateListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +121,7 @@ export default function TemplatesLibrary() {
       setLoading(true);
       setError(null);
       const data = await getTemplates();
-      
+
       // If no templates, seed sample templates
       if (data.length === 0) {
         await seedSampleTemplates();
@@ -143,9 +143,7 @@ export default function TemplatesLibrary() {
 
     // Filter by category
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(
-        (t) => t.category === selectedCategory
-      );
+      filtered = filtered.filter((t) => t.category === selectedCategory);
     }
 
     // Filter by search query
@@ -195,14 +193,17 @@ export default function TemplatesLibrary() {
   };
 
   // Group templates by subcategory
-  const groupedTemplates = filteredTemplates.reduce((acc, template) => {
-    const key = template.subCategory || 'Other';
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(template);
-    return acc;
-  }, {} as Record<string, TemplateListItem[]>);
+  const groupedTemplates = filteredTemplates.reduce(
+    (acc, template) => {
+      const key = template.subCategory || 'Other';
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(template);
+      return acc;
+    },
+    {} as Record<string, TemplateListItem[]>
+  );
 
   if (loading) {
     return (

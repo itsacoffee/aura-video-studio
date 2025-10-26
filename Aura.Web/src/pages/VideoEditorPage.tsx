@@ -1,27 +1,30 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { EditorLayout } from '../components/EditorLayout/EditorLayout';
-import { VideoPreviewPanel, VideoPreviewPanelHandle } from '../components/EditorLayout/VideoPreviewPanel';
-import { TimelinePanel } from '../components/EditorLayout/TimelinePanel';
-import { PropertiesPanel } from '../components/EditorLayout/PropertiesPanel';
-import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
-import { EffectsLibraryPanel } from '../components/EditorLayout/EffectsLibraryPanel';
-import { HistoryPanel } from '../components/EditorLayout/HistoryPanel';
-import { ExportDialog, ExportOptions } from '../components/Export/ExportDialog';
-import { AppliedEffect, EffectPreset } from '../types/effects';
-import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
-import { useProjectState } from '../hooks/useProjectState';
-import { ProjectFile, ProjectMediaItem } from '../types/project';
-import { CommandHistory } from '../services/commandHistory';
-import { useActivity } from '../state/activityContext';
-import { startExport, pollExportStatus } from '../services/exportService';
-import { getHardwareInfo, HardwareInfo } from '../services/hardwareService';
 import {
   AddClipCommand,
   DeleteClipCommand,
   UpdatePropertyCommand,
   AddEffectCommand,
 } from '../commands/clipCommands';
+import { EditorLayout } from '../components/EditorLayout/EditorLayout';
+import { EffectsLibraryPanel } from '../components/EditorLayout/EffectsLibraryPanel';
+import { HistoryPanel } from '../components/EditorLayout/HistoryPanel';
+import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
+import { PropertiesPanel } from '../components/EditorLayout/PropertiesPanel';
+import { TimelinePanel } from '../components/EditorLayout/TimelinePanel';
+import {
+  VideoPreviewPanel,
+  VideoPreviewPanelHandle,
+} from '../components/EditorLayout/VideoPreviewPanel';
+import { ExportDialog, ExportOptions } from '../components/Export/ExportDialog';
+import { useProjectState } from '../hooks/useProjectState';
+import { CommandHistory } from '../services/commandHistory';
+import { startExport, pollExportStatus } from '../services/exportService';
+import { getHardwareInfo, HardwareInfo } from '../services/hardwareService';
+import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
+import { useActivity } from '../state/activityContext';
+import { AppliedEffect, EffectPreset } from '../types/effects';
+import { ProjectFile, ProjectMediaItem } from '../types/project';
 
 export interface TimelineClip {
   id: string;
@@ -75,10 +78,10 @@ export function VideoEditorPage() {
   const [mediaLibrary, setMediaLibrary] = useState<ProjectMediaItem[]>([]);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | null>(null);
-  
+
   // Access activity context for progress tracking
   const { addActivity, updateActivity } = useActivity();
-  
+
   // Command history for undo/redo
   const commandHistory = useMemo(() => new CommandHistory(50), []);
   const [canUndo, setCanUndo] = useState(false);
@@ -86,43 +89,47 @@ export function VideoEditorPage() {
 
   // Subscribe to command history changes
   useEffect(() => {
-    const unsubscribe = commandHistory.subscribe((undo, redo) => {
+    return commandHistory.subscribe((undo, redo) => {
       setCanUndo(undo);
       setCanRedo(redo);
     });
-    return unsubscribe;
   }, [commandHistory]);
-  
+
   // Prevent unused variable warnings - these will be used for UI indicators
   void canUndo;
   void canRedo;
 
   // Project state management with autosave
-  const handleProjectLoaded = useCallback((project: ProjectFile) => {
-    // Clear command history on project load
-    commandHistory.clear();
-    
-    // Restore clips
-    setClips(project.clips.map(clip => ({
-      ...clip,
-      file: undefined, // Files can't be serialized, will need to be re-added
-    })));
-    
-    // Restore tracks
-    if (project.tracks) {
-      setTracks(project.tracks);
-    }
-    
-    // Restore media library
-    if (project.mediaLibrary) {
-      setMediaLibrary(project.mediaLibrary);
-    }
-    
-    // Restore player position
-    if (project.playerPosition !== undefined) {
-      setCurrentTime(project.playerPosition);
-    }
-  }, [commandHistory]);
+  const handleProjectLoaded = useCallback(
+    (project: ProjectFile) => {
+      // Clear command history on project load
+      commandHistory.clear();
+
+      // Restore clips
+      setClips(
+        project.clips.map((clip) => ({
+          ...clip,
+          file: undefined, // Files can't be serialized, will need to be re-added
+        }))
+      );
+
+      // Restore tracks
+      if (project.tracks) {
+        setTracks(project.tracks);
+      }
+
+      // Restore media library
+      if (project.mediaLibrary) {
+        setMediaLibrary(project.mediaLibrary);
+      }
+
+      // Restore player position
+      if (project.playerPosition !== undefined) {
+        setCurrentTime(project.playerPosition);
+      }
+    },
+    [commandHistory]
+  );
 
   const {
     projectName,
@@ -133,7 +140,7 @@ export function VideoEditorPage() {
     exportProject, // Keep for potential future use (project file export)
     loadProject,
   } = useProjectState(clips, tracks, mediaLibrary, currentTime, handleProjectLoaded);
-  
+
   // Prevent unused variable warning
   void exportProject;
 
@@ -165,7 +172,6 @@ export function VideoEditorPage() {
       });
   }, []);
 
-  
   // Ref to track video preview controls
   const videoPreviewRef = useRef<VideoPreviewPanelHandle | null>(null);
 
@@ -489,10 +495,10 @@ export function VideoEditorPage() {
   const buildTimelineForExport = () => {
     // Group clips by track and time to create scenes
     const scenes: any[] = [];
-    
+
     // Sort clips by start time
     const sortedClips = [...clips].sort((a, b) => a.startTime - b.startTime);
-    
+
     if (sortedClips.length === 0) {
       // Create a default scene if no clips
       scenes.push({
@@ -509,19 +515,19 @@ export function VideoEditorPage() {
       // For simplicity, we'll create one scene per clip for now
       sortedClips.forEach((clip, index) => {
         const assets: any[] = [];
-        
+
         // If clip has a media reference, add it as an asset
         if (clip.file || clip.preview) {
           // For timeline rendering, we need actual file paths
           // In a real scenario, uploaded files would be available on the server
           // For now, we'll only include clips with preview URLs (which are server-accessible)
           const filePath = clip.preview;
-          
+
           if (filePath) {
             // Map asset type
-            const assetType = clip.type === 'video' ? 'Video' : 
-                             clip.type === 'audio' ? 'Audio' : 'Image';
-            
+            const assetType =
+              clip.type === 'video' ? 'Video' : clip.type === 'audio' ? 'Audio' : 'Image';
+
             // Build effects object from clip effects if present
             let effectsConfig = undefined;
             if (clip.effects && clip.effects.length > 0) {
@@ -533,7 +539,7 @@ export function VideoEditorPage() {
                 saturation: 1.0,
               };
             }
-            
+
             assets.push({
               id: clip.id,
               type: assetType,
@@ -552,7 +558,7 @@ export function VideoEditorPage() {
             });
           }
         }
-        
+
         scenes.push({
           index: index,
           heading: clip.label || `Scene ${index + 1}`,
@@ -565,7 +571,7 @@ export function VideoEditorPage() {
         });
       });
     }
-    
+
     return {
       scenes: scenes,
       backgroundMusicPath: undefined,
@@ -590,7 +596,7 @@ export function VideoEditorPage() {
 
       // Build timeline from current clips
       const timeline = buildTimelineForExport();
-      
+
       // Create export request with timeline data
       const exportRequest = {
         outputFile: options.outputPath,
@@ -600,7 +606,7 @@ export function VideoEditorPage() {
 
       // Start the export
       const response = await startExport(exportRequest);
-      
+
       // Add activity to track progress
       const activityId = addActivity({
         type: 'render',

@@ -2,16 +2,16 @@
  * Tests for Loading components
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { describe, it, expect, vi } from 'vitest';
+import { AsyncButton } from '../AsyncButton';
+import { ErrorState } from '../ErrorState';
+import { ProgressIndicator } from '../ProgressIndicator';
 import { SkeletonCard } from '../SkeletonCard';
 import { SkeletonList } from '../SkeletonList';
 import { SkeletonTable } from '../SkeletonTable';
-import { ProgressIndicator } from '../ProgressIndicator';
-import { AsyncButton } from '../AsyncButton';
-import { ErrorState } from '../ErrorState';
 
 const renderWithProvider = (component: React.ReactElement) => {
   return render(<FluentProvider theme={webLightTheme}>{component}</FluentProvider>);

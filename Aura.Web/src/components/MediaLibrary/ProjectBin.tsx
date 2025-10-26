@@ -1,18 +1,7 @@
+import { makeStyles, tokens, Text, Button, ToolbarButton } from '@fluentui/react-components';
+import { Add24Regular, Grid24Regular, List24Regular, Apps24Regular } from '@fluentui/react-icons';
 import { useState, useRef, useMemo, useCallback } from 'react';
 import { Virtuoso } from 'react-virtuoso';
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Button,
-  ToolbarButton,
-} from '@fluentui/react-components';
-import {
-  Add24Regular,
-  Grid24Regular,
-  List24Regular,
-  Apps24Regular,
-} from '@fluentui/react-icons';
 import { MediaThumbnail } from './MediaThumbnail';
 import { SmartCollections, MediaCollection } from './SmartCollections';
 
@@ -142,9 +131,7 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
 
   // Filter assets based on selected collection
   const filteredAssets =
-    selectedCollection === 'all'
-      ? assets
-      : assets.filter((a) => a.type === selectedCollection);
+    selectedCollection === 'all' ? assets : assets.filter((a) => a.type === selectedCollection);
 
   const handleRevealInFinder = useCallback((asset: MediaAsset) => {
     // In a real implementation, this would call a native API to reveal the file
@@ -154,34 +141,47 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
     alert(`File location: ${asset.filePath || 'Not available'}`);
   }, []);
 
-  const handleAssetClick = useCallback((asset: MediaAsset) => {
-    onAssetSelect?.(asset);
-  }, [onAssetSelect]);
+  const handleAssetClick = useCallback(
+    (asset: MediaAsset) => {
+      onAssetSelect?.(asset);
+    },
+    [onAssetSelect]
+  );
 
   // Memoize item renderer for virtual scrolling
-  const renderAsset = useCallback((index: number) => {
-    const asset = filteredAssets[index];
-    return (
-      <MediaThumbnail
-        key={asset.id}
-        id={asset.id}
-        name={asset.name}
-        type={asset.type}
-        preview={asset.preview}
-        duration={asset.duration}
-        fileSize={asset.fileSize}
-        onDragStart={(e) => {
-          e.dataTransfer.effectAllowed = 'copy';
-          e.dataTransfer.setData('application/json', JSON.stringify(asset));
-          onAssetDragStart?.(asset);
-        }}
-        onDragEnd={onAssetDragEnd}
-        onRemove={() => onRemoveAsset?.(asset.id)}
-        onRevealInFinder={() => handleRevealInFinder(asset)}
-        onClick={() => handleAssetClick(asset)}
-      />
-    );
-  }, [filteredAssets, onAssetDragStart, onAssetDragEnd, onRemoveAsset, handleRevealInFinder, handleAssetClick]);
+  const renderAsset = useCallback(
+    (index: number) => {
+      const asset = filteredAssets[index];
+      return (
+        <MediaThumbnail
+          key={asset.id}
+          id={asset.id}
+          name={asset.name}
+          type={asset.type}
+          preview={asset.preview}
+          duration={asset.duration}
+          fileSize={asset.fileSize}
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.setData('application/json', JSON.stringify(asset));
+            onAssetDragStart?.(asset);
+          }}
+          onDragEnd={onAssetDragEnd}
+          onRemove={() => onRemoveAsset?.(asset.id)}
+          onRevealInFinder={() => handleRevealInFinder(asset)}
+          onClick={() => handleAssetClick(asset)}
+        />
+      );
+    },
+    [
+      filteredAssets,
+      onAssetDragStart,
+      onAssetDragEnd,
+      onRemoveAsset,
+      handleRevealInFinder,
+      handleAssetClick,
+    ]
+  );
 
   return (
     <div className={styles.container}>
@@ -207,11 +207,7 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
               onClick={() => setViewMode('list')}
               aria-label="List view"
             />
-            <Button
-              appearance="primary"
-              icon={<Add24Regular />}
-              onClick={onAddAssets}
-            >
+            <Button appearance="primary" icon={<Add24Regular />} onClick={onAddAssets}>
               Add
             </Button>
           </div>
@@ -239,7 +235,10 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
             style={{ height: '100%' }}
           />
         ) : (
-          <div className={viewMode === 'list' ? styles.mediaList : styles.mediaGrid} style={{ overflow: 'auto', height: '100%' }}>
+          <div
+            className={viewMode === 'list' ? styles.mediaList : styles.mediaGrid}
+            style={{ overflow: 'auto', height: '100%' }}
+          >
             {filteredAssets.map((asset) => (
               <MediaThumbnail
                 key={asset.id}

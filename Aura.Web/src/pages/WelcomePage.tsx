@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -12,11 +10,13 @@ import {
   Spinner,
   Badge,
 } from '@fluentui/react-components';
-import { useNavigate } from 'react-router-dom';
 import { Play24Regular, Settings24Regular } from '@fluentui/react-icons';
-import type { HardwareCapabilities } from '../types';
-import { SystemCheckCard } from '../components/SystemCheckCard';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FirstRunDiagnostics } from '../components/FirstRunDiagnostics';
+import { SystemCheckCard } from '../components/SystemCheckCard';
+import { apiUrl } from '../config/api';
+import type { HardwareCapabilities } from '../types';
 
 const useStyles = makeStyles({
   container: {

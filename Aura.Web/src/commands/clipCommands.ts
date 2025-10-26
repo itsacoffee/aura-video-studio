@@ -2,8 +2,8 @@
  * Command implementations for editor operations
  */
 
-import { Command } from '../services/commandHistory';
 import { TimelineClip } from '../pages/VideoEditorPage';
+import { Command } from '../services/commandHistory';
 import { AppliedEffect } from '../types/effects';
 
 /**
@@ -294,7 +294,7 @@ export class UpdatePropertyCommand implements Command {
   ) {
     this.timestamp = new Date();
     const clip = clips.find((c) => c.id === clipId);
-    
+
     // Store only the properties being updated
     this.previousValue = {};
     if (clip) {
@@ -307,17 +307,13 @@ export class UpdatePropertyCommand implements Command {
 
   execute(): void {
     this.setClips((prevClips) =>
-      prevClips.map((clip) =>
-        clip.id === this.clipId ? { ...clip, ...this.updates } : clip
-      )
+      prevClips.map((clip) => (clip.id === this.clipId ? { ...clip, ...this.updates } : clip))
     );
   }
 
   undo(): void {
     this.setClips((prevClips) =>
-      prevClips.map((clip) =>
-        clip.id === this.clipId ? { ...clip, ...this.previousValue } : clip
-      )
+      prevClips.map((clip) => (clip.id === this.clipId ? { ...clip, ...this.previousValue } : clip))
     );
   }
 

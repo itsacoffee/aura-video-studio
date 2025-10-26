@@ -1,6 +1,6 @@
 /**
  * Keyboard Shortcut Manager Service
- * 
+ *
  * Centralized service for managing keyboard shortcuts across the application.
  * Handles shortcut registration, conflict detection, and context-aware execution.
  */
@@ -70,7 +70,7 @@ class KeyboardShortcutManager {
   register(shortcut: ShortcutHandler): void {
     const effectiveKeys = this.getEffectiveKeys(shortcut.id, shortcut.keys);
     const key = this.createKey(effectiveKeys, shortcut.context);
-    
+
     // Check for conflicts
     if (this.shortcuts.has(key)) {
       console.warn(`Shortcut conflict detected: ${effectiveKeys} in context ${shortcut.context}`);
@@ -89,7 +89,7 @@ class KeyboardShortcutManager {
    * Register multiple shortcuts at once
    */
   registerMultiple(shortcuts: ShortcutHandler[]): void {
-    shortcuts.forEach(shortcut => this.register(shortcut));
+    shortcuts.forEach((shortcut) => this.register(shortcut));
   }
 
   /**
@@ -110,14 +110,14 @@ class KeyboardShortcutManager {
    */
   unregisterContext(context: ShortcutContext): void {
     const keysToDelete: string[] = [];
-    
+
     for (const [key, shortcut] of this.shortcuts.entries()) {
       if (shortcut.context === context) {
         keysToDelete.push(key);
       }
     }
 
-    keysToDelete.forEach(key => this.shortcuts.delete(key));
+    keysToDelete.forEach((key) => this.shortcuts.delete(key));
   }
 
   /**
@@ -142,21 +142,18 @@ class KeyboardShortcutManager {
    */
   handleKeyEvent(event: KeyboardEvent): boolean {
     // Don't handle shortcuts if user is typing in an input/textarea
-    if (
-      event.target instanceof HTMLInputElement ||
-      event.target instanceof HTMLTextAreaElement
-    ) {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
       // Exception: Allow shortcuts like Ctrl+Enter or Escape even in inputs
       const allowedInInputs = ['Enter', 'Escape'];
       const hasModifier = event.ctrlKey || event.metaKey || event.altKey;
-      
+
       if (!allowedInInputs.includes(event.key) || !hasModifier) {
         return false;
       }
     }
 
     const keyCombo = this.getKeyCombo(event);
-    
+
     // Try to find a matching shortcut in active contexts
     for (const context of this.enabledContexts) {
       const key = this.createKey(keyCombo, context);
@@ -188,7 +185,7 @@ class KeyboardShortcutManager {
    */
   getAllShortcuts(context?: ShortcutContext): ShortcutHandler[] {
     const shortcuts: ShortcutHandler[] = [];
-    
+
     for (const shortcut of this.shortcuts.values()) {
       if (!context || shortcut.context === context) {
         shortcuts.push(shortcut);
@@ -244,7 +241,7 @@ class KeyboardShortcutManager {
 
     // Normalize key names
     let key = event.key;
-    
+
     // Special key mappings
     const keyMap: Record<string, string> = {
       ' ': 'Space',

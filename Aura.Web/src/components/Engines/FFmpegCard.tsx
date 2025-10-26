@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -27,6 +26,7 @@ import {
   Link24Regular,
   Document24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
 import { useNotifications } from '../Notifications/Toasts';
 import { ManualInstallationModal } from './ManualInstallationModal';

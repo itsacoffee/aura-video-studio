@@ -153,16 +153,8 @@ export class MotionTracker {
 
     for (let dy = -halfSize; dy <= halfSize; dy++) {
       for (let dx = -halfSize; dx <= halfSize; dx++) {
-        const prevIdx = this.getPixelIndex(
-          prevFrame.width,
-          prevX + dx,
-          prevY + dy
-        );
-        const currIdx = this.getPixelIndex(
-          currFrame.width,
-          currX + dx,
-          currY + dy
-        );
+        const prevIdx = this.getPixelIndex(prevFrame.width, prevX + dx, prevY + dy);
+        const currIdx = this.getPixelIndex(currFrame.width, currX + dx, currY + dy);
 
         if (
           prevIdx >= 0 &&

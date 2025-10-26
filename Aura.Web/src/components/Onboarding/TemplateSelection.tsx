@@ -164,8 +164,8 @@ export function TemplateSelection({
       <div className={styles.header}>
         <Title2>Choose a Project Template</Title2>
         <Text>
-          Start with a pre-configured template optimized for your content type, or skip to start from
-          scratch.
+          Start with a pre-configured template optimized for your content type, or skip to start
+          from scratch.
         </Text>
       </div>
 
@@ -250,9 +250,7 @@ export function TemplateSelection({
 
       {selectedTemplate && (
         <Card className={styles.infoCard}>
-          <Title3 style={{ marginBottom: tokens.spacingVerticalS }}>
-            Template Configuration
-          </Title3>
+          <Title3 style={{ marginBottom: tokens.spacingVerticalS }}>Template Configuration</Title3>
           <div style={{ display: 'flex', gap: tokens.spacingHorizontalXL }}>
             <div>
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>

@@ -172,10 +172,7 @@ export function FileLocationsSettingsTab({
           </div>
         </Field>
 
-        <Field
-          label="Media Library Location"
-          hint="Directory where media assets are stored"
-        >
+        <Field label="Media Library Location" hint="Directory where media assets are stored">
           <div className={styles.inputWithButton}>
             <Input
               style={{ flex: 1 }}
@@ -191,10 +188,7 @@ export function FileLocationsSettingsTab({
           </div>
         </Field>
 
-        <Field
-          label="Projects Directory"
-          hint="Directory where project files are saved"
-        >
+        <Field label="Projects Directory" hint="Directory where project files are saved">
           <div className={styles.inputWithButton}>
             <Input
               style={{ flex: 1 }}

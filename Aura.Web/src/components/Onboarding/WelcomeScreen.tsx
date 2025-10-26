@@ -1,15 +1,7 @@
+import { makeStyles, tokens, Title1, Title3, Text, Card, Button } from '@fluentui/react-components';
 import {
-  makeStyles,
-  tokens,
-  Title1,
-  Title3,
-  Text,
-  Card,
-  Button,
-} from '@fluentui/react-components';
-import { 
-  VideoClip24Regular, 
-  Sparkle24Regular, 
+  VideoClip24Regular,
+  Sparkle24Regular,
   Clock24Regular,
   Play24Regular,
   FolderOpen24Regular,
@@ -129,17 +121,20 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
     {
       icon: <VideoClip24Regular className={styles.icon} />,
       title: 'Create Professional Videos',
-      description: 'Transform your ideas into stunning, professional-quality videos in minutes with our intuitive editor',
+      description:
+        'Transform your ideas into stunning, professional-quality videos in minutes with our intuitive editor',
     },
     {
       icon: <Sparkle24Regular className={styles.icon} />,
       title: 'AI-Powered Automation',
-      description: 'Leverage cutting-edge AI for script generation, voice synthesis, and custom image creation',
+      description:
+        'Leverage cutting-edge AI for script generation, voice synthesis, and custom image creation',
     },
     {
       icon: <Clock24Regular className={styles.icon} />,
       title: 'Save Valuable Time',
-      description: 'Automate repetitive tasks and focus on what matters - your creative vision and storytelling',
+      description:
+        'Automate repetitive tasks and focus on what matters - your creative vision and storytelling',
     },
   ];
 
@@ -154,8 +149,8 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
       <div className={styles.brandContainer}>
         <Title1 className={styles.title}>Welcome to Aura Video Studio!</Title1>
         <Text className={styles.subtitle} size={500}>
-          Your all-in-one platform for creating professional videos with the power of AI. 
-          Whether you&apos;re crafting content for YouTube, social media, or professional presentations,
+          Your all-in-one platform for creating professional videos with the power of AI. Whether
+          you&apos;re crafting content for YouTube, social media, or professional presentations,
           Aura Video Studio makes video creation accessible, efficient, and fun.
         </Text>
       </div>
@@ -166,15 +161,17 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
           <Card key={index} className={styles.valueCard}>
             {prop.icon}
             <Title3 className={styles.cardTitle}>{prop.title}</Title3>
-            <Text className={styles.cardDescription} size={300}>{prop.description}</Text>
+            <Text className={styles.cardDescription} size={300}>
+              {prop.description}
+            </Text>
           </Card>
         ))}
       </div>
 
       {/* Call to Action */}
       <div className={styles.ctaContainer}>
-        <Button 
-          appearance="primary" 
+        <Button
+          appearance="primary"
           size="large"
           className={styles.primaryButton}
           icon={<Play24Regular />}
@@ -183,8 +180,8 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
           Get Started
         </Button>
         {onImportProject && (
-          <Button 
-            appearance="secondary" 
+          <Button
+            appearance="secondary"
             size="large"
             className={styles.secondaryButton}
             icon={<FolderOpen24Regular />}

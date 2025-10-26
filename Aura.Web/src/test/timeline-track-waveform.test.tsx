@@ -2,9 +2,9 @@
  * Tests for TimelineTrack component with WaveSurfer.js integration
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { TimelineTrack } from '../components/Editor/Timeline/TimelineTrack';
 
 // Mock WaveSurfer.js
@@ -42,7 +42,7 @@ describe('TimelineTrack with WaveSurfer', () => {
 
   it('should show loading state when audio is being loaded', async () => {
     renderComponent({ audioPath: '/test/audio.mp3' });
-    
+
     // Should show loading initially (though it may be very brief)
     const loadingText = screen.queryByText(/Loading waveform/i);
     if (loadingText) {
@@ -72,19 +72,19 @@ describe('TimelineTrack with WaveSurfer', () => {
   });
 
   it('should handle muted state', () => {
-    const { container } = renderComponent({ 
+    const { container } = renderComponent({
       audioPath: '/test/audio.mp3',
-      muted: true 
+      muted: true,
     });
     expect(container).toBeDefined();
   });
 
   it('should handle selected state with visual indicator', () => {
-    const { container } = renderComponent({ 
+    const { container } = renderComponent({
       audioPath: '/test/audio.mp3',
-      selected: true 
+      selected: true,
     });
-    
+
     // Should have selected styling applied
     expect(container.querySelector('.waveformContainerSelected')).toBeDefined();
   });
@@ -92,7 +92,7 @@ describe('TimelineTrack with WaveSurfer', () => {
   it('should call onSeek when provided', () => {
     const onSeek = vi.fn();
     const { container } = renderComponent({ onSeek });
-    
+
     // Component should be ready to handle seek
     expect(container).toBeDefined();
   });

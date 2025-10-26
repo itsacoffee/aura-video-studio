@@ -2,19 +2,8 @@
  * ValidatedInput component with real-time validation feedback
  */
 
-import {
-  Input,
-  InputProps,
-  Field,
-  Spinner,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
-import {
-  Checkmark20Regular,
-  ErrorCircle20Regular,
-  Info20Regular,
-} from '@fluentui/react-icons';
+import { Input, InputProps, Field, Spinner, makeStyles, tokens } from '@fluentui/react-components';
+import { Checkmark20Regular, ErrorCircle20Regular, Info20Regular } from '@fluentui/react-icons';
 
 export interface ValidatedInputProps extends Omit<InputProps, 'onChange' | 'contentAfter'> {
   label?: string;
@@ -86,7 +75,7 @@ const useStyles = makeStyles({
 /**
  * Input component with built-in validation state display
  * Shows checkmark when valid, error icon when invalid, and spinner when validating
- * 
+ *
  * @example
  * ```tsx
  * <ValidatedInput

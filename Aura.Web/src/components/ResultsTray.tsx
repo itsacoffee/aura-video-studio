@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -13,6 +11,8 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import { Video24Regular, FolderOpen24Regular, Eye24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 
 const useStyles = makeStyles({
   trigger: {

@@ -1,6 +1,6 @@
 /**
  * Effects Worker
- * 
+ *
  * Web Worker for CPU-intensive effects processing.
  * Offloads image manipulation and effect rendering from the main thread
  * to maintain 60fps UI performance.
@@ -152,7 +152,7 @@ function applySaturation(imageData: ImageData, value: number): ImageData {
     const g = data[i + 1];
     const b = data[i + 2];
 
-    const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+    const gray = 0.2989 * r + 0.587 * g + 0.114 * b;
 
     data[i] = Math.min(255, Math.max(0, gray + factor * (r - gray)));
     data[i + 1] = Math.min(255, Math.max(0, gray + factor * (g - gray)));
@@ -173,12 +173,16 @@ function applyBlur(imageData: ImageData, amount: number): ImageData {
   const data = imageData.data;
   const result = cloneImageData(imageData);
   const resultData = result.data;
-  
+
   const radius = Math.min(Math.floor(amount), 20); // Limit blur radius for performance
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      let r = 0, g = 0, b = 0, a = 0, count = 0;
+      let r = 0,
+        g = 0,
+        b = 0,
+        a = 0,
+        count = 0;
 
       for (let ky = -radius; ky <= radius; ky++) {
         for (let kx = -radius; kx <= radius; kx++) {
@@ -212,7 +216,7 @@ function applyGrayscale(imageData: ImageData): ImageData {
   const data = imageData.data;
 
   for (let i = 0; i < data.length; i += 4) {
-    const gray = 0.2989 * data[i] + 0.5870 * data[i + 1] + 0.1140 * data[i + 2];
+    const gray = 0.2989 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
     data[i] = gray;
     data[i + 1] = gray;
     data[i + 2] = gray;
@@ -266,9 +270,15 @@ function applyHueRotation(imageData: ImageData, rotation: number): ImageData {
   const sinA = Math.sin(angle);
 
   const matrix = [
-    cosA + (1 - cosA) / 3, 1 / 3 * (1 - cosA) - Math.sqrt(1 / 3) * sinA, 1 / 3 * (1 - cosA) + Math.sqrt(1 / 3) * sinA,
-    1 / 3 * (1 - cosA) + Math.sqrt(1 / 3) * sinA, cosA + 1 / 3 * (1 - cosA), 1 / 3 * (1 - cosA) - Math.sqrt(1 / 3) * sinA,
-    1 / 3 * (1 - cosA) - Math.sqrt(1 / 3) * sinA, 1 / 3 * (1 - cosA) + Math.sqrt(1 / 3) * sinA, cosA + 1 / 3 * (1 - cosA),
+    cosA + (1 - cosA) / 3,
+    (1 / 3) * (1 - cosA) - Math.sqrt(1 / 3) * sinA,
+    (1 / 3) * (1 - cosA) + Math.sqrt(1 / 3) * sinA,
+    (1 / 3) * (1 - cosA) + Math.sqrt(1 / 3) * sinA,
+    cosA + (1 / 3) * (1 - cosA),
+    (1 / 3) * (1 - cosA) - Math.sqrt(1 / 3) * sinA,
+    (1 / 3) * (1 - cosA) - Math.sqrt(1 / 3) * sinA,
+    (1 / 3) * (1 - cosA) + Math.sqrt(1 / 3) * sinA,
+    cosA + (1 / 3) * (1 - cosA),
   ];
 
   for (let i = 0; i < data.length; i += 4) {

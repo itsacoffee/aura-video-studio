@@ -3,7 +3,6 @@
  * Visualization of optimization results and engagement predictions
  */
 
-import { useState, useEffect } from 'react';
 import {
   Card,
   makeStyles,
@@ -23,6 +22,7 @@ import {
   Warning24Regular,
   Info24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { Scene } from '../../types';
 
 interface OptimizationResultsViewProps {
@@ -123,12 +123,12 @@ export const OptimizationResultsView = ({
 
   const generateResults = async () => {
     setLoading(true);
-    
+
     try {
       // Simulate optimization results
       // In production, this would call the AttentionPredictionService and ABTestingService APIs
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
       const totalDuration = scenes.reduce((sum, scene) => sum + scene.duration, 0);
       const avgEngagement = 0.7 + Math.random() * 0.2; // 70-90%
       const retentionRate = 0.65 + Math.random() * 0.25; // 65-90%
@@ -139,9 +139,7 @@ export const OptimizationResultsView = ({
         .map((scene) => ({
           sceneIndex: scenes.indexOf(scene),
           timestamp: scene.start,
-          severity: (['low', 'medium', 'high', 'critical'] as const)[
-            Math.floor(Math.random() * 4)
-          ],
+          severity: (['low', 'medium', 'high', 'critical'] as const)[Math.floor(Math.random() * 4)],
           recommendation: generateDropRecommendation(),
         }));
 
@@ -185,7 +183,11 @@ export const OptimizationResultsView = ({
     };
 
     const { color, label } = config[severity] || config.low;
-    return <Badge appearance="tint" color={color}>{label}</Badge>;
+    return (
+      <Badge appearance="tint" color={color}>
+        {label}
+      </Badge>
+    );
   };
 
   const getEngagementColor = (score: number): string => {
@@ -220,7 +222,9 @@ export const OptimizationResultsView = ({
   if (!results) {
     return (
       <div className={styles.emptyState}>
-        <ChartMultiple24Regular style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }} />
+        <ChartMultiple24Regular
+          style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }}
+        />
         <Body1>No optimization results available</Body1>
       </div>
     );
@@ -232,11 +236,14 @@ export const OptimizationResultsView = ({
       <div>
         <Body1Strong>Optimization Metrics</Body1Strong>
       </div>
-      
+
       <div className={styles.metricsGrid}>
         <Card className={styles.metricCard}>
           <Eye24Regular style={{ fontSize: '24px' }} />
-          <div className={styles.metricValue} style={{ color: getEngagementColor(results.overallEngagement) }}>
+          <div
+            className={styles.metricValue}
+            style={{ color: getEngagementColor(results.overallEngagement) }}
+          >
             {(results.overallEngagement * 100).toFixed(0)}%
           </div>
           <Caption1>Overall Engagement</Caption1>
@@ -249,7 +256,10 @@ export const OptimizationResultsView = ({
 
         <Card className={styles.metricCard}>
           <CheckmarkCircle24Regular style={{ fontSize: '24px' }} />
-          <div className={styles.metricValue} style={{ color: getEngagementColor(results.retentionRate) }}>
+          <div
+            className={styles.metricValue}
+            style={{ color: getEngagementColor(results.retentionRate) }}
+          >
             {(results.retentionRate * 100).toFixed(0)}%
           </div>
           <Caption1>Predicted Retention</Caption1>
@@ -262,9 +272,7 @@ export const OptimizationResultsView = ({
 
         <Card className={styles.metricCard}>
           <ChartMultiple24Regular style={{ fontSize: '24px' }} />
-          <div className={styles.metricValue}>
-            {formatDuration(results.totalDuration)}
-          </div>
+          <div className={styles.metricValue}>{formatDuration(results.totalDuration)}</div>
           <Caption1>Total Duration</Caption1>
         </Card>
       </div>
@@ -278,12 +286,26 @@ export const OptimizationResultsView = ({
           <div className={styles.dropsList}>
             {results.engagementDrops.map((drop, index) => (
               <Card key={index} className={styles.dropCard}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: tokens.spacingVerticalS,
+                  }}
+                >
                   <Body1Strong>Scene {drop.sceneIndex + 1}</Body1Strong>
                   {getSeverityBadge(drop.severity)}
                 </div>
                 <Caption1>At {formatDuration(drop.timestamp)}</Caption1>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: tokens.spacingHorizontalXS, marginTop: tokens.spacingVerticalS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: tokens.spacingHorizontalXS,
+                    marginTop: tokens.spacingVerticalS,
+                  }}
+                >
                   <Warning24Regular style={{ fontSize: '16px', marginTop: '2px' }} />
                   <Caption1>{drop.recommendation}</Caption1>
                 </div>
@@ -299,7 +321,9 @@ export const OptimizationResultsView = ({
         <div className={styles.recommendationsList}>
           {results.recommendations.map((rec, index) => (
             <div key={index} className={styles.recommendationItem}>
-              <CheckmarkCircle24Regular style={{ fontSize: '20px', color: tokens.colorPaletteBlueForeground2 }} />
+              <CheckmarkCircle24Regular
+                style={{ fontSize: '20px', color: tokens.colorPaletteBlueForeground2 }}
+              />
               <Body1>{rec}</Body1>
             </div>
           ))}

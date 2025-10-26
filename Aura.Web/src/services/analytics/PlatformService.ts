@@ -134,8 +134,7 @@ export const analyticsService = {
     });
 
     if (!response.ok) throw new Error('Failed to predict retention');
-    const result = await response.json();
-    return result;
+    return await response.json();
   },
 
   /**
@@ -149,8 +148,7 @@ export const analyticsService = {
     });
 
     if (!response.ok) throw new Error('Failed to analyze attention');
-    const result = await response.json();
-    return result;
+    return await response.json();
   },
 
   /**
@@ -168,8 +166,7 @@ export const analyticsService = {
     });
 
     if (!response.ok) throw new Error('Failed to optimize for platform');
-    const result = await response.json();
-    return result;
+    return await response.json();
   },
 
   /**
@@ -183,8 +180,7 @@ export const analyticsService = {
     });
 
     if (!response.ok) throw new Error('Failed to suggest aspect ratios');
-    const result = await response.json();
-    return result;
+    return await response.json();
   },
 
   /**
@@ -198,8 +194,7 @@ export const analyticsService = {
     });
 
     if (!response.ok) throw new Error('Failed to analyze structure');
-    const result = await response.json();
-    return result;
+    return await response.json();
   },
 
   /**
@@ -216,8 +211,7 @@ export const analyticsService = {
     });
 
     if (!response.ok) throw new Error('Failed to get recommendations');
-    const result = await response.json();
-    return result;
+    return await response.json();
   },
 
   /**
@@ -236,8 +230,7 @@ export const analyticsService = {
     });
 
     if (!response.ok) throw new Error('Failed to get improvement roadmap');
-    const result = await response.json();
-    return result;
+    return await response.json();
   },
 
   /**
@@ -255,7 +248,6 @@ export const analyticsService = {
     });
 
     if (!response.ok) throw new Error('Failed to get real-time feedback');
-    const result = await response.json();
-    return result;
+    return await response.json();
   },
 };

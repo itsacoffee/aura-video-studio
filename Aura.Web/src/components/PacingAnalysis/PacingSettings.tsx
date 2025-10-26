@@ -3,7 +3,6 @@
  * Configuration panel for pacing optimization parameters
  */
 
-import { useState, useEffect } from 'react';
 import {
   Card,
   Button,
@@ -18,11 +17,8 @@ import {
   Caption1,
   Field,
 } from '@fluentui/react-components';
-import {
-  Settings24Regular,
-  Save24Regular,
-  ArrowReset24Regular,
-} from '@fluentui/react-icons';
+import { Settings24Regular, Save24Regular, ArrowReset24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { PacingSettings as PacingSettingsType, PlatformPreset } from '../../types/pacing';
 
 const useStyles = makeStyles({
@@ -143,10 +139,7 @@ export const PacingSettings: React.FC<PacingSettingsProps> = ({
 
       <div className={styles.section}>
         {/* Enable/Disable Pacing Optimization */}
-        <Field
-          label="Enable Pacing Optimization"
-          hint="Turn pacing optimization on or off"
-        >
+        <Field label="Enable Pacing Optimization" hint="Turn pacing optimization on or off">
           <Switch
             checked={localSettings.enabled}
             onChange={(_, data) => handleEnabledChange(data.checked)}
@@ -175,27 +168,31 @@ export const PacingSettings: React.FC<PacingSettingsProps> = ({
 
         {/* Platform Selector */}
         <div className={styles.fieldGroup}>
-          <Field
-            label="Target Platform"
-            hint="Select the platform to optimize for"
-          >
+          <Field label="Target Platform" hint="Select the platform to optimize for">
             <Dropdown
               value={localSettings.targetPlatform}
               selectedOptions={[localSettings.targetPlatform]}
               onOptionSelect={(_, data) => handlePlatformChange(data.optionValue as string)}
               disabled={!localSettings.enabled}
             >
-              {platforms.map(platform => (
+              {platforms.map((platform) => (
                 <Option key={platform.name} value={platform.name}>
                   {`${platform.name} (${platform.recommendedPacing})`}
                 </Option>
               ))}
             </Dropdown>
           </Field>
-          {platforms.find(p => p.name === localSettings.targetPlatform) && (
+          {platforms.find((p) => p.name === localSettings.targetPlatform) && (
             <Caption1>
-              Optimal video length: {Math.floor(platforms.find(p => p.name === localSettings.targetPlatform)!.optimalVideoLength / 60)}m{' '}
-              {platforms.find(p => p.name === localSettings.targetPlatform)!.optimalVideoLength % 60}s
+              Optimal video length:{' '}
+              {Math.floor(
+                platforms.find((p) => p.name === localSettings.targetPlatform)!.optimalVideoLength /
+                  60
+              )}
+              m{' '}
+              {platforms.find((p) => p.name === localSettings.targetPlatform)!.optimalVideoLength %
+                60}
+              s
             </Caption1>
           )}
         </div>
@@ -219,8 +216,12 @@ export const PacingSettings: React.FC<PacingSettingsProps> = ({
           </Field>
           <Caption1>
             {localSettings.minConfidence >= 80 && 'Very high confidence - fewer suggestions'}
-            {localSettings.minConfidence >= 60 && localSettings.minConfidence < 80 && 'Balanced confidence level (recommended)'}
-            {localSettings.minConfidence >= 40 && localSettings.minConfidence < 60 && 'Lower confidence - more suggestions'}
+            {localSettings.minConfidence >= 60 &&
+              localSettings.minConfidence < 80 &&
+              'Balanced confidence level (recommended)'}
+            {localSettings.minConfidence >= 40 &&
+              localSettings.minConfidence < 60 &&
+              'Lower confidence - more suggestions'}
             {localSettings.minConfidence < 40 && 'Very low confidence - all suggestions included'}
           </Caption1>
         </div>
@@ -245,18 +246,10 @@ export const PacingSettings: React.FC<PacingSettingsProps> = ({
 
         {/* Action Buttons */}
         <div className={styles.actions}>
-          <Button
-            appearance="secondary"
-            icon={<ArrowReset24Regular />}
-            onClick={handleReset}
-          >
+          <Button appearance="secondary" icon={<ArrowReset24Regular />} onClick={handleReset}>
             Reset to Defaults
           </Button>
-          <Button
-            appearance="primary"
-            icon={<Save24Regular />}
-            onClick={onSave}
-          >
+          <Button appearance="primary" icon={<Save24Regular />} onClick={onSave}>
             Save Settings
           </Button>
         </div>

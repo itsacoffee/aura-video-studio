@@ -1,6 +1,6 @@
 /**
  * Service for managing first-run detection and onboarding completion status
- * 
+ *
  * This service manages the first-run flag in both localStorage (for immediate checks)
  * and backend database (for cross-device/reinstall scenarios).
  */
@@ -18,7 +18,7 @@ export interface FirstRunStatus {
 
 /**
  * Check if the user has completed the first-run wizard
- * 
+ *
  * Checks both localStorage (fast) and backend (persistent across devices/reinstalls)
  * Returns true if EITHER shows completion (optimistic approach)
  */
@@ -79,7 +79,7 @@ export function setLocalFirstRunStatus(completed: boolean): void {
  */
 export async function getBackendFirstRunStatus(): Promise<FirstRunStatus> {
   const response = await fetch(apiUrl('/api/settings/first-run'));
-  
+
   if (!response.ok) {
     if (response.status === 404) {
       // No status saved yet, treat as not completed
@@ -88,8 +88,7 @@ export async function getBackendFirstRunStatus(): Promise<FirstRunStatus> {
     throw new Error(`Failed to get first-run status: ${response.statusText}`);
   }
 
-  const data = await response.json();
-  return data;
+  return await response.json();
 }
 
 /**

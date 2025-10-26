@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -15,6 +14,7 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import { Info24Regular, Save24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({
@@ -207,7 +207,9 @@ export function OutputSettingsTab() {
         <Field label="Resolution Preset">
           <Dropdown
             value={resolutionPreset}
-            onOptionSelect={(_, data) => handlePresetChange(data.optionValue || '1080p (1920x1080)')}
+            onOptionSelect={(_, data) =>
+              handlePresetChange(data.optionValue || '1080p (1920x1080)')
+            }
             style={{ width: '100%' }}
           >
             {RESOLUTION_PRESETS.map((preset) => (
@@ -325,7 +327,10 @@ export function OutputSettingsTab() {
           />
         </Field>
 
-        <Field label={`Video Bitrate: ${defaultBitrate} kbps`} hint="Only used for constant bitrate mode">
+        <Field
+          label={`Video Bitrate: ${defaultBitrate} kbps`}
+          hint="Only used for constant bitrate mode"
+        >
           <Slider
             min={2000}
             max={50000}
@@ -405,10 +410,7 @@ export function OutputSettingsTab() {
         </Field>
 
         {enableLoudnessNorm && (
-          <Field
-            label={`Target LUFS: ${targetLUFS}`}
-            hint="YouTube recommendation: -14 LUFS"
-          >
+          <Field label={`Target LUFS: ${targetLUFS}`} hint="YouTube recommendation: -14 LUFS">
             <Slider
               min={-20}
               max={-10}
@@ -453,7 +455,12 @@ export function OutputSettingsTab() {
             }}
           />
           <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
-            Example output: {filenameTemplate.replace('{title}', 'MyVideo').replace('{date}', '2025-10-24').replace('{time}', '143530').replace('{resolution}', '1080p')}
+            Example output:{' '}
+            {filenameTemplate
+              .replace('{title}', 'MyVideo')
+              .replace('{date}', '2025-10-24')
+              .replace('{time}', '143530')
+              .replace('{resolution}', '1080p')}
           </Text>
         </Field>
 

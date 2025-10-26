@@ -3,6 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { TimelineClip } from '../../pages/VideoEditorPage';
+import { AppliedEffect } from '../../types/effects';
 import {
   AddClipCommand,
   DeleteClipCommand,
@@ -12,8 +14,6 @@ import {
   RemoveEffectCommand,
   UpdatePropertyCommand,
 } from '../clipCommands';
-import { TimelineClip } from '../../pages/VideoEditorPage';
-import { AppliedEffect } from '../../types/effects';
 
 describe('Clip Commands', () => {
   let clips: TimelineClip[];
@@ -80,7 +80,7 @@ describe('Clip Commands', () => {
 
       const command = new AddClipCommand(newClip, setClips);
       command.execute();
-      
+
       setClips.mockClear();
       command.undo();
 
@@ -342,7 +342,7 @@ describe('Clip Commands', () => {
 
       const command = new AddClipCommand(newClip, setClips);
       const timestamp = command.getTimestamp();
-      
+
       expect(timestamp).toBeInstanceOf(Date);
       expect(timestamp.getTime()).toBeLessThanOrEqual(Date.now());
     });

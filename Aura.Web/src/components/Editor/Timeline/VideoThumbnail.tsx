@@ -3,10 +3,10 @@
  * Uses FFmpeg to extract thumbnails from video files
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { makeStyles, tokens, Spinner } from '@fluentui/react-components';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { makeStyles, tokens, Spinner } from '@fluentui/react-components';
+import { useEffect, useRef, useState } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -123,10 +123,14 @@ export function VideoThumbnail({
 
         // Extract thumbnail at specified timestamp
         await ffmpeg.exec([
-          '-i', 'input.mp4',
-          '-ss', timestamp.toString(),
-          '-vframes', '1',
-          '-vf', `scale=${width}:${height}`,
+          '-i',
+          'input.mp4',
+          '-ss',
+          timestamp.toString(),
+          '-vframes',
+          '1',
+          '-vf',
+          `scale=${width}:${height}`,
           'thumbnail.jpg',
         ]);
 
@@ -158,9 +162,7 @@ export function VideoThumbnail({
   if (!videoPath) {
     return (
       <div className={styles.container}>
-        <div className={styles.placeholder}>
-          No Video
-        </div>
+        <div className={styles.placeholder}>No Video</div>
       </div>
     );
   }
@@ -175,16 +177,8 @@ export function VideoThumbnail({
           <Spinner size="small" label="Loading thumbnail..." />
         </div>
       )}
-      {error && !isLoading && (
-        <div className={styles.errorMessage}>
-          {error}
-        </div>
-      )}
-      {!thumbnailUrl && !isLoading && !error && (
-        <div className={styles.placeholder}>
-          📹
-        </div>
-      )}
+      {error && !isLoading && <div className={styles.errorMessage}>{error}</div>}
+      {!thumbnailUrl && !isLoading && !error && <div className={styles.placeholder}>📹</div>}
     </div>
   );
 }

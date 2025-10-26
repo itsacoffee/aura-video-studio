@@ -157,7 +157,7 @@ export async function getExportHistory(
   const params = new URLSearchParams();
   if (status) params.append('status', status);
   if (limit) params.append('limit', limit.toString());
-  
+
   const query = params.toString();
   return get<ExportHistoryItem[]>(`/api/export/history${query ? `?${query}` : ''}`);
 }

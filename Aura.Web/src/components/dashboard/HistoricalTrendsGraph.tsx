@@ -1,12 +1,5 @@
+import { Card, Title3, Body1, Body2, makeStyles, tokens } from '@fluentui/react-components';
 import React, { useEffect } from 'react';
-import {
-  Card,
-  Title3,
-  Body1,
-  Body2,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
 import { useQualityDashboardStore } from '../../state/qualityDashboard';
 
 const useStyles = makeStyles({
@@ -104,8 +97,7 @@ export const HistoricalTrendsGraph: React.FC = () => {
 
   // Create scale functions
   const xScale = (index: number) => (index / (dataPoints.length - 1)) * chartWidth;
-  const yScale = (score: number) =>
-    chartHeight - ((score - minScore) / scoreRange) * chartHeight;
+  const yScale = (score: number) => chartHeight - ((score - minScore) / scoreRange) * chartHeight;
 
   // Generate path data
   const pathData = dataPoints

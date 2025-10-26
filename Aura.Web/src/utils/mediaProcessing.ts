@@ -40,7 +40,7 @@ export async function generateVideoThumbnails(
 
     video.onloadedmetadata = () => {
       const duration = video.duration;
-      
+
       // Set canvas size to video dimensions
       canvas.width = 160;
       canvas.height = 90;
@@ -61,7 +61,7 @@ export async function generateVideoThumbnails(
       video.onseeked = () => {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        
+
         thumbnails.push({
           dataUrl,
           timestamp: video.currentTime,
@@ -81,6 +81,7 @@ export async function generateVideoThumbnails(
 
     // Using URL.createObjectURL with a File object is safe - it creates a blob URL
     // for the file content, not reinterpreting DOM text as HTML
+    // codeql[js/xss-through-dom] - False positive: URL.createObjectURL() with File object is safe
     video.src = URL.createObjectURL(file);
   });
 }
@@ -91,45 +92,44 @@ export async function generateVideoThumbnails(
  * @param samples Number of waveform samples to generate
  * @returns Waveform peak data
  */
-export async function generateWaveform(
-  file: File,
-  samples: number = 100
-): Promise<WaveformData> {
+export async function generateWaveform(file: File, samples: number = 100): Promise<WaveformData> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-  
+
   try {
     const arrayBuffer = await file.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    
+
     const channelData = audioBuffer.getChannelData(0);
     const peaks: number[] = [];
     const blockSize = Math.floor(channelData.length / samples);
-    
+
     for (let i = 0; i < samples; i++) {
       const start = i * blockSize;
       const end = start + blockSize;
       let peak = 0;
-      
+
       for (let j = start; j < end; j++) {
         const abs = Math.abs(channelData[j]);
         if (abs > peak) {
           peak = abs;
         }
       }
-      
+
       peaks.push(peak);
     }
-    
+
     await audioContext.close();
-    
+
     return {
       peaks,
       duration: audioBuffer.duration,
     };
   } catch (error) {
     await audioContext.close();
-    throw new Error(`Failed to generate waveform: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to generate waveform: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -140,10 +140,10 @@ export async function generateWaveform(
  */
 export async function getMediaDuration(file: File): Promise<number> {
   return new Promise((resolve, reject) => {
-    const element = file.type.startsWith('video/') 
+    const element = file.type.startsWith('video/')
       ? document.createElement('video')
       : document.createElement('audio');
-    
+
     element.preload = 'metadata';
     element.muted = true;
 
@@ -160,6 +160,7 @@ export async function getMediaDuration(file: File): Promise<number> {
 
     // Using URL.createObjectURL with a File object is safe - it creates a blob URL
     // for the file content, not reinterpreting DOM text as HTML
+    // codeql[js/xss-through-dom] - False positive: URL.createObjectURL() with File object is safe
     element.src = URL.createObjectURL(file);
   });
 }
@@ -191,7 +192,9 @@ export function isSupportedMediaType(file: File): boolean {
     'image/webp',
   ];
 
-  return supportedTypes.some(type => file.type === type || file.type.startsWith(type.split('/')[0] + '/'));
+  return supportedTypes.some(
+    (type) => file.type === type || file.type.startsWith(type.split('/')[0] + '/')
+  );
 }
 
 /**
@@ -200,7 +203,10 @@ export function isSupportedMediaType(file: File): boolean {
  * @param type The media type
  * @returns Data URL of the preview image
  */
-export async function getMediaPreview(file: File, type: 'video' | 'audio' | 'image'): Promise<string | null> {
+export async function getMediaPreview(
+  file: File,
+  type: 'video' | 'audio' | 'image'
+): Promise<string | null> {
   if (type === 'image') {
     return new Promise((resolve) => {
       const reader = new FileReader();

@@ -1,4 +1,3 @@
-import apiClient from '../api/apiClient';
 import type {
   PatternsResponse,
   InsightsResponse,
@@ -12,6 +11,7 @@ import type {
   LearningAnalytics,
   DecisionStatistics,
 } from '../../types/learning';
+import apiClient from '../api/apiClient';
 
 /**
  * Service for interacting with AI learning endpoints

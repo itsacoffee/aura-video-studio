@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -19,13 +18,10 @@ import {
   Warning20Filled,
   ArrowDownload20Regular,
 } from '@fluentui/react-icons';
-import type { PerStageProviderSelection } from '../../state/providers';
-import {
-  ScriptProviders,
-  TtsProviders,
-  VisualsProviders,
-} from '../../state/providers';
+import { useState, useEffect } from 'react';
 import { useEnginesStore } from '../../state/engines';
+import type { PerStageProviderSelection } from '../../state/providers';
+import { ScriptProviders, TtsProviders, VisualsProviders } from '../../state/providers';
 import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({

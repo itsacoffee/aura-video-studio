@@ -4,13 +4,13 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
+import * as pacingService from '../services/pacingService';
 import {
   PacingAnalysisRequest,
   PacingAnalysisResponse,
   PacingAnalysisState,
   ReanalyzeRequest,
 } from '../types/pacing';
-import * as pacingService from '../services/pacingService';
 
 interface UsePacingAnalysisReturn extends PacingAnalysisState {
   analyzePacing: (request: PacingAnalysisRequest) => Promise<void>;

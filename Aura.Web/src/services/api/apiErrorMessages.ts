@@ -18,7 +18,10 @@ export const HTTP_ERROR_MESSAGES: Record<number, ErrorMessage> = {
   400: {
     title: 'Invalid Request',
     message: 'The request contains invalid data. Please check your input and try again.',
-    actions: ['Verify all required fields are filled', 'Check that values are in the correct format'],
+    actions: [
+      'Verify all required fields are filled',
+      'Check that values are in the correct format',
+    ],
     severity: 'error',
   },
   401: {
@@ -125,7 +128,11 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
   E306: {
     title: 'Authentication Failed',
     message: 'Invalid API key or authentication token.',
-    actions: ['Check your API key configuration', 'Verify credentials are correct', 'Try logging in again'],
+    actions: [
+      'Check your API key configuration',
+      'Verify credentials are correct',
+      'Try logging in again',
+    ],
     severity: 'error',
   },
   AUTH_TOKEN_EXPIRED: {
@@ -205,7 +212,11 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
   E330: {
     title: 'Provider Not Configured',
     message: 'The required service provider is not configured.',
-    actions: ['Configure the provider in settings', 'Check API keys are set', 'Contact administrator'],
+    actions: [
+      'Configure the provider in settings',
+      'Check API keys are set',
+      'Contact administrator',
+    ],
     severity: 'error',
   },
   E331: {
@@ -217,7 +228,11 @@ export const APP_ERROR_MESSAGES: Record<string, ErrorMessage> = {
   E332: {
     title: 'Rate Limit Exceeded',
     message: 'You have exceeded the rate limit for this provider.',
-    actions: ['Wait before trying again', 'Upgrade your plan for higher limits', 'Use a different provider'],
+    actions: [
+      'Wait before trying again',
+      'Upgrade your plan for higher limits',
+      'Use a different provider',
+    ],
     severity: 'warning',
   },
 

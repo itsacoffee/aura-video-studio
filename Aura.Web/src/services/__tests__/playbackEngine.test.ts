@@ -13,10 +13,10 @@ describe('PlaybackEngine', () => {
     // Create mock video element
     mockVideo = document.createElement('video');
     mockVideo.src = 'test-video.mp4';
-    
+
     // Create mock canvas element
     mockCanvas = document.createElement('canvas');
-    
+
     // Mock video properties
     Object.defineProperty(mockVideo, 'duration', {
       value: 60,
@@ -170,7 +170,7 @@ describe('PlaybackEngine', () => {
 
     // Trigger state change by setting volume
     engine.setVolume(0.5);
-    
+
     expect(onStateChange).toHaveBeenCalled();
 
     engine.destroy();

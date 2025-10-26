@@ -4,7 +4,6 @@
  * Displays friendly error message with recovery options
  */
 
-import React, { useState, useEffect } from 'react';
 import {
   Button,
   Title1,
@@ -22,6 +21,7 @@ import {
   ChevronUp24Regular,
   DocumentSave24Regular,
 } from '@fluentui/react-icons';
+import React, { useState, useEffect } from 'react';
 import { autoSaveService } from '../../services/autoSaveService';
 import { loggingService } from '../../services/loggingService';
 

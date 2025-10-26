@@ -3,16 +3,9 @@
  * Advanced green screen / blue screen controls
  */
 
-import { useState } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Label,
-  Slider,
-  Button,
-  Card,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Label, Slider, Button, Card } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { AppliedEffect } from '../../types/effects';
 
 const useStyles = makeStyles({

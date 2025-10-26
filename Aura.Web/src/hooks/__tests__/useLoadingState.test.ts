@@ -2,8 +2,8 @@
  * Tests for useLoadingState hook
  */
 
-import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { useLoadingState, withLoadingState } from '../useLoadingState';
 
 describe('useLoadingState', () => {

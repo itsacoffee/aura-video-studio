@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../config/api';
 import {
   Card,
   CardHeader,
@@ -19,6 +17,8 @@ import {
   ArrowClockwise24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { apiUrl } from '../config/api';
 
 const useStyles = makeStyles({
   card: {

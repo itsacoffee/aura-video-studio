@@ -10,7 +10,7 @@ describe('useJobState - State Transitions and Guards', () => {
       progress: 0,
       message: '',
     });
-    
+
     // Clear console warnings
     vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
@@ -29,7 +29,7 @@ describe('useJobState - State Transitions and Guards', () => {
     it('should allow setting a job when idle', () => {
       const state = useJobState.getState();
       state.setJob('job-123');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.currentJobId).toBe('job-123');
       expect(updatedState.status).toBe('running');
@@ -39,13 +39,13 @@ describe('useJobState - State Transitions and Guards', () => {
 
     it('should prevent setting a job when another is already running', () => {
       const state = useJobState.getState();
-      
+
       // Start first job
       state.setJob('job-1');
-      
+
       // Try to start second job
       state.setJob('job-2');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.currentJobId).toBe('job-1'); // Should not change
       expect(console.warn).toHaveBeenCalledWith('Cannot start new job: a job is already running');
@@ -53,14 +53,14 @@ describe('useJobState - State Transitions and Guards', () => {
 
     it('should allow setting a new job after previous one completed', () => {
       const state = useJobState.getState();
-      
+
       // Complete first job
       state.setJob('job-1');
       state.setStatus('completed');
-      
+
       // Start new job
       state.setJob('job-2');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.currentJobId).toBe('job-2');
       expect(updatedState.status).toBe('running');
@@ -68,14 +68,14 @@ describe('useJobState - State Transitions and Guards', () => {
 
     it('should allow setting a new job after previous one failed', () => {
       const state = useJobState.getState();
-      
+
       // Fail first job
       state.setJob('job-1');
       state.setStatus('failed');
-      
+
       // Start new job
       state.setJob('job-2');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.currentJobId).toBe('job-2');
       expect(updatedState.status).toBe('running');
@@ -86,9 +86,9 @@ describe('useJobState - State Transitions and Guards', () => {
     it('should allow progress updates when job is running', () => {
       const state = useJobState.getState();
       state.setJob('job-1');
-      
+
       state.updateProgress(50, 'Processing...');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.progress).toBe(50);
       expect(updatedState.message).toBe('Processing...');
@@ -96,9 +96,9 @@ describe('useJobState - State Transitions and Guards', () => {
 
     it('should prevent progress updates when job is idle', () => {
       const state = useJobState.getState();
-      
+
       state.updateProgress(50, 'Processing...');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.progress).toBe(0); // Should not change
       expect(console.warn).toHaveBeenCalledWith('Cannot update progress: job is idle');
@@ -108,9 +108,9 @@ describe('useJobState - State Transitions and Guards', () => {
       const state = useJobState.getState();
       state.setJob('job-1');
       state.setStatus('completed');
-      
+
       state.updateProgress(75, 'Should not update');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.progress).toBe(0); // Should remain at initial value
       expect(console.warn).toHaveBeenCalledWith('Cannot update progress: job is completed');
@@ -121,7 +121,7 @@ describe('useJobState - State Transitions and Guards', () => {
     it('should allow transition from idle to running', () => {
       const state = useJobState.getState();
       state.setJob('job-1'); // This sets status to running
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.status).toBe('running');
     });
@@ -130,7 +130,7 @@ describe('useJobState - State Transitions and Guards', () => {
       const state = useJobState.getState();
       state.setJob('job-1');
       state.setStatus('completed');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.status).toBe('completed');
     });
@@ -139,7 +139,7 @@ describe('useJobState - State Transitions and Guards', () => {
       const state = useJobState.getState();
       state.setJob('job-1');
       state.setStatus('failed');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.status).toBe('failed');
     });
@@ -148,20 +148,22 @@ describe('useJobState - State Transitions and Guards', () => {
       const state = useJobState.getState();
       state.setJob('job-1');
       state.setStatus('completed');
-      
+
       // Try to set back to running
       state.setStatus('running');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.status).toBe('completed'); // Should not change
-      expect(console.warn).toHaveBeenCalledWith('Invalid state transition from completed to running');
+      expect(console.warn).toHaveBeenCalledWith(
+        'Invalid state transition from completed to running'
+      );
     });
 
     it('should prevent transition from idle to completed', () => {
       const state = useJobState.getState();
-      
+
       state.setStatus('completed');
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.status).toBe('idle'); // Should not change
       expect(console.warn).toHaveBeenCalledWith('Invalid state transition from idle to completed');
@@ -172,7 +174,7 @@ describe('useJobState - State Transitions and Guards', () => {
       state.setJob('job-1');
       state.setStatus('completed');
       state.clearJob();
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.status).toBe('idle');
       expect(updatedState.currentJobId).toBeNull();
@@ -185,7 +187,7 @@ describe('useJobState - State Transitions and Guards', () => {
       state.setJob('job-1');
       state.setStatus('completed');
       state.clearJob();
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.currentJobId).toBeNull();
       expect(updatedState.status).toBe('idle');
@@ -198,7 +200,7 @@ describe('useJobState - State Transitions and Guards', () => {
       state.setJob('job-1');
       state.setStatus('failed');
       state.clearJob();
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.status).toBe('idle');
     });
@@ -206,9 +208,9 @@ describe('useJobState - State Transitions and Guards', () => {
     it('should prevent clearing when job is running', () => {
       const state = useJobState.getState();
       state.setJob('job-1');
-      
+
       state.clearJob();
-      
+
       const updatedState = useJobState.getState();
       expect(updatedState.currentJobId).toBe('job-1'); // Should not change
       expect(updatedState.status).toBe('running'); // Should not change
@@ -246,34 +248,34 @@ describe('useJobState - State Transitions and Guards', () => {
   describe('Complete Job Flow', () => {
     it('should handle complete job lifecycle correctly', () => {
       let state = useJobState.getState();
-      
+
       // Start job
       expect(state.canStartNewJob()).toBe(true);
       state.setJob('job-1');
-      
+
       state = useJobState.getState();
       expect(state.status).toBe('running');
       expect(state.canStartNewJob()).toBe(false);
-      
+
       // Update progress
       state.updateProgress(25, 'Script generation');
       state = useJobState.getState();
       expect(state.progress).toBe(25);
-      
+
       state.updateProgress(50, 'Image generation');
       state = useJobState.getState();
       expect(state.progress).toBe(50);
-      
+
       state.updateProgress(75, 'Video composition');
       state = useJobState.getState();
       expect(state.progress).toBe(75);
-      
+
       // Complete job
       state.setStatus('completed');
       state = useJobState.getState();
       expect(state.status).toBe('completed');
       expect(state.canStartNewJob()).toBe(true);
-      
+
       // Clear job
       state.clearJob();
       state = useJobState.getState();
@@ -283,22 +285,22 @@ describe('useJobState - State Transitions and Guards', () => {
 
     it('should handle failed job lifecycle correctly', () => {
       let state = useJobState.getState();
-      
+
       // Start job
       state.setJob('job-1');
       state.updateProgress(25, 'Processing');
-      
+
       // Job fails
       state.setStatus('failed');
       state = useJobState.getState();
       expect(state.status).toBe('failed');
       expect(state.canStartNewJob()).toBe(true);
-      
+
       // Clear and retry
       state.clearJob();
       state = useJobState.getState();
       expect(state.status).toBe('idle');
-      
+
       // Start new job
       state.setJob('job-2');
       state = useJobState.getState();

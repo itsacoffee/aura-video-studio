@@ -1,6 +1,6 @@
 /**
  * Operation Queue Service
- * 
+ *
  * Manages queuing, prioritization, and execution of operations.
  * Provides logging and tracking for all operations.
  */
@@ -67,12 +67,11 @@ class OperationQueueService {
     this.operations.set(id, operation);
     this.logOperation(operation);
 
-    loggingService.info(
-      `Operation queued: ${name}`,
-      'operationQueueService',
-      'addOperation',
-      { id, priority, parameters }
-    );
+    loggingService.info(`Operation queued: ${name}`, 'operationQueueService', 'addOperation', {
+      id,
+      priority,
+      parameters,
+    });
 
     return id;
   }
@@ -83,11 +82,7 @@ class OperationQueueService {
   updateOperation(id: string, updates: Partial<QueuedOperation>): void {
     const operation = this.operations.get(id);
     if (!operation) {
-      loggingService.warn(
-        `Operation not found: ${id}`,
-        'operationQueueService',
-        'updateOperation'
-      );
+      loggingService.warn(`Operation not found: ${id}`, 'operationQueueService', 'updateOperation');
       return;
     }
 
@@ -134,8 +129,8 @@ class OperationQueueService {
       result,
     });
 
-    const duration = operation.startTime 
-      ? endTime.getTime() - operation.startTime.getTime() 
+    const duration = operation.startTime
+      ? endTime.getTime() - operation.startTime.getTime()
       : undefined;
 
     loggingService.info(
@@ -162,8 +157,8 @@ class OperationQueueService {
       error,
     });
 
-    const duration = operation.startTime 
-      ? endTime.getTime() - operation.startTime.getTime() 
+    const duration = operation.startTime
+      ? endTime.getTime() - operation.startTime.getTime()
       : undefined;
 
     loggingService.error(
@@ -208,8 +203,7 @@ class OperationQueueService {
    * Get all operations
    */
   getAllOperations(): QueuedOperation[] {
-    return Array.from(this.operations.values())
-      .sort((a, b) => b.priority - a.priority);
+    return Array.from(this.operations.values()).sort((a, b) => b.priority - a.priority);
   }
 
   /**
@@ -217,7 +211,7 @@ class OperationQueueService {
    */
   getQueuedOperations(): QueuedOperation[] {
     return Array.from(this.operations.values())
-      .filter(op => op.status === 'queued')
+      .filter((op) => op.status === 'queued')
       .sort((a, b) => b.priority - a.priority);
   }
 
@@ -225,8 +219,7 @@ class OperationQueueService {
    * Get running operations
    */
   getRunningOperations(): QueuedOperation[] {
-    return Array.from(this.operations.values())
-      .filter(op => op.status === 'running');
+    return Array.from(this.operations.values()).filter((op) => op.status === 'running');
   }
 
   /**
@@ -247,7 +240,7 @@ class OperationQueueService {
         toRemove.push(id);
       }
     });
-    toRemove.forEach(id => this.operations.delete(id));
+    toRemove.forEach((id) => this.operations.delete(id));
   }
 
   /**
@@ -263,11 +256,7 @@ class OperationQueueService {
   clearLog(): void {
     this.operationLog = [];
     this.saveLogToStorage();
-    loggingService.info(
-      'Operation log cleared',
-      'operationQueueService',
-      'clearLog'
-    );
+    loggingService.info('Operation log cleared', 'operationQueueService', 'clearLog');
   }
 
   /**
@@ -288,9 +277,10 @@ class OperationQueueService {
       name: operation.name,
       parameters: operation.parameters,
       status: operation.status,
-      duration: operation.startTime && operation.endTime
-        ? operation.endTime.getTime() - operation.startTime.getTime()
-        : undefined,
+      duration:
+        operation.startTime && operation.endTime
+          ? operation.endTime.getTime() - operation.startTime.getTime()
+          : undefined,
       result: operation.result,
       error: operation.error,
       metadata: operation.metadata,

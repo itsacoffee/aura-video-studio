@@ -3,15 +3,7 @@
  * Generate and render various particle effects
  */
 
-import { useState, useRef, useEffect } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Button,
-  Label,
-  Card,
-  Slider,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Button, Label, Card, Slider } from '@fluentui/react-components';
 import {
   Sparkle24Regular,
   WeatherSnow24Regular,
@@ -20,6 +12,7 @@ import {
   Stop24Regular,
   Checkmark24Regular,
 } from '@fluentui/react-icons';
+import { useState, useRef, useEffect } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -406,12 +399,7 @@ export function ParticleSystem({
         </div>
       </Card>
 
-      <canvas
-        ref={canvasRef}
-        width={canvasWidth}
-        height={canvasHeight}
-        className={styles.canvas}
-      />
+      <canvas ref={canvasRef} width={canvasWidth} height={canvasHeight} className={styles.canvas} />
 
       <Card>
         <div className={styles.controls}>

@@ -50,7 +50,11 @@ export const assetService = {
   /**
    * Upload asset to library
    */
-  async uploadAsset(file: File, type?: string, onProgress?: (progress: number) => void): Promise<Asset> {
+  async uploadAsset(
+    file: File,
+    type?: string,
+    onProgress?: (progress: number) => void
+  ): Promise<Asset> {
     const url = type ? `${API_BASE}/upload?type=${type}` : `${API_BASE}/upload`;
     return uploadFile<Asset>(url, file, onProgress);
   },

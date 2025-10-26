@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
 import { makeStyles, tokens, Tooltip } from '@fluentui/react-components';
-import { AppliedEffect } from '../../types/effects';
+import { useState, useRef, useCallback } from 'react';
 import { snapToFrame } from '../../services/timelineEngine';
+import { AppliedEffect } from '../../types/effects';
 
 const useStyles = makeStyles({
   clip: {
@@ -174,7 +174,7 @@ export function TimelineClip({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       onSelect();
-      
+
       setIsDragging(true);
       onDragStart?.();
 
@@ -249,7 +249,11 @@ export function TimelineClip({
           newDuration = snapToFrame(newDuration, frameRate);
         }
 
-        setTrimDelta(side === 'left' ? newStartTime - dragStartRef.current.startTime : newDuration - dragStartRef.current.duration);
+        setTrimDelta(
+          side === 'left'
+            ? newStartTime - dragStartRef.current.startTime
+            : newDuration - dragStartRef.current.duration
+        );
         onTrim(clip.id, newStartTime, newDuration);
       };
 
@@ -341,7 +345,13 @@ export function TimelineClip({
 
       {/* Trim preview tooltip */}
       {showTrimPreview && (
-        <div className={styles.trimPreview} style={{ left: isTrimming === 'left' ? 0 : 'auto', right: isTrimming === 'right' ? 0 : 'auto' }}>
+        <div
+          className={styles.trimPreview}
+          style={{
+            left: isTrimming === 'left' ? 0 : 'auto',
+            right: isTrimming === 'right' ? 0 : 'auto',
+          }}
+        >
           {formatTrimDelta(trimDelta)}
         </div>
       )}

@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -14,6 +13,7 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import { Save24Regular, FlashFlow24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({
@@ -61,7 +61,11 @@ const useStyles = makeStyles({
 
 const QUALITY_MODES = [
   { value: 'draft', label: 'Draft (Fastest)', description: 'Quick preview quality' },
-  { value: 'standard', label: 'Standard (Balanced)', description: 'Good quality, reasonable speed' },
+  {
+    value: 'standard',
+    label: 'Standard (Balanced)',
+    description: 'Good quality, reasonable speed',
+  },
   { value: 'high', label: 'High Quality', description: 'Better quality, slower render' },
   { value: 'maximum', label: 'Maximum Quality', description: 'Best quality, slowest render' },
 ];
@@ -177,7 +181,9 @@ export function PerformanceSettingsTab() {
       const response = await fetch('/api/hardware/benchmark', { method: 'POST' });
       if (response.ok) {
         const results = await response.json();
-        alert(`Benchmark completed!\n\nCPU Score: ${results.cpuScore}\nGPU Score: ${results.gpuScore}\nRecommended Quality Mode: ${results.recommendedMode}`);
+        alert(
+          `Benchmark completed!\n\nCPU Score: ${results.cpuScore}\nGPU Score: ${results.gpuScore}\nRecommended Quality Mode: ${results.recommendedMode}`
+        );
       }
     } catch (error) {
       console.error('Error running benchmark:', error);
@@ -189,7 +195,9 @@ export function PerformanceSettingsTab() {
     <Card className={styles.section}>
       <Title2>
         Performance Settings
-        <FlashFlow24Regular style={{ marginLeft: tokens.spacingHorizontalS, verticalAlign: 'middle' }} />
+        <FlashFlow24Regular
+          style={{ marginLeft: tokens.spacingHorizontalS, verticalAlign: 'middle' }}
+        />
       </Title2>
       <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
         Optimize rendering performance and resource usage
@@ -207,15 +215,17 @@ export function PerformanceSettingsTab() {
             <br />
             <Text size={200}>
               GPU: {detectedHardware.gpuName || 'Unknown'}
-              {detectedHardware.gpuVram && ` (${Math.floor(detectedHardware.gpuVram / 1024)} GB VRAM)`}
+              {detectedHardware.gpuVram &&
+                ` (${Math.floor(detectedHardware.gpuVram / 1024)} GB VRAM)`}
             </Text>
             <br />
-            <Text size={200}>
-              RAM: {detectedHardware.ramGb || 0} GB
-            </Text>
+            <Text size={200}>RAM: {detectedHardware.ramGb || 0} GB</Text>
             <br />
             <Text size={200}>
-              Tier: <Badge appearance="filled" color="brand">{detectedHardware.tier || 'Unknown'}</Badge>
+              Tier:{' '}
+              <Badge appearance="filled" color="brand">
+                {detectedHardware.tier || 'Unknown'}
+              </Badge>
             </Text>
           </div>
         </Card>
@@ -233,7 +243,11 @@ export function PerformanceSettingsTab() {
             style={{ width: '100%' }}
           >
             {QUALITY_MODES.map((mode) => (
-              <Option key={mode.value} value={mode.value} text={`${mode.label} - ${mode.description}`}>
+              <Option
+                key={mode.value}
+                value={mode.value}
+                text={`${mode.label} - ${mode.description}`}
+              >
                 {mode.label} - {mode.description}
               </Option>
             ))}
@@ -254,7 +268,8 @@ export function PerformanceSettingsTab() {
             }}
           />
           <Text size={200}>
-            {enableHardwareAccel ? 'Enabled' : 'Disabled'} - Use GPU/hardware encoders for faster rendering
+            {enableHardwareAccel ? 'Enabled' : 'Disabled'} - Use GPU/hardware encoders for faster
+            rendering
           </Text>
         </Field>
 
@@ -356,7 +371,8 @@ export function PerformanceSettingsTab() {
             }}
           />
           <Text size={200}>
-            {enableBackgroundRendering ? 'Enabled' : 'Disabled'} - Continue rendering when window is minimized
+            {enableBackgroundRendering ? 'Enabled' : 'Disabled'} - Continue rendering when window is
+            minimized
           </Text>
         </Field>
 
@@ -369,7 +385,8 @@ export function PerformanceSettingsTab() {
             }}
           />
           <Text size={200}>
-            {autoPauseOnBattery ? 'Enabled' : 'Disabled'} - Pause rendering when on battery power (laptops)
+            {autoPauseOnBattery ? 'Enabled' : 'Disabled'} - Pause rendering when on battery power
+            (laptops)
           </Text>
         </Field>
 
@@ -387,7 +404,8 @@ export function PerformanceSettingsTab() {
             }}
           />
           <Text size={200}>
-            {enableProxyGeneration ? 'Enabled' : 'Disabled'} - Generate lower-res proxies for 4K/8K footage
+            {enableProxyGeneration ? 'Enabled' : 'Disabled'} - Generate lower-res proxies for 4K/8K
+            footage
           </Text>
         </Field>
 
@@ -418,7 +436,8 @@ export function PerformanceSettingsTab() {
             }}
           />
           <Text size={200}>
-            {enablePreviewCache ? 'Enabled' : 'Disabled'} - Cache rendered previews for smoother playback
+            {enablePreviewCache ? 'Enabled' : 'Disabled'} - Cache rendered previews for smoother
+            playback
           </Text>
         </Field>
 
@@ -447,7 +466,8 @@ export function PerformanceSettingsTab() {
 
         <Card className={styles.infoCard}>
           <Text size={200}>
-            Run a benchmark to test your system's rendering performance and get recommendations for optimal settings.
+            Run a benchmark to test your system&apos;s rendering performance and get recommendations
+            for optimal settings.
           </Text>
           <Button
             appearance="secondary"

@@ -33,9 +33,7 @@ describe('EnumNormalizer', () => {
 
     it('should default to Widescreen16x9 for unknown values', () => {
       expect(normalizeAspect('unknown')).toBe('Widescreen16x9');
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Unknown aspect value')
-      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown aspect value'));
     });
   });
 
@@ -43,9 +41,7 @@ describe('EnumNormalizer', () => {
     it('should normalize legacy "Normal" to "Balanced"', () => {
       expect(normalizeDensity('Normal')).toBe('Balanced');
       expect(normalizeDensity('normal')).toBe('Balanced');
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('deprecated')
-      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('deprecated'));
     });
 
     it('should preserve canonical density values', () => {
@@ -60,9 +56,7 @@ describe('EnumNormalizer', () => {
 
     it('should default to Balanced for unknown values', () => {
       expect(normalizeDensity('unknown')).toBe('Balanced');
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Unknown density value')
-      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown density value'));
     });
   });
 
@@ -70,31 +64,27 @@ describe('EnumNormalizer', () => {
     it('should warn about legacy aspect ratios', () => {
       const brief = { aspect: '16:9' as const };
       const planSpec = {};
-      
+
       validateAndWarnEnums(brief, planSpec);
-      
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('legacy format')
-      );
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('legacy format'));
     });
 
     it('should warn about deprecated density', () => {
       const brief = {};
       const planSpec = { density: 'Normal' as any };
-      
+
       validateAndWarnEnums(brief, planSpec);
-      
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('deprecated')
-      );
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('deprecated'));
     });
 
     it('should not warn for canonical values', () => {
       const brief = { aspect: 'Widescreen16x9' as const };
       const planSpec = { density: 'Balanced' as const };
-      
+
       validateAndWarnEnums(brief, planSpec);
-      
+
       expect(consoleWarnSpy).not.toHaveBeenCalled();
     });
 
@@ -106,12 +96,10 @@ describe('EnumNormalizer', () => {
     it('should handle case sensitivity for density', () => {
       const brief = {};
       const planSpec = { density: 'NORMAL' as any };
-      
+
       validateAndWarnEnums(brief, planSpec);
-      
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('deprecated')
-      );
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('deprecated'));
     });
   });
 
@@ -119,9 +107,9 @@ describe('EnumNormalizer', () => {
     it('should normalize both aspect and density', () => {
       const brief = { aspect: '16:9' as const, topic: 'Test' };
       const planSpec = { density: 'Normal' as any, pacing: 'Fast' as const };
-      
+
       const result = normalizeEnumsForApi(brief, planSpec);
-      
+
       expect(result.brief.aspect).toBe('Widescreen16x9');
       expect(result.planSpec.density).toBe('Balanced');
       expect(result.brief.topic).toBe('Test');
@@ -131,9 +119,9 @@ describe('EnumNormalizer', () => {
     it('should preserve canonical values', () => {
       const brief = { aspect: 'Widescreen16x9' as const };
       const planSpec = { density: 'Balanced' as const };
-      
+
       const result = normalizeEnumsForApi(brief, planSpec);
-      
+
       expect(result.brief.aspect).toBe('Widescreen16x9');
       expect(result.planSpec.density).toBe('Balanced');
     });
@@ -141,9 +129,9 @@ describe('EnumNormalizer', () => {
     it('should handle missing values', () => {
       const brief = {};
       const planSpec = {};
-      
+
       const result = normalizeEnumsForApi(brief, planSpec);
-      
+
       expect(result.brief.aspect).toBeUndefined();
       expect(result.planSpec.density).toBeUndefined();
     });
@@ -151,9 +139,9 @@ describe('EnumNormalizer', () => {
     it('should not mutate original objects', () => {
       const brief = { aspect: '16:9' as const, topic: 'Test' };
       const planSpec = { density: 'Normal' as any };
-      
+
       normalizeEnumsForApi(brief, planSpec);
-      
+
       expect(brief.aspect).toBe('16:9');
       expect(planSpec.density).toBe('Normal');
     });

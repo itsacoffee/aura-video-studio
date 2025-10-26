@@ -1,8 +1,8 @@
-import { ReactNode, useState, useEffect } from 'react';
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { MenuBar } from '../MenuBar/MenuBar';
-import { TopMenuBar } from '../Layout/TopMenuBar';
+import { ReactNode, useState, useEffect } from 'react';
 import { snapToBreakpoint } from '../../services/workspaceLayoutService';
+import { TopMenuBar } from '../Layout/TopMenuBar';
+import { MenuBar } from '../MenuBar/MenuBar';
 
 const useStyles = makeStyles({
   container: {
@@ -181,7 +181,7 @@ export function EditorLayout({
   useTopMenuBar = false,
 }: EditorLayoutProps) {
   const styles = useStyles();
-  const [propertiesWidth, setPropertiesWidth] = useState(() => 
+  const [propertiesWidth, setPropertiesWidth] = useState(() =>
     loadPanelSize(STORAGE_KEYS.propertiesWidth, 320)
   );
   const [mediaLibraryWidth, setMediaLibraryWidth] = useState(() =>
@@ -383,10 +383,10 @@ export function EditorLayout({
             </div>
             {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
-            <div 
-              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`} 
-              onMouseDown={handleMediaLibraryResize} 
-              role="separator" 
+            <div
+              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`}
+              onMouseDown={handleMediaLibraryResize}
+              role="separator"
               aria-orientation="vertical"
               aria-label="Resize media library panel"
               tabIndex={0}
@@ -394,11 +394,17 @@ export function EditorLayout({
                 if (e.key === 'ArrowLeft') {
                   e.preventDefault();
                   setMediaLibraryWidth((prev) => Math.max(240, prev - 10));
-                  savePanelSize(STORAGE_KEYS.mediaLibraryWidth, Math.max(240, mediaLibraryWidth - 10));
+                  savePanelSize(
+                    STORAGE_KEYS.mediaLibraryWidth,
+                    Math.max(240, mediaLibraryWidth - 10)
+                  );
                 } else if (e.key === 'ArrowRight') {
                   e.preventDefault();
                   setMediaLibraryWidth((prev) => Math.min(350, prev + 10));
-                  savePanelSize(STORAGE_KEYS.mediaLibraryWidth, Math.min(350, mediaLibraryWidth + 10));
+                  savePanelSize(
+                    STORAGE_KEYS.mediaLibraryWidth,
+                    Math.min(350, mediaLibraryWidth + 10)
+                  );
                 }
               }}
             />
@@ -406,15 +412,18 @@ export function EditorLayout({
         )}
         {effects && (
           <>
-            <div className={styles.effectsLibraryPanel} style={{ width: `${effectsLibraryWidth}px` }}>
+            <div
+              className={styles.effectsLibraryPanel}
+              style={{ width: `${effectsLibraryWidth}px` }}
+            >
               {effects}
             </div>
             {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
-            <div 
-              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`} 
-              onMouseDown={handleEffectsLibraryResize} 
-              role="separator" 
+            <div
+              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`}
+              onMouseDown={handleEffectsLibraryResize}
+              role="separator"
               aria-orientation="vertical"
               aria-label="Resize effects library panel"
               tabIndex={0}
@@ -422,11 +431,17 @@ export function EditorLayout({
                 if (e.key === 'ArrowLeft') {
                   e.preventDefault();
                   setEffectsLibraryWidth((prev) => Math.max(240, prev - 10));
-                  savePanelSize(STORAGE_KEYS.effectsLibraryWidth, Math.max(240, effectsLibraryWidth - 10));
+                  savePanelSize(
+                    STORAGE_KEYS.effectsLibraryWidth,
+                    Math.max(240, effectsLibraryWidth - 10)
+                  );
                 } else if (e.key === 'ArrowRight') {
                   e.preventDefault();
                   setEffectsLibraryWidth((prev) => Math.min(350, prev + 10));
-                  savePanelSize(STORAGE_KEYS.effectsLibraryWidth, Math.min(350, effectsLibraryWidth + 10));
+                  savePanelSize(
+                    STORAGE_KEYS.effectsLibraryWidth,
+                    Math.min(350, effectsLibraryWidth + 10)
+                  );
                 }
               }}
             />
@@ -438,10 +453,10 @@ export function EditorLayout({
           </div>
           {/* Interactive resizer - intentionally uses mouse and keyboard events */}
           {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
-          <div 
-            className={`${styles.horizontalResizer} ${isDraggingVertical ? styles.horizontalResizerDragging : ''}`} 
-            onMouseDown={handlePreviewResize} 
-            role="separator" 
+          <div
+            className={`${styles.horizontalResizer} ${isDraggingVertical ? styles.horizontalResizerDragging : ''}`}
+            onMouseDown={handlePreviewResize}
+            role="separator"
             aria-orientation="horizontal"
             aria-label="Resize preview panel"
             tabIndex={0}
@@ -465,10 +480,10 @@ export function EditorLayout({
           <>
             {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
-            <div 
-              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`} 
-              onMouseDown={handlePropertiesResize} 
-              role="separator" 
+            <div
+              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`}
+              onMouseDown={handlePropertiesResize}
+              role="separator"
               aria-orientation="vertical"
               aria-label="Resize properties panel"
               tabIndex={0}
@@ -493,10 +508,10 @@ export function EditorLayout({
           <>
             {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
-            <div 
-              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`} 
-              onMouseDown={handleHistoryResize} 
-              role="separator" 
+            <div
+              className={`${styles.resizer} ${isDraggingHorizontal ? styles.resizerDragging : ''}`}
+              onMouseDown={handleHistoryResize}
+              role="separator"
               aria-orientation="vertical"
               aria-label="Resize history panel"
               tabIndex={0}

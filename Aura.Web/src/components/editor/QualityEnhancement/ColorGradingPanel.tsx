@@ -3,7 +3,6 @@
  * UI for mood-based color grading and time-of-day detection
  */
 
-import React, { useState } from 'react';
 import {
   Card,
   makeStyles,
@@ -19,6 +18,7 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import { Color24Regular, CheckmarkCircle24Regular } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 import {
   visualAnalysisService,
   ColorMood,

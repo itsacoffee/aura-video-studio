@@ -1,18 +1,10 @@
-import { useState } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Title2,
-  Title3,
-  Text,
-  Button,
-  Card,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Title2, Title3, Text, Button, Card } from '@fluentui/react-components';
 import {
   ChevronRight24Regular,
   ChevronLeft24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useStyles = makeStyles({
   overlay: {
@@ -48,11 +40,11 @@ const useStyles = makeStyles({
     animation: 'slideIn 0.4s ease-out',
   },
   '@keyframes slideIn': {
-    from: { 
+    from: {
       opacity: 0,
       transform: 'translateY(20px)',
     },
-    to: { 
+    to: {
       opacity: 1,
       transform: 'translateY(0)',
     },
@@ -190,8 +182,8 @@ export function QuickTutorial({ steps, onComplete, onSkip }: QuickTutorialProps)
   }
 
   return (
-    <div 
-      className={styles.overlay} 
+    <div
+      className={styles.overlay}
       onClick={onSkip}
       onKeyDown={handleKeyDown}
       role="dialog"
@@ -270,11 +262,7 @@ export function QuickTutorial({ steps, onComplete, onSkip }: QuickTutorialProps)
 
             <div className={styles.buttonGroup}>
               {currentStep > 0 && (
-                <Button
-                  appearance="secondary"
-                  icon={<ChevronLeft24Regular />}
-                  onClick={handleBack}
-                >
+                <Button appearance="secondary" icon={<ChevronLeft24Regular />} onClick={handleBack}>
                   Back
                 </Button>
               )}

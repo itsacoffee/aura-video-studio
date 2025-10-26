@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../../config/api';
 import { Card, Button, Text, makeStyles, tokens, Spinner } from '@fluentui/react-components';
 import { Folder24Regular, Globe24Regular, Copy24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
@@ -154,8 +154,8 @@ export function FileLocationsSummary() {
           📂 Where are my files?
         </Text>
         <Text style={{ marginBottom: tokens.spacingVerticalL }}>
-          Here&apos;s where Aura stores your installed engines and tools. You can open these folders to
-          add models, configure settings, or access generated files.
+          Here&apos;s where Aura stores your installed engines and tools. You can open these folders
+          to add models, configure settings, or access generated files.
         </Text>
 
         {engines.map((engine) => (

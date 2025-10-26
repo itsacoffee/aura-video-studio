@@ -100,15 +100,20 @@ export function ProgressIndicator({
   const effectiveAriaLabel = ariaLabel || `${title} - ${progressValue}% complete`;
 
   return (
-    <div className={styles.container} role="status" aria-label={effectiveAriaLabel} aria-live="polite">
+    <div
+      className={styles.container}
+      role="status"
+      aria-label={effectiveAriaLabel}
+      aria-live="polite"
+    >
       <div className={styles.header}>
         <Text className={styles.title}>{title}</Text>
         {showPercentage && <Text className={styles.percentage}>{progressValue}%</Text>}
       </div>
-      
+
       <div className={styles.progressBarContainer}>
-        <ProgressBar 
-          value={progressValue} 
+        <ProgressBar
+          value={progressValue}
           max={100}
           thickness="large"
           aria-label={effectiveAriaLabel}
@@ -118,11 +123,13 @@ export function ProgressIndicator({
       {(status || (showTimeRemaining && estimatedTimeRemaining !== undefined)) && (
         <div className={styles.details}>
           {status && <Text className={styles.statusText}>{status}</Text>}
-          {showTimeRemaining && estimatedTimeRemaining !== undefined && estimatedTimeRemaining > 0 && (
-            <Text className={styles.detailText}>
-              {formatTime(estimatedTimeRemaining)} remaining
-            </Text>
-          )}
+          {showTimeRemaining &&
+            estimatedTimeRemaining !== undefined &&
+            estimatedTimeRemaining > 0 && (
+              <Text className={styles.detailText}>
+                {formatTime(estimatedTimeRemaining)} remaining
+              </Text>
+            )}
         </div>
       )}
     </div>

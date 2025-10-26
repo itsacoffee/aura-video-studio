@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -11,6 +10,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { PeopleRegular } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 import { contentPlanningService, AudienceInsight } from '../../services/contentPlanningService';
 
 const useStyles = makeStyles({
@@ -137,10 +137,7 @@ export const AudienceInsightPanel: React.FC = () => {
     }
   };
 
-  const renderDistributionChart = (
-    title: string,
-    data: Record<string, number>
-  ) => {
+  const renderDistributionChart = (title: string, data: Record<string, number>) => {
     const sortedData = Object.entries(data).sort((a, b) => b[1] - a[1]);
     return (
       <Card className={styles.sectionCard}>
@@ -151,13 +148,8 @@ export const AudienceInsightPanel: React.FC = () => {
               <div key={label} className={styles.barRow}>
                 <div className={styles.barLabel}>{label}</div>
                 <div className={styles.barTrack}>
-                  <div
-                    className={styles.barFill}
-                    style={{ width: `${value * 100}%` }}
-                  >
-                    <span className={styles.barValue}>
-                      {(value * 100).toFixed(0)}%
-                    </span>
+                  <div className={styles.barFill} style={{ width: `${value * 100}%` }}>
+                    <span className={styles.barValue}>{(value * 100).toFixed(0)}%</span>
                   </div>
                 </div>
               </div>

@@ -3,7 +3,6 @@
  * UI for analyzing visual coherence across scenes
  */
 
-import React, { useState } from 'react';
 import {
   Card,
   makeStyles,
@@ -17,6 +16,7 @@ import {
   ProgressBar,
 } from '@fluentui/react-components';
 import { Video24Regular, CheckmarkCircle24Regular, Warning24Regular } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 import {
   visualAnalysisService,
   type VisualCoherenceReport,

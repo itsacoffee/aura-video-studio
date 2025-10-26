@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -17,6 +16,7 @@ import {
   Pause24Regular,
   ArrowRepeatAll24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -91,7 +91,7 @@ interface ExportJob {
 
 export function ExportQueueManager() {
   const styles = useStyles();
-  
+
   // Mock data - in real implementation, this would come from API/state
   const [jobs, setJobs] = useState<ExportJob[]>([
     {
@@ -119,17 +119,13 @@ export function ExportQueueManager() {
 
   const handlePause = (jobId: string) => {
     setJobs((prev) =>
-      prev.map((job) =>
-        job.id === jobId ? { ...job, status: 'paused' as const } : job
-      )
+      prev.map((job) => (job.id === jobId ? { ...job, status: 'paused' as const } : job))
     );
   };
 
   const handleResume = (jobId: string) => {
     setJobs((prev) =>
-      prev.map((job) =>
-        job.id === jobId ? { ...job, status: 'processing' as const } : job
-      )
+      prev.map((job) => (job.id === jobId ? { ...job, status: 'processing' as const } : job))
     );
   };
 
@@ -180,9 +176,7 @@ export function ExportQueueManager() {
       <div className={styles.emptyState}>
         <Clock24Regular style={{ fontSize: '48px' }} />
         <Body1>No export jobs in queue</Body1>
-        <Caption1>
-          Export jobs will appear here when you add them to the queue
-        </Caption1>
+        <Caption1>Export jobs will appear here when you add them to the queue</Caption1>
       </div>
     );
   }
@@ -198,11 +192,7 @@ export function ExportQueueManager() {
                 <Body1>{job.platform}</Body1>
               </div>
               <Caption1>{job.fileName}</Caption1>
-              <Badge
-                size="small"
-                appearance="tint"
-                color={getStatusColor(job.status)}
-              >
+              <Badge size="small" appearance="tint" color={getStatusColor(job.status)}>
                 {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
               </Badge>
             </div>

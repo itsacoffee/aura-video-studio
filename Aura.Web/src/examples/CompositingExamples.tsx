@@ -1,18 +1,18 @@
 /**
  * Example: Integrating Chroma Key and Compositing Features
- * 
+ *
  * This file demonstrates how to integrate the new chroma key and compositing
  * features into your video editor workflow.
  */
 
 import { useState, useEffect } from 'react';
 import { CompositingPanel } from '../components/Compositing/CompositingPanel';
-import { AppliedEffect } from '../types/effects';
 import { motionTracker } from '../services/motionTrackingService';
+import { AppliedEffect } from '../types/effects';
 
 /**
  * Example 1: Basic Chroma Key Usage
- * 
+ *
  * This shows how to add a chroma key effect to a video clip
  */
 export function BasicChromaKeyExample() {
@@ -54,12 +54,12 @@ export function BasicChromaKeyExample() {
 
 /**
  * Example 2: Multi-Layer Compositing
- * 
+ *
  * This shows how to composite multiple video layers with different blend modes
  */
 export function MultiLayerCompositingExample() {
   // Example: Composite a keyed foreground over a background
-  
+
   const foregroundEffect: AppliedEffect = {
     id: 'fg-chroma',
     effectType: 'chroma-key',
@@ -90,17 +90,17 @@ export function MultiLayerCompositingExample() {
   // 1. Apply chroma key to foreground
   // 2. Render background layer
   // 3. Composite foreground over background using blend mode
-  
+
   // Suppress unused variable warnings for example code
   void foregroundEffect;
   void blendEffect;
-  
+
   return <div>Multi-layer compositing example</div>;
 }
 
 /**
  * Example 3: Motion Tracking Integration
- * 
+ *
  * This shows how to track a point and use it to position graphics
  */
 export function MotionTrackingExample() {
@@ -111,14 +111,14 @@ export function MotionTrackingExample() {
       // Start tracking at current frame
       const canvas = document.querySelector('canvas'); // Your video canvas
       const ctx = canvas?.getContext('2d');
-      
+
       if (ctx && canvas) {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const currentTime = 0; // Get from video player
-        
+
         // Track the point
         const tracked = motionTracker.trackFrame('point-1', imageData, currentTime);
-        
+
         if (tracked) {
           // eslint-disable-next-line no-console
           console.log('Tracked position:', tracked.x, tracked.y);
@@ -138,7 +138,7 @@ export function MotionTrackingExample() {
 
 /**
  * Example 4: Complete Green Screen Workflow
- * 
+ *
  * This demonstrates a complete workflow from keying to final composite
  */
 export function CompleteGreenScreenWorkflow() {
@@ -191,21 +191,19 @@ export function CompleteGreenScreenWorkflow() {
     <div>
       <h2>{currentStep.title}</h2>
       <p>{currentStep.description}</p>
-      <button onClick={currentStep.action}>
-        {step === 'done' ? 'Export' : 'Next Step'}
-      </button>
+      <button onClick={currentStep.action}>{step === 'done' ? 'Export' : 'Next Step'}</button>
     </div>
   );
 }
 
 /**
  * Example 5: Applying Effects to Timeline Clips
- * 
+ *
  * This shows how to apply chroma key effects to timeline clips
  */
 export function ApplyEffectToTimelineClip() {
   // In your timeline component:
-  
+
   const addChromaKeyToClip = (clipId: string) => {
     const chromaKeyEffect: AppliedEffect = {
       id: `chroma-${clipId}`,
@@ -228,16 +226,12 @@ export function ApplyEffectToTimelineClip() {
     void chromaKeyEffect; // Suppress unused variable warning
   };
 
-  return (
-    <button onClick={() => addChromaKeyToClip('clip-1')}>
-      Add Chroma Key to Clip
-    </button>
-  );
+  return <button onClick={() => addChromaKeyToClip('clip-1')}>Add Chroma Key to Clip</button>;
 }
 
 /**
  * Example 6: Using Green Screen Presets
- * 
+ *
  * This shows how to quickly apply preset configurations
  */
 export function GreenScreenPresetsExample() {
@@ -288,7 +282,7 @@ export function GreenScreenPresetsExample() {
     const preset = presets[presetType];
     // eslint-disable-next-line no-console
     console.log('Applying preset:', presetType, preset);
-    
+
     // Apply preset parameters to your effect
   };
 

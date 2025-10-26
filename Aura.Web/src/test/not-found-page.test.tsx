@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { describe, it, expect } from 'vitest';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 describe('NotFoundPage', () => {

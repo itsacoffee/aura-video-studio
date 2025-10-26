@@ -1,16 +1,5 @@
-import {
-  makeStyles,
-  tokens,
-  Title1,
-  Title3,
-  Text,
-  Card,
-} from '@fluentui/react-components';
-import { 
-  VideoClip24Regular, 
-  Sparkle24Regular, 
-  Clock24Regular 
-} from '@fluentui/react-icons';
+import { makeStyles, tokens, Title1, Title3, Text, Card } from '@fluentui/react-components';
+import { VideoClip24Regular, Sparkle24Regular, Clock24Regular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   container: {
@@ -99,8 +88,8 @@ export function WelcomeStep() {
       <div>
         <Title1 className={styles.title}>Welcome to Aura Video Studio!</Title1>
         <Text className={styles.subtitle} size={400}>
-          Your all-in-one platform for creating professional videos with the power of AI. 
-          Let&apos;s get you set up in just a few steps.
+          Your all-in-one platform for creating professional videos with the power of AI. Let&apos;s
+          get you set up in just a few steps.
         </Text>
       </div>
 

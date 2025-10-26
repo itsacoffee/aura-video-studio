@@ -3,18 +3,9 @@
  * Professional status bar showing project information and system stats
  */
 
+import { makeStyles, tokens, Text, Button, Tooltip } from '@fluentui/react-components';
+import { ChevronUp20Regular, ChevronDown20Regular } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Button,
-  Tooltip,
-} from '@fluentui/react-components';
-import {
-  ChevronUp20Regular,
-  ChevronDown20Regular,
-} from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   footer: {
@@ -147,21 +138,21 @@ export function StatusFooter({
               <div className={styles.separator} />
             </>
           )}
-          
+
           <div className={styles.infoItem}>
             <Text className={styles.label}>Resolution:&nbsp;</Text>
             <Text className={styles.value}>{resolution}</Text>
           </div>
-          
+
           <div className={styles.separator} />
-          
+
           <div className={styles.infoItem}>
             <Text className={styles.label}>FPS:&nbsp;</Text>
             <Text className={styles.value}>{frameRate}</Text>
           </div>
-          
+
           <div className={styles.separator} />
-          
+
           <div className={styles.infoItem}>
             <Text className={styles.label}>Timecode:&nbsp;</Text>
             <Text className={styles.value}>{timecode}</Text>
@@ -177,10 +168,7 @@ export function StatusFooter({
       </div>
 
       {/* Toggle button - always visible */}
-      <Tooltip
-        content={visible ? 'Hide Status Bar' : 'Show Status Bar'}
-        relationship="label"
-      >
+      <Tooltip content={visible ? 'Hide Status Bar' : 'Show Status Bar'} relationship="label">
         <Button
           appearance="subtle"
           className={styles.toggleButton}

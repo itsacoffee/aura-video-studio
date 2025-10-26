@@ -1,4 +1,11 @@
-import type { Brief, PlanSpec, VoiceSpec, BrandKitConfig, CaptionsConfig, StockSourcesConfig } from '../../types';
+import type {
+  Brief,
+  PlanSpec,
+  VoiceSpec,
+  BrandKitConfig,
+  CaptionsConfig,
+  StockSourcesConfig,
+} from '../../types';
 
 /**
  * Test data factory for creating Brief objects
@@ -76,7 +83,9 @@ export function createMockCaptionsConfig(overrides?: Partial<CaptionsConfig>): C
 /**
  * Test data factory for creating StockSourcesConfig objects
  */
-export function createMockStockSourcesConfig(overrides?: Partial<StockSourcesConfig>): StockSourcesConfig {
+export function createMockStockSourcesConfig(
+  overrides?: Partial<StockSourcesConfig>
+): StockSourcesConfig {
   return {
     enablePexels: true,
     enablePixabay: false,

@@ -1,4 +1,3 @@
-import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -15,11 +14,8 @@ import {
   AccordionHeader,
   AccordionPanel,
 } from '@fluentui/react-components';
-import {
-  Dismiss24Regular,
-  Search24Regular,
-  Keyboard24Regular,
-} from '@fluentui/react-icons';
+import { Dismiss24Regular, Search24Regular, Keyboard24Regular } from '@fluentui/react-icons';
+import { useState, useMemo } from 'react';
 import { keyboardShortcutManager } from '../../services/keyboardShortcutManager';
 
 const useStyles = makeStyles({
@@ -107,15 +103,15 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
 
     const query = searchQuery.toLowerCase();
     return allGroups
-      .map(group => ({
+      .map((group) => ({
         ...group,
         shortcuts: group.shortcuts.filter(
-          shortcut =>
+          (shortcut) =>
             shortcut.description.toLowerCase().includes(query) ||
             shortcut.keys.toLowerCase().includes(query)
         ),
       }))
-      .filter(group => group.shortcuts.length > 0);
+      .filter((group) => group.shortcuts.length > 0);
   }, [allGroups, searchQuery]);
 
   const totalShortcuts = allGroups.reduce((sum, group) => sum + group.shortcuts.length, 0);
@@ -154,8 +150,8 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
               <Text size={200}>Try a different search term</Text>
             </div>
           ) : (
-            <Accordion multiple collapsible defaultOpenItems={filteredGroups.map(g => g.context)}>
-              {filteredGroups.map(group => (
+            <Accordion multiple collapsible defaultOpenItems={filteredGroups.map((g) => g.context)}>
+              {filteredGroups.map((group) => (
                 <AccordionItem key={group.context} value={group.context}>
                   <AccordionHeader className={styles.accordionHeader}>
                     {group.name}
@@ -167,9 +163,7 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
                     <div className={styles.shortcutList}>
                       {group.shortcuts.map((shortcut, index) => (
                         <div key={`${shortcut.id}-${index}`} className={styles.shortcutItem}>
-                          <Text className={styles.shortcutDescription}>
-                            {shortcut.description}
-                          </Text>
+                          <Text className={styles.shortcutDescription}>{shortcut.description}</Text>
                           <Text className={styles.shortcutKey}>{shortcut.keys}</Text>
                         </div>
                       ))}
@@ -180,8 +174,12 @@ export function KeyboardShortcutsPanel({ isOpen, onClose }: KeyboardShortcutsPan
             </Accordion>
           )}
 
-          <Text size={200} style={{ marginTop: tokens.spacingVerticalL, color: tokens.colorNeutralForeground3 }}>
-            {totalShortcuts} total shortcuts available • Press <strong>?</strong> or <strong>Ctrl+K</strong> to open this panel
+          <Text
+            size={200}
+            style={{ marginTop: tokens.spacingVerticalL, color: tokens.colorNeutralForeground3 }}
+          >
+            {totalShortcuts} total shortcuts available • Press <strong>?</strong> or{' '}
+            <strong>Ctrl+K</strong> to open this panel
           </Text>
         </DialogBody>
         <DialogActions>

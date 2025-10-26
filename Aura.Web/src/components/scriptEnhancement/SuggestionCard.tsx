@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
 import { Card, Text, Button, makeStyles, tokens, Badge, Spinner } from '@fluentui/react-components';
 import { CheckmarkCircleRegular, DismissCircleRegular, InfoRegular } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 import type {
   EnhancementSuggestion,
   SuggestionType,
