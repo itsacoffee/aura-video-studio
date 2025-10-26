@@ -78,9 +78,15 @@ export const MetadataPanel: React.FC<MetadataPanelProps> = ({
 }) => {
   const styles = useStyles();
 
-  const handleCopyPath = () => {
+  const handleCopyPath = async () => {
     if (filePath) {
-      navigator.clipboard.writeText(filePath);
+      try {
+        await navigator.clipboard.writeText(filePath);
+        // Could be enhanced with a toast notification in the future
+      } catch (error) {
+        console.error('Failed to copy to clipboard:', error);
+        // Fallback: could show an error message to user
+      }
     }
   };
 

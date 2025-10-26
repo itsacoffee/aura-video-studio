@@ -143,6 +143,8 @@ export const ProjectBin: React.FC<ProjectBinProps> = ({
   const handleRevealInFinder = (asset: MediaAsset) => {
     // In a real implementation, this would call a native API to reveal the file
     console.log('Reveal in finder:', asset.filePath || asset.file.name);
+    // For demo purposes, show an alert with the path
+    // This would be replaced with a proper notification system
     alert(`File location: ${asset.filePath || 'Not available'}`);
   };
 

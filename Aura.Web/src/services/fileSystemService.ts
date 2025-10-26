@@ -87,16 +87,20 @@ export const browseFolderContents = async (
 /**
  * Reveal file in native file explorer
  * In a real implementation, this would call a native API
+ * Returns success status for the calling component to handle
  */
-export const revealInFinder = async (filePath: string): Promise<void> => {
+export const revealInFinder = async (filePath: string): Promise<{ success: boolean; message?: string }> => {
   console.log('Revealing file in finder:', filePath);
   // In a real implementation, this would call:
   // - Windows: explorer.exe /select,"path"
   // - macOS: open -R "path"
   // - Linux: xdg-open "path"
   
-  // For now, show an alert with the path
-  alert(`File location:\n${filePath}`);
+  // For now, return success for the caller to handle notification
+  return {
+    success: true,
+    message: `File location: ${filePath}`,
+  };
 };
 
 /**
