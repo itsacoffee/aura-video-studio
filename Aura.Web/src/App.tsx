@@ -39,6 +39,7 @@ import { ContentPlanningDashboard } from './components/contentPlanning/ContentPl
 import { VideoEditorPage } from './pages/VideoEditorPage';
 import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
 import { ExportHistoryPage } from './pages/Export/ExportHistoryPage';
+import TemplatesLibrary from './pages/Templates/TemplatesLibrary';
 import { hasCompletedFirstRun, migrateLegacyFirstRunStatus } from './services/firstRunService';
 import { ActivityProvider } from './state/activityContext';
 import { GlobalStatusFooter } from './components/GlobalStatusFooter';
@@ -373,6 +374,7 @@ function App() {
                     <Route path="/content-planning" element={<ContentPlanningDashboard />} />
                     <Route path="/create" element={<CreateWizard />} />
                     <Route path="/create/legacy" element={<CreatePage />} />
+                    <Route path="/templates" element={<TemplatesLibrary />} />
                     <Route path="/timeline" element={<TimelinePage />} />
                     <Route path="/editor/:jobId" element={<TimelineEditor />} />
                     <Route path="/editor" element={<VideoEditorPage />} />
