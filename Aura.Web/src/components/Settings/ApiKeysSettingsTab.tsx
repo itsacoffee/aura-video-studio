@@ -70,7 +70,7 @@ export function ApiKeysSettingsTab({
   const updateSetting = <K extends keyof ApiKeysSettings>(key: K, value: ApiKeysSettings[K]) => {
     onChange({ ...settings, [key]: value });
     // Clear test result when value changes
-    setTestResults((prev) => ({ ...prev, [key]: undefined as any }));
+    setTestResults((prev) => ({ ...prev, [key]: undefined }));
   };
 
   const handleTest = async (provider: string, key: keyof ApiKeysSettings) => {

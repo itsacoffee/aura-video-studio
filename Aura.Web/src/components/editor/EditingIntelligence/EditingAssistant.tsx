@@ -42,7 +42,7 @@ import { TransitionPanel } from './TransitionPanel';
 
 interface EditingAssistantProps {
   jobId: string;
-  onApplySuggestion?: (type: string, data: any) => void;
+  onApplySuggestion?: (type: string, data: unknown) => void;
 }
 
 const useStyles = makeStyles({

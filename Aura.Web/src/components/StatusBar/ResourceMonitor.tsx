@@ -86,7 +86,7 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
       // Use performance.memory if available
       let memoryUsage = 0;
       if ('memory' in performance) {
-        const mem = (performance as any).memory;
+        const mem = (performance as Performance & { memory: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
         memoryUsage = (mem.usedJSHeapSize / mem.jsHeapSizeLimit) * 100;
       }
 

@@ -110,7 +110,7 @@ export function useEffectsWorker() {
   /**
    * Apply effects to an ImageData object using the worker
    */
-  const applyEffects = useCallback((imageData: ImageData, effects: any[]): Promise<ImageData> => {
+  const applyEffects = useCallback((imageData: ImageData, effects: unknown[]): Promise<ImageData> => {
     return new Promise((resolve, reject) => {
       if (!workerRef.current) {
         reject(new Error('Worker not initialized'));

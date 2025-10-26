@@ -124,7 +124,7 @@ describe('PerformanceMonitor', () => {
     });
 
     it('should warn when bundle size exceeds budget', () => {
-      const warnings: any[] = [];
+      const warnings: Array<{ warning: string; metric: unknown }> = [];
       const unsubscribe = performanceMonitor.onWarning((warning, metric) => {
         warnings.push({ warning, metric });
       });

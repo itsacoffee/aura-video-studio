@@ -146,7 +146,7 @@ export function LocalEngines() {
     Record<string, { port?: number; autoStart: boolean }>
   >({});
   const [hasChanges, setHasChanges] = useState(false);
-  const [diagnostics, setDiagnostics] = useState<any>(null);
+  const [diagnostics, setDiagnostics] = useState<Record<string, unknown> | null>(null);
   const [logs, setLogs] = useState<string>('');
   const [selectedEngineForLogs, setSelectedEngineForLogs] = useState<string | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(false);

@@ -97,7 +97,7 @@ export function PerformanceSettingsTab() {
   const [gpuMemoryLimit, setGpuMemoryLimit] = useState(0); // 0 = auto
   const [enableBackgroundRendering, setEnableBackgroundRendering] = useState(false);
   const [autoPauseOnBattery, setAutoPauseOnBattery] = useState(true);
-  const [detectedHardware, setDetectedHardware] = useState<any>(null);
+  const [detectedHardware, setDetectedHardware] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     fetchPerformanceSettings();

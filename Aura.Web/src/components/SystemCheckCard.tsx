@@ -74,7 +74,7 @@ export interface SubCheck {
   name: string;
   status: 'healthy' | 'degraded' | 'unhealthy';
   message?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 export interface HealthCheckResult {

@@ -448,7 +448,7 @@ export function CreatePage() {
                 <Dropdown
                   value={brief.aspect}
                   onOptionSelect={(_, data) =>
-                    setBrief({ ...brief, aspect: data.optionValue as any })
+                    setBrief({ ...brief, aspect: data.optionValue as Brief['aspect'] })
                   }
                 >
                   <Option value="Widescreen16x9">16:9 Widescreen</Option>
@@ -487,7 +487,7 @@ export function CreatePage() {
                   <Dropdown
                     value={planSpec.pacing}
                     onOptionSelect={(_, data) =>
-                      setPlanSpec({ ...planSpec, pacing: data.optionText as any })
+                      setPlanSpec({ ...planSpec, pacing: data.optionText as PlanSpec['pacing'] })
                     }
                   >
                     <Option>Chill</Option>
@@ -500,7 +500,7 @@ export function CreatePage() {
                   <Dropdown
                     value={planSpec.density}
                     onOptionSelect={(_, data) =>
-                      setPlanSpec({ ...planSpec, density: data.optionText as any })
+                      setPlanSpec({ ...planSpec, density: data.optionText as PlanSpec['density'] })
                     }
                   >
                     <Option>Sparse</Option>

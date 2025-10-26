@@ -47,7 +47,7 @@ const useStyles = makeStyles({
     transition: 'all 0.2s ease',
     '&:hover': {
       backgroundColor: tokens.colorNeutralBackground1Hover,
-      borderColor: tokens.colorBrandStroke1 as any,
+      borderColor: tokens.colorBrandStroke1 as string,
     },
   },
   dayNumber: {

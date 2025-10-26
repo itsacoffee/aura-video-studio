@@ -160,7 +160,7 @@ export const TransitionSuggestionCard = ({
   };
 
   const getTransitionBadge = (type: string) => {
-    const colorMap: Record<string, any> = {
+    const colorMap: Record<string, string> = {
       Cut: 'brand',
       Dissolve: 'informative',
       'Fade to Black': 'severe',

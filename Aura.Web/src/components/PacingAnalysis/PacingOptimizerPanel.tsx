@@ -33,7 +33,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { usePacingAnalysis } from '../../hooks/usePacingAnalysis';
 import { getPlatformPresets } from '../../services/pacingService';
 import { Brief } from '../../types';
-import { Scene, PacingSettings as PacingSettingsType } from '../../types/pacing';
+import { Scene, PacingSettings as PacingSettingsType, PlatformPreset } from '../../types/pacing';
 import { AttentionCurveChart } from './AttentionCurveChart';
 import { PacingSettings } from './PacingSettings';
 import { SceneSuggestionCard } from './SceneSuggestionCard';
@@ -135,7 +135,7 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
   const { loading, error, data, analyzePacing, reanalyzePacing } = usePacingAnalysis();
 
   const [settings, setSettings] = useState<PacingSettingsType>(DEFAULT_SETTINGS);
-  const [platforms, setPlatforms] = useState<any[]>([]);
+  const [platforms, setPlatforms] = useState<PlatformPreset[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [appliedSuggestions, setAppliedSuggestions] = useState<Set<number>>(new Set());
   const [successMessage, setSuccessMessage] = useState<string | null>(null);

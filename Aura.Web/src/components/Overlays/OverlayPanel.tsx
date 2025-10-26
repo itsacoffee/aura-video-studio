@@ -112,7 +112,7 @@ export function OverlayPanel() {
     setEditingOverlay({ ...newOverlay });
   };
 
-  const handleUpdateField = (field: keyof TextOverlay, value: any) => {
+  const handleUpdateField = (field: keyof TextOverlay, value: unknown) => {
     if (!editingOverlay) return;
     const updated = { ...editingOverlay, [field]: value };
     setEditingOverlay(updated);

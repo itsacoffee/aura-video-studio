@@ -175,7 +175,7 @@ export function ActivityDrawer({
       <div className={styles.tabs}>
         <TabList
           selectedValue={selectedTab}
-          onTabSelect={(_, data) => setSelectedTab(data.value as any)}
+          onTabSelect={(_, data) => setSelectedTab(data.value as string)}
         >
           <Tab value="active">
             Active Operations (

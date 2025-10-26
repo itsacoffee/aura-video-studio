@@ -64,7 +64,7 @@ const useStyles = makeStyles({
 });
 
 interface VisualCoherencePanelProps {
-  onApplyEnhancement?: (enhancement: any) => void;
+  onApplyEnhancement?: (enhancement: unknown) => void;
 }
 
 export const VisualCoherencePanel: React.FC<VisualCoherencePanelProps> = ({

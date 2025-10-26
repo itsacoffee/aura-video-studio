@@ -121,7 +121,7 @@ export const VoiceStudioPanel = ({
     onVoiceChange?.(voiceId);
   };
 
-  const handleProsodyChange = (prosody: any) => {
+  const handleProsodyChange = (prosody: VoiceEnhancementConfig['prosody']) => {
     const updated = {
       ...enhancementConfig,
       prosody,
