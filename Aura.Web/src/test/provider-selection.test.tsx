@@ -18,7 +18,7 @@ describe('ProviderSelection', () => {
     expect(screen.getByText(/Script LLM Provider/i)).toBeDefined();
     expect(screen.getByText(/TTS Provider/i)).toBeDefined();
     expect(screen.getByText(/Visuals Provider/i)).toBeDefined();
-    expect(screen.getByText(/Upload Provider/i)).toBeDefined();
+    // Upload Provider field has been removed per user request
   });
 
   it('should call onSelectionChange when provider is updated', () => {
@@ -46,7 +46,6 @@ describe('ProviderSelection', () => {
       script: 'OpenAI',
       tts: 'ElevenLabs',
       visuals: 'CloudPro',
-      upload: 'Off',
     };
 
     render(

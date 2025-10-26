@@ -52,43 +52,199 @@ npm run playwright -- --update-snapshots
 
 ## Current Test Coverage
 
-### Unit Tests (`src/test/`)
-- ✅ `wizard-defaults.test.ts` - Tests default values for wizard settings
-  - Brief settings defaults
-  - Plan settings defaults
-  - Brand kit defaults
-  - Captions defaults
-  - Stock sources defaults
+### Test Statistics
+- **Total Test Files**: 45
+- **Total Tests**: 541 passing
+- **Coverage Target**: 70% for new code
+- **Coverage Provider**: v8 with line, branch, and statement coverage
+
+### Test Organization
+
+#### Unit Tests (`src/test/` and `src/**/__tests__/`)
+- ✅ **Utilities** (3 files, 40+ tests)
+  - `formatters.test.ts` - File size, duration, relative time formatting
+  - `enumNormalizer.test.ts` - Enum normalization and validation
+  - `formValidation.test.ts` - Form validation rules
+  - `mediaProcessing.test.ts` - Media file processing
+
+- ✅ **Services** (3 files, 40+ tests)
+  - `loggingService.test.ts` - Application logging
+  - `commandHistory.test.ts` - Command undo/redo
+  - `performanceMonitor.test.ts` - Performance tracking
+
+- ✅ **State Management** (4 files, 75+ tests)
+  - `jobState.test.ts` - Job status management
+  - `jobs.test.ts` - Job queue operations
+  - `engines.test.ts` - Engine state management
+  - `onboarding.test.ts` - Onboarding flow state
+
+- ✅ **Components** (3 files, 50+ tests)
+  - `GlobalStatusFooter.test.tsx` - Status footer component
+  - `Loading.test.tsx` - Loading states
+  - `ValidatedInput.test.tsx` - Form input validation
+
+- ✅ **Hooks** (1 file, 10+ tests)
+  - `useLoadingState.test.ts` - Loading state hook
+
+- ✅ **Commands** (1 file, 25 tests)
+  - `clipCommands.test.ts` - Timeline clip commands
+
+- ✅ **Integration Tests** (10 files, 150+ tests)
+  - API client integration
+  - Clipboard service
+  - Keyboard shortcuts
+  - Timeline operations
+  - Pacing analysis
+  - Engine workflows
+  - Quality dashboard
+
+- ✅ **Test Data Factories** (1 file, 13 tests)
+  - `factories.test.ts` - Test data factory functions
+  - Timeline factories (clips, tracks, markers, overlays)
+  - Project factories (brief, plan spec, voice spec)
+  - System factories (hardware, render jobs, profiles)
+
+- ✅ **Accessibility Tests** (1 file, 10 tests)
+  - `accessibility.test.tsx` - ARIA attributes and keyboard navigation
+  - Focus management
+  - Screen reader support
+  - Form accessibility
+  - Color contrast
 
 ### E2E Tests (`tests/e2e/`)
-- ✅ `wizard.spec.ts` - Complete wizard workflow
-  - Free profile workflow end-to-end
-  - Navigation between wizard steps
-  - Settings persistence to localStorage
+- ✅ **Wizard Flows** (10 E2E test files)
+  - `wizard.spec.ts` - Complete wizard workflow
+  - `first-run-wizard.spec.ts` - First-run experience
+  - `onboarding-path-pickers.spec.ts` - Path selection
+  - `dependency-download.spec.ts` - Dependency installation
+  - `engine-diagnostics.spec.ts` - Engine health checks
+  - `local-engines.spec.ts` - Local engine management
+  - `notifications.spec.ts` - Toast notifications
+  - `error-ux-toasts.spec.ts` - Error handling UX
+  - `logviewer.spec.ts` - Log viewing
+  - `visual.spec.ts` - Visual regression tests
 
-- ✅ `visual.spec.ts` - Visual regression tests
-  - Wizard step 1 (empty)
-  - Wizard step 1 (with content)
-  - Settings page (dark mode)
-  - Settings page (light mode)
-  - Dashboard page
+## Test Data Factories
+
+To ensure consistency across tests, we provide factory functions for creating test data:
+
+```typescript
+import { 
+  createMockTimelineClip, 
+  createMockTrack,
+  createMockBrief,
+  createMockHardwareCapabilities 
+} from '@/test/factories';
+
+// Create a clip with defaults
+const clip = createMockTimelineClip();
+
+// Create with overrides
+const customClip = createMockTimelineClip({ 
+  id: 'custom-id',
+  timelineStart: 30 
+});
+
+// Create multiple items
+const clips = createMockClips(5, { trackId: 'track-1' });
+```
+
+See `src/test/factories/` for all available factories.
 
 ## Coverage Goals
 
-The coverage infrastructure is configured but thresholds are intentionally relaxed for the initial implementation. Coverage can be tracked per-PR for changed files.
+### Current Coverage
+- **Utility Functions**: 80%+ coverage
+- **Critical Services**: 70%+ coverage
+- **State Management**: 75%+ coverage
+- **Components**: 60%+ coverage (focusing on critical components)
 
-### Current Approach
-- **Unit tests**: Focus on critical business logic and defaults
-- **E2E tests**: Cover happy paths and common workflows
-- **Visual tests**: Ensure UI consistency across changes
+### Coverage Configuration
+```json
+{
+  "thresholds": {
+    "lines": 70,
+    "branches": 70,
+    "statements": 70,
+    "perFile": true
+  }
+}
+```
 
-### Future Improvements
-- Add more unit tests for utility functions
-- Add component-level tests for complex UI components
-- Add integration tests for state management
-- Increase coverage thresholds as test suite grows
+### Approach
+- **Unit tests**: Focus on critical business logic, utilities, and services
+- **Component tests**: Cover primary use cases and user interactions
+- **Integration tests**: Test API integration and complex workflows
+- **E2E tests**: Cover critical user journeys end-to-end
+- **Accessibility tests**: Ensure ARIA compliance and keyboard navigation
 
 ## Writing Tests
+
+### Using Test Data Factories
+
+For consistent test data, use the factory functions:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { createMockTimelineClip, createMockTrack } from '@/test/factories';
+
+describe('Timeline Operations', () => {
+  it('should add clip to track', () => {
+    const track = createMockTrack();
+    const clip = createMockTimelineClip({ trackId: track.id });
+    
+    track.clips.push(clip);
+    expect(track.clips).toHaveLength(1);
+  });
+  
+  it('should create multiple clips', () => {
+    const clips = createMockClips(3);
+    expect(clips).toHaveLength(3);
+    expect(clips[0].timelineStart).toBe(0);
+    expect(clips[1].timelineStart).toBe(10);
+  });
+});
+```
+
+### Component Test Example
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { MyComponent } from './MyComponent';
+
+describe('MyComponent', () => {
+  it('should render with props', () => {
+    render(
+      <FluentProvider theme={webLightTheme}>
+        <MyComponent title="Test Title" />
+      </FluentProvider>
+    );
+    
+    expect(screen.getByText('Test Title')).toBeDefined();
+  });
+});
+```
+
+### Accessibility Test Example
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { render } from '@testing-library/react';
+
+describe('Accessibility', () => {
+  it('should have proper ARIA attributes', () => {
+    const { container } = render(
+      <button aria-label="Close dialog">X</button>
+    );
+    
+    const button = container.querySelector('button');
+    expect(button?.getAttribute('aria-label')).toBe('Close dialog');
+    expect(button?.tabIndex).toBeGreaterThanOrEqual(0);
+  });
+});
+```
 
 ### Unit Test Example
 
@@ -172,6 +328,38 @@ npm run playwright -- --debug
 4. **Avoid hardcoded waits**: Use `waitFor` and explicit assertions
 5. **Keep snapshots minimal**: Only snapshot what's necessary
 6. **Update snapshots carefully**: Review diffs before accepting changes
+7. **Use test data factories**: Use `createMock*` functions for consistent test data
+8. **Test accessibility**: Include ARIA attributes and keyboard navigation tests
+9. **Test error cases**: Don't just test the happy path
+10. **Keep tests independent**: Tests should not depend on each other's state
+
+## Accessibility Testing
+
+All new components should include accessibility tests:
+
+```typescript
+describe('Accessibility', () => {
+  it('should be keyboard navigable', () => {
+    const { container } = render(<MyComponent />);
+    const focusableElements = container.querySelectorAll('button, input, a');
+    focusableElements.forEach(el => {
+      expect(el.tabIndex).toBeGreaterThanOrEqual(0);
+    });
+  });
+  
+  it('should have proper labels', () => {
+    render(<MyInput label="Username" />);
+    expect(screen.getByLabelText('Username')).toBeDefined();
+  });
+  
+  it('should announce errors to screen readers', () => {
+    const { container } = render(
+      <ErrorMessage role="alert">Error occurred</ErrorMessage>
+    );
+    expect(container.querySelector('[role="alert"]')).toBeDefined();
+  });
+});
+```
 
 ## Troubleshooting
 
