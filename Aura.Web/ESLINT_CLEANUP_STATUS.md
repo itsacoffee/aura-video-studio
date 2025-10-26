@@ -363,9 +363,9 @@ Given the scale of remaining work, a phased approach is recommended:
 
 ### Phase 5b: React Hooks - IN PROGRESS 🟡
 
-**Goal:** Fix react-hooks/exhaustive-deps warnings (39 total → 26 remaining, 13 fixed)
+**Goal:** Fix react-hooks/exhaustive-deps warnings (39 initial → 38 after PR #121 → 26 after this PR)
 
-**Status:** 33.3% complete (13 of 39 warnings fixed)
+**Status:** 33.3% complete (13 of 39 warnings fixed: 1 in PR #121, 12 in this PR)
 
 **Approach:**
 1. Wrap load/fetch/analyze functions in `useCallback` with proper dependencies
@@ -373,7 +373,7 @@ Given the scale of remaining work, a phased approach is recommended:
 3. Handle canvas redraw functions as special cases
 4. Document intentional omissions with eslint-disable comments
 
-**Fixes Applied:**
+**Fixes Applied in this PR (12 warnings fixed):**
 
 1. **Load/Fetch Functions (useCallback pattern)** - 10 warnings fixed:
    - `src/components/Conversation/ConversationPanel.tsx`: loadHistory
@@ -405,7 +405,8 @@ Given the scale of remaining work, a phased approach is recommended:
 - ✅ All 699 tests still passing
 - ✅ No infinite loops introduced
 - ✅ No stale closure issues detected
-- ✅ 13 warnings eliminated (33.3% of react-hooks warnings)
+- ✅ 12 warnings eliminated in this PR (31% of react-hooks warnings)
+- ✅ 13 total warnings eliminated in Phase 5b so far (33% of react-hooks warnings)
 
 **Time Taken:** ~2-3 hours (efficient due to systematic patterns)
 
