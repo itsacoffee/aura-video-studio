@@ -3,7 +3,6 @@
  * Allows users to configure logging behavior and view log statistics
  */
 
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -23,6 +22,7 @@ import {
   Document24Regular,
   Info24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { loggingService, LogLevel } from '../../services/loggingService';
 
 const useStyles = makeStyles({

@@ -38,7 +38,7 @@ export interface UseFormValidationReturn<T> {
 
 /**
  * Hook for managing form validation with real-time feedback
- * 
+ *
  * @example
  * ```tsx
  * const { values, errors, isFormValid, setValue } = useFormValidation({

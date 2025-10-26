@@ -70,7 +70,7 @@ export function applyChromaKey(
     if (spillSuppression > 0 && alpha > 0) {
       const spillAmount = spillSuppression / 100;
       const spillDistance = colorDistance(r, g, b, keyRgb.r, keyRgb.g, keyRgb.b);
-      
+
       if (spillDistance < similarityThreshold * 1.5) {
         // Reduce the key color component
         if (keyRgb.g > keyRgb.r && keyRgb.g > keyRgb.b) {
@@ -285,8 +285,10 @@ export class WebGLChromaKeyProcessor {
 
   constructor() {
     this.canvas = document.createElement('canvas');
-    this.gl = this.canvas.getContext('webgl') || this.canvas.getContext('experimental-webgl') as WebGLRenderingContext;
-    
+    this.gl =
+      this.canvas.getContext('webgl') ||
+      (this.canvas.getContext('experimental-webgl') as WebGLRenderingContext);
+
     if (this.gl) {
       this.initShaders();
     }

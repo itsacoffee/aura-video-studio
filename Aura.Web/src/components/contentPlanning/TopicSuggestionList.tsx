@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -13,6 +12,7 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import { LightbulbRegular, SparkleRegular } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 import { contentPlanningService, TopicSuggestion } from '../../services/contentPlanningService';
 
 const useStyles = makeStyles({

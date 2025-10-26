@@ -144,9 +144,7 @@ export const contentPlanningService = {
   /**
    * Analyzes trends for content planning
    */
-  async analyzeTrends(
-    request: TrendAnalysisRequest
-  ): Promise<TrendAnalysisResponse> {
+  async analyzeTrends(request: TrendAnalysisRequest): Promise<TrendAnalysisResponse> {
     const response = await apiClient.post<TrendAnalysisResponse>(
       '/api/ContentPlanning/trends/analyze',
       request
@@ -162,19 +160,16 @@ export const contentPlanningService = {
     category?: string
   ): Promise<{ success: boolean; trends: TrendData[]; platform: string; category?: string }> {
     const params = category ? { category } : {};
-    const response = await apiClient.get(
-      `/api/ContentPlanning/trends/platform/${platform}`,
-      { params }
-    );
+    const response = await apiClient.get(`/api/ContentPlanning/trends/platform/${platform}`, {
+      params,
+    });
     return response.data;
   },
 
   /**
    * Generates AI-powered topic suggestions
    */
-  async generateTopics(
-    request: TopicSuggestionRequest
-  ): Promise<TopicSuggestionResponse> {
+  async generateTopics(request: TopicSuggestionRequest): Promise<TopicSuggestionResponse> {
     const response = await apiClient.post<TopicSuggestionResponse>(
       '/api/ContentPlanning/topics/generate',
       request
@@ -215,10 +210,7 @@ export const contentPlanningService = {
   async scheduleContent(
     request: ScheduleContentRequest
   ): Promise<{ success: boolean; scheduled: ScheduledContent }> {
-    const response = await apiClient.post(
-      '/api/ContentPlanning/schedule/content',
-      request
-    );
+    const response = await apiClient.post('/api/ContentPlanning/schedule/content', request);
     return response.data;
   },
 
@@ -232,20 +224,15 @@ export const contentPlanningService = {
   ): Promise<{ success: boolean; content: ScheduledContent[]; count: number }> {
     const params: any = { startDate, endDate };
     if (platform) params.platform = platform;
-    
-    const response = await apiClient.get(
-      '/api/ContentPlanning/schedule/calendar',
-      { params }
-    );
+
+    const response = await apiClient.get('/api/ContentPlanning/schedule/calendar', { params });
     return response.data;
   },
 
   /**
    * Analyzes target audience for content planning
    */
-  async analyzeAudience(
-    request: AudienceAnalysisRequest
-  ): Promise<AudienceAnalysisResponse> {
+  async analyzeAudience(request: AudienceAnalysisRequest): Promise<AudienceAnalysisResponse> {
     const response = await apiClient.post<AudienceAnalysisResponse>(
       '/api/ContentPlanning/audience/analyze',
       request
@@ -259,9 +246,7 @@ export const contentPlanningService = {
   async getDemographics(
     platform: string
   ): Promise<{ success: boolean; demographics: Demographics; platform: string }> {
-    const response = await apiClient.get(
-      `/api/ContentPlanning/audience/demographics/${platform}`
-    );
+    const response = await apiClient.get(`/api/ContentPlanning/audience/demographics/${platform}`);
     return response.data;
   },
 
@@ -271,9 +256,7 @@ export const contentPlanningService = {
   async getTopInterests(
     category: string
   ): Promise<{ success: boolean; interests: string[]; category: string }> {
-    const response = await apiClient.get(
-      `/api/ContentPlanning/audience/interests/${category}`
-    );
+    const response = await apiClient.get(`/api/ContentPlanning/audience/interests/${category}`);
     return response.data;
   },
 };

@@ -1,11 +1,11 @@
-import { useState } from 'react';
 import {
   Add20Regular as Plus,
   Delete20Regular as Trash2,
   Open20Regular as ExternalLink,
   Copy20Regular as Copy,
-  Checkmark20Regular as Check
+  Checkmark20Regular as Check,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 interface Source {
   sourceId: string;
@@ -27,7 +27,9 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
   onSourcesChange,
 }) => {
   const [sources, setSources] = useState<Source[]>(initialSources);
-  const [citationFormat, setCitationFormat] = useState<'APA' | 'MLA' | 'Chicago' | 'Harvard'>('APA');
+  const [citationFormat, setCitationFormat] = useState<'APA' | 'MLA' | 'Chicago' | 'Harvard'>(
+    'APA'
+  );
   const [citations, setCitations] = useState<string[]>([]);
   const [isCopied, setIsCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -49,15 +51,13 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
   };
 
   const handleRemoveSource = (sourceId: string) => {
-    const updated = sources.filter(s => s.sourceId !== sourceId);
+    const updated = sources.filter((s) => s.sourceId !== sourceId);
     setSources(updated);
     onSourcesChange?.(updated);
   };
 
   const handleUpdateSource = (sourceId: string, field: keyof Source, value: string | number) => {
-    const updated = sources.map(s =>
-      s.sourceId === sourceId ? { ...s, [field]: value } : s
-    );
+    const updated = sources.map((s) => (s.sourceId === sourceId ? { ...s, [field]: value } : s));
     setSources(updated);
     onSourcesChange?.(updated);
   };
@@ -117,7 +117,10 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
             <div className="flex items-start justify-between gap-4 mb-3">
               <div className="flex-1 grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor={`source-name-${source.sourceId}`} className="block text-xs font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor={`source-name-${source.sourceId}`}
+                    className="block text-xs font-medium text-gray-700 mb-1"
+                  >
                     Source Name *
                   </label>
                   <input
@@ -131,7 +134,10 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
                 </div>
 
                 <div>
-                  <label htmlFor={`source-author-${source.sourceId}`} className="block text-xs font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor={`source-author-${source.sourceId}`}
+                    className="block text-xs font-medium text-gray-700 mb-1"
+                  >
                     Author
                   </label>
                   <input
@@ -145,7 +151,10 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
                 </div>
 
                 <div className="col-span-2">
-                  <label htmlFor={`source-url-${source.sourceId}`} className="block text-xs font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor={`source-url-${source.sourceId}`}
+                    className="block text-xs font-medium text-gray-700 mb-1"
+                  >
                     URL *
                   </label>
                   <input
@@ -159,7 +168,10 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
                 </div>
 
                 <div>
-                  <label htmlFor={`source-type-${source.sourceId}`} className="block text-xs font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor={`source-type-${source.sourceId}`}
+                    className="block text-xs font-medium text-gray-700 mb-1"
+                  >
                     Type
                   </label>
                   <select
@@ -179,14 +191,23 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
                 </div>
 
                 <div>
-                  <label htmlFor={`source-date-${source.sourceId}`} className="block text-xs font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor={`source-date-${source.sourceId}`}
+                    className="block text-xs font-medium text-gray-700 mb-1"
+                  >
                     Published Date
                   </label>
                   <input
                     id={`source-date-${source.sourceId}`}
                     type="date"
                     value={source.publishedDate ? source.publishedDate.split('T')[0] : ''}
-                    onChange={(e) => handleUpdateSource(source.sourceId, 'publishedDate', e.target.value + 'T00:00:00Z')}
+                    onChange={(e) =>
+                      handleUpdateSource(
+                        source.sourceId,
+                        'publishedDate',
+                        e.target.value + 'T00:00:00Z'
+                      )
+                    }
                     className="w-full px-3 py-1.5 border rounded-md text-sm"
                   />
                 </div>
@@ -227,11 +248,15 @@ export const SourceCitationEditor: React.FC<SourceCitationEditorProps> = ({
         <div className="border-t pt-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              <label htmlFor="citation-format" className="text-sm font-medium text-gray-700">Citation Format:</label>
+              <label htmlFor="citation-format" className="text-sm font-medium text-gray-700">
+                Citation Format:
+              </label>
               <select
                 id="citation-format"
                 value={citationFormat}
-                onChange={(e) => setCitationFormat(e.target.value as 'APA' | 'MLA' | 'Chicago' | 'Harvard')}
+                onChange={(e) =>
+                  setCitationFormat(e.target.value as 'APA' | 'MLA' | 'Chicago' | 'Harvard')
+                }
                 className="px-3 py-1.5 border rounded-md text-sm"
               >
                 <option value="APA">APA</option>

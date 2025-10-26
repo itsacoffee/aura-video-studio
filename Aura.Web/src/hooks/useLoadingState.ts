@@ -21,9 +21,7 @@ export interface LoadingActions {
  * @param initialLoading - Initial loading state (default: false)
  * @returns Tuple of [LoadingState, LoadingActions]
  */
-export function useLoadingState(
-  initialLoading = false
-): [LoadingState, LoadingActions] {
+export function useLoadingState(initialLoading = false): [LoadingState, LoadingActions] {
   const [state, setState] = useState<LoadingState>({
     isLoading: initialLoading,
     error: null,
@@ -112,8 +110,7 @@ export async function withLoadingState<T>(
     loadingActions.stopLoading();
     return result;
   } catch (error) {
-    const message =
-      errorMessage || (error instanceof Error ? error.message : 'An error occurred');
+    const message = errorMessage || (error instanceof Error ? error.message : 'An error occurred');
     loadingActions.setError(message);
     return undefined;
   }

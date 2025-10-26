@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -31,6 +29,8 @@ import {
   DocumentText20Regular,
   Warning20Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 import { useEnginesStore } from '../../state/engines';
 import { useNotifications } from '../Notifications/Toasts';
 

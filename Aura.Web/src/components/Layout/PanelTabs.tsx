@@ -3,16 +3,9 @@
  * Tabbed interface for stacked panels with drag-to-reorder support
  */
 
+import { makeStyles, tokens, Button, Tooltip } from '@fluentui/react-components';
+import { Dismiss20Regular } from '@fluentui/react-icons';
 import { useState, ReactNode } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Button,
-  Tooltip,
-} from '@fluentui/react-components';
-import {
-  Dismiss20Regular,
-} from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   container: {
@@ -132,10 +125,10 @@ export function PanelTabs({
   const handleTabClose = (e: React.MouseEvent, tabId: string) => {
     e.stopPropagation();
     onTabClose?.(tabId);
-    
+
     // If closing active tab, switch to another tab
     if (tabId === activeTab) {
-      const currentIndex = tabs.findIndex(t => t.id === tabId);
+      const currentIndex = tabs.findIndex((t) => t.id === tabId);
       const nextTab = tabs[currentIndex + 1] || tabs[currentIndex - 1];
       if (nextTab) {
         setActiveTab(nextTab.id);
@@ -158,21 +151,21 @@ export function PanelTabs({
 
   const handleDragEnd = () => {
     if (draggedTab && dragOverTab && draggedTab !== dragOverTab) {
-      const draggedIndex = tabs.findIndex(t => t.id === draggedTab);
-      const targetIndex = tabs.findIndex(t => t.id === dragOverTab);
-      
+      const draggedIndex = tabs.findIndex((t) => t.id === draggedTab);
+      const targetIndex = tabs.findIndex((t) => t.id === dragOverTab);
+
       const newTabs = [...tabs];
       const [removed] = newTabs.splice(draggedIndex, 1);
       newTabs.splice(targetIndex, 0, removed);
-      
+
       onTabReorder?.(newTabs);
     }
-    
+
     setDraggedTab(null);
     setDragOverTab(null);
   };
 
-  const activeTabContent = tabs.find(t => t.id === activeTab)?.content;
+  const activeTabContent = tabs.find((t) => t.id === activeTab)?.content;
 
   return (
     <div className={styles.container}>

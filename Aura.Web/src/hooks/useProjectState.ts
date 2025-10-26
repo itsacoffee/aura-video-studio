@@ -3,6 +3,13 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { TimelineClip } from '../pages/VideoEditorPage';
+import {
+  saveProject,
+  saveToLocalStorage,
+  loadFromLocalStorage,
+  clearLocalStorage,
+} from '../services/projectService';
 import {
   ProjectFile,
   ProjectTrack,
@@ -12,13 +19,6 @@ import {
   timelineClipToProjectClip,
   AutosaveStatus,
 } from '../types/project';
-import { TimelineClip } from '../pages/VideoEditorPage';
-import {
-  saveProject,
-  saveToLocalStorage,
-  loadFromLocalStorage,
-  clearLocalStorage,
-} from '../services/projectService';
 
 interface UseProjectStateOptions {
   autosaveInterval?: number; // milliseconds, default 120000 (2 minutes)
@@ -76,7 +76,7 @@ export function useProjectState(
   const createProjectFile = useCallback(
     (name: string): ProjectFile => {
       const now = new Date().toISOString();
-      
+
       // Calculate total duration
       const duration = clips.reduce((max, clip) => {
         const clipEnd = clip.startTime + clip.duration;
@@ -116,13 +116,9 @@ export function useProjectState(
 
       try {
         const projectFile = createProjectFile(projectNameToUse);
-        
+
         // Save to backend
-        const response = await saveProject(
-          projectNameToUse,
-          projectFile,
-          projectId || undefined
-        );
+        const response = await saveProject(projectNameToUse, projectFile, projectId || undefined);
 
         setProjectId(response.id);
         setProjectName(projectNameToUse);
@@ -140,11 +136,11 @@ export function useProjectState(
       } catch (error) {
         console.error('Failed to save project:', error);
         setAutosaveStatus('error');
-        
+
         setTimeout(() => {
           setAutosaveStatus('idle');
         }, 5000);
-        
+
         throw error;
       }
     },
@@ -180,23 +176,26 @@ export function useProjectState(
   );
 
   // Create new project
-  const createNewProject = useCallback((name: string) => {
-    const project = createEmptyProject(name);
-    setProjectId(null);
-    setProjectName(name);
-    setIsDirty(false);
-    setLastSaved(null);
+  const createNewProject = useCallback(
+    (name: string) => {
+      const project = createEmptyProject(name);
+      setProjectId(null);
+      setProjectName(name);
+      setIsDirty(false);
+      setLastSaved(null);
 
-    if (onProjectLoaded) {
-      onProjectLoaded(project);
-    }
-  }, [onProjectLoaded]);
+      if (onProjectLoaded) {
+        onProjectLoaded(project);
+      }
+    },
+    [onProjectLoaded]
+  );
 
   // Export project
   const exportProject = useCallback(() => {
     const name = projectName || 'Untitled Project';
     const projectFile = createProjectFile(name);
-    
+
     const json = JSON.stringify(projectFile, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -215,7 +214,7 @@ export function useProjectState(
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.aura,application/json';
-      
+
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
         if (!file) {
@@ -226,7 +225,7 @@ export function useProjectState(
         try {
           const text = await file.text();
           const projectFile = JSON.parse(text) as ProjectFile;
-          
+
           setProjectId(null);
           setProjectName(projectFile.metadata.name);
           setIsDirty(false);

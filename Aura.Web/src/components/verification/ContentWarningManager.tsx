@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import {
   Warning20Regular as AlertTriangle,
   Dismiss20Regular as X,
   Info20Regular as Info,
-  ErrorCircle20Regular as AlertCircle
+  ErrorCircle20Regular as AlertCircle,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 interface Warning {
   id: string;
@@ -38,7 +38,7 @@ export const ContentWarningManager: React.FC<ContentWarningManagerProps> = ({
   );
 
   const handleDismiss = (warningId: string) => {
-    setWarnings(warnings.filter(w => w.id !== warningId));
+    setWarnings(warnings.filter((w) => w.id !== warningId));
     onDismiss?.(warningId);
   };
 
@@ -96,9 +96,7 @@ export const ContentWarningManager: React.FC<ContentWarningManagerProps> = ({
         <h3 className="text-lg font-semibold">Content Warnings</h3>
         {riskLevel && (
           <span
-            className={`px-2 py-1 rounded text-xs font-semibold ${
-              getRiskLevelColor(riskLevel)
-            }`}
+            className={`px-2 py-1 rounded text-xs font-semibold ${getRiskLevelColor(riskLevel)}`}
           >
             {riskLevel} Risk
           </span>
@@ -110,10 +108,7 @@ export const ContentWarningManager: React.FC<ContentWarningManagerProps> = ({
           const styles = getWarningStyles(warning.type);
 
           return (
-            <div
-              key={warning.id}
-              className={`border rounded-lg p-3 ${styles.container}`}
-            >
+            <div key={warning.id} className={`border rounded-lg p-3 ${styles.container}`}>
               <div className="flex items-start gap-3">
                 <div className={styles.icon}>{getWarningIcon(warning.type)}</div>
 
@@ -144,26 +139,26 @@ export const ContentWarningManager: React.FC<ContentWarningManagerProps> = ({
       {/* Summary */}
       <div className="text-sm text-gray-600">
         <p>
-          {warnings.filter(w => w.type === 'error').length > 0 && (
+          {warnings.filter((w) => w.type === 'error').length > 0 && (
             <span className="text-red-600 font-medium">
-              {warnings.filter(w => w.type === 'error').length} critical issue(s)
+              {warnings.filter((w) => w.type === 'error').length} critical issue(s)
             </span>
           )}
-          {warnings.filter(w => w.type === 'error').length > 0 &&
-            warnings.filter(w => w.type === 'warning').length > 0 &&
+          {warnings.filter((w) => w.type === 'error').length > 0 &&
+            warnings.filter((w) => w.type === 'warning').length > 0 &&
             ', '}
-          {warnings.filter(w => w.type === 'warning').length > 0 && (
+          {warnings.filter((w) => w.type === 'warning').length > 0 && (
             <span className="text-yellow-600 font-medium">
-              {warnings.filter(w => w.type === 'warning').length} warning(s)
+              {warnings.filter((w) => w.type === 'warning').length} warning(s)
             </span>
           )}
-          {(warnings.filter(w => w.type === 'error').length > 0 ||
-            warnings.filter(w => w.type === 'warning').length > 0) &&
-            warnings.filter(w => w.type === 'info').length > 0 &&
+          {(warnings.filter((w) => w.type === 'error').length > 0 ||
+            warnings.filter((w) => w.type === 'warning').length > 0) &&
+            warnings.filter((w) => w.type === 'info').length > 0 &&
             ', '}
-          {warnings.filter(w => w.type === 'info').length > 0 && (
+          {warnings.filter((w) => w.type === 'info').length > 0 && (
             <span className="text-blue-600 font-medium">
-              {warnings.filter(w => w.type === 'info').length} info message(s)
+              {warnings.filter((w) => w.type === 'info').length} info message(s)
             </span>
           )}
         </p>
@@ -174,12 +169,7 @@ export const ContentWarningManager: React.FC<ContentWarningManagerProps> = ({
 
 // Configuration for warning type patterns
 const WARNING_TYPE_PATTERNS = {
-  error: [
-    /\bfalse\b/i,
-    /\bdisputed\b/i,
-    /\bcritical\b/i,
-    /\bverified as false\b/i,
-  ],
+  error: [/\bfalse\b/i, /\bdisputed\b/i, /\bcritical\b/i, /\bverified as false\b/i],
   warning: [
     /\blow confidence\b/i,
     /\bbelow threshold\b/i,
@@ -200,10 +190,10 @@ function determineWarningType(message: string, riskLevel?: string): Warning['typ
   }
 
   // Check message patterns
-  if (WARNING_TYPE_PATTERNS.error.some(pattern => pattern.test(message))) {
+  if (WARNING_TYPE_PATTERNS.error.some((pattern) => pattern.test(message))) {
     return 'error';
   }
-  if (WARNING_TYPE_PATTERNS.warning.some(pattern => pattern.test(message))) {
+  if (WARNING_TYPE_PATTERNS.warning.some((pattern) => pattern.test(message))) {
     return 'warning';
   }
 

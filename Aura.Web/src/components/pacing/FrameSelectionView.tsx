@@ -3,7 +3,6 @@
  * Visual interface for frame selection and analysis
  */
 
-import { useState, useEffect } from 'react';
 import {
   Card,
   makeStyles,
@@ -15,12 +14,8 @@ import {
   Button,
   Tooltip,
 } from '@fluentui/react-components';
-import {
-  Image24Regular,
-  Star24Regular,
-  Eye24Regular,
-  Info24Regular,
-} from '@fluentui/react-icons';
+import { Image24Regular, Star24Regular, Eye24Regular, Info24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { Scene } from '../../types';
 
 interface FrameSelectionViewProps {
@@ -119,17 +114,17 @@ export const FrameSelectionView = ({
 
   const analyzeFrames = async () => {
     setLoading(true);
-    
+
     try {
       // Simulate frame analysis
       // In production, this would call the FrameAnalysisService API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       const mockFrames: FrameInfo[] = scenes.flatMap((scene, sceneIndex) => {
         const numFrames = Math.floor(scene.duration / 2); // Sample every 2 seconds
         return Array.from({ length: numFrames }, (_, i) => ({
           index: sceneIndex * 100 + i,
-          timestamp: scene.start + (i * 2),
+          timestamp: scene.start + i * 2,
           importanceScore: Math.random() * 0.5 + 0.3, // Random score between 0.3 and 0.8
           isKeyFrame: i === 0 || i === numFrames - 1,
         }));
@@ -177,7 +172,11 @@ export const FrameSelectionView = ({
       <div className={styles.emptyState}>
         <Image24Regular style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }} />
         <Body1>No frames analyzed yet</Body1>
-        <Button appearance="primary" onClick={analyzeFrames} style={{ marginTop: tokens.spacingVerticalM }}>
+        <Button
+          appearance="primary"
+          onClick={analyzeFrames}
+          style={{ marginTop: tokens.spacingVerticalM }}
+        >
           Analyze Frames
         </Button>
       </div>
@@ -203,9 +202,11 @@ export const FrameSelectionView = ({
             <div className={styles.thumbnail}>
               <Image24Regular style={{ fontSize: '48px', opacity: 0.3 }} />
             </div>
-            
+
             <div className={styles.frameInfo}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
                 <Body1Strong>{formatTimestamp(frame.timestamp)}</Body1Strong>
                 {frame.isKeyFrame && (
                   <Tooltip content="Key Frame" relationship="label">
@@ -213,8 +214,10 @@ export const FrameSelectionView = ({
                   </Tooltip>
                 )}
               </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}>
+
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+              >
                 <Eye24Regular style={{ fontSize: '16px' }} />
                 <Caption1>Importance: {(frame.importanceScore * 100).toFixed(0)}%</Caption1>
               </div>

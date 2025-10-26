@@ -1,18 +1,6 @@
+import { Card, Title3, Body1, Body2, Badge, makeStyles, tokens } from '@fluentui/react-components';
+import { Warning24Regular, Info24Regular, CheckmarkCircle24Regular } from '@fluentui/react-icons';
 import React, { useEffect } from 'react';
-import {
-  Card,
-  Title3,
-  Body1,
-  Body2,
-  Badge,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
-import {
-  Warning24Regular,
-  Info24Regular,
-  CheckmarkCircle24Regular,
-} from '@fluentui/react-icons';
 import { useQualityDashboardStore } from '../../state/qualityDashboard';
 
 const useStyles = makeStyles({

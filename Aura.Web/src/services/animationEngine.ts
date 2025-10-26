@@ -11,16 +11,16 @@ export type EasingFunction = (t: number) => number;
 // Easing functions
 export const Easing = {
   linear: (t: number): number => t,
-  
+
   easeIn: (t: number): number => t * t,
-  
+
   easeOut: (t: number): number => t * (2 - t),
-  
+
   easeInOut: (t: number): number => {
     if (t < 0.5) return 2 * t * t;
     return -1 + (4 - 2 * t) * t;
   },
-  
+
   bezier: (p1: number, _p2: number, p3: number, _p4: number): EasingFunction => {
     return (t: number): number => {
       // Cubic bezier easing
@@ -29,7 +29,7 @@ export const Easing = {
       const mt = 1 - t;
       const mt2 = mt * mt;
       const mt3 = mt2 * mt;
-      
+
       return mt3 * 0 + 3 * mt2 * t * p1 + 3 * mt * t2 * p3 + t3 * 1;
     };
   },
@@ -38,7 +38,7 @@ export const Easing = {
 // Get easing function from keyframe
 export function getEasingFunction(keyframe: Keyframe): EasingFunction {
   const easingType = keyframe.easing || 'linear';
-  
+
   switch (easingType) {
     case 'ease-in':
       return Easing.easeIn;
@@ -70,10 +70,7 @@ export function interpolate(
 }
 
 // Evaluate keyframes at a specific time
-export function evaluateKeyframes(
-  keyframes: Keyframe[],
-  time: number
-): number | string | boolean {
+export function evaluateKeyframes(keyframes: Keyframe[], time: number): number | string | boolean {
   if (keyframes.length === 0) {
     return 0;
   }
@@ -188,13 +185,7 @@ export function evaluateMotionPath(
         let rotation: number | undefined;
         if (path.autoOrient) {
           // Calculate tangent for auto-orientation
-          rotation = calculateTangentAngle(
-            current,
-            next,
-            current.handleOut,
-            next.handleIn,
-            t
-          );
+          rotation = calculateTangentAngle(current, next, current.handleOut, next.handleIn, t);
         }
 
         return { x, y, rotation };
@@ -271,7 +262,7 @@ export function calculateWorldTransform(
   transformMap: Map<string, TransformProperties>
 ): TransformProperties {
   const parent = parentMap.get(layerId);
-  
+
   if (!parent || !parent.parentId) {
     return localTransform;
   }
@@ -322,21 +313,17 @@ export const AnimationUtils = {
 
   // Add keyframe to array, maintaining time order
   addKeyframe: (keyframes: Keyframe[], newKeyframe: Keyframe): Keyframe[] => {
-    const filtered = keyframes.filter(k => k.time !== newKeyframe.time);
+    const filtered = keyframes.filter((k) => k.time !== newKeyframe.time);
     return [...filtered, newKeyframe].sort((a, b) => a.time - b.time);
   },
 
   // Remove keyframe at specific time
   removeKeyframe: (keyframes: Keyframe[], time: number): Keyframe[] => {
-    return keyframes.filter(k => k.time !== time);
+    return keyframes.filter((k) => k.time !== time);
   },
 
   // Update keyframe value
-  updateKeyframe: (
-    keyframes: Keyframe[],
-    time: number,
-    updates: Partial<Keyframe>
-  ): Keyframe[] => {
-    return keyframes.map(k => (k.time === time ? { ...k, ...updates } : k));
+  updateKeyframe: (keyframes: Keyframe[], time: number, updates: Partial<Keyframe>): Keyframe[] => {
+    return keyframes.map((k) => (k.time === time ? { ...k, ...updates } : k));
   },
 };

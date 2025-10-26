@@ -3,7 +3,6 @@
  * Main component for AI-powered visual quality enhancement
  */
 
-import React, { useState } from 'react';
 import {
   Card,
   makeStyles,
@@ -22,10 +21,11 @@ import {
   Eye24Regular,
   Video24Regular,
 } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 import { ColorGradingPanel } from './ColorGradingPanel';
 import { CompositionPanel } from './CompositionPanel';
-import { VisualCoherencePanel } from './VisualCoherencePanel';
 import { QualityAssessmentPanel } from './QualityAssessmentPanel';
+import { VisualCoherencePanel } from './VisualCoherencePanel';
 
 const useStyles = makeStyles({
   container: {

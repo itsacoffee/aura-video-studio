@@ -138,9 +138,9 @@ describe('KeyboardShortcutManager', () => {
     const groups = keyboardShortcutManager.getShortcutGroups();
 
     expect(groups).toHaveLength(3);
-    expect(groups.some(g => g.context === 'video-editor')).toBe(true);
-    expect(groups.some(g => g.context === 'global')).toBe(true);
-    expect(groups.some(g => g.context === 'timeline')).toBe(true);
+    expect(groups.some((g) => g.context === 'video-editor')).toBe(true);
+    expect(groups.some((g) => g.context === 'global')).toBe(true);
+    expect(groups.some((g) => g.context === 'timeline')).toBe(true);
   });
 
   it('should handle keyboard events', () => {

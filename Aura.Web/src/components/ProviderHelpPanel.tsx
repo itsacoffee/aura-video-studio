@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -12,6 +11,7 @@ import {
   AccordionPanel,
 } from '@fluentui/react-components';
 import { Open20Regular, Video20Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -159,9 +159,7 @@ export function ProviderHelpPanel({
                     }}
                   />
                 </div>
-                <Text weight="semibold">
-                  Estimated monthly cost: ${calculateCost()}
-                </Text>
+                <Text weight="semibold">Estimated monthly cost: ${calculateCost()}</Text>
               </div>
             </Card>
           </AccordionPanel>
@@ -183,7 +181,9 @@ export function ProviderHelpPanel({
               </div>
 
               {keyFormat && (
-                <Card style={{ marginTop: tokens.spacingVerticalM, padding: tokens.spacingVerticalS }}>
+                <Card
+                  style={{ marginTop: tokens.spacingVerticalM, padding: tokens.spacingVerticalS }}
+                >
                   <Text size={200} style={{ fontStyle: 'italic' }}>
                     💡 Tip: {providerName} API keys {keyFormat}
                   </Text>

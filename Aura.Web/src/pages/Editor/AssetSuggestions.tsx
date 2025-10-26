@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -11,6 +10,7 @@ import {
   Image,
 } from '@fluentui/react-components';
 import { Search24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({

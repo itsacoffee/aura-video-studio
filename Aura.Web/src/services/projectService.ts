@@ -2,11 +2,7 @@
  * Service for managing video editor projects
  */
 
-import {
-  ProjectFile,
-  ProjectListItem,
-  LoadProjectResponse,
-} from '../types/project';
+import { ProjectFile, ProjectListItem, LoadProjectResponse } from '../types/project';
 import { get, post, del } from './api/apiClient';
 
 const API_BASE_URL = '/api/project';
@@ -88,7 +84,7 @@ export function importProjectFile(): Promise<ProjectFile> {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.aura,application/json';
-    
+
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) {
@@ -99,7 +95,7 @@ export function importProjectFile(): Promise<ProjectFile> {
       try {
         const text = await file.text();
         const projectFile = JSON.parse(text) as ProjectFile;
-        
+
         // Validate project file structure
         if (!projectFile.version || !projectFile.metadata || !projectFile.clips) {
           reject(new Error('Invalid project file format'));

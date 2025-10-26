@@ -1,7 +1,7 @@
 // Onboarding state management with state machine for First-Run Wizard
 
-import type { PreflightReport, StageCheck } from './providers';
 import { apiUrl } from '../config/api';
+import type { PreflightReport, StageCheck } from './providers';
 
 /**
  * Wizard validation status - deterministic state machine
@@ -657,7 +657,10 @@ export async function validateApiKeyThunk(
 }
 
 // Validate API key format
-function validateApiKeyFormat(provider: string, apiKey: string): { valid: boolean; error?: string } {
+function validateApiKeyFormat(
+  provider: string,
+  apiKey: string
+): { valid: boolean; error?: string } {
   if (!apiKey || apiKey.trim() === '') {
     return { valid: false, error: 'Please enter your API key' };
   }
@@ -690,7 +693,10 @@ function validateApiKeyFormat(provider: string, apiKey: string): { valid: boolea
       break;
     case 'playht':
       if (!apiKey.includes(':')) {
-        return { valid: false, error: 'PlayHT requires both User ID and Secret Key (format: userId:secretKey)' };
+        return {
+          valid: false,
+          error: 'PlayHT requires both User ID and Secret Key (format: userId:secretKey)',
+        };
       }
       break;
   }

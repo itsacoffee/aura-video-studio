@@ -3,7 +3,6 @@
  * Interactive timeline adjustment for pacing optimization
  */
 
-import { useState, useEffect } from 'react';
 import {
   Card,
   makeStyles,
@@ -21,6 +20,7 @@ import {
   CheckmarkCircle24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { Scene } from '../../types';
 
 interface PaceAdjustmentSliderProps {
@@ -99,11 +99,11 @@ export const PaceAdjustmentSlider = ({
       const currentDuration = scene.duration;
       const wordCount = scene.script.split(/\s+/).length;
       const wordsPerSecond = wordCount / currentDuration;
-      
+
       // Calculate recommended duration (target: 2.5 words/second)
       const recommendedDuration = wordCount / 2.5;
       const paceMultiplier = currentDuration / recommendedDuration;
-      
+
       let status: 'optimal' | 'too-fast' | 'too-slow' = 'optimal';
       if (wordsPerSecond > 3.5) status = 'too-fast';
       else if (wordsPerSecond < 1.5) status = 'too-slow';
@@ -121,8 +121,8 @@ export const PaceAdjustmentSlider = ({
   };
 
   const handlePaceChange = (sceneIndex: number, newMultiplier: number) => {
-    setScenePacing(prev =>
-      prev.map(sp =>
+    setScenePacing((prev) =>
+      prev.map((sp) =>
         sp.sceneIndex === sceneIndex
           ? {
               ...sp,
@@ -138,7 +138,7 @@ export const PaceAdjustmentSlider = ({
     if (!onScenesUpdated) return;
 
     const updatedScenes = scenes.map((scene, index) => {
-      const pacing = scenePacing.find(sp => sp.sceneIndex === index);
+      const pacing = scenePacing.find((sp) => sp.sceneIndex === index);
       if (!pacing) return scene;
 
       const newDuration = pacing.currentDuration;
@@ -154,11 +154,23 @@ export const PaceAdjustmentSlider = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'optimal':
-        return <Badge color="success" icon={<CheckmarkCircle24Regular />}>Optimal</Badge>;
+        return (
+          <Badge color="success" icon={<CheckmarkCircle24Regular />}>
+            Optimal
+          </Badge>
+        );
       case 'too-fast':
-        return <Badge color="danger" icon={<Warning24Regular />}>Too Fast</Badge>;
+        return (
+          <Badge color="danger" icon={<Warning24Regular />}>
+            Too Fast
+          </Badge>
+        );
       case 'too-slow':
-        return <Badge color="warning" icon={<Warning24Regular />}>Too Slow</Badge>;
+        return (
+          <Badge color="warning" icon={<Warning24Regular />}>
+            Too Slow
+          </Badge>
+        );
       default:
         return null;
     }
@@ -191,7 +203,7 @@ export const PaceAdjustmentSlider = ({
       <div className={styles.sceneList}>
         {scenePacing.map((pacing) => {
           const scene = scenes[pacing.sceneIndex];
-          
+
           return (
             <Card key={pacing.sceneIndex} className={styles.sceneCard}>
               <div className={styles.sceneHeader}>
@@ -240,11 +252,7 @@ export const PaceAdjustmentSlider = ({
       </div>
 
       <div style={{ marginTop: tokens.spacingVerticalL, textAlign: 'center' }}>
-        <Button
-          appearance="primary"
-          onClick={applyChanges}
-          disabled={!onScenesUpdated}
-        >
+        <Button appearance="primary" onClick={applyChanges} disabled={!onScenesUpdated}>
           Apply Pace Adjustments
         </Button>
       </div>

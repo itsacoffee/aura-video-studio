@@ -2,7 +2,6 @@
  * Modal component for previewing a template
  */
 
-import { useState } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -17,6 +16,7 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import { Dismiss24Regular, Star24Filled } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { TemplateListItem } from '../../types/templates';
 
 const useStyles = makeStyles({
@@ -88,12 +88,7 @@ export interface TemplatePreviewProps {
   onUseTemplate: (template: TemplateListItem) => void;
 }
 
-export function TemplatePreview({
-  template,
-  open,
-  onClose,
-  onUseTemplate,
-}: TemplatePreviewProps) {
+export function TemplatePreview({ template, open, onClose, onUseTemplate }: TemplatePreviewProps) {
   const styles = useStyles();
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
@@ -112,9 +107,7 @@ export function TemplatePreview({
             <DialogTitle>
               <div className={styles.titleRow}>
                 {template.name}
-                <Badge appearance="outline">
-                  {template.subCategory || template.category}
-                </Badge>
+                <Badge appearance="outline">{template.subCategory || template.category}</Badge>
               </div>
             </DialogTitle>
             <Button
@@ -127,6 +120,8 @@ export function TemplatePreview({
           <DialogContent>
             <div className={styles.previewContainer}>
               {template.previewVideo && isVideoPlaying ? (
+                // Preview video without captions as it's a silent demo video
+                // eslint-disable-next-line jsx-a11y/media-has-caption
                 <video
                   className={styles.video}
                   src={template.previewVideo}
@@ -136,11 +131,19 @@ export function TemplatePreview({
                   onError={() => setIsVideoPlaying(false)}
                 />
               ) : template.previewImage ? (
+                // Image is clickable to play preview video
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
                 <img
                   src={template.previewImage}
                   alt={template.name}
                   className={styles.previewImage}
                   onClick={() => template.previewVideo && setIsVideoPlaying(true)}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && template.previewVideo) {
+                      e.preventDefault();
+                      setIsVideoPlaying(true);
+                    }
+                  }}
                   style={{ cursor: template.previewVideo ? 'pointer' : 'default' }}
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '';

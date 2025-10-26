@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -14,6 +13,7 @@ import {
   Slider,
 } from '@fluentui/react-components';
 import { Save24Regular, Color24Regular, ArrowReset24Regular } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({
@@ -80,14 +80,49 @@ interface ThemePreset {
 }
 
 const THEME_PRESETS: ThemePreset[] = [
-  { name: 'Default Blue', primaryColor: '#0078D4', secondaryColor: '#005A9E', accentColor: '#2B88D8' },
-  { name: 'Purple Dream', primaryColor: '#6750A4', secondaryColor: '#4F378B', accentColor: '#7965AF' },
-  { name: 'Teal Ocean', primaryColor: '#03DAC6', secondaryColor: '#018786', accentColor: '#00BFA5' },
-  { name: 'Sunset Orange', primaryColor: '#FF6B35', secondaryColor: '#E85D2F', accentColor: '#FF8960' },
-  { name: 'Forest Green', primaryColor: '#2E7D32', secondaryColor: '#1B5E20', accentColor: '#388E3C' },
+  {
+    name: 'Default Blue',
+    primaryColor: '#0078D4',
+    secondaryColor: '#005A9E',
+    accentColor: '#2B88D8',
+  },
+  {
+    name: 'Purple Dream',
+    primaryColor: '#6750A4',
+    secondaryColor: '#4F378B',
+    accentColor: '#7965AF',
+  },
+  {
+    name: 'Teal Ocean',
+    primaryColor: '#03DAC6',
+    secondaryColor: '#018786',
+    accentColor: '#00BFA5',
+  },
+  {
+    name: 'Sunset Orange',
+    primaryColor: '#FF6B35',
+    secondaryColor: '#E85D2F',
+    accentColor: '#FF8960',
+  },
+  {
+    name: 'Forest Green',
+    primaryColor: '#2E7D32',
+    secondaryColor: '#1B5E20',
+    accentColor: '#388E3C',
+  },
   { name: 'Ruby Red', primaryColor: '#D32F2F', secondaryColor: '#B71C1C', accentColor: '#E53935' },
-  { name: 'Deep Space', primaryColor: '#1A237E', secondaryColor: '#0D1644', accentColor: '#303F9F' },
-  { name: 'Mint Fresh', primaryColor: '#00C853', secondaryColor: '#00A344', accentColor: '#00E676' },
+  {
+    name: 'Deep Space',
+    primaryColor: '#1A237E',
+    secondaryColor: '#0D1644',
+    accentColor: '#303F9F',
+  },
+  {
+    name: 'Mint Fresh',
+    primaryColor: '#00C853',
+    secondaryColor: '#00A344',
+    accentColor: '#00E676',
+  },
 ];
 
 const FONT_FAMILIES = [
@@ -225,7 +260,9 @@ export function ThemeCustomizationTab() {
   return (
     <Card className={styles.section}>
       <Title2>
-        <Color24Regular style={{ marginRight: tokens.spacingHorizontalS, verticalAlign: 'middle' }} />
+        <Color24Regular
+          style={{ marginRight: tokens.spacingHorizontalS, verticalAlign: 'middle' }}
+        />
         Theme Customization
       </Title2>
       <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
@@ -292,7 +329,15 @@ export function ThemeCustomizationTab() {
                     }
                   : undefined
               }
+              role="button"
+              tabIndex={0}
               onClick={() => applyPreset(preset)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  applyPreset(preset);
+                }
+              }}
             >
               <div
                 className={styles.colorSwatch}

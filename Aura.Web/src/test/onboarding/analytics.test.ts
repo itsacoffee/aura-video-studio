@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   trackEvent,
   wizardAnalytics,
@@ -58,7 +58,7 @@ describe('Analytics Service', () => {
 
       const events = getStoredEvents();
       const eventTime = new Date(events[0].timestamp);
-      
+
       expect(eventTime.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime());
       expect(eventTime.getTime()).toBeLessThanOrEqual(afterTime.getTime());
     });

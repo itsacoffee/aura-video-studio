@@ -1,4 +1,3 @@
-import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -31,6 +30,7 @@ import {
   Warning24Regular,
   CheckmarkCircle24Regular,
 } from '@fluentui/react-icons';
+import { useState, useMemo } from 'react';
 
 const useStyles = makeStyles({
   dialogSurface: {
@@ -282,20 +282,22 @@ export function ExportDialog({
 
   const buildExportOptions = (): ExportOptions => {
     const [width, height] = presetInfo.resolution.split('x').map(Number);
-    
+
     // Determine resolution (custom or preset)
-    const resolution = advancedSettings.customWidth > 0 && advancedSettings.customHeight > 0
-      ? { width: advancedSettings.customWidth, height: advancedSettings.customHeight }
-      : { width, height };
-    
+    const resolution =
+      advancedSettings.customWidth > 0 && advancedSettings.customHeight > 0
+        ? { width: advancedSettings.customWidth, height: advancedSettings.customHeight }
+        : { width, height };
+
     // Determine bitrate (custom or preset)
-    const videoBitrate = advancedSettings.customBitrate > 0
-      ? advancedSettings.customBitrate
-      : parseInt(presetInfo.bitrate) * 1000;
-    
+    const videoBitrate =
+      advancedSettings.customBitrate > 0
+        ? advancedSettings.customBitrate
+        : parseInt(presetInfo.bitrate) * 1000;
+
     // Always use the codec from advanced settings dropdown (defaults to H.264 same as most presets)
     const codec = advancedSettings.codec;
-    
+
     return {
       preset: selectedPreset,
       resolution,
@@ -312,16 +314,16 @@ export function ExportDialog({
   // Validation checks
   const validationWarnings = useMemo(() => {
     const warnings: string[] = [];
-    
+
     // Check for invalid codec/container combinations
     if (advancedSettings.codec === 'ProRes' && !outputPath.toLowerCase().endsWith('.mov')) {
       warnings.push('ProRes codec requires MOV container format');
     }
-    
+
     if (advancedSettings.codec === 'VP9' && !outputPath.toLowerCase().endsWith('.webm')) {
       warnings.push('VP9 codec works best with WebM container format');
     }
-    
+
     // Check for extreme bitrate values
     if (advancedSettings.customBitrate > 0) {
       if (advancedSettings.customBitrate < 500) {
@@ -331,7 +333,7 @@ export function ExportDialog({
         warnings.push('Very high bitrate will create extremely large files');
       }
     }
-    
+
     // Check resolution constraints
     if (advancedSettings.customWidth > 0 || advancedSettings.customHeight > 0) {
       if (advancedSettings.customWidth > 0 && advancedSettings.customWidth < 320) {
@@ -349,13 +351,15 @@ export function ExportDialog({
     if (advancedSettings.gopSize > 0 && advancedSettings.gopSize < 10) {
       warnings.push('Very small GOP size may reduce compression efficiency');
     }
-    
+
     return warnings;
   }, [advancedSettings, outputPath]);
 
   const handleExport = () => {
     if (validationWarnings.length > 0) {
-      const proceed = confirm(`Warning:\n${validationWarnings.join('\n')}\n\nDo you want to continue?`);
+      const proceed = confirm(
+        `Warning:\n${validationWarnings.join('\n')}\n\nDo you want to continue?`
+      );
       if (!proceed) return;
     }
     onExport(buildExportOptions());
@@ -363,7 +367,9 @@ export function ExportDialog({
 
   const handleAddToQueue = () => {
     if (validationWarnings.length > 0) {
-      const proceed = confirm(`Warning:\n${validationWarnings.join('\n')}\n\nDo you want to continue?`);
+      const proceed = confirm(
+        `Warning:\n${validationWarnings.join('\n')}\n\nDo you want to continue?`
+      );
       if (!proceed) return;
     }
     onAddToQueue(buildExportOptions());
@@ -471,12 +477,16 @@ export function ExportDialog({
                         <Option value="maximum">Maximum (Slow)</Option>
                       </Dropdown>
                     </Field>
-                    
+
                     <Field label="Video Codec">
                       <Dropdown
                         value={advancedSettings.codec}
-                        onOptionSelect={(_, data) => 
-                          setAdvancedSettings({ ...advancedSettings, codec: data.optionValue as string, enabled: true })
+                        onOptionSelect={(_, data) =>
+                          setAdvancedSettings({
+                            ...advancedSettings,
+                            codec: data.optionValue as string,
+                            enabled: true,
+                          })
                         }
                       >
                         <Option value="H.264">H.264 (Widely Compatible)</Option>
@@ -491,7 +501,10 @@ export function ExportDialog({
                         <Dropdown
                           value={advancedSettings.bitrateMode}
                           onOptionSelect={(_, data) =>
-                            setAdvancedSettings({ ...advancedSettings, bitrateMode: data.optionValue as string })
+                            setAdvancedSettings({
+                              ...advancedSettings,
+                              bitrateMode: data.optionValue as string,
+                            })
                           }
                         >
                           <Option value="VBR">VBR (Variable Bitrate)</Option>
@@ -503,7 +516,10 @@ export function ExportDialog({
                         <Dropdown
                           value={advancedSettings.profile}
                           onOptionSelect={(_, data) =>
-                            setAdvancedSettings({ ...advancedSettings, profile: data.optionValue as string })
+                            setAdvancedSettings({
+                              ...advancedSettings,
+                              profile: data.optionValue as string,
+                            })
                           }
                         >
                           <Option value="baseline">Baseline</Option>
@@ -512,16 +528,23 @@ export function ExportDialog({
                         </Dropdown>
                       </Field>
                     </div>
-                    
+
                     <div className={styles.row}>
                       <Field label="Custom Bitrate (Kbps)" className={styles.field}>
                         <Input
                           type="number"
-                          value={advancedSettings.customBitrate > 0 ? advancedSettings.customBitrate.toString() : ''}
+                          value={
+                            advancedSettings.customBitrate > 0
+                              ? advancedSettings.customBitrate.toString()
+                              : ''
+                          }
                           onChange={(_, data) => {
                             const value = parseInt(data.value) || 0;
                             const newSettings = { ...advancedSettings, customBitrate: value };
-                            setAdvancedSettings({ ...newSettings, enabled: shouldEnableAdvanced(newSettings) });
+                            setAdvancedSettings({
+                              ...newSettings,
+                              enabled: shouldEnableAdvanced(newSettings),
+                            });
                           }}
                           placeholder="Auto"
                         />
@@ -532,7 +555,9 @@ export function ExportDialog({
                       <Field label="GOP Size (frames)" className={styles.field}>
                         <Input
                           type="number"
-                          value={advancedSettings.gopSize > 0 ? advancedSettings.gopSize.toString() : ''}
+                          value={
+                            advancedSettings.gopSize > 0 ? advancedSettings.gopSize.toString() : ''
+                          }
                           onChange={(_, data) => {
                             const value = parseInt(data.value) || 0;
                             setAdvancedSettings({ ...advancedSettings, gopSize: value });
@@ -544,7 +569,11 @@ export function ExportDialog({
                       <Field label="Keyframe Interval (sec)" className={styles.field}>
                         <Input
                           type="number"
-                          value={advancedSettings.keyframeInterval > 0 ? advancedSettings.keyframeInterval.toString() : ''}
+                          value={
+                            advancedSettings.keyframeInterval > 0
+                              ? advancedSettings.keyframeInterval.toString()
+                              : ''
+                          }
                           onChange={(_, data) => {
                             const value = parseInt(data.value) || 0;
                             setAdvancedSettings({ ...advancedSettings, keyframeInterval: value });
@@ -553,16 +582,23 @@ export function ExportDialog({
                         />
                       </Field>
                     </div>
-                    
+
                     <div className={styles.row}>
                       <Field label="Custom Width" className={styles.field}>
                         <Input
                           type="number"
-                          value={advancedSettings.customWidth > 0 ? advancedSettings.customWidth.toString() : ''}
+                          value={
+                            advancedSettings.customWidth > 0
+                              ? advancedSettings.customWidth.toString()
+                              : ''
+                          }
                           onChange={(_, data) => {
                             const value = parseInt(data.value) || 0;
                             const newSettings = { ...advancedSettings, customWidth: value };
-                            setAdvancedSettings({ ...newSettings, enabled: shouldEnableAdvanced(newSettings) });
+                            setAdvancedSettings({
+                              ...newSettings,
+                              enabled: shouldEnableAdvanced(newSettings),
+                            });
                           }}
                           placeholder="Auto"
                         />
@@ -570,11 +606,18 @@ export function ExportDialog({
                       <Field label="Custom Height" className={styles.field}>
                         <Input
                           type="number"
-                          value={advancedSettings.customHeight > 0 ? advancedSettings.customHeight.toString() : ''}
+                          value={
+                            advancedSettings.customHeight > 0
+                              ? advancedSettings.customHeight.toString()
+                              : ''
+                          }
                           onChange={(_, data) => {
                             const value = parseInt(data.value) || 0;
                             const newSettings = { ...advancedSettings, customHeight: value };
-                            setAdvancedSettings({ ...newSettings, enabled: shouldEnableAdvanced(newSettings) });
+                            setAdvancedSettings({
+                              ...newSettings,
+                              enabled: shouldEnableAdvanced(newSettings),
+                            });
                           }}
                           placeholder="Auto"
                         />
@@ -588,7 +631,13 @@ export function ExportDialog({
             {validationWarnings.length > 0 && (
               <MessageBar intent="warning">
                 <MessageBarBody>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: tokens.spacingVerticalXS,
+                    }}
+                  >
                     {validationWarnings.map((warning, idx) => (
                       <Caption1 key={idx}>• {warning}</Caption1>
                     ))}

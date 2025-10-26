@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -13,6 +12,7 @@ import {
   MessageBarTitle,
 } from '@fluentui/react-components';
 import { FlashFlow24Regular, Play24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PacingOptimizerPanel } from '../components/PacingAnalysis';
 import type { Brief } from '../types';
@@ -133,8 +133,8 @@ export function PacingAnalyzerPage() {
               throughout your video
             </Body1>
             <Body1>
-              <strong>• Scene Timing:</strong> Get optimal duration suggestions for each scene
-              based on content and platform
+              <strong>• Scene Timing:</strong> Get optimal duration suggestions for each scene based
+              on content and platform
             </Body1>
             <Body1>
               <strong>• Retention Predictions:</strong> Estimate viewer retention rates with

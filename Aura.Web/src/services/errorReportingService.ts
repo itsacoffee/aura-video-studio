@@ -61,7 +61,7 @@ class ErrorReportingService {
     }
   ): string {
     const errorId = this.generateErrorId();
-    
+
     const report: ErrorReport = {
       id: errorId,
       severity,
@@ -117,7 +117,7 @@ class ErrorReportingService {
     }
   ): string {
     const notificationId = this.generateErrorId();
-    
+
     const notification: ErrorNotification = {
       id: notificationId,
       severity,
@@ -126,11 +126,13 @@ class ErrorReportingService {
       actions: options?.actions,
       dismissible: options?.dismissible ?? true,
       autoHide: options?.autoHide ?? (severity !== 'error' && severity !== 'critical'),
-      duration: options?.duration ?? (severity === 'info' ? 5000 : severity === 'warning' ? 8000 : undefined),
+      duration:
+        options?.duration ??
+        (severity === 'info' ? 5000 : severity === 'warning' ? 8000 : undefined),
     };
 
     // Notify all listeners
-    this.notificationListeners.forEach(listener => {
+    this.notificationListeners.forEach((listener) => {
       try {
         listener(notification);
       } catch (error) {
@@ -269,7 +271,7 @@ class ErrorReportingService {
    * Get a specific error report by ID
    */
   public getErrorReport(errorId: string): ErrorReport | null {
-    return this.errorQueue.find(r => r.id === errorId) || null;
+    return this.errorQueue.find((r) => r.id === errorId) || null;
   }
 
   /**
@@ -285,7 +287,11 @@ class ErrorReportingService {
   public async submitErrorReport(errorId: string, userDescription?: string): Promise<boolean> {
     const report = this.getErrorReport(errorId);
     if (!report) {
-      loggingService.warn(`Error report ${errorId} not found`, 'errorReportingService', 'submitErrorReport');
+      loggingService.warn(
+        `Error report ${errorId} not found`,
+        'errorReportingService',
+        'submitErrorReport'
+      );
       return false;
     }
 

@@ -1,5 +1,5 @@
-import { ReactElement } from 'react';
 import { Tooltip as FluentTooltip, TooltipProps } from '@fluentui/react-components';
+import { ReactElement } from 'react';
 
 interface EnhancedTooltipProps extends Omit<TooltipProps, 'content' | 'relationship'> {
   content: string;
@@ -27,18 +27,22 @@ export function Tooltip({
     <div>
       {content}
       <div style={{ marginTop: '4px', opacity: 0.8, fontSize: '0.85em' }}>
-        <kbd style={{ 
-          padding: '2px 6px', 
-          borderRadius: '3px', 
-          border: '1px solid rgba(255,255,255,0.3)',
-          backgroundColor: 'rgba(0,0,0,0.2)',
-          fontFamily: 'monospace',
-        }}>
+        <kbd
+          style={{
+            padding: '2px 6px',
+            borderRadius: '3px',
+            border: '1px solid rgba(255,255,255,0.3)',
+            backgroundColor: 'rgba(0,0,0,0.2)',
+            fontFamily: 'monospace',
+          }}
+        >
           {shortcut}
         </kbd>
       </div>
     </div>
-  ) : content;
+  ) : (
+    content
+  );
 
   return (
     <FluentTooltip

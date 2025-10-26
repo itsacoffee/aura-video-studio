@@ -2,7 +2,6 @@
  * Enhanced Timeline component with advanced editing features
  */
 
-import { useRef, useState, useCallback } from 'react';
 import {
   makeStyles,
   tokens,
@@ -22,14 +21,15 @@ import {
   Copy24Regular,
   Question24Regular,
 } from '@fluentui/react-icons';
-import { useTimelineStore } from '../../../state/timeline';
-import { TimelineZoomControls } from './TimelineZoomControls';
-import { TimelineTrack } from './TimelineTrack';
-import { AudioTrackControls } from './AudioTrackControls';
+import { useRef, useState, useCallback } from 'react';
 import {
   useTimelineKeyboardShortcuts,
   getKeyboardShortcuts,
 } from '../../../hooks/useTimelineKeyboardShortcuts';
+import { useTimelineStore } from '../../../state/timeline';
+import { AudioTrackControls } from './AudioTrackControls';
+import { TimelineTrack } from './TimelineTrack';
+import { TimelineZoomControls } from './TimelineZoomControls';
 
 const useStyles = makeStyles({
   container: {

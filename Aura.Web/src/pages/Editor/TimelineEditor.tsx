@@ -1,5 +1,3 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { makeStyles, tokens, Button, Spinner, Text, Title3 } from '@fluentui/react-components';
 import {
   Save24Regular,
@@ -7,8 +5,10 @@ import {
   ZoomIn24Regular,
   ZoomOut24Regular,
 } from '@fluentui/react-icons';
-import { VideoPreviewPlayer } from '../../components/Editor/VideoPreviewPlayer';
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ScenePropertiesPanel } from '../../components/Editor/ScenePropertiesPanel';
+import { VideoPreviewPlayer } from '../../components/Editor/VideoPreviewPlayer';
 import type { EditableTimeline, TimelineScene, TimelineAsset } from '../../types/timeline';
 
 const useStyles = makeStyles({
@@ -436,7 +436,15 @@ export function TimelineEditor() {
                   style={{
                     width: `${getSceneWidth(scene)}px`,
                   }}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedSceneIndex(index)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedSceneIndex(index);
+                    }
+                  }}
                 >
                   <div className={styles.sceneHeading}>
                     {scene.heading || `Scene ${scene.index + 1}`}

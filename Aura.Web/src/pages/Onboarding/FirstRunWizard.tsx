@@ -1,4 +1,3 @@
-import { useEffect, useReducer, useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -15,7 +14,24 @@ import {
   ChevronLeft24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
+import { useEffect, useReducer, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CompletionScreen } from '../../components/Onboarding/CompletionScreen';
+import type { Dependency } from '../../components/Onboarding/DependencyCheck';
+import { DependencyCheck } from '../../components/Onboarding/DependencyCheck';
+import { FileLocationsSummary } from '../../components/Onboarding/FileLocationsSummary';
+import { QuickTutorial, defaultTutorialSteps } from '../../components/Onboarding/QuickTutorial';
+import { TemplateSelection, defaultTemplates } from '../../components/Onboarding/TemplateSelection';
+import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
+import type { WorkspacePreferences } from '../../components/Onboarding/WorkspaceSetup';
+import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
+import { WizardProgress } from '../../components/WizardProgress';
+import { wizardAnalytics } from '../../services/analytics';
+import {
+  markFirstRunCompleted,
+  getLocalFirstRunStatus,
+  markWizardNeverShowAgain,
+} from '../../services/firstRunService';
 import {
   onboardingReducer,
   initialOnboardingState,
@@ -29,20 +45,8 @@ import {
   clearWizardStateFromStorage,
 } from '../../state/onboarding';
 import type { FixAction } from '../../state/providers';
-import type { Dependency } from '../../components/Onboarding/DependencyCheck';
-import type { WorkspacePreferences } from '../../components/Onboarding/WorkspaceSetup';
-import { FileLocationsSummary } from '../../components/Onboarding/FileLocationsSummary';
-import { WizardProgress } from '../../components/WizardProgress';
-import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
-import { DependencyCheck } from '../../components/Onboarding/DependencyCheck';
-import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
-import { QuickTutorial, defaultTutorialSteps } from '../../components/Onboarding/QuickTutorial';
-import { TemplateSelection, defaultTemplates } from '../../components/Onboarding/TemplateSelection';
-import { CompletionScreen } from '../../components/Onboarding/CompletionScreen';
-import { ChooseTierStep } from './ChooseTierStep';
 import { ApiKeySetupStep } from './ApiKeySetupStep';
-import { markFirstRunCompleted, getLocalFirstRunStatus, markWizardNeverShowAgain } from '../../services/firstRunService';
-import { wizardAnalytics } from '../../services/analytics';
+import { ChooseTierStep } from './ChooseTierStep';
 
 const useStyles = makeStyles({
   container: {
@@ -134,7 +138,7 @@ export function FirstRunWizard() {
     'Hardware',
     'Validation',
     'Tutorial',
-    'Complete'
+    'Complete',
   ];
 
   useEffect(() => {
@@ -153,7 +157,9 @@ export function FirstRunWizard() {
     const savedState = loadWizardStateFromStorage();
     if (savedState) {
       // Ask user if they want to resume
-      const resume = window.confirm('You have incomplete setup. Would you like to resume where you left off?');
+      const resume = window.confirm(
+        'You have incomplete setup. Would you like to resume where you left off?'
+      );
       if (resume && savedState) {
         dispatch({ type: 'LOAD_FROM_STORAGE', payload: savedState });
       } else {
@@ -169,7 +175,11 @@ export function FirstRunWizard() {
 
     if (state.step > 0 && timeSpent > 1) {
       // Track previous step completion
-      wizardAnalytics.stepCompleted(state.step - 1, stepLabels[state.step - 1] || 'Unknown', timeSpent);
+      wizardAnalytics.stepCompleted(
+        state.step - 1,
+        stepLabels[state.step - 1] || 'Unknown',
+        timeSpent
+      );
     }
 
     // Track new step view
@@ -212,7 +222,7 @@ export function FirstRunWizard() {
         alert('Please select a tier to continue');
         return;
       }
-      
+
       // If Free tier, skip API keys step
       if (state.selectedTier === 'free') {
         dispatch({ type: 'SET_MODE', payload: 'free' });
@@ -284,7 +294,7 @@ export function FirstRunWizard() {
       else {
         dispatch({ type: 'SET_STEP', payload: state.step - 1 });
       }
-      
+
       // Reset validation when going back from validation step
       if (state.step === 5) {
         dispatch({ type: 'RESET_VALIDATION' });
@@ -376,7 +386,11 @@ export function FirstRunWizard() {
   };
 
   const handleSkipAllApiKeys = () => {
-    if (window.confirm('Are you sure you want to skip API key setup? You can add them later in Settings.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to skip API key setup? You can add them later in Settings.'
+      )
+    ) {
       dispatch({ type: 'SET_STEP', payload: 3 }); // Skip to hardware
     }
   };
@@ -394,10 +408,11 @@ export function FirstRunWizard() {
   const handleBrowseFolder = async (type: 'save' | 'cache'): Promise<string | null> => {
     // For now, return a mock path. In production, this would use Electron's dialog API
     // or a web-based folder picker
-    const mockPath = type === 'save' 
-      ? 'C:\\Users\\YourName\\Videos\\Aura'
-      : 'C:\\Users\\YourName\\AppData\\Local\\Aura\\Cache';
-    
+    const mockPath =
+      type === 'save'
+        ? 'C:\\Users\\YourName\\Videos\\Aura'
+        : 'C:\\Users\\YourName\\AppData\\Local\\Aura\\Cache';
+
     return new Promise((resolve) => {
       setTimeout(() => resolve(mockPath), 100);
     });
@@ -459,7 +474,7 @@ export function FirstRunWizard() {
 
   // Render step 0: Enhanced Welcome Screen
   const renderStep0 = () => (
-    <WelcomeScreen 
+    <WelcomeScreen
       onGetStarted={handleNext}
       onImportProject={() => {
         // Future: implement project import
@@ -470,10 +485,7 @@ export function FirstRunWizard() {
 
   // Render step 1: Tier Selection (unchanged)
   const renderStep1 = () => (
-    <ChooseTierStep
-      selectedTier={state.selectedTier}
-      onSelectTier={handleSelectTier}
-    />
+    <ChooseTierStep selectedTier={state.selectedTier} onSelectTier={handleSelectTier} />
   );
 
   // Render step 2: API Keys (unchanged)
@@ -563,8 +575,8 @@ export function FirstRunWizard() {
                 ⚠ Note
               </Badge>
               <Text style={{ marginTop: tokens.spacingVerticalS }}>
-                Your system doesn&apos;t meet the requirements for local Stable Diffusion. We&apos;ll use
-                Stock images as a fallback, or you can add cloud Pro providers later.
+                Your system doesn&apos;t meet the requirements for local Stable Diffusion.
+                We&apos;ll use Stock images as a fallback, or you can add cloud Pro providers later.
               </Text>
             </Card>
           )}
@@ -615,7 +627,8 @@ export function FirstRunWizard() {
               <div>
                 <Title2>Validation Failed</Title2>
                 <Text>
-                  Some providers are not available. Please fix the issues below or click Next to continue anyway.
+                  Some providers are not available. Please fix the issues below or click Next to
+                  continue anyway.
                 </Text>
               </div>
             </div>
@@ -736,7 +749,7 @@ export function FirstRunWizard() {
         onExploreApp={async () => {
           clearWizardStateFromStorage();
           await markFirstRunCompleted();
-          
+
           // Track completion
           const totalTime = (Date.now() - wizardStartTime) / 1000;
           wizardAnalytics.completed(totalTime, {
@@ -746,7 +759,7 @@ export function FirstRunWizard() {
             template_selected: !!state.selectedTemplate,
             tutorial_completed: state.tutorialCompleted,
           });
-          
+
           navigate('/');
         }}
         onNeverShowAgain={handleNeverShowAgain}
@@ -782,11 +795,15 @@ export function FirstRunWizard() {
     }
   };
 
-  const buttonLabel = state.step === 5 ? (
-    state.status === 'idle' || state.status === 'installed' ? 'Validate' : 
-    state.status === 'invalid' ? 'Next Anyway' : 'Next'
-  ) : 'Next';
-  const buttonDisabled = 
+  const buttonLabel =
+    state.step === 5
+      ? state.status === 'idle' || state.status === 'installed'
+        ? 'Validate'
+        : state.status === 'invalid'
+          ? 'Next Anyway'
+          : 'Next'
+      : 'Next';
+  const buttonDisabled =
     (state.step === 1 && !state.selectedTier) ||
     state.isDetectingHardware ||
     state.status === 'validating' ||

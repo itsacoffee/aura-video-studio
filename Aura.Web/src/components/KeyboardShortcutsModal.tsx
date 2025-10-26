@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -11,6 +10,7 @@ import {
   Text,
 } from '@fluentui/react-components';
 import { Dismiss24Regular, Copy24Regular, Checkmark24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useStyles = makeStyles({
   dialogSurface: {

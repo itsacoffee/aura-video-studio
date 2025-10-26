@@ -40,9 +40,7 @@ export function useEngineInstallProgress() {
       });
 
       return new Promise((resolve) => {
-        const eventSource = new EventSource(
-          apiUrl('/api/engines/install-stream')
-        );
+        const eventSource = new EventSource(apiUrl('/api/engines/install-stream'));
 
         // Send install request via POST by creating a hidden form
         // (EventSource only supports GET, so we use a workaround)
@@ -71,6 +69,8 @@ export function useEngineInstallProgress() {
             const decoder = new TextDecoder();
             let buffer = '';
 
+            // Stream reading requires infinite loop with break condition inside
+            // eslint-disable-next-line no-constant-condition
             while (true) {
               const { done, value } = await reader.read();
 

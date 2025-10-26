@@ -3,7 +3,6 @@
  * Create masks to selectively show/hide layer content
  */
 
-import { useState, useRef, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -20,6 +19,7 @@ import {
   Checkmark24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
+import { useState, useRef, useEffect } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -130,10 +130,10 @@ export function MaskTools({
 
   const drawMask = (ctx: CanvasRenderingContext2D, mask: MaskShape) => {
     ctx.save();
-    
+
     // Create mask path
     ctx.beginPath();
-    
+
     if (mask.type === 'rectangle' && mask.x !== undefined && mask.y !== undefined) {
       ctx.rect(mask.x, mask.y, mask.width || 0, mask.height || 0);
     } else if (mask.type === 'circle' && mask.x !== undefined && mask.y !== undefined) {
@@ -163,7 +163,10 @@ export function MaskTools({
     ctx.restore();
   };
 
-  const drawCustomPath = (ctx: CanvasRenderingContext2D, points: Array<{ x: number; y: number }>) => {
+  const drawCustomPath = (
+    ctx: CanvasRenderingContext2D,
+    points: Array<{ x: number; y: number }>
+  ) => {
     if (points.length === 0) return;
 
     ctx.strokeStyle = tokens.colorBrandForeground1;
@@ -357,7 +360,9 @@ export function MaskTools({
           {selectedTool === 'custom-path' && pathPoints.length > 0 && (
             <div>
               <Label>Path Points: {pathPoints.length}</Label>
-              <p style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}>
+              <p
+                style={{ fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 }}
+              >
                 Click to add more points. Need at least 3 points to create mask.
               </p>
             </div>
@@ -370,11 +375,7 @@ export function MaskTools({
                 <Button appearance="secondary" icon={<Dismiss24Regular />} onClick={handleCancel}>
                   Cancel
                 </Button>
-                <Button
-                  appearance="primary"
-                  icon={<Checkmark24Regular />}
-                  onClick={handleConfirm}
-                >
+                <Button appearance="primary" icon={<Checkmark24Regular />} onClick={handleConfirm}>
                   Create Mask
                 </Button>
               </div>

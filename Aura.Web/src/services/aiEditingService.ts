@@ -153,9 +153,7 @@ class AIEditingService {
   /**
    * Generate chapter markers from detected scenes
    */
-  async generateChapters(
-    videoPath: string
-  ): Promise<Array<{ timestamp: string; title: string }>> {
+  async generateChapters(videoPath: string): Promise<Array<{ timestamp: string; title: string }>> {
     const response = await fetch(`${API_BASE}/generate-chapters`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -173,9 +171,7 @@ class AIEditingService {
   /**
    * Detect highlight moments in video
    */
-  async detectHighlights(
-    request: DetectHighlightsRequest
-  ): Promise<HighlightDetectionResult> {
+  async detectHighlights(request: DetectHighlightsRequest): Promise<HighlightDetectionResult> {
     const response = await fetch(`${API_BASE}/detect-highlights`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -229,9 +225,7 @@ class AIEditingService {
   /**
    * Analyze video for auto-framing suggestions
    */
-  async analyzeAutoFraming(
-    request: AutoFrameRequest
-  ): Promise<AutoFramingResult> {
+  async analyzeAutoFraming(request: AutoFrameRequest): Promise<AutoFramingResult> {
     const response = await fetch(`${API_BASE}/auto-frame`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -285,9 +279,7 @@ class AIEditingService {
   /**
    * Generate captions from video/audio
    */
-  async generateCaptions(
-    request: GenerateCaptionsRequest
-  ): Promise<SpeechRecognitionResult> {
+  async generateCaptions(request: GenerateCaptionsRequest): Promise<SpeechRecognitionResult> {
     const response = await fetch(`${API_BASE}/generate-captions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

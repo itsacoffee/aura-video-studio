@@ -2,7 +2,6 @@
  * Component for displaying and applying transition presets
  */
 
-import { useState, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -14,8 +13,9 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import { CheckmarkCircle24Filled } from '@fluentui/react-icons';
-import { TransitionPreset } from '../../types/templates';
+import { useState, useEffect } from 'react';
 import { getTransitionPresets } from '../../services/templatesService';
+import { TransitionPreset } from '../../types/templates';
 
 const useStyles = makeStyles({
   container: {
@@ -111,7 +111,7 @@ export function TransitionPresets({ onApplyPreset }: TransitionPresetsProps) {
   const handleApplyPreset = (preset: TransitionPreset) => {
     setSelectedPreset(preset.id);
     onApplyPreset?.(preset);
-    
+
     // Clear selection after a delay
     setTimeout(() => setSelectedPreset(null), 2000);
   };
@@ -142,9 +142,7 @@ export function TransitionPresets({ onApplyPreset }: TransitionPresetsProps) {
         {presets.map((preset) => (
           <Card
             key={preset.id}
-            className={`${styles.card} ${
-              selectedPreset === preset.id ? styles.cardSelected : ''
-            }`}
+            className={`${styles.card} ${selectedPreset === preset.id ? styles.cardSelected : ''}`}
             onClick={() => handleApplyPreset(preset)}
           >
             <CardHeader
@@ -166,11 +164,7 @@ export function TransitionPresets({ onApplyPreset }: TransitionPresetsProps) {
                     appearance={selectedPreset === preset.id ? 'primary' : 'secondary'}
                     size="small"
                     className={styles.applyButton}
-                    icon={
-                      selectedPreset === preset.id ? (
-                        <CheckmarkCircle24Filled />
-                      ) : undefined
-                    }
+                    icon={selectedPreset === preset.id ? <CheckmarkCircle24Filled /> : undefined}
                   >
                     {selectedPreset === preset.id ? 'Applied!' : 'Apply'}
                   </Button>

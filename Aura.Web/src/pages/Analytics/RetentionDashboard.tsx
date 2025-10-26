@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Button,
   Card,
@@ -14,6 +13,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import { useState } from 'react';
 import {
   analyticsService,
   type RetentionPrediction,

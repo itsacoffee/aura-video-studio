@@ -25,9 +25,7 @@ export interface RelinkResult {
 /**
  * Detect missing or offline media files
  */
-export const detectMissingMedia = async (
-  mediaFiles: MediaFile[]
-): Promise<MissingMediaFile[]> => {
+export const detectMissingMedia = async (mediaFiles: MediaFile[]): Promise<MissingMediaFile[]> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 300));
 
@@ -54,15 +52,13 @@ export const detectMissingMedia = async (
 /**
  * Search for a missing file in common locations
  */
-export const searchForFile = async (
-  file: MediaFile
-): Promise<string[]> => {
+export const searchForFile = async (_file: MediaFile): Promise<string[]> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 200));
 
   // Mock implementation - would actually search filesystem
   // In a real implementation, check these locations and return existing files
-  console.log('Searching for file:', file.name);
+  // TODO: Implement actual file system search using file parameter
   return [];
 };
 
@@ -101,10 +97,7 @@ export const autoRelinkMedia = async (
 /**
  * Manually relink a file to a new path
  */
-export const manualRelinkFile = async (
-  fileId: string,
-  newPath: string
-): Promise<RelinkResult> => {
+export const manualRelinkFile = async (fileId: string, newPath: string): Promise<RelinkResult> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 200));
 

@@ -150,16 +150,16 @@ export function getCustomLayouts(): WorkspaceLayout[] {
 export function saveWorkspaceLayout(layout: Omit<WorkspaceLayout, 'id'>): WorkspaceLayout {
   const id = `custom-${Date.now()}`;
   const newLayout: WorkspaceLayout = { ...layout, id };
-  
+
   const customLayouts = getCustomLayouts();
   customLayouts.push(newLayout);
-  
+
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customLayouts));
   } catch (error) {
     console.error('Error saving layout:', error);
   }
-  
+
   return newLayout;
 }
 
@@ -171,10 +171,10 @@ export function deleteWorkspaceLayout(layoutId: string): void {
   if (PRESET_LAYOUTS[layoutId]) {
     return;
   }
-  
+
   const customLayouts = getCustomLayouts();
-  const filtered = customLayouts.filter(l => l.id !== layoutId);
-  
+  const filtered = customLayouts.filter((l) => l.id !== layoutId);
+
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
   } catch (error) {
@@ -212,10 +212,10 @@ export function getWorkspaceLayout(layoutId: string): WorkspaceLayout | null {
   if (PRESET_LAYOUTS[layoutId]) {
     return PRESET_LAYOUTS[layoutId];
   }
-  
+
   // Check custom layouts
   const customLayouts = getCustomLayouts();
-  return customLayouts.find(l => l.id === layoutId) || null;
+  return customLayouts.find((l) => l.id === layoutId) || null;
 }
 
 /**
@@ -235,14 +235,14 @@ export function applyWorkspaceLayout(layoutId: string): WorkspaceLayout | null {
 export function snapToBreakpoint(value: number, min: number, max: number): number {
   const breakpoints = [
     min,
-    min + (max - min) * 0.25,  // 25%
-    min + (max - min) * 0.33,  // 33%
-    min + (max - min) * 0.50,  // 50%
-    min + (max - min) * 0.66,  // 66%
-    min + (max - min) * 0.75,  // 75%
+    min + (max - min) * 0.25, // 25%
+    min + (max - min) * 0.33, // 33%
+    min + (max - min) * 0.5, // 50%
+    min + (max - min) * 0.66, // 66%
+    min + (max - min) * 0.75, // 75%
     max,
   ];
-  
+
   // Find closest breakpoint within 20px threshold
   const threshold = 20;
   for (const breakpoint of breakpoints) {
@@ -250,6 +250,6 @@ export function snapToBreakpoint(value: number, min: number, max: number): numbe
       return breakpoint;
     }
   }
-  
+
   return value;
 }

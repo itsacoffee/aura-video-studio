@@ -45,10 +45,7 @@ export function GeneralSettingsTab({
 }: GeneralSettingsTabProps) {
   const styles = useStyles();
 
-  const updateSetting = <K extends keyof GeneralSettings>(
-    key: K,
-    value: GeneralSettings[K]
-  ) => {
+  const updateSetting = <K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
     onChange({ ...settings, [key]: value });
   };
 
@@ -66,9 +63,7 @@ export function GeneralSettingsTab({
         >
           <Input
             value={settings.defaultProjectSaveLocation}
-            onChange={(e) =>
-              updateSetting('defaultProjectSaveLocation', e.target.value)
-            }
+            onChange={(e) => updateSetting('defaultProjectSaveLocation', e.target.value)}
             placeholder="C:\Users\YourName\Documents\AuraProjects"
           />
         </Field>

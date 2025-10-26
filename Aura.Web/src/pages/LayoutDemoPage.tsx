@@ -3,11 +3,8 @@
  * Demonstrates all new layout components and features
  */
 
-import { useState } from 'react';
 import { makeStyles, Title1, Title2, Text, Button, Card } from '@fluentui/react-components';
-import { TopMenuBar } from '../components/Layout/TopMenuBar';
-import { StatusFooter } from '../components/Layout/StatusFooter';
-import { PanelTabs, TabItem } from '../components/Layout/PanelTabs';
+import { useState } from 'react';
 import {
   SkeletonText,
   SkeletonTitle,
@@ -18,6 +15,9 @@ import {
   SkeletonPropertiesPanel,
   FadeIn,
 } from '../components/Layout/Loading';
+import { PanelTabs, TabItem } from '../components/Layout/PanelTabs';
+import { StatusFooter } from '../components/Layout/StatusFooter';
+import { TopMenuBar } from '../components/Layout/TopMenuBar';
 
 const useStyles = makeStyles({
   page: {
@@ -117,7 +117,10 @@ export function LayoutDemoPage() {
     <div className={styles.page}>
       <FadeIn>
         <Title1>Professional Layout Components Demo</Title1>
-        <Text block style={{ marginBottom: 'var(--space-4)', color: 'var(--color-text-secondary)' }}>
+        <Text
+          block
+          style={{ marginBottom: 'var(--space-4)', color: 'var(--color-text-secondary)' }}
+        >
           This page demonstrates all the new professional layout components and features.
         </Text>
       </FadeIn>
@@ -126,15 +129,26 @@ export function LayoutDemoPage() {
       <FadeIn delay={100}>
         <section className={styles.section}>
           <Title2>Top Menu Bar</Title2>
-          <Text block style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }}>
+          <Text
+            block
+            style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }}
+          >
             Professional desktop-style menu bar with File, Edit, View, Window, and Help menus.
           </Text>
           <div className={styles.menuBarDemo}>
             <TopMenuBar
-              onSaveProject={() => {/* Demo handler */}}
-              onImportMedia={() => {/* Demo handler */}}
-              onExportVideo={() => {/* Demo handler */}}
-              onShowKeyboardShortcuts={() => {/* Demo handler */}}
+              onSaveProject={() => {
+                /* Demo handler */
+              }}
+              onImportMedia={() => {
+                /* Demo handler */
+              }}
+              onExportVideo={() => {
+                /* Demo handler */
+              }}
+              onShowKeyboardShortcuts={() => {
+                /* Demo handler */
+              }}
             />
           </div>
         </section>
@@ -144,14 +158,21 @@ export function LayoutDemoPage() {
       <FadeIn delay={200}>
         <section className={styles.section}>
           <Title2>Panel Tabs</Title2>
-          <Text block style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }}>
+          <Text
+            block
+            style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }}
+          >
             Tabbed interface with drag-to-reorder, close buttons, and smooth transitions.
           </Text>
           <div className={styles.tabsDemo}>
             <PanelTabs
               tabs={demoTabs}
-              onTabClose={(id) => console.log('Close tab:', id)}
-              onTabReorder={(tabs) => console.log('Reorder tabs:', tabs)}
+              onTabClose={() => {
+                /* Tab close handled by parent */
+              }}
+              onTabReorder={() => {
+                /* Tab reorder handled by parent */
+              }}
             />
           </div>
         </section>
@@ -161,7 +182,10 @@ export function LayoutDemoPage() {
       <FadeIn delay={300}>
         <section className={styles.section}>
           <Title2>Status Footer</Title2>
-          <Text block style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }}>
+          <Text
+            block
+            style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }}
+          >
             Project status information with toggle to show/hide.
           </Text>
           <div className={styles.footerDemo}>
@@ -179,7 +203,10 @@ export function LayoutDemoPage() {
       <FadeIn delay={400}>
         <section className={styles.section}>
           <Title2>Professional Loading States</Title2>
-          <Text block style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }}>
+          <Text
+            block
+            style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }}
+          >
             Skeleton screens with shimmer effects for professional loading experience.
           </Text>
           <Button
@@ -231,52 +258,71 @@ export function LayoutDemoPage() {
       <FadeIn delay={500}>
         <section className={styles.section}>
           <Title2>Professional Dark Theme</Title2>
-          <Text block style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }}>
+          <Text
+            block
+            style={{ marginBottom: 'var(--space-2)', color: 'var(--color-text-secondary)' }}
+          >
             Carefully chosen color palette for professional NLE aesthetic.
           </Text>
           <div className={styles.grid}>
             <div className={styles.demoBox}>
               <Text weight="semibold">Background</Text>
-              <div style={{ 
-                height: '50px', 
-                backgroundColor: 'var(--color-background)', 
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--border-radius-sm)',
-                marginTop: 'var(--space-1)'
-              }} />
-              <Text size={200} style={{ color: 'var(--color-text-secondary)' }}>#0D0D0D</Text>
+              <div
+                style={{
+                  height: '50px',
+                  backgroundColor: 'var(--color-background)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--border-radius-sm)',
+                  marginTop: 'var(--space-1)',
+                }}
+              />
+              <Text size={200} style={{ color: 'var(--color-text-secondary)' }}>
+                #0D0D0D
+              </Text>
             </div>
             <div className={styles.demoBox}>
               <Text weight="semibold">Panel Background</Text>
-              <div style={{ 
-                height: '50px', 
-                backgroundColor: 'var(--panel-bg)', 
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--border-radius-sm)',
-                marginTop: 'var(--space-1)'
-              }} />
-              <Text size={200} style={{ color: 'var(--color-text-secondary)' }}>#1A1A1A</Text>
+              <div
+                style={{
+                  height: '50px',
+                  backgroundColor: 'var(--panel-bg)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--border-radius-sm)',
+                  marginTop: 'var(--space-1)',
+                }}
+              />
+              <Text size={200} style={{ color: 'var(--color-text-secondary)' }}>
+                #1A1A1A
+              </Text>
             </div>
             <div className={styles.demoBox}>
               <Text weight="semibold">Panel Header</Text>
-              <div style={{ 
-                height: '50px', 
-                backgroundColor: 'var(--panel-header-bg)', 
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--border-radius-sm)',
-                marginTop: 'var(--space-1)'
-              }} />
-              <Text size={200} style={{ color: 'var(--color-text-secondary)' }}>#252525</Text>
+              <div
+                style={{
+                  height: '50px',
+                  backgroundColor: 'var(--panel-header-bg)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--border-radius-sm)',
+                  marginTop: 'var(--space-1)',
+                }}
+              />
+              <Text size={200} style={{ color: 'var(--color-text-secondary)' }}>
+                #252525
+              </Text>
             </div>
             <div className={styles.demoBox}>
               <Text weight="semibold">Accent Blue</Text>
-              <div style={{ 
-                height: '50px', 
-                backgroundColor: 'var(--color-primary)', 
-                borderRadius: 'var(--border-radius-sm)',
-                marginTop: 'var(--space-1)'
-              }} />
-              <Text size={200} style={{ color: 'var(--color-text-secondary)' }}>#0078D4</Text>
+              <div
+                style={{
+                  height: '50px',
+                  backgroundColor: 'var(--color-primary)',
+                  borderRadius: 'var(--border-radius-sm)',
+                  marginTop: 'var(--space-1)',
+                }}
+              />
+              <Text size={200} style={{ color: 'var(--color-text-secondary)' }}>
+                #0078D4
+              </Text>
             </div>
           </div>
         </section>

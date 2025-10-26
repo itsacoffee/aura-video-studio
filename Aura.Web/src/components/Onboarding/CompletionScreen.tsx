@@ -196,8 +196,8 @@ export function CompletionScreen({
       <div>
         <Title1 className={styles.title}>You&apos;re All Set! 🎉</Title1>
         <Text className={styles.subtitle} size={500}>
-          Congratulations! Your workspace is configured and ready to go. 
-          Let&apos;s create something amazing together.
+          Congratulations! Your workspace is configured and ready to go. Let&apos;s create something
+          amazing together.
         </Text>
       </div>
 
@@ -214,7 +214,7 @@ export function CompletionScreen({
                 Tier: {summary.tier === 'free' ? 'Free (Stock)' : 'Pro (AI-Powered)'}
               </Text>
               <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
-                {summary.tier === 'free' 
+                {summary.tier === 'free'
                   ? 'Using built-in tools and stock content'
                   : 'AI features enabled for professional content creation'}
               </Text>
@@ -296,7 +296,9 @@ export function CompletionScreen({
       {/* Quick Start Resources */}
       <div style={{ width: '100%' }}>
         <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
-          <Lightbulb24Regular style={{ verticalAlign: 'middle', marginRight: tokens.spacingHorizontalS }} />
+          <Lightbulb24Regular
+            style={{ verticalAlign: 'middle', marginRight: tokens.spacingHorizontalS }}
+          />
           Learn More
         </Title3>
         <div className={styles.resourcesContainer}>

@@ -57,11 +57,7 @@ interface ManualInstallationModalProps {
   onVerify?: () => void;
 }
 
-export function ManualInstallationModal({
-  open,
-  onClose,
-  onVerify,
-}: ManualInstallationModalProps) {
+export function ManualInstallationModal({ open, onClose, onVerify }: ManualInstallationModalProps) {
   const styles = useStyles();
 
   const handleOpenDownloadPage = () => {
@@ -99,9 +95,7 @@ export function ManualInstallationModal({
               </Text>
               <div className={styles.linkSection}>
                 <Text size={300}>Recommended source for Windows:</Text>
-                <Link onClick={handleOpenDownloadPage}>
-                  https://www.gyan.dev/ffmpeg/builds/
-                </Link>
+                <Link onClick={handleOpenDownloadPage}>https://www.gyan.dev/ffmpeg/builds/</Link>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                   Download the &quot;ffmpeg-release-essentials.zip&quot; file
                 </Text>
@@ -141,14 +135,20 @@ export function ManualInstallationModal({
                 </Text>
                 <Text className={styles.stepItem}>
                   • Enter the path to either:
-                  <div style={{ marginLeft: tokens.spacingHorizontalL, marginTop: tokens.spacingVerticalXXS }}>
+                  <div
+                    style={{
+                      marginLeft: tokens.spacingHorizontalL,
+                      marginTop: tokens.spacingVerticalXXS,
+                    }}
+                  >
                     - The <code>ffmpeg.exe</code> file (e.g., <code>C:\ffmpeg\bin\ffmpeg.exe</code>)
-                    <br />
-                    - Or the folder containing it (e.g., <code>C:\ffmpeg</code> or{' '}
+                    <br />- Or the folder containing it (e.g., <code>C:\ffmpeg</code> or{' '}
                     <code>C:\ffmpeg\bin</code>)
                   </div>
                 </Text>
-                <Text className={styles.stepItem}>• Click &quot;Attach&quot; to verify and configure</Text>
+                <Text className={styles.stepItem}>
+                  • Click &quot;Attach&quot; to verify and configure
+                </Text>
               </div>
             </div>
 

@@ -156,20 +156,28 @@ export function getWizardStats(): {
   const completions = events.filter((e) => e.name === 'wizard_completed');
   const abandons = events.filter((e) => e.name === 'wizard_step_abandoned');
 
-  const averageTime = completions.length > 0
-    ? completions.reduce((sum, e) => sum + ((e.properties?.total_time_seconds as number) || 0), 0) / completions.length
-    : 0;
+  const averageTime =
+    completions.length > 0
+      ? completions.reduce(
+          (sum, e) => sum + ((e.properties?.total_time_seconds as number) || 0),
+          0
+        ) / completions.length
+      : 0;
 
   // Find most common abandon step
   const abandonSteps = abandons.map((e) => e.properties?.step_number as number);
-  const stepCounts = abandonSteps.reduce((acc, step) => {
-    acc[step] = (acc[step] || 0) + 1;
-    return acc;
-  }, {} as Record<number, number>);
+  const stepCounts = abandonSteps.reduce(
+    (acc, step) => {
+      acc[step] = (acc[step] || 0) + 1;
+      return acc;
+    },
+    {} as Record<number, number>
+  );
 
-  const mostCommonExitStep = Object.entries(stepCounts).length > 0
-    ? parseInt(Object.entries(stepCounts).sort((a, b) => b[1] - a[1])[0][0])
-    : null;
+  const mostCommonExitStep =
+    Object.entries(stepCounts).length > 0
+      ? parseInt(Object.entries(stepCounts).sort((a, b) => b[1] - a[1])[0][0])
+      : null;
 
   return {
     totalCompletions: completions.length,

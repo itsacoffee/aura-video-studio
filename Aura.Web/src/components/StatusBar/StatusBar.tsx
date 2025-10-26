@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { makeStyles, tokens, Button, Badge, Text } from '@fluentui/react-components';
 import {
   ErrorCircle24Filled,
@@ -8,6 +7,7 @@ import {
   Copy24Regular,
   ArrowClockwise24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   statusBar: {
@@ -184,6 +184,12 @@ export function StatusBar({ messages = [], onDismiss, onDismissAll }: StatusBarP
       <div
         className={styles.statusBarHeader}
         onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }
+        }}
         role="button"
         tabIndex={0}
       >

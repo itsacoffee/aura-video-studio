@@ -1,9 +1,4 @@
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Button,
-} from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Button } from '@fluentui/react-components';
 import { Copy24Regular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -97,7 +92,7 @@ export const MetadataPanel: React.FC<MetadataPanelProps> = ({
   return (
     <div className={styles.container}>
       <Text className={styles.title}>File Information</Text>
-      
+
       {filePath && (
         <div className={styles.pathRow}>
           <div style={{ flex: 1 }}>

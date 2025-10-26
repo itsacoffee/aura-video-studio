@@ -119,8 +119,10 @@ export function CaptionsPanel({ scriptLines = [], onGenerate, onExport }: Captio
 
     const parseISODuration = (isoDuration: string): number => {
       // Parse ISO 8601 duration (e.g., "PT5.5S" = 5.5 seconds)
-      const match = isoDuration.match(/PT(\d+(?:\.\d+)?)S/);
-      return match ? parseFloat(match[1]) : 0;
+      // Pattern is safe: anchored with ^ and $, simple integer or decimal
+      // eslint-disable-next-line security/detect-unsafe-regex
+      const match = isoDuration.match(/^PT(\d+)(?:\.(\d+))?S$/);
+      return match ? parseFloat(match[1] + (match[2] ? '.' + match[2] : '')) : 0;
     };
 
     const formatTime = (seconds: number, useDot: boolean): string => {

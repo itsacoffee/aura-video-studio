@@ -1,4 +1,3 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -24,11 +23,7 @@ import {
   ArrowFitRegular,
   ChevronDown24Regular,
 } from '@fluentui/react-icons';
-import { AppliedEffect } from '../../types/effects';
-import { TimelineRuler } from '../Timeline/TimelineRuler';
-import { PlayheadIndicator } from '../Timeline/PlayheadIndicator';
-import { TimelineClip, TimelineClipData } from '../Timeline/TimelineClip';
-import { SnapGuides } from '../Timeline/SnapGuides';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   snapToFrame,
   formatTimecode,
@@ -41,6 +36,11 @@ import {
   applyRippleEdit,
   SnapPoint,
 } from '../../services/timelineEngine';
+import { AppliedEffect } from '../../types/effects';
+import { PlayheadIndicator } from '../Timeline/PlayheadIndicator';
+import { SnapGuides } from '../Timeline/SnapGuides';
+import { TimelineClip, TimelineClipData } from '../Timeline/TimelineClip';
+import { TimelineRuler } from '../Timeline/TimelineRuler';
 
 const useStyles = makeStyles({
   container: {
@@ -186,7 +186,7 @@ export function TimelinePanel({
   const [displayMode, setDisplayMode] = useState<TimelineDisplayMode>(TimelineDisplayMode.TIMECODE);
   const [activeSnapPoint, setActiveSnapPoint] = useState<SnapPoint | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  
+
   const timelineRef = useRef<HTMLDivElement>(null);
   const frameRate = 30;
 
@@ -308,12 +308,12 @@ export function TimelinePanel({
       if (magneticTimeline) {
         const clip = clips.find((c) => c.id === clipId);
         if (clip) {
-          const updatedClips = clips.map((c) => 
+          const updatedClips = clips.map((c) =>
             c.id === clipId ? { ...c, startTime: newStartTime } : c
           );
-          const closedGaps = closeGaps(updatedClips.filter(c => c.trackId === clip.trackId));
+          const closedGaps = closeGaps(updatedClips.filter((c) => c.trackId === clip.trackId));
           closedGaps.forEach((c) => {
-            if (c.id !== clipId && c.startTime !== clips.find(oc => oc.id === c.id)?.startTime) {
+            if (c.id !== clipId && c.startTime !== clips.find((oc) => oc.id === c.id)?.startTime) {
               onClipUpdate?.(c.id, { startTime: c.startTime });
             }
           });
@@ -334,9 +334,9 @@ export function TimelinePanel({
         const editPoint = clip.startTime + clip.duration;
         const trackClips = clips.filter((c) => c.trackId === clip.trackId);
         const updated = applyRippleEdit(trackClips, editPoint, delta);
-        
+
         updated.forEach((c) => {
-          if (c.id !== clipId && c.startTime !== clips.find(oc => oc.id === c.id)?.startTime) {
+          if (c.id !== clipId && c.startTime !== clips.find((oc) => oc.id === c.id)?.startTime) {
             onClipUpdate?.(c.id, { startTime: c.startTime });
           }
         });
@@ -350,22 +350,22 @@ export function TimelinePanel({
   const handleRazorSplit = useCallback(
     (time: number) => {
       // Find clip at current time
-      const clipToSplit = clips.find(
-        (c) => c.startTime <= time && c.startTime + c.duration > time
-      );
+      const clipToSplit = clips.find((c) => c.startTime <= time && c.startTime + c.duration > time);
 
       if (!clipToSplit) return;
 
       const splitPoint = time - clipToSplit.startTime;
-      
+
       // Create two new clips
-      const firstClip: TimelineClip = {
+      // @ts-expect-error - TODO: Implement clip splitting - variables prepared for future use in handleRazorSplit
+      const _firstClip: TimelineClip = {
         ...clipToSplit,
         id: `${clipToSplit.id}-1`,
         duration: splitPoint,
       };
 
-      const secondClip: TimelineClip = {
+      // @ts-expect-error - TODO: Implement clip splitting - variables prepared for future use in handleRazorSplit
+      const _secondClip: TimelineClip = {
         ...clipToSplit,
         id: `${clipToSplit.id}-2`,
         startTime: time,
@@ -374,7 +374,7 @@ export function TimelinePanel({
 
       // Remove original and add split clips
       // This would need to be implemented via callbacks
-      console.log('Split clip at', time, firstClip, secondClip);
+      // TODO: Implement split functionality with firstClip and secondClip
     },
     [clips]
   );
@@ -428,7 +428,7 @@ export function TimelinePanel({
       if (!data) return;
 
       const dropData = JSON.parse(data);
-      
+
       if (dropData.type === 'effect') {
         // Don't handle effects here - they should be dropped on clips
         return;
@@ -436,7 +436,7 @@ export function TimelinePanel({
 
       // Handle media clip drops
       const mediaClip = dropData;
-      
+
       // Calculate drop position based on mouse position
       const rect = (e.target as HTMLElement).getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -466,7 +466,6 @@ export function TimelinePanel({
       console.error('Failed to parse dropped data:', error);
     }
   };
-
 
   return (
     <div className={styles.container}>
@@ -540,9 +539,15 @@ export function TimelinePanel({
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
-                <MenuItem onClick={() => setDisplayMode(TimelineDisplayMode.TIMECODE)}>Timecode</MenuItem>
-                <MenuItem onClick={() => setDisplayMode(TimelineDisplayMode.FRAMES)}>Frames</MenuItem>
-                <MenuItem onClick={() => setDisplayMode(TimelineDisplayMode.SECONDS)}>Seconds</MenuItem>
+                <MenuItem onClick={() => setDisplayMode(TimelineDisplayMode.TIMECODE)}>
+                  Timecode
+                </MenuItem>
+                <MenuItem onClick={() => setDisplayMode(TimelineDisplayMode.FRAMES)}>
+                  Frames
+                </MenuItem>
+                <MenuItem onClick={() => setDisplayMode(TimelineDisplayMode.SECONDS)}>
+                  Seconds
+                </MenuItem>
               </MenuList>
             </MenuPopover>
           </Menu>
@@ -555,7 +560,10 @@ export function TimelinePanel({
 
         <div className={styles.toolbarGroup}>
           <Label>Magnetic</Label>
-          <Switch checked={magneticTimeline} onChange={(_, data) => setMagneticTimeline(data.checked)} />
+          <Switch
+            checked={magneticTimeline}
+            onChange={(_, data) => setMagneticTimeline(data.checked)}
+          />
         </div>
 
         <div className={styles.toolbarGroup}>
@@ -601,16 +609,12 @@ export function TimelinePanel({
           onTimeClick={handleTimelineClick}
         />
 
-        <div 
-          className={styles.tracksContainer}
-          role="region" 
-          aria-label="Timeline tracks"
-        >
+        <div className={styles.tracksContainer} role="region" aria-label="Timeline tracks">
           {tracks.map((track) => (
             /* Timeline track - intentionally clickable for seeking playhead */
             /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
-            <div 
-              key={track.id} 
+            <div
+              key={track.id}
               className={`${styles.track} ${dragOverTrack === track.id ? styles.trackDragOver : ''}`}
               onDragOver={(e) => handleTrackDragOver(e, track.id)}
               onDragLeave={handleTrackDragLeave}
@@ -625,7 +629,10 @@ export function TimelinePanel({
               <div className={styles.trackLabel}>
                 <Text className={styles.trackLabelText}>{track.label}</Text>
                 <div className={styles.trackControls}>
-                  <Tooltip content={track.visible ? 'Hide track' : 'Show track'} relationship="label">
+                  <Tooltip
+                    content={track.visible ? 'Hide track' : 'Show track'}
+                    relationship="label"
+                  >
                     <Button
                       appearance="subtle"
                       size="small"
@@ -638,7 +645,10 @@ export function TimelinePanel({
                       style={{ minWidth: '20px', minHeight: '20px', padding: '2px' }}
                     />
                   </Tooltip>
-                  <Tooltip content={track.locked ? 'Unlock track' : 'Lock track'} relationship="label">
+                  <Tooltip
+                    content={track.locked ? 'Unlock track' : 'Lock track'}
+                    relationship="label"
+                  >
                     <Button
                       appearance="subtle"
                       size="small"

@@ -3,7 +3,6 @@
  * UI for composition analysis and reframing suggestions
  */
 
-import React, { useState } from 'react';
 import {
   Card,
   makeStyles,
@@ -17,6 +16,7 @@ import {
   ProgressBar,
 } from '@fluentui/react-components';
 import { Grid24Regular, CheckmarkCircle24Regular } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 import {
   visualAnalysisService,
   type CompositionAnalysisResult,

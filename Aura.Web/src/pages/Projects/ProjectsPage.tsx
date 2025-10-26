@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -31,11 +30,12 @@ import {
   Delete24Regular,
   DocumentCopy24Regular,
 } from '@fluentui/react-icons';
-import { useJobsStore } from '../../state/jobs';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProjects, deleteProject, duplicateProject } from '../../services/projectService';
-import { ProjectListItem } from '../../types/project';
 import { SkeletonTable, ErrorState } from '../../components/Loading';
+import { getProjects, deleteProject, duplicateProject } from '../../services/projectService';
+import { useJobsStore } from '../../state/jobs';
+import { ProjectListItem } from '../../types/project';
 
 const useStyles = makeStyles({
   container: {
@@ -197,7 +197,7 @@ export function ProjectsPage() {
         <>
           {loadingProjects && (
             <Card>
-              <SkeletonTable 
+              <SkeletonTable
                 columns={['Name', 'Last Modified', 'Duration', 'Clips', 'Actions']}
                 rowCount={5}
                 columnWidths={['35%', '20%', '15%', '10%', '20%']}
@@ -242,7 +242,7 @@ export function ProjectsPage() {
                 </TableHeader>
                 <TableBody>
                   {editorProjects.map((project) => (
-                    <TableRow 
+                    <TableRow
                       key={project.id}
                       style={{ cursor: 'pointer' }}
                       onClick={() => handleOpenProject(project.id)}
@@ -261,7 +261,8 @@ export function ProjectsPage() {
                       <TableCell>{formatProjectDuration(project.duration)}</TableCell>
                       <TableCell>{project.clipCount}</TableCell>
                       <TableCell>
-                        <div 
+                        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+                        <div
                           style={{ display: 'flex', gap: tokens.spacingHorizontalS }}
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -314,7 +315,7 @@ export function ProjectsPage() {
         <>
           {loading && (
             <Card>
-              <SkeletonTable 
+              <SkeletonTable
                 columns={['Date', 'Topic', 'Status', 'Stage', 'Duration', 'Actions']}
                 rowCount={5}
                 columnWidths={['18%', '20%', '15%', '15%', '12%', '20%']}
@@ -351,7 +352,9 @@ export function ProjectsPage() {
                     <TableRow key={job.id}>
                       <TableCell>{formatDate(job.startedAt)}</TableCell>
                       <TableCell>
-                        <Text weight="semibold">{job.correlationId?.substring(0, 8) || 'Unknown'}</Text>
+                        <Text weight="semibold">
+                          {job.correlationId?.substring(0, 8) || 'Unknown'}
+                        </Text>
                       </TableCell>
                       <TableCell>
                         <span

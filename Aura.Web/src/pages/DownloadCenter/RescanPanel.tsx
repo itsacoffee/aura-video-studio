@@ -1,5 +1,3 @@
-import { useState, useEffect } from 'react';
-import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -24,6 +22,8 @@ import {
   ArrowDownload24Regular,
   Link24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { apiUrl } from '../../config/api';
 
 interface DependencyReport {
   id: string;
@@ -101,7 +101,9 @@ export function RescanPanel() {
           setLastScanTime(data.scanTime);
         } else {
           const text = await response.text();
-          setError('Server returned invalid response (expected JSON, got HTML or other format). Please check if the API server is running correctly.');
+          setError(
+            'Server returned invalid response (expected JSON, got HTML or other format). Please check if the API server is running correctly.'
+          );
           console.error('Invalid response format:', text.substring(0, 200));
         }
       } else {
@@ -110,13 +112,17 @@ export function RescanPanel() {
           const errorData = await response.json();
           setError(errorData.error || 'Failed to rescan dependencies');
         } else {
-          setError(`Server returned HTTP ${response.status} error. The API endpoint may not be available.`);
+          setError(
+            `Server returned HTTP ${response.status} error. The API endpoint may not be available.`
+          );
         }
       }
     } catch (err) {
       console.error('Rescan failed:', err);
       if (err instanceof Error && err.message.includes('JSON')) {
-        setError('Unable to parse server response. The server may have returned HTML instead of JSON. Please check the API configuration.');
+        setError(
+          'Unable to parse server response. The server may have returned HTML instead of JSON. Please check the API configuration.'
+        );
       } else {
         setError(err instanceof Error ? err.message : 'Failed to rescan dependencies');
       }
@@ -169,18 +175,18 @@ export function RescanPanel() {
       <div className={styles.actions}>
         {dep.status === 'Missing' && (
           <>
-            <Button 
-              appearance="primary" 
-              icon={<ArrowDownload24Regular />} 
+            <Button
+              appearance="primary"
+              icon={<ArrowDownload24Regular />}
               size="small"
               onClick={handleInstall}
               title="Install this dependency automatically"
             >
               Install
             </Button>
-            <Button 
-              appearance="secondary" 
-              icon={<Link24Regular />} 
+            <Button
+              appearance="secondary"
+              icon={<Link24Regular />}
               size="small"
               onClick={handleAttach}
               title="Attach an existing installation"
@@ -190,8 +196,8 @@ export function RescanPanel() {
           </>
         )}
         {dep.status === 'PartiallyInstalled' && (
-          <Button 
-            appearance="primary" 
+          <Button
+            appearance="primary"
             size="small"
             onClick={handleInstall}
             title="Repair this dependency"
@@ -301,8 +307,7 @@ export function RescanPanel() {
 
       {!report && !isScanning && (
         <Text>
-          Click &quot;Rescan All Dependencies&quot; to check the status of all
-          dependencies.
+          Click &quot;Rescan All Dependencies&quot; to check the status of all dependencies.
         </Text>
       )}
     </Card>

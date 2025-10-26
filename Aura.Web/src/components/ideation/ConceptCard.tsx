@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Card,
   CardHeader,
@@ -9,6 +8,7 @@ import {
   Button,
 } from '@fluentui/react-components';
 import { ThumbLikeRegular, ThumbDislikeRegular, ArrowExpandRegular } from '@fluentui/react-icons';
+import React from 'react';
 import type { ConceptIdea } from '../../services/ideationService';
 import { ideationService } from '../../services/ideationService';
 

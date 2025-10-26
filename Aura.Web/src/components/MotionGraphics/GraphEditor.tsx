@@ -3,16 +3,10 @@
  * Visual editor for animation curves and bezier handles
  */
 
+import { makeStyles, tokens, Label, Card, Select } from '@fluentui/react-components';
 import { useState, useRef, useEffect } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Label,
-  Card,
-  Select,
-} from '@fluentui/react-components';
-import { Keyframe } from '../../types/effects';
 import { getEasingFunction } from '../../services/animationEngine';
+import { Keyframe } from '../../types/effects';
 
 const useStyles = makeStyles({
   container: {
@@ -72,7 +66,9 @@ export function GraphEditor({
   const styles = useStyles();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredValue, setHoveredValue] = useState<number | null>(null);
-  const [selectedCurve, setSelectedCurve] = useState<'ease-in' | 'ease-out' | 'ease-in-out' | 'linear'>('ease-in-out');
+  const [selectedCurve, setSelectedCurve] = useState<
+    'ease-in' | 'ease-out' | 'ease-in-out' | 'linear'
+  >('ease-in-out');
 
   const canvasWidth = 600;
   const canvasHeight = 300;
@@ -231,8 +227,7 @@ export function GraphEditor({
     const y = e.clientY - rect.top;
 
     // Calculate value at mouse position
-    const value =
-      maxValue - ((y - padding) / (canvasHeight - 2 * padding)) * (maxValue - minValue);
+    const value = maxValue - ((y - padding) / (canvasHeight - 2 * padding)) * (maxValue - minValue);
 
     setHoveredValue(value);
   };

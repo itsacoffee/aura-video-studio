@@ -3,7 +3,6 @@
  * Displays AI-driven pacing and rhythm optimization recommendations
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
 import {
   Button,
   Card,
@@ -32,7 +31,7 @@ import {
   Warning24Regular,
   Lightbulb24Regular,
 } from '@fluentui/react-icons';
-import { Scene } from '../../../types';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   pacingAnalysisService,
   VideoFormat,
@@ -40,6 +39,7 @@ import {
   VideoRetentionAnalysis,
   Priority,
 } from '../../../services/analysis/PacingAnalysisService';
+import { Scene } from '../../../types';
 
 interface PacingSuggestionsProps {
   scenes: Scene[];

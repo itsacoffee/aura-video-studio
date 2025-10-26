@@ -3,7 +3,6 @@
  * Displays individual scene analysis with accept/reject actions
  */
 
-import { useState } from 'react';
 import {
   Card,
   Button,
@@ -23,8 +22,13 @@ import {
   ChevronUp24Regular,
   Info24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
+import {
+  durationToSeconds,
+  formatDuration,
+  calculatePercentageChange,
+} from '../../services/pacingService';
 import { SceneTimingSuggestion, TransitionType } from '../../types/pacing';
-import { durationToSeconds, formatDuration, calculatePercentageChange } from '../../services/pacingService';
 
 const useStyles = makeStyles({
   card: {
@@ -120,11 +124,23 @@ export const SceneSuggestionCard: React.FC<SceneSuggestionCardProps> = ({
 
   const getConfidenceBadge = (confidence: number) => {
     if (confidence >= 80) {
-      return <Badge appearance="filled" color="success">High Confidence</Badge>;
+      return (
+        <Badge appearance="filled" color="success">
+          High Confidence
+        </Badge>
+      );
     } else if (confidence >= 60) {
-      return <Badge appearance="filled" color="warning">Medium Confidence</Badge>;
+      return (
+        <Badge appearance="filled" color="warning">
+          Medium Confidence
+        </Badge>
+      );
     } else {
-      return <Badge appearance="filled" color="danger">Low Confidence</Badge>;
+      return (
+        <Badge appearance="filled" color="danger">
+          Low Confidence
+        </Badge>
+      );
     }
   };
 
@@ -146,7 +162,11 @@ export const SceneSuggestionCard: React.FC<SceneSuggestionCardProps> = ({
       <div className={styles.header}>
         <div className={styles.sceneInfo}>
           <Title3>Scene {suggestion.sceneIndex + 1}</Title3>
-          {isApplied && <Badge appearance="tint" color="success">Applied</Badge>}
+          {isApplied && (
+            <Badge appearance="tint" color="success">
+              Applied
+            </Badge>
+          )}
           {getConfidenceBadge(suggestion.confidence)}
         </div>
       </div>
@@ -164,8 +184,16 @@ export const SceneSuggestionCard: React.FC<SceneSuggestionCardProps> = ({
             <Subtitle2 style={{ color: tokens.colorBrandForeground1 }}>
               {formatDuration(suggestion.optimalDuration)}
             </Subtitle2>
-            <Caption1 style={{ color: percentageChange > 0 ? tokens.colorPaletteGreenForeground1 : tokens.colorPaletteRedForeground1 }}>
-              {percentageChange > 0 ? '+' : ''}{percentageChange.toFixed(0)}%
+            <Caption1
+              style={{
+                color:
+                  percentageChange > 0
+                    ? tokens.colorPaletteGreenForeground1
+                    : tokens.colorPaletteRedForeground1,
+              }}
+            >
+              {percentageChange > 0 ? '+' : ''}
+              {percentageChange.toFixed(0)}%
             </Caption1>
           </div>
         </div>
@@ -178,7 +206,13 @@ export const SceneSuggestionCard: React.FC<SceneSuggestionCardProps> = ({
           </div>
           <ProgressBar
             value={suggestion.importanceScore / 100}
-            color={suggestion.importanceScore >= 70 ? 'success' : suggestion.importanceScore >= 40 ? 'warning' : 'error'}
+            color={
+              suggestion.importanceScore >= 70
+                ? 'success'
+                : suggestion.importanceScore >= 40
+                  ? 'warning'
+                  : 'error'
+            }
           />
         </div>
 
@@ -194,7 +228,9 @@ export const SceneSuggestionCard: React.FC<SceneSuggestionCardProps> = ({
           </div>
           <div className={styles.metricItem}>
             <Caption1>Transition</Caption1>
-            <Body1>{getTransitionIcon(suggestion.transitionType)} {suggestion.transitionType}</Body1>
+            <Body1>
+              {getTransitionIcon(suggestion.transitionType)} {suggestion.transitionType}
+            </Body1>
           </div>
           <div className={styles.metricItem}>
             <Caption1>Info Density</Caption1>
@@ -205,7 +241,14 @@ export const SceneSuggestionCard: React.FC<SceneSuggestionCardProps> = ({
         {/* LLM Reasoning */}
         {suggestion.reasoning && (
           <div className={styles.reasoning}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS, marginBottom: tokens.spacingVerticalS }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: tokens.spacingHorizontalXS,
+                marginBottom: tokens.spacingVerticalS,
+              }}
+            >
               <Info24Regular style={{ fontSize: '16px' }} />
               <Caption1>AI Reasoning</Caption1>
             </div>
@@ -216,7 +259,9 @@ export const SceneSuggestionCard: React.FC<SceneSuggestionCardProps> = ({
         {/* Expandable Detailed Metrics */}
         {expanded && (
           <div className={styles.detailedMetrics}>
-            <Subtitle2 style={{ marginBottom: tokens.spacingVerticalM }}>Detailed Metrics</Subtitle2>
+            <Subtitle2 style={{ marginBottom: tokens.spacingVerticalM }}>
+              Detailed Metrics
+            </Subtitle2>
             <div className={styles.metricsGrid}>
               <div className={styles.metricItem}>
                 <Caption1>Min Duration</Caption1>

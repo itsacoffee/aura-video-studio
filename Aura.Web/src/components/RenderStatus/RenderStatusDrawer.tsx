@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   Drawer,
   DrawerHeader,
@@ -25,6 +24,7 @@ import {
   ArrowClockwise24Regular,
   Copy24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import {
   JobResponse,
   JobStep,

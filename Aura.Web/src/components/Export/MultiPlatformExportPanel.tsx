@@ -1,4 +1,3 @@
-import { useState, useCallback } from 'react';
 import {
   makeStyles,
   tokens,
@@ -9,15 +8,12 @@ import {
   Card,
   CardHeader,
 } from '@fluentui/react-components';
-import {
-  Video24Regular,
-  ArrowExport24Regular,
-  Settings24Regular,
-} from '@fluentui/react-icons';
-import { PlatformSelectionGrid } from './PlatformSelectionGrid';
+import { Video24Regular, ArrowExport24Regular, Settings24Regular } from '@fluentui/react-icons';
+import { useState, useCallback } from 'react';
 import { ExportPreviewCard } from './ExportPreviewCard';
 import { ExportQueueManager } from './ExportQueueManager';
 import { ExportSettingsEditor } from './ExportSettingsEditor';
+import { PlatformSelectionGrid } from './PlatformSelectionGrid';
 
 const useStyles = makeStyles({
   container: {
@@ -187,10 +183,7 @@ export function MultiPlatformExportPanel({
 
           {showSettings && (
             <div className={styles.section}>
-              <ExportSettingsEditor
-                settings={exportSettings}
-                onChange={handleSettingsChange}
-              />
+              <ExportSettingsEditor settings={exportSettings} onChange={handleSettingsChange} />
             </div>
           )}
         </div>

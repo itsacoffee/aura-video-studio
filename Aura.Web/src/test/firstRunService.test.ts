@@ -112,12 +112,12 @@ describe('firstRunService', () => {
 
     it('should not throw if backend call fails', async () => {
       localStorage.setItem('hasCompletedFirstRun', 'true');
-      
+
       // Mock backend call to fail
       (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
       await expect(resetFirstRunStatus()).resolves.not.toThrow();
-      
+
       // Local storage should still be cleared
       expect(localStorage.getItem('hasCompletedFirstRun')).toBeNull();
     });

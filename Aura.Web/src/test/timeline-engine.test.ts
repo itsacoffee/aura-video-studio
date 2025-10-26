@@ -72,9 +72,7 @@ describe('timelineEngine', () => {
     });
 
     it('should return null if no snap point within threshold', () => {
-      const snapPoints = [
-        { time: 1.0, type: 'clip-start' as const },
-      ];
+      const snapPoints = [{ time: 1.0, type: 'clip-start' as const }];
 
       const result = findNearestSnapPoint(2.0, snapPoints, 0.1);
       expect(result).toBeNull();
@@ -87,14 +85,14 @@ describe('timelineEngine', () => {
       ];
 
       const snapPoints = calculateSnapPoints(clips, 0, []);
-      
+
       // Should have clip starts, ends, and playhead
       expect(snapPoints.length).toBeGreaterThanOrEqual(5);
-      
-      const clipStarts = snapPoints.filter(p => p.type === 'clip-start');
+
+      const clipStarts = snapPoints.filter((p) => p.type === 'clip-start');
       expect(clipStarts.length).toBe(2);
-      
-      const clipEnds = snapPoints.filter(p => p.type === 'clip-end');
+
+      const clipEnds = snapPoints.filter((p) => p.type === 'clip-end');
       expect(clipEnds.length).toBe(2);
     });
   });
@@ -108,7 +106,7 @@ describe('timelineEngine', () => {
       ];
 
       const result = applyRippleEdit(clips, 2, 1);
-      
+
       expect(result[0].startTime).toBe(0); // Before edit point - unchanged
       expect(result[1].startTime).toBe(2); // At edit point - unchanged
       expect(result[2].startTime).toBe(5); // After edit point - moved by delta
@@ -122,7 +120,7 @@ describe('timelineEngine', () => {
       ];
 
       const result = applyRippleEdit(clips, 2, -0.5);
-      
+
       expect(result[2].startTime).toBe(3.5);
     });
   });
@@ -136,7 +134,7 @@ describe('timelineEngine', () => {
       ];
 
       const gaps = findGaps(clips);
-      
+
       expect(gaps.length).toBe(2);
       expect(gaps[0]).toEqual({ start: 1, end: 2 });
       expect(gaps[1]).toEqual({ start: 3, end: 5 });
@@ -161,7 +159,7 @@ describe('timelineEngine', () => {
       ];
 
       const closed = closeGaps(clips);
-      
+
       expect(closed[0].startTime).toBe(0);
       expect(closed[1].startTime).toBe(1); // Moved to close gap
       expect(closed[2].startTime).toBe(2); // Moved to close gap
@@ -174,7 +172,7 @@ describe('timelineEngine', () => {
       ];
 
       const closed = closeGaps(clips);
-      
+
       // Should maintain relative positions
       expect(closed[0].startTime).toBe(0);
       expect(closed[1].startTime).toBe(1);
@@ -188,7 +186,7 @@ describe('timelineEngine', () => {
         TimelineDisplayMode.TIMECODE,
         30
       );
-      
+
       expect(majorInterval).toBeGreaterThan(0);
       expect(minorInterval).toBeGreaterThan(0);
       expect(majorInterval).toBeGreaterThanOrEqual(minorInterval);
@@ -197,7 +195,7 @@ describe('timelineEngine', () => {
     it('should adjust intervals based on zoom', () => {
       const highZoom = calculateRulerInterval(150, TimelineDisplayMode.TIMECODE, 30);
       const lowZoom = calculateRulerInterval(20, TimelineDisplayMode.TIMECODE, 30);
-      
+
       // High zoom should have smaller intervals for more detail
       expect(highZoom.majorInterval).toBeLessThan(lowZoom.majorInterval);
     });
@@ -208,7 +206,7 @@ describe('timelineEngine', () => {
         TimelineDisplayMode.FRAMES,
         30
       );
-      
+
       // In frames mode, intervals should be based on frame boundaries
       expect(majorInterval).toBeGreaterThan(0);
       expect(minorInterval).toBeGreaterThan(0);

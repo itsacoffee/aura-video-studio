@@ -1,6 +1,6 @@
 /**
  * useEffectsWorker Hook
- * 
+ *
  * Hook for processing effects using Web Workers to offload CPU-intensive
  * image processing from the main thread.
  */
@@ -31,7 +31,9 @@ type WorkerResponse = ResultMessage | ErrorMessage;
 
 export function useEffectsWorker() {
   const workerRef = useRef<Worker | null>(null);
-  const callbacksRef = useRef<Map<number, (result: ImageData | null, error?: string, processingTime?: number) => void>>(new Map());
+  const callbacksRef = useRef<
+    Map<number, (result: ImageData | null, error?: string, processingTime?: number) => void>
+  >(new Map());
 
   // Initialize worker on mount
   useEffect(() => {
@@ -77,7 +79,7 @@ export function useEffectsWorker() {
       // Set up message handler
       workerRef.current.onmessage = (event: MessageEvent<WorkerResponse>) => {
         const response = event.data;
-        
+
         if (response.type === 'result') {
           const callback = callbacksRef.current.get(response.timestamp);
           if (callback) {
@@ -108,48 +110,45 @@ export function useEffectsWorker() {
   /**
    * Apply effects to an ImageData object using the worker
    */
-  const applyEffects = useCallback(
-    (imageData: ImageData, effects: any[]): Promise<ImageData> => {
-      return new Promise((resolve, reject) => {
-        if (!workerRef.current) {
-          reject(new Error('Worker not initialized'));
-          return;
+  const applyEffects = useCallback((imageData: ImageData, effects: any[]): Promise<ImageData> => {
+    return new Promise((resolve, reject) => {
+      if (!workerRef.current) {
+        reject(new Error('Worker not initialized'));
+        return;
+      }
+
+      const timestamp = Date.now();
+
+      // Store callback
+      callbacksRef.current.set(timestamp, (result, error) => {
+        if (error) {
+          reject(new Error(error));
+        } else if (result) {
+          resolve(result);
+        } else {
+          reject(new Error('No result returned from worker'));
         }
-
-        const timestamp = Date.now();
-        
-        // Store callback
-        callbacksRef.current.set(timestamp, (result, error) => {
-          if (error) {
-            reject(new Error(error));
-          } else if (result) {
-            resolve(result);
-          } else {
-            reject(new Error('No result returned from worker'));
-          }
-        });
-
-        // Send message to worker
-        const message: EffectMessage = {
-          type: 'apply-effects',
-          imageData,
-          effects,
-          timestamp,
-        };
-
-        workerRef.current.postMessage(message);
-
-        // Timeout after 5 seconds
-        setTimeout(() => {
-          if (callbacksRef.current.has(timestamp)) {
-            callbacksRef.current.delete(timestamp);
-            reject(new Error('Worker timeout'));
-          }
-        }, 5000);
       });
-    },
-    []
-  );
+
+      // Send message to worker
+      const message: EffectMessage = {
+        type: 'apply-effects',
+        imageData,
+        effects,
+        timestamp,
+      };
+
+      workerRef.current.postMessage(message);
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        if (callbacksRef.current.has(timestamp)) {
+          callbacksRef.current.delete(timestamp);
+          reject(new Error('Worker timeout'));
+        }
+      }, 5000);
+    });
+  }, []);
 
   return { applyEffects };
 }

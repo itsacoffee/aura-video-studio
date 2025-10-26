@@ -3,7 +3,6 @@
  * Pre-built customizable motion graphics templates
  */
 
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -23,6 +22,7 @@ import {
   ShareScreenPerson24Regular,
   Checkmark24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -246,9 +246,7 @@ export function MotionGraphicsTemplates({ onTemplateCreated }: MotionGraphicsTem
                 }}
               />
             </div>
-            <div style={{ textAlign: 'center', marginTop: '8px', color }}>
-              {progress}%
-            </div>
+            <div style={{ textAlign: 'center', marginTop: '8px', color }}>{progress}%</div>
           </div>
         );
 
@@ -299,24 +297,32 @@ export function MotionGraphicsTemplates({ onTemplateCreated }: MotionGraphicsTem
         </div>
 
         <div className={styles.templates}>
-          {(Object.entries(TEMPLATE_DEFINITIONS) as Array<[TemplateType, typeof TEMPLATE_DEFINITIONS[TemplateType]]>).map(
-            ([type, def]) => (
-              <div
-                key={type}
-                className={`${styles.templateCard} ${selectedType === type ? styles.templateCardSelected : ''}`}
-                onClick={() => setSelectedType(type)}
-                role="button"
-                tabIndex={0}
-                aria-label={`Select ${def.name} template`}
-              >
-                <div className={styles.templateIcon}>{def.icon}</div>
-                <Label weight="semibold">{def.name}</Label>
-                <Label size="small" style={{ color: tokens.colorNeutralForeground3 }}>
-                  {def.description}
-                </Label>
-              </div>
-            )
-          )}
+          {(
+            Object.entries(TEMPLATE_DEFINITIONS) as Array<
+              [TemplateType, (typeof TEMPLATE_DEFINITIONS)[TemplateType]]
+            >
+          ).map(([type, def]) => (
+            <div
+              key={type}
+              className={`${styles.templateCard} ${selectedType === type ? styles.templateCardSelected : ''}`}
+              onClick={() => setSelectedType(type)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedType(type);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Select ${def.name} template`}
+            >
+              <div className={styles.templateIcon}>{def.icon}</div>
+              <Label weight="semibold">{def.name}</Label>
+              <Label size="small" style={{ color: tokens.colorNeutralForeground3 }}>
+                {def.description}
+              </Label>
+            </div>
+          ))}
         </div>
       </Card>
 
@@ -383,12 +389,7 @@ export function MotionGraphicsTemplates({ onTemplateCreated }: MotionGraphicsTem
 
           <div className={styles.controlRow}>
             <Label>Size: {size}%</Label>
-            <Slider
-              min={50}
-              max={200}
-              value={size}
-              onChange={(_, data) => setSize(data.value)}
-            />
+            <Slider min={50} max={200} value={size} onChange={(_, data) => setSize(data.value)} />
           </div>
 
           {selectedType === 'progress-bar' && (

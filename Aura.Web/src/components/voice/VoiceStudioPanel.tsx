@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { apiUrl } from '../../config/api';
 import {
   makeStyles,
   tokens,
@@ -16,9 +14,11 @@ import {
   PlayRegular,
   SaveRegular,
 } from '@fluentui/react-icons';
-import { VoiceProfileSelector } from './VoiceProfileSelector';
-import { ProsodyEditor } from './ProsodyEditor';
+import { useState } from 'react';
+import { apiUrl } from '../../config/api';
 import { EmotionAdjuster } from './EmotionAdjuster';
+import { ProsodyEditor } from './ProsodyEditor';
+import { VoiceProfileSelector } from './VoiceProfileSelector';
 import { VoiceSamplePlayer } from './VoiceSamplePlayer';
 
 const useStyles = makeStyles({
@@ -155,7 +155,7 @@ export const VoiceStudioPanel = ({
           enhancement: enhancementConfig,
         }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.audioUrl) {
@@ -228,10 +228,7 @@ export const VoiceStudioPanel = ({
 
         {selectedTab === 'prosody' && (
           <div className={styles.tabContent}>
-            <ProsodyEditor
-              prosody={enhancementConfig.prosody}
-              onChange={handleProsodyChange}
-            />
+            <ProsodyEditor prosody={enhancementConfig.prosody} onChange={handleProsodyChange} />
           </div>
         )}
 
@@ -249,10 +246,7 @@ export const VoiceStudioPanel = ({
           <div className={styles.tabContent}>
             <div className={styles.previewSection}>
               <Text weight="semibold">Audio Preview</Text>
-              <VoiceSamplePlayer
-                voiceId={selectedVoiceId}
-                enhancementConfig={enhancementConfig}
-              />
+              <VoiceSamplePlayer voiceId={selectedVoiceId} enhancementConfig={enhancementConfig} />
             </div>
           </div>
         )}

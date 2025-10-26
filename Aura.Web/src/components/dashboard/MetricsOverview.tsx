@@ -1,12 +1,5 @@
+import { Card, Title3, Body1, Body2, makeStyles, tokens } from '@fluentui/react-components';
 import React from 'react';
-import {
-  Card,
-  Title3,
-  Body1,
-  Body2,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
 import { useQualityDashboardStore } from '../../state/qualityDashboard';
 
 const useStyles = makeStyles({

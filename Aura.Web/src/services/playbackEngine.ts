@@ -1,6 +1,6 @@
 /**
  * Professional Video Playback Engine
- * 
+ *
  * Provides hardware-accelerated video playback with:
  * - Frame-accurate seeking and display
  * - Perfect A/V synchronization
@@ -55,7 +55,7 @@ export class PlaybackEngine {
   private canvasElement: HTMLCanvasElement | null;
   private frameRate: number;
   private enableHardwareAccel: boolean;
-  
+
   private state: PlaybackState = {
     isPlaying: false,
     currentTime: 0,
@@ -68,7 +68,7 @@ export class PlaybackEngine {
     inPoint: null,
     outPoint: null,
   };
-  
+
   private metrics: PlaybackMetrics = {
     droppedFrames: 0,
     totalFrames: 0,
@@ -79,16 +79,16 @@ export class PlaybackEngine {
     decodedFrames: 0,
     memoryUsage: 0,
   };
-  
+
   private animationFrameId: number | null = null;
   private frameCount: number = 0;
   private fpsInterval: number = 1000;
   private lastFpsUpdate: number = 0;
-  
+
   private onStateChange?: (state: PlaybackState) => void;
   private onMetricsUpdate?: (metrics: PlaybackMetrics) => void;
   private onError?: (error: Error) => void;
-  
+
   private videoQualityObserver: ResizeObserver | null = null;
   private performanceObserver: PerformanceObserver | null = null;
 
@@ -100,16 +100,16 @@ export class PlaybackEngine {
     this.onStateChange = options.onStateChange;
     this.onMetricsUpdate = options.onMetricsUpdate;
     this.onError = options.onError;
-    
+
     if (options.defaultQuality) {
       this.state.quality = options.defaultQuality;
     }
-    
+
     this.metrics.targetFPS = this.frameRate;
-    
+
     this.initialize();
   }
-  
+
   /**
    * Initialize the playback engine
    */
@@ -119,7 +119,7 @@ export class PlaybackEngine {
     this.detectHardwareCapabilities();
     this.setupPerformanceMonitoring();
   }
-  
+
   /**
    * Set up video element for optimal playback
    */
@@ -129,18 +129,18 @@ export class PlaybackEngine {
       this.videoElement.setAttribute('playsinline', 'true');
       this.videoElement.setAttribute('webkit-playsinline', 'true');
     }
-    
+
     // Optimize for low latency
     this.videoElement.preload = 'auto';
-    
+
     // Set initial volume
     this.videoElement.volume = this.state.volume;
     this.videoElement.muted = this.state.isMuted;
-    
+
     // Apply quality settings
     this.applyQualitySettings();
   }
-  
+
   /**
    * Set up event listeners for video element
    */
@@ -154,29 +154,31 @@ export class PlaybackEngine {
     this.videoElement.addEventListener('seeking', this.handleSeeking);
     this.videoElement.addEventListener('seeked', this.handleSeeked);
   }
-  
+
   /**
    * Detect hardware acceleration capabilities
    */
   private detectHardwareCapabilities(): void {
     if (!this.enableHardwareAccel) return;
-    
+
     // Check for MediaSource API support
     const hasMediaSource = 'MediaSource' in window;
-    
+
     // Check for hardware video decoding
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
     const hasWebGL = !!gl;
-    
+
+    // Intentional logging for hardware capability diagnostics
     if (hasMediaSource && hasWebGL) {
+      // eslint-disable-next-line no-console
       console.log('✓ Hardware acceleration available');
     } else {
       console.warn('⚠ Limited hardware acceleration support');
       this.enableHardwareAccel = false;
     }
   }
-  
+
   /**
    * Set up performance monitoring
    */
@@ -189,7 +191,7 @@ export class PlaybackEngine {
           this.metrics.droppedFrames = quality.droppedVideoFrames || 0;
           this.metrics.totalFrames = quality.totalVideoFrames || 0;
           this.metrics.decodedFrames = quality.decodedVideoFrames || 0;
-          
+
           // Notify if metrics changed
           if (this.onMetricsUpdate) {
             this.onMetricsUpdate({ ...this.metrics });
@@ -197,7 +199,7 @@ export class PlaybackEngine {
         }
       }, 1000);
     }
-    
+
     // Monitor memory usage
     if ('memory' in performance) {
       setInterval(() => {
@@ -206,13 +208,13 @@ export class PlaybackEngine {
       }, 2000);
     }
   }
-  
+
   /**
    * Apply quality settings to video playback
    */
   private applyQualitySettings(): void {
     const quality = this.state.quality;
-    
+
     // Calculate scale factor based on quality
     let scaleFactor = 1.0;
     switch (quality) {
@@ -227,17 +229,17 @@ export class PlaybackEngine {
         scaleFactor = 1.0;
         break;
     }
-    
+
     // Apply to canvas if available
     if (this.canvasElement && this.videoElement.videoWidth && this.videoElement.videoHeight) {
       const width = Math.floor(this.videoElement.videoWidth * scaleFactor);
       const height = Math.floor(this.videoElement.videoHeight * scaleFactor);
-      
+
       this.canvasElement.width = width;
       this.canvasElement.height = height;
     }
   }
-  
+
   /**
    * Event Handlers
    */
@@ -245,10 +247,10 @@ export class PlaybackEngine {
     this.state.duration = this.videoElement.duration;
     this.notifyStateChange();
   };
-  
+
   private handleTimeUpdate = (): void => {
     this.state.currentTime = this.videoElement.currentTime;
-    
+
     // Check loop points
     if (this.state.isLooping && this.state.outPoint !== null) {
       if (this.state.currentTime >= this.state.outPoint) {
@@ -256,22 +258,22 @@ export class PlaybackEngine {
         this.seek(inPoint);
       }
     }
-    
+
     this.notifyStateChange();
   };
-  
+
   private handlePlay = (): void => {
     this.state.isPlaying = true;
     this.startRenderLoop();
     this.notifyStateChange();
   };
-  
+
   private handlePause = (): void => {
     this.state.isPlaying = false;
     this.stopRenderLoop();
     this.notifyStateChange();
   };
-  
+
   private handleEnded = (): void => {
     if (this.state.isLooping) {
       const inPoint = this.state.inPoint || 0;
@@ -283,40 +285,42 @@ export class PlaybackEngine {
       this.notifyStateChange();
     }
   };
-  
+
   private handleError = (): void => {
-    const error = new Error(`Video playback error: ${this.videoElement.error?.message || 'Unknown error'}`);
+    const error = new Error(
+      `Video playback error: ${this.videoElement.error?.message || 'Unknown error'}`
+    );
     console.error('Playback error:', error);
     if (this.onError) {
       this.onError(error);
     }
   };
-  
+
   private handleSeeking = (): void => {
     // Track seeking for performance
   };
-  
+
   private handleSeeked = (): void => {
     // Update state after seek completes
     this.state.currentTime = this.videoElement.currentTime;
     this.notifyStateChange();
   };
-  
+
   /**
    * Render loop for frame-accurate playback
    */
   private startRenderLoop(): void {
     if (this.animationFrameId !== null) return;
-    
+
     this.lastFpsUpdate = performance.now();
     this.frameCount = 0;
-    
+
     const renderFrame = (currentTime: number) => {
       if (!this.state.isPlaying) {
         this.stopRenderLoop();
         return;
       }
-      
+
       // Calculate FPS
       this.frameCount++;
       const elapsed = currentTime - this.lastFpsUpdate;
@@ -324,51 +328,46 @@ export class PlaybackEngine {
         this.metrics.currentFPS = Math.round((this.frameCount * 1000) / elapsed);
         this.frameCount = 0;
         this.lastFpsUpdate = currentTime;
-        
+
         if (this.onMetricsUpdate) {
           this.onMetricsUpdate({ ...this.metrics });
         }
       }
-      
+
       // Render to canvas if available
       if (this.canvasElement) {
         this.renderToCanvas();
       }
-      
+
       this.animationFrameId = requestAnimationFrame(renderFrame);
     };
-    
+
     this.animationFrameId = requestAnimationFrame(renderFrame);
   }
-  
+
   private stopRenderLoop(): void {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
   }
-  
+
   /**
    * Render video frame to canvas
    */
   private renderToCanvas(): void {
     if (!this.canvasElement || !this.videoElement.videoWidth) return;
-    
+
     const ctx = this.canvasElement.getContext('2d');
     if (!ctx) return;
-    
+
     // Clear canvas
     ctx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
-    
+
     // Draw video frame
-    ctx.drawImage(
-      this.videoElement,
-      0, 0,
-      this.canvasElement.width,
-      this.canvasElement.height
-    );
+    ctx.drawImage(this.videoElement, 0, 0, this.canvasElement.width, this.canvasElement.height);
   }
-  
+
   /**
    * Notify state change
    */
@@ -377,11 +376,11 @@ export class PlaybackEngine {
       this.onStateChange({ ...this.state });
     }
   }
-  
+
   /**
    * Public API
    */
-  
+
   /**
    * Play video
    */
@@ -395,14 +394,14 @@ export class PlaybackEngine {
       }
     }
   }
-  
+
   /**
    * Pause video
    */
   pause(): void {
     this.videoElement.pause();
   }
-  
+
   /**
    * Toggle play/pause
    */
@@ -413,7 +412,7 @@ export class PlaybackEngine {
       await this.play();
     }
   }
-  
+
   /**
    * Seek to specific time
    */
@@ -421,7 +420,7 @@ export class PlaybackEngine {
     const clampedTime = Math.max(0, Math.min(this.state.duration, time));
     this.videoElement.currentTime = clampedTime;
   }
-  
+
   /**
    * Step forward one frame
    */
@@ -429,7 +428,7 @@ export class PlaybackEngine {
     const frameTime = 1 / this.frameRate;
     this.seek(this.state.currentTime + frameTime);
   }
-  
+
   /**
    * Step backward one frame
    */
@@ -437,14 +436,14 @@ export class PlaybackEngine {
     const frameTime = 1 / this.frameRate;
     this.seek(this.state.currentTime - frameTime);
   }
-  
+
   /**
    * Set playback speed
    */
   setPlaybackSpeed(speed: PlaybackSpeed): void {
     this.state.playbackSpeed = speed;
     this.videoElement.playbackRate = speed;
-    
+
     // Preserve audio pitch at different speeds
     if ('preservesPitch' in this.videoElement) {
       (this.videoElement as any).preservesPitch = true;
@@ -453,10 +452,10 @@ export class PlaybackEngine {
     } else if ('webkitPreservesPitch' in this.videoElement) {
       (this.videoElement as any).webkitPreservesPitch = true;
     }
-    
+
     this.notifyStateChange();
   }
-  
+
   /**
    * Set preview quality
    */
@@ -465,7 +464,7 @@ export class PlaybackEngine {
     this.applyQualitySettings();
     this.notifyStateChange();
   }
-  
+
   /**
    * Set volume
    */
@@ -475,7 +474,7 @@ export class PlaybackEngine {
     this.videoElement.volume = clampedVolume;
     this.notifyStateChange();
   }
-  
+
   /**
    * Toggle mute
    */
@@ -484,7 +483,7 @@ export class PlaybackEngine {
     this.videoElement.muted = this.state.isMuted;
     this.notifyStateChange();
   }
-  
+
   /**
    * Set mute state
    */
@@ -493,7 +492,7 @@ export class PlaybackEngine {
     this.videoElement.muted = muted;
     this.notifyStateChange();
   }
-  
+
   /**
    * Set loop mode
    */
@@ -501,7 +500,7 @@ export class PlaybackEngine {
     this.state.isLooping = loop;
     this.notifyStateChange();
   }
-  
+
   /**
    * Set in point for looping
    */
@@ -509,7 +508,7 @@ export class PlaybackEngine {
     this.state.inPoint = time;
     this.notifyStateChange();
   }
-  
+
   /**
    * Set out point for looping
    */
@@ -517,7 +516,7 @@ export class PlaybackEngine {
     this.state.outPoint = time;
     this.notifyStateChange();
   }
-  
+
   /**
    * Clear in/out points
    */
@@ -526,26 +525,26 @@ export class PlaybackEngine {
     this.state.outPoint = null;
     this.notifyStateChange();
   }
-  
+
   /**
    * Play around current position (preview mode)
    */
   async playAround(secondsBefore: number = 2, secondsAfter: number = 2): Promise<void> {
     const startTime = Math.max(0, this.state.currentTime - secondsBefore);
     const endTime = Math.min(this.state.duration, this.state.currentTime + secondsAfter);
-    
+
     // Set temporary loop points
     const originalInPoint = this.state.inPoint;
     const originalOutPoint = this.state.outPoint;
     const originalLoop = this.state.isLooping;
-    
+
     this.state.inPoint = startTime;
     this.state.outPoint = endTime;
     this.state.isLooping = false;
-    
+
     this.seek(startTime);
     await this.play();
-    
+
     // Restore original loop points after playback
     const checkPlayback = setInterval(() => {
       if (this.state.currentTime >= endTime || !this.state.isPlaying) {
@@ -558,34 +557,34 @@ export class PlaybackEngine {
       }
     }, 100);
   }
-  
+
   /**
    * Get current state
    */
   getState(): PlaybackState {
     return { ...this.state };
   }
-  
+
   /**
    * Get current metrics
    */
   getMetrics(): PlaybackMetrics {
     return { ...this.metrics };
   }
-  
+
   /**
    * Load video source
    */
   loadVideo(src: string): void {
     this.videoElement.src = src;
   }
-  
+
   /**
    * Cleanup and destroy
    */
   destroy(): void {
     this.stopRenderLoop();
-    
+
     // Remove event listeners
     this.videoElement.removeEventListener('loadedmetadata', this.handleLoadedMetadata);
     this.videoElement.removeEventListener('timeupdate', this.handleTimeUpdate);
@@ -595,7 +594,7 @@ export class PlaybackEngine {
     this.videoElement.removeEventListener('error', this.handleError);
     this.videoElement.removeEventListener('seeking', this.handleSeeking);
     this.videoElement.removeEventListener('seeked', this.handleSeeked);
-    
+
     // Cleanup observers
     if (this.videoQualityObserver) {
       this.videoQualityObserver.disconnect();

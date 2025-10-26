@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   Card,
   Title3,
@@ -13,8 +12,9 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import { Sparkle24Regular, Copy24Regular, CheckmarkCircle24Regular } from '@fluentui/react-icons';
-import type { MetadataGenerationRequest, OptimizedMetadata } from '../../types/platform';
+import React, { useState } from 'react';
 import platformService from '../../services/platform/platformService';
+import type { MetadataGenerationRequest, OptimizedMetadata } from '../../types/platform';
 import { PlatformSelector } from './PlatformSelector';
 
 const useStyles = makeStyles({

@@ -1,6 +1,6 @@
 /**
  * Transport Bar Component
- * 
+ *
  * Provides timeline scrubbing with:
  * - Frame preview during scrub
  * - In/Out point markers
@@ -8,18 +8,9 @@
  * - Optimized scrubbing performance
  */
 
+import { makeStyles, tokens, Text, Button, Tooltip } from '@fluentui/react-components';
+import { Flag24Regular, FlagOff24Regular } from '@fluentui/react-icons';
 import { useState, useRef, useCallback, memo, useEffect } from 'react';
-import {
-  makeStyles,
-  tokens,
-  Text,
-  Button,
-  Tooltip,
-} from '@fluentui/react-components';
-import {
-  Flag24Regular,
-  FlagOff24Regular,
-} from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   container: {
@@ -163,40 +154,49 @@ export const TransportBar = memo(function TransportBar({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
   }, []);
 
-  const getTimeFromPosition = useCallback((clientX: number): number => {
-    if (!timelineRef.current) return 0;
-    
-    const rect = timelineRef.current.getBoundingClientRect();
-    const padding = 8;
-    const x = clientX - rect.left - padding;
-    const width = rect.width - padding * 2;
-    const progress = Math.max(0, Math.min(1, x / width));
-    
-    return progress * duration;
-  }, [duration]);
+  const getTimeFromPosition = useCallback(
+    (clientX: number): number => {
+      if (!timelineRef.current) return 0;
 
-  const handleMouseDown = useCallback((event: React.MouseEvent) => {
-    if (disabled) return;
-    
-    event.preventDefault();
-    setIsDragging(true);
-    
-    const time = getTimeFromPosition(event.clientX);
-    onSeek(time);
-  }, [disabled, getTimeFromPosition, onSeek]);
+      const rect = timelineRef.current.getBoundingClientRect();
+      const padding = 8;
+      const x = clientX - rect.left - padding;
+      const width = rect.width - padding * 2;
+      const progress = Math.max(0, Math.min(1, x / width));
 
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (isDragging && !disabled) {
+      return progress * duration;
+    },
+    [duration]
+  );
+
+  const handleMouseDown = useCallback(
+    (event: React.MouseEvent) => {
+      if (disabled) return;
+
+      event.preventDefault();
+      setIsDragging(true);
+
       const time = getTimeFromPosition(event.clientX);
       onSeek(time);
-    }
-    
-    // Show hover time
-    if (timelineRef.current && !disabled) {
-      const time = getTimeFromPosition(event.clientX);
-      setHoverTime(time);
-    }
-  }, [isDragging, disabled, getTimeFromPosition, onSeek]);
+    },
+    [disabled, getTimeFromPosition, onSeek]
+  );
+
+  const handleMouseMove = useCallback(
+    (event: MouseEvent) => {
+      if (isDragging && !disabled) {
+        const time = getTimeFromPosition(event.clientX);
+        onSeek(time);
+      }
+
+      // Show hover time
+      if (timelineRef.current && !disabled) {
+        const time = getTimeFromPosition(event.clientX);
+        setHoverTime(time);
+      }
+    },
+    [isDragging, disabled, getTimeFromPosition, onSeek]
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -211,7 +211,7 @@ export const TransportBar = memo(function TransportBar({
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
-      
+
       return () => {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
@@ -225,23 +225,29 @@ export const TransportBar = memo(function TransportBar({
 
   const hasInOutPoints = inPoint !== null && outPoint !== null;
   const loopRegionLeft = inPointPercent !== null ? inPointPercent : 0;
-  const loopRegionWidth = hasInOutPoints && inPointPercent !== null && outPointPercent !== null
-    ? outPointPercent - inPointPercent
-    : 0;
+  const loopRegionWidth =
+    hasInOutPoints && inPointPercent !== null && outPointPercent !== null
+      ? outPointPercent - inPointPercent
+      : 0;
 
   return (
     <div className={styles.container}>
       <div
         ref={timelineRef}
         className={styles.timeline}
+        role="button"
+        tabIndex={0}
         onMouseDown={handleMouseDown}
         onMouseLeave={handleMouseLeave}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            // Timeline scrubbing requires mouse position
+          }
+        }}
       >
         <div className={styles.timelineTrack}>
-          <div
-            className={styles.timelineProgress}
-            style={{ width: `${progressPercent}%` }}
-          />
+          <div className={styles.timelineProgress} style={{ width: `${progressPercent}%` }} />
         </div>
 
         {/* Loop region highlight */}

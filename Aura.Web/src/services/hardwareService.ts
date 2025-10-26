@@ -25,16 +25,16 @@ export interface GpuInfo {
 export async function getHardwareInfo(): Promise<HardwareInfo> {
   try {
     const response = await get<any>('/api/diagnostics/hardware');
-    
+
     // Map the API response to our HardwareInfo interface
     const gpu = response.gpu;
     const hasNvidia = gpu?.vendor?.toUpperCase().includes('NVIDIA') || false;
     const hasAmd = gpu?.vendor?.toUpperCase().includes('AMD') || false;
     const hasIntel = gpu?.vendor?.toUpperCase().includes('INTEL') || false;
-    
+
     let hardwareType: 'NVIDIA' | 'AMD' | 'Intel' | 'None' = 'None';
     let encoderType = 'Software (CPU)';
-    
+
     if (hasNvidia) {
       hardwareType = 'NVIDIA';
       encoderType = 'NVIDIA NVENC';
@@ -45,15 +45,17 @@ export async function getHardwareInfo(): Promise<HardwareInfo> {
       hardwareType = 'Intel';
       encoderType = 'Intel Quick Sync';
     }
-    
+
     return {
       cpuCores: response.logicalCores || 0,
       ramGB: response.ramGB || 0,
-      gpu: gpu ? {
-        vendor: gpu.vendor || 'Unknown',
-        model: gpu.model || 'Unknown',
-        vramGB: gpu.vramGB || 0,
-      } : null,
+      gpu: gpu
+        ? {
+            vendor: gpu.vendor || 'Unknown',
+            model: gpu.model || 'Unknown',
+            vramGB: gpu.vramGB || 0,
+          }
+        : null,
       hardwareAccelerationAvailable: hasNvidia || hasAmd || hasIntel,
       hardwareType,
       encoderType,

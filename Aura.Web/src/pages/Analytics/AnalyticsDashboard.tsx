@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   Button,
   Card,
@@ -19,6 +18,7 @@ import {
   ChartMultiple24Regular,
   Lightbulb24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 import {
   performanceAnalyticsService,
   type PerformanceInsights,

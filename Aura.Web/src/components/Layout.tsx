@@ -1,9 +1,9 @@
-import { ReactNode } from 'react';
 import { makeStyles, tokens, Title3, Button, Tooltip } from '@fluentui/react-components';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { WeatherMoon24Regular, WeatherSunny24Regular } from '@fluentui/react-icons';
-import { navItems } from '../navigation';
+import { ReactNode } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../App';
+import { navItems } from '../navigation';
 import { ResultsTray } from './ResultsTray';
 
 const useStyles = makeStyles({

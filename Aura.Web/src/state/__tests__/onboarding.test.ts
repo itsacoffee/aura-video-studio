@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  onboardingReducer,
-  initialOnboardingState,
-  canAdvanceStep,
-} from '../onboarding';
+import { onboardingReducer, initialOnboardingState, canAdvanceStep } from '../onboarding';
 import type { PreflightReport } from '../providers';
 
 describe('onboardingReducer', () => {

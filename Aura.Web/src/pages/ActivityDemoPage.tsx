@@ -1,17 +1,5 @@
-import {
-  makeStyles,
-  tokens,
-  Title1,
-  Title2,
-  Text,
-  Button,
-  Card,
-} from '@fluentui/react-components';
-import {
-  Play24Regular,
-  ErrorCircle24Regular,
-  Checkmark24Regular,
-} from '@fluentui/react-icons';
+import { makeStyles, tokens, Title1, Title2, Text, Button, Card } from '@fluentui/react-components';
+import { Play24Regular, ErrorCircle24Regular, Checkmark24Regular } from '@fluentui/react-icons';
 import { useActivity } from '../state/activityContext';
 
 const useStyles = makeStyles({
@@ -55,35 +43,35 @@ export function ActivityDemoPage() {
       canCancel: true,
       canRetry: true,
     });
-    
+
     // Simulate progress updates
     let progress = 0;
     const interval = setInterval(() => {
       progress += 10;
-      
+
       if (progress <= 30) {
-        updateActivity(id, { 
-          status: 'running', 
-          progress, 
-          message: 'Generating script...' 
+        updateActivity(id, {
+          status: 'running',
+          progress,
+          message: 'Generating script...',
         });
       } else if (progress <= 60) {
-        updateActivity(id, { 
-          status: 'running', 
-          progress, 
-          message: 'Creating visuals...' 
+        updateActivity(id, {
+          status: 'running',
+          progress,
+          message: 'Creating visuals...',
         });
       } else if (progress <= 90) {
-        updateActivity(id, { 
-          status: 'running', 
-          progress, 
-          message: 'Rendering video...' 
+        updateActivity(id, {
+          status: 'running',
+          progress,
+          message: 'Rendering video...',
         });
       } else if (progress >= 100) {
-        updateActivity(id, { 
-          status: 'completed', 
-          progress: 100, 
-          message: 'Video generated successfully!' 
+        updateActivity(id, {
+          status: 'completed',
+          progress: 100,
+          message: 'Video generated successfully!',
         });
         clearInterval(interval);
       }
@@ -118,7 +106,7 @@ export function ActivityDemoPage() {
     let progress = 0;
     const interval = setInterval(() => {
       progress += 20;
-      
+
       if (progress >= 100) {
         updateActivity(id, {
           status: 'completed',
@@ -154,7 +142,7 @@ export function ActivityDemoPage() {
     let progress = 0;
     const interval = setInterval(() => {
       progress += 5;
-      
+
       if (progress >= 100) {
         updateActivity(id, {
           status: 'completed',
@@ -177,9 +165,9 @@ export function ActivityDemoPage() {
       <div className={styles.header}>
         <Title1>Activity Status Footer Demo</Title1>
         <Text className={styles.description}>
-          This page demonstrates the global activity status footer functionality.
-          Click the buttons below to simulate various activities and see how they appear
-          in the footer at the bottom of the page.
+          This page demonstrates the global activity status footer functionality. Click the buttons
+          below to simulate various activities and see how they appear in the footer at the bottom
+          of the page.
         </Text>
       </div>
 
@@ -189,18 +177,10 @@ export function ActivityDemoPage() {
           Test individual activity types to see how they display in the footer.
         </Text>
         <div className={styles.buttonGrid}>
-          <Button
-            appearance="primary"
-            icon={<Play24Regular />}
-            onClick={simulateVideoGeneration}
-          >
+          <Button appearance="primary" icon={<Play24Regular />} onClick={simulateVideoGeneration}>
             Video Generation
           </Button>
-          <Button
-            appearance="primary"
-            icon={<Checkmark24Regular />}
-            onClick={simulateQuickSuccess}
-          >
+          <Button appearance="primary" icon={<Checkmark24Regular />} onClick={simulateQuickSuccess}>
             Quick Success
           </Button>
           <Button
@@ -210,10 +190,7 @@ export function ActivityDemoPage() {
           >
             Failed Request
           </Button>
-          <Button
-            appearance="primary"
-            onClick={simulateAnalysis}
-          >
+          <Button appearance="primary" onClick={simulateAnalysis}>
             Video Analysis
           </Button>
         </div>
@@ -224,11 +201,7 @@ export function ActivityDemoPage() {
         <Text className={styles.description}>
           Test how the footer handles multiple activities running at the same time.
         </Text>
-        <Button
-          appearance="primary"
-          size="large"
-          onClick={simulateMultipleActivities}
-        >
+        <Button appearance="primary" size="large" onClick={simulateMultipleActivities}>
           Start Multiple Activities
         </Button>
       </Card>

@@ -18,8 +18,8 @@ import {
   ArrowSwap24Regular,
   Open24Regular,
 } from '@fluentui/react-icons';
-import type { PreflightReport, StageCheck, CheckStatus, FixAction } from '../state/providers';
 import { useNavigate } from 'react-router-dom';
+import type { PreflightReport, StageCheck, CheckStatus, FixAction } from '../state/providers';
 import { useNotifications } from './Notifications/Toasts';
 
 const useStyles = makeStyles({

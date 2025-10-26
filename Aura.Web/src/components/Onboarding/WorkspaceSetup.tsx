@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -13,11 +12,8 @@ import {
   RadioGroup,
   Field,
 } from '@fluentui/react-components';
-import {
-  Folder24Regular,
-  FolderOpen24Regular,
-  Save24Regular,
-} from '@fluentui/react-icons';
+import { Folder24Regular, FolderOpen24Regular, Save24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -162,7 +158,9 @@ export function WorkspaceSetup({
 
   const autosaveMinutes = preferences.autosaveInterval;
   const autosaveText =
-    autosaveMinutes === 0 ? 'Disabled' : `Every ${autosaveMinutes} minute${autosaveMinutes > 1 ? 's' : ''}`;
+    autosaveMinutes === 0
+      ? 'Disabled'
+      : `Every ${autosaveMinutes} minute${autosaveMinutes > 1 ? 's' : ''}`;
 
   return (
     <div className={styles.container}>
@@ -246,8 +244,8 @@ export function WorkspaceSetup({
 
           <div className={styles.infoCard} style={{ marginTop: tokens.spacingVerticalM }}>
             <Text size={200}>
-              💡 Cache files help speed up your workflow but can use significant disk space. Choose a
-              location with ample free space.
+              💡 Cache files help speed up your workflow but can use significant disk space. Choose
+              a location with ample free space.
             </Text>
           </div>
         </Card>
@@ -355,7 +353,9 @@ export function WorkspaceSetup({
           </li>
           <li className={styles.summaryItem}>
             <Text weight="semibold">Theme:</Text>
-            <Text size={200}>{preferences.theme.charAt(0).toUpperCase() + preferences.theme.slice(1)}</Text>
+            <Text size={200}>
+              {preferences.theme.charAt(0).toUpperCase() + preferences.theme.slice(1)}
+            </Text>
           </li>
         </ul>
       </Card>

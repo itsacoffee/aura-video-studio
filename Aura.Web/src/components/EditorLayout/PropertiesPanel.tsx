@@ -1,6 +1,30 @@
+import {
+  makeStyles,
+  tokens,
+  Text,
+  Field,
+  Input,
+  Button,
+  Divider,
+  Accordion,
+  AccordionItem,
+  AccordionHeader,
+  AccordionPanel,
+  Slider,
+  Switch,
+  Tooltip,
+  Select,
+} from '@fluentui/react-components';
+import {
+  Delete24Regular,
+  ArrowUpRegular,
+  ArrowDownRegular,
+  EyeRegular,
+  EyeOffRegular,
+  DismissRegular,
+  AddRegular,
+} from '@fluentui/react-icons';
 import { useState } from 'react';
-import { makeStyles, tokens, Text, Field, Input, Button, Divider, Accordion, AccordionItem, AccordionHeader, AccordionPanel, Slider, Switch, Tooltip, Select } from '@fluentui/react-components';
-import { Delete24Regular, ArrowUpRegular, ArrowDownRegular, EyeRegular, EyeOffRegular, DismissRegular, AddRegular } from '@fluentui/react-icons';
 import { AppliedEffect, EFFECT_DEFINITIONS } from '../../types/effects';
 
 const useStyles = makeStyles({
@@ -146,7 +170,7 @@ export function PropertiesPanel({
 
       const dropData = JSON.parse(data);
       if (dropData.type === 'effect') {
-        const effectDef = EFFECT_DEFINITIONS.find(e => e.type === dropData.effectType);
+        const effectDef = EFFECT_DEFINITIONS.find((e) => e.type === dropData.effectType);
         if (!effectDef) return;
 
         // Create new effect with default parameters
@@ -154,10 +178,13 @@ export function PropertiesPanel({
           id: `effect-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
           effectType: effectDef.type,
           enabled: true,
-          parameters: effectDef.parameters.reduce((acc, param) => {
-            acc[param.name] = param.defaultValue;
-            return acc;
-          }, {} as Record<string, number | boolean | string>),
+          parameters: effectDef.parameters.reduce(
+            (acc, param) => {
+              acc[param.name] = param.defaultValue;
+              return acc;
+            },
+            {} as Record<string, number | boolean | string>
+          ),
         };
 
         const currentEffects = selectedClip?.effects || [];
@@ -181,7 +208,10 @@ export function PropertiesPanel({
     if (newIndex < 0 || newIndex >= selectedClip.effects.length) return;
 
     const updatedEffects = [...selectedClip.effects];
-    [updatedEffects[index], updatedEffects[newIndex]] = [updatedEffects[newIndex], updatedEffects[index]];
+    [updatedEffects[index], updatedEffects[newIndex]] = [
+      updatedEffects[newIndex],
+      updatedEffects[index],
+    ];
     onUpdateClip?.({ effects: updatedEffects });
   };
 
@@ -191,7 +221,11 @@ export function PropertiesPanel({
     onUpdateClip?.({ effects: updatedEffects });
   };
 
-  const handleUpdateEffectParameter = (effectIndex: number, paramName: string, value: number | boolean | string) => {
+  const handleUpdateEffectParameter = (
+    effectIndex: number,
+    paramName: string,
+    value: number | boolean | string
+  ) => {
     if (!selectedClip?.effects) return;
     const updatedEffects = [...selectedClip.effects];
     updatedEffects[effectIndex] = {
@@ -242,14 +276,18 @@ export function PropertiesPanel({
                   <Input
                     type="number"
                     value={selectedClip.startTime.toString()}
-                    onChange={(_, data) => onUpdateClip?.({ startTime: parseFloat(data.value) || 0 })}
+                    onChange={(_, data) =>
+                      onUpdateClip?.({ startTime: parseFloat(data.value) || 0 })
+                    }
                   />
                 </Field>
                 <Field label="Duration (s)">
                   <Input
                     type="number"
                     value={selectedClip.duration.toString()}
-                    onChange={(_, data) => onUpdateClip?.({ duration: parseFloat(data.value) || 0 })}
+                    onChange={(_, data) =>
+                      onUpdateClip?.({ duration: parseFloat(data.value) || 0 })
+                    }
                   />
                 </Field>
               </div>
@@ -289,7 +327,10 @@ export function PropertiesPanel({
                       value={((selectedClip.transform?.scale || 1) * 100).toString()}
                       onChange={(_, data) =>
                         onUpdateClip?.({
-                          transform: { ...selectedClip.transform, scale: parseFloat(data.value) / 100 || 1 },
+                          transform: {
+                            ...selectedClip.transform,
+                            scale: parseFloat(data.value) / 100 || 1,
+                          },
                         })
                       }
                     />
@@ -300,7 +341,10 @@ export function PropertiesPanel({
                       value={(selectedClip.transform?.rotation || 0).toString()}
                       onChange={(_, data) =>
                         onUpdateClip?.({
-                          transform: { ...selectedClip.transform, rotation: parseFloat(data.value) || 0 },
+                          transform: {
+                            ...selectedClip.transform,
+                            rotation: parseFloat(data.value) || 0,
+                          },
                         })
                       }
                     />
@@ -345,10 +389,14 @@ export function PropertiesPanel({
                       <div key={effect.id} className={styles.effectItem}>
                         <div className={styles.effectHeader}>
                           <Text className={styles.effectName}>
-                            {EFFECT_DEFINITIONS.find(e => e.type === effect.effectType)?.name || effect.effectType}
+                            {EFFECT_DEFINITIONS.find((e) => e.type === effect.effectType)?.name ||
+                              effect.effectType}
                           </Text>
                           <div className={styles.effectControls}>
-                            <Tooltip content={effect.enabled ? 'Disable effect' : 'Enable effect'} relationship="label">
+                            <Tooltip
+                              content={effect.enabled ? 'Disable effect' : 'Enable effect'}
+                              relationship="label"
+                            >
                               <Button
                                 appearance="subtle"
                                 size="small"
@@ -388,34 +436,54 @@ export function PropertiesPanel({
                         {/* Effect parameters */}
                         {effect.enabled && (
                           <div className={styles.effectParameters}>
-                            {EFFECT_DEFINITIONS.find(e => e.type === effect.effectType)?.parameters.map((param) => (
+                            {EFFECT_DEFINITIONS.find(
+                              (e) => e.type === effect.effectType
+                            )?.parameters.map((param) => (
                               <Field key={param.name} label={param.label}>
                                 {param.type === 'number' ? (
-                                  <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' }}>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      gap: tokens.spacingHorizontalS,
+                                      alignItems: 'center',
+                                    }}
+                                  >
                                     <Slider
                                       min={param.min}
                                       max={param.max}
                                       step={param.step}
                                       value={effect.parameters[param.name] as number}
-                                      onChange={(_, data) => handleUpdateEffectParameter(index, param.name, data.value)}
+                                      onChange={(_, data) =>
+                                        handleUpdateEffectParameter(index, param.name, data.value)
+                                      }
                                       style={{ flex: 1 }}
                                     />
                                     <Input
                                       type="number"
                                       value={(effect.parameters[param.name] as number).toString()}
-                                      onChange={(_, data) => handleUpdateEffectParameter(index, param.name, parseFloat(data.value) || 0)}
+                                      onChange={(_, data) =>
+                                        handleUpdateEffectParameter(
+                                          index,
+                                          param.name,
+                                          parseFloat(data.value) || 0
+                                        )
+                                      }
                                       style={{ width: '80px' }}
                                     />
                                   </div>
                                 ) : param.type === 'boolean' ? (
                                   <Switch
                                     checked={effect.parameters[param.name] as boolean}
-                                    onChange={(_, data) => handleUpdateEffectParameter(index, param.name, data.checked)}
+                                    onChange={(_, data) =>
+                                      handleUpdateEffectParameter(index, param.name, data.checked)
+                                    }
                                   />
                                 ) : param.type === 'select' ? (
                                   <Select
                                     value={effect.parameters[param.name] as string}
-                                    onChange={(_, data) => handleUpdateEffectParameter(index, param.name, data.value)}
+                                    onChange={(_, data) =>
+                                      handleUpdateEffectParameter(index, param.name, data.value)
+                                    }
                                   >
                                     {param.options?.map((opt) => (
                                       <option key={opt.value} value={opt.value}>
@@ -426,7 +494,9 @@ export function PropertiesPanel({
                                 ) : (
                                   <Input
                                     value={effect.parameters[param.name] as string}
-                                    onChange={(_, data) => handleUpdateEffectParameter(index, param.name, data.value)}
+                                    onChange={(_, data) =>
+                                      handleUpdateEffectParameter(index, param.name, data.value)
+                                    }
                                   />
                                 )}
                               </Field>

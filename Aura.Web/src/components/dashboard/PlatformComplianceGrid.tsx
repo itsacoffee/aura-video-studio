@@ -1,13 +1,5 @@
+import { Card, Title3, Body1, Body2, Badge, makeStyles, tokens } from '@fluentui/react-components';
 import React, { useEffect } from 'react';
-import {
-  Card,
-  Title3,
-  Body1,
-  Body2,
-  Badge,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components';
 import { useQualityDashboardStore } from '../../state/qualityDashboard';
 
 const useStyles = makeStyles({
@@ -109,9 +101,7 @@ export const PlatformComplianceGrid: React.FC = () => {
                 <Badge appearance={badge.appearance}>{badge.text}</Badge>
               </div>
 
-              <div className={styles.complianceRate}>
-                {platform.complianceRate.toFixed(1)}%
-              </div>
+              <div className={styles.complianceRate}>{platform.complianceRate.toFixed(1)}%</div>
 
               <div className={styles.progressBar}>
                 <div

@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
 import { FluentProvider, webLightTheme, Button } from '@fluentui/react-components';
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 
 /**
  * Accessibility Tests
- * 
+ *
  * These tests ensure that key components are accessible and follow
  * ARIA best practices for keyboard navigation and screen readers.
  */
@@ -49,9 +49,9 @@ describe('Accessibility', () => {
 
       const buttons = container.querySelectorAll('button');
       expect(buttons).toHaveLength(3);
-      
+
       // All buttons should be keyboard accessible
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         expect(button.tabIndex).toBeGreaterThanOrEqual(0);
       });
     });
@@ -110,9 +110,9 @@ describe('Accessibility', () => {
 
       const focusableElements = container.querySelectorAll('button, input');
       expect(focusableElements.length).toBeGreaterThan(0);
-      
+
       // Ensure all elements can receive focus
-      focusableElements.forEach(element => {
+      focusableElements.forEach((element) => {
         if (element instanceof HTMLElement) {
           expect(element.tabIndex).toBeGreaterThanOrEqual(-1);
         }
@@ -147,7 +147,7 @@ describe('Accessibility', () => {
 
       const label = container.querySelector('label');
       const input = container.querySelector('input');
-      
+
       expect(label?.htmlFor).toBe('test-input');
       expect(input?.id).toBe('test-input');
     });
@@ -156,8 +156,8 @@ describe('Accessibility', () => {
       const { container } = render(
         <FluentProvider theme={webLightTheme}>
           <div>
-            <input 
-              type="text" 
+            <input
+              type="text"
               aria-label="Username"
               aria-describedby="username-error"
               aria-invalid="true"
@@ -171,7 +171,7 @@ describe('Accessibility', () => {
 
       const input = container.querySelector('input');
       const error = container.querySelector('#username-error');
-      
+
       expect(input?.getAttribute('aria-describedby')).toBe('username-error');
       expect(input?.getAttribute('aria-invalid')).toBe('true');
       expect(error?.getAttribute('role')).toBe('alert');

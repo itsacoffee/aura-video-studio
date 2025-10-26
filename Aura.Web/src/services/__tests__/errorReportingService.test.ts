@@ -158,7 +158,7 @@ describe('ErrorReportingService', () => {
   describe('Listener Management', () => {
     it('should add and remove notification listeners', () => {
       const listener = vi.fn();
-      
+
       errorReportingService.addNotificationListener(listener);
       errorReportingService.info('Test', 'Message');
       expect(listener).toHaveBeenCalledOnce();

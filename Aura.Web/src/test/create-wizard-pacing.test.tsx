@@ -5,9 +5,9 @@
  * actual content (scripts/scenes) exists.
  */
 
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { describe, it, expect } from 'vitest';
 import { CreateWizard } from '../pages/Wizard/CreateWizard';
 
 describe('CreateWizard - Pacing Button Removal', () => {

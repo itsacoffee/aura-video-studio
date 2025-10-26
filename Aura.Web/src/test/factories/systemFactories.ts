@@ -3,7 +3,9 @@ import type { HardwareCapabilities, RenderJob, Profile, DownloadItem } from '../
 /**
  * Test data factory for creating HardwareCapabilities objects
  */
-export function createMockHardwareCapabilities(overrides?: Partial<HardwareCapabilities>): HardwareCapabilities {
+export function createMockHardwareCapabilities(
+  overrides?: Partial<HardwareCapabilities>
+): HardwareCapabilities {
   return {
     tier: 'medium',
     cpu: {
@@ -69,7 +71,10 @@ export function createMockDownloadItem(overrides?: Partial<DownloadItem>): Downl
 /**
  * Test data factory for creating multiple render jobs
  */
-export function createMockRenderJobs(count: number, baseOverrides?: Partial<RenderJob>): RenderJob[] {
+export function createMockRenderJobs(
+  count: number,
+  baseOverrides?: Partial<RenderJob>
+): RenderJob[] {
   return Array.from({ length: count }, (_, index) =>
     createMockRenderJob({
       ...baseOverrides,

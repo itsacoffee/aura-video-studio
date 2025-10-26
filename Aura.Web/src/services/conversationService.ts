@@ -93,10 +93,9 @@ export const conversationService = {
    * Send a message with full context
    */
   async sendMessage(projectId: string, message: string): Promise<SendMessageResponse> {
-    return post<SendMessageResponse>(
-      `${API_BASE}/${projectId}/message`,
-      { message } as SendMessageRequest
-    );
+    return post<SendMessageResponse>(`${API_BASE}/${projectId}/message`, {
+      message,
+    } as SendMessageRequest);
   },
 
   /**

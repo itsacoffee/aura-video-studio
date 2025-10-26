@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -7,10 +6,11 @@ import {
   SelectTabData,
   SelectTabEvent,
 } from '@fluentui/react-components';
-import { TrendAnalysisPanel } from './TrendAnalysisPanel';
-import { TopicSuggestionList } from './TopicSuggestionList';
-import { ContentCalendarView } from './ContentCalendarView';
+import React, { useState } from 'react';
 import { AudienceInsightPanel } from './AudienceInsightPanel';
+import { ContentCalendarView } from './ContentCalendarView';
+import { TopicSuggestionList } from './TopicSuggestionList';
+import { TrendAnalysisPanel } from './TrendAnalysisPanel';
 
 const useStyles = makeStyles({
   container: {

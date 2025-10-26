@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -23,6 +22,7 @@ import {
   Copy24Regular,
   CheckmarkCircle24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useStyles = makeStyles({
   dialogSurface: {
@@ -115,7 +115,7 @@ export function PostExportActions({
   const handleUploadToYouTube = async () => {
     setUploading(true);
     setUploadError(null);
-    
+
     try {
       // TODO: Implement YouTube upload via API
       // This would require OAuth authentication and YouTube Data API integration
@@ -132,7 +132,7 @@ export function PostExportActions({
   const handleUploadToVimeo = async () => {
     setUploading(true);
     setUploadError(null);
-    
+
     try {
       // TODO: Implement Vimeo upload via API
       await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate upload
@@ -163,7 +163,9 @@ export function PostExportActions({
           </DialogTitle>
           <DialogContent>
             <div className={styles.fileInfo}>
-              <Body1><strong>{fileName}</strong></Body1>
+              <Body1>
+                <strong>{fileName}</strong>
+              </Body1>
               <Caption1>Size: {formatFileSize(fileSize)}</Caption1>
               {duration && <Caption1>Duration: {formatDuration(duration)}</Caption1>}
               <Caption1 style={{ wordBreak: 'break-all' }}>{outputPath}</Caption1>
@@ -215,8 +217,10 @@ export function PostExportActions({
               </Button>
 
               <div className={styles.uploadSection}>
-                <Body1><strong>Upload to Platform</strong></Body1>
-                
+                <Body1>
+                  <strong>Upload to Platform</strong>
+                </Body1>
+
                 <Button
                   appearance="secondary"
                   icon={uploading ? <Spinner size="tiny" /> : <ArrowUpload24Regular />}

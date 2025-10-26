@@ -1,7 +1,7 @@
-import { 
+import {
   ArrowTrendingLines20Regular as TrendingUp,
   ArrowTrendingDown20Regular as TrendingDown,
-  Subtract20Regular as Minus
+  Subtract20Regular as Minus,
 } from '@fluentui/react-icons';
 
 interface ConfidenceMeterProps {
@@ -67,17 +67,15 @@ export const ConfidenceMeter: React.FC<ConfidenceMeterProps> = ({
           {(confidence * 100).toFixed(1)}%
         </span>
       </div>
-      
+
       <div className="w-full bg-gray-200 rounded-full overflow-hidden">
         <div
           className={`${heightClass} ${getColor(confidence)} rounded-full transition-all duration-500`}
           style={{ width: `${confidence * 100}%` }}
         />
       </div>
-      
-      <p className={`${textSizeClass} ${getTextColor(confidence)}`}>
-        {getLabel(confidence)}
-      </p>
+
+      <p className={`${textSizeClass} ${getTextColor(confidence)}`}>{getLabel(confidence)}</p>
     </div>
   );
 };

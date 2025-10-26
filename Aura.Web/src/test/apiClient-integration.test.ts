@@ -3,8 +3,8 @@
  * This test showcases the key capabilities of the enhanced API client
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import MockAdapter from 'axios-mock-adapter';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import apiClient, {
   get,
   post,

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { durationToSeconds, secondsToDuration, formatDuration, calculatePercentageChange } from '../services/pacingService';
+import {
+  durationToSeconds,
+  secondsToDuration,
+  formatDuration,
+  calculatePercentageChange,
+} from '../services/pacingService';
 
 describe('pacingService utilities', () => {
   describe('durationToSeconds', () => {

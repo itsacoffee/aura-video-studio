@@ -107,7 +107,7 @@ export function AutoEditPanel({ videoPath, onApply }: AutoEditPanelProps) {
   const [beatResult, setBeatResult] = useState<BeatDetectionResult | null>(null);
   const [framingResult, setFramingResult] = useState<AutoFramingResult | null>(null);
   const [captionResult, setCaptionResult] = useState<SpeechRecognitionResult | null>(null);
-  
+
   // Form inputs
   const [sceneThreshold, setSceneThreshold] = useState('0.3');
   const [maxHighlights, setMaxHighlights] = useState('10');
@@ -273,7 +273,8 @@ export function AutoEditPanel({ videoPath, onApply }: AutoEditPanelProps) {
                 {sceneResult.scenes.slice(0, 3).map((scene, i) => (
                   <div key={i} className={styles.resultItem}>
                     <Text size={100}>
-                      {scene.timestamp} - {scene.description} ({(scene.confidence * 100).toFixed(0)}%)
+                      {scene.timestamp} - {scene.description} ({(scene.confidence * 100).toFixed(0)}
+                      %)
                     </Text>
                   </div>
                 ))}
@@ -320,7 +321,8 @@ export function AutoEditPanel({ videoPath, onApply }: AutoEditPanelProps) {
                 {highlightResult.highlights.slice(0, 3).map((highlight, i) => (
                   <div key={i} className={styles.resultItem}>
                     <Text size={100}>
-                      {highlight.type} - {highlight.reasoning} (Score: {(highlight.score * 100).toFixed(0)})
+                      {highlight.type} - {highlight.reasoning} (Score:{' '}
+                      {(highlight.score * 100).toFixed(0)})
                     </Text>
                   </div>
                 ))}
@@ -336,9 +338,7 @@ export function AutoEditPanel({ videoPath, onApply }: AutoEditPanelProps) {
             <Text weight="semibold">Beat Detection</Text>
           </div>
           <div className={styles.cardContent}>
-            <Text size={200}>
-              Detect beats in music and sync cuts to rhythm automatically
-            </Text>
+            <Text size={200}>Detect beats in music and sync cuts to rhythm automatically</Text>
             <div className={styles.actions}>
               <Button
                 appearance="primary"
@@ -366,9 +366,7 @@ export function AutoEditPanel({ videoPath, onApply }: AutoEditPanelProps) {
             <Text weight="semibold">Auto Framing</Text>
           </div>
           <div className={styles.cardContent}>
-            <Text size={200}>
-              Automatically crop and reframe for vertical or square formats
-            </Text>
+            <Text size={200}>Automatically crop and reframe for vertical or square formats</Text>
             <div className={styles.field}>
               <Label>Target Format</Label>
               <Dropdown
@@ -408,9 +406,7 @@ export function AutoEditPanel({ videoPath, onApply }: AutoEditPanelProps) {
             <Text weight="semibold">Auto Captions</Text>
           </div>
           <div className={styles.cardContent}>
-            <Text size={200}>
-              Generate accurate subtitles with speech recognition
-            </Text>
+            <Text size={200}>Generate accurate subtitles with speech recognition</Text>
             <div className={styles.field}>
               <Label>Language</Label>
               <Dropdown

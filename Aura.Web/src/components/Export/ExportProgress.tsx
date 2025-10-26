@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -28,6 +27,7 @@ import {
   ArrowExport24Regular,
   ArrowRepeatAll24Regular,
 } from '@fluentui/react-icons';
+import React from 'react';
 
 const useStyles = makeStyles({
   dialogSurface: {
@@ -194,7 +194,7 @@ export function ExportProgress({
   const renderSceneProgress = () => {
     if (!currentScene || !totalScenes) return null;
 
-    const scenes = Array.from({ length: totalScenes }, (_, i) => {
+    return Array.from({ length: totalScenes }, (_, i) => {
       const sceneNum = i + 1;
       let icon: React.ReactNode;
       let label: string;
@@ -232,8 +232,6 @@ export function ExportProgress({
         </div>
       );
     });
-
-    return scenes;
   };
 
   if (status === 'rendering') {

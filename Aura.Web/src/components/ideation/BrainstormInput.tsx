@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   Input,
   Button,
@@ -9,6 +8,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { SparkleRegular, SendRegular } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 
 const useStyles = makeStyles({
   container: {

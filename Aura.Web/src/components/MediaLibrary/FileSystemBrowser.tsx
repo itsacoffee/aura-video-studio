@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -15,6 +14,7 @@ import {
   MusicNote224Regular,
   Image24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -160,9 +160,7 @@ export const FileSystemBrowser: React.FC<FileSystemBrowserProps> = ({
             <Spinner size="medium" label="Loading folders..." />
           </div>
         ) : (
-          <Tree aria-label="File system browser">
-            {items.map(renderTreeItem)}
-          </Tree>
+          <Tree aria-label="File system browser">{items.map(renderTreeItem)}</Tree>
         )}
       </div>
     </div>

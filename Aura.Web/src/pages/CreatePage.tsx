@@ -1,7 +1,3 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { z } from 'zod';
-import { apiUrl } from '../config/api';
 import {
   makeStyles,
   tokens,
@@ -21,15 +17,19 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import { Play24Regular, Lightbulb24Regular, Checkmark24Regular } from '@fluentui/react-icons';
-import type { Brief, PlanSpec, PlannerRecommendations } from '../types';
-import type { PreflightReport } from '../state/providers';
-import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormalizer';
-import { PreflightPanel } from '../components/PreflightPanel';
-import { useActivity } from '../state/activityContext';
-import { useNotifications } from '../components/Notifications/Toasts';
-import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { z } from 'zod';
 import { ValidatedInput } from '../components/forms/ValidatedInput';
+import { useNotifications } from '../components/Notifications/Toasts';
+import { PreflightPanel } from '../components/PreflightPanel';
+import { apiUrl } from '../config/api';
 import { useFormValidation } from '../hooks/useFormValidation';
+import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
+import { useActivity } from '../state/activityContext';
+import type { PreflightReport } from '../state/providers';
+import type { Brief, PlanSpec, PlannerRecommendations } from '../types';
+import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormalizer';
 
 const useStyles = makeStyles({
   container: {
@@ -90,7 +90,10 @@ export function CreatePage() {
 
   // Form validation state
   const briefValidationSchema = z.object({
-    topic: z.string().min(3, 'Topic must be at least 3 characters').max(100, 'Topic must be no more than 100 characters'),
+    topic: z
+      .string()
+      .min(3, 'Topic must be at least 3 characters')
+      .max(100, 'Topic must be no more than 100 characters'),
   });
 
   const {
@@ -206,7 +209,7 @@ export function CreatePage() {
 
   const handleGenerate = async () => {
     setGenerating(true);
-    
+
     // Add activity to tracker
     const activityId = addActivity({
       type: 'video-generation',
@@ -278,7 +281,7 @@ export function CreatePage() {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Update activity as completed
         updateActivity(activityId, {
           status: 'completed',
@@ -298,7 +301,7 @@ export function CreatePage() {
       } else {
         const errorText = await response.text();
         console.error('Failed to create job:', response.status, errorText);
-        
+
         // Update activity as failed
         updateActivity(activityId, {
           status: 'failed',
@@ -314,7 +317,7 @@ export function CreatePage() {
       }
     } catch (error) {
       console.error('Error creating video generation job:', error);
-      
+
       // Update activity as failed
       updateActivity(activityId, {
         status: 'failed',
@@ -349,7 +352,11 @@ export function CreatePage() {
               return; // Don't proceed if topic is empty
             }
             setCurrentStep(currentStep + 1);
-          } else if (currentStep === 3 && preflightReport && (preflightReport.ok || overridePreflightGate)) {
+          } else if (
+            currentStep === 3 &&
+            preflightReport &&
+            (preflightReport.ok || overridePreflightGate)
+          ) {
             handleGenerate();
           }
         },

@@ -16,11 +16,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import {
-  Warning24Regular,
-  Delete24Regular,
-  Dismiss24Regular,
-} from '@fluentui/react-icons';
+import { Warning24Regular, Delete24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { loggingService } from '../../services/loggingService';
 
 const useStyles = makeStyles({
@@ -152,9 +148,7 @@ export function ConfirmationDialog({
                   {message}
                 </Text>
                 {variant === 'destructive' && (
-                  <Caption1 className={styles.caption}>
-                    This action cannot be undone.
-                  </Caption1>
+                  <Caption1 className={styles.caption}>This action cannot be undone.</Caption1>
                 )}
               </div>
             </div>
@@ -165,6 +159,8 @@ export function ConfirmationDialog({
               appearance="secondary"
               icon={<Dismiss24Regular />}
               onClick={handleCancel}
+              // autoFocus on cancel for destructive actions to prevent accidental confirms
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus={variant === 'destructive'}
             >
               {cancelLabel}
@@ -173,6 +169,8 @@ export function ConfirmationDialog({
               appearance={variant === 'destructive' ? 'primary' : 'primary'}
               icon={variant === 'destructive' ? <Delete24Regular /> : undefined}
               onClick={handleConfirm}
+              // autoFocus on confirm for non-destructive actions
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus={variant !== 'destructive'}
             >
               {confirmLabel}

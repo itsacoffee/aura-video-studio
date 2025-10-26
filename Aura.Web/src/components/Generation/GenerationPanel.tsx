@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -17,10 +16,11 @@ import {
   ArrowRight24Regular,
   Folder24Regular,
 } from '@fluentui/react-icons';
-import { useJobsStore } from '../../state/jobs';
-import { useNotifications } from '../Notifications/Toasts';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useJobsStore } from '../../state/jobs';
 import { openLogsFolder } from '../../utils/apiErrorHandler';
+import { useNotifications } from '../Notifications/Toasts';
 import { FailureModal } from './FailureModal';
 
 const useStyles = makeStyles({

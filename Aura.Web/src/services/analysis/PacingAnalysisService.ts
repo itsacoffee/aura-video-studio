@@ -271,7 +271,9 @@ export const pacingAnalysisService = {
    */
   durationToSeconds(duration: string): number {
     // Simple parser for durations like "PT15S" or "PT1M30S"
-    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
+    // Pattern is safe: anchored with ^ and $, optional groups are non-overlapping
+    // eslint-disable-next-line security/detect-unsafe-regex
+    const match = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)(?:\.(\d+))?S)?$/);
     if (!match) return 0;
 
     const hours = parseInt(match[1] || '0', 10);

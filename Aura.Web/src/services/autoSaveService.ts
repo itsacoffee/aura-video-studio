@@ -71,7 +71,7 @@ class AutoSaveService {
     if (!this.saveCallback) {
       return false;
     }
-    
+
     return this.performSave();
   }
 
@@ -85,7 +85,7 @@ class AutoSaveService {
 
     try {
       const projectState = this.saveCallback();
-      
+
       if (!projectState) {
         loggingService.debug('No project state to save', 'autoSaveService', 'performSave');
         return false;
@@ -94,13 +94,17 @@ class AutoSaveService {
       // Check if state has changed by comparing hash
       const currentHash = this.hashProjectState(projectState);
       if (currentHash === this.lastSaveHash) {
-        loggingService.debug('Project state unchanged, skipping save', 'autoSaveService', 'performSave');
+        loggingService.debug(
+          'Project state unchanged, skipping save',
+          'autoSaveService',
+          'performSave'
+        );
         return false;
       }
 
       // Get existing versions
       const versions = this.getVersions();
-      
+
       // Create new version
       const newVersion: AutoSaveVersion = {
         timestamp: new Date().toISOString(),
@@ -174,7 +178,7 @@ class AutoSaveService {
    */
   public getVersion(versionNumber: number): AutoSaveVersion | null {
     const versions = this.getVersions();
-    return versions.find(v => v.version === versionNumber) || null;
+    return versions.find((v) => v.version === versionNumber) || null;
   }
 
   /**
@@ -237,7 +241,11 @@ class AutoSaveService {
   /**
    * Update metadata
    */
-  private updateMetadata(currentVersion: number, lastSaveTime: string, totalVersions: number): void {
+  private updateMetadata(
+    currentVersion: number,
+    lastSaveTime: string,
+    totalVersions: number
+  ): void {
     const key = `${AUTOSAVE_KEY_PREFIX}-metadata`;
     const metadata: AutoSaveMetadata = {
       currentVersion,

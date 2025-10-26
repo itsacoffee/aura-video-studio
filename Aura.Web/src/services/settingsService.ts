@@ -35,7 +35,7 @@ export class SettingsService {
       return settings;
     } catch (error) {
       console.error('Error loading settings from backend:', error);
-      
+
       // Fallback to localStorage
       const localSettings = this.getFromLocalStorage();
       if (localSettings) {
@@ -134,7 +134,10 @@ export class SettingsService {
   /**
    * Test API key connection for a specific provider
    */
-  async testApiKey(provider: string, apiKey: string): Promise<{ success: boolean; message: string }> {
+  async testApiKey(
+    provider: string,
+    apiKey: string
+  ): Promise<{ success: boolean; message: string }> {
     try {
       const response = await fetch(apiUrl(`/api/settings/test-api-key/${provider}`), {
         method: 'POST',
@@ -143,8 +146,7 @@ export class SettingsService {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        return result;
+        return await response.json();
       }
 
       return {
@@ -171,8 +173,7 @@ export class SettingsService {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        return result;
+        return await response.json();
       }
 
       return {

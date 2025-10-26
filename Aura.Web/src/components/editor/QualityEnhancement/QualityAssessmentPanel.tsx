@@ -3,7 +3,6 @@
  * UI for technical quality assessment and enhancement suggestions
  */
 
-import React, { useState } from 'react';
 import {
   Card,
   makeStyles,
@@ -17,6 +16,7 @@ import {
   ProgressBar,
 } from '@fluentui/react-components';
 import { Eye24Regular, CheckmarkCircle24Regular, Warning24Regular } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 import {
   visualAnalysisService,
   type QualityMetrics,

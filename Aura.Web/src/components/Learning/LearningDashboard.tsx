@@ -6,9 +6,9 @@ import type {
   LearningMaturity,
   InferredPreference,
 } from '../../types/learning';
-import { PatternList } from './PatternList';
 import { InsightCard } from './InsightCard';
 import { LearningProgress } from './LearningProgress';
+import { PatternList } from './PatternList';
 import { PreferenceConfirmation } from './PreferenceConfirmation';
 
 interface LearningDashboardProps {

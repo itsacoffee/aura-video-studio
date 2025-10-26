@@ -3,17 +3,10 @@
  * Interactive line chart showing predicted viewer attention over time
  */
 
+import { Card, makeStyles, tokens, Title3, Caption1, Body1 } from '@fluentui/react-components';
 import { useState, useMemo } from 'react';
-import {
-  Card,
-  makeStyles,
-  tokens,
-  Title3,
-  Caption1,
-  Body1,
-} from '@fluentui/react-components';
-import { AttentionCurveData } from '../../types/pacing';
 import { durationToSeconds, formatDuration } from '../../services/pacingService';
+import { AttentionCurveData } from '../../types/pacing';
 
 const useStyles = makeStyles({
   container: {
@@ -76,10 +69,7 @@ interface TooltipData {
   engagementScore: number;
 }
 
-export const AttentionCurveChart: React.FC<AttentionCurveChartProps> = ({
-  data,
-  height = 400,
-}) => {
+export const AttentionCurveChart: React.FC<AttentionCurveChartProps> = ({ data, height = 400 }) => {
   const styles = useStyles();
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
@@ -93,7 +83,7 @@ export const AttentionCurveChart: React.FC<AttentionCurveChartProps> = ({
   const processedData = useMemo(() => {
     if (!data.dataPoints || data.dataPoints.length === 0) return [];
 
-    return data.dataPoints.map(point => ({
+    return data.dataPoints.map((point) => ({
       seconds: durationToSeconds(point.timestamp),
       attentionLevel: point.attentionLevel,
       retentionRate: point.retentionRate,
@@ -108,7 +98,7 @@ export const AttentionCurveChart: React.FC<AttentionCurveChartProps> = ({
       return { xScale: (_x: number) => 0, yScale: (_y: number) => 0 };
     }
 
-    const maxTime = Math.max(...processedData.map(d => d.seconds));
+    const maxTime = Math.max(...processedData.map((d) => d.seconds));
     const xScale = (seconds: number) => (seconds / maxTime) * chartWidth;
     const yScale = (value: number) => chartHeight - (value / 100) * chartHeight;
 
@@ -155,7 +145,7 @@ export const AttentionCurveChart: React.FC<AttentionCurveChartProps> = ({
     const mouseX = e.clientX - rect.left - margin.left;
 
     // Find closest data point
-    const relativeX = (mouseX / chartWidth) * Math.max(...processedData.map(d => d.seconds));
+    const relativeX = (mouseX / chartWidth) * Math.max(...processedData.map((d) => d.seconds));
     const closest = processedData.reduce((prev, curr) =>
       Math.abs(curr.seconds - relativeX) < Math.abs(prev.seconds - relativeX) ? curr : prev
     );
@@ -206,7 +196,11 @@ export const AttentionCurveChart: React.FC<AttentionCurveChartProps> = ({
           <defs>
             <linearGradient id="attentionGradient" x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" stopColor={tokens.colorPaletteGreenBackground3} stopOpacity="0.3" />
-              <stop offset="50%" stopColor={tokens.colorPaletteYellowBackground3} stopOpacity="0.3" />
+              <stop
+                offset="50%"
+                stopColor={tokens.colorPaletteYellowBackground3}
+                stopOpacity="0.3"
+              />
               <stop offset="100%" stopColor={tokens.colorPaletteRedBackground3} stopOpacity="0.3" />
             </linearGradient>
           </defs>
@@ -222,7 +216,7 @@ export const AttentionCurveChart: React.FC<AttentionCurveChartProps> = ({
             />
 
             {/* Grid lines */}
-            {[0, 25, 50, 75, 100].map(value => (
+            {[0, 25, 50, 75, 100].map((value) => (
               <g key={value}>
                 <line
                   x1={0}
@@ -247,18 +241,20 @@ export const AttentionCurveChart: React.FC<AttentionCurveChartProps> = ({
             ))}
 
             {/* X-axis labels */}
-            {processedData.filter((_, i) => i % Math.ceil(processedData.length / 8) === 0).map((point, i) => (
-              <text
-                key={i}
-                x={xScale(point.seconds)}
-                y={chartHeight + 20}
-                textAnchor="middle"
-                fill={tokens.colorNeutralForeground3}
-                fontSize="12px"
-              >
-                {formatDuration(point.timestamp)}
-              </text>
-            ))}
+            {processedData
+              .filter((_, i) => i % Math.ceil(processedData.length / 8) === 0)
+              .map((point, i) => (
+                <text
+                  key={i}
+                  x={xScale(point.seconds)}
+                  y={chartHeight + 20}
+                  textAnchor="middle"
+                  fill={tokens.colorNeutralForeground3}
+                  fontSize="12px"
+                >
+                  {formatDuration(point.timestamp)}
+                </text>
+              ))}
 
             {/* Retention curve */}
             <path
@@ -337,9 +333,7 @@ export const AttentionCurveChart: React.FC<AttentionCurveChartProps> = ({
               top: tooltip.y - 80,
             }}
           >
-            <Caption1 style={{ fontWeight: 600 }}>
-              {formatDuration(tooltip.timestamp)}
-            </Caption1>
+            <Caption1 style={{ fontWeight: 600 }}>{formatDuration(tooltip.timestamp)}</Caption1>
             <Caption1>Attention: {tooltip.attentionLevel.toFixed(1)}%</Caption1>
             <Caption1>Retention: {tooltip.retentionRate.toFixed(1)}%</Caption1>
             <Caption1>Engagement: {tooltip.engagementScore.toFixed(1)}%</Caption1>

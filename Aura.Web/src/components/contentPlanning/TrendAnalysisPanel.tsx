@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -12,6 +11,7 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { ArrowTrendingRegular, SearchRegular } from '@fluentui/react-icons';
+import React, { useState, useEffect } from 'react';
 import { contentPlanningService, TrendData } from '../../services/contentPlanningService';
 
 const useStyles = makeStyles({
@@ -206,8 +206,12 @@ export const TrendAnalysisPanel: React.FC = () => {
 
       {!loading && trends.length === 0 && (
         <div className={styles.emptyState}>
-          <ArrowTrendingRegular style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }} />
-          <Text size={400}>No trends to display. Select a platform or enter keywords to analyze.</Text>
+          <ArrowTrendingRegular
+            style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }}
+          />
+          <Text size={400}>
+            No trends to display. Select a platform or enter keywords to analyze.
+          </Text>
         </div>
       )}
 
@@ -220,7 +224,9 @@ export const TrendAnalysisPanel: React.FC = () => {
                   <Text weight="semibold" size={400}>
                     {trend.topic}
                   </Text>
-                  <span className={`${styles.trendDirection} ${getTrendDirectionStyle(trend.direction)}`}>
+                  <span
+                    className={`${styles.trendDirection} ${getTrendDirectionStyle(trend.direction)}`}
+                  >
                     {trend.direction}
                   </span>
                 </div>
@@ -231,12 +237,14 @@ export const TrendAnalysisPanel: React.FC = () => {
                   </Text>
                 </div>
                 <div className={styles.metrics}>
-                  {Object.entries(trend.metrics).slice(0, 3).map(([key, value]) => (
-                    <div key={key} className={styles.metricItem}>
-                      <span className={styles.metricLabel}>{key}</span>
-                      <Text weight="semibold">{value}</Text>
-                    </div>
-                  ))}
+                  {Object.entries(trend.metrics)
+                    .slice(0, 3)
+                    .map(([key, value]) => (
+                      <div key={key} className={styles.metricItem}>
+                        <span className={styles.metricLabel}>{key}</span>
+                        <Text weight="semibold">{value}</Text>
+                      </div>
+                    ))}
                 </div>
               </div>
             </Card>

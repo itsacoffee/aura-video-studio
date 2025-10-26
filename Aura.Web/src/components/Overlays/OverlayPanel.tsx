@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -12,6 +11,7 @@ import {
   Slider,
 } from '@fluentui/react-components';
 import { Add24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { useTimelineStore, TextOverlay } from '../../state/timeline';
 
 const useStyles = makeStyles({
@@ -155,7 +155,15 @@ export function OverlayPanel() {
               <div
                 key={overlay.id}
                 className={`${styles.overlayItem} ${overlay.id === selectedOverlayId ? styles.overlayItemSelected : ''}`}
+                role="button"
+                tabIndex={0}
                 onClick={() => handleSelectOverlay(overlay.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSelectOverlay(overlay.id);
+                  }
+                }}
               >
                 <div className={styles.overlayInfo}>
                   <Text weight="semibold">{overlay.text}</Text>
