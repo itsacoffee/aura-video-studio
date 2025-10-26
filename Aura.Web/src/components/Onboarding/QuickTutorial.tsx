@@ -197,7 +197,7 @@ export function QuickTutorial({ steps, onComplete, onSkip }: QuickTutorialProps)
       role="dialog"
       aria-modal="true"
       aria-labelledby="tutorial-title"
-      tabIndex={-1}
+      tabIndex={0}
     >
       <Button
         className={styles.skipAllButton}
