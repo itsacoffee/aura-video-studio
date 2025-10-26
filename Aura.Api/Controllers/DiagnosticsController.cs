@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
+using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Aura.Core.Services.HealthChecks;
@@ -26,6 +27,7 @@ public class DiagnosticsController : ControllerBase
     private readonly PromptTemplateValidator? _promptValidator;
     private readonly IEnumerable<ILlmProvider>? _llmProviders;
     private readonly IntelligentContentAdvisor? _contentAdvisor;
+    private readonly IHardwareDetector? _hardwareDetector;
 
     public DiagnosticsController(
         ILogger<DiagnosticsController> logger,
@@ -33,7 +35,8 @@ public class DiagnosticsController : ControllerBase
         SystemIntegrityValidator? integrityValidator = null,
         PromptTemplateValidator? promptValidator = null,
         IEnumerable<ILlmProvider>? llmProviders = null,
-        IntelligentContentAdvisor? contentAdvisor = null)
+        IntelligentContentAdvisor? contentAdvisor = null,
+        IHardwareDetector? hardwareDetector = null)
     {
         _logger = logger;
         _healthService = healthService;
@@ -41,6 +44,7 @@ public class DiagnosticsController : ControllerBase
         _promptValidator = promptValidator;
         _llmProviders = llmProviders;
         _contentAdvisor = contentAdvisor;
+        _hardwareDetector = hardwareDetector;
     }
 
     /// <summary>
@@ -319,6 +323,45 @@ public class DiagnosticsController : ControllerBase
             Results = results,
             Timestamp = DateTime.UtcNow
         });
+    }
+
+    /// <summary>
+    /// Get hardware information for export acceleration detection
+    /// </summary>
+    [HttpGet("hardware")]
+    public async Task<ActionResult<SystemProfile>> GetHardware()
+    {
+        _logger.LogInformation("Hardware detection requested");
+
+        if (_hardwareDetector == null)
+        {
+            return Ok(new
+            {
+                LogicalCores = 4,
+                PhysicalCores = 2,
+                RamGB = 8,
+                Gpu = (object?)null,
+                Tier = "Budget",
+                EnableNVENC = false,
+                EnableSD = false,
+                Message = "Hardware detector not configured"
+            });
+        }
+
+        try
+        {
+            var profile = await _hardwareDetector.DetectSystemAsync();
+            return Ok(profile);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during hardware detection");
+            return StatusCode(500, new
+            {
+                Error = ex.Message,
+                Message = "Hardware detection failed"
+            });
+        }
     }
 }
 
