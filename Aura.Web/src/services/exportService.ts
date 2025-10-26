@@ -4,6 +4,55 @@
 
 import { get, post } from './api/apiClient';
 
+// Timeline-related types
+export interface TimelineAsset {
+  id: string;
+  type: 'Image' | 'Video' | 'Audio';
+  filePath: string;
+  start: string; // TimeSpan
+  duration: string; // TimeSpan
+  position: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  zIndex?: number;
+  opacity?: number;
+  effects?: {
+    brightness?: number;
+    contrast?: number;
+    saturation?: number;
+    filter?: string;
+  };
+}
+
+export interface TimelineScene {
+  index: number;
+  heading: string;
+  script: string;
+  start: string; // TimeSpan
+  duration: string; // TimeSpan
+  narrationAudioPath?: string;
+  visualAssets?: TimelineAsset[];
+  transitionType?: string;
+  transitionDuration?: string; // TimeSpan
+}
+
+export interface EditableTimeline {
+  scenes: TimelineScene[];
+  backgroundMusicPath?: string;
+  subtitles?: {
+    enabled: boolean;
+    filePath?: string;
+    position?: string;
+    fontSize?: number;
+    fontColor?: string;
+    backgroundColor?: string;
+    backgroundOpacity?: number;
+  };
+}
+
 export interface ExportPreset {
   name: string;
   description: string;
@@ -19,12 +68,13 @@ export interface ExportPreset {
 }
 
 export interface ExportRequest {
-  inputFile: string;
+  inputFile?: string;
   outputFile: string;
   presetName: string;
   startTime?: string; // TimeSpan format
   duration?: string; // TimeSpan format
   metadata?: Record<string, string>;
+  timeline?: EditableTimeline;
 }
 
 export interface ExportJob {

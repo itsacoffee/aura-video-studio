@@ -481,20 +481,102 @@ export function VideoEditorPage() {
     setShowExportDialog(false);
   };
 
+  // Convert timeline clips to EditableTimeline format for export
+  const buildTimelineForExport = () => {
+    // Group clips by track and time to create scenes
+    const scenes: any[] = [];
+    
+    // Sort clips by start time
+    const sortedClips = [...clips].sort((a, b) => a.startTime - b.startTime);
+    
+    if (sortedClips.length === 0) {
+      // Create a default scene if no clips
+      scenes.push({
+        index: 0,
+        heading: 'Scene 1',
+        script: 'Empty scene',
+        start: '00:00:00',
+        duration: '00:00:05',
+        visualAssets: [],
+        transitionType: 'None',
+      });
+    } else {
+      // Create scenes from clips
+      // For simplicity, we'll create one scene per clip for now
+      sortedClips.forEach((clip, index) => {
+        const assets: any[] = [];
+        
+        // If clip has a media reference, add it as an asset
+        if (clip.file || clip.preview) {
+          // In a real implementation, we'd need the actual file path
+          // For now, we'll use a placeholder or the preview URL
+          const filePath = clip.preview || '/tmp/placeholder.mp4';
+          
+          assets.push({
+            id: clip.id,
+            type: clip.type === 'video' ? 'Video' : clip.type === 'audio' ? 'Audio' : 'Image',
+            filePath: filePath,
+            start: '00:00:00',
+            duration: formatTimeSpan(clip.duration),
+            position: {
+              x: clip.transform?.x || 0,
+              y: clip.transform?.y || 0,
+              width: 100,
+              height: 100,
+            },
+            zIndex: 0,
+            opacity: 1.0,
+            effects: clip.effects && clip.effects.length > 0 ? {
+              brightness: 1.0,
+              contrast: 1.0,
+              saturation: 1.0,
+            } : undefined,
+          });
+        }
+        
+        scenes.push({
+          index: index,
+          heading: clip.label || `Scene ${index + 1}`,
+          script: clip.prompt || '',
+          start: formatTimeSpan(clip.startTime),
+          duration: formatTimeSpan(clip.duration),
+          visualAssets: assets,
+          transitionType: 'Fade',
+          transitionDuration: '00:00:00.5',
+        });
+      });
+    }
+    
+    return {
+      scenes: scenes,
+      backgroundMusicPath: undefined,
+      subtitles: {
+        enabled: false,
+      },
+    };
+  };
+
+  // Helper function to format seconds to TimeSpan string (HH:MM:SS)
+  const formatTimeSpan = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const handleStartExport = async (options: ExportOptions) => {
     try {
       // Close the dialog
       setShowExportDialog(false);
 
-      // For now, use a placeholder input file (in real implementation, this would be the rendered timeline)
-      // In a complete implementation, we'd first render the timeline to a temporary file
-      const inputFile = '/tmp/timeline_render.mp4'; // Placeholder
+      // Build timeline from current clips
+      const timeline = buildTimelineForExport();
       
-      // Create export request
+      // Create export request with timeline data
       const exportRequest = {
-        inputFile,
         outputFile: options.outputPath,
         presetName: options.preset,
+        timeline: timeline,
       };
 
       // Start the export

@@ -1,4 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using Aura.Core.Models;
 using Aura.Core.Models.Export;
+using Aura.Core.Models.Timeline;
+using Aura.Core.Services.Editor;
 using Aura.Core.Services.Export;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
@@ -14,13 +21,16 @@ public class ExportController : ControllerBase
 {
     private readonly IExportOrchestrationService _exportService;
     private readonly ILogger<ExportController> _logger;
+    private readonly TimelineRenderer _timelineRenderer;
 
     public ExportController(
         IExportOrchestrationService exportService,
-        ILogger<ExportController> logger)
+        ILogger<ExportController> logger,
+        TimelineRenderer timelineRenderer)
     {
         _exportService = exportService ?? throw new ArgumentNullException(nameof(exportService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _timelineRenderer = timelineRenderer ?? throw new ArgumentNullException(nameof(timelineRenderer));
     }
 
     /// <summary>
@@ -42,10 +52,63 @@ public class ExportController : ControllerBase
                 return BadRequest(new { error = $"Unknown preset: {request.PresetName}" });
             }
 
+            string inputFile;
+
+            // If timeline data is provided, render it first
+            if (request.Timeline != null && request.Timeline.Scenes?.Count > 0)
+            {
+                _logger.LogInformation("Rendering timeline with {SceneCount} scenes before export", request.Timeline.Scenes.Count);
+
+                // Create temporary file for timeline render
+                var tempDir = Path.Combine(Path.GetTempPath(), "aura-exports", Guid.NewGuid().ToString());
+                Directory.CreateDirectory(tempDir);
+                inputFile = Path.Combine(tempDir, "timeline_render.mp4");
+
+                // Create RenderSpec from preset
+                var renderSpec = new RenderSpec(
+                    Res: preset.Resolution,
+                    Container: "mp4",
+                    VideoBitrateK: preset.VideoBitrate / 1000,
+                    AudioBitrateK: preset.AudioBitrate / 1000,
+                    Fps: preset.FrameRate,
+                    Codec: preset.VideoCodec,
+                    QualityLevel: preset.Quality == QualityLevel.Draft ? 50 : 
+                                  preset.Quality == QualityLevel.Good ? 75 : 
+                                  preset.Quality == QualityLevel.High ? 85 : 95
+                );
+
+                // Render timeline to temporary file
+                try
+                {
+                    await _timelineRenderer.GenerateFinalAsync(
+                        request.Timeline,
+                        renderSpec,
+                        inputFile,
+                        null,
+                        default);
+
+                    _logger.LogInformation("Timeline rendered successfully to {InputFile}", inputFile);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to render timeline");
+                    return StatusCode(500, new { error = "Failed to render timeline", details = ex.Message });
+                }
+            }
+            else if (!string.IsNullOrEmpty(request.InputFile))
+            {
+                // Use provided input file
+                inputFile = request.InputFile;
+            }
+            else
+            {
+                return BadRequest(new { error = "Either timeline data or inputFile must be provided" });
+            }
+
             // Create export request
             var exportRequest = new ExportRequest
             {
-                InputFile = request.InputFile,
+                InputFile = inputFile,
                 OutputFile = request.OutputFile,
                 Preset = preset,
                 TargetPlatform = preset.Platform,
@@ -220,12 +283,13 @@ public class ExportController : ControllerBase
 /// </summary>
 public record ExportRequestDto
 {
-    public required string InputFile { get; init; }
+    public string? InputFile { get; init; }
     public required string OutputFile { get; init; }
     public required string PresetName { get; init; }
     public TimeSpan? StartTime { get; init; }
     public TimeSpan? Duration { get; init; }
     public Dictionary<string, string>? Metadata { get; init; }
+    public EditableTimeline? Timeline { get; init; }
 }
 
 /// <summary>
