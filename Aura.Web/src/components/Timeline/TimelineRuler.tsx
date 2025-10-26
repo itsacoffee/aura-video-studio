@@ -137,8 +137,9 @@ export function TimelineRuler({
         className={styles.rulerContent}
         style={{ width: `${width}px` }}
         onClick={handleClick}
-        role="slider"
-        aria-label="Timeline ruler"
+        // Using button role since this is a clickable timeline ruler
+        role="button"
+        aria-label="Timeline ruler - click to seek"
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {

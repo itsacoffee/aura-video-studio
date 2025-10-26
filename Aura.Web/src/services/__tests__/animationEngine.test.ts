@@ -16,7 +16,6 @@ import {
 } from '../animationEngine';
 import type {
   MotionPath,
-  MotionPathPoint,
   TransformProperties,
   LayerParent,
 } from '../animationEngine';

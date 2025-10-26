@@ -182,6 +182,8 @@ export function QuickTutorial({ steps, onComplete, onSkip }: QuickTutorialProps)
   }
 
   return (
+    // Dialog needs to be clickable and focusable for accessibility
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
       className={styles.overlay}
       onClick={onSkip}
@@ -189,6 +191,7 @@ export function QuickTutorial({ steps, onComplete, onSkip }: QuickTutorialProps)
       role="dialog"
       aria-modal="true"
       aria-labelledby="tutorial-title"
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
     >
       <Button

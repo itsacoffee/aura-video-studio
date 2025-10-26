@@ -74,7 +74,6 @@ describe('Formatters', () => {
     });
 
     it('should return "just now" for recent times', () => {
-      const now = new Date('2024-01-15T12:00:00Z');
       const recent = new Date('2024-01-15T11:59:30Z');
       expect(formatRelativeTime(recent)).toBe('just now');
     });

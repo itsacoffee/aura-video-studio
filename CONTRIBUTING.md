@@ -114,6 +114,118 @@ pwsh scripts/audit/scan.ps1
 - **Web Coverage:** Maintain at least 70% coverage for tested files
 - **Build Warnings:** Fix new warnings introduced by your changes
 - **Analyzer Rules:** Follow the analyzer rules defined in `Directory.Build.props`
+- **ESLint:** All code must pass ESLint with zero warnings and errors
+
+### Linting Standards (Frontend)
+
+The frontend codebase enforces strict ESLint rules with `--max-warnings 0`. All code must pass linting before merging.
+
+#### Running Lint Checks
+
+```bash
+# Check for errors and warnings
+cd Aura.Web
+npm run lint
+
+# Auto-fix fixable issues
+npm run lint:fix
+
+# Type check
+npm run type-check
+
+# Run all quality checks
+npm run quality-check
+```
+
+#### Common Linting Patterns
+
+**1. Avoid `any` Types**
+
+```typescript
+// ❌ Bad
+const handler = (event: any) => { };
+
+// ✅ Good  
+const handler = (event: React.MouseEvent<HTMLButtonElement>) => { };
+```
+
+**2. React Hooks Dependencies**
+
+```typescript
+// ❌ Bad - missing dependencies
+useEffect(() => {
+  loadData();
+}, []);
+
+// ✅ Good - include all dependencies
+const loadData = useCallback(async () => {
+  // ...
+}, [dependency1, dependency2]);
+
+useEffect(() => {
+  loadData();
+}, [loadData]);
+```
+
+**3. Accessibility**
+
+```typescript
+// ❌ Bad - div with onClick but no keyboard support
+<div onClick={handler}>Click me</div>
+
+// ✅ Good - use semantic HTML
+<button onClick={handler}>Click me</button>
+
+// ✅ Also acceptable - div with proper ARIA
+<div 
+  role="button"
+  tabIndex={0}
+  onClick={handler}
+  onKeyDown={(e) => e.key === 'Enter' && handler()}
+>
+  Click me
+</div>
+```
+
+**4. Console Statements**
+
+```typescript
+// ❌ Bad - debug console.log
+console.log('Debug info:', data);
+
+// ✅ Good - use allowed console methods (error, warn, info)
+console.error('Error occurred:', error);
+
+// ✅ Good - conditional debug logging with disable comment
+if (process.env.NODE_ENV === 'development') {
+  // eslint-disable-next-line no-console
+  console.log('Debug info:', data);
+}
+```
+
+**5. Unused Variables**
+
+```typescript
+// ❌ Bad
+const [value, setValue] = useState(0);
+// setValue is never used
+
+// ✅ Good - prefix with underscore if intentionally unused
+const [value, _setValue] = useState(0);
+
+// ✅ Better - don't destructure if not needed
+const value = useState(0)[0];
+```
+
+#### ESLint Disable Comments
+
+When you need to disable a rule, always provide a justification:
+
+```typescript
+// Dialog needs to be focusable for keyboard accessibility
+// eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+tabIndex={0}
+```
 
 ## Pull Request Guidelines
 

@@ -428,6 +428,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
               contentBefore={<Search24Regular />}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              // autoFocus is intentional for command palette UX
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
             />
           </div>

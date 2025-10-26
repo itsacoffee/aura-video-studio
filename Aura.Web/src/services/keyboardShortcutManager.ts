@@ -259,7 +259,7 @@ class KeyboardShortcutManager {
 
     // Handle special keys
     if (key.startsWith('Arrow')) {
-      key = key; // Keep ArrowLeft, ArrowRight, etc.
+      // Keep ArrowLeft, ArrowRight, etc. as-is
     } else if (key.length === 1) {
       // For single character keys, use uppercase
       key = key.toUpperCase();

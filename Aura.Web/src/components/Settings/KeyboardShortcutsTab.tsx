@@ -438,6 +438,8 @@ export function KeyboardShortcutsTab() {
                               setEditingShortcut(null);
                             }
                           }}
+                          // autoFocus is intentionally used for better UX when editing shortcuts
+                          // eslint-disable-next-line jsx-a11y/no-autofocus
                           autoFocus
                         />
                       ) : (
