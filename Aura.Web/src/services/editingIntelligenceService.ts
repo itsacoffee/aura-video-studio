@@ -67,7 +67,7 @@ export interface EffectSuggestion {
     | 'TextOverlay'
     | 'SplitScreen';
   purpose: 'Emphasis' | 'Transition' | 'Style' | 'Correction' | 'Engagement';
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   reasoning: string;
   confidence: number;
 }
@@ -176,7 +176,7 @@ export async function suggestCuts(
  */
 export async function optimizePacing(
   request: EditingPacingRequest
-): Promise<{ analysis: PacingAnalysis; slowSegments: any[] }> {
+): Promise<{ analysis: PacingAnalysis; slowSegments: string[] }> {
   const response = await fetch(`${API_BASE}/optimize-pacing`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -234,7 +234,7 @@ export async function suggestEffects(jobId: string): Promise<EffectSuggestion[]>
  */
 export async function analyzeEngagement(
   jobId: string
-): Promise<{ engagementCurve: EngagementCurve; fatiguePoints: any[] }> {
+): Promise<{ engagementCurve: EngagementCurve; fatiguePoints: EngagementPoint[] }> {
   const response = await fetch(`${API_BASE}/engagement`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -254,7 +254,7 @@ export async function analyzeEngagement(
  */
 export async function runQualityCheck(
   jobId: string
-): Promise<{ issues: QualityIssue[]; summary: any }> {
+): Promise<{ issues: QualityIssue[]; summary: string }> {
   const response = await fetch(`${API_BASE}/quality-check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -272,7 +272,9 @@ export async function runQualityCheck(
 /**
  * Optimize timeline to target duration
  */
-export async function optimizeDuration(request: OptimizeDurationRequest): Promise<any> {
+export async function optimizeDuration(
+  request: OptimizeDurationRequest
+): Promise<{ optimizedTimeline: unknown; removedSegments: string[] }> {
   const response = await fetch(`${API_BASE}/optimize-duration`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

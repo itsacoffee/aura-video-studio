@@ -43,7 +43,7 @@ describe('useJobsStore', () => {
 
   it('should handle job creation', async () => {
     const mockJobId = 'new-job-id';
-    (global.fetch as any).mockResolvedValueOnce({
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ jobId: mockJobId }),
     });
@@ -73,7 +73,7 @@ describe('useJobsStore', () => {
       },
     ];
 
-    (global.fetch as any).mockResolvedValueOnce({
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ jobs: mockJobs }),
     });

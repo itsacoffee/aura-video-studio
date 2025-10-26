@@ -222,6 +222,35 @@ interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   _skipCircuitBreaker?: boolean;
   _timeout?: number;
   _queueKey?: string;
+  _requestStartTime?: number;
+}
+
+/**
+ * Extended Error type with custom properties
+ */
+interface ExtendedError extends Error {
+  isCircuitBreakerError?: boolean;
+  userMessage?: string;
+  errorCode?: string;
+}
+
+/**
+ * Extended Internal Axios Request Config with start time
+ */
+interface ExtendedInternalAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _requestStartTime?: number;
+  _skipCircuitBreaker?: boolean;
+}
+
+/**
+ * API response data type for error responses
+ */
+interface ApiErrorResponse {
+  errorCode?: string;
+  code?: string;
+  detail?: string;
+  title?: string;
+  [key: string]: unknown;
 }
 
 // Initialize circuit breaker and request queues
@@ -258,8 +287,8 @@ apiClient.interceptors.request.use(
 
     // Check circuit breaker (unless explicitly skipped)
     if (!extendedConfig._skipCircuitBreaker && !circuitBreaker.canAttempt()) {
-      const error = new Error('Circuit breaker is open - service unavailable');
-      (error as any).isCircuitBreakerError = true;
+      const error: ExtendedError = new Error('Circuit breaker is open - service unavailable');
+      error.isCircuitBreakerError = true;
       loggingService.warn('Request blocked by circuit breaker', 'apiClient', 'circuitBreaker', {
         url: config.url,
       });
@@ -270,7 +299,8 @@ apiClient.interceptors.request.use(
     const startTime = Date.now();
 
     // Store start time in config for performance logging
-    (config as any)._requestStartTime = startTime;
+    const extendedInternalConfig = config as ExtendedInternalAxiosRequestConfig;
+    extendedInternalConfig._requestStartTime = startTime;
 
     loggingService.debug(
       `API Request: ${config.method?.toUpperCase()} ${config.url}`,
@@ -303,7 +333,8 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // Calculate request duration for performance logging
-    const startTime = (response.config as any)._requestStartTime;
+    const extendedInternalConfig = response.config as ExtendedInternalAxiosRequestConfig;
+    const startTime = extendedInternalConfig._requestStartTime;
     const duration = startTime ? Date.now() - startTime : 0;
 
     // Record success in circuit breaker
@@ -344,19 +375,20 @@ apiClient.interceptors.response.use(
     const extendedConfig = error.config as ExtendedAxiosRequestConfig | undefined;
 
     // Log API errors
-    const startTime = (error.config as any)?._requestStartTime;
+    const extendedInternalConfig = error.config as ExtendedInternalAxiosRequestConfig | undefined;
+    const startTime = extendedInternalConfig?._requestStartTime;
     const duration = startTime ? Date.now() - startTime : 0;
 
     // Extract error information
     let userMessage = 'An error occurred while communicating with the server';
     let errorCode: string | undefined;
-    let technicalDetails: Record<string, any> = {};
+    let technicalDetails: Record<string, unknown> = {};
 
     // Handle different error scenarios
     if (error.response) {
       // Server responded with error status
       const status = error.response.status;
-      const responseData = error.response.data as any;
+      const responseData = error.response.data as ApiErrorResponse;
 
       // Extract error code
       errorCode = responseData?.errorCode || responseData?.code;
@@ -419,7 +451,7 @@ apiClient.interceptors.response.use(
           circuitBreaker.recordFailure();
         }
       }
-    } else if ((error as any).isCircuitBreakerError) {
+    } else if ((error as ExtendedError).isCircuitBreakerError) {
       // Circuit breaker blocked the request
       userMessage = 'The service is temporarily unavailable. Please try again later.';
       errorCode = 'CIRCUIT_BREAKER_OPEN';
@@ -459,8 +491,9 @@ apiClient.interceptors.response.use(
     }
 
     // Attach user-friendly message to error for UI display
-    (error as any).userMessage = userMessage;
-    (error as any).errorCode = errorCode;
+    const extendedError = error as AxiosError & ExtendedError;
+    extendedError.userMessage = userMessage;
+    extendedError.errorCode = errorCode;
 
     // Check if we should retry
     if (extendedConfig && !extendedConfig._skipRetry && error.config) {

@@ -9,7 +9,7 @@ export interface ProblemDetails {
   type?: string;
   correlationId?: string;
   errorCode?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ParsedApiError {
@@ -18,13 +18,13 @@ export interface ParsedApiError {
   errorDetails?: string;
   correlationId?: string;
   errorCode?: string;
-  originalError: any;
+  originalError: unknown;
 }
 
 /**
  * Parse an error response from the API and extract ProblemDetails
  */
-export async function parseApiError(error: any): Promise<ParsedApiError> {
+export async function parseApiError(error: unknown): Promise<ParsedApiError> {
   // If it's a Response object (from fetch)
   if (error instanceof Response) {
     try {
@@ -69,22 +69,23 @@ export async function parseApiError(error: any): Promise<ParsedApiError> {
 
   // If it's already a parsed ProblemDetails object
   if (error && typeof error === 'object') {
-    if (error.title || error.detail || error.status) {
+    const errorObj = error as Partial<ProblemDetails & { message?: string }>;
+    if (errorObj.title || errorObj.detail || errorObj.status) {
       return {
-        title: error.title || 'Error',
-        message: error.detail || error.message || 'An error occurred',
-        errorDetails: error.detail,
-        correlationId: error.correlationId,
-        errorCode: error.errorCode || extractErrorCodeFromType(error.type),
+        title: errorObj.title || 'Error',
+        message: errorObj.detail || errorObj.message || 'An error occurred',
+        errorDetails: errorObj.detail,
+        correlationId: errorObj.correlationId,
+        errorCode: errorObj.errorCode || extractErrorCodeFromType(errorObj.type),
         originalError: error,
       };
     }
 
     // Standard Error object
-    if (error.message) {
+    if (errorObj.message) {
       return {
         title: 'Error',
-        message: error.message,
+        message: errorObj.message,
         originalError: error,
       };
     }

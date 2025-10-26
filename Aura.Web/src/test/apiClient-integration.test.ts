@@ -3,6 +3,7 @@
  * This test showcases the key capabilities of the enhanced API client
  */
 
+import { AxiosError } from 'axios';
 import MockAdapter from 'axios-mock-adapter';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import apiClient, {
@@ -11,6 +12,15 @@ import apiClient, {
   resetCircuitBreaker,
   getCircuitBreakerState,
 } from '../services/api/apiClient';
+
+/**
+ * Extended AxiosError type for testing with custom properties
+ */
+interface ExtendedAxiosError extends AxiosError {
+  userMessage?: string;
+  errorCode?: string;
+  isCircuitBreakerError?: boolean;
+}
 
 let mock: MockAdapter;
 
@@ -79,15 +89,15 @@ describe('API Client Integration', () => {
     expect(failedRequests.length).toBe(5);
 
     // Next request should fail immediately without hitting the endpoint
-    let circuitBreakerError;
+    let circuitBreakerError: ExtendedAxiosError | undefined;
     try {
       await get('/api/failing-service', { _skipRetry: true });
-    } catch (error: any) {
-      circuitBreakerError = error;
+    } catch (error) {
+      circuitBreakerError = error as ExtendedAxiosError;
     }
 
     expect(circuitBreakerError).toBeDefined();
-    expect(circuitBreakerError.message).toContain('Circuit breaker');
+    expect(circuitBreakerError?.message).toContain('Circuit breaker');
   });
 
   it('should demonstrate user-friendly error messages', async () => {
@@ -116,12 +126,13 @@ describe('API Client Integration', () => {
       try {
         await get('/api/test', { _skipRetry: true });
         throw new Error('Expected error was not thrown');
-      } catch (error: any) {
-        if (error.message === 'Expected error was not thrown') {
+      } catch (error) {
+        const axiosError = error as ExtendedAxiosError;
+        if ((error as Error).message === 'Expected error was not thrown') {
           throw error;
         }
-        expect(error.userMessage).toBeDefined();
-        expect(error.userMessage).toBeTruthy();
+        expect(axiosError.userMessage).toBeDefined();
+        expect(axiosError.userMessage).toBeTruthy();
 
         if (scenario.expectedError === 'errorCode') {
           expect(error.errorCode).toBe('E300');
@@ -155,7 +166,7 @@ describe('API Client Integration', () => {
     expect(project.id).toBe('proj-123');
 
     // Fetch project details
-    const details = await get<{ id: string; name: string; clips: any[] }>(
+    const details = await get<{ id: string; name: string; clips: unknown[] }>(
       `/api/projects/${project.id}`
     );
 
@@ -174,13 +185,14 @@ describe('API Client Integration', () => {
     try {
       await post('/api/projects', { name: '' });
       throw new Error('Expected error was not thrown');
-    } catch (error: any) {
-      if (error.message === 'Expected error was not thrown') {
+    } catch (error) {
+      const axiosError = error as ExtendedAxiosError;
+      if ((error as Error).message === 'Expected error was not thrown') {
         throw error;
       }
       // Should only attempt once (no retries for 4xx errors)
       expect(attempts).toBe(1);
-      expect(error.response.status).toBe(400);
+      expect(axiosError.response?.status).toBe(400);
     }
   });
 });

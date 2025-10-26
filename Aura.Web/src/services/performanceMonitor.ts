@@ -40,6 +40,11 @@ export interface PerformanceBudget {
   maxMemoryUsage?: number; // in MB
 }
 
+/**
+ * Union type for all metric types
+ */
+export type AnyMetric = PerformanceMetric | RenderMetric | BundleMetric;
+
 class PerformanceMonitor {
   private metrics: PerformanceMetric[] = [];
   private renderMetrics: Map<string, RenderMetric> = new Map();
@@ -47,7 +52,7 @@ class PerformanceMonitor {
   private budgets: PerformanceBudget[] = [];
   private isEnabled: boolean = true;
   private maxMetrics: number = 1000; // Keep last 1000 metrics
-  private warningCallbacks: Array<(warning: string, metric: any) => void> = [];
+  private warningCallbacks: Array<(warning: string, metric: AnyMetric) => void> = [];
 
   constructor() {
     // Initialize with default budgets
@@ -283,8 +288,14 @@ class PerformanceMonitor {
     totalJSHeapSize?: number;
     jsHeapSizeLimit?: number;
   } {
+    interface PerformanceMemory {
+      usedJSHeapSize: number;
+      totalJSHeapSize: number;
+      jsHeapSizeLimit: number;
+    }
+
     if ('memory' in performance) {
-      const memory = (performance as any).memory;
+      const memory = (performance as Performance & { memory: PerformanceMemory }).memory;
       return {
         usedJSHeapSize: memory.usedJSHeapSize,
         totalJSHeapSize: memory.totalJSHeapSize,
@@ -309,7 +320,7 @@ class PerformanceMonitor {
   /**
    * Register a callback for budget warnings
    */
-  onWarning(callback: (warning: string, metric: any) => void): () => void {
+  onWarning(callback: (warning: string, metric: AnyMetric) => void): () => void {
     this.warningCallbacks.push(callback);
     // Return unsubscribe function
     return () => {
@@ -323,7 +334,7 @@ class PerformanceMonitor {
   /**
    * Notify all warning callbacks
    */
-  private notifyWarning(warning: string, metric: any): void {
+  private notifyWarning(warning: string, metric: AnyMetric): void {
     this.warningCallbacks.forEach((callback) => {
       try {
         callback(warning, metric);

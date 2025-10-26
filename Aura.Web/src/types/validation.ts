@@ -36,7 +36,7 @@ export interface FormValidationState<T> {
 /**
  * Validation rule definition
  */
-export interface ValidationRule<T = any> {
+export interface ValidationRule<T = unknown> {
   validator: (value: T) => boolean | Promise<boolean>;
   message: string;
 }
@@ -44,7 +44,7 @@ export interface ValidationRule<T = any> {
 /**
  * Field validation configuration
  */
-export interface FieldValidationConfig<T = any> {
+export interface FieldValidationConfig<T = unknown> {
   required?: boolean | string;
   minLength?: { value: number; message?: string };
   maxLength?: { value: number; message?: string };
@@ -58,6 +58,6 @@ export interface FieldValidationConfig<T = any> {
 /**
  * Form schema configuration
  */
-export type FormSchemaConfig<T extends Record<string, any>> = {
+export type FormSchemaConfig<T extends Record<string, unknown>> = {
   [K in keyof T]?: FieldValidationConfig<T[K]>;
 };

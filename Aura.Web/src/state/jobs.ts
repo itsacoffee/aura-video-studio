@@ -48,7 +48,12 @@ interface JobsState {
   polling: boolean;
 
   // Actions
-  createJob: (brief: any, planSpec: any, voiceSpec: any, renderSpec: any) => Promise<string>;
+  createJob: (
+    brief: Record<string, unknown>,
+    planSpec: Record<string, unknown>,
+    voiceSpec: Record<string, unknown>,
+    renderSpec: Record<string, unknown>
+  ) => Promise<string>;
   getJob: (jobId: string) => Promise<void>;
   getFailureDetails: (jobId: string) => Promise<JobFailure | null>;
   listJobs: () => Promise<void>;

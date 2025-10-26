@@ -14,7 +14,7 @@ export interface JobStepError {
   code: string;
   message: string;
   remediation: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 export interface JobOutput {
@@ -37,16 +37,16 @@ export interface JobResponse {
 
 export interface CreateJobRequest {
   preset?: string;
-  inputs?: any;
+  inputs?: Record<string, unknown>;
   options?: {
     allowSkipUnavailable?: boolean;
     quality?: 'fast' | 'balanced' | 'high';
   };
   // Legacy format support
-  brief?: any;
-  planSpec?: any;
-  voiceSpec?: any;
-  renderSpec?: any;
+  brief?: Record<string, unknown>;
+  planSpec?: Record<string, unknown>;
+  voiceSpec?: Record<string, unknown>;
+  renderSpec?: Record<string, unknown>;
 }
 
 export interface CreateJobResponse {
@@ -67,7 +67,7 @@ export type JobEventType =
 
 export interface JobEvent {
   type: JobEventType;
-  data: any;
+  data: unknown;
 }
 
 /**
@@ -164,7 +164,7 @@ export async function cancelJob(jobId: string): Promise<void> {
 /**
  * Retry a failed job
  */
-export async function retryJob(jobId: string, strategy?: string): Promise<any> {
+export async function retryJob(jobId: string, strategy?: string): Promise<CreateJobResponse> {
   const url = strategy
     ? `/api/jobs/${jobId}/retry?strategy=${encodeURIComponent(strategy)}`
     : `/api/jobs/${jobId}/retry`;
