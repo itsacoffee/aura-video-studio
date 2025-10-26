@@ -69,7 +69,7 @@ export const QualityDashboard: React.FC = () => {
 
   useEffect(() => {
     refreshAll();
-  }, []);
+  }, [refreshAll]);
 
   const handleRefresh = () => {
     refreshAll();
