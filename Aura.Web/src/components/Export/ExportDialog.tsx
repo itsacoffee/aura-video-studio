@@ -195,6 +195,30 @@ const PRESETS = {
     aspectRatio: '16:9',
     platform: 'Generic',
   },
+  'WebM VP9': {
+    description: 'Web-optimized format with excellent compression',
+    resolution: '1920x1080',
+    codec: 'VP9',
+    bitrate: '6 Mbps',
+    aspectRatio: '16:9',
+    platform: 'Generic',
+  },
+  'ProRes 422 HQ': {
+    description: 'Professional quality for editing and mastering',
+    resolution: '1920x1080',
+    codec: 'ProRes',
+    bitrate: '120 Mbps',
+    aspectRatio: '16:9',
+    platform: 'Generic',
+  },
+  'Podcast Audio': {
+    description: 'Audio-only export for podcasts',
+    resolution: 'Audio Only',
+    codec: 'MP3',
+    bitrate: '128 kbps',
+    aspectRatio: 'N/A',
+    platform: 'Generic',
+  },
 };
 
 export function ExportDialog({
