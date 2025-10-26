@@ -2,7 +2,7 @@
  * Tests for Performance Monitor Service
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { performanceMonitor } from '../performanceMonitor';
 
 describe('PerformanceMonitor', () => {

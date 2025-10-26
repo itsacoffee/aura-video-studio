@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { operationQueueService } from '../operationQueueService';
 
 describe('OperationQueueService', () => {
@@ -76,7 +76,7 @@ describe('OperationQueueService', () => {
   it('should get running operations', () => {
     const id1 = operationQueueService.addOperation('Op 1', {});
     const id2 = operationQueueService.addOperation('Op 2', {});
-    const id3 = operationQueueService.addOperation('Op 3', {});
+    operationQueueService.addOperation('Op 3', {});
 
     operationQueueService.startOperation(id1);
     operationQueueService.startOperation(id2);

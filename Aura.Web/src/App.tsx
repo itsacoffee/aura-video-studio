@@ -31,10 +31,12 @@ import { PublishPage } from './pages/PublishPage';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { RenderPage } from './pages/RenderPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SetupWizard } from './pages/Setup/SetupWizard';
+import TemplatesLibrary from './pages/Templates/TemplatesLibrary';
 import { TimelinePage } from './pages/TimelinePage';
+import { VideoEditorPage } from './pages/VideoEditorPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { CreateWizard } from './pages/Wizard/CreateWizard';
-import { SetupWizard } from './pages/Setup/SetupWizard';
 import { errorReportingService } from './services/errorReportingService';
 import { hasCompletedFirstRun, migrateLegacyFirstRunStatus } from './services/firstRunService';
 import { healthMonitorService } from './services/healthMonitorService';
@@ -42,8 +44,6 @@ import { keyboardShortcutManager } from './services/keyboardShortcutManager';
 import { loggingService } from './services/loggingService';
 import { ActivityProvider } from './state/activityContext';
 import { useJobState } from './state/jobState';
-import { VideoEditorPage } from './pages/VideoEditorPage';
-import TemplatesLibrary from './pages/Templates/TemplatesLibrary';
 
 // Lazy load development-only features to reduce production bundle size
 const LogViewerPage = lazy(() =>

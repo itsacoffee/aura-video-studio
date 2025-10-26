@@ -1,5 +1,5 @@
 import MockAdapter from 'axios-mock-adapter';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import apiClient, {
   get,
   post,
