@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -8,17 +8,39 @@ import {
   Text,
   Switch,
   Tooltip,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
 } from '@fluentui/react-components';
 import {
   Add24Regular,
   Subtract24Regular,
-  Cut24Regular,
   Eye24Regular,
   EyeOff24Regular,
   LockClosed24Regular,
   LockOpen24Regular,
+  ArrowFitRegular,
+  ChevronDown24Regular,
 } from '@fluentui/react-icons';
-import { AppliedEffect, EFFECT_DEFINITIONS } from '../../types/effects';
+import { AppliedEffect } from '../../types/effects';
+import { TimelineRuler } from '../Timeline/TimelineRuler';
+import { PlayheadIndicator } from '../Timeline/PlayheadIndicator';
+import { TimelineClip, TimelineClipData } from '../Timeline/TimelineClip';
+import { SnapGuides } from '../Timeline/SnapGuides';
+import {
+  snapToFrame,
+  formatTimecode,
+  calculateSnapPoints,
+  findNearestSnapPoint,
+  TimelineDisplayMode,
+  TimelineTool,
+  TrimMode,
+  closeGaps,
+  applyRippleEdit,
+  SnapPoint,
+} from '../../services/timelineEngine';
 
 const useStyles = makeStyles({
   container: {
@@ -34,6 +56,7 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalM,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
+    flexWrap: 'wrap',
   },
   toolbarGroup: {
     display: 'flex',
@@ -44,21 +67,6 @@ const useStyles = makeStyles({
     flex: 1,
     overflow: 'auto',
     position: 'relative',
-  },
-  ruler: {
-    height: '30px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-    position: 'sticky',
-    top: 0,
-    backgroundColor: tokens.colorNeutralBackground1,
-    zIndex: 10,
-    display: 'flex',
-  },
-  rulerMarker: {
-    position: 'absolute',
-    fontSize: tokens.fontSizeBase200,
-    color: tokens.colorNeutralForeground2,
-    userSelect: 'none',
   },
   tracksContainer: {
     position: 'relative',
@@ -100,113 +108,14 @@ const useStyles = makeStyles({
     position: 'relative',
     minWidth: '2000px',
   },
-  clip: {
-    position: 'absolute',
-    top: '8px',
-    height: '44px',
-    backgroundColor: tokens.colorBrandBackground,
-    borderRadius: tokens.borderRadiusSmall,
-    border: `1px solid ${tokens.colorBrandStroke1}`,
-    cursor: 'pointer',
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
-    color: tokens.colorNeutralForegroundOnBrand,
-    fontSize: tokens.fontSizeBase200,
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
-    textOverflow: 'ellipsis',
-    display: 'flex',
-    alignItems: 'center',
-    userSelect: 'none',
-    '&:hover': {
-      backgroundColor: tokens.colorBrandBackgroundHover,
-    },
-  },
-  clipSelected: {
-    border: `2px solid ${tokens.colorBrandForeground1}`,
-    backgroundColor: tokens.colorBrandBackgroundHover,
-  },
-  clipThumbnails: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    display: 'flex',
-    opacity: 0.6,
-    pointerEvents: 'none',
-  },
-  clipThumbnail: {
-    height: '100%',
-    objectFit: 'cover',
-    borderRight: `1px solid ${tokens.colorNeutralStroke2}`,
-  },
-  clipWaveform: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1px',
-    padding: '4px',
-    opacity: 0.7,
-    pointerEvents: 'none',
-  },
-  waveformBar: {
-    flex: 1,
-    backgroundColor: tokens.colorNeutralForegroundOnBrand,
-    minWidth: '2px',
-    borderRadius: '1px',
-  },
-  clipLabel: {
-    position: 'relative',
-    zIndex: 1,
-    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-  },
-  effectIndicator: {
-    position: 'absolute',
-    top: '2px',
-    right: '2px',
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-    backgroundColor: tokens.colorPalettePurpleBackground2,
-    border: `1px solid ${tokens.colorNeutralForegroundOnBrand}`,
-    zIndex: 2,
-  },
-  keyframeIndicator: {
-    position: 'absolute',
-    bottom: '2px',
-    width: '6px',
-    height: '6px',
-    transform: 'translateX(-3px) rotate(45deg)',
-    backgroundColor: tokens.colorPaletteYellowBackground2,
-    border: `1px solid ${tokens.colorPaletteYellowForeground2}`,
-    zIndex: 2,
-  },
-  playhead: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: '2px',
-    backgroundColor: tokens.colorPaletteRedBackground3,
-    zIndex: 20,
-    pointerEvents: 'none',
-  },
-  playheadHandle: {
-    position: 'absolute',
-    top: '-6px',
-    left: '-6px',
-    width: '14px',
-    height: '14px',
-    backgroundColor: tokens.colorPaletteRedBackground3,
-    borderRadius: '50%',
-    cursor: 'ew-resize',
-    pointerEvents: 'auto',
-  },
   zoomSlider: {
     width: '120px',
+  },
+  toolButton: {
+    minWidth: '80px',
+  },
+  activeToolButton: {
+    backgroundColor: tokens.colorBrandBackground2,
   },
 });
 
@@ -270,9 +179,22 @@ export function TimelinePanel({
   const styles = useStyles();
   const [zoom, setZoom] = useState(50); // pixels per second
   const [snapping, setSnapping] = useState(true);
+  const [magneticTimeline, setMagneticTimeline] = useState(false);
   const [dragOverTrack, setDragOverTrack] = useState<string | null>(null);
+  const [currentTool, setCurrentTool] = useState<TimelineTool>(TimelineTool.SELECT);
+  const [trimMode, setTrimMode] = useState<TrimMode>(TrimMode.RIPPLE);
+  const [displayMode, setDisplayMode] = useState<TimelineDisplayMode>(TimelineDisplayMode.TIMECODE);
+  const [activeSnapPoint, setActiveSnapPoint] = useState<SnapPoint | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  
   const timelineRef = useRef<HTMLDivElement>(null);
-  const isDraggingPlayhead = useRef(false);
+  const frameRate = 30;
+
+  // JKL shuttle control state
+  const jklState = useRef<{ key: string | null; speedMultiplier: number }>({
+    key: null,
+    speedMultiplier: 1,
+  });
 
   // Calculate timeline width based on clips
   const maxTime = Math.max(
@@ -284,56 +206,204 @@ export function TimelinePanel({
   const pixelsPerSecond = zoom;
   const timelineWidth = maxTime * pixelsPerSecond;
 
-  const handlePlayheadDrag = useCallback(
-    (_e: React.MouseEvent) => {
-      if (!timelineRef.current) return;
-      isDraggingPlayhead.current = true;
-
-      const handleMouseMove = (moveEvent: MouseEvent) => {
-        if (!timelineRef.current || !isDraggingPlayhead.current) return;
-
-        const rect = timelineRef.current.getBoundingClientRect();
-        const x = moveEvent.clientX - rect.left - 100; // Account for track label width
-        let time = Math.max(0, x / pixelsPerSecond);
-
-        if (snapping) {
-          time = Math.round(time * 2) / 2; // Snap to 0.5 second intervals
+  // JKL Shuttle controls and keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // JKL shuttle controls
+      if (e.key === 'j') {
+        e.preventDefault();
+        if (jklState.current.key === 'j') {
+          jklState.current.speedMultiplier = Math.min(4, jklState.current.speedMultiplier + 1);
+        } else {
+          jklState.current.key = 'j';
+          jklState.current.speedMultiplier = 1;
         }
+        setIsPlaying(true);
+        // Note: playback speed would be used by video player component
+      } else if (e.key === 'k') {
+        e.preventDefault();
+        jklState.current.key = 'k';
+        jklState.current.speedMultiplier = 1;
+        setIsPlaying(false);
+        // Note: playback speed would be used by video player component
+      } else if (e.key === 'l') {
+        e.preventDefault();
+        if (jklState.current.key === 'l') {
+          jklState.current.speedMultiplier = Math.min(4, jklState.current.speedMultiplier + 1);
+        } else {
+          jklState.current.key = 'l';
+          jklState.current.speedMultiplier = 1;
+        }
+        setIsPlaying(true);
+        // Note: playback speed would be used by video player component
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        setIsPlaying(!isPlaying);
+        jklState.current.key = null;
+        jklState.current.speedMultiplier = 1;
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const step = e.shiftKey ? 10 / frameRate : 1 / frameRate;
+        const newTime = Math.max(0, currentTime - step);
+        onTimeChange?.(snapToFrame(newTime, frameRate));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const step = e.shiftKey ? 10 / frameRate : 1 / frameRate;
+        const newTime = Math.min(maxTime, currentTime + step);
+        onTimeChange?.(snapToFrame(newTime, frameRate));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const newTime = Math.min(maxTime, currentTime + 10 / frameRate);
+        onTimeChange?.(snapToFrame(newTime, frameRate));
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const newTime = Math.max(0, currentTime - 10 / frameRate);
+        onTimeChange?.(snapToFrame(newTime, frameRate));
+      }
+    };
 
-        onTimeChange?.(time);
-      };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'j' || e.key === 'l') {
+        // Reset on key release
+        if (jklState.current.key === e.key) {
+          jklState.current.key = null;
+          jklState.current.speedMultiplier = 1;
+          setIsPlaying(false);
+          // Note: playback speed would be used by video player component
+        }
+      }
+    };
 
-      const handleMouseUp = () => {
-        isDraggingPlayhead.current = false;
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
 
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [currentTime, maxTime, frameRate, isPlaying, onTimeChange]);
+
+  // Clip manipulation handlers
+  const handleClipMove = useCallback(
+    (clipId: string, newStartTime: number) => {
+      if (magneticTimeline) {
+        // Apply magnetic timeline behavior
+        const snapPoints = calculateSnapPoints(
+          clips.filter((c) => c.id !== clipId),
+          currentTime,
+          []
+        );
+        const nearSnap = findNearestSnapPoint(newStartTime, snapPoints, 0.1);
+        if (nearSnap) {
+          newStartTime = nearSnap.time;
+          setActiveSnapPoint(nearSnap);
+        } else {
+          setActiveSnapPoint(null);
+        }
+      }
+
+      onClipUpdate?.(clipId, { startTime: newStartTime });
+
+      // Close gaps if magnetic timeline is enabled
+      if (magneticTimeline) {
+        const clip = clips.find((c) => c.id === clipId);
+        if (clip) {
+          const updatedClips = clips.map((c) => 
+            c.id === clipId ? { ...c, startTime: newStartTime } : c
+          );
+          const closedGaps = closeGaps(updatedClips.filter(c => c.trackId === clip.trackId));
+          closedGaps.forEach((c) => {
+            if (c.id !== clipId && c.startTime !== clips.find(oc => oc.id === c.id)?.startTime) {
+              onClipUpdate?.(c.id, { startTime: c.startTime });
+            }
+          });
+        }
+      }
     },
-    [pixelsPerSecond, snapping, onTimeChange]
+    [clips, currentTime, magneticTimeline, onClipUpdate]
   );
 
-  const handleTimelineClick = (e: React.MouseEvent) => {
-    if (!timelineRef.current || isDraggingPlayhead.current) return;
+  const handleClipTrim = useCallback(
+    (clipId: string, newStartTime: number, newDuration: number) => {
+      const clip = clips.find((c) => c.id === clipId);
+      if (!clip) return;
 
-    const rect = timelineRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left - 100; // Account for track label width
-    let time = Math.max(0, x / pixelsPerSecond);
+      if (trimMode === TrimMode.RIPPLE) {
+        // Ripple edit: adjust following clips
+        const delta = newDuration - clip.duration;
+        const editPoint = clip.startTime + clip.duration;
+        const trackClips = clips.filter((c) => c.trackId === clip.trackId);
+        const updated = applyRippleEdit(trackClips, editPoint, delta);
+        
+        updated.forEach((c) => {
+          if (c.id !== clipId && c.startTime !== clips.find(oc => oc.id === c.id)?.startTime) {
+            onClipUpdate?.(c.id, { startTime: c.startTime });
+          }
+        });
+      }
 
-    if (snapping) {
-      time = Math.round(time * 2) / 2;
+      onClipUpdate?.(clipId, { startTime: newStartTime, duration: newDuration });
+    },
+    [clips, trimMode, onClipUpdate]
+  );
+
+  const handleRazorSplit = useCallback(
+    (time: number) => {
+      // Find clip at current time
+      const clipToSplit = clips.find(
+        (c) => c.startTime <= time && c.startTime + c.duration > time
+      );
+
+      if (!clipToSplit) return;
+
+      const splitPoint = time - clipToSplit.startTime;
+      
+      // Create two new clips
+      const firstClip: TimelineClip = {
+        ...clipToSplit,
+        id: `${clipToSplit.id}-1`,
+        duration: splitPoint,
+      };
+
+      const secondClip: TimelineClip = {
+        ...clipToSplit,
+        id: `${clipToSplit.id}-2`,
+        startTime: time,
+        duration: clipToSplit.duration - splitPoint,
+      };
+
+      // Remove original and add split clips
+      // This would need to be implemented via callbacks
+      console.log('Split clip at', time, firstClip, secondClip);
+    },
+    [clips]
+  );
+
+  const handleFitToWindow = useCallback(() => {
+    if (timelineRef.current) {
+      const containerWidth = timelineRef.current.clientWidth - 100; // Account for track labels
+      const newZoom = containerWidth / maxTime;
+      setZoom(Math.max(10, Math.min(100, newZoom)));
     }
+  }, [maxTime]);
 
-    onTimeChange?.(time);
-  };
+  const handleTimelineClick = useCallback(
+    (time: number) => {
+      if (currentTool === TimelineTool.RAZOR) {
+        handleRazorSplit(time);
+      } else {
+        let adjustedTime = time;
+        if (snapping) {
+          adjustedTime = snapToFrame(time, frameRate);
+        }
+        onTimeChange?.(adjustedTime);
+      }
+    },
+    [currentTool, snapping, frameRate, handleRazorSplit, onTimeChange]
+  );
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    const frames = Math.floor((seconds % 1) * 30);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
+    return formatTimecode(seconds, frameRate);
   };
 
   const handleTrackDragOver = (e: React.DragEvent, trackId: string) => {
@@ -370,10 +440,10 @@ export function TimelinePanel({
       // Calculate drop position based on mouse position
       const rect = (e.target as HTMLElement).getBoundingClientRect();
       const x = e.clientX - rect.left;
-      let dropTime = Math.max(0, (x - 100) / pixelsPerSecond); // Account for track label width
+      let dropTime = Math.max(0, (x - 100) / pixelsPerSecond);
 
       if (snapping) {
-        dropTime = Math.round(dropTime * 2) / 2; // Snap to 0.5 second intervals
+        dropTime = snapToFrame(dropTime, frameRate);
       }
 
       // Create a new timeline clip from the media clip
@@ -381,7 +451,7 @@ export function TimelinePanel({
         id: `clip-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         trackId,
         startTime: dropTime,
-        duration: mediaClip.duration || 3, // Use media duration or default to 3
+        duration: mediaClip.duration || 3,
         label: mediaClip.name,
         type: mediaClip.type,
         mediaId: mediaClip.id,
@@ -397,79 +467,95 @@ export function TimelinePanel({
     }
   };
 
-  const handleClipDragOver = (e: React.DragEvent, _clipId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleClipDrop = (e: React.DragEvent, clipId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    try {
-      const data = e.dataTransfer.getData('application/json');
-      if (!data) return;
-
-      const dropData = JSON.parse(data);
-      
-      if (dropData.type === 'effect') {
-        // Apply effect to clip
-        const effectDef = EFFECT_DEFINITIONS.find(e => e.type === dropData.effectType);
-        if (!effectDef) return;
-
-        const clip = clips.find(c => c.id === clipId);
-        if (!clip) return;
-
-        // Create new effect with default parameters
-        const newEffect: AppliedEffect = {
-          id: `effect-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-          effectType: effectDef.type,
-          enabled: true,
-          parameters: effectDef.parameters.reduce((acc, param) => {
-            acc[param.name] = param.defaultValue;
-            return acc;
-          }, {} as Record<string, number | boolean | string>),
-        };
-
-        const currentEffects = clip.effects || [];
-        onClipUpdate?.(clipId, { effects: [...currentEffects, newEffect] });
-      }
-    } catch (error) {
-      console.error('Failed to parse dropped effect:', error);
-    }
-  };
-
-  const renderRuler = () => {
-    const markers = [];
-    const interval = zoom < 30 ? 5 : zoom < 60 ? 2 : 1;
-
-    for (let i = 0; i <= maxTime; i += interval) {
-      const left = i * pixelsPerSecond + 100;
-      markers.push(
-        <div key={i} className={styles.rulerMarker} style={{ left: `${left}px`, top: '8px' }}>
-          {formatTime(i)}
-        </div>
-      );
-    }
-
-    return markers;
-  };
 
   return (
     <div className={styles.container}>
       <div className={styles.toolbar}>
         <div className={styles.toolbarGroup}>
-          <Button appearance="subtle" icon={<Cut24Regular />} disabled>
-            Split
-          </Button>
-          <Button appearance="subtle" icon={<Cut24Regular />} disabled>
-            Delete
-          </Button>
+          <Label>Tool</Label>
+          <Menu>
+            <MenuTrigger>
+              <Button
+                appearance="subtle"
+                className={styles.toolButton}
+                icon={<ChevronDown24Regular />}
+                iconPosition="after"
+              >
+                {currentTool === TimelineTool.SELECT && 'Select'}
+                {currentTool === TimelineTool.RAZOR && 'Razor'}
+                {currentTool === TimelineTool.HAND && 'Hand'}
+              </Button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem onClick={() => setCurrentTool(TimelineTool.SELECT)}>Select</MenuItem>
+                <MenuItem onClick={() => setCurrentTool(TimelineTool.RAZOR)}>Razor</MenuItem>
+                <MenuItem onClick={() => setCurrentTool(TimelineTool.HAND)}>Hand</MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
+        </div>
+
+        <div className={styles.toolbarGroup}>
+          <Label>Trim Mode</Label>
+          <Menu>
+            <MenuTrigger>
+              <Button
+                appearance="subtle"
+                className={styles.toolButton}
+                icon={<ChevronDown24Regular />}
+                iconPosition="after"
+              >
+                {trimMode === TrimMode.RIPPLE && 'Ripple'}
+                {trimMode === TrimMode.ROLL && 'Roll'}
+                {trimMode === TrimMode.SLIP && 'Slip'}
+                {trimMode === TrimMode.SLIDE && 'Slide'}
+              </Button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem onClick={() => setTrimMode(TrimMode.RIPPLE)}>Ripple Edit</MenuItem>
+                <MenuItem onClick={() => setTrimMode(TrimMode.ROLL)}>Roll Edit</MenuItem>
+                <MenuItem onClick={() => setTrimMode(TrimMode.SLIP)}>Slip Edit</MenuItem>
+                <MenuItem onClick={() => setTrimMode(TrimMode.SLIDE)}>Slide Edit</MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
+        </div>
+
+        <div className={styles.toolbarGroup}>
+          <Label>Display</Label>
+          <Menu>
+            <MenuTrigger>
+              <Button
+                appearance="subtle"
+                className={styles.toolButton}
+                icon={<ChevronDown24Regular />}
+                iconPosition="after"
+              >
+                {displayMode === TimelineDisplayMode.TIMECODE && 'Timecode'}
+                {displayMode === TimelineDisplayMode.FRAMES && 'Frames'}
+                {displayMode === TimelineDisplayMode.SECONDS && 'Seconds'}
+              </Button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem onClick={() => setDisplayMode(TimelineDisplayMode.TIMECODE)}>Timecode</MenuItem>
+                <MenuItem onClick={() => setDisplayMode(TimelineDisplayMode.FRAMES)}>Frames</MenuItem>
+                <MenuItem onClick={() => setDisplayMode(TimelineDisplayMode.SECONDS)}>Seconds</MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
         </div>
 
         <div className={styles.toolbarGroup}>
           <Label>Snapping</Label>
           <Switch checked={snapping} onChange={(_, data) => setSnapping(data.checked)} />
+        </div>
+
+        <div className={styles.toolbarGroup}>
+          <Label>Magnetic</Label>
+          <Switch checked={magneticTimeline} onChange={(_, data) => setMagneticTimeline(data.checked)} />
         </div>
 
         <div className={styles.toolbarGroup}>
@@ -483,24 +569,37 @@ export function TimelinePanel({
           <Slider
             className={styles.zoomSlider}
             min={10}
-            max={100}
+            max={200}
             value={zoom}
             onChange={(_, data) => setZoom(data.value)}
           />
           <Button
             appearance="subtle"
             icon={<Add24Regular />}
-            onClick={() => setZoom(Math.min(100, zoom + 10))}
+            onClick={() => setZoom(Math.min(200, zoom + 10))}
             aria-label="Zoom in"
           />
           <Text>{Math.round((zoom / 50) * 100)}%</Text>
+          <Tooltip content="Fit to window" relationship="label">
+            <Button
+              appearance="subtle"
+              icon={<ArrowFitRegular />}
+              onClick={handleFitToWindow}
+              aria-label="Fit to window"
+            />
+          </Tooltip>
         </div>
       </div>
 
       <div className={styles.timelineContainer} ref={timelineRef}>
-        <div className={styles.ruler} style={{ width: `${timelineWidth + 100}px` }}>
-          {renderRuler()}
-        </div>
+        <TimelineRuler
+          width={timelineWidth}
+          pixelsPerSecond={pixelsPerSecond}
+          maxTime={maxTime}
+          displayMode={displayMode}
+          frameRate={frameRate}
+          onTimeClick={handleTimelineClick}
+        />
 
         <div 
           className={styles.tracksContainer}
@@ -516,7 +615,12 @@ export function TimelinePanel({
               onDragOver={(e) => handleTrackDragOver(e, track.id)}
               onDragLeave={handleTrackDragLeave}
               onDrop={(e) => handleTrackDrop(e, track.id)}
-              onClick={handleTimelineClick}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left - 100;
+                const time = Math.max(0, x / pixelsPerSecond);
+                handleTimelineClick(time);
+              }}
             >
               <div className={styles.trackLabel}>
                 <Text className={styles.trackLabelText}>{track.label}</Text>
@@ -526,7 +630,10 @@ export function TimelinePanel({
                       appearance="subtle"
                       size="small"
                       icon={track.visible ? <Eye24Regular /> : <EyeOff24Regular />}
-                      onClick={() => onTrackToggleVisibility?.(track.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTrackToggleVisibility?.(track.id);
+                      }}
                       aria-label={track.visible ? 'Hide track' : 'Show track'}
                       style={{ minWidth: '20px', minHeight: '20px', padding: '2px' }}
                     />
@@ -536,7 +643,10 @@ export function TimelinePanel({
                       appearance="subtle"
                       size="small"
                       icon={track.locked ? <LockClosed24Regular /> : <LockOpen24Regular />}
-                      onClick={() => onTrackToggleLock?.(track.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTrackToggleLock?.(track.id);
+                      }}
                       aria-label={track.locked ? 'Unlock track' : 'Lock track'}
                       style={{ minWidth: '20px', minHeight: '20px', padding: '2px' }}
                     />
@@ -547,103 +657,41 @@ export function TimelinePanel({
                 {clips
                   .filter((clip) => clip.trackId === track.id)
                   .map((clip) => (
-                    <div
+                    <TimelineClip
                       key={clip.id}
-                      className={`${styles.clip} ${selectedClipId === clip.id ? styles.clipSelected : ''}`}
-                      style={{
-                        left: `${clip.startTime * pixelsPerSecond}px`,
-                        width: `${clip.duration * pixelsPerSecond}px`,
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onClipSelect?.(clip.id);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onClipSelect?.(clip.id);
-                        }
-                      }}
-                      onDragOver={(e) => handleClipDragOver(e, clip.id)}
-                      onDrop={(e) => handleClipDrop(e, clip.id)}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`${clip.label} clip`}
-                    >
-                      {/* Render thumbnails for video clips */}
-                      {clip.type === 'video' && clip.thumbnails && clip.thumbnails.length > 0 && (
-                        <div className={styles.clipThumbnails}>
-                          {clip.thumbnails.map((thumbnail, idx) => (
-                            <img
-                              key={idx}
-                              src={thumbnail.dataUrl}
-                              alt=""
-                              className={styles.clipThumbnail}
-                              style={{ flex: 1 }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                      
-                      {/* Render waveform for audio/video clips */}
-                      {(clip.type === 'audio' || (clip.type === 'video' && !clip.thumbnails)) && 
-                        clip.waveform && 
-                        clip.waveform.peaks.length > 0 && (
-                        <div className={styles.clipWaveform}>
-                          {clip.waveform.peaks.map((peak, idx) => (
-                            <div
-                              key={idx}
-                              className={styles.waveformBar}
-                              style={{ height: `${Math.max(2, peak * 100)}%` }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                      
-                      <span className={styles.clipLabel}>{clip.label}</span>
-                      
-                      {/* Effect indicator */}
-                      {clip.effects && clip.effects.length > 0 && (
-                        <div className={styles.effectIndicator} title={`${clip.effects.length} effect(s) applied`} />
-                      )}
-                      
-                      {/* Keyframe indicators */}
-                      {clip.keyframes && Object.values(clip.keyframes).some(kfs => kfs.length > 0) && (
-                        <>
-                          {Object.values(clip.keyframes).flatMap(kfs => kfs).map((keyframe, idx) => {
-                            const keyframeTime = keyframe.time + clip.startTime;
-                            const left = (keyframeTime - clip.startTime) * pixelsPerSecond;
-                            return (
-                              <div
-                                key={`kf-${idx}`}
-                                className={styles.keyframeIndicator}
-                                style={{ left: `${left}px` }}
-                                title={`Keyframe at ${keyframe.time.toFixed(2)}s`}
-                              />
-                            );
-                          })}
-                        </>
-                      )}
-                    </div>
+                      clip={clip as TimelineClipData}
+                      pixelsPerSecond={pixelsPerSecond}
+                      isSelected={selectedClipId === clip.id}
+                      onSelect={() => onClipSelect?.(clip.id)}
+                      onMove={handleClipMove}
+                      onTrim={handleClipTrim}
+                      snapping={snapping}
+                      frameRate={frameRate}
+                    />
                   ))}
               </div>
             </div>
           ))}
 
+          {/* Snap guides */}
+          <SnapGuides
+            activeSnapPoint={activeSnapPoint}
+            pixelsPerSecond={pixelsPerSecond}
+            trackLabelWidth={100}
+          />
+
           {/* Playhead */}
-          <div className={styles.playhead} style={{ left: `${currentTime * pixelsPerSecond + 100}px` }}>
-            <div 
-              className={styles.playheadHandle} 
-              onMouseDown={handlePlayheadDrag} 
-              role="slider" 
-              aria-label="Playhead" 
-              aria-valuenow={currentTime}
-              aria-valuemin={0}
-              aria-valuemax={maxTime}
-              tabIndex={0}
-            />
-          </div>
+          <PlayheadIndicator
+            currentTime={currentTime}
+            pixelsPerSecond={pixelsPerSecond}
+            maxTime={maxTime}
+            onTimeChange={(time) => onTimeChange?.(time)}
+            showTooltip={true}
+            timeTooltip={formatTime(currentTime)}
+            snapping={snapping}
+            frameRate={frameRate}
+            containerRef={timelineRef}
+          />
         </div>
       </div>
     </div>
