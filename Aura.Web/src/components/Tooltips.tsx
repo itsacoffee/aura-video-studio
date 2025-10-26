@@ -5,6 +5,7 @@ import { Link, tokens } from '@fluentui/react-components';
  * Each tooltip includes helpful text and links to documentation
  */
 
+// eslint-disable-next-line react-refresh/only-export-components -- Constant data closely tied to TooltipWithLink component
 export const TooltipContent = {
   // Brief Section
   topic: {
