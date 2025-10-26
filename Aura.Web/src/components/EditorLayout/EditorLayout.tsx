@@ -446,12 +446,18 @@ export function EditorLayout({
               onKeyDown={(e) => {
                 if (e.key === 'ArrowLeft') {
                   e.preventDefault();
-                  setHistoryWidth((prev) => Math.min(400, prev + 10));
-                  savePanelSize(STORAGE_KEYS.historyWidth, Math.min(400, historyWidth + 10));
+                  setHistoryWidth((prev) => {
+                    const newWidth = Math.min(400, prev + 10);
+                    savePanelSize(STORAGE_KEYS.historyWidth, newWidth);
+                    return newWidth;
+                  });
                 } else if (e.key === 'ArrowRight') {
                   e.preventDefault();
-                  setHistoryWidth((prev) => Math.max(280, prev - 10));
-                  savePanelSize(STORAGE_KEYS.historyWidth, Math.max(280, historyWidth - 10));
+                  setHistoryWidth((prev) => {
+                    const newWidth = Math.max(280, prev - 10);
+                    savePanelSize(STORAGE_KEYS.historyWidth, newWidth);
+                    return newWidth;
+                  });
                 }
               }}
             />
