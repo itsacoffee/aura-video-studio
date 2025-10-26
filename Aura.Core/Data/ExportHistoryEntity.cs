@@ -12,7 +12,13 @@ public class ExportHistoryEntity
 {
     [Key]
     [Column("id")]
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Id { get; set; } = string.Empty;
+
+    public ExportHistoryEntity()
+    {
+        Id = Guid.NewGuid().ToString();
+        CreatedAt = DateTime.UtcNow;
+    }
 
     [Required]
     [Column("input_file")]
@@ -39,7 +45,7 @@ public class ExportHistoryEntity
 
     [Required]
     [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
     [Column("started_at")]
     public DateTime? StartedAt { get; set; }

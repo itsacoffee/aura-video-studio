@@ -74,10 +74,11 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Configure database
+const string MigrationsAssembly = "Aura.Api";
 var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
 builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}", 
-        sqliteOptions => sqliteOptions.MigrationsAssembly("Aura.Api")));
+        sqliteOptions => sqliteOptions.MigrationsAssembly(MigrationsAssembly)));
 
 builder.Services.AddCors(options =>
 {
@@ -715,12 +716,23 @@ var app = builder.Build();
 
 // Apply database migrations
 Log.Information("Applying database migrations...");
-using (var scope = app.Services.CreateScope())
+try
 {
-    var db = scope.ServiceProvider.GetRequiredService<Aura.Core.Data.AuraDbContext>();
-    db.Database.Migrate();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<Aura.Core.Data.AuraDbContext>();
+        db.Database.Migrate();
+    }
+    Log.Information("Database migrations applied successfully");
 }
-Log.Information("Database migrations applied successfully");
+catch (Exception ex)
+{
+    Log.Error(ex, "Failed to apply database migrations. The application may not function correctly.");
+    Log.Warning("Database error details: {ErrorMessage}", ex.Message);
+    Log.Warning("Please check database permissions and ensure the application has write access to: {DbPath}", 
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db"));
+    // Continue startup - database features may be degraded but core functionality should work
+}
 
 Log.Information("=== Aura Video Studio API Starting ===");
 Log.Information("Initialization Phase 1: Service Registration Complete");
