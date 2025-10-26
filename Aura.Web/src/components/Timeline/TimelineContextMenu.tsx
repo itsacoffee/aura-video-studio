@@ -374,6 +374,7 @@ export function TimelineContextMenu({
 }
 
 // Hook for easy usage
+// eslint-disable-next-line react-refresh/only-export-components -- Hook for TimelineContextMenu component
 export function useTimelineContextMenu() {
   const [contextMenu, setContextMenu] = useState<{
     position: { x: number; y: number } | null;
