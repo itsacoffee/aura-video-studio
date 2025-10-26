@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo, useMemo } from 'react';
 import { makeStyles, tokens, Button, Slider, Text, Menu, MenuTrigger, MenuList, MenuItem, MenuPopover } from '@fluentui/react-components';
 import {
   Play24Regular,
@@ -95,7 +95,7 @@ interface VideoPreviewPanelProps {
   onStop?: () => void;
 }
 
-export function VideoPreviewPanel({
+export const VideoPreviewPanel = memo(function VideoPreviewPanel({
   videoUrl,
   currentTime = 0,
   effects = [],
@@ -113,6 +113,12 @@ export function VideoPreviewPanel({
   const [volume, setVolume] = useState(100);
   const [isMuted, setIsMuted] = useState(false);
   const [zoom, setZoom] = useState(100); // Zoom level percentage
+
+  // Memoize effects to prevent unnecessary re-renders
+  const memoizedEffects = useMemo(() => effects, [effects]);
+
+  // Memoize effect check to avoid recalculation
+  const hasEffects = useMemo(() => memoizedEffects.length > 0, [memoizedEffects]);
 
   // Apply effects to video frame
   useEffect(() => {
@@ -136,14 +142,14 @@ export function VideoPreviewPanel({
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       // Apply effects if any
-      if (effects.length > 0) {
+      if (hasEffects) {
         const sourceCanvas = document.createElement('canvas');
         sourceCanvas.width = canvas.width;
         sourceCanvas.height = canvas.height;
         const sourceCtx = sourceCanvas.getContext('2d');
         if (sourceCtx) {
           sourceCtx.drawImage(canvas, 0, 0);
-          const effectCanvas = applyEffectsToFrame(sourceCanvas, effects, localTime);
+          const effectCanvas = applyEffectsToFrame(sourceCanvas, memoizedEffects, localTime);
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(effectCanvas, 0, 0);
         }
@@ -154,10 +160,10 @@ export function VideoPreviewPanel({
       }
     };
 
-    if (isPlaying || effects.length > 0) {
+    if (isPlaying || hasEffects) {
       renderFrame();
     }
-  }, [isPlaying, effects, localTime]);
+  }, [isPlaying, hasEffects, memoizedEffects, localTime]);
 
   // Sync external current time with video
   useEffect(() => {
@@ -273,7 +279,7 @@ export function VideoPreviewPanel({
               onEnded={() => setIsPlaying(false)}
               style={{ 
                 transform: `scale(${zoom / 100})`,
-                display: effects.length > 0 ? 'none' : 'block',
+                display: hasEffects ? 'none' : 'block',
               }}
             >
               <track kind="captions" />
@@ -283,7 +289,7 @@ export function VideoPreviewPanel({
               className={styles.canvas}
               style={{ 
                 transform: `scale(${zoom / 100})`,
-                display: effects.length > 0 ? 'block' : 'none',
+                display: hasEffects ? 'block' : 'none',
               }}
             />
           </>
@@ -393,4 +399,4 @@ export function VideoPreviewPanel({
       </div>
     </div>
   );
-}
+});

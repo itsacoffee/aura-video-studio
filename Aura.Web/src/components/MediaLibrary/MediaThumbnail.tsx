@@ -90,6 +90,7 @@ interface MediaThumbnailProps {
   onDragEnd?: () => void;
   onRemove?: () => void;
   onRevealInFinder?: () => void;
+  onClick?: () => void;
 }
 
 const getMediaIcon = (type: 'video' | 'audio' | 'image') => {
@@ -119,6 +120,7 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
   onDragEnd,
   onRemove,
   onRevealInFinder,
+  onClick,
 }) => {
   const styles = useStyles();
 
@@ -129,6 +131,7 @@ export const MediaThumbnail: React.FC<MediaThumbnailProps> = ({
         draggable
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
+        onClick={onClick}
       >
         <MenuTrigger disableButtonEnhancement>
           <Button

@@ -1,8 +1,74 @@
-import { defineConfig } from 'vite'
+import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { visualizer } from 'rollup-plugin-visualizer'
 import viteCompression from 'vite-plugin-compression'
+
+/**
+ * Performance Budget Plugin
+ * Warns when bundle sizes exceed configured limits
+ */
+function performanceBudgetPlugin(): Plugin {
+  // Performance budgets in KB
+  const budgets = {
+    'react-vendor': 200,
+    'fluent-components': 250,
+    'fluent-icons': 150,
+    'ffmpeg-vendor': 500,
+    'audio-vendor': 100,
+    'vendor': 300,
+    'total': 1500, // Total bundle size budget
+  };
+
+  return {
+    name: 'performance-budget',
+    enforce: 'post',
+    writeBundle(options, bundle) {
+      const chunks: { [key: string]: number } = {};
+      let totalSize = 0;
+
+      // Calculate chunk sizes
+      Object.entries(bundle).forEach(([fileName, chunk]) => {
+        if (chunk.type === 'chunk' && 'code' in chunk) {
+          const size = chunk.code.length / 1024; // Convert to KB
+          totalSize += size;
+          
+          // Extract chunk name
+          const chunkName = fileName.replace(/^assets\//, '').replace(/-[a-f0-9]+\.js$/, '');
+          chunks[chunkName] = (chunks[chunkName] || 0) + size;
+        }
+      });
+
+      // Check budgets
+      console.log('\n📊 Performance Budget Report:\n');
+      let hasViolations = false;
+
+      Object.entries(chunks).forEach(([name, size]) => {
+        const budget = budgets[name];
+        if (budget && size > budget) {
+          console.warn(`⚠️  ${name}: ${size.toFixed(2)}KB exceeds budget of ${budget}KB`);
+          hasViolations = true;
+        } else if (budget) {
+          console.log(`✅ ${name}: ${size.toFixed(2)}KB (budget: ${budget}KB)`);
+        }
+      });
+
+      // Check total size
+      if (totalSize > budgets.total) {
+        console.warn(`⚠️  Total bundle size: ${totalSize.toFixed(2)}KB exceeds budget of ${budgets.total}KB`);
+        hasViolations = true;
+      } else {
+        console.log(`✅ Total bundle size: ${totalSize.toFixed(2)}KB (budget: ${budgets.total}KB)`);
+      }
+
+      if (hasViolations) {
+        console.warn('\n⚠️  Performance budget violations detected! Consider code splitting or removing unused dependencies.\n');
+      } else {
+        console.log('\n✅ All performance budgets met!\n');
+      }
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -29,6 +95,8 @@ export default defineConfig(({ mode }) => {
         ext: '.br',
         threshold: 1024,
       }),
+      // Performance budget plugin
+      performanceBudgetPlugin(),
     ],
     // Use relative base path for production to work when served from Aura.Api
     base: '/',
@@ -104,6 +172,11 @@ export default defineConfig(({ mode }) => {
             // Wavesurfer - audio visualization
             if (id.includes('wavesurfer')) {
               return 'audio-vendor';
+            }
+            // Virtual scrolling libraries
+            if (id.includes('node_modules/react-window') || 
+                id.includes('node_modules/react-virtuoso')) {
+              return 'virtual-vendor';
             }
             // All other node_modules
             if (id.includes('node_modules')) {
