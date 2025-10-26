@@ -102,7 +102,7 @@ This implementation adds comprehensive motion graphics and animation capabilitie
   - Template-specific parameters
 - **Live Preview**: See changes immediately
 
-### 10. Animation Engine (animationEngine.ts)
+### 10. Animation Engine Service (services/animationEngine.ts)
 - **Easing Functions**:
   - Linear, Ease In, Ease Out, Ease In-Out
   - Custom Bezier curves
@@ -137,10 +137,12 @@ src/components/MotionGraphics/
 ```
 src/services/
 └── animationEngine.ts       - Core animation logic
+    Location: src/services/animationEngine.ts
 ```
 
 ### Type Definitions
-- Extended `TimelineClip` interface with keyframes support
+- Extended `TimelineClip` interface in TimelinePanel.tsx with keyframes support
+- `AppliedEffect` interface in effects.ts already includes keyframes property
 - All components use TypeScript for type safety
 - Comprehensive interfaces for all data structures
 
@@ -271,7 +273,7 @@ import {
 1. animationEngine.ts (9,044 bytes)
 
 ### Tests Created: 1
-1. animationEngine.test.ts (8,746 bytes) - 25 passing tests
+1. src/services/__tests__/animationEngine.test.ts (8,746 bytes) - 25 passing tests
 
 ### Total Lines of Code: ~3,800 lines
 ### Total Files Modified/Created: 13
