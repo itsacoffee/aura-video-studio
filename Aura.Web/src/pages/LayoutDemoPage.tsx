@@ -131,10 +131,10 @@ export function LayoutDemoPage() {
           </Text>
           <div className={styles.menuBarDemo}>
             <TopMenuBar
-              onSaveProject={() => console.log('Save project')}
-              onImportMedia={() => console.log('Import media')}
-              onExportVideo={() => console.log('Export video')}
-              onShowKeyboardShortcuts={() => console.log('Show shortcuts')}
+              onSaveProject={() => {/* Demo handler */}}
+              onImportMedia={() => {/* Demo handler */}}
+              onExportVideo={() => {/* Demo handler */}}
+              onShowKeyboardShortcuts={() => {/* Demo handler */}}
             />
           </div>
         </section>
