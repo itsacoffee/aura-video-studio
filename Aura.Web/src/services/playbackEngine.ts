@@ -215,7 +215,7 @@ export class PlaybackEngine {
     // Monitor video playback quality
     if ('getVideoPlaybackQuality' in this.videoElement) {
       setInterval(() => {
-        const quality = this.videoElement.getVideoPlaybackQuality() as unknown as VideoQualityMetrics;
+        const quality = this.videoElement.getVideoPlaybackQuality() as VideoQualityMetrics;
         if (quality) {
           this.metrics.droppedFrames = quality.droppedVideoFrames || 0;
           this.metrics.totalFrames = quality.totalVideoFrames || 0;
