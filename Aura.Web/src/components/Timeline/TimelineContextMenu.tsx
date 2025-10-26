@@ -39,18 +39,20 @@ const useStyles = makeStyles({
   },
 });
 
+interface ClipData {
+  id: string;
+  type: 'video' | 'audio' | 'image' | 'text';
+  duration: number;
+  muted?: boolean;
+  hidden?: boolean;
+}
+
 interface TimelineContextMenuProps {
   targetElement: HTMLElement | null;
   position: { x: number; y: number } | null;
-  clipData?: {
-    id: string;
-    type: 'video' | 'audio' | 'image' | 'text';
-    duration: number;
-    muted?: boolean;
-    hidden?: boolean;
-  };
+  clipData?: ClipData;
   onClose: () => void;
-  onAction: (action: string, data?: any) => void;
+  onAction: (action: string, data?: unknown) => void;
 }
 
 export function TimelineContextMenu({
@@ -72,7 +74,7 @@ export function TimelineContextMenu({
   }, [position, targetElement]);
 
   const handleAction = useCallback(
-    (action: string, data?: any) => {
+    (action: string, data?: unknown) => {
       onAction(action, data);
       setIsOpen(false);
       onClose();
@@ -377,13 +379,13 @@ export function useTimelineContextMenu() {
   const [contextMenu, setContextMenu] = useState<{
     position: { x: number; y: number } | null;
     targetElement: HTMLElement | null;
-    clipData?: any;
+    clipData?: ClipData;
   }>({
     position: null,
     targetElement: null,
   });
 
-  const showContextMenu = useCallback((event: React.MouseEvent, clipData?: any) => {
+  const showContextMenu = useCallback((event: React.MouseEvent, clipData?: ClipData) => {
     event.preventDefault();
     event.stopPropagation();
     setContextMenu({

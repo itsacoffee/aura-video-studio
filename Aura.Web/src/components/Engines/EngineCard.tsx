@@ -136,7 +136,7 @@ export function EngineCard({ engine }: EngineCardProps) {
   const [status, setStatus] = useState<EngineStatus | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [diagnosticsData, setDiagnosticsData] = useState<any>(null);
+  const [diagnosticsData, setDiagnosticsData] = useState<Record<string, unknown> | null>(null);
   const [isLoadingDiagnostics, setIsLoadingDiagnostics] = useState(false);
   const [showCustomUrlDialog, setShowCustomUrlDialog] = useState(false);
   const [customUrl, setCustomUrl] = useState('');

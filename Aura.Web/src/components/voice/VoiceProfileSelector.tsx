@@ -50,8 +50,8 @@ const useStyles = makeStyles({
   },
   selectedCard: {
     backgroundColor: tokens.colorBrandBackground2,
-    borderColor: tokens.colorBrandForeground1 as any,
-    borderWidth: '2px' as any,
+    borderColor: tokens.colorBrandForeground1 as string,
+    borderWidth: '2px' as string,
   },
   voiceHeader: {
     display: 'flex',

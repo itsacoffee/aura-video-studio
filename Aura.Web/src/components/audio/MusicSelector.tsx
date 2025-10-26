@@ -9,6 +9,7 @@ import {
   tokens,
   Badge,
   Spinner,
+  OptionOnSelectData,
 } from '@fluentui/react-components';
 import { Search24Regular, MusicNote224Regular, Play24Regular } from '@fluentui/react-icons';
 import React, { useState, useEffect } from 'react';
@@ -109,15 +110,15 @@ export const MusicSelector: React.FC<MusicSelectorProps> = ({ onSelect, selected
     }
   };
 
-  const handleMoodChange = (_: any, data: any) => {
+  const handleMoodChange = (_: unknown, data: OptionOnSelectData) => {
     setSearchParams({ ...searchParams, mood: data.value as MusicMood });
   };
 
-  const handleGenreChange = (_: any, data: any) => {
+  const handleGenreChange = (_: unknown, data: OptionOnSelectData) => {
     setSearchParams({ ...searchParams, genre: data.value as MusicGenre });
   };
 
-  const handleEnergyChange = (_: any, data: any) => {
+  const handleEnergyChange = (_: unknown, data: OptionOnSelectData) => {
     setSearchParams({ ...searchParams, energy: data.value as EnergyLevel });
   };
 

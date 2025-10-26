@@ -98,6 +98,17 @@ interface ValidationResults {
   results: ValidationResult[];
 }
 
+interface CustomProfile {
+  name: string;
+  settings: {
+    offlineMode: boolean;
+    uiScale: number;
+    compactMode: boolean;
+  };
+  providerPaths: Record<string, string>;
+  timestamp: string;
+}
+
 export function SettingsPage() {
   const styles = useStyles();
   const [activeTab, setActiveTab] = useState('general');
@@ -146,7 +157,7 @@ export function SettingsPage() {
 
   // Profile templates state
   const [customProfileName, setCustomProfileName] = useState('');
-  const [savedProfiles, setSavedProfiles] = useState<any[]>([]);
+  const [savedProfiles, setSavedProfiles] = useState<CustomProfile[]>([]);
 
   // Portable mode state (read-only - portable is always enabled)
   const [portableRootPath, setPortableRootPath] = useState('');
@@ -509,7 +520,7 @@ export function SettingsPage() {
 
     switch (template) {
       case 'free-only':
-        setSettings((prev: any) => ({
+        setSettings((prev: Record<string, unknown>) => ({
           ...prev,
           preferredScriptProvider: 'Template',
           preferredTtsProvider: 'WindowsTTS',
@@ -518,7 +529,7 @@ export function SettingsPage() {
         setOfflineMode(true);
         break;
       case 'balanced-mix':
-        setSettings((prev: any) => ({
+        setSettings((prev: Record<string, unknown>) => ({
           ...prev,
           preferredScriptProvider: 'GPT4',
           preferredTtsProvider: 'ElevenLabs',
@@ -527,7 +538,7 @@ export function SettingsPage() {
         setOfflineMode(false);
         break;
       case 'pro-max':
-        setSettings((prev: any) => ({
+        setSettings((prev: Record<string, unknown>) => ({
           ...prev,
           preferredScriptProvider: 'GPT4',
           preferredTtsProvider: 'ElevenLabs',
@@ -577,7 +588,7 @@ export function SettingsPage() {
     }
   };
 
-  const loadCustomProfile = (profile: any) => {
+  const loadCustomProfile = (profile: CustomProfile) => {
     if (profile.settings) {
       setOfflineMode(profile.settings.offlineMode ?? false);
       setUiScale(profile.settings.uiScale ?? 100);
@@ -1684,7 +1695,7 @@ export function SettingsPage() {
                       gap: tokens.spacingVerticalS,
                     }}
                   >
-                    {savedProfiles.map((profile: any, index: number) => (
+                    {savedProfiles.map((profile: CustomProfile, index: number) => (
                       <div
                         key={index}
                         style={{

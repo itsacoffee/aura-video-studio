@@ -22,7 +22,7 @@ import {
 
 interface TransitionPanelProps {
   jobId: string;
-  onApply?: (type: string, data: any) => void;
+  onApply?: (type: string, data: unknown) => void;
 }
 
 const useStyles = makeStyles({

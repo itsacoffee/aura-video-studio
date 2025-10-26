@@ -75,8 +75,7 @@ export function LazyLoad({
 /**
  * Helper function to create a lazy-loaded component
  */
-// eslint-disable-next-line react-refresh/only-export-components -- Utility function for LazyLoad component
-export function createLazyComponent<T = any>(
+export function createLazyComponent<T = Record<string, unknown>>(
   factory: () => Promise<{ default: ComponentType<T> }>
 ) {
   return lazy(factory);
@@ -85,8 +84,7 @@ export function createLazyComponent<T = any>(
 /**
  * Preload a lazy component to improve perceived performance
  */
-// eslint-disable-next-line react-refresh/only-export-components -- Utility function for LazyLoad component
-export function preloadLazyComponent(factory: () => Promise<any>) {
+export function preloadLazyComponent(factory: () => Promise<{ default: ComponentType<unknown> }>) {
   // Trigger the import without rendering
   factory().catch((err) => {
     console.error('Failed to preload component:', err);

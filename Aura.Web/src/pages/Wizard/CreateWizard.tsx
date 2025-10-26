@@ -660,7 +660,7 @@ export function CreateWizard() {
               >
                 <Dropdown
                   value={settings.brief.aspect}
-                  onOptionSelect={(_, data) => updateBrief({ aspect: data.optionValue as any })}
+                  onOptionSelect={(_, data) => updateBrief({ aspect: data.optionValue as Brief['aspect'] })}
                 >
                   <Option value="Widescreen16x9">16:9 Widescreen (YouTube, Desktop)</Option>
                   <Option value="Vertical9x16">9:16 Vertical (TikTok, Stories)</Option>
@@ -754,7 +754,7 @@ export function CreateWizard() {
                 >
                   <Dropdown
                     value={settings.planSpec.pacing}
-                    onOptionSelect={(_, data) => updatePlanSpec({ pacing: data.optionText as any })}
+                    onOptionSelect={(_, data) => updatePlanSpec({ pacing: data.optionText as PlanSpec['pacing'] })}
                   >
                     <Option>Chill</Option>
                     <Option>Conversational</Option>
@@ -779,7 +779,7 @@ export function CreateWizard() {
                   <Dropdown
                     value={settings.planSpec.density}
                     onOptionSelect={(_, data) =>
-                      updatePlanSpec({ density: data.optionText as any })
+                      updatePlanSpec({ density: data.optionText as PlanSpec['density'] })
                     }
                   >
                     <Option>Sparse</Option>

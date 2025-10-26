@@ -54,7 +54,7 @@ const useStyles = makeStyles({
 
 interface CompositionPanelProps {
   sceneIndex?: number;
-  onApplyEnhancement?: (enhancement: any) => void;
+  onApplyEnhancement?: (enhancement: unknown) => void;
 }
 
 export const CompositionPanel: React.FC<CompositionPanelProps> = ({

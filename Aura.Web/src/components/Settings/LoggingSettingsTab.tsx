@@ -89,7 +89,7 @@ export function LoggingSettingsTab() {
     });
   }, []);
 
-  const handleConfigChange = (key: string, value: any) => {
+  const handleConfigChange = (key: string, value: unknown) => {
     const newConfig = { ...config, [key]: value };
     setConfig(newConfig);
     setHasChanges(true);

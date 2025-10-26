@@ -19,7 +19,7 @@ import { CutPoint } from '../../../services/editingIntelligenceService';
 
 interface CutPointPanelProps {
   cutPoints: CutPoint[];
-  onApply?: (type: string, data: any) => void;
+  onApply?: (type: string, data: unknown) => void;
 }
 
 const useStyles = makeStyles({

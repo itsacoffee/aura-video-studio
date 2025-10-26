@@ -53,7 +53,7 @@ const useStyles = makeStyles({
 
 interface ColorGradingPanelProps {
   sceneIndex?: number;
-  onApplyEnhancement?: (enhancement: any) => void;
+  onApplyEnhancement?: (enhancement: unknown) => void;
 }
 
 export const ColorGradingPanel: React.FC<ColorGradingPanelProps> = ({

@@ -64,7 +64,7 @@ const useStyles = makeStyles({
 
 interface QualityAssessmentPanelProps {
   sceneIndex?: number;
-  onApplyEnhancement?: (enhancement: any) => void;
+  onApplyEnhancement?: (enhancement: unknown) => void;
 }
 
 export const QualityAssessmentPanel: React.FC<QualityAssessmentPanelProps> = ({

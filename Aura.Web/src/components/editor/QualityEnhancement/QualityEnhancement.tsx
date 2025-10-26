@@ -52,7 +52,7 @@ const useStyles = makeStyles({
 
 interface QualityEnhancementProps {
   sceneIndex?: number;
-  onApplyEnhancement?: (enhancement: any) => void;
+  onApplyEnhancement?: (enhancement: unknown) => void;
 }
 
 type TabValue = 'colorGrading' | 'composition' | 'coherence' | 'quality';

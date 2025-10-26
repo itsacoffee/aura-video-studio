@@ -175,7 +175,7 @@ export const OptimizationResultsView = ({
   };
 
   const getSeverityBadge = (severity: string) => {
-    const config: Record<string, { color: any; label: string }> = {
+    const config: Record<string, { color: string; label: string }> = {
       low: { color: 'informative', label: 'Low Risk' },
       medium: { color: 'warning', label: 'Medium Risk' },
       high: { color: 'important', label: 'High Risk' },

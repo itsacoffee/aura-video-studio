@@ -259,7 +259,7 @@ export function AnalyticsDashboard() {
       <TabList
         className={styles.tabs}
         selectedValue={selectedTab}
-        onTabSelect={(_, data) => setSelectedTab(data.value as any)}
+        onTabSelect={(_, data) => setSelectedTab(data.value as string)}
       >
         <Tab value="overview" icon={<ChartMultiple24Regular />}>
           Overview

@@ -88,7 +88,7 @@ export const PacingOptimizationPanel = ({
     }
   }, []);
 
-  const handleTabChange = (_: unknown, data: any) => {
+  const handleTabChange = (_: unknown, data: { value: string }) => {
     setSelectedTab(data.value as string);
   };
 

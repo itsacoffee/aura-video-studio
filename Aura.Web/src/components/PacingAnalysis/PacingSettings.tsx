@@ -156,7 +156,7 @@ export const PacingSettings: React.FC<PacingSettingsProps> = ({
             <Dropdown
               value={localSettings.optimizationLevel}
               selectedOptions={[localSettings.optimizationLevel]}
-              onOptionSelect={(_, data) => handleOptimizationLevelChange(data.optionValue as any)}
+              onOptionSelect={(_, data) => handleOptimizationLevelChange(data.optionValue as PacingSettingsType['optimizationLevel'])}
               disabled={!localSettings.enabled}
             >
               <Option value="Conservative">Conservative</Option>
