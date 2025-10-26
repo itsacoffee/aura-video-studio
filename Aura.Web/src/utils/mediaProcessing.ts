@@ -81,6 +81,7 @@ export async function generateVideoThumbnails(
 
     // Using URL.createObjectURL with a File object is safe - it creates a blob URL
     // for the file content, not reinterpreting DOM text as HTML
+    // codeql[js/xss-through-dom] - False positive: URL.createObjectURL() with File object is safe
     video.src = URL.createObjectURL(file);
   });
 }
@@ -159,6 +160,7 @@ export async function getMediaDuration(file: File): Promise<number> {
 
     // Using URL.createObjectURL with a File object is safe - it creates a blob URL
     // for the file content, not reinterpreting DOM text as HTML
+    // codeql[js/xss-through-dom] - False positive: URL.createObjectURL() with File object is safe
     element.src = URL.createObjectURL(file);
   });
 }
