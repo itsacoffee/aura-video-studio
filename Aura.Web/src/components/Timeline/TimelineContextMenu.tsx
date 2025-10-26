@@ -51,7 +51,6 @@ interface TimelineContextMenuProps {
   targetElement: HTMLElement | null;
   position: { x: number; y: number } | null;
   clipData?: ClipData;
-  clipData?: ClipData;
   onClose: () => void;
   onAction: (action: string, data?: unknown) => void;
 }
