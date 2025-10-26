@@ -693,6 +693,13 @@ builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.EngagementO
 builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.QualityControlService>();
 builder.Services.AddSingleton<Aura.Core.Services.EditingIntelligence.EditingIntelligenceOrchestrator>();
 
+// Register AI Editing services
+builder.Services.AddSingleton<Aura.Core.Services.AIEditing.SceneDetectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.AIEditing.HighlightDetectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.AIEditing.BeatDetectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.AIEditing.AutoFramingService>();
+builder.Services.AddSingleton<Aura.Core.Services.AIEditing.SpeechRecognitionService>();
+
 // Register Export services
 builder.Services.AddSingleton<Aura.Core.Services.FFmpeg.IFFmpegService, Aura.Core.Services.FFmpeg.FFmpegService>();
 builder.Services.AddSingleton<Aura.Core.Services.Export.IFormatConversionService, Aura.Core.Services.Export.FormatConversionService>();

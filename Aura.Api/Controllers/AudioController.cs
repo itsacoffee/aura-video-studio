@@ -522,3 +522,6 @@ public class AudioController : ControllerBase
         };
     }
 }
+
+// Request DTOs for Audio Controller
+public record DetectBeatsRequest(string FilePath, int? MinBPM, int? MaxBPM);
