@@ -155,7 +155,15 @@ export function OverlayPanel() {
               <div
                 key={overlay.id}
                 className={`${styles.overlayItem} ${overlay.id === selectedOverlayId ? styles.overlayItemSelected : ''}`}
+                role="button"
+                tabIndex={0}
                 onClick={() => handleSelectOverlay(overlay.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSelectOverlay(overlay.id);
+                  }
+                }}
               >
                 <div className={styles.overlayInfo}>
                   <Text weight="semibold">{overlay.text}</Text>

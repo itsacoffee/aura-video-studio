@@ -357,12 +357,14 @@ export function TimelinePanel({
       const splitPoint = time - clipToSplit.startTime;
 
       // Create two new clips
+      // @ts-expect-error - Variables declared for future implementation
       const _firstClip: TimelineClip = {
         ...clipToSplit,
         id: `${clipToSplit.id}-1`,
         duration: splitPoint,
       };
 
+      // @ts-expect-error - Variables declared for future implementation
       const _secondClip: TimelineClip = {
         ...clipToSplit,
         id: `${clipToSplit.id}-2`,
