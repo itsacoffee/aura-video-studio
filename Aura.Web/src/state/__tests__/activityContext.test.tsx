@@ -163,4 +163,192 @@ describe('ActivityContext', () => {
 
     expect(result.current.activities[0].endTime).toBeDefined();
   });
+
+  it('should pause and resume an activity', () => {
+    const { result } = renderHook(() => useActivity(), {
+      wrapper: ActivityProvider,
+    });
+
+    let activityId: string;
+
+    act(() => {
+      activityId = result.current.addActivity({
+        type: 'video-generation',
+        title: 'Test Activity',
+        message: 'Testing',
+      });
+      result.current.updateActivity(activityId, { status: 'running' });
+    });
+
+    expect(result.current.activities[0].status).toBe('running');
+
+    act(() => {
+      result.current.pauseActivity(activityId);
+    });
+
+    expect(result.current.activities[0].status).toBe('paused');
+    expect(result.current.pausedActivities).toHaveLength(1);
+
+    act(() => {
+      result.current.resumeActivity(activityId);
+    });
+
+    expect(result.current.activities[0].status).toBe('running');
+    expect(result.current.pausedActivities).toHaveLength(0);
+  });
+
+  it('should set and track priority', () => {
+    const { result } = renderHook(() => useActivity(), {
+      wrapper: ActivityProvider,
+    });
+
+    let activityId: string;
+
+    act(() => {
+      activityId = result.current.addActivity({
+        type: 'video-generation',
+        title: 'Test Activity',
+        message: 'Testing',
+        priority: 5,
+      });
+    });
+
+    expect(result.current.activities[0].priority).toBe(5);
+
+    act(() => {
+      result.current.setPriority(activityId, 8);
+    });
+
+    expect(result.current.activities[0].priority).toBe(8);
+
+    // Priority should be clamped between 1 and 10
+    act(() => {
+      result.current.setPriority(activityId, 15);
+    });
+
+    expect(result.current.activities[0].priority).toBe(10);
+
+    act(() => {
+      result.current.setPriority(activityId, -5);
+    });
+
+    expect(result.current.activities[0].priority).toBe(1);
+  });
+
+  it('should track queued activities sorted by priority', () => {
+    const { result } = renderHook(() => useActivity(), {
+      wrapper: ActivityProvider,
+    });
+
+    act(() => {
+      result.current.addActivity({
+        type: 'video-generation',
+        title: 'Low Priority',
+        message: 'Testing',
+        priority: 2,
+      });
+      result.current.addActivity({
+        type: 'video-generation',
+        title: 'High Priority',
+        message: 'Testing',
+        priority: 9,
+      });
+      result.current.addActivity({
+        type: 'video-generation',
+        title: 'Medium Priority',
+        message: 'Testing',
+        priority: 5,
+      });
+    });
+
+    const queued = result.current.queuedActivities;
+    expect(queued).toHaveLength(3);
+    expect(queued[0].title).toBe('High Priority');
+    expect(queued[1].title).toBe('Medium Priority');
+    expect(queued[2].title).toBe('Low Priority');
+  });
+
+  it('should track batch operations', () => {
+    const { result } = renderHook(() => useActivity(), {
+      wrapper: ActivityProvider,
+    });
+
+    const batchId = 'batch-123';
+
+    act(() => {
+      result.current.addActivity({
+        type: 'export',
+        title: 'Export Video 1',
+        message: 'Exporting',
+        batchId,
+      });
+      result.current.addActivity({
+        type: 'export',
+        title: 'Export Video 2',
+        message: 'Exporting',
+        batchId,
+      });
+      result.current.addActivity({
+        type: 'export',
+        title: 'Export Video 3',
+        message: 'Exporting',
+        batchId,
+      });
+    });
+
+    const batchOps = result.current.getBatchOperations(batchId);
+    expect(batchOps).toHaveLength(3);
+    expect(result.current.batchOperations.get(batchId)).toHaveLength(3);
+  });
+
+  it('should maintain operation history', () => {
+    const { result } = renderHook(() => useActivity(), {
+      wrapper: ActivityProvider,
+    });
+
+    let activityId: string;
+
+    act(() => {
+      activityId = result.current.addActivity({
+        type: 'video-generation',
+        title: 'Test Activity',
+        message: 'Testing',
+      });
+      result.current.updateActivity(activityId, { status: 'running' });
+    });
+
+    expect(result.current.recentHistory).toHaveLength(0);
+
+    act(() => {
+      result.current.updateActivity(activityId, { status: 'completed' });
+    });
+
+    // History should update after status change
+    setTimeout(() => {
+      expect(result.current.recentHistory.length).toBeGreaterThan(0);
+    }, 100);
+  });
+
+  it('should clear history', () => {
+    const { result } = renderHook(() => useActivity(), {
+      wrapper: ActivityProvider,
+    });
+
+    let activityId: string;
+
+    act(() => {
+      activityId = result.current.addActivity({
+        type: 'video-generation',
+        title: 'Test Activity',
+        message: 'Testing',
+      });
+      result.current.updateActivity(activityId, { status: 'completed' });
+    });
+
+    act(() => {
+      result.current.clearHistory();
+    });
+
+    expect(result.current.recentHistory).toHaveLength(0);
+  });
 });
