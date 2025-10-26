@@ -9,6 +9,7 @@ export enum EffectCategory {
   Transform = 'Transform',
   Transitions = 'Transitions',
   Stylize = 'Stylize',
+  Compositing = 'Compositing',
 }
 
 // Effect parameter types
@@ -357,6 +358,114 @@ export const EFFECT_DEFINITIONS: EffectDefinition[] = [
       },
     ],
   },
+  // Compositing
+  {
+    type: 'chroma-key',
+    name: 'Chroma Key',
+    category: EffectCategory.Compositing,
+    description: 'Remove green/blue screen backgrounds with advanced keying',
+    parameters: [
+      {
+        name: 'keyColor',
+        label: 'Key Color',
+        type: 'color',
+        defaultValue: '#00ff00', // Green
+      },
+      {
+        name: 'similarity',
+        label: 'Similarity',
+        type: 'number',
+        min: 0,
+        max: 100,
+        step: 0.1,
+        defaultValue: 40,
+      },
+      {
+        name: 'smoothness',
+        label: 'Smoothness',
+        type: 'number',
+        min: 0,
+        max: 100,
+        step: 0.1,
+        defaultValue: 8,
+      },
+      {
+        name: 'spillSuppression',
+        label: 'Spill Suppression',
+        type: 'number',
+        min: 0,
+        max: 100,
+        step: 1,
+        defaultValue: 15,
+      },
+      {
+        name: 'edgeThickness',
+        label: 'Edge Thickness',
+        type: 'number',
+        min: -10,
+        max: 10,
+        step: 0.1,
+        defaultValue: 0,
+      },
+      {
+        name: 'edgeFeather',
+        label: 'Edge Feather',
+        type: 'number',
+        min: 0,
+        max: 50,
+        step: 0.1,
+        defaultValue: 1,
+      },
+      {
+        name: 'choke',
+        label: 'Choke',
+        type: 'number',
+        min: -10,
+        max: 10,
+        step: 0.1,
+        defaultValue: 0,
+      },
+      {
+        name: 'matteCleanup',
+        label: 'Matte Cleanup',
+        type: 'number',
+        min: 0,
+        max: 100,
+        step: 1,
+        defaultValue: 0,
+      },
+    ],
+  },
+  {
+    type: 'blend-mode',
+    name: 'Blend Mode',
+    category: EffectCategory.Compositing,
+    description: 'Blend layer with different modes',
+    parameters: [
+      {
+        name: 'mode',
+        label: 'Blend Mode',
+        type: 'select',
+        defaultValue: 'normal',
+        options: [
+          { label: 'Normal', value: 'normal' },
+          { label: 'Multiply', value: 'multiply' },
+          { label: 'Screen', value: 'screen' },
+          { label: 'Overlay', value: 'overlay' },
+          { label: 'Add', value: 'add' },
+        ],
+      },
+      {
+        name: 'opacity',
+        label: 'Opacity',
+        type: 'number',
+        min: 0,
+        max: 100,
+        step: 1,
+        defaultValue: 100,
+      },
+    ],
+  },
 ];
 
 // Built-in effect presets
@@ -413,6 +522,112 @@ export const EFFECT_PRESETS: EffectPreset[] = [
     effects: [
       { effectType: 'contrast', parameters: { value: 40 } },
       { effectType: 'saturation', parameters: { value: 25 } },
+    ],
+  },
+  // Green Screen Presets
+  {
+    id: 'green-screen-studio',
+    name: 'Studio Green Screen',
+    description: 'Optimized for well-lit studio conditions',
+    category: 'Green Screen',
+    effects: [
+      {
+        effectType: 'chroma-key',
+        parameters: {
+          keyColor: '#00ff00',
+          similarity: 40,
+          smoothness: 8,
+          spillSuppression: 15,
+          edgeThickness: 0,
+          edgeFeather: 1,
+          choke: 0,
+          matteCleanup: 10,
+        },
+      },
+    ],
+  },
+  {
+    id: 'green-screen-natural',
+    name: 'Natural Light Green Screen',
+    description: 'For outdoor or natural lighting conditions',
+    category: 'Green Screen',
+    effects: [
+      {
+        effectType: 'chroma-key',
+        parameters: {
+          keyColor: '#00ff00',
+          similarity: 50,
+          smoothness: 12,
+          spillSuppression: 20,
+          edgeThickness: 0.5,
+          edgeFeather: 2,
+          choke: 0.5,
+          matteCleanup: 15,
+        },
+      },
+    ],
+  },
+  {
+    id: 'green-screen-low-light',
+    name: 'Low Light Green Screen',
+    description: 'For darker or poorly lit green screens',
+    category: 'Green Screen',
+    effects: [
+      {
+        effectType: 'chroma-key',
+        parameters: {
+          keyColor: '#00ff00',
+          similarity: 60,
+          smoothness: 15,
+          spillSuppression: 25,
+          edgeThickness: 1,
+          edgeFeather: 3,
+          choke: 1,
+          matteCleanup: 20,
+        },
+      },
+    ],
+  },
+  {
+    id: 'green-screen-uneven',
+    name: 'Uneven Lighting Green Screen',
+    description: 'For inconsistently lit backgrounds',
+    category: 'Green Screen',
+    effects: [
+      {
+        effectType: 'chroma-key',
+        parameters: {
+          keyColor: '#00ff00',
+          similarity: 55,
+          smoothness: 18,
+          spillSuppression: 30,
+          edgeThickness: 0,
+          edgeFeather: 2.5,
+          choke: 0,
+          matteCleanup: 25,
+        },
+      },
+    ],
+  },
+  {
+    id: 'blue-screen-studio',
+    name: 'Studio Blue Screen',
+    description: 'Optimized for blue screen keying',
+    category: 'Green Screen',
+    effects: [
+      {
+        effectType: 'chroma-key',
+        parameters: {
+          keyColor: '#0000ff',
+          similarity: 40,
+          smoothness: 8,
+          spillSuppression: 15,
+          edgeThickness: 0,
+          edgeFeather: 1,
+          choke: 0,
+          matteCleanup: 10,
+        },
+      },
     ],
   },
 ];

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { AppliedEffect } from '../types/effects';
 
 export interface TimelineClip {
   id: string;
@@ -7,6 +8,8 @@ export interface TimelineClip {
   sourceOut: number;
   timelineStart: number;
   trackId: string;
+  effects?: AppliedEffect[];
+  layerIndex?: number; // For multi-layer compositing
 }
 
 export interface Track {
@@ -20,6 +23,7 @@ export interface Track {
   pan?: number; // -100 to 100
   locked?: boolean;
   height?: number; // pixels
+  compositeMode?: 'normal' | 'multiply' | 'screen' | 'overlay' | 'add';
 }
 
 export interface ChapterMarker {

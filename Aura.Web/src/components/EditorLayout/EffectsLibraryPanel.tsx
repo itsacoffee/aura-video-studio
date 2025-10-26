@@ -149,6 +149,7 @@ export function EffectsLibraryPanel({ onEffectDragStart, onPresetApply }: Effect
     [EffectCategory.Transform]: [],
     [EffectCategory.Transitions]: [],
     [EffectCategory.Stylize]: [],
+    [EffectCategory.Compositing]: [],
   };
 
   filteredEffects.forEach((effect) => {

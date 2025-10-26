@@ -3,6 +3,12 @@
  */
 
 import { AppliedEffect, Keyframe } from '../types/effects';
+import {
+  applyChromaKey as chromaKeyProcessor,
+  applyEdgeRefinement,
+  applyEdgeFeather,
+  applyMatteCleanup,
+} from '../services/chromaKeyService';
 
 /**
  * Interpolates between keyframes at a given time
@@ -160,6 +166,12 @@ export function applyEffectsToFrame(
         break;
       case 'grain':
         applyGrain(ctx, outputCanvas, effect, currentTime);
+        break;
+      case 'chroma-key':
+        applyChromaKey(ctx, effect, currentTime);
+        break;
+      case 'blend-mode':
+        applyBlendMode(ctx, effect, currentTime);
         break;
     }
   }
@@ -449,3 +461,64 @@ function applyGrain(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, ef
   
   ctx.putImageData(imageData, 0, 0);
 }
+
+function applyChromaKey(ctx: CanvasRenderingContext2D, effect: AppliedEffect, currentTime: number) {
+  const keyColor = getEffectiveParameterValue(effect, 'keyColor', currentTime) as string;
+  const similarity = getEffectiveParameterValue(effect, 'similarity', currentTime) as number;
+  const smoothness = getEffectiveParameterValue(effect, 'smoothness', currentTime) as number;
+  const spillSuppression = getEffectiveParameterValue(effect, 'spillSuppression', currentTime) as number;
+  const edgeThickness = getEffectiveParameterValue(effect, 'edgeThickness', currentTime) as number;
+  const edgeFeather = getEffectiveParameterValue(effect, 'edgeFeather', currentTime) as number;
+  const choke = getEffectiveParameterValue(effect, 'choke', currentTime) as number;
+  const matteCleanup = getEffectiveParameterValue(effect, 'matteCleanup', currentTime) as number;
+
+  // Get image data
+  let imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  // Apply chroma key
+  imageData = chromaKeyProcessor(imageData, keyColor, similarity, smoothness, spillSuppression);
+
+  // Apply edge refinement
+  if (edgeThickness !== 0) {
+    imageData = applyEdgeRefinement(imageData, edgeThickness);
+  }
+
+  // Apply choke
+  if (choke !== 0) {
+    imageData = applyEdgeRefinement(imageData, choke);
+  }
+
+  // Apply edge feather
+  if (edgeFeather > 0) {
+    imageData = applyEdgeFeather(imageData, edgeFeather);
+  }
+
+  // Apply matte cleanup
+  if (matteCleanup > 0) {
+    imageData = applyMatteCleanup(imageData, matteCleanup);
+  }
+
+  // Put processed image back
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function applyBlendMode(ctx: CanvasRenderingContext2D, effect: AppliedEffect, currentTime: number) {
+  const mode = getEffectiveParameterValue(effect, 'mode', currentTime) as string;
+  const opacity = getEffectiveParameterValue(effect, 'opacity', currentTime) as number;
+
+  // Map mode names to canvas composite operations
+  const compositeOperations: Record<string, string> = {
+    normal: 'source-over',
+    multiply: 'multiply',
+    screen: 'screen',
+    overlay: 'overlay',
+    add: 'lighter',
+  };
+
+  if (compositeOperations[mode]) {
+    ctx.globalCompositeOperation = compositeOperations[mode] as GlobalCompositeOperation;
+  }
+
+  ctx.globalAlpha = opacity / 100;
+}
+
