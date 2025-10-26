@@ -175,6 +175,16 @@ const useStyles = makeStyles({
     border: `1px solid ${tokens.colorNeutralForegroundOnBrand}`,
     zIndex: 2,
   },
+  keyframeIndicator: {
+    position: 'absolute',
+    bottom: '2px',
+    width: '6px',
+    height: '6px',
+    transform: 'translateX(-3px) rotate(45deg)',
+    backgroundColor: tokens.colorPaletteYellowBackground2,
+    border: `1px solid ${tokens.colorPaletteYellowForeground2}`,
+    zIndex: 2,
+  },
   playhead: {
     position: 'absolute',
     top: 0,
@@ -215,6 +225,8 @@ interface TimelineClip {
   thumbnails?: Array<{ dataUrl: string; timestamp: number }>;
   waveform?: { peaks: number[]; duration: number };
   preview?: string;
+  // Animation keyframes
+  keyframes?: Record<string, Array<{ time: number; value: number | string | boolean }>>;
 }
 
 interface TimelineTrack {
@@ -594,6 +606,24 @@ export function TimelinePanel({
                       {/* Effect indicator */}
                       {clip.effects && clip.effects.length > 0 && (
                         <div className={styles.effectIndicator} title={`${clip.effects.length} effect(s) applied`} />
+                      )}
+                      
+                      {/* Keyframe indicators */}
+                      {clip.keyframes && Object.values(clip.keyframes).some(kfs => kfs.length > 0) && (
+                        <>
+                          {Object.values(clip.keyframes).flatMap(kfs => kfs).map((keyframe, idx) => {
+                            const keyframeTime = keyframe.time + clip.startTime;
+                            const left = (keyframeTime - clip.startTime) * pixelsPerSecond;
+                            return (
+                              <div
+                                key={`kf-${idx}`}
+                                className={styles.keyframeIndicator}
+                                style={{ left: `${left}px` }}
+                                title={`Keyframe at ${keyframe.time.toFixed(2)}s`}
+                              />
+                            );
+                          })}
+                        </>
                       )}
                     </div>
                   ))}
