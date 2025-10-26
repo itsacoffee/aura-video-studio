@@ -94,15 +94,16 @@ export interface ExportDialogProps {
 
 export interface ExportOptions {
   preset: string;
-  resolution: { width: number; height: number };
+  resolution: { width: number; height: number }; // Preset resolution or custom if advanced settings used
   fps: number;
-  videoBitrate: number;
+  videoBitrate: number; // Preset bitrate or custom if advanced settings used
   audioBitrate: number;
   quality: 'draft' | 'good' | 'high' | 'maximum';
   exportRange: 'entire' | 'selection';
   selectionStart?: number;
   selectionEnd?: number;
   outputPath: string;
+  codec?: string; // Preset codec or custom if advanced settings used
 }
 
 const PRESETS = {
@@ -209,6 +210,20 @@ export function ExportDialog({
   const [selectedPreset, setSelectedPreset] = useState('YouTube 1080p');
   const [outputPath, setOutputPath] = useState('');
   const [exportRange, setExportRange] = useState<'entire' | 'selection'>('entire');
+  const [advancedSettings, setAdvancedSettings] = useState({
+    enabled: false,
+    codec: 'H.264',
+    customBitrate: 0,
+    customWidth: 0,
+    customHeight: 0,
+  });
+
+  // Helper to determine if advanced settings should be considered active
+  // Note: Codec selection is always available and doesn't require "enabling" advanced mode
+  // Advanced mode only tracks custom bitrate/resolution overrides
+  const shouldEnableAdvanced = (settings: typeof advancedSettings) => {
+    return settings.customBitrate > 0 || settings.customWidth > 0 || settings.customHeight > 0;
+  };
 
   const presetInfo = PRESETS[selectedPreset as keyof typeof PRESETS];
 
@@ -235,34 +250,41 @@ export function ExportDialog({
     return `${minutes}m ${seconds}s`;
   }, [timelineDuration, hardwareAccelerationAvailable]);
 
-  const handleExport = () => {
+  const buildExportOptions = (): ExportOptions => {
     const [width, height] = presetInfo.resolution.split('x').map(Number);
-    const options: ExportOptions = {
+    
+    // Determine resolution (custom or preset)
+    const resolution = advancedSettings.customWidth > 0 && advancedSettings.customHeight > 0
+      ? { width: advancedSettings.customWidth, height: advancedSettings.customHeight }
+      : { width, height };
+    
+    // Determine bitrate (custom or preset)
+    const videoBitrate = advancedSettings.customBitrate > 0
+      ? advancedSettings.customBitrate
+      : parseInt(presetInfo.bitrate) * 1000;
+    
+    // Always use the codec from advanced settings dropdown (defaults to H.264 same as most presets)
+    const codec = advancedSettings.codec;
+    
+    return {
       preset: selectedPreset,
-      resolution: { width, height },
+      resolution,
       fps: 30,
-      videoBitrate: parseInt(presetInfo.bitrate) * 1000,
+      videoBitrate,
       audioBitrate: 192,
       quality: 'high',
       exportRange,
       outputPath: outputPath || `export_${Date.now()}.mp4`,
+      codec,
     };
-    onExport(options);
+  };
+
+  const handleExport = () => {
+    onExport(buildExportOptions());
   };
 
   const handleAddToQueue = () => {
-    const [width, height] = presetInfo.resolution.split('x').map(Number);
-    const options: ExportOptions = {
-      preset: selectedPreset,
-      resolution: { width, height },
-      fps: 30,
-      videoBitrate: parseInt(presetInfo.bitrate) * 1000,
-      audioBitrate: 192,
-      quality: 'high',
-      exportRange,
-      outputPath: outputPath || `export_${Date.now()}.mp4`,
-    };
-    onAddToQueue(options);
+    onAddToQueue(buildExportOptions());
   };
 
   // Group presets by platform
@@ -367,6 +389,61 @@ export function ExportDialog({
                         <Option value="maximum">Maximum (Slow)</Option>
                       </Dropdown>
                     </Field>
+                    
+                    <Field label="Video Codec">
+                      <Dropdown
+                        value={advancedSettings.codec}
+                        onOptionSelect={(_, data) => 
+                          setAdvancedSettings({ ...advancedSettings, codec: data.optionValue as string, enabled: true })
+                        }
+                      >
+                        <Option value="H.264">H.264 (Widely Compatible)</Option>
+                        <Option value="H.265">H.265 (Better Compression)</Option>
+                        <Option value="VP9">VP9 (Web Optimized)</Option>
+                      </Dropdown>
+                    </Field>
+                    
+                    <div className={styles.row}>
+                      <Field label="Custom Bitrate (Kbps)" className={styles.field}>
+                        <Input
+                          type="number"
+                          value={advancedSettings.customBitrate > 0 ? advancedSettings.customBitrate.toString() : ''}
+                          onChange={(_, data) => {
+                            const value = parseInt(data.value) || 0;
+                            const newSettings = { ...advancedSettings, customBitrate: value };
+                            setAdvancedSettings({ ...newSettings, enabled: shouldEnableAdvanced(newSettings) });
+                          }}
+                          placeholder="Auto"
+                        />
+                      </Field>
+                    </div>
+                    
+                    <div className={styles.row}>
+                      <Field label="Custom Width" className={styles.field}>
+                        <Input
+                          type="number"
+                          value={advancedSettings.customWidth > 0 ? advancedSettings.customWidth.toString() : ''}
+                          onChange={(_, data) => {
+                            const value = parseInt(data.value) || 0;
+                            const newSettings = { ...advancedSettings, customWidth: value };
+                            setAdvancedSettings({ ...newSettings, enabled: shouldEnableAdvanced(newSettings) });
+                          }}
+                          placeholder="Auto"
+                        />
+                      </Field>
+                      <Field label="Custom Height" className={styles.field}>
+                        <Input
+                          type="number"
+                          value={advancedSettings.customHeight > 0 ? advancedSettings.customHeight.toString() : ''}
+                          onChange={(_, data) => {
+                            const value = parseInt(data.value) || 0;
+                            const newSettings = { ...advancedSettings, customHeight: value };
+                            setAdvancedSettings({ ...newSettings, enabled: shouldEnableAdvanced(newSettings) });
+                          }}
+                          placeholder="Auto"
+                        />
+                      </Field>
+                    </div>
                   </div>
                 </AccordionPanel>
               </AccordionItem>

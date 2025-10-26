@@ -38,6 +38,7 @@ import { QualityDashboard } from './components/dashboard';
 import { ContentPlanningDashboard } from './components/contentPlanning/ContentPlanningDashboard';
 import { VideoEditorPage } from './pages/VideoEditorPage';
 import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
+import { ExportHistoryPage } from './pages/Export/ExportHistoryPage';
 import { hasCompletedFirstRun, migrateLegacyFirstRunStatus } from './services/firstRunService';
 import { ActivityProvider } from './state/activityContext';
 import { GlobalStatusFooter } from './components/GlobalStatusFooter';
@@ -381,6 +382,7 @@ function App() {
                     <Route path="/quality" element={<QualityDashboard />} />
                     <Route path="/publish" element={<PublishPage />} />
                     <Route path="/projects" element={<ProjectsPage />} />
+                    <Route path="/export-history" element={<ExportHistoryPage />} />
                     <Route path="/assets" element={<AssetLibrary />} />
                     <Route path="/jobs" element={<RecentJobsPage />} />
                     <Route path="/downloads" element={<DownloadsPage />} />

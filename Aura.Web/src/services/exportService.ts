@@ -39,6 +39,24 @@ export interface ExportJob {
   estimatedTimeRemaining?: string;
 }
 
+export interface ExportHistoryItem {
+  id: string;
+  inputFile: string;
+  outputFile: string;
+  presetName: string;
+  status: string;
+  progress: number;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  errorMessage?: string;
+  fileSize?: number;
+  durationSeconds?: number;
+  platform?: string;
+  resolution?: string;
+  codec?: string;
+}
+
 export interface ExportResponse {
   jobId: string;
   message: string;
@@ -77,6 +95,21 @@ export async function getActiveExports(): Promise<ExportJob[]> {
  */
 export async function getExportPresets(): Promise<ExportPreset[]> {
   return get<ExportPreset[]>('/api/export/presets');
+}
+
+/**
+ * Get export history
+ */
+export async function getExportHistory(
+  status?: string,
+  limit?: number
+): Promise<ExportHistoryItem[]> {
+  const params = new URLSearchParams();
+  if (status) params.append('status', status);
+  if (limit) params.append('limit', limit.toString());
+  
+  const query = params.toString();
+  return get<ExportHistoryItem[]>(`/api/export/history${query ? `?${query}` : ''}`);
 }
 
 /**

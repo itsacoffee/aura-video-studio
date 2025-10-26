@@ -192,6 +192,27 @@ public class ExportController : ControllerBase
             return StatusCode(500, new { error = "Failed to get presets", details = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Get export history
+    /// </summary>
+    /// <param name="status">Optional status filter</param>
+    /// <param name="limit">Maximum number of records to return</param>
+    /// <returns>List of export history records</returns>
+    [HttpGet("history")]
+    public async Task<IActionResult> GetExportHistory([FromQuery] string? status = null, [FromQuery] int limit = 100)
+    {
+        try
+        {
+            var history = await _exportService.GetExportHistoryAsync(status, limit);
+            return Ok(history);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get export history");
+            return StatusCode(500, new { error = "Failed to get export history", details = ex.Message });
+        }
+    }
 }
 
 /// <summary>
