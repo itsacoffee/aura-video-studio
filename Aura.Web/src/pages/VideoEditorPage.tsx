@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { EditorLayout } from '../components/EditorLayout/EditorLayout';
-import { VideoPreviewPanel } from '../components/EditorLayout/VideoPreviewPanel';
+import { VideoPreviewPanel, VideoPreviewPanelHandle } from '../components/EditorLayout/VideoPreviewPanel';
 import { TimelinePanel } from '../components/EditorLayout/TimelinePanel';
 import { PropertiesPanel } from '../components/EditorLayout/PropertiesPanel';
 import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
@@ -167,13 +167,7 @@ export function VideoEditorPage() {
 
   
   // Ref to track video preview controls
-  const videoPreviewRef = useRef<{
-    play: () => void;
-    pause: () => void;
-    stepForward: () => void;
-    stepBackward: () => void;
-    setPlaybackRate: (rate: number) => void;
-  } | null>(null);
+  const videoPreviewRef = useRef<VideoPreviewPanelHandle | null>(null);
 
   // Ref to media library panel for triggering file picker
   const mediaLibraryRef = useRef<{ openFilePicker: () => void } | null>(null);
@@ -314,6 +308,16 @@ export function VideoEditorPage() {
         handler: () => {
           setInPoint(null);
           setOutPoint(null);
+        },
+      },
+      // Play around current position
+      {
+        id: 'play-around',
+        keys: '/',
+        description: 'Play around current position (2s before/after)',
+        context: 'video-editor',
+        handler: () => {
+          videoPreviewRef.current?.playAround(2, 2);
         },
       },
       // Tool switching (numeric keys)
@@ -688,6 +692,7 @@ export function VideoEditorPage() {
         history={<HistoryPanel commandHistory={commandHistory} />}
         preview={
           <VideoPreviewPanel
+            ref={videoPreviewRef}
             currentTime={currentTime}
             effects={selectedClip?.effects}
             onTimeUpdate={setCurrentTime}

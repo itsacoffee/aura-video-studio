@@ -1,19 +1,12 @@
-import { useState, useRef, useEffect, memo, useMemo } from 'react';
-import { makeStyles, tokens, Button, Slider, Text, Menu, MenuTrigger, MenuList, MenuItem, MenuPopover } from '@fluentui/react-components';
-import {
-  Play24Regular,
-  Pause24Regular,
-  Stop24Regular,
-  Previous24Regular,
-  Next24Regular,
-  SpeakerMute24Regular,
-  Speaker224Regular,
-  ZoomIn24Regular,
-  ZoomOut24Regular,
-  ZoomFit24Regular,
-} from '@fluentui/react-icons';
+import { useState, useRef, useEffect, memo, useMemo, useImperativeHandle, forwardRef } from 'react';
+import { makeStyles, tokens, Text } from '@fluentui/react-components';
 import { AppliedEffect } from '../../types/effects';
 import { applyEffectsToFrame } from '../../utils/effectsEngine';
+import { PlaybackEngine, PlaybackState, PlaybackMetrics } from '../../services/playbackEngine';
+import { AudioSyncService } from '../../services/audioSyncService';
+import { PlaybackControls } from '../VideoPreview/PlaybackControls';
+import { TransportBar } from '../VideoPreview/TransportBar';
+import type { PlaybackSpeed, PlaybackQuality } from '../../services/playbackEngine';
 
 const useStyles = makeStyles({
   container: {
@@ -48,41 +41,6 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     fontSize: tokens.fontSizeBase500,
   },
-  controls: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
-    padding: tokens.spacingVerticalM,
-    backgroundColor: tokens.colorNeutralBackground2,
-    borderTop: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  playbackControls: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
-  },
-  timeDisplay: {
-    minWidth: '100px',
-    fontSize: tokens.fontSizeBase300,
-    fontFamily: 'monospace',
-  },
-  seekBar: {
-    flex: 1,
-  },
-  volumeControl: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
-    minWidth: '120px',
-  },
-  volumeSlider: {
-    width: '80px',
-  },
-  zoomControls: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalXS,
-  },
 });
 
 interface VideoPreviewPanelProps {
@@ -95,30 +53,149 @@ interface VideoPreviewPanelProps {
   onStop?: () => void;
 }
 
-export const VideoPreviewPanel = memo(function VideoPreviewPanel({
+export interface VideoPreviewPanelHandle {
+  play: () => void;
+  pause: () => void;
+  stepForward: () => void;
+  stepBackward: () => void;
+  setPlaybackRate: (rate: number) => void;
+  playAround: (secondsBefore?: number, secondsAfter?: number) => void;
+}
+
+const VideoPreviewPanelInner = forwardRef<VideoPreviewPanelHandle, VideoPreviewPanelProps>(function VideoPreviewPanel({
   videoUrl,
   currentTime = 0,
   effects = [],
   onTimeUpdate,
   onPlay,
   onPause,
-  onStop,
-}: VideoPreviewPanelProps) {
+}: VideoPreviewPanelProps, ref) {
   const styles = useStyles();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [localTime, setLocalTime] = useState(0);
-  const [volume, setVolume] = useState(100);
-  const [isMuted, setIsMuted] = useState(false);
-  const [zoom, setZoom] = useState(100); // Zoom level percentage
+  const playbackEngineRef = useRef<PlaybackEngine | null>(null);
+  const audioSyncServiceRef = useRef<AudioSyncService | null>(null);
+  
+  // State from playback engine
+  const [playbackState, setPlaybackState] = useState<PlaybackState>({
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    playbackSpeed: 1.0,
+    quality: 'full',
+    volume: 1.0,
+    isMuted: false,
+    isLooping: false,
+    inPoint: null,
+    outPoint: null,
+  });
+  
+  const [metrics, setMetrics] = useState<PlaybackMetrics>({
+    droppedFrames: 0,
+    totalFrames: 0,
+    currentFPS: 0,
+    targetFPS: 30,
+    avSyncOffset: 0,
+    bufferHealth: 100,
+    decodedFrames: 0,
+    memoryUsage: 0,
+  });
 
   // Memoize effects to prevent unnecessary re-renders
   const memoizedEffects = useMemo(() => effects, [effects]);
-
-  // Memoize effect check to avoid recalculation
   const hasEffects = useMemo(() => memoizedEffects.length > 0, [memoizedEffects]);
+
+  // Expose imperative methods via ref
+  useImperativeHandle(ref, () => ({
+    play: () => {
+      playbackEngineRef.current?.play();
+    },
+    pause: () => {
+      playbackEngineRef.current?.pause();
+    },
+    stepForward: () => {
+      playbackEngineRef.current?.stepForward();
+    },
+    stepBackward: () => {
+      playbackEngineRef.current?.stepBackward();
+    },
+    setPlaybackRate: (rate: number) => {
+      // Map continuous rate to discrete PlaybackSpeed values
+      // Uses midpoints between speeds for better user experience
+      // e.g., 0.25-0.375 -> 0.25, 0.375-0.75 -> 0.5, etc.
+      let speed: PlaybackSpeed = 1.0;
+      if (rate <= 0.375) speed = 0.25;        // Below midpoint of 0.25 and 0.5
+      else if (rate <= 0.75) speed = 0.5;     // Below midpoint of 0.5 and 1.0
+      else if (rate <= 1.5) speed = 1.0;      // Below midpoint of 1.0 and 2.0
+      else if (rate <= 3.0) speed = 2.0;      // Below midpoint of 2.0 and 4.0
+      else speed = 4.0;                       // Above 3.0
+      
+      playbackEngineRef.current?.setPlaybackSpeed(speed);
+    },
+    playAround: (secondsBefore = 2, secondsAfter = 2) => {
+      playbackEngineRef.current?.playAround(secondsBefore, secondsAfter);
+    },
+  }), []);
+
+  // Initialize playback engine
+  useEffect(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    // Create playback engine
+    const engine = new PlaybackEngine({
+      videoElement: videoRef.current,
+      canvasElement: canvasRef.current,
+      frameRate: 30,
+      enableHardwareAcceleration: true,
+      defaultQuality: 'full',
+      onStateChange: (state) => {
+        setPlaybackState(state);
+        onTimeUpdate?.(state.currentTime);
+      },
+      onMetricsUpdate: (newMetrics) => {
+        setMetrics(newMetrics);
+      },
+      onError: (error) => {
+        console.error('Playback error:', error);
+      },
+    });
+    
+    playbackEngineRef.current = engine;
+    
+    // Create audio sync service
+    const audioSync = new AudioSyncService({
+      videoElement: videoRef.current,
+      targetFrameRate: 30,
+      maxSyncOffsetMs: 33, // ~1 frame at 30fps
+      onSyncIssue: (offset) => {
+        console.warn('A/V sync issue detected:', offset, 'ms');
+      },
+    });
+    
+    audioSyncServiceRef.current = audioSync;
+    audioSync.startMonitoring();
+    
+    return () => {
+      engine.destroy();
+      audioSync.destroy();
+      playbackEngineRef.current = null;
+      audioSyncServiceRef.current = null;
+    };
+  }, [onTimeUpdate]);
+  
+  // Load video source
+  useEffect(() => {
+    if (videoUrl && playbackEngineRef.current) {
+      playbackEngineRef.current.loadVideo(videoUrl);
+    }
+  }, [videoUrl]);
+  
+  // Sync external current time with video
+  useEffect(() => {
+    if (playbackEngineRef.current && currentTime !== playbackState.currentTime) {
+      playbackEngineRef.current.seek(currentTime);
+    }
+  }, [currentTime, playbackState.currentTime]);
 
   // Apply effects to video frame
   useEffect(() => {
@@ -149,120 +226,68 @@ export const VideoPreviewPanel = memo(function VideoPreviewPanel({
         const sourceCtx = sourceCanvas.getContext('2d');
         if (sourceCtx) {
           sourceCtx.drawImage(canvas, 0, 0);
-          const effectCanvas = applyEffectsToFrame(sourceCanvas, memoizedEffects, localTime);
+          const effectCanvas = applyEffectsToFrame(sourceCanvas, memoizedEffects, playbackState.currentTime);
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(effectCanvas, 0, 0);
         }
       }
 
-      if (isPlaying) {
+      if (playbackState.isPlaying) {
         requestAnimationFrame(renderFrame);
       }
     };
 
-    if (isPlaying || hasEffects) {
+    if (playbackState.isPlaying || hasEffects) {
       renderFrame();
     }
-  }, [isPlaying, hasEffects, memoizedEffects, localTime]);
+  }, [playbackState.isPlaying, playbackState.currentTime, hasEffects, memoizedEffects]);
 
-  // Sync external current time with video
-  useEffect(() => {
-    if (videoRef.current && currentTime !== localTime) {
-      videoRef.current.currentTime = currentTime;
-      setLocalTime(currentTime);
-    }
-  }, [currentTime, localTime]);
-
-  const handlePlayPause = () => {
-    if (!videoRef.current) return;
-
-    if (isPlaying) {
-      videoRef.current.pause();
-      setIsPlaying(false);
-      onPause?.();
-    } else {
-      videoRef.current.play();
-      setIsPlaying(true);
-      onPlay?.();
-    }
+  // Playback control handlers
+  const handlePlay = () => {
+    playbackEngineRef.current?.play();
+    onPlay?.();
   };
 
-  const handleStop = () => {
-    if (!videoRef.current) return;
-    videoRef.current.pause();
-    videoRef.current.currentTime = 0;
-    setIsPlaying(false);
-    setLocalTime(0);
-    onStop?.();
-    onTimeUpdate?.(0);
+  const handlePause = () => {
+    playbackEngineRef.current?.pause();
+    onPause?.();
   };
 
-  const handleTimeUpdate = () => {
-    if (!videoRef.current) return;
-    const time = videoRef.current.currentTime;
-    setLocalTime(time);
+  const handleStepBackward = () => {
+    playbackEngineRef.current?.stepBackward();
+  };
+
+  const handleStepForward = () => {
+    playbackEngineRef.current?.stepForward();
+  };
+
+  const handleSpeedChange = (speed: PlaybackSpeed) => {
+    playbackEngineRef.current?.setPlaybackSpeed(speed);
+  };
+
+  const handleQualityChange = (quality: PlaybackQuality) => {
+    playbackEngineRef.current?.setQuality(quality);
+  };
+
+  const handleToggleLoop = () => {
+    playbackEngineRef.current?.setLoop(!playbackState.isLooping);
+  };
+
+  const handleSeek = (time: number) => {
+    playbackEngineRef.current?.seek(time);
     onTimeUpdate?.(time);
   };
 
-  const handleLoadedMetadata = () => {
-    if (!videoRef.current) return;
-    setDuration(videoRef.current.duration);
+  const handleSetInPoint = () => {
+    playbackEngineRef.current?.setInPoint(playbackState.currentTime);
   };
 
-  const handleSeek = (_: unknown, data: { value: number }) => {
-    if (!videoRef.current) return;
-    const time = data.value;
-    videoRef.current.currentTime = time;
-    setLocalTime(time);
-    onTimeUpdate?.(time);
+  const handleSetOutPoint = () => {
+    playbackEngineRef.current?.setOutPoint(playbackState.currentTime);
   };
 
-  const handleFrameStep = (forward: boolean) => {
-    if (!videoRef.current) return;
-    // Assuming 30fps, one frame is ~0.033 seconds
-    const frameTime = 1 / 30;
-    const newTime = forward ? localTime + frameTime : localTime - frameTime;
-    const clampedTime = Math.max(0, Math.min(duration, newTime));
-    videoRef.current.currentTime = clampedTime;
-    setLocalTime(clampedTime);
-    onTimeUpdate?.(clampedTime);
-  };
-
-  const handleVolumeChange = (_: unknown, data: { value: number }) => {
-    if (!videoRef.current) return;
-    const vol = data.value;
-    setVolume(vol);
-    videoRef.current.volume = vol / 100;
-    if (vol === 0) {
-      setIsMuted(true);
-    } else if (isMuted) {
-      setIsMuted(false);
-    }
-  };
-
-  const toggleMute = () => {
-    if (!videoRef.current) return;
-    const newMuted = !isMuted;
-    setIsMuted(newMuted);
-    videoRef.current.muted = newMuted;
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleZoomIn = () => {
-    setZoom((prev) => Math.min(200, prev + 25));
-  };
-
-  const handleZoomOut = () => {
-    setZoom((prev) => Math.max(50, prev - 25));
-  };
-
-  const handleZoomFit = () => {
-    setZoom(100);
+  const handleClearInOutPoints = () => {
+    playbackEngineRef.current?.clearInOutPoints();
   };
 
   return (
@@ -274,11 +299,7 @@ export const VideoPreviewPanel = memo(function VideoPreviewPanel({
               ref={videoRef}
               className={styles.video}
               src={videoUrl}
-              onTimeUpdate={handleTimeUpdate}
-              onLoadedMetadata={handleLoadedMetadata}
-              onEnded={() => setIsPlaying(false)}
               style={{ 
-                transform: `scale(${zoom / 100})`,
                 display: hasEffects ? 'none' : 'block',
               }}
             >
@@ -288,7 +309,6 @@ export const VideoPreviewPanel = memo(function VideoPreviewPanel({
               ref={canvasRef}
               className={styles.canvas}
               style={{ 
-                transform: `scale(${zoom / 100})`,
                 display: hasEffects ? 'block' : 'none',
               }}
             />
@@ -298,105 +318,41 @@ export const VideoPreviewPanel = memo(function VideoPreviewPanel({
         )}
       </div>
 
-      <div className={styles.controls}>
-        <div className={styles.playbackControls}>
-          <Button
-            appearance="subtle"
-            icon={<Previous24Regular />}
-            onClick={() => handleFrameStep(false)}
-            disabled={!videoUrl}
-            aria-label="Previous frame"
-          />
-          {isPlaying ? (
-            <Button
-              appearance="primary"
-              icon={<Pause24Regular />}
-              onClick={handlePlayPause}
-              disabled={!videoUrl}
-              aria-label="Pause"
-            />
-          ) : (
-            <Button
-              appearance="primary"
-              icon={<Play24Regular />}
-              onClick={handlePlayPause}
-              disabled={!videoUrl}
-              aria-label="Play"
-            />
-          )}
-          <Button
-            appearance="subtle"
-            icon={<Stop24Regular />}
-            onClick={handleStop}
-            disabled={!videoUrl}
-            aria-label="Stop"
-          />
-          <Button
-            appearance="subtle"
-            icon={<Next24Regular />}
-            onClick={() => handleFrameStep(true)}
-            disabled={!videoUrl}
-            aria-label="Next frame"
-          />
+      {/* Transport Bar */}
+      <TransportBar
+        currentTime={playbackState.currentTime}
+        duration={playbackState.duration}
+        inPoint={playbackState.inPoint}
+        outPoint={playbackState.outPoint}
+        onSeek={handleSeek}
+        onSetInPoint={handleSetInPoint}
+        onSetOutPoint={handleSetOutPoint}
+        onClearInOutPoints={handleClearInOutPoints}
+        disabled={!videoUrl}
+      />
 
-          <Text className={styles.timeDisplay}>
-            {formatTime(localTime)} / {formatTime(duration)}
-          </Text>
-
-          <div className={styles.seekBar}>
-            <Slider
-              min={0}
-              max={duration || 100}
-              value={localTime}
-              onChange={handleSeek}
-              disabled={!videoUrl}
-            />
-          </div>
-
-          <div className={styles.volumeControl}>
-            <Button
-              appearance="subtle"
-              icon={isMuted ? <SpeakerMute24Regular /> : <Speaker224Regular />}
-              onClick={toggleMute}
-              aria-label={isMuted ? 'Unmute' : 'Mute'}
-            />
-            <Slider
-              className={styles.volumeSlider}
-              min={0}
-              max={100}
-              value={isMuted ? 0 : volume}
-              onChange={handleVolumeChange}
-            />
-          </div>
-
-          <div className={styles.zoomControls}>
-            <Menu>
-              <MenuTrigger disableButtonEnhancement>
-                <Button
-                  appearance="subtle"
-                  icon={<ZoomFit24Regular />}
-                  aria-label="Zoom controls"
-                >
-                  {zoom}%
-                </Button>
-              </MenuTrigger>
-              <MenuPopover>
-                <MenuList>
-                  <MenuItem icon={<ZoomIn24Regular />} onClick={handleZoomIn}>
-                    Zoom In (125%)
-                  </MenuItem>
-                  <MenuItem icon={<ZoomOut24Regular />} onClick={handleZoomOut}>
-                    Zoom Out (75%)
-                  </MenuItem>
-                  <MenuItem icon={<ZoomFit24Regular />} onClick={handleZoomFit}>
-                    Fit to Window (100%)
-                  </MenuItem>
-                </MenuList>
-              </MenuPopover>
-            </Menu>
-          </div>
-        </div>
-      </div>
+      {/* Playback Controls */}
+      <PlaybackControls
+        isPlaying={playbackState.isPlaying}
+        playbackSpeed={playbackState.playbackSpeed}
+        quality={playbackState.quality}
+        isLooping={playbackState.isLooping}
+        hasInOutPoints={playbackState.inPoint !== null && playbackState.outPoint !== null}
+        droppedFrames={metrics.droppedFrames}
+        currentFPS={metrics.currentFPS}
+        targetFPS={metrics.targetFPS}
+        onPlay={handlePlay}
+        onPause={handlePause}
+        onStepBackward={handleStepBackward}
+        onStepForward={handleStepForward}
+        onSpeedChange={handleSpeedChange}
+        onQualityChange={handleQualityChange}
+        onToggleLoop={handleToggleLoop}
+        disabled={!videoUrl}
+      />
     </div>
   );
 });
+
+// Export memoized component with ref forwarding
+export const VideoPreviewPanel = memo(VideoPreviewPanelInner);
