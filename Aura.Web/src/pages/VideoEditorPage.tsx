@@ -6,6 +6,7 @@ import { TimelinePanel } from '../components/EditorLayout/TimelinePanel';
 import { PropertiesPanel } from '../components/EditorLayout/PropertiesPanel';
 import { MediaLibraryPanel } from '../components/EditorLayout/MediaLibraryPanel';
 import { EffectsLibraryPanel } from '../components/EditorLayout/EffectsLibraryPanel';
+import { HistoryPanel } from '../components/EditorLayout/HistoryPanel';
 import { AppliedEffect, EffectPreset } from '../types/effects';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 import { useProjectState } from '../hooks/useProjectState';
@@ -483,6 +484,7 @@ export function VideoEditorPage() {
     <EditorLayout
       mediaLibrary={<MediaLibraryPanel ref={mediaLibraryRef} />}
       effects={<EffectsLibraryPanel onPresetApply={handleApplyPreset} />}
+      history={<HistoryPanel commandHistory={commandHistory} />}
       preview={
         <VideoPreviewPanel
           currentTime={currentTime}
