@@ -2,10 +2,13 @@ name: Orchestrator Smoke Tests
 
 on:
   push:
-    branches: [ main, develop, copilot/harden-startup-orchestration ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 env:
   DOTNET_VERSION: '8.0.x'
@@ -230,26 +233,34 @@ jobs:
     - name: Check Initialization Order
       run: |
         echo "Checking /api/diagnostics/initialization-order endpoint..."
-        RESPONSE=$(curl -s http://127.0.0.1:5005/api/diagnostics/initialization-order 2>&1 || echo "{}")
-        echo "Response: $RESPONSE"
+        RESPONSE=$(curl -s -w "\n%{http_code}" http://127.0.0.1:5005/api/diagnostics/initialization-order 2>&1 || echo "{}\n000")
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
         
-        # Just check that we got a valid response (endpoint may not exist yet)
-        if echo "$RESPONSE" | grep -q "error\|Error"; then
-          echo "⚠ Initialization order endpoint not available (optional)"
-        else
+        echo "HTTP Status: $HTTP_CODE"
+        echo "Response: $BODY"
+        
+        # Just check that we got a 2xx response (endpoint may not exist yet)
+        if [[ "$HTTP_CODE" =~ ^2 ]]; then
           echo "✓ Initialization order endpoint accessible"
+        else
+          echo "⚠ Initialization order endpoint not available (optional)"
         fi
       
     - name: Verify Dependency Detection
       run: |
         echo "Checking dependency detection..."
-        RESPONSE=$(curl -s http://127.0.0.1:5005/api/dependencies/rescan -X POST)
-        echo "Rescan Response: $RESPONSE"
+        RESPONSE=$(curl -s -w "\n%{http_code}" http://127.0.0.1:5005/api/dependencies/rescan -X POST)
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
         
-        if echo "$RESPONSE" | grep -q "success"; then
-          echo "✓ Dependency rescan successful"
+        echo "HTTP Status: $HTTP_CODE"
+        echo "Rescan Response: $BODY"
+        
+        if [[ "$HTTP_CODE" =~ ^2 ]]; then
+          echo "✓ Dependency rescan endpoint accessible (HTTP $HTTP_CODE)"
         else
-          echo "⚠ Dependency rescan returned unexpected response (may be expected in CI)"
+          echo "⚠ Dependency rescan returned HTTP $HTTP_CODE (may be expected in CI)"
         fi
       
     - name: Collect Startup Logs
@@ -297,15 +308,26 @@ jobs:
     - name: Run Dependency Check Script
       run: |
         chmod +x scripts/check-deps.sh
-        ./scripts/check-deps.sh || echo "Script completed with warnings (expected in CI)"
-      
-    - name: Verify Script Output
-      run: |
-        if ./scripts/check-deps.sh | grep -q "CRITICAL"; then
-          echo "✗ Critical dependency failures detected"
-          # Don't fail CI - this is expected in minimal environment
+        # Capture output and exit code
+        set +e
+        OUTPUT=$(./scripts/check-deps.sh 2>&1)
+        EXIT_CODE=$?
+        set -e
+        
+        echo "$OUTPUT"
+        
+        # Check for critical failures in output
+        if echo "$OUTPUT" | grep -q "CRITICAL"; then
+          echo "⚠ Critical dependency failures detected (expected in minimal CI environment)"
         else
-          echo "✓ No critical dependency failures (or script handles gracefully)"
+          echo "✓ No critical dependency failures"
+        fi
+        
+        # Script exit code 0 = all critical deps met, 1 = missing critical deps
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "✓ All critical dependencies available"
+        else
+          echo "⚠ Some dependencies missing (expected in CI)"
         fi
 
   smoke-tests:
