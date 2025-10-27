@@ -244,6 +244,7 @@ describe('Smoke Test: Settings and Configuration', () => {
 
       const response = await fetch('/api/settings/ffmpeg-path', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: '/invalid/path' }),
       });
       const data = await response.json();
@@ -287,6 +288,7 @@ describe('Smoke Test: Settings and Configuration', () => {
 
       const response = await fetch('/api/settings/workspace/projects-folder', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: '/home/user/MyProjects' }),
       });
       const data = await response.json();
@@ -308,6 +310,7 @@ describe('Smoke Test: Settings and Configuration', () => {
 
       const response = await fetch('/api/settings/workspace/autosave', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ interval: 5 }),
       });
       const data = await response.json();
@@ -327,6 +330,7 @@ describe('Smoke Test: Settings and Configuration', () => {
 
       const response = await fetch('/api/settings/workspace/theme', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ theme: 'light' }),
       });
       const data = await response.json();
@@ -348,6 +352,7 @@ describe('Smoke Test: Settings and Configuration', () => {
 
       const response = await fetch('/api/settings/workspace/default-resolution', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resolution: '4k' }),
       });
       const data = await response.json();

@@ -125,7 +125,7 @@ cd "${WEB_DIR}"
 if npm test 2>&1 | tee /tmp/frontend-tests.log; then
     print_success "Frontend unit tests passed"
     # Extract test count from output
-    TEST_COUNT=$(grep -oP '\d+ passed' /tmp/frontend-tests.log | head -1 | grep -oP '\d+')
+    TEST_COUNT=$(grep -oP '\d+ passed' /tmp/frontend-tests.log | head -1 | grep -oP '\d+' || echo "unknown")
     print_info "Tests passed: ${TEST_COUNT}"
 else
     print_fail "Frontend unit tests failed"
@@ -187,7 +187,7 @@ if npm run build 2>&1 | tee /tmp/build.log; then
         print_info "Bundle size: ${BUNDLE_SIZE}"
         
         # Check if main bundle is gzipped under 2MB
-        if [ -f "dist/assets/index.js" ]; then
+        MAIN_BUNDLE_FILES=$(ls dist/assets/index*.js 2>/dev/null || echo "")
             MAIN_BUNDLE_SIZE=$(gzip -c dist/assets/index*.js | wc -c)
             MAIN_BUNDLE_SIZE_MB=$((MAIN_BUNDLE_SIZE / 1024 / 1024))
             if [ ${MAIN_BUNDLE_SIZE_MB} -lt 2 ]; then
