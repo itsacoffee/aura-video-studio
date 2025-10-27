@@ -141,7 +141,6 @@ export function useEngineInstallProgress() {
 
               processEventLines(lines, setInstallState, resolve);
             }
-            }
 
             // If stream ended without complete/error event
             setInstallState({
