@@ -75,6 +75,7 @@ export function VideoThumbnail({
   const [error, setError] = useState<string | null>(null);
   const ffmpegRef = useRef<FFmpeg | null>(null);
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
+  const thumbnailUrlRef = useRef<string | null>(null);
 
   // Initialize FFmpeg
   useEffect(() => {
@@ -101,8 +102,8 @@ export function VideoThumbnail({
 
     return () => {
       // Cleanup
-      if (thumbnailUrl) {
-        URL.revokeObjectURL(thumbnailUrl);
+      if (thumbnailUrlRef.current) {
+        URL.revokeObjectURL(thumbnailUrlRef.current);
       }
     };
   }, []);
@@ -147,6 +148,7 @@ export function VideoThumbnail({
         if (thumbnailUrl) {
           URL.revokeObjectURL(thumbnailUrl);
         }
+        thumbnailUrlRef.current = url;
         setThumbnailUrl(url);
       } catch (err) {
         console.error('Failed to extract thumbnail:', err);
@@ -157,7 +159,7 @@ export function VideoThumbnail({
     };
 
     extractThumbnail();
-  }, [videoPath, timestamp, width, height, ffmpegLoaded]);
+  }, [videoPath, timestamp, width, height, ffmpegLoaded, thumbnailUrl]);
 
   if (!videoPath) {
     return (
