@@ -11,6 +11,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
  * - Dependency status persistence
  */
 
+// Type definitions for test data
+type ServiceInitialization = { service: string; timestamp: number; status: string };
+type Dependency = { name: string; status: string; warning?: boolean };
+
 describe('Smoke Test: Dependency Detection', () => {
   beforeEach(() => {
     // Clear localStorage to simulate fresh installation
@@ -283,7 +287,7 @@ describe('Smoke Test: Dependency Detection', () => {
       const response = await fetch('/api/diagnostics/initialization-order');
       const data = await response.json();
 
-      const loggingInit = data.initializationOrder.find((s: any) => s.service === 'logging');
+      const loggingInit = data.initializationOrder.find((s: ServiceInitialization) => s.service === 'logging');
       expect(loggingInit).toBeDefined();
       expect(loggingInit.timestamp).toBe(1000);
     });
@@ -304,8 +308,8 @@ describe('Smoke Test: Dependency Detection', () => {
       const response = await fetch('/api/diagnostics/initialization-order');
       const data = await response.json();
 
-      const dbIndex = data.initializationOrder.findIndex((s: any) => s.service === 'database');
-      const videoIndex = data.initializationOrder.findIndex((s: any) => s.service === 'video-service');
+      const dbIndex = data.initializationOrder.findIndex((s: ServiceInitialization) => s.service === 'database');
+      const videoIndex = data.initializationOrder.findIndex((s: ServiceInitialization) => s.service === 'video-service');
       
       expect(dbIndex).toBeLessThan(videoIndex);
     });
@@ -326,8 +330,8 @@ describe('Smoke Test: Dependency Detection', () => {
       const response = await fetch('/api/diagnostics/initialization-order');
       const data = await response.json();
 
-      const ffmpegIndex = data.initializationOrder.findIndex((s: any) => s.service === 'ffmpeg');
-      const videoIndex = data.initializationOrder.findIndex((s: any) => s.service === 'video-service');
+      const ffmpegIndex = data.initializationOrder.findIndex((s: ServiceInitialization) => s.service === 'ffmpeg');
+      const videoIndex = data.initializationOrder.findIndex((s: ServiceInitialization) => s.service === 'video-service');
       
       expect(ffmpegIndex).toBeLessThan(videoIndex);
     });
@@ -397,7 +401,7 @@ describe('Smoke Test: Dependency Detection', () => {
       const response = await fetch('/api/dependencies/check');
       const data = await response.json();
 
-      const aiService = data.dependencies.find((d: any) => d.name === 'AI Service');
+      const aiService = data.dependencies.find((d: Dependency) => d.name === 'AI Service');
       expect(aiService.status).toBe('offline');
       expect(aiService.warning).toBeTruthy();
     });

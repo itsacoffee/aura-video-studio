@@ -137,7 +137,7 @@ export function DownloadsPage() {
   };
 
   // Helper to verify component integrity
-  const verifyComponentIntegrity = async (
+  const verifyComponentIntegrity = useCallback(async (
     componentName: string,
     isInstalled: boolean
   ): Promise<{ needsRepair: boolean; verificationResult?: VerificationResult } | null> => {
@@ -159,7 +159,7 @@ export function DownloadsPage() {
     }
 
     return null;
-  };
+  }, []);
 
   const checkComponentStatus = useCallback(async (componentName: string) => {
     try {
@@ -187,8 +187,7 @@ export function DownloadsPage() {
     } catch (error) {
       console.error(`Error checking status for ${componentName}:`, error);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // verifyComponentIntegrity is stable
+  }, [verifyComponentIntegrity]);
 
   const fetchManifest = useCallback(async () => {
     try {
