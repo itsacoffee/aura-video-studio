@@ -134,6 +134,52 @@ export interface MotionPath {
 }
 
 // Evaluate position along a motion path at a specific time
+// Helper function to perform bezier interpolation between two points
+function interpolateBezier(
+  current: MotionPathPoint,
+  next: MotionPathPoint,
+  t: number,
+  autoOrient: boolean
+): { x: number; y: number; rotation?: number } {
+  const x = cubicBezier(
+    current.x,
+    current.x + current.handleOut!.x,
+    next.x + next.handleIn!.x,
+    next.x,
+    t
+  );
+  const y = cubicBezier(
+    current.y,
+    current.y + current.handleOut!.y,
+    next.y + next.handleIn!.y,
+    next.y,
+    t
+  );
+
+  const rotation = autoOrient
+    ? calculateTangentAngle(current, next, current.handleOut!, next.handleIn!, t)
+    : undefined;
+
+  return { x, y, rotation };
+}
+
+// Helper function to perform linear interpolation between two points
+function interpolateLinear(
+  current: MotionPathPoint,
+  next: MotionPathPoint,
+  t: number,
+  autoOrient: boolean
+): { x: number; y: number; rotation?: number } {
+  const x = current.x + (next.x - current.x) * t;
+  const y = current.y + (next.y - current.y) * t;
+
+  const rotation = autoOrient
+    ? Math.atan2(next.y - current.y, next.x - current.x) * (180 / Math.PI)
+    : undefined;
+
+  return { x, y, rotation };
+}
+
 export function evaluateMotionPath(
   path: MotionPath,
   time: number
@@ -165,42 +211,11 @@ export function evaluateMotionPath(
       const elapsed = time - current.time;
       const t = duration > 0 ? elapsed / duration : 0;
 
-      // If both points have handles, use cubic bezier interpolation
+      // Use bezier interpolation if handles exist, otherwise linear
       if (current.handleOut && next.handleIn) {
-        const x = cubicBezier(
-          current.x,
-          current.x + current.handleOut.x,
-          next.x + next.handleIn.x,
-          next.x,
-          t
-        );
-        const y = cubicBezier(
-          current.y,
-          current.y + current.handleOut.y,
-          next.y + next.handleIn.y,
-          next.y,
-          t
-        );
-
-        let rotation: number | undefined;
-        if (path.autoOrient) {
-          // Calculate tangent for auto-orientation
-          rotation = calculateTangentAngle(current, next, current.handleOut, next.handleIn, t);
-        }
-
-        return { x, y, rotation };
+        return interpolateBezier(current, next, t, path.autoOrient || false);
       }
-
-      // Linear interpolation
-      const x = current.x + (next.x - current.x) * t;
-      const y = current.y + (next.y - current.y) * t;
-
-      let rotation: number | undefined;
-      if (path.autoOrient) {
-        rotation = Math.atan2(next.y - current.y, next.x - current.x) * (180 / Math.PI);
-      }
-
-      return { x, y, rotation };
+      return interpolateLinear(current, next, t, path.autoOrient || false);
     }
   }
 

@@ -186,41 +186,54 @@ export function DownloadsPage() {
     }
   };
 
+  // Helper to verify component integrity
+  const verifyComponentIntegrity = async (
+    componentName: string,
+    isInstalled: boolean
+  ): Promise<{ needsRepair: boolean; verificationResult?: unknown } | null> => {
+    if (!isInstalled) {
+      return null;
+    }
+
+    try {
+      const verifyResponse = await fetch(apiUrl(`/api/downloads/${componentName}/verify`));
+      if (verifyResponse.ok) {
+        const verifyData = await verifyResponse.json();
+        return {
+          needsRepair: !verifyData.isValid,
+          verificationResult: verifyData,
+        };
+      }
+    } catch (error) {
+      console.error(`Error verifying ${componentName}:`, error);
+    }
+
+    return null;
+  };
+
   const checkComponentStatus = useCallback(async (componentName: string) => {
     try {
       const statusResponse = await fetch(apiUrl(`/api/downloads/${componentName}/status`));
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-
-        // If installed, verify integrity
-        if (statusData.isInstalled) {
-          const verifyResponse = await fetch(apiUrl(`/api/downloads/${componentName}/verify`));
-          if (verifyResponse.ok) {
-            const verifyData = await verifyResponse.json();
-            setComponentStatus((prev) => ({
-              ...prev,
-              [componentName]: {
-                isInstalled: statusData.isInstalled,
-                isInstalling: false,
-                isRepairing: false,
-                needsRepair: !verifyData.isValid,
-                verificationResult: verifyData,
-              },
-            }));
-            return;
-          }
-        }
-
-        setComponentStatus((prev) => ({
-          ...prev,
-          [componentName]: {
-            isInstalled: statusData.isInstalled,
-            isInstalling: false,
-            isRepairing: false,
-            needsRepair: false,
-          },
-        }));
+      if (!statusResponse.ok) {
+        return;
       }
+
+      const statusData = await statusResponse.json();
+      const verificationInfo = await verifyComponentIntegrity(
+        componentName,
+        statusData.isInstalled
+      );
+
+      setComponentStatus((prev) => ({
+        ...prev,
+        [componentName]: {
+          isInstalled: statusData.isInstalled,
+          isInstalling: false,
+          isRepairing: false,
+          needsRepair: verificationInfo?.needsRepair || false,
+          verificationResult: verificationInfo?.verificationResult,
+        },
+      }));
     } catch (error) {
       console.error(`Error checking status for ${componentName}:`, error);
     }
