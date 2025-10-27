@@ -113,7 +113,7 @@ export function DownloadsPage() {
 
   useEffect(() => {
     fetchManifest();
-  }, []);
+  }, [fetchManifest]);
 
   const onTabSelect = (_: SelectTabEvent, data: SelectTabData) => {
     setSelectedTab(data.value as string);
@@ -137,7 +137,7 @@ export function DownloadsPage() {
     return error instanceof Error ? error.message : fallback;
   };
 
-  const fetchManifest = async () => {
+  const fetchManifest = useCallback(async () => {
     try {
       const response = await fetch(apiUrl('/api/downloads/manifest'));
       if (response.ok) {
@@ -184,7 +184,7 @@ export function DownloadsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [checkComponentStatus, showFailureToast]);
 
   const checkComponentStatus = useCallback(async (componentName: string) => {
     try {
