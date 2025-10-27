@@ -597,7 +597,13 @@ export function SettingsPage() {
     }
 
     if (profile.providerPaths) {
-      setProviderPaths(profile.providerPaths);
+      setProviderPaths({
+        stableDiffusionUrl: profile.providerPaths.stableDiffusionUrl || '',
+        ollamaUrl: profile.providerPaths.ollamaUrl || '',
+        ffmpegPath: profile.providerPaths.ffmpegPath || '',
+        ffprobePath: profile.providerPaths.ffprobePath || '',
+        outputDirectory: profile.providerPaths.outputDirectory || '',
+      });
       setPathsModified(true);
     }
 
