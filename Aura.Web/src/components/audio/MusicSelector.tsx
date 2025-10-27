@@ -111,15 +111,15 @@ export const MusicSelector: React.FC<MusicSelectorProps> = ({ onSelect, selected
   }, [loadMusicLibrary]);
 
   const handleMoodChange = (_: unknown, data: OptionOnSelectData) => {
-    setSearchParams({ ...searchParams, mood: data.value as MusicMood });
+    setSearchParams({ ...searchParams, mood: data.optionValue as MusicMood });
   };
 
   const handleGenreChange = (_: unknown, data: OptionOnSelectData) => {
-    setSearchParams({ ...searchParams, genre: data.value as MusicGenre });
+    setSearchParams({ ...searchParams, genre: data.optionValue as MusicGenre });
   };
 
   const handleEnergyChange = (_: unknown, data: OptionOnSelectData) => {
-    setSearchParams({ ...searchParams, energy: data.value as EnergyLevel });
+    setSearchParams({ ...searchParams, energy: data.optionValue as EnergyLevel });
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {

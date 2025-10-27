@@ -60,7 +60,7 @@ interface TimelineTrack {
 
 interface ExportAsset {
   id: string;
-  type: string;
+  type: 'Audio' | 'Image' | 'Video';
   filePath: string;
   start: string;
   duration: string;
@@ -87,6 +87,7 @@ interface ExportScene {
   duration: string;
   visualAssets: ExportAsset[];
   transitionType: string;
+  transitionDuration?: string;
 }
 
 export function VideoEditorPage() {

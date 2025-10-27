@@ -114,6 +114,8 @@ const useStyles = makeStyles({
 
 interface JobArtifact {
   type: string;
+  name: string;
+  path: string;
   sizeBytes: number;
   url?: string;
 }

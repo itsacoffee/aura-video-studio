@@ -111,10 +111,6 @@ export function DownloadsPage() {
   const [componentStatus, setComponentStatus] = useState<ComponentStatus>({});
   const [selectedTab, setSelectedTab] = useState<string>('dependencies');
 
-  useEffect(() => {
-    fetchManifest();
-  }, [fetchManifest]);
-
   const onTabSelect = (_: SelectTabEvent, data: SelectTabData) => {
     setSelectedTab(data.value as string);
   };
@@ -133,41 +129,18 @@ export function DownloadsPage() {
   };
 
   // Helper function to get error message from caught errors
-  const getErrorMessage = (error: unknown, fallback: string): string => {
-    return error instanceof Error ? error.message : fallback;
-  };
-
-  const fetchManifest = useCallback(async () => {
-    try {
-      const response = await fetch(apiUrl('/api/downloads/manifest'));
-      if (response.ok) {
-        const data = await response.json();
-        setManifest(data);
-        // Check status for each component in parallel
-        await Promise.all(data.map((component: DependencyComponent) => checkComponentStatus(component.name)));
-      } else {
-        showFailureToast({
-          title: 'Failed to Load Manifest',
-          message: `Server returned HTTP ${response.status} error. The manifest endpoint may not be available.`,
-        });
-      }
-    } catch (error) {
-      console.error('Error loading manifest:', error);
-      showFailureToast({
-        title: 'Error Loading Manifest',
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
-      });
-    } finally {
-      setLoading(false);
+  const getErrorMessage = (error: unknown, fallback = 'Unknown error occurred'): string => {
+    if (error instanceof Error) {
+      return error.message;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showFailureToast]); // checkComponentStatus is stable (useCallback with []) and doesn't need to be in dependencies
+    return fallback;
+  };
 
   // Helper to verify component integrity
   const verifyComponentIntegrity = async (
     componentName: string,
     isInstalled: boolean
-  ): Promise<{ needsRepair: boolean; verificationResult?: unknown } | null> => {
+  ): Promise<{ needsRepair: boolean; verificationResult?: VerificationResult } | null> => {
     if (!isInstalled) {
       return null;
     }
@@ -175,7 +148,7 @@ export function DownloadsPage() {
     try {
       const verifyResponse = await fetch(apiUrl(`/api/downloads/${componentName}/verify`));
       if (verifyResponse.ok) {
-        const verifyData = await verifyResponse.json();
+        const verifyData = await verifyResponse.json() as VerificationResult;
         return {
           needsRepair: !verifyData.isValid,
           verificationResult: verifyData,
@@ -214,7 +187,37 @@ export function DownloadsPage() {
     } catch (error) {
       console.error(`Error checking status for ${componentName}:`, error);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // verifyComponentIntegrity is stable
+
+  const fetchManifest = useCallback(async () => {
+    try {
+      const response = await fetch(apiUrl('/api/downloads/manifest'));
+      if (response.ok) {
+        const data = await response.json();
+        setManifest(data);
+        // Check status for each component in parallel
+        await Promise.all(data.map((component: DependencyComponent) => checkComponentStatus(component.name)));
+      } else {
+        showFailureToast({
+          title: 'Failed to Load Manifest',
+          message: `Server returned HTTP ${response.status} error. The manifest endpoint may not be available.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading manifest:', error);
+      showFailureToast({
+        title: 'Error Loading Manifest',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [showFailureToast, checkComponentStatus]);
+
+  useEffect(() => {
+    fetchManifest();
+  }, [fetchManifest]);
 
   const installComponent = async (componentName: string) => {
     try {

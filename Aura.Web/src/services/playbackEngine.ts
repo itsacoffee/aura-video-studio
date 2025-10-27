@@ -215,11 +215,13 @@ export class PlaybackEngine {
     // Monitor video playback quality
     if ('getVideoPlaybackQuality' in this.videoElement) {
       setInterval(() => {
-        const quality = this.videoElement.getVideoPlaybackQuality() as VideoQualityMetrics;
+        const quality = this.videoElement.getVideoPlaybackQuality();
         if (quality) {
           this.metrics.droppedFrames = quality.droppedVideoFrames || 0;
           this.metrics.totalFrames = quality.totalVideoFrames || 0;
-          this.metrics.decodedFrames = quality.decodedVideoFrames || 0;
+          // decodedVideoFrames may not be available in all browsers
+          this.metrics.decodedFrames = 
+            ('decodedVideoFrames' in quality ? (quality as VideoQualityMetrics).decodedVideoFrames : quality.totalVideoFrames) || 0;
 
           // Notify if metrics changed
           if (this.onMetricsUpdate) {

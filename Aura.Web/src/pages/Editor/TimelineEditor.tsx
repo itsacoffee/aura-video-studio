@@ -202,30 +202,6 @@ export function TimelineEditor() {
     loadTimeline();
   }, [jobId]);
 
-  // Auto-save every 5 seconds when dirty
-  useEffect(() => {
-    if (!isDirty || !timeline || !jobId) return;
-
-    const timer = setTimeout(() => {
-      saveTimeline();
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, [isDirty, timeline, jobId, saveTimeline]);
-
-  // Warn before leaving with unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
-
   const saveTimeline = useCallback(async () => {
     if (!timeline || !jobId) return;
 
@@ -249,6 +225,30 @@ export function TimelineEditor() {
       setIsSaving(false);
     }
   }, [timeline, jobId]);
+
+  // Auto-save every 5 seconds when dirty
+  useEffect(() => {
+    if (!isDirty || !timeline || !jobId) return;
+
+    const timer = setTimeout(() => {
+      saveTimeline();
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [isDirty, timeline, jobId, saveTimeline]);
+
+  // Warn before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   const handleGeneratePreview = async () => {
     if (!jobId) return;

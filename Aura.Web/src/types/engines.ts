@@ -103,3 +103,13 @@ export interface ReconfigureEngineRequest {
   healthCheckUrl?: string;
   notes?: string;
 }
+
+export interface EngineDiagnostics {
+  availableDiskSpaceBytes?: number;
+  checksumStatus?: string;
+  expectedSha256?: string;
+  actualSha256?: string;
+  failedUrl?: string;
+  pathWritable?: boolean;
+  error?: string;
+}
