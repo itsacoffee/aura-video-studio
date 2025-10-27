@@ -24,7 +24,7 @@ public class ValidationTests
             Language: "English",
             Aspect: Aspect.Widescreen16x9,
             TargetDurationMinutes: 5.0,
-            Pacing: Pacing.Standard,
+            Pacing: Pacing.Conversational,
             Density: Density.Balanced,
             Style: "Educational with examples",
             ProviderTier: null,
@@ -51,7 +51,7 @@ public class ValidationTests
             Language: "English",
             Aspect: Aspect.Widescreen16x9,
             TargetDurationMinutes: 5.0,
-            Pacing: Pacing.Standard,
+            Pacing: Pacing.Conversational,
             Density: Density.Balanced,
             Style: "Educational",
             ProviderTier: null,
@@ -78,7 +78,7 @@ public class ValidationTests
             Language: "English",
             Aspect: Aspect.Widescreen16x9,
             TargetDurationMinutes: 5.0,
-            Pacing: Pacing.Standard,
+            Pacing: Pacing.Conversational,
             Density: Density.Balanced,
             Style: "Educational",
             ProviderTier: null,
@@ -105,7 +105,7 @@ public class ValidationTests
             Language: "English",
             Aspect: Aspect.Widescreen16x9,
             TargetDurationMinutes: 0, // Invalid - must be > 0
-            Pacing: Pacing.Standard,
+            Pacing: Pacing.Conversational,
             Density: Density.Balanced,
             Style: "Educational",
             ProviderTier: null,
@@ -132,7 +132,7 @@ public class ValidationTests
             VoiceName: "en-US-JennyNeural",
             Rate: 1.0,
             Pitch: 0.0,
-            PauseStyle: PauseStyle.Balanced
+            PauseStyle: PauseStyle.Natural
         );
 
         // Act
@@ -152,7 +152,7 @@ public class ValidationTests
             VoiceName: "en-US-JennyNeural",
             Rate: 1.0,
             Pitch: 0.0,
-            PauseStyle: PauseStyle.Balanced
+            PauseStyle: PauseStyle.Natural
         );
 
         // Act
@@ -175,7 +175,7 @@ public class ValidationTests
             VoiceName: "en-US-JennyNeural",
             Rate: 3.0, // Invalid - must be between 0.5 and 2.0
             Pitch: 0.0,
-            PauseStyle: PauseStyle.Balanced
+            PauseStyle: PauseStyle.Natural
         );
 
         // Act
