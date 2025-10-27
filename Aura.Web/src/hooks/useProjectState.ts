@@ -290,7 +290,8 @@ export function useProjectState(
         }
       }
     }
-  }, []); // Run only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount - intentionally omitting dependencies to avoid re-running on prop changes
 
   return {
     projectId,

@@ -141,7 +141,10 @@ export function DownloadsPage() {
     try {
       const response = await fetch(apiUrl('/api/downloads/manifest'));
       if (response.ok) {
-        await handleManifestResponse(response);
+        const data = await response.json();
+        setManifest(data);
+        // Check status for each component in parallel
+        await Promise.all(data.map((component: DependencyComponent) => checkComponentStatus(component.name)));
       } else {
         showFailureToast({
           title: 'Failed to Load Manifest',
@@ -149,11 +152,16 @@ export function DownloadsPage() {
         });
       }
     } catch (error) {
-      handleManifestError(error);
+      console.error('Error loading manifest:', error);
+      showFailureToast({
+        title: 'Error Loading Manifest',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
     } finally {
       setLoading(false);
     }
-  }, [checkComponentStatus, showFailureToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showFailureToast]); // checkComponentStatus is stable (useCallback with []) and doesn't need to be in dependencies
 
   // Helper to verify component integrity
   const verifyComponentIntegrity = async (

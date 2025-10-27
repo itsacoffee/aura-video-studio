@@ -73,7 +73,10 @@ export function useFormValidation<T extends Record<string, unknown>>({
     return () => {
       isMounted.current = false;
       // Clear all debounce timers on unmount
-      Object.values(debounceTimers.current).forEach(clearTimeout);
+      // Copy the current value to avoid stale closure
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const timers = debounceTimers.current;
+      Object.values(timers).forEach(clearTimeout);
     };
   }, []);
 
@@ -205,7 +208,7 @@ export function useFormValidation<T extends Record<string, unknown>>({
     if (validateOnMount) {
       validateForm();
     }
-  }, [validateOnMount]); // Only run on mount
+  }, [validateOnMount, validateForm]);
 
   return {
     values,
