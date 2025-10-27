@@ -13,7 +13,7 @@ import {
   Divider,
 } from '@fluentui/react-components';
 import { Delete24Regular, Checkmark24Regular, Dismiss24Regular } from '@fluentui/react-icons';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { MotionPath, MotionPathPoint } from '../../services/animationEngine';
 
 const useStyles = makeStyles({
@@ -86,11 +86,7 @@ export function MotionPathTool({
   const [autoOrient, setAutoOrient] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    redrawCanvas();
-  }, [points, closed]);
-
-  const redrawCanvas = () => {
+  const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -150,7 +146,11 @@ export function MotionPathTool({
       ctx.font = '12px sans-serif';
       ctx.fillText(`${index + 1}`, point.x + 8, point.y - 8);
     });
-  };
+  }, [points, closed]);
+
+  useEffect(() => {
+    redrawCanvas();
+  }, [redrawCanvas]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

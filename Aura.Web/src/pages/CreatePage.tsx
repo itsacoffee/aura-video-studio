@@ -110,9 +110,9 @@ export function CreatePage() {
   // Update brief when validated values change
   useEffect(() => {
     if (briefValues.topic !== brief.topic) {
-      setBrief({ ...brief, topic: briefValues.topic });
+      setBrief((prevBrief) => ({ ...prevBrief, topic: briefValues.topic }));
     }
-  }, [briefValues.topic]);
+  }, [briefValues.topic, brief.topic]);
 
   const [generating, setGenerating] = useState(false);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
@@ -391,7 +391,7 @@ export function CreatePage() {
     return () => {
       keyboardShortcutManager.unregisterContext('create');
     };
-  }, [currentStep, brief.topic, preflightReport, overridePreflightGate, navigate]);
+  }, [currentStep, brief.topic, preflightReport, overridePreflightGate, navigate, handleGenerate]);
 
   return (
     <div className={styles.container}>

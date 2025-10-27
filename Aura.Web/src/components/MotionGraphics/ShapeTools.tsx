@@ -20,7 +20,7 @@ import {
   Checkmark24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -115,27 +115,55 @@ export function ShapeTools({
   const [starPoints, setStarPoints] = useState(5);
   const [innerRadius, setInnerRadius] = useState(0.4);
 
-  useEffect(() => {
-    redrawCanvas();
-  }, [currentShape]);
-
-  const redrawCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw current shape if exists
-    if (currentShape) {
-      drawShape(ctx, currentShape);
+  const drawPolygon = useCallback((
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    sides: number
+  ) => {
+    ctx.beginPath();
+    for (let i = 0; i < sides; i++) {
+      const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+      const px = x + radius * Math.cos(angle);
+      const py = y + radius * Math.sin(angle);
+      if (i === 0) {
+        ctx.moveTo(px, py);
+      } else {
+        ctx.lineTo(px, py);
+      }
     }
-  };
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }, []);
 
-  const drawShape = (ctx: CanvasRenderingContext2D, shape: Shape) => {
+  const drawStar = useCallback((
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    points: number,
+    outerRadius: number,
+    innerRadius: number
+  ) => {
+    ctx.beginPath();
+    for (let i = 0; i < points * 2; i++) {
+      const radius = i % 2 === 0 ? outerRadius : innerRadius;
+      const angle = (i * Math.PI) / points - Math.PI / 2;
+      const px = x + radius * Math.cos(angle);
+      const py = y + radius * Math.sin(angle);
+      if (i === 0) {
+        ctx.moveTo(px, py);
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }, []);
+
+  const drawShape = useCallback((ctx: CanvasRenderingContext2D, shape: Shape) => {
     ctx.fillStyle = shape.fill;
     ctx.strokeStyle = shape.stroke;
     ctx.lineWidth = shape.strokeWidth;
@@ -183,55 +211,27 @@ export function ShapeTools({
         ctx.stroke();
         break;
     }
-  };
+  }, [drawPolygon, drawStar]);
 
-  const drawPolygon = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    radius: number,
-    sides: number
-  ) => {
-    ctx.beginPath();
-    for (let i = 0; i < sides; i++) {
-      const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
-      const px = x + radius * Math.cos(angle);
-      const py = y + radius * Math.sin(angle);
-      if (i === 0) {
-        ctx.moveTo(px, py);
-      } else {
-        ctx.lineTo(px, py);
-      }
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  };
+  const redrawCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  const drawStar = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    points: number,
-    outerRadius: number,
-    innerRadius: number
-  ) => {
-    ctx.beginPath();
-    for (let i = 0; i < points * 2; i++) {
-      const radius = i % 2 === 0 ? outerRadius : innerRadius;
-      const angle = (i * Math.PI) / points - Math.PI / 2;
-      const px = x + radius * Math.cos(angle);
-      const py = y + radius * Math.sin(angle);
-      if (i === 0) {
-        ctx.moveTo(px, py);
-      } else {
-        ctx.lineTo(px, py);
-      }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw current shape if exists
+    if (currentShape) {
+      drawShape(ctx, currentShape);
     }
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  };
+  }, [currentShape, drawShape]);
+
+  useEffect(() => {
+    redrawCanvas();
+  }, [redrawCanvas]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!selectedTool) return;

@@ -111,7 +111,7 @@ export function EnginesTab() {
   useEffect(() => {
     fetchEngines();
     fetchInstances();
-  }, []);
+  }, [fetchEngines, fetchInstances]);
 
   const copyToClipboard = async (text: string, id: string) => {
     try {
