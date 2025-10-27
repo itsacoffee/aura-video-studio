@@ -93,6 +93,44 @@ export function applyChromaKey(
 }
 
 /**
+ * Process neighbors for edge refinement
+ */
+function processNeighborsForRefinement(
+  data: Uint8ClampedArray,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  kernelSize: number,
+  shouldErode: boolean,
+  currentAlpha: number
+): number {
+  let newAlpha = currentAlpha;
+
+  for (let ky = -kernelSize; ky <= kernelSize; ky++) {
+    for (let kx = -kernelSize; kx <= kernelSize; kx++) {
+      const ny = y + ky;
+      const nx = x + kx;
+
+      if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+        const nIdx = (ny * width + nx) * 4;
+        const neighborAlpha = data[nIdx + 3];
+
+        if (shouldErode) {
+          // Erode (choke) - make edges thinner
+          newAlpha = Math.min(newAlpha, neighborAlpha);
+        } else {
+          // Dilate (spread) - make edges thicker
+          newAlpha = Math.max(newAlpha, neighborAlpha);
+        }
+      }
+    }
+  }
+
+  return newAlpha;
+}
+
+/**
  * Apply edge refinement (choke/spread)
  */
 export function applyEdgeRefinement(imageData: ImageData, thickness: number): ImageData {
@@ -111,34 +149,56 @@ export function applyEdgeRefinement(imageData: ImageData, thickness: number): Im
       const idx = (y * width + x) * 4;
       const currentAlpha = data[idx + 3];
 
-      let newAlpha = currentAlpha;
-
-      // Check neighbors
-      for (let ky = -kernelSize; ky <= kernelSize; ky++) {
-        for (let kx = -kernelSize; kx <= kernelSize; kx++) {
-          const ny = y + ky;
-          const nx = x + kx;
-
-          if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
-            const nIdx = (ny * width + nx) * 4;
-            const neighborAlpha = data[nIdx + 3];
-
-            if (shouldErode) {
-              // Erode (choke) - make edges thinner
-              newAlpha = Math.min(newAlpha, neighborAlpha);
-            } else {
-              // Dilate (spread) - make edges thicker
-              newAlpha = Math.max(newAlpha, neighborAlpha);
-            }
-          }
-        }
-      }
+      const newAlpha = processNeighborsForRefinement(
+        data,
+        x,
+        y,
+        width,
+        height,
+        kernelSize,
+        shouldErode,
+        currentAlpha
+      );
 
       outputData[idx + 3] = newAlpha;
     }
   }
 
   return new ImageData(outputData, width, height);
+}
+
+/**
+ * Calculate average alpha within radius for feathering
+ */
+function calculateAverageAlpha(
+  data: Uint8ClampedArray,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+): number {
+  let alphaSum = 0;
+  let count = 0;
+
+  for (let ky = -radius; ky <= radius; ky++) {
+    for (let kx = -radius; kx <= radius; kx++) {
+      const ny = y + ky;
+      const nx = x + kx;
+
+      if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+        const nIdx = (ny * width + nx) * 4;
+        const distance = Math.sqrt(kx * kx + ky * ky);
+
+        if (distance <= radius) {
+          alphaSum += data[nIdx + 3];
+          count++;
+        }
+      }
+    }
+  }
+
+  return count > 0 ? alphaSum / count : data[(y * width + x) * 4 + 3];
 }
 
 /**
@@ -157,28 +217,7 @@ export function applyEdgeFeather(imageData: ImageData, featherRadius: number): I
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
-      let alphaSum = 0;
-      let count = 0;
-
-      // Average alpha in radius
-      for (let ky = -radius; ky <= radius; ky++) {
-        for (let kx = -radius; kx <= radius; kx++) {
-          const ny = y + ky;
-          const nx = x + kx;
-
-          if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
-            const nIdx = (ny * width + nx) * 4;
-            const distance = Math.sqrt(kx * kx + ky * ky);
-
-            if (distance <= radius) {
-              alphaSum += data[nIdx + 3];
-              count++;
-            }
-          }
-        }
-      }
-
-      outputData[idx + 3] = count > 0 ? alphaSum / count : data[idx + 3];
+      outputData[idx + 3] = calculateAverageAlpha(data, x, y, width, height, radius);
     }
   }
 
