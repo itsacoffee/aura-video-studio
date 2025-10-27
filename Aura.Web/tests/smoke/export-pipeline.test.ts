@@ -9,6 +9,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
  * - Export error scenarios
  */
 
+// Type definitions for test data
+type ExportFormat = { extension: string; codec: string };
+type ExportResolution = { name: string; width: number; height: number };
+
 describe('Smoke Test: Export Pipeline', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -139,7 +143,7 @@ describe('Smoke Test: Export Pipeline', () => {
       const response = await fetch('/api/export/formats');
       const data = await response.json();
 
-      const mp4Format = data.supportedFormats.find((f: any) => f.extension === 'mp4');
+      const mp4Format = data.supportedFormats.find((f: ExportFormat) => f.extension === 'mp4');
       expect(mp4Format).toBeDefined();
       expect(mp4Format.codec).toBe('h264');
     });
@@ -160,7 +164,7 @@ describe('Smoke Test: Export Pipeline', () => {
       const response = await fetch('/api/export/resolutions');
       const data = await response.json();
 
-      const resolution1080p = data.supportedResolutions.find((r: any) => r.name === '1080p');
+      const resolution1080p = data.supportedResolutions.find((r: ExportResolution) => r.name === '1080p');
       expect(resolution1080p).toBeDefined();
       expect(resolution1080p.width).toBe(1920);
       expect(resolution1080p.height).toBe(1080);

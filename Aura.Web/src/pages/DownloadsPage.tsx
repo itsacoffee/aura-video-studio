@@ -187,7 +187,6 @@ export function DownloadsPage() {
     } catch (error) {
       console.error(`Error checking status for ${componentName}:`, error);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // verifyComponentIntegrity is stable
 
   const fetchManifest = useCallback(async () => {

@@ -391,7 +391,7 @@ describe('Integration Test: Critical Paths', () => {
       ];
 
       // Track history
-      const history: any[] = [];
+      const history: typeof operations = [];
       operations.forEach(op => history.push(op));
 
       expect(history).toHaveLength(3);
