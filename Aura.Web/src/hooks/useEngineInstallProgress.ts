@@ -16,6 +16,63 @@ export interface InstallState {
   error: string | null;
 }
 
+/**
+ * Handle Server-Sent Event for installation progress
+ */
+function handleInstallEvent(
+  event: string,
+  data: string,
+  setInstallState: React.Dispatch<React.SetStateAction<InstallState>>,
+  resolve: (value: boolean) => void
+): void {
+  try {
+    const parsedData = JSON.parse(data);
+
+    if (event === 'progress') {
+      setInstallState({
+        isInstalling: true,
+        progress: parsedData as InstallProgress,
+        error: null,
+      });
+    } else if (event === 'complete') {
+      setInstallState({
+        isInstalling: false,
+        progress: null,
+        error: null,
+      });
+      resolve(parsedData.success === true);
+    } else if (event === 'error') {
+      setInstallState({
+        isInstalling: false,
+        progress: null,
+        error: parsedData.error || 'Installation failed',
+      });
+      resolve(false);
+    }
+  } catch (err) {
+    console.error('Failed to parse SSE data:', err);
+  }
+}
+
+/**
+ * Process Server-Sent Event lines from stream
+ */
+function processEventLines(
+  lines: string[],
+  setInstallState: React.Dispatch<React.SetStateAction<InstallState>>,
+  resolve: (value: boolean) => void
+): void {
+  for (const line of lines) {
+    if (!line.trim()) continue;
+
+    const eventMatch = line.match(/^event: (\w+)\ndata: (.+)$/);
+    if (eventMatch) {
+      const [, event, data] = eventMatch;
+      handleInstallEvent(event, data, setInstallState, resolve);
+    }
+  }
+}
+
 export function useEngineInstallProgress() {
   const [installState, setInstallState] = useState<InstallState>({
     isInstalling: false,
@@ -82,42 +139,8 @@ export function useEngineInstallProgress() {
               const lines = buffer.split('\n\n');
               buffer = lines.pop() || '';
 
-              for (const line of lines) {
-                if (!line.trim()) continue;
-
-                const eventMatch = line.match(/^event: (\w+)\ndata: (.+)$/);
-                if (eventMatch) {
-                  const [, event, data] = eventMatch;
-
-                  try {
-                    const parsedData = JSON.parse(data);
-
-                    if (event === 'progress') {
-                      setInstallState({
-                        isInstalling: true,
-                        progress: parsedData as InstallProgress,
-                        error: null,
-                      });
-                    } else if (event === 'complete') {
-                      setInstallState({
-                        isInstalling: false,
-                        progress: null,
-                        error: null,
-                      });
-                      resolve(parsedData.success === true);
-                    } else if (event === 'error') {
-                      setInstallState({
-                        isInstalling: false,
-                        progress: null,
-                        error: parsedData.error || 'Installation failed',
-                      });
-                      resolve(false);
-                    }
-                  } catch (err) {
-                    console.error('Failed to parse SSE data:', err);
-                  }
-                }
-              }
+              processEventLines(lines, setInstallState, resolve);
+            }
             }
 
             // If stream ended without complete/error event
