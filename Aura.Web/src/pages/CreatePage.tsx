@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import { Play24Regular, Lightbulb24Regular, Checkmark24Regular } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { ValidatedInput } from '../components/forms/ValidatedInput';
@@ -207,7 +207,7 @@ export function CreatePage() {
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     setGenerating(true);
 
     // Add activity to tracker
@@ -332,7 +332,7 @@ export function CreatePage() {
     } finally {
       setGenerating(false);
     }
-  };
+  }, [brief, planSpec, addActivity, updateActivity, showSuccessToast, showFailureToast, navigate]);
 
   // Register Create workflow shortcuts
   useEffect(() => {

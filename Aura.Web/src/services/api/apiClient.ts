@@ -371,6 +371,7 @@ apiClient.interceptors.response.use(
 
     return response;
   },
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- Comprehensive error handling with retry logic, circuit breaker, and various error scenarios
   async (error: AxiosError) => {
     const extendedConfig = error.config as ExtendedAxiosRequestConfig | undefined;
 

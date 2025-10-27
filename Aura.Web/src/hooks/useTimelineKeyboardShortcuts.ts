@@ -39,6 +39,7 @@ export function useTimelineKeyboardShortcuts(
   enabled = true
 ): void {
   const handleKeyDown = useCallback(
+    // eslint-disable-next-line sonarjs/cognitive-complexity -- Comprehensive keyboard shortcut handler with many conditional branches for different key combinations
     (event: KeyboardEvent) => {
       if (!enabled) return;
 

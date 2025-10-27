@@ -43,7 +43,7 @@ import {
   LinkRegular,
   ShieldCheckmark24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiUrl } from '../../config/api';
 import { useEngineInstallProgress } from '../../hooks/useEngineInstallProgress';
 import { useEnginesStore } from '../../state/engines';
@@ -130,6 +130,7 @@ interface EngineCardProps {
   engine: EngineManifestEntry;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complex UI component managing multiple engine states and operations; splitting would fragment related logic
 export function EngineCard({ engine }: EngineCardProps) {
   const styles = useStyles();
   const { showSuccessToast, showFailureToast } = useNotifications();
@@ -166,14 +167,7 @@ export function EngineCard({ engine }: EngineCardProps) {
     error: installError,
   } = useEngineInstallProgress();
 
-  useEffect(() => {
-    loadStatus();
-    loadResolvedUrl();
-    const interval = setInterval(loadStatus, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
-  }, [engine.id]);
-
-  const loadResolvedUrl = async () => {
+  const loadResolvedUrl = useCallback(async () => {
     if (!engine.githubRepo || isInstalled) {
       return; // Don&apos;t fetch URL if already installed or no GitHub repo
     }
@@ -189,7 +183,7 @@ export function EngineCard({ engine }: EngineCardProps) {
     } finally {
       setIsLoadingUrl(false);
     }
-  };
+  }, [engine.id, engine.githubRepo, isInstalled]);
 
   const handleVerifyUrl = async () => {
     if (!resolvedUrl) return;
@@ -257,7 +251,7 @@ export function EngineCard({ engine }: EngineCardProps) {
     }
   };
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     try {
       await fetchEngineStatus(engine.id);
       const response = await fetch(apiUrl(`/api/engines/status?engineId=${engine.id}`));
@@ -268,7 +262,14 @@ export function EngineCard({ engine }: EngineCardProps) {
     } catch (error) {
       console.error('Failed to load status:', error);
     }
-  };
+  }, [engine.id, fetchEngineStatus]);
+
+  useEffect(() => {
+    loadStatus();
+    loadResolvedUrl();
+    const interval = setInterval(loadStatus, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
+  }, [engine.id, loadStatus, loadResolvedUrl]);
 
   const handleInstall = async () => {
     try {

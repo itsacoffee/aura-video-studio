@@ -329,6 +329,7 @@ export function SetupWizard() {
     </>
   );
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- Multi-step wizard rendering with conditional UI states; splitting would fragment wizard flow logic
   const renderStep2 = () => (
     <>
       <Title2>Dependency Check</Title2>
