@@ -12,7 +12,7 @@ import {
   Stop24Regular,
   Checkmark24Regular,
 } from '@fluentui/react-icons';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -170,35 +170,26 @@ export function ParticleSystem({
     ...PRESET_CONFIGS.confetti,
   } as ParticleSystemConfig);
 
-  useEffect(() => {
-    if (isPlaying) {
-      lastTimeRef.current = performance.now();
-      animate();
-    } else {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    }
+  const createParticle = useCallback((): Particle => {
+    const spreadAngle = (Math.random() - 0.5) * config.spread * (Math.PI / 180);
+    const angle = -Math.PI / 2 + spreadAngle; // Default upward direction
+    const speed = config.velocity * (0.5 + Math.random() * 0.5);
 
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+    return {
+      x: canvasWidth / 2,
+      y: canvasHeight - 50,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size: config.particleSize * (0.5 + Math.random() * 0.5),
+      color: config.colors[Math.floor(Math.random() * config.colors.length)],
+      life: config.particleLife,
+      maxLife: config.particleLife,
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 360,
     };
-  }, [isPlaying, config]);
+  }, [config, canvasWidth, canvasHeight]);
 
-  const animate = () => {
-    const now = performance.now();
-    const deltaTime = (now - lastTimeRef.current) / 1000;
-    lastTimeRef.current = now;
-
-    updateParticles(deltaTime);
-    drawParticles();
-
-    animationRef.current = requestAnimationFrame(animate);
-  };
-
-  const updateParticles = (deltaTime: number) => {
+  const updateParticles = useCallback((deltaTime: number) => {
     // Emit new particles
     const particlesToEmit = Math.floor(config.emissionRate * deltaTime);
     const newParticles: Particle[] = [];
@@ -233,28 +224,9 @@ export function ParticleSystem({
       .filter((p) => p !== null) as Particle[];
 
     setParticles(updatedParticles);
-  };
+  }, [config, particles, createParticle]);
 
-  const createParticle = (): Particle => {
-    const spreadAngle = (Math.random() - 0.5) * config.spread * (Math.PI / 180);
-    const angle = -Math.PI / 2 + spreadAngle; // Default upward direction
-    const speed = config.velocity * (0.5 + Math.random() * 0.5);
-
-    return {
-      x: canvasWidth / 2,
-      y: canvasHeight - 50,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      size: config.particleSize * (0.5 + Math.random() * 0.5),
-      color: config.colors[Math.floor(Math.random() * config.colors.length)],
-      life: config.particleLife,
-      maxLife: config.particleLife,
-      rotation: Math.random() * 360,
-      rotationSpeed: (Math.random() - 0.5) * 360,
-    };
-  };
-
-  const drawParticles = () => {
+  const drawParticles = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -307,7 +279,35 @@ export function ParticleSystem({
 
       ctx.restore();
     });
-  };
+  }, [particles, config]);
+
+  const animate = useCallback(() => {
+    const now = performance.now();
+    const deltaTime = (now - lastTimeRef.current) / 1000;
+    lastTimeRef.current = now;
+
+    updateParticles(deltaTime);
+    drawParticles();
+
+    animationRef.current = requestAnimationFrame(animate);
+  }, [updateParticles, drawParticles]);
+
+  useEffect(() => {
+    if (isPlaying) {
+      lastTimeRef.current = performance.now();
+      animate();
+    } else {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    }
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isPlaying, animate]);
 
   const handlePresetSelect = (type: ParticleEffectType) => {
     setSelectedType(type);

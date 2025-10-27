@@ -13,7 +13,7 @@ import {
   ArrowDownloadRegular,
   SoundWaveCircle24Regular as WaveformRegular,
 } from '@fluentui/react-icons';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { apiUrl } from '../../config/api';
 import type { VoiceEnhancementConfig } from './VoiceStudioPanel';
 
@@ -117,14 +117,7 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    // Generate sample when voice or enhancement changes
-    if (voiceId) {
-      generateSample();
-    }
-  }, [voiceId, enhancementConfig]);
-
-  const generateSample = async () => {
+  const generateSample = useCallback(async () => {
     setIsLoading(true);
     try {
       // Call API to generate voice sample
@@ -156,7 +149,14 @@ export const VoiceSamplePlayer: React.FC<VoiceSamplePlayerProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sampleText, voiceId, enhancementConfig]);
+
+  useEffect(() => {
+    // Generate sample when voice or enhancement changes
+    if (voiceId) {
+      generateSample();
+    }
+  }, [voiceId, generateSample]);
 
   const handlePlayPause = () => {
     if (!audioRef.current) return;

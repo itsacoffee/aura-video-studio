@@ -20,7 +20,7 @@ import {
   Info24Regular,
   Lightbulb24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Scene } from '../../types';
 
 interface TransitionSuggestionCardProps {
@@ -110,13 +110,7 @@ export const TransitionSuggestionCard = ({
   const [loading, setLoading] = useState(false);
   const [transitions, setTransitions] = useState<TransitionSuggestion[]>([]);
 
-  useEffect(() => {
-    if (optimizationActive && scenes.length > 1) {
-      analyzeTransitions();
-    }
-  }, [optimizationActive, scenes]);
-
-  const analyzeTransitions = async () => {
+  const analyzeTransitions = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -145,7 +139,13 @@ export const TransitionSuggestionCard = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [scenes]);
+
+  useEffect(() => {
+    if (optimizationActive && scenes.length > 1) {
+      analyzeTransitions();
+    }
+  }, [optimizationActive, scenes, analyzeTransitions]);
 
   const generateReasoning = (type: string): string => {
     const reasons: Record<string, string> = {

@@ -4,7 +4,7 @@
  */
 
 import { makeStyles, tokens, Label, Card, Select } from '@fluentui/react-components';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { getEasingFunction } from '../../services/animationEngine';
 import { Keyframe } from '../../types/effects';
 
@@ -74,31 +74,7 @@ export function GraphEditor({
   const canvasHeight = 300;
   const padding = 40;
 
-  useEffect(() => {
-    drawGraph();
-  }, [keyframes, currentTime, selectedCurve]);
-
-  const drawGraph = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-    // Draw grid
-    drawGrid(ctx);
-
-    // Draw keyframes and curves
-    drawKeyframesAndCurves(ctx);
-
-    // Draw current time indicator
-    drawCurrentTimeIndicator(ctx);
-  };
-
-  const drawGrid = (ctx: CanvasRenderingContext2D) => {
+  const drawGrid = useCallback((ctx: CanvasRenderingContext2D) => {
     ctx.strokeStyle = tokens.colorNeutralStroke2;
     ctx.lineWidth = 1;
 
@@ -142,9 +118,9 @@ export function GraphEditor({
     ctx.rotate(-Math.PI / 2);
     ctx.fillText('Value', 0, 0);
     ctx.restore();
-  };
+  }, [canvasWidth, canvasHeight, padding, duration, maxValue, minValue]);
 
-  const drawKeyframesAndCurves = (ctx: CanvasRenderingContext2D) => {
+  const drawKeyframesAndCurves = useCallback((ctx: CanvasRenderingContext2D) => {
     if (keyframes.length === 0) return;
 
     const sorted = [...keyframes].sort((a, b) => a.time - b.time);
@@ -204,9 +180,9 @@ export function GraphEditor({
       ctx.fill();
       ctx.stroke();
     });
-  };
+  }, [keyframes, duration, minValue, maxValue, canvasWidth, canvasHeight, padding]);
 
-  const drawCurrentTimeIndicator = (ctx: CanvasRenderingContext2D) => {
+  const drawCurrentTimeIndicator = useCallback((ctx: CanvasRenderingContext2D) => {
     const x = padding + (currentTime / duration) * (canvasWidth - 2 * padding);
 
     ctx.strokeStyle = tokens.colorPaletteRedForeground3;
@@ -217,7 +193,31 @@ export function GraphEditor({
     ctx.lineTo(x, canvasHeight - padding);
     ctx.stroke();
     ctx.setLineDash([]);
-  };
+  }, [currentTime, duration, canvasWidth, canvasHeight, padding]);
+
+  const drawGraph = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    // Draw grid
+    drawGrid(ctx);
+
+    // Draw keyframes and curves
+    drawKeyframesAndCurves(ctx);
+
+    // Draw current time indicator
+    drawCurrentTimeIndicator(ctx);
+  }, [canvasWidth, canvasHeight, drawGrid, drawKeyframesAndCurves, drawCurrentTimeIndicator]);
+
+  useEffect(() => {
+    drawGraph();
+  }, [drawGraph]);
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

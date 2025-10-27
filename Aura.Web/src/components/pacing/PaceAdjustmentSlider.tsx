@@ -20,7 +20,7 @@ import {
   CheckmarkCircle24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Scene } from '../../types';
 
 interface PaceAdjustmentSliderProps {
@@ -88,13 +88,7 @@ export const PaceAdjustmentSlider = ({
   const styles = useStyles();
   const [scenePacing, setScenePacing] = useState<ScenePacing[]>([]);
 
-  useEffect(() => {
-    if (optimizationActive && scenes.length > 0) {
-      initializeScenePacing();
-    }
-  }, [optimizationActive, scenes]);
-
-  const initializeScenePacing = () => {
+  const initializeScenePacing = useCallback(() => {
     const pacing: ScenePacing[] = scenes.map((scene, index) => {
       const currentDuration = scene.duration;
       const wordCount = scene.script.split(/\s+/).length;
@@ -118,7 +112,13 @@ export const PaceAdjustmentSlider = ({
     });
 
     setScenePacing(pacing);
-  };
+  }, [scenes]);
+
+  useEffect(() => {
+    if (optimizationActive && scenes.length > 0) {
+      initializeScenePacing();
+    }
+  }, [optimizationActive, scenes, initializeScenePacing]);
 
   const handlePaceChange = (sceneIndex: number, newMultiplier: number) => {
     setScenePacing((prev) =>
