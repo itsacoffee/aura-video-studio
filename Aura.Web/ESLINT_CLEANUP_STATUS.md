@@ -361,11 +361,11 @@ Given the scale of remaining work, a phased approach is recommended:
 
 **Time Taken:** ~1 hour (very fast, low-risk changes)
 
-### Phase 5b: React Hooks - IN PROGRESS 🟢 (87% Complete!)
+### Phase 5b: React Hooks - IN PROGRESS 🟢 (87.2% Complete!)
 
-**Goal:** Fix react-hooks/exhaustive-deps warnings (39 initial → 38 after PR #121 → 5 after this PR)
+**Goal:** Fix react-hooks/exhaustive-deps warnings (39 initial → 38 after PR #121 → 5 remaining)
 
-**Status:** 87.2% complete (34 of 39 warnings fixed: 1 in PR #121, 12 in previous work, 21 in this PR)
+**Status:** 87.2% complete (34 of 39 warnings fixed: 1 in PR #121, 12 in earlier PRs, 21 in this PR)
 
 **Approach:**
 1. Wrap load/fetch/analyze functions in `useCallback` with proper dependencies
@@ -412,8 +412,8 @@ Given the scale of remaining work, a phased approach is recommended:
 - ✅ All 699 tests still passing
 - ✅ No infinite loops introduced
 - ✅ No stale closure issues detected
-- ✅ 21 warnings eliminated in this PR (54% of react-hooks warnings)
-- ✅ 34 total warnings eliminated in Phase 5b so far (87% of react-hooks warnings)
+- ✅ 21 warnings eliminated in this PR (53.8% of original 39 react-hooks warnings)
+- ✅ 34 total warnings eliminated in Phase 5b so far (87.2% of react-hooks warnings)
 - ✅ Only 5 warnings remaining - nearly complete!
 
 **Time Taken:** ~5-6 hours total (efficient due to systematic patterns)
@@ -494,7 +494,7 @@ Excellent progress has been made - **we're at 94.2% completion!**
 5. **Nearly at zero warnings!** (94.5% total progress from 328 issues)
 6. **Import order issues fixed** (1 → 0) ✅
 7. **React Refresh warnings fixed** (10 → 0) ✅ **Phase 5a Complete**
-8. **React Hooks warnings mostly fixed** (39 → 5, **87.2% reduction**) 🟢 **Phase 5b 87% Complete - Only 5 remaining!**
+8. **React Hooks warnings mostly fixed** (39 → 5, **87.2% reduction**) 🟢 **Phase 5b 87.2% Complete - Only 5 remaining!**
 9. CI/CD configured to maintain quality (`--max-warnings 0`)
 10. Developer documentation created and updated
 11. All tests passing (699/699)
