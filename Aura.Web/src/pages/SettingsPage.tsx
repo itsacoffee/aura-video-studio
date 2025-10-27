@@ -91,6 +91,7 @@ interface ValidationResult {
   ok: boolean;
   details: string;
   durationMs?: number;
+  elapsedMs?: number;
 }
 
 interface ValidationResults {

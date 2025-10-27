@@ -140,7 +140,7 @@ export function DownloadsPage() {
   const verifyComponentIntegrity = async (
     componentName: string,
     isInstalled: boolean
-  ): Promise<{ needsRepair: boolean; verificationResult?: unknown } | null> => {
+  ): Promise<{ needsRepair: boolean; verificationResult?: VerificationResult } | null> => {
     if (!isInstalled) {
       return null;
     }
@@ -148,7 +148,7 @@ export function DownloadsPage() {
     try {
       const verifyResponse = await fetch(apiUrl(`/api/downloads/${componentName}/verify`));
       if (verifyResponse.ok) {
-        const verifyData = await verifyResponse.json();
+        const verifyData = await verifyResponse.json() as VerificationResult;
         return {
           needsRepair: !verifyData.isValid,
           verificationResult: verifyData,
