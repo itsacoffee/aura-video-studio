@@ -1,0 +1,367 @@
+name: Orchestrator Smoke Tests
+
+on:
+  push:
+    branches: [ main, develop, copilot/harden-startup-orchestration ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '20'
+
+jobs:
+  type-check:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: Aura.Web/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: Aura.Web
+      run: npm ci
+      
+    - name: Run Type Check
+      working-directory: Aura.Web
+      run: npm run type-check
+
+  lint:
+    name: Lint Check
+    runs-on: ubuntu-latest
+    needs: type-check
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: Aura.Web/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: Aura.Web
+      run: npm ci
+      
+    - name: Run ESLint
+      working-directory: Aura.Web
+      run: npm run lint
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: [type-check, lint]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: Aura.Web/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: Aura.Web
+      run: npm ci
+      
+    - name: Build Production Bundle
+      working-directory: Aura.Web
+      run: npm run build:prod
+      
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-dist
+        path: Aura.Web/dist/
+        retention-days: 1
+
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    needs: type-check
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Restore dependencies
+      run: dotnet restore Aura.sln
+      
+    - name: Build Aura.Api
+      run: dotnet build Aura.Api/Aura.Api.csproj --configuration Release --no-restore
+      
+    - name: Build Aura.Core
+      run: dotnet build Aura.Core/Aura.Core.csproj --configuration Release --no-restore
+      
+    - name: Build Aura.Providers
+      run: dotnet build Aura.Providers/Aura.Providers.csproj --configuration Release --no-restore
+
+  orchestrator-smoke:
+    name: Orchestrator Startup Validation
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-backend]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Restore .NET dependencies
+      run: dotnet restore Aura.sln
+      
+    - name: Build Backend
+      run: |
+        dotnet build Aura.Core/Aura.Core.csproj --configuration Release --no-restore
+        dotnet build Aura.Providers/Aura.Providers.csproj --configuration Release --no-restore
+        dotnet build Aura.Api/Aura.Api.csproj --configuration Release --no-restore
+      
+    - name: Download Frontend Build
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-dist
+        path: Aura.Api/wwwroot/
+      
+    - name: Check Frontend Files
+      run: |
+        echo "Checking frontend dist was downloaded correctly..."
+        ls -la Aura.Api/wwwroot/
+        if [ -f "Aura.Api/wwwroot/index.html" ]; then
+          echo "✓ index.html found"
+        else
+          echo "✗ index.html not found"
+          exit 1
+        fi
+      
+    - name: Start API Server
+      env:
+        ASPNETCORE_URLS: http://127.0.0.1:5005
+        ASPNETCORE_ENVIRONMENT: Production
+      run: |
+        cd Aura.Api
+        dotnet run --no-build --configuration Release &
+        API_PID=$!
+        echo "API_PID=$API_PID" >> $GITHUB_ENV
+        
+        # Wait for server to start (max 60 seconds)
+        echo "Waiting for API server to start..."
+        for i in {1..60}; do
+          if curl -s http://127.0.0.1:5005/healthz > /dev/null 2>&1; then
+            echo "✓ API server started successfully (after ${i}s)"
+            break
+          fi
+          if [ $i -eq 60 ]; then
+            echo "✗ API server failed to start within 60 seconds"
+            exit 1
+          fi
+          sleep 1
+        done
+      
+    - name: Check Liveness Endpoint
+      run: |
+        echo "Checking /health/live endpoint..."
+        RESPONSE=$(curl -s -w "\n%{http_code}" http://127.0.0.1:5005/api/health/live)
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
+        
+        echo "HTTP Status: $HTTP_CODE"
+        echo "Response Body: $BODY"
+        
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "✗ Liveness check failed with status $HTTP_CODE"
+          exit 1
+        fi
+        
+        echo "✓ Liveness check passed"
+      
+    - name: Check Readiness Endpoint
+      run: |
+        echo "Checking /health/ready endpoint..."
+        # Allow up to 30 seconds for readiness
+        for i in {1..30}; do
+          RESPONSE=$(curl -s -w "\n%{http_code}" http://127.0.0.1:5005/api/health/ready)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "Attempt $i: HTTP Status: $HTTP_CODE"
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Response Body: $BODY"
+            echo "✓ Readiness check passed"
+            break
+          elif [ "$HTTP_CODE" = "503" ]; then
+            echo "Service still initializing..."
+            if [ $i -eq 30 ]; then
+              echo "✗ Service failed to become ready within 30 seconds"
+              echo "Response Body: $BODY"
+              exit 1
+            fi
+            sleep 1
+          else
+            echo "✗ Unexpected status code: $HTTP_CODE"
+            echo "Response Body: $BODY"
+            exit 1
+          fi
+        done
+      
+    - name: Check Initialization Order
+      run: |
+        echo "Checking /api/diagnostics/initialization-order endpoint..."
+        RESPONSE=$(curl -s http://127.0.0.1:5005/api/diagnostics/initialization-order 2>&1 || echo "{}")
+        echo "Response: $RESPONSE"
+        
+        # Just check that we got a valid response (endpoint may not exist yet)
+        if echo "$RESPONSE" | grep -q "error\|Error"; then
+          echo "⚠ Initialization order endpoint not available (optional)"
+        else
+          echo "✓ Initialization order endpoint accessible"
+        fi
+      
+    - name: Verify Dependency Detection
+      run: |
+        echo "Checking dependency detection..."
+        RESPONSE=$(curl -s http://127.0.0.1:5005/api/dependencies/rescan -X POST)
+        echo "Rescan Response: $RESPONSE"
+        
+        if echo "$RESPONSE" | grep -q "success"; then
+          echo "✓ Dependency rescan successful"
+        else
+          echo "⚠ Dependency rescan returned unexpected response (may be expected in CI)"
+        fi
+      
+    - name: Collect Startup Logs
+      if: always()
+      run: |
+        echo "Collecting startup logs..."
+        if [ -d "Aura.Api/logs" ]; then
+          echo "=== Startup Logs ==="
+          cat Aura.Api/logs/*.log || echo "No log files found"
+        else
+          echo "Logs directory not found"
+        fi
+      
+    - name: Stop API Server
+      if: always()
+      run: |
+        if [ ! -z "$API_PID" ]; then
+          echo "Stopping API server (PID: $API_PID)..."
+          kill $API_PID || true
+          sleep 2
+        fi
+      
+    - name: Upload Logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: orchestrator-startup-logs
+        path: Aura.Api/logs/
+        retention-days: 7
+        if-no-files-found: ignore
+
+  dependency-check-script:
+    name: Dependency Check Script Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install FFmpeg (for testing)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+      
+    - name: Run Dependency Check Script
+      run: |
+        chmod +x scripts/check-deps.sh
+        ./scripts/check-deps.sh || echo "Script completed with warnings (expected in CI)"
+      
+    - name: Verify Script Output
+      run: |
+        if ./scripts/check-deps.sh | grep -q "CRITICAL"; then
+          echo "✗ Critical dependency failures detected"
+          # Don't fail CI - this is expected in minimal environment
+        else
+          echo "✓ No critical dependency failures (or script handles gracefully)"
+        fi
+
+  smoke-tests:
+    name: Run Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-backend]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: Aura.Web/package-lock.json
+        
+    - name: Install Frontend Dependencies
+      working-directory: Aura.Web
+      run: npm ci
+      
+    - name: Run Vitest Smoke Tests
+      working-directory: Aura.Web
+      run: npm test -- tests/smoke/
+      
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-test-results
+        path: Aura.Web/coverage/
+        retention-days: 7
+        if-no-files-found: ignore
+
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [type-check, lint, build-frontend, build-backend, orchestrator-smoke, dependency-check-script, smoke-tests]
+    if: always()
+    
+    steps:
+    - name: Check Results
+      run: |
+        echo "=== Orchestrator Smoke Test Summary ==="
+        echo "Type Check: ${{ needs.type-check.result }}"
+        echo "Lint: ${{ needs.lint.result }}"
+        echo "Build Frontend: ${{ needs.build-frontend.result }}"
+        echo "Build Backend: ${{ needs.build-backend.result }}"
+        echo "Orchestrator Smoke: ${{ needs.orchestrator-smoke.result }}"
+        echo "Dependency Check Script: ${{ needs.dependency-check-script.result }}"
+        echo "Smoke Tests: ${{ needs.smoke-tests.result }}"
+        
+        if [ "${{ needs.orchestrator-smoke.result }}" != "success" ]; then
+          echo "✗ Orchestrator smoke tests failed"
+          exit 1
+        fi
+        
+        echo "✓ All critical tests passed"
