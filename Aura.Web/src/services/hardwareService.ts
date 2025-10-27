@@ -27,7 +27,7 @@ export async function getHardwareInfo(): Promise<HardwareInfo> {
     const response = await get<Record<string, unknown>>('/api/diagnostics/hardware');
 
     // Map the API response to our HardwareInfo interface
-    const gpu = response.gpu as { vendor?: string } | undefined;
+    const gpu = response.gpu as { vendor?: string; model?: string; vramGB?: number } | undefined;
     const hasNvidia = gpu?.vendor?.toUpperCase().includes('NVIDIA') || false;
     const hasAmd = gpu?.vendor?.toUpperCase().includes('AMD') || false;
     const hasIntel = gpu?.vendor?.toUpperCase().includes('INTEL') || false;
@@ -47,8 +47,8 @@ export async function getHardwareInfo(): Promise<HardwareInfo> {
     }
 
     return {
-      cpuCores: response.logicalCores || 0,
-      ramGB: response.ramGB || 0,
+      cpuCores: (response.logicalCores as number | undefined) ?? 0,
+      ramGB: (response.ramGB as number | undefined) ?? 0,
       gpu: gpu
         ? {
             vendor: gpu.vendor || 'Unknown',

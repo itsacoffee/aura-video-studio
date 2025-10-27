@@ -13,16 +13,6 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({ projectId,
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load conversation history on mount
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -37,6 +27,16 @@ export const ConversationPanel: React.FC<ConversationPanelProps> = ({ projectId,
       console.error('Error loading history:', err);
     }
   }, [projectId]);
+
+  // Load conversation history on mount
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;

@@ -136,6 +136,18 @@ export function VideoPreviewPlayer({
     };
   }, [onTimeUpdate]);
 
+  const handlePlayPause = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isPlaying) {
+      video.pause();
+    } else {
+      video.play();
+    }
+    setIsPlaying(!isPlaying);
+  }, [isPlaying]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -161,18 +173,6 @@ export function VideoPreviewPlayer({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [videoUrl, duration, handlePlayPause]);
-
-  const handlePlayPause = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (isPlaying) {
-      video.pause();
-    } else {
-      video.play();
-    }
-    setIsPlaying(!isPlaying);
-  }, [isPlaying]);
 
   const handleSeek = (value: number) => {
     const video = videoRef.current;

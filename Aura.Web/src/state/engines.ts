@@ -6,6 +6,8 @@ import type {
   EngineInstance,
   AttachEngineRequest,
   ReconfigureEngineRequest,
+  EngineVerificationResult,
+  EngineDiagnostics,
 } from '../types/engines';
 
 interface EnginesState {
@@ -22,7 +24,7 @@ interface EnginesState {
   installEngine: (engineId: string, version?: string, port?: number) => Promise<void>;
   attachEngine: (request: AttachEngineRequest) => Promise<void>;
   reconfigureEngine: (request: ReconfigureEngineRequest) => Promise<void>;
-  verifyEngine: (engineId: string) => Promise<unknown>;
+  verifyEngine: (engineId: string) => Promise<EngineVerificationResult>;
   repairEngine: (engineId: string) => Promise<void>;
   removeEngine: (engineId: string) => Promise<void>;
   startEngine: (engineId: string, port?: number, args?: string) => Promise<void>;
@@ -30,7 +32,7 @@ interface EnginesState {
   openFolder: (engineId: string) => Promise<void>;
   openWebUI: (engineId: string) => Promise<string>;
   refreshStatus: (engineId: string) => Promise<void>;
-  getDiagnostics: (engineId: string) => Promise<unknown>;
+  getDiagnostics: (engineId: string) => Promise<EngineDiagnostics>;
 }
 
 export const useEnginesStore = create<EnginesState>((set, get) => ({

@@ -47,7 +47,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiUrl } from '../../config/api';
 import { useEngineInstallProgress } from '../../hooks/useEngineInstallProgress';
 import { useEnginesStore } from '../../state/engines';
-import type { EngineManifestEntry, EngineStatus } from '../../types/engines';
+import type { EngineManifestEntry, EngineStatus, EngineDiagnostics } from '../../types/engines';
 import { useNotifications } from '../Notifications/Toasts';
 import { AttachEngineDialog } from './AttachEngineDialog';
 import { ModelManager } from './ModelManager';
@@ -137,7 +137,7 @@ export function EngineCard({ engine }: EngineCardProps) {
   const [status, setStatus] = useState<EngineStatus | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [diagnosticsData, setDiagnosticsData] = useState<Record<string, unknown> | null>(null);
+  const [diagnosticsData, setDiagnosticsData] = useState<EngineDiagnostics | null>(null);
   const [isLoadingDiagnostics, setIsLoadingDiagnostics] = useState(false);
   const [showCustomUrlDialog, setShowCustomUrlDialog] = useState(false);
   const [customUrl, setCustomUrl] = useState('');
@@ -166,6 +166,8 @@ export function EngineCard({ engine }: EngineCardProps) {
     progress,
     error: installError,
   } = useEngineInstallProgress();
+
+  const isInstalled = engine.isInstalled || status?.status !== 'not_installed';
 
   const loadResolvedUrl = useCallback(async () => {
     if (!engine.githubRepo || isInstalled) {
@@ -572,7 +574,6 @@ export function EngineCard({ engine }: EngineCardProps) {
     }
   };
 
-  const isInstalled = engine.isInstalled || status?.status !== 'not_installed';
   const isRunning = status?.isRunning || false;
 
   return (
@@ -1127,7 +1128,7 @@ export function EngineCard({ engine }: EngineCardProps) {
 
                   <div className={styles.diagnosticsItem}>
                     <Text className={styles.diagnosticsLabel}>Available Disk Space:</Text>
-                    <Text>{formatBytes(diagnosticsData.availableDiskSpaceBytes)}</Text>
+                    <Text>{formatBytes(diagnosticsData.availableDiskSpaceBytes ?? 0)}</Text>
                   </div>
 
                   {diagnosticsData.checksumStatus && (

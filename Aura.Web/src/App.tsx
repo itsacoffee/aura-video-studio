@@ -151,7 +151,7 @@ function App() {
 
     // Add listener for health warnings
     const handleHealthWarning = (warning: { message: string; suggestion?: string }) => {
-      errorReportingService.warning(warning.message, warning.suggestion, { duration: 10000 });
+      errorReportingService.warning(warning.message, warning.suggestion ?? '', { duration: 10000 });
     };
 
     healthMonitorService.addWarningListener(handleHealthWarning);

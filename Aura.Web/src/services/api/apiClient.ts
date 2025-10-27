@@ -401,7 +401,7 @@ apiClient.interceptors.response.use(
 
       // Add custom message from response if available
       if (responseData?.message || responseData?.detail) {
-        userMessage = responseData.message || responseData.detail;
+        userMessage = (responseData.message || responseData.detail) as string;
       }
 
       technicalDetails = {
