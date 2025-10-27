@@ -335,6 +335,9 @@ describe('Smoke Test: Dependency Detection', () => {
 
   describe('1.5 Dependency Status Persistence', () => {
     it('should persist dependency status in localStorage', () => {
+      // Clear first to ensure clean state
+      localStorage.clear();
+      
       const dependencyStatus = {
         ffmpeg: { installed: true, version: '6.0' },
         python: { installed: true, version: '3.11.0' },
@@ -345,7 +348,10 @@ describe('Smoke Test: Dependency Detection', () => {
       
       const retrieved = JSON.parse(localStorage.getItem('dependencyStatus') || '{}');
       
+      expect(retrieved).toBeDefined();
+      expect(retrieved.ffmpeg).toBeDefined();
       expect(retrieved.ffmpeg.installed).toBe(true);
+      expect(retrieved.python).toBeDefined();
       expect(retrieved.python.installed).toBe(true);
       expect(retrieved.lastCheck).toBeTruthy();
     });
