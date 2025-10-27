@@ -3,8 +3,22 @@
 ## Overview
 This checklist validates all critical paths from first-run through video generation, verifies all dependencies wire up correctly, tests every user-facing feature, and ensures the application is production-ready.
 
-**Last Updated**: 2025-10-27
+**Last Updated**: 2025-10-27  
 **Status**: ⏳ In Progress
+
+## Related Documentation
+- **[Dependency Documentation](docs/DEPENDENCIES.md)**: Complete manifest of all dependencies, versions, and installation methods
+- **[Orchestration Runbook](docs/ORCHESTRATION_RUNBOOK.md)**: Operational guide for startup diagnostics and troubleshooting
+- **[FFmpeg Setup Guide](docs/FFmpeg_Setup_Guide.md)**: Step-by-step FFmpeg installation instructions
+
+## Quick Reference: Dependency Validation Tools
+- **CLI Script**: `./scripts/check-deps.sh` - Cross-platform dependency validation
+- **TypeScript Service**: `Aura.Web/src/services/dependencyChecker.ts` - Programmatic API
+- **Health Endpoints**: 
+  - `/api/health/live` - Liveness check
+  - `/api/health/ready` - Readiness check
+  - `/api/dependencies/check` - Dependency status
+  - `/api/dependencies/rescan` - Force fresh scan
 
 ---
 
@@ -18,6 +32,7 @@ This checklist validates all critical paths from first-run through video generat
 - [ ] Verify FFmpeg detection works correctly
 - [ ] Confirm accurate version display
 - [ ] Validate path detection is correct
+- [ ] **Validation Tool**: Run `./scripts/check-deps.sh` to verify all dependencies
 - [ ] **Status**: Not Started
 - [ ] **Notes**: 
 
@@ -28,6 +43,7 @@ This checklist validates all critical paths from first-run through video generat
 - [ ] Verify FFmpeg installs to correct location
 - [ ] Confirm version validation passes after install
 - [ ] Test manual path selection if auto-install unavailable
+- [ ] **Validation**: Check `/api/dependencies/install/ffmpeg` endpoint
 - [ ] **Status**: Not Started
 - [ ] **Notes**: 
 
@@ -37,6 +53,7 @@ This checklist validates all critical paths from first-run through video generat
 - [ ] Validate GPU detection for hardware acceleration
 - [ ] Verify AI service endpoints are reachable
 - [ ] Test connection buttons work correctly
+- [ ] **Validation**: Check `/api/hardware/probe` for GPU info
 - [ ] **Status**: Not Started
 - [ ] **Notes**: 
 
@@ -47,6 +64,8 @@ This checklist validates all critical paths from first-run through video generat
 - [ ] Ensure FFmpeg path validation happens before video services register
 - [ ] Validate AI services initialize after configuration loads
 - [ ] Confirm no race conditions in startup
+- [ ] **Validation**: Check startup logs for initialization order
+- [ ] **Reference**: See [Orchestration Runbook](docs/ORCHESTRATION_RUNBOOK.md#service-initialization-order)
 - [ ] **Status**: Not Started
 - [ ] **Notes**: 
 
