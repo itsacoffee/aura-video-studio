@@ -141,26 +141,7 @@ export function DownloadsPage() {
     try {
       const response = await fetch(apiUrl('/api/downloads/manifest'));
       if (response.ok) {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json();
-          setManifest(data.components || []);
-
-          // Check installation status for each component
-          if (data.components) {
-            for (const component of data.components) {
-              checkComponentStatus(component.name);
-            }
-          }
-        } else {
-          const text = await response.text();
-          console.error('Invalid response format (expected JSON):', text.substring(0, 200));
-          showFailureToast({
-            title: 'Failed to Load Manifest',
-            message:
-              'Server returned invalid response format. The API may not be configured correctly.',
-          });
-        }
+        await handleManifestResponse(response);
       } else {
         showFailureToast({
           title: 'Failed to Load Manifest',
@@ -168,59 +149,60 @@ export function DownloadsPage() {
         });
       }
     } catch (error) {
-      console.error('Error fetching manifest:', error);
-      if (error instanceof Error && error.message.includes('JSON')) {
-        showFailureToast({
-          title: 'Failed to Parse Response',
-          message:
-            'Unable to parse server response. The server may have returned HTML instead of JSON.',
-        });
-      } else {
-        showFailureToast({
-          title: 'Connection Error',
-          message: error instanceof Error ? error.message : 'Failed to fetch manifest',
-        });
-      }
+      handleManifestError(error);
     } finally {
       setLoading(false);
     }
   }, [checkComponentStatus, showFailureToast]);
 
+  // Helper to verify component integrity
+  const verifyComponentIntegrity = async (
+    componentName: string,
+    isInstalled: boolean
+  ): Promise<{ needsRepair: boolean; verificationResult?: unknown } | null> => {
+    if (!isInstalled) {
+      return null;
+    }
+
+    try {
+      const verifyResponse = await fetch(apiUrl(`/api/downloads/${componentName}/verify`));
+      if (verifyResponse.ok) {
+        const verifyData = await verifyResponse.json();
+        return {
+          needsRepair: !verifyData.isValid,
+          verificationResult: verifyData,
+        };
+      }
+    } catch (error) {
+      console.error(`Error verifying ${componentName}:`, error);
+    }
+
+    return null;
+  };
+
   const checkComponentStatus = useCallback(async (componentName: string) => {
     try {
       const statusResponse = await fetch(apiUrl(`/api/downloads/${componentName}/status`));
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-
-        // If installed, verify integrity
-        if (statusData.isInstalled) {
-          const verifyResponse = await fetch(apiUrl(`/api/downloads/${componentName}/verify`));
-          if (verifyResponse.ok) {
-            const verifyData = await verifyResponse.json();
-            setComponentStatus((prev) => ({
-              ...prev,
-              [componentName]: {
-                isInstalled: statusData.isInstalled,
-                isInstalling: false,
-                isRepairing: false,
-                needsRepair: !verifyData.isValid,
-                verificationResult: verifyData,
-              },
-            }));
-            return;
-          }
-        }
-
-        setComponentStatus((prev) => ({
-          ...prev,
-          [componentName]: {
-            isInstalled: statusData.isInstalled,
-            isInstalling: false,
-            isRepairing: false,
-            needsRepair: false,
-          },
-        }));
+      if (!statusResponse.ok) {
+        return;
       }
+
+      const statusData = await statusResponse.json();
+      const verificationInfo = await verifyComponentIntegrity(
+        componentName,
+        statusData.isInstalled
+      );
+
+      setComponentStatus((prev) => ({
+        ...prev,
+        [componentName]: {
+          isInstalled: statusData.isInstalled,
+          isInstalling: false,
+          isRepairing: false,
+          needsRepair: verificationInfo?.needsRepair || false,
+          verificationResult: verificationInfo?.verificationResult,
+        },
+      }));
     } catch (error) {
       console.error(`Error checking status for ${componentName}:`, error);
     }

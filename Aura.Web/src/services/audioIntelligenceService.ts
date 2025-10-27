@@ -538,26 +538,41 @@ class AudioIntelligenceService {
   }
 
   /**
+   * Build query parameters for music search
+   */
+  private buildMusicSearchParams(params?: MusicSearchParams): URLSearchParams {
+    const queryParams = new URLSearchParams();
+
+    if (!params) return queryParams;
+
+    // Helper to append non-empty values
+    const appendIfPresent = (key: string, value: string | number | undefined) => {
+      if (value !== undefined) {
+        queryParams.append(key, String(value));
+      }
+    };
+
+    appendIfPresent('mood', params.mood);
+    appendIfPresent('genre', params.genre);
+    appendIfPresent('energy', params.energy);
+    appendIfPresent('minBPM', params.minBPM);
+    appendIfPresent('maxBPM', params.maxBPM);
+    appendIfPresent('minDuration', params.minDuration);
+    appendIfPresent('maxDuration', params.maxDuration);
+    appendIfPresent('searchQuery', params.searchQuery);
+    appendIfPresent('limit', params.limit);
+
+    return queryParams;
+  }
+
+  /**
    * Get music library
    */
   async getMusicLibrary(params?: MusicSearchParams): Promise<{
     tracks: MusicTrack[];
     totalCount: number;
   }> {
-    const queryParams = new URLSearchParams();
-
-    if (params) {
-      if (params.mood) queryParams.append('mood', params.mood);
-      if (params.genre) queryParams.append('genre', params.genre);
-      if (params.energy) queryParams.append('energy', params.energy);
-      if (params.minBPM) queryParams.append('minBPM', params.minBPM.toString());
-      if (params.maxBPM) queryParams.append('maxBPM', params.maxBPM.toString());
-      if (params.minDuration) queryParams.append('minDuration', params.minDuration);
-      if (params.maxDuration) queryParams.append('maxDuration', params.maxDuration);
-      if (params.searchQuery) queryParams.append('searchQuery', params.searchQuery);
-      if (params.limit) queryParams.append('limit', params.limit.toString());
-    }
-
+    const queryParams = this.buildMusicSearchParams(params);
     const url = `${API_BASE}/music-library${queryParams.toString() ? `?${queryParams}` : ''}`;
     const response = await fetch(url);
 

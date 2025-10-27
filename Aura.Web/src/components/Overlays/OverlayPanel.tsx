@@ -89,22 +89,51 @@ export function OverlayPanel() {
   };
 
   const handleAddOverlay = (type: 'title' | 'lowerThird' | 'callout') => {
+    // Default configurations for each overlay type
+    const overlayDefaults: Record<
+      'title' | 'lowerThird' | 'callout',
+      Omit<TextOverlay, 'id' | 'type' | 'inTime' | 'outTime' | 'x' | 'y'>
+    > = {
+      title: {
+        text: 'Title Text',
+        alignment: 'topCenter',
+        fontSize: 72,
+        fontColor: 'white',
+        backgroundColor: 'black',
+        backgroundOpacity: 0.7,
+        borderWidth: 2,
+        borderColor: 'white',
+      },
+      lowerThird: {
+        text: 'Name',
+        alignment: 'bottomLeft',
+        fontSize: 36,
+        fontColor: 'white',
+        backgroundColor: '#000080',
+        backgroundOpacity: 0.85,
+        borderWidth: 0,
+        borderColor: undefined,
+      },
+      callout: {
+        text: 'Important!',
+        alignment: 'middleRight',
+        fontSize: 48,
+        fontColor: 'yellow',
+        backgroundColor: 'black',
+        backgroundOpacity: 0.8,
+        borderWidth: 3,
+        borderColor: 'yellow',
+      },
+    };
+
     const newOverlay: TextOverlay = {
       id: `overlay_${Date.now()}`,
       type,
-      text: type === 'title' ? 'Title Text' : type === 'lowerThird' ? 'Name' : 'Important!',
       inTime: currentTime,
       outTime: currentTime + 3,
-      alignment:
-        type === 'title' ? 'topCenter' : type === 'lowerThird' ? 'bottomLeft' : 'middleRight',
       x: 0,
       y: 0,
-      fontSize: type === 'title' ? 72 : type === 'lowerThird' ? 36 : 48,
-      fontColor: type === 'callout' ? 'yellow' : 'white',
-      backgroundColor: type === 'title' ? 'black' : type === 'lowerThird' ? '#000080' : 'black',
-      backgroundOpacity: type === 'title' ? 0.7 : type === 'lowerThird' ? 0.85 : 0.8,
-      borderWidth: type === 'title' ? 2 : type === 'callout' ? 3 : 0,
-      borderColor: type === 'title' ? 'white' : type === 'callout' ? 'yellow' : undefined,
+      ...overlayDefaults[type],
     };
 
     addOverlay(newOverlay);
