@@ -11,6 +11,8 @@ import {
   Spinner,
   Tab,
   TabList,
+  SelectTabData,
+  SelectTabEvent,
   Title3,
   Body1,
   Badge,
@@ -88,7 +90,7 @@ export const PacingOptimizationPanel = ({
     }
   }, []);
 
-  const handleTabChange = (_: unknown, data: { value: string }) => {
+  const handleTabChange = (_: SelectTabEvent, data: SelectTabData) => {
     setSelectedTab(data.value as string);
   };
 

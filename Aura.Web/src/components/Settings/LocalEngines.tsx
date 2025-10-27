@@ -519,7 +519,7 @@ export function LocalEngines() {
             <DialogContent>
               {diagnostics && (
                 <div>
-                  <Text>Generated: {new Date(diagnostics.generatedAt).toLocaleString()}</Text>
+                  <Text>Generated: {new Date(diagnostics.generatedAt as string | number | Date).toLocaleString()}</Text>
                   <br />
                   <Text>Total Engines: {diagnostics.totalEngines}</Text>
                   <br />

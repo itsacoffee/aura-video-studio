@@ -216,7 +216,7 @@ export function PerformanceSettingsTab() {
             <Text size={200}>
               GPU: {detectedHardware.gpuName || 'Unknown'}
               {detectedHardware.gpuVram &&
-                ` (${Math.floor(detectedHardware.gpuVram / 1024)} GB VRAM)`}
+                ` (${Math.floor((detectedHardware.gpuVram as number) / 1024)} GB VRAM)`}
             </Text>
             <br />
             <Text size={200}>RAM: {detectedHardware.ramGb || 0} GB</Text>
@@ -352,7 +352,7 @@ export function PerformanceSettingsTab() {
         >
           <Slider
             min={0}
-            max={detectedHardware?.cpuCores || 16}
+            max={(detectedHardware?.cpuCores as number | undefined) || 16}
             step={1}
             value={maxRenderThreads}
             onChange={(_, data) => {

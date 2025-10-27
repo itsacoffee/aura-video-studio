@@ -25,8 +25,7 @@ const useStyles = makeStyles({
   },
   selectedEmotion: {
     backgroundColor: tokens.colorBrandBackground2,
-    borderColor: tokens.colorBrandForeground1 as string,
-    borderWidth: '2px' as string,
+    border: `2px solid ${tokens.colorBrandForeground1}`,
   },
   emotionIcon: {
     fontSize: '32px',

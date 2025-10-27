@@ -29,6 +29,8 @@ import {
   JobResponse,
   JobStep,
   JobEvent,
+  JobStepError,
+  JobOutput,
   subscribeToJobEvents,
   getJob,
   cancelJob,
@@ -141,40 +143,42 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
 
           switch (event.type) {
             case 'job-status':
-              updated.status = event.data.status;
+              updated.status = (event.data as { status: JobResponse['status'] }).status;
               break;
 
             case 'step-status':
               updated.steps = updated.steps.map((step) =>
-                step.name === event.data.step ? { ...step, status: event.data.status } : step
+                step.name === (event.data as { step: string; status: JobStep['status'] }).step 
+                  ? { ...step, status: (event.data as { step: string; status: JobStep['status'] }).status } 
+                  : step
               );
               break;
 
             case 'step-progress':
               updated.steps = updated.steps.map((step) =>
-                step.name === event.data.step
-                  ? { ...step, progressPct: event.data.progressPct }
+                step.name === (event.data as { step: string; progressPct: number }).step
+                  ? { ...step, progressPct: (event.data as { step: string; progressPct: number }).progressPct }
                   : step
               );
               break;
 
             case 'step-error':
               updated.steps = updated.steps.map((step) =>
-                step.name === event.data.step
-                  ? { ...step, errors: [...step.errors, event.data] }
+                step.name === (event.data as JobStepError & { step: string }).step
+                  ? { ...step, errors: [...step.errors, event.data as JobStepError] }
                   : step
               );
               break;
 
             case 'job-completed':
               updated.status = 'Succeeded';
-              updated.output = event.data.output;
+              updated.output = (event.data as { output?: JobOutput }).output;
               updated.endedUtc = new Date().toISOString();
               break;
 
             case 'job-failed':
               updated.status = 'Failed';
-              updated.errors = event.data.errors || [];
+              updated.errors = (event.data as { errors?: JobStepError[] }).errors || [];
               updated.endedUtc = new Date().toISOString();
               break;
           }

@@ -64,7 +64,7 @@ export function ApiKeysSettingsTab({
   hasChanges,
 }: ApiKeysSettingsTabProps) {
   const styles = useStyles();
-  const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
+  const [testResults, setTestResults] = useState<Record<string, TestResult | undefined>>({});
   const [testing, setTesting] = useState<Record<string, boolean>>({});
 
   const updateSetting = <K extends keyof ApiKeysSettings>(key: K, value: ApiKeysSettings[K]) => {

@@ -112,4 +112,9 @@ export interface EngineDiagnostics {
   failedUrl?: string;
   pathWritable?: boolean;
   error?: string;
+  installPath?: string;
+  isInstalled?: boolean;
+  pathExists?: boolean;
+  lastError?: string;
+  issues?: string[];
 }

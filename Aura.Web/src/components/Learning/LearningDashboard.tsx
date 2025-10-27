@@ -27,10 +27,6 @@ export const LearningDashboard: React.FC<LearningDashboardProps> = ({ profileId 
   );
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -54,6 +50,10 @@ export const LearningDashboard: React.FC<LearningDashboardProps> = ({ profileId 
       setLoading(false);
     }
   }, [profileId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleAnalyze = async () => {
     try {
