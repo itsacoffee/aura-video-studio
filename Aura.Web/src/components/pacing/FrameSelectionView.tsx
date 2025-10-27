@@ -15,7 +15,7 @@ import {
   Tooltip,
 } from '@fluentui/react-components';
 import { Image24Regular, Star24Regular, Eye24Regular, Info24Regular } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Scene } from '../../types';
 
 interface FrameSelectionViewProps {
@@ -106,13 +106,7 @@ export const FrameSelectionView = ({
   const [frames, setFrames] = useState<FrameInfo[]>([]);
   const [selectedFrameIndex, setSelectedFrameIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (optimizationActive && scenes.length > 0) {
-      analyzeFrames();
-    }
-  }, [optimizationActive, scenes]);
-
-  const analyzeFrames = async () => {
+  const analyzeFrames = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -136,7 +130,13 @@ export const FrameSelectionView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [scenes]);
+
+  useEffect(() => {
+    if (optimizationActive && scenes.length > 0) {
+      analyzeFrames();
+    }
+  }, [optimizationActive, scenes, analyzeFrames]);
 
   const getScoreColor = (score: number): string => {
     if (score >= 0.7) return tokens.colorPaletteGreenBackground3;

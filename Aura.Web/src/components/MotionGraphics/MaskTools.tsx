@@ -19,7 +19,7 @@ import {
   Checkmark24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -106,29 +106,7 @@ export function MaskTools({
   const [opacity, setOpacity] = useState(1);
   const [inverted] = useState(false);
 
-  useEffect(() => {
-    redrawCanvas();
-  }, [currentMask, pathPoints]);
-
-  const redrawCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw mask preview
-    if (currentMask) {
-      drawMask(ctx, currentMask);
-    } else if (selectedTool === 'custom-path' && pathPoints.length > 0) {
-      drawCustomPath(ctx, pathPoints);
-    }
-  };
-
-  const drawMask = (ctx: CanvasRenderingContext2D, mask: MaskShape) => {
+  const drawMask = useCallback((ctx: CanvasRenderingContext2D, mask: MaskShape) => {
     ctx.save();
 
     // Create mask path
@@ -161,9 +139,9 @@ export function MaskTools({
     ctx.stroke();
 
     ctx.restore();
-  };
+  }, [inverted, opacity]);
 
-  const drawCustomPath = (
+  const drawCustomPath = useCallback((
     ctx: CanvasRenderingContext2D,
     points: Array<{ x: number; y: number }>
   ) => {
@@ -190,7 +168,29 @@ export function MaskTools({
       ctx.fill();
       ctx.stroke();
     });
-  };
+  }, []);
+
+  const redrawCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw mask preview
+    if (currentMask) {
+      drawMask(ctx, currentMask);
+    } else if (selectedTool === 'custom-path' && pathPoints.length > 0) {
+      drawCustomPath(ctx, pathPoints);
+    }
+  }, [currentMask, pathPoints, selectedTool, drawMask, drawCustomPath]);
+
+  useEffect(() => {
+    redrawCanvas();
+  }, [redrawCanvas]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!selectedTool) return;

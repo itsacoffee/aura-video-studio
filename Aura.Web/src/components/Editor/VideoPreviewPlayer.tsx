@@ -18,7 +18,7 @@ import {
   Next24Regular,
   FullScreenMaximize24Regular,
 } from '@fluentui/react-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -160,9 +160,9 @@ export function VideoPreviewPlayer({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [videoUrl, duration]);
+  }, [videoUrl, duration, handlePlayPause]);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
 
@@ -172,7 +172,7 @@ export function VideoPreviewPlayer({
       video.play();
     }
     setIsPlaying(!isPlaying);
-  };
+  }, [isPlaying]);
 
   const handleSeek = (value: number) => {
     const video = videoRef.current;

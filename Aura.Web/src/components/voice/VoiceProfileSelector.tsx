@@ -11,7 +11,7 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import { MicRegular, SearchRegular, PlayRegular } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiUrl } from '../../config/api';
 
 const useStyles = makeStyles({
@@ -126,15 +126,7 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
   const [genderFilter, setGenderFilter] = useState<string>('all');
   const [localeFilter, setLocaleFilter] = useState<string>('all');
 
-  useEffect(() => {
-    loadVoices();
-  }, []);
-
-  useEffect(() => {
-    filterVoices();
-  }, [searchQuery, providerFilter, genderFilter, localeFilter, voices]);
-
-  const loadVoices = async () => {
+  const loadVoices = useCallback(async () => {
     setLoading(true);
     try {
       // Call API to get available voices
@@ -193,9 +185,9 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const filterVoices = () => {
+  const filterVoices = useCallback(() => {
     let filtered = voices;
 
     if (searchQuery) {
@@ -218,7 +210,15 @@ export const VoiceProfileSelector: React.FC<VoiceProfileSelectorProps> = ({
     }
 
     setFilteredVoices(filtered);
-  };
+  }, [voices, searchQuery, providerFilter, genderFilter, localeFilter]);
+
+  useEffect(() => {
+    loadVoices();
+  }, [loadVoices]);
+
+  useEffect(() => {
+    filterVoices();
+  }, [filterVoices]);
 
   const handlePlaySample = async (voiceId: string, event: React.MouseEvent) => {
     event.stopPropagation();

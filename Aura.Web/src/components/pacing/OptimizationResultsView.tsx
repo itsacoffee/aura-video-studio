@@ -22,7 +22,7 @@ import {
   Warning24Regular,
   Info24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Scene } from '../../types';
 
 interface OptimizationResultsViewProps {
@@ -115,13 +115,7 @@ export const OptimizationResultsView = ({
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<OptimizationResults | null>(null);
 
-  useEffect(() => {
-    if (optimizationActive && scenes.length > 0) {
-      generateResults();
-    }
-  }, [optimizationActive, scenes]);
-
-  const generateResults = async () => {
+  const generateResults = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -162,7 +156,13 @@ export const OptimizationResultsView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [scenes]);
+
+  useEffect(() => {
+    if (optimizationActive && scenes.length > 0) {
+      generateResults();
+    }
+  }, [optimizationActive, scenes, generateResults]);
 
   const generateDropRecommendation = (): string => {
     const recommendations = [
