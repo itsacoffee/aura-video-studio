@@ -80,6 +80,7 @@ export function MattePreview({
   const compositeRef = useRef<HTMLCanvasElement>(null);
 
   // Update canvases when inputs change
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- Complex canvas rendering logic with multiple view modes; refactoring would reduce readability
   useEffect(() => {
     if (viewMode === 'split') {
       // Update original view

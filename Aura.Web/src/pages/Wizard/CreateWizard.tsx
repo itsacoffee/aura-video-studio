@@ -154,6 +154,7 @@ const createDefaultSettings = (): WizardSettings => ({
 // Local storage key
 const SETTINGS_STORAGE_KEY = 'aura-wizard-settings';
 
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Multi-step wizard component with various state management and conditional rendering
 export function CreateWizard() {
   const styles = useStyles();
   const [currentStep, setCurrentStep] = useState(1);

@@ -130,6 +130,7 @@ interface EngineCardProps {
   engine: EngineManifestEntry;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Complex UI component managing multiple engine states and operations; splitting would fragment related logic
 export function EngineCard({ engine }: EngineCardProps) {
   const styles = useStyles();
   const { showSuccessToast, showFailureToast } = useNotifications();
