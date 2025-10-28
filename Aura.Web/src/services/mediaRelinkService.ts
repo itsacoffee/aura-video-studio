@@ -56,9 +56,7 @@ export const searchForFile = async (_file: MediaFile): Promise<string[]> => {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 200));
 
-  // Mock implementation - would actually search filesystem
-  // In a real implementation, check these locations and return existing files
-  // TODO: Implement actual file system search using file parameter
+  // Mock implementation - file system search requires backend API
   return [];
 };
 

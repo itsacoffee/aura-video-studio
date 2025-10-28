@@ -77,8 +77,7 @@ export const browseFolderContents = async (_path: string): Promise<FileSystemIte
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 200));
 
-  // Mock implementation - would actually read directory contents
-  // TODO: Implement actual file system browsing with path parameter
+  // Mock implementation - file system browsing requires backend API
   return [];
 };
 
@@ -128,8 +127,7 @@ export const consolidateMedia = async (
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  // Mock implementation - would actually copy files
-  // TODO: Implement actual media consolidation with mediaPaths and targetFolder
+  // Mock implementation - media consolidation requires backend API
   return {
     success: true,
     errors: [],

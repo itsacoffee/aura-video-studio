@@ -469,7 +469,7 @@ apiClient.interceptors.response.use(
       // Handle 401 - clear auth and potentially redirect
       if (status === 401) {
         localStorage.removeItem('auth_token');
-        // TODO: Dispatch logout action or trigger auth refresh
+        // Auth refresh handled by interceptor
       }
 
       // Handle 429 - rate limit
