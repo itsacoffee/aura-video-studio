@@ -14,6 +14,7 @@ using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
 using Aura.Providers.Validation;
+using AspNetCoreRateLimit;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -92,6 +93,11 @@ builder.Services.AddScoped<ValidationFilter>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddCheck<Aura.Api.HealthChecks.DependencyHealthCheck>("Dependencies")
+    .AddCheck<Aura.Api.HealthChecks.DiskSpaceHealthCheck>("DiskSpace");
 
 // Configure database
 const string MigrationsAssembly = "Aura.Api";
@@ -205,9 +211,17 @@ builder.Services.AddSingleton<Aura.Core.Services.Learning.PredictiveSuggestionRa
 builder.Services.AddSingleton<Aura.Core.Services.Learning.LearningService>();
 
 // Register Ideation service
-builder.Services.AddMemoryCache(); // For trending topics caching
+builder.Services.AddMemoryCache(); // For trending topics caching and rate limiting
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.TrendingTopicsService>();
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
+
+// Register Rate Limiting services
+builder.Services.Configure<AspNetCoreRateLimit.IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+builder.Services.AddSingleton<AspNetCoreRateLimit.IIpPolicyStore, AspNetCoreRateLimit.MemoryCacheIpPolicyStore>();
+builder.Services.AddSingleton<AspNetCoreRateLimit.IRateLimitCounterStore, AspNetCoreRateLimit.MemoryCacheRateLimitCounterStore>();
+builder.Services.AddSingleton<AspNetCoreRateLimit.IRateLimitConfiguration, AspNetCoreRateLimit.RateLimitConfiguration>();
+builder.Services.AddSingleton<AspNetCoreRateLimit.IProcessingStrategy, AspNetCoreRateLimit.AsyncKeyLockProcessingStrategy>();
+builder.Services.AddInMemoryRateLimiting();
 
 // Register Content Verification services
 builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.FactCheckingService>();
@@ -905,9 +919,6 @@ app.UseCorrelationId();
 // Add request logging middleware (after correlation ID)
 app.UseRequestLogging();
 
-// Add rate limiting middleware
-app.UseRateLimiting();
-
 // Add new global exception handler (ASP.NET Core IExceptionHandler pattern)
 // This replaces the legacy ExceptionHandlingMiddleware
 app.UseExceptionHandler();
@@ -923,6 +934,41 @@ app.UseCors();
 
 // Add routing BEFORE static files (API routes take precedence)
 app.UseRouting();
+
+// Add AspNetCoreRateLimit middleware after routing and before authorization
+app.UseIpRateLimiting();
+
+// Map health check endpoints
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false, // Skip all registered checks for liveness - just return 200 if app is running
+    AllowCachingResponses = false
+});
+
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => true, // Run all registered checks for readiness
+    AllowCachingResponses = false,
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        
+        var result = new
+        {
+            status = report.Status.ToString().ToLowerInvariant(),
+            timestamp = DateTime.UtcNow,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString().ToLowerInvariant(),
+                description = e.Value.Description,
+                data = e.Value.Data
+            }).ToArray()
+        };
+        
+        await context.Response.WriteAsJsonAsync(result);
+    }
+});
 
 // Add controller routing
 app.MapControllers();
