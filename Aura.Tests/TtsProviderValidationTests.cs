@@ -312,13 +312,13 @@ public class TtsProviderValidationTests
     [Fact]
     public void Mimic3Provider_Constructor_Should_LogWarning_WhenServerUnreachable()
     {
-        // Arrange & Act - Use an unreachable URL
+        // Arrange & Act - Use an unreachable URL (port 1 is reserved and typically closed)
         var provider = new Mimic3TtsProvider(
             NullLogger<Mimic3TtsProvider>.Instance,
             new HttpClient(),
             new SilentWavGenerator(NullLogger<SilentWavGenerator>.Instance),
             new WavValidator(NullLogger<WavValidator>.Instance),
-            baseUrl: "http://localhost:99999");
+            baseUrl: "http://127.0.0.1:1");
 
         // Assert - No exception should be thrown in constructor
         Assert.NotNull(provider);
@@ -327,13 +327,13 @@ public class TtsProviderValidationTests
     [Fact]
     public async Task Mimic3Provider_SynthesizeAsync_Should_Throw_WhenServerUnreachable()
     {
-        // Arrange
+        // Arrange - Use an unreachable URL (port 1 is reserved and typically closed)
         var provider = new Mimic3TtsProvider(
             NullLogger<Mimic3TtsProvider>.Instance,
             new HttpClient(),
             new SilentWavGenerator(NullLogger<SilentWavGenerator>.Instance),
             new WavValidator(NullLogger<WavValidator>.Instance),
-            baseUrl: "http://localhost:99999");
+            baseUrl: "http://127.0.0.1:1");
 
         var lines = new List<ScriptLine>
         {
