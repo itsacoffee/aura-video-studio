@@ -17,6 +17,13 @@ namespace Aura.Tests;
 /// </summary>
 public class LlmProviderValidationTests
 {
+    // Test data constants
+    private const string ValidOpenAiResponse = "{\"choices\":[{\"message\":{\"content\":\"Test response\"}}]}";
+    private const string ValidOpenAiApiKey = "sk-1234567890abcdefghijklmnopqrstuvwxyz1234567890";
+    private const string ValidAzureApiKey = "12345678901234567890123456789012";
+    private const string ValidAzureEndpoint = "https://myresource.openai.azure.com";
+    private const string ValidGeminiApiKey = "AIzaSyABCDEFGH1234567890IJKLMNOPQRSTUVWXYZ";
+
     private readonly Brief _testBrief = new Brief(
         Topic: "Test Topic",
         Audience: "General",
@@ -83,7 +90,7 @@ public class LlmProviderValidationTests
         var provider = new OpenAiLlmProvider(
             NullLogger<OpenAiLlmProvider>.Instance,
             new HttpClient(),
-            "sk-1234567890abcdefghijklmnopqrstuvwxyz1234567890");
+            ValidOpenAiApiKey);
 
         // Assert
         Assert.NotNull(provider);
@@ -110,7 +117,7 @@ public class LlmProviderValidationTests
                 return new HttpResponseMessage
                 {
                     StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent("{\"choices\":[{\"message\":{\"content\":\"Test response\"}}]}")
+                    Content = new StringContent(ValidOpenAiResponse)
                 };
             });
 
@@ -118,7 +125,7 @@ public class LlmProviderValidationTests
         var provider = new OpenAiLlmProvider(
             NullLogger<OpenAiLlmProvider>.Instance,
             httpClient,
-            "sk-1234567890abcdefghijklmnopqrstuvwxyz1234567890",
+            ValidOpenAiApiKey,
             maxRetries: 2);
 
         // Act
@@ -149,7 +156,7 @@ public class LlmProviderValidationTests
         var provider = new OpenAiLlmProvider(
             NullLogger<OpenAiLlmProvider>.Instance,
             httpClient,
-            "sk-1234567890abcdefghijklmnopqrstuvwxyz1234567890");
+            ValidOpenAiApiKey);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -179,7 +186,7 @@ public class LlmProviderValidationTests
         var provider = new OpenAiLlmProvider(
             NullLogger<OpenAiLlmProvider>.Instance,
             httpClient,
-            "sk-1234567890abcdefghijklmnopqrstuvwxyz1234567890",
+            ValidOpenAiApiKey,
             maxRetries: 0); // No retries for this test
 
         // Act & Assert
@@ -202,7 +209,7 @@ public class LlmProviderValidationTests
                 NullLogger<AzureOpenAiLlmProvider>.Instance,
                 new HttpClient(),
                 null!,
-                "https://test.openai.azure.com"));
+                ValidAzureEndpoint));
 
         Assert.Contains("not configured", exception.Message);
         Assert.Contains("Azure", exception.Message);
@@ -216,7 +223,7 @@ public class LlmProviderValidationTests
             new AzureOpenAiLlmProvider(
                 NullLogger<AzureOpenAiLlmProvider>.Instance,
                 new HttpClient(),
-                "12345678901234567890123456789012",
+                ValidAzureApiKey,
                 null!));
 
         Assert.Contains("not configured", exception.Message);
@@ -230,7 +237,7 @@ public class LlmProviderValidationTests
             new AzureOpenAiLlmProvider(
                 NullLogger<AzureOpenAiLlmProvider>.Instance,
                 new HttpClient(),
-                "12345678901234567890123456789012",
+                ValidAzureApiKey,
                 "http://test.openai.azure.com"));
 
         Assert.Contains("HTTPS", exception.Message);
@@ -244,7 +251,7 @@ public class LlmProviderValidationTests
             new AzureOpenAiLlmProvider(
                 NullLogger<AzureOpenAiLlmProvider>.Instance,
                 new HttpClient(),
-                "12345678901234567890123456789012",
+                ValidAzureApiKey,
                 "https://invalid-endpoint.com"));
 
         Assert.Contains("format", exception.Message.ToLower());
@@ -258,8 +265,8 @@ public class LlmProviderValidationTests
         var provider = new AzureOpenAiLlmProvider(
             NullLogger<AzureOpenAiLlmProvider>.Instance,
             new HttpClient(),
-            "12345678901234567890123456789012",
-            "https://myresource.openai.azure.com");
+            ValidAzureApiKey,
+            ValidAzureEndpoint);
 
         // Assert
         Assert.NotNull(provider);
@@ -285,8 +292,8 @@ public class LlmProviderValidationTests
         var provider = new AzureOpenAiLlmProvider(
             NullLogger<AzureOpenAiLlmProvider>.Instance,
             httpClient,
-            "12345678901234567890123456789012",
-            "https://myresource.openai.azure.com",
+            ValidAzureApiKey,
+            ValidAzureEndpoint,
             deploymentName: "nonexistent");
 
         // Act & Assert
@@ -348,7 +355,7 @@ public class LlmProviderValidationTests
         var provider = new GeminiLlmProvider(
             NullLogger<GeminiLlmProvider>.Instance,
             new HttpClient(),
-            "AIzaSyABCDEFGH1234567890IJKLMNOPQRSTUVWXYZ");
+            ValidGeminiApiKey);
 
         // Assert
         Assert.NotNull(provider);
@@ -374,7 +381,7 @@ public class LlmProviderValidationTests
         var provider = new GeminiLlmProvider(
             NullLogger<GeminiLlmProvider>.Instance,
             httpClient,
-            "AIzaSyABCDEFGH1234567890IJKLMNOPQRSTUVWXYZ",
+            ValidGeminiApiKey,
             maxRetries: 0);
 
         // Act & Assert
@@ -449,7 +456,7 @@ public class LlmProviderValidationTests
                 return new HttpResponseMessage
                 {
                     StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent("{\"choices\":[{\"message\":{\"content\":\"Test\"}}]}")
+                    Content = new StringContent(ValidOpenAiResponse)
                 };
             });
 
@@ -457,7 +464,7 @@ public class LlmProviderValidationTests
         var provider = new OpenAiLlmProvider(
             NullLogger<OpenAiLlmProvider>.Instance,
             httpClient,
-            "sk-1234567890abcdefghijklmnopqrstuvwxyz1234567890",
+            ValidOpenAiApiKey,
             maxRetries: 0,
             timeoutSeconds: 1); // 1 second timeout
 
