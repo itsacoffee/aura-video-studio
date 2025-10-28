@@ -5,13 +5,13 @@
 
 import { makeStyles, tokens, Tab, TabList, Card } from '@fluentui/react-components';
 import { useState } from 'react';
+import { loggingService as logger } from '../../services/loggingService';
 import { TrackingPath } from '../../services/motionTrackingService';
 import { AppliedEffect } from '../../types/effects';
 import { ChromaKeyEffect } from '../Effects/ChromaKeyEffect';
 import { LayerStack, VideoLayer } from './LayerStack';
 import { MattePreview } from './MattePreview';
 import { MotionTracking } from './MotionTracking';
-import { loggingService as logger } from '../../services/loggingService';
 
 const useStyles = makeStyles({
   container: {

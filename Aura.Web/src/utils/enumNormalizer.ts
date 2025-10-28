@@ -2,8 +2,8 @@
  * Enum normalization utilities for handling legacy and canonical enum values
  */
 
-import type { Brief, PlanSpec } from '../types';
 import { loggingService as logger } from '../services/loggingService';
+import type { Brief, PlanSpec } from '../types';
 
 export type Aspect = 'Widescreen16x9' | 'Vertical9x16' | 'Square1x1';
 export type Density = 'Sparse' | 'Balanced' | 'Dense';

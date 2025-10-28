@@ -39,6 +39,7 @@ import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
 import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
 import { apiUrl } from '../../config/api';
 import { postCancellable, isAbortError } from '../../services/api/cancellableRequests';
+import { loggingService as logger } from '../../services/loggingService';
 import { useJobState } from '../../state/jobState';
 import type { PreflightReport, PerStageProviderSelection } from '../../state/providers';
 import type {
@@ -53,7 +54,6 @@ import type {
 import { parseApiError, openLogsFolder } from '../../utils/apiErrorHandler';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../../utils/enumNormalizer';
 import { validateBriefRequest } from '../../utils/formValidation';
-import { loggingService as logger } from '../../services/loggingService';
 
 const useStyles = makeStyles({
   container: {

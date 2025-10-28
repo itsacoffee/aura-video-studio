@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { loggingService } from '../../services/loggingService';
 import {
   normalizeAspect,
   normalizeDensity,
   validateAndWarnEnums,
   normalizeEnumsForApi,
 } from '../enumNormalizer';
-import { loggingService } from '../../services/loggingService';
 
 describe('EnumNormalizer', () => {
   let loggingWarnSpy: ReturnType<typeof vi.spyOn>;

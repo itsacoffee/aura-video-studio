@@ -28,7 +28,6 @@ export function trackEvent(
 
   // Log to console in development
   if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
     logger.debug('Analytics Event', 'analytics', 'trackEvent', { event });
   }
 
