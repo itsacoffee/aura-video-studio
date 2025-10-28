@@ -46,10 +46,23 @@ public class ElevenLabsTtsProvider : ITtsProvider
             Directory.CreateDirectory(_outputDirectory);
         }
 
-        // Configure HTTP client
-        if (!string.IsNullOrEmpty(_apiKey))
+        // Validate API key on initialization (only when not in offline mode)
+        if (!_offlineOnly)
         {
-            _httpClient.DefaultRequestHeaders.Add("xi-api-key", _apiKey);
+            if (string.IsNullOrWhiteSpace(_apiKey))
+            {
+                _logger.LogWarning("ElevenLabs API key is missing. Provider will not be functional. Please configure your API key in settings.");
+            }
+            else
+            {
+                // Configure HTTP client with API key
+                _httpClient.DefaultRequestHeaders.Add("xi-api-key", _apiKey);
+                _logger.LogInformation("ElevenLabs TTS provider initialized with API key");
+            }
+        }
+        else
+        {
+            _logger.LogInformation("ElevenLabs TTS provider initialized in offline-only mode (not functional)");
         }
     }
 
@@ -92,17 +105,17 @@ public class ElevenLabsTtsProvider : ITtsProvider
     {
         if (_offlineOnly)
         {
-            throw new InvalidOperationException("ElevenLabs is not available in offline mode. Please disable OfflineOnly or use a local TTS provider.");
+            throw new InvalidOperationException("ElevenLabs is not available in offline mode. Please disable offline-only mode in settings or use a local TTS provider (Piper, Mimic3, or Windows TTS).");
         }
 
-        if (string.IsNullOrEmpty(_apiKey))
+        if (string.IsNullOrWhiteSpace(_apiKey))
         {
-            throw new InvalidOperationException("ElevenLabs API key is required. Please configure your API key.");
+            throw new InvalidOperationException("ElevenLabs API key is required. Please configure your API key in the application settings.");
         }
 
         _logger.LogInformation("Synthesizing speech with ElevenLabs using voice {Voice}", spec.VoiceName);
 
-        // Get the voice ID
+        // Get the voice ID with validation
         string voiceId = await GetVoiceIdAsync(spec.VoiceName, ct);
         
         // Process each line
@@ -140,6 +153,30 @@ public class ElevenLabsTtsProvider : ITtsProvider
                 $"{BaseUrl}/text-to-speech/{voiceId}",
                 content,
                 ct);
+
+            // Handle specific error cases
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    throw new InvalidOperationException("ElevenLabs API key is invalid. Please check your API key in settings.");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    throw new InvalidOperationException("ElevenLabs rate limit exceeded. Please wait a moment and try again, or upgrade your ElevenLabs plan.");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.PaymentRequired)
+                {
+                    throw new InvalidOperationException("ElevenLabs quota exceeded. Please check your plan limits or upgrade your subscription.");
+                }
+                else
+                {
+                    _logger.LogError("ElevenLabs API error: {StatusCode} - {Error}", response.StatusCode, errorContent);
+                    throw new InvalidOperationException($"ElevenLabs synthesis failed with status {response.StatusCode}. {errorContent}");
+                }
+            }
 
             response.EnsureSuccessStatusCode();
 
@@ -244,31 +281,75 @@ public class ElevenLabsTtsProvider : ITtsProvider
 
     private async Task<string> GetVoiceIdAsync(string voiceName, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(voiceName))
+        {
+            throw new ArgumentException("Voice name cannot be empty", nameof(voiceName));
+        }
+
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/voices", ct);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Failed to fetch voices from ElevenLabs: {StatusCode}", response.StatusCode);
+                throw new InvalidOperationException($"Failed to fetch voices from ElevenLabs. Status: {response.StatusCode}. Please check your API key and internet connection.");
+            }
+            
             response.EnsureSuccessStatusCode();
             
             var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
             var voices = json.GetProperty("voices");
             
+            // First try exact match
+            foreach (var voice in voices.EnumerateArray())
+            {
+                var name = voice.GetProperty("name").GetString();
+                if (name?.Equals(voiceName, StringComparison.Ordinal) == true)
+                {
+                    var voiceId = voice.GetProperty("voice_id").GetString();
+                    if (string.IsNullOrEmpty(voiceId))
+                    {
+                        throw new InvalidOperationException($"Voice ID is empty for voice '{voiceName}'");
+                    }
+                    _logger.LogDebug("Found voice '{Voice}' with ID: {VoiceId}", voiceName, voiceId);
+                    return voiceId;
+                }
+            }
+            
+            // Try case-insensitive match
             foreach (var voice in voices.EnumerateArray())
             {
                 var name = voice.GetProperty("name").GetString();
                 if (name?.Equals(voiceName, StringComparison.OrdinalIgnoreCase) == true)
                 {
-                    return voice.GetProperty("voice_id").GetString() ?? throw new Exception("Voice ID not found");
+                    var voiceId = voice.GetProperty("voice_id").GetString();
+                    if (string.IsNullOrEmpty(voiceId))
+                    {
+                        throw new InvalidOperationException($"Voice ID is empty for voice '{voiceName}'");
+                    }
+                    _logger.LogWarning("Voice '{Voice}' found with case-insensitive match", voiceName);
+                    return voiceId;
                 }
             }
             
-            // If not found, use the first available voice
-            _logger.LogWarning("Voice {Voice} not found, using default", voiceName);
-            return voices[0].GetProperty("voice_id").GetString() ?? throw new Exception("No voices available");
+            // Voice not found - provide helpful error
+            var availableVoices = voices.EnumerateArray()
+                .Select(v => v.GetProperty("name").GetString())
+                .Where(n => !string.IsNullOrEmpty(n))
+                .Take(5)
+                .ToList();
+            
+            var voiceList = availableVoices.Count > 0 
+                ? $"Available voices include: {string.Join(", ", availableVoices)}" 
+                : "No voices available";
+            
+            throw new InvalidOperationException($"Voice '{voiceName}' not found in your ElevenLabs account. {voiceList}. Please check the voice name in settings.");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidOperationException && ex is not ArgumentException)
         {
-            _logger.LogError(ex, "Failed to get voice ID for {Voice}", voiceName);
-            throw;
+            _logger.LogError(ex, "Error fetching voice ID for '{Voice}'", voiceName);
+            throw new InvalidOperationException($"Failed to get voice ID for '{voiceName}'. Check your internet connection and API key.", ex);
         }
     }
 }

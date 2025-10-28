@@ -44,6 +44,21 @@ public class PiperTtsProvider : ITtsProvider
         {
             Directory.CreateDirectory(_outputDirectory);
         }
+
+        // Validate dependencies on initialization
+        if (!File.Exists(_piperExecutable))
+        {
+            _logger.LogWarning("Piper executable not found at {Path}. Provider will not be functional. Please install Piper and configure the path in settings.", _piperExecutable);
+        }
+        else if (!File.Exists(_voiceModelPath))
+        {
+            _logger.LogWarning("Voice model file not found at {Path}. Provider will not be functional. Please download a Piper voice model and configure the path in settings.", _voiceModelPath);
+        }
+        else
+        {
+            _logger.LogInformation("Piper TTS provider initialized with executable at {Executable} and voice model at {Model}", 
+                _piperExecutable, _voiceModelPath);
+        }
     }
 
     public async Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
@@ -62,12 +77,12 @@ public class PiperTtsProvider : ITtsProvider
 
         if (!File.Exists(_piperExecutable))
         {
-            throw new FileNotFoundException($"Piper executable not found at {_piperExecutable}");
+            throw new FileNotFoundException($"Piper executable not found at {_piperExecutable}. Please install Piper from https://github.com/rhasspy/piper and configure the path in settings.");
         }
 
         if (!File.Exists(_voiceModelPath))
         {
-            throw new FileNotFoundException($"Voice model not found at {_voiceModelPath}");
+            throw new FileNotFoundException($"Voice model not found at {_voiceModelPath}. Please download a voice model from https://github.com/rhasspy/piper/releases and configure the path in settings.");
         }
 
         var linesList = lines.ToList();

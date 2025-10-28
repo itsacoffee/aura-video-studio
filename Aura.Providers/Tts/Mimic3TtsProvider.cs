@@ -46,6 +46,17 @@ public class Mimic3TtsProvider : ITtsProvider
         {
             Directory.CreateDirectory(_outputDirectory);
         }
+
+        // Perform health check on initialization
+        var isHealthy = IsServerHealthyAsync(CancellationToken.None).GetAwaiter().GetResult();
+        if (!isHealthy)
+        {
+            _logger.LogWarning("Mimic3 server is not reachable at {BaseUrl}. The provider will not be functional until the server is started.", _baseUrl);
+        }
+        else
+        {
+            _logger.LogInformation("Mimic3 TTS provider initialized and server is healthy at {BaseUrl}", _baseUrl);
+        }
     }
 
     public async Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
@@ -86,7 +97,7 @@ public class Mimic3TtsProvider : ITtsProvider
         // Check if server is reachable
         if (!await IsServerHealthyAsync(ct))
         {
-            throw new InvalidOperationException($"Mimic3 server is not reachable at {_baseUrl}");
+            throw new InvalidOperationException($"Mimic3 server is not reachable at {_baseUrl}. Please ensure the Mimic3 server is running. You can start it with: docker run -it -p 59125:59125 mycroftai/mimic3");
         }
 
         var linesList = lines.ToList();
@@ -178,10 +189,27 @@ public class Mimic3TtsProvider : ITtsProvider
         try
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            cts.CancelAfter(TimeSpan.FromSeconds(5)); // Configurable timeout
 
             var response = await _httpClient.GetAsync($"{_baseUrl}/api/voices", cts.Token);
-            return response.IsSuccessStatusCode;
+            var isHealthy = response.IsSuccessStatusCode;
+            
+            if (!isHealthy)
+            {
+                _logger.LogDebug("Mimic3 health check failed with status code: {StatusCode}", response.StatusCode);
+            }
+            
+            return isHealthy;
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogDebug("Mimic3 health check timed out after 5 seconds");
+            return false;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogDebug(ex, "Mimic3 health check failed - connection error");
+            return false;
         }
         catch (Exception ex)
         {

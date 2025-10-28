@@ -46,10 +46,25 @@ public class AzureTtsProvider : ITtsProvider, IDisposable
             Directory.CreateDirectory(_outputDirectory);
         }
 
-        // Initialize Speech SDK if not in offline mode
-        if (!_offlineOnly && !string.IsNullOrEmpty(_apiKey))
+        // Validate region parameter
+        if (!_offlineOnly && !string.IsNullOrWhiteSpace(_apiKey))
         {
+            if (string.IsNullOrWhiteSpace(_region))
+            {
+                _logger.LogWarning("Azure region is not specified. Using default region 'eastus'");
+                _region = "eastus";
+            }
+            
+            // Initialize Speech SDK if not in offline mode
             InitializeSpeechConfig();
+        }
+        else if (_offlineOnly)
+        {
+            _logger.LogInformation("Azure TTS provider initialized in offline-only mode (not functional)");
+        }
+        else
+        {
+            _logger.LogWarning("Azure Speech API key is missing. Provider will not be functional. Please configure your API key in settings.");
         }
     }
 
@@ -57,28 +72,55 @@ public class AzureTtsProvider : ITtsProvider, IDisposable
     {
         try
         {
-            _speechConfig = SpeechConfig.FromSubscription(_apiKey!, _region);
+            if (string.IsNullOrWhiteSpace(_apiKey))
+            {
+                throw new ArgumentException("Azure Speech API key cannot be empty", nameof(_apiKey));
+            }
+            
+            if (string.IsNullOrWhiteSpace(_region))
+            {
+                throw new ArgumentException("Azure region cannot be empty", nameof(_region));
+            }
+
+            _speechConfig = SpeechConfig.FromSubscription(_apiKey, _region);
             _speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm);
             _logger.LogInformation("Azure Speech SDK initialized successfully for region {Region}", _region);
         }
+        catch (ArgumentException)
+        {
+            // Re-throw argument exceptions as-is
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initialize Azure Speech SDK");
-            throw new InvalidOperationException("Failed to initialize Azure Speech SDK. Please check your API key and region.", ex);
+            _logger.LogError(ex, "Failed to initialize Azure Speech SDK with region {Region}", _region);
+            throw new InvalidOperationException($"Failed to initialize Azure Speech SDK. Please verify your API key and region (current: {_region}). Common regions include: eastus, westus, westeurope, southeastasia.", ex);
         }
     }
 
     public async Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
     {
-        if (_offlineOnly || string.IsNullOrEmpty(_apiKey))
+        if (_offlineOnly)
         {
-            _logger.LogWarning("Azure TTS not available in offline mode or without API key");
+            _logger.LogWarning("Azure TTS not available in offline mode");
+            return Array.Empty<string>();
+        }
+
+        if (string.IsNullOrWhiteSpace(_apiKey))
+        {
+            _logger.LogWarning("Azure TTS not available without API key");
+            return Array.Empty<string>();
+        }
+
+        if (_speechConfig == null)
+        {
+            _logger.LogWarning("Azure Speech SDK not initialized, cannot fetch voices");
             return Array.Empty<string>();
         }
 
         try
         {
-            using var synthesizer = new SpeechSynthesizer(_speechConfig!);
+            using var synthesizer = new SpeechSynthesizer(_speechConfig);
             using var result = await synthesizer.GetVoicesAsync();
 
             if (result.Reason == ResultReason.VoicesListRetrieved)
@@ -100,12 +142,33 @@ public class AzureTtsProvider : ITtsProvider, IDisposable
     {
         if (_offlineOnly)
         {
-            throw new InvalidOperationException("Azure TTS is not available in offline mode. Please disable OfflineOnly or use a local TTS provider.");
+            throw new InvalidOperationException("Azure TTS is not available in offline mode. Please disable offline-only mode in settings or use a local TTS provider (Piper, Mimic3, or Windows TTS).");
         }
 
-        if (string.IsNullOrEmpty(_apiKey))
+        if (string.IsNullOrWhiteSpace(_apiKey))
         {
-            throw new InvalidOperationException("Azure Speech API key is required. Please configure your API key.");
+            throw new InvalidOperationException("Azure Speech API key is required. Please configure your API key in the application settings.");
+        }
+
+        if (_speechConfig == null)
+        {
+            throw new InvalidOperationException("Azure Speech SDK is not initialized. Please check your API key and region configuration.");
+        }
+
+        // Check if the voice is available before synthesis
+        var availableVoices = await GetAvailableVoicesAsync();
+        if (availableVoices.Count == 0)
+        {
+            _logger.LogWarning("Unable to fetch available voices, proceeding with synthesis anyway");
+        }
+        else if (!availableVoices.Contains(spec.VoiceName))
+        {
+            var suggestedVoices = availableVoices.Take(5).ToList();
+            var voiceList = suggestedVoices.Count > 0 
+                ? $"Available voices include: {string.Join(", ", suggestedVoices)}" 
+                : "No voices available";
+            _logger.LogWarning("Voice '{Voice}' not found in available voices. {VoiceList}. Attempting synthesis anyway.", 
+                spec.VoiceName, voiceList);
         }
 
         try
@@ -120,7 +183,7 @@ public class AzureTtsProvider : ITtsProvider, IDisposable
 
             // Use file output for synthesis
             using var audioConfig = AudioConfig.FromWavFileOutput(outputPath);
-            using var synthesizer = new SpeechSynthesizer(_speechConfig!, audioConfig);
+            using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig);
 
             // Synthesize
             using var result = await synthesizer.SpeakSsmlAsync(ssml);
@@ -147,11 +210,15 @@ public class AzureTtsProvider : ITtsProvider, IDisposable
                     }
                     else if (cancellation.ErrorCode == CancellationErrorCode.Forbidden)
                     {
-                        throw new InvalidOperationException("Invalid Azure Speech API key or insufficient permissions.");
+                        throw new InvalidOperationException("Invalid Azure Speech API key or insufficient permissions. Please check your API key in settings.");
                     }
                     else if (cancellation.ErrorCode == CancellationErrorCode.TooManyRequests)
                     {
-                        throw new InvalidOperationException("Azure Speech service quota exceeded. Please try again later.");
+                        throw new InvalidOperationException("Azure Speech service quota exceeded. Please try again later or upgrade your subscription.");
+                    }
+                    else if (cancellation.ErrorCode == CancellationErrorCode.BadRequest)
+                    {
+                        throw new InvalidOperationException($"Invalid request to Azure Speech service. Please check your voice name and region. Details: {cancellation.ErrorDetails}");
                     }
                 }
 

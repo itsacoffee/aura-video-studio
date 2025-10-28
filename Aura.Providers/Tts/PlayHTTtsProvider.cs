@@ -49,28 +49,51 @@ public class PlayHTTtsProvider : ITtsProvider
             Directory.CreateDirectory(_outputDirectory);
         }
 
-        // Configure HTTP client
-        if (!string.IsNullOrEmpty(_apiKey))
+        // Validate credentials on initialization (only when not in offline mode)
+        if (!_offlineOnly)
         {
-            _httpClient.DefaultRequestHeaders.Add("AUTHORIZATION", _apiKey);
+            if (string.IsNullOrWhiteSpace(_apiKey) || string.IsNullOrWhiteSpace(_userId))
+            {
+                _logger.LogWarning("PlayHT credentials are incomplete. Both API key and User ID are required. Provider will not be functional. Please configure your credentials in settings.");
+            }
+            else
+            {
+                // Configure HTTP client with credentials
+                _httpClient.DefaultRequestHeaders.Add("AUTHORIZATION", _apiKey);
+                _httpClient.DefaultRequestHeaders.Add("X-USER-ID", _userId);
+                _logger.LogInformation("PlayHT TTS provider initialized with API key and User ID");
+            }
         }
-        if (!string.IsNullOrEmpty(_userId))
+        else
         {
-            _httpClient.DefaultRequestHeaders.Add("X-USER-ID", _userId);
+            _logger.LogInformation("PlayHT TTS provider initialized in offline-only mode (not functional)");
         }
     }
 
     public async Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
     {
-        if (_offlineOnly || string.IsNullOrEmpty(_apiKey))
+        if (_offlineOnly)
         {
-            _logger.LogWarning("PlayHT not available in offline mode or without API key");
+            _logger.LogWarning("PlayHT not available in offline mode");
+            return Array.Empty<string>();
+        }
+
+        if (string.IsNullOrWhiteSpace(_apiKey) || string.IsNullOrWhiteSpace(_userId))
+        {
+            _logger.LogWarning("PlayHT not available without API key and User ID");
             return Array.Empty<string>();
         }
 
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/voices");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to fetch PlayHT voices: {StatusCode}", response.StatusCode);
+                return Array.Empty<string>();
+            }
+            
             response.EnsureSuccessStatusCode();
             
             var voices = await response.Content.ReadFromJsonAsync<JsonElement[]>();
@@ -101,17 +124,24 @@ public class PlayHTTtsProvider : ITtsProvider
     {
         if (_offlineOnly)
         {
-            throw new InvalidOperationException("PlayHT is not available in offline mode. Please disable OfflineOnly or use a local TTS provider.");
+            throw new InvalidOperationException("PlayHT is not available in offline mode. Please disable offline-only mode in settings or use a local TTS provider (Piper, Mimic3, or Windows TTS).");
         }
 
-        if (string.IsNullOrEmpty(_apiKey) || string.IsNullOrEmpty(_userId))
+        if (string.IsNullOrWhiteSpace(_apiKey) || string.IsNullOrWhiteSpace(_userId))
         {
-            throw new InvalidOperationException("PlayHT API key and User ID are required. Please configure your credentials.");
+            throw new InvalidOperationException("PlayHT API key and User ID are both required. Please configure your credentials in the application settings.");
         }
 
         _logger.LogInformation("Synthesizing speech with PlayHT using voice {Voice}", spec.VoiceName);
 
-        // Get the voice ID
+        // Check if voice exists before attempting synthesis
+        var availableVoices = await GetAvailableVoicesAsync();
+        if (availableVoices.Count == 0)
+        {
+            throw new InvalidOperationException("Unable to fetch available voices from PlayHT. Please check your credentials and internet connection.");
+        }
+
+        // Get the voice ID with validation
         string voiceId = await GetVoiceIdAsync(spec.VoiceName, ct);
         
         // Process each line
@@ -291,33 +321,79 @@ public class PlayHTTtsProvider : ITtsProvider
 
     private async Task<string> GetVoiceIdAsync(string voiceName, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(voiceName))
+        {
+            throw new ArgumentException("Voice name cannot be empty", nameof(voiceName));
+        }
+
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/voices", ct);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Failed to fetch voices from PlayHT: {StatusCode}", response.StatusCode);
+                throw new InvalidOperationException($"Failed to fetch voices from PlayHT. Status: {response.StatusCode}. Please check your credentials and internet connection.");
+            }
+            
             response.EnsureSuccessStatusCode();
             
             var voices = await response.Content.ReadFromJsonAsync<JsonElement[]>(cancellationToken: ct);
             
-            if (voices != null)
+            if (voices != null && voices.Length > 0)
             {
+                // First try exact match
+                foreach (var voice in voices)
+                {
+                    var name = voice.GetProperty("name").GetString();
+                    if (name?.Equals(voiceName, StringComparison.Ordinal) == true)
+                    {
+                        var voiceId = voice.GetProperty("id").GetString();
+                        if (string.IsNullOrEmpty(voiceId))
+                        {
+                            throw new InvalidOperationException($"Voice ID is empty for voice '{voiceName}'");
+                        }
+                        _logger.LogDebug("Found voice '{Voice}' with ID: {VoiceId}", voiceName, voiceId);
+                        return voiceId;
+                    }
+                }
+                
+                // Try case-insensitive match
                 foreach (var voice in voices)
                 {
                     var name = voice.GetProperty("name").GetString();
                     if (name?.Equals(voiceName, StringComparison.OrdinalIgnoreCase) == true)
                     {
-                        return voice.GetProperty("id").GetString() ?? throw new Exception("Voice ID not found");
+                        var voiceId = voice.GetProperty("id").GetString();
+                        if (string.IsNullOrEmpty(voiceId))
+                        {
+                            throw new InvalidOperationException($"Voice ID is empty for voice '{voiceName}'");
+                        }
+                        _logger.LogWarning("Voice '{Voice}' found with case-insensitive match", voiceName);
+                        return voiceId;
                     }
                 }
+                
+                // Voice not found - provide helpful error
+                var availableVoices = voices
+                    .Select(v => v.GetProperty("name").GetString())
+                    .Where(n => !string.IsNullOrEmpty(n))
+                    .Take(5)
+                    .ToList();
+                
+                var voiceList = availableVoices.Count > 0 
+                    ? $"Available voices include: {string.Join(", ", availableVoices)}" 
+                    : "No voices available";
+                
+                throw new InvalidOperationException($"Voice '{voiceName}' not found in your PlayHT account. {voiceList}. Please check the voice name in settings.");
             }
             
-            // If not found, use the first available voice
-            _logger.LogWarning("Voice {Voice} not found, using default", voiceName);
-            return voices?[0].GetProperty("id").GetString() ?? throw new Exception("No voices available");
+            throw new InvalidOperationException("No voices available in PlayHT account. Please check your subscription.");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidOperationException && ex is not ArgumentException)
         {
-            _logger.LogError(ex, "Failed to get voice ID for {Voice}", voiceName);
-            throw;
+            _logger.LogError(ex, "Error fetching voice ID for '{Voice}'", voiceName);
+            throw new InvalidOperationException($"Failed to get voice ID for '{voiceName}'. Check your internet connection and credentials.", ex);
         }
     }
 }
