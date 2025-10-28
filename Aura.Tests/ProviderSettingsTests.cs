@@ -180,4 +180,87 @@ public class ProviderSettingsTests : IDisposable
         Assert.True(Directory.Exists(auraDataDir));
         // Settings file would be created on first save
     }
+
+    [Fact]
+    public void IsValidApiKey_Should_ReturnFalseForNull()
+    {
+        // Assert
+        Assert.False(ProviderSettings.IsValidApiKey(null));
+    }
+
+    [Fact]
+    public void IsValidApiKey_Should_ReturnFalseForEmpty()
+    {
+        // Assert
+        Assert.False(ProviderSettings.IsValidApiKey(""));
+        Assert.False(ProviderSettings.IsValidApiKey("   "));
+    }
+
+    [Fact]
+    public void IsValidApiKey_Should_ReturnFalseForTooShort()
+    {
+        // Assert
+        Assert.False(ProviderSettings.IsValidApiKey("shortkey"));
+        Assert.False(ProviderSettings.IsValidApiKey("12345"));
+    }
+
+    [Fact]
+    public void IsValidApiKey_Should_ReturnTrueForValidKey()
+    {
+        // Assert
+        Assert.True(ProviderSettings.IsValidApiKey("sk-1234567890abcdefghijklmnopqrstuvwxyz1234567890"));
+        Assert.True(ProviderSettings.IsValidApiKey("AIzaSyABCDEFGH1234567890IJKLMNOPQRSTUVWXYZ"));
+    }
+
+    [Fact]
+    public void IsValidAzureEndpoint_Should_ReturnFalseForNull()
+    {
+        // Assert
+        Assert.False(ProviderSettings.IsValidAzureEndpoint(null));
+    }
+
+    [Fact]
+    public void IsValidAzureEndpoint_Should_ReturnFalseForEmpty()
+    {
+        // Assert
+        Assert.False(ProviderSettings.IsValidAzureEndpoint(""));
+        Assert.False(ProviderSettings.IsValidAzureEndpoint("   "));
+    }
+
+    [Fact]
+    public void IsValidAzureEndpoint_Should_ReturnFalseForNonHttps()
+    {
+        // Assert
+        Assert.False(ProviderSettings.IsValidAzureEndpoint("http://myresource.openai.azure.com"));
+    }
+
+    [Fact]
+    public void IsValidAzureEndpoint_Should_ReturnFalseForWrongDomain()
+    {
+        // Assert
+        Assert.False(ProviderSettings.IsValidAzureEndpoint("https://myresource.azure.com"));
+        Assert.False(ProviderSettings.IsValidAzureEndpoint("https://example.com"));
+    }
+
+    [Fact]
+    public void IsValidAzureEndpoint_Should_ReturnTrueForValidEndpoint()
+    {
+        // Assert
+        Assert.True(ProviderSettings.IsValidAzureEndpoint("https://myresource.openai.azure.com"));
+        Assert.True(ProviderSettings.IsValidAzureEndpoint("https://myresource.openai.azure.com/"));
+        Assert.True(ProviderSettings.IsValidAzureEndpoint("HTTPS://MYRESOURCE.OPENAI.AZURE.COM"));
+    }
+
+    [Fact]
+    public void GetApiKey_Should_ThrowForMissingKey()
+    {
+        // Arrange
+        var settings = CreateTestSettings();
+
+        // Act & Assert
+        var exception = Assert.Throws<InvalidOperationException>(() => 
+            settings.GetApiKey("nonExistentKey", "TestProvider"));
+        Assert.Contains("TestProvider", exception.Message);
+        Assert.Contains("not configured", exception.Message);
+    }
 }
