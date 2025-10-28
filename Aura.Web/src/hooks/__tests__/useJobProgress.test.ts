@@ -4,8 +4,8 @@
 
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useJobProgress } from '../useJobProgress';
 import * as jobsApi from '../../features/render/api/jobs';
+import { useJobProgress } from '../useJobProgress';
 
 // Mock the jobs API
 vi.mock('../../features/render/api/jobs', () => ({
@@ -58,13 +58,11 @@ describe('useJobProgress', () => {
       data: { step: 'render', progressPct: 50 },
     };
 
-    const subscribeToJobEventsSpy = vi
-      .spyOn(jobsApi, 'subscribeToJobEvents')
-      .mockImplementation((_, callback) => {
-        // Simulate receiving an event
-        callback(mockEvent);
-        return unsubscribeMock;
-      });
+    vi.spyOn(jobsApi, 'subscribeToJobEvents').mockImplementation((_, callback) => {
+      // Simulate receiving an event
+      callback(mockEvent);
+      return unsubscribeMock;
+    });
 
     renderHook(() => useJobProgress(jobId, onProgress));
 
@@ -130,12 +128,10 @@ describe('useJobProgress', () => {
       data: { output: { videoPath: '/path/to/video.mp4', sizeBytes: 1024 } },
     };
 
-    const subscribeToJobEventsSpy = vi
-      .spyOn(jobsApi, 'subscribeToJobEvents')
-      .mockImplementation((_, callback) => {
-        callback(completedEvent);
-        return unsubscribeMock;
-      });
+    vi.spyOn(jobsApi, 'subscribeToJobEvents').mockImplementation((_, callback) => {
+      callback(completedEvent);
+      return unsubscribeMock;
+    });
 
     renderHook(() => useJobProgress(jobId, onProgress));
 
@@ -159,12 +155,10 @@ describe('useJobProgress', () => {
       data: { errors: [{ code: 'ERR001', message: 'Test error', remediation: 'Fix it' }] },
     };
 
-    const subscribeToJobEventsSpy = vi
-      .spyOn(jobsApi, 'subscribeToJobEvents')
-      .mockImplementation((_, callback) => {
-        callback(failedEvent);
-        return unsubscribeMock;
-      });
+    vi.spyOn(jobsApi, 'subscribeToJobEvents').mockImplementation((_, callback) => {
+      callback(failedEvent);
+      return unsubscribeMock;
+    });
 
     renderHook(() => useJobProgress(jobId, onProgress));
 

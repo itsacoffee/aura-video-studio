@@ -2,8 +2,8 @@
  * Tests for Cancellable Requests
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import MockAdapter from 'axios-mock-adapter';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import apiClient from '../apiClient';
 import {
   getCancellable,
