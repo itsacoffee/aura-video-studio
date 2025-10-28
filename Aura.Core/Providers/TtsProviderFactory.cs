@@ -33,6 +33,7 @@ public class TtsProviderFactory
     /// <summary>
     /// Creates all available TTS providers based on configuration.
     /// Resolves providers from DI - never throws on failure.
+    /// Excludes test-only providers like MockTtsProvider from production builds.
     /// </summary>
     public Dictionary<string, ITtsProvider> CreateAvailableProviders()
     {
@@ -52,6 +53,14 @@ public class TtsProviderFactory
                     if (provider != null)
                     {
                         var providerType = provider.GetType().Name;
+                        
+                        // SECURITY: Exclude MockTtsProvider from production - it's test-only
+                        if (providerType == "MockTtsProvider")
+                        {
+                            _logger.LogWarning("[{CorrelationId}] Skipping MockTtsProvider - test-only provider not allowed in production", correlationId);
+                            continue;
+                        }
+                        
                         var providerName = providerType.Replace("TtsProvider", "");
                         
                         // Map type names to friendly names
@@ -63,7 +72,6 @@ public class TtsProviderFactory
                             "ElevenLabs" => "ElevenLabs",
                             "PlayHT" => "PlayHT",
                             "Null" => "Null",
-                            "Mock" => "Mock",
                             _ => providerName
                         };
                         

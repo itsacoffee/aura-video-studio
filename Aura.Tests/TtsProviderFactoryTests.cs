@@ -4,6 +4,7 @@ using System.Linq;
 using Aura.Core.Configuration;
 using Aura.Core.Providers;
 using Aura.Providers.Tts;
+using Aura.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -151,11 +152,10 @@ public class TtsProviderFactoryTests
         // Act
         var providers = factory.CreateAvailableProviders();
         
-        // Assert
+        // Assert - MockTtsProvider should be excluded from production
         Assert.NotEmpty(providers);
-        Assert.True(providers.Count >= 2);
         Assert.Contains("Null", providers.Keys);
-        Assert.Contains("Mock", providers.Keys);
+        Assert.DoesNotContain("Mock", providers.Keys); // MockTtsProvider is test-only, excluded in production
     }
     
     [Fact]
@@ -209,10 +209,11 @@ public class TtsProviderFactoryTests
         var providers = factory.CreateAvailableProviders();
         
         // Assert - names should not include "TtsProvider" suffix
+        // MockTtsProvider is excluded from production, so only Null should be present
         Assert.Contains("Null", providers.Keys);
-        Assert.Contains("Mock", providers.Keys);
         Assert.DoesNotContain("NullTtsProvider", providers.Keys);
         Assert.DoesNotContain("MockTtsProvider", providers.Keys);
+        Assert.DoesNotContain("Mock", providers.Keys); // MockTtsProvider is test-only, excluded
     }
     
     [Fact]

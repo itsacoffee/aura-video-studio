@@ -38,7 +38,7 @@ public class VideoOrchestratorIntegrationTests
         var smartOrchestrator = new VideoGenerationOrchestrator(_smartOrchestratorLogger, monitor, selector);
 
         var mockLlmProvider = new MockLlmProvider();
-        var mockTtsProvider = new MockTtsProvider();
+        var mockTtsProvider = new TestMockTtsProvider();
         var mockVideoComposer = new MockVideoComposer();
         var mockImageProvider = new MockImageProvider();
         var mockFfmpegLocator = new MockFfmpegLocator();
@@ -136,7 +136,7 @@ public class VideoOrchestratorIntegrationTests
         var smartOrchestrator = new VideoGenerationOrchestrator(_smartOrchestratorLogger, monitor, selector);
 
         var mockLlmProvider = new MockLlmProvider();
-        var mockTtsProvider = new MockTtsProvider();
+        var mockTtsProvider = new TestMockTtsProvider();
         var mockVideoComposer = new MockVideoComposer();
         var mockFfmpegLocator = new MockFfmpegLocator();
         var mockHardwareDetector = new MockHardwareDetector();
@@ -236,7 +236,7 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
         }
     }
 
-    private class MockTtsProvider : ITtsProvider
+    private class TestMockTtsProvider : ITtsProvider
     {
         public bool SynthesizeCalled { get; private set; }
 
