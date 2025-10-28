@@ -24,18 +24,18 @@ import {
   ArrowClockwise24Regular,
   Copy24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   JobResponse,
   JobStep,
   JobEvent,
   JobStepError,
   JobOutput,
-  subscribeToJobEvents,
   getJob,
   cancelJob,
   retryJob,
 } from '../../features/render/api/jobs';
+import { useJobProgress } from '../../hooks/useJobProgress';
 
 const useStyles = makeStyles({
   drawer: {
@@ -120,6 +120,63 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
   const [job, setJob] = useState<JobResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Handle job progress events
+  const handleProgress = useCallback((event: JobEvent) => {
+    // Update job state based on events
+    setJob((prev) => {
+      if (!prev) return prev;
+
+      const updated = { ...prev };
+
+      switch (event.type) {
+        case 'job-status':
+          updated.status = (event.data as { status: JobResponse['status'] }).status;
+          break;
+
+        case 'step-status':
+          updated.steps = updated.steps.map((step) =>
+            step.name === (event.data as { step: string; status: JobStep['status'] }).step 
+              ? { ...step, status: (event.data as { step: string; status: JobStep['status'] }).status } 
+              : step
+          );
+          break;
+
+        case 'step-progress':
+          updated.steps = updated.steps.map((step) =>
+            step.name === (event.data as { step: string; progressPct: number }).step
+              ? { ...step, progressPct: (event.data as { step: string; progressPct: number }).progressPct }
+              : step
+          );
+          break;
+
+        case 'step-error':
+          updated.steps = updated.steps.map((step) =>
+            step.name === (event.data as JobStepError & { step: string }).step
+              ? { ...step, errors: [...step.errors, event.data as JobStepError] }
+              : step
+          );
+          break;
+
+        case 'job-completed':
+          updated.status = 'Succeeded';
+          updated.output = (event.data as { output?: JobOutput }).output;
+          updated.endedUtc = new Date().toISOString();
+          break;
+
+        case 'job-failed':
+          updated.status = 'Failed';
+          updated.errors = (event.data as { errors?: JobStepError[] }).errors || [];
+          updated.endedUtc = new Date().toISOString();
+          break;
+      }
+
+      return updated;
+    });
+  }, []);
+
+  // Use the job progress hook for EventSource lifecycle management
+  useJobProgress(jobId && isOpen ? jobId : null, handleProgress);
+
   useEffect(() => {
     if (!jobId || !isOpen) return;
 
@@ -130,70 +187,6 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
       .then(setJob)
       .catch(console.error)
       .finally(() => setLoading(false));
-
-    // Subscribe to events
-    const unsubscribe = subscribeToJobEvents(
-      jobId,
-      (event: JobEvent) => {
-        // Update job state based on events
-        setJob((prev) => {
-          if (!prev) return prev;
-
-          const updated = { ...prev };
-
-          switch (event.type) {
-            case 'job-status':
-              updated.status = (event.data as { status: JobResponse['status'] }).status;
-              break;
-
-            case 'step-status':
-              updated.steps = updated.steps.map((step) =>
-                step.name === (event.data as { step: string; status: JobStep['status'] }).step 
-                  ? { ...step, status: (event.data as { step: string; status: JobStep['status'] }).status } 
-                  : step
-              );
-              break;
-
-            case 'step-progress':
-              updated.steps = updated.steps.map((step) =>
-                step.name === (event.data as { step: string; progressPct: number }).step
-                  ? { ...step, progressPct: (event.data as { step: string; progressPct: number }).progressPct }
-                  : step
-              );
-              break;
-
-            case 'step-error':
-              updated.steps = updated.steps.map((step) =>
-                step.name === (event.data as JobStepError & { step: string }).step
-                  ? { ...step, errors: [...step.errors, event.data as JobStepError] }
-                  : step
-              );
-              break;
-
-            case 'job-completed':
-              updated.status = 'Succeeded';
-              updated.output = (event.data as { output?: JobOutput }).output;
-              updated.endedUtc = new Date().toISOString();
-              break;
-
-            case 'job-failed':
-              updated.status = 'Failed';
-              updated.errors = (event.data as { errors?: JobStepError[] }).errors || [];
-              updated.endedUtc = new Date().toISOString();
-              break;
-          }
-
-          return updated;
-        });
-      },
-      (error) => {
-        console.error('SSE error:', error);
-      }
-    );
-
-    return () => {
-      unsubscribe();
-    };
   }, [jobId, isOpen]);
 
   const handleCancel = async () => {
