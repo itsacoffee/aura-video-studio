@@ -9,14 +9,15 @@ using Aura.Core.Models;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
-namespace Aura.Providers.Tts;
+namespace Aura.Tests.Helpers;
 
 /// <summary>
-/// Mock TTS provider for CI/Linux environments.
+/// Mock TTS provider for testing purposes only.
+/// DO NOT USE IN PRODUCTION - this is a test helper class.
 /// Generates deterministic beep/silence WAV files with correct length for testing.
 /// Uses atomic file operations and validation for reliability.
 /// </summary>
-public class MockTtsProvider : ITtsProvider
+internal class MockTtsProvider : ITtsProvider
 {
     private readonly ILogger<MockTtsProvider> _logger;
     private readonly WavValidator _wavValidator;

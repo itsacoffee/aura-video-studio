@@ -4,6 +4,7 @@ using System.Linq;
 using Aura.Core.Configuration;
 using Aura.Core.Providers;
 using Aura.Providers.Tts;
+using Aura.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

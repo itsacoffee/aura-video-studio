@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Audio;
 using Aura.Core.Models;
-using Aura.Providers.Tts;
+using Aura.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
