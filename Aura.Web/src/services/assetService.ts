@@ -95,7 +95,7 @@ export const assetService = {
         throw new Error('API key invalid or not configured. Please check your settings.');
       } else if (err.message?.includes('rate limit')) {
         throw new Error('Stock image provider quota exceeded. Please try again later.');
-      } else if (error.message?.includes('API key')) {
+      } else if (err.message?.includes('API key')) {
         throw new Error('Stock image API key not configured. Please add your API key in settings.');
       }
       throw error;
@@ -126,7 +126,7 @@ export const assetService = {
         
         return asset;
       } catch (error: unknown) {
-        lastError = error;
+        lastError = error instanceof Error ? error : new Error(String(error));
         
         // Don't retry on client errors (4xx)
         const err = error as { response?: { status?: number } };

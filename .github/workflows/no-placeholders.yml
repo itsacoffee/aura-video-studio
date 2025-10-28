@@ -9,7 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Scan for placeholder text with audit script
-        run: |
-          pwsh scripts/audit/no_future_text.ps1
-        shell: pwsh
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.18.0'
+      
+      - name: Scan for placeholder markers
+        run: node scripts/audit/find-placeholders.js
