@@ -223,6 +223,9 @@ builder.Services.AddSingleton<AspNetCoreRateLimit.IRateLimitConfiguration, AspNe
 builder.Services.AddSingleton<AspNetCoreRateLimit.IProcessingStrategy, AspNetCoreRateLimit.AsyncKeyLockProcessingStrategy>();
 builder.Services.AddInMemoryRateLimiting();
 
+// Register Performance Telemetry services
+builder.Services.AddSingleton<Aura.Api.Telemetry.PerformanceMetrics>();
+
 // Register Content Verification services
 builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.FactCheckingService>();
 builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.SourceAttributionService>();
@@ -937,6 +940,9 @@ app.UseRouting();
 
 // Add AspNetCoreRateLimit middleware after routing and before authorization
 app.UseIpRateLimiting();
+
+// Add Performance Telemetry middleware
+app.UseMiddleware<Aura.Api.Telemetry.PerformanceMiddleware>();
 
 // Map health check endpoints
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
