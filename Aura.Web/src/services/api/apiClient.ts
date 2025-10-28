@@ -18,6 +18,7 @@ import {
   isTransientError,
   shouldTriggerCircuitBreaker,
 } from './apiErrorMessages';
+import { PersistentCircuitBreaker } from './circuitBreakerPersistence';
 
 /**
  * Circuit breaker states
@@ -46,13 +47,30 @@ class CircuitBreaker {
   private successCount = 0;
   private nextAttempt = Date.now();
   private config: CircuitBreakerConfig;
+  private endpoint: string;
 
-  constructor(config: Partial<CircuitBreakerConfig> = {}) {
+  constructor(endpoint: string, config: Partial<CircuitBreakerConfig> = {}) {
+    this.endpoint = endpoint;
     this.config = {
       failureThreshold: config.failureThreshold || 5,
       successThreshold: config.successThreshold || 2,
       timeout: config.timeout || 60000, // 1 minute
     };
+
+    // Try to load persisted state
+    const persistedState = PersistentCircuitBreaker.loadState(endpoint);
+    if (persistedState) {
+      this.state = persistedState.state as CircuitState;
+      this.failureCount = persistedState.failureCount;
+      this.successCount = persistedState.successCount;
+      this.nextAttempt = persistedState.nextAttempt;
+      loggingService.info(
+        'Circuit breaker state restored from localStorage',
+        'apiClient',
+        'circuitBreaker',
+        { endpoint, state: this.state, failureCount: this.failureCount }
+      );
+    }
   }
 
   /**
@@ -97,7 +115,15 @@ class CircuitBreaker {
           'apiClient',
           'circuitBreaker'
         );
+        // Clear persisted state when circuit is closed
+        PersistentCircuitBreaker.clearState(this.endpoint);
+      } else {
+        // Save state
+        this.saveState();
       }
+    } else if (this.state === CircuitState.CLOSED) {
+      // Clear persisted state on successful request when already closed
+      PersistentCircuitBreaker.clearState(this.endpoint);
     }
   }
 
@@ -116,6 +142,7 @@ class CircuitBreaker {
         'circuitBreaker',
         { nextAttempt: new Date(this.nextAttempt).toISOString() }
       );
+      this.saveState();
     } else if (this.failureCount >= this.config.failureThreshold) {
       this.state = CircuitState.OPEN;
       this.nextAttempt = Date.now() + this.config.timeout;
@@ -130,6 +157,7 @@ class CircuitBreaker {
           nextAttempt: new Date(this.nextAttempt).toISOString(),
         }
       );
+      this.saveState();
     }
   }
 
@@ -148,6 +176,21 @@ class CircuitBreaker {
     this.failureCount = 0;
     this.successCount = 0;
     this.nextAttempt = Date.now();
+    // Clear persisted state when manually reset
+    PersistentCircuitBreaker.clearState(this.endpoint);
+  }
+
+  /**
+   * Save current state to localStorage
+   */
+  private saveState(): void {
+    PersistentCircuitBreaker.saveState(this.endpoint, {
+      state: this.state,
+      failureCount: this.failureCount,
+      successCount: this.successCount,
+      nextAttempt: this.nextAttempt,
+      timestamp: Date.now(),
+    });
   }
 }
 
@@ -254,7 +297,7 @@ interface ApiErrorResponse {
 }
 
 // Initialize circuit breaker and request queues
-const circuitBreaker = new CircuitBreaker();
+const circuitBreaker = new CircuitBreaker('global');
 const requestQueues = new Map<string, RequestQueue>();
 
 /**
