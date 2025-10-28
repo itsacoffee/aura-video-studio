@@ -48,6 +48,9 @@ public class OllamaLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
+
+        // Note: Connection test is skipped during initialization to avoid blocking startup.
+        // Connection will be tested on first use with helpful error messages.
     }
 
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
@@ -129,7 +132,8 @@ public class OllamaLlmProvider : ILlmProvider
                 {
                     var duration = DateTime.UtcNow - startTime;
                     PerformanceTrackingCallback?.Invoke(0, duration, false);
-                    throw new Exception("Ollama request timed out.", ex);
+                    throw new InvalidOperationException(
+                        $"Ollama request timed out after {_timeout.TotalSeconds}s. The model '{_model}' may be loading or Ollama may be overloaded.", ex);
                 }
             }
             catch (HttpRequestException ex)
@@ -140,7 +144,8 @@ public class OllamaLlmProvider : ILlmProvider
                 {
                     var duration = DateTime.UtcNow - startTime;
                     PerformanceTrackingCallback?.Invoke(0, duration, false);
-                    throw new Exception($"Failed to connect to Ollama at {_baseUrl} after {_maxRetries + 1} attempts. Ensure Ollama is running and the model '{_model}' is available.", ex);
+                    throw new InvalidOperationException(
+                        $"Cannot connect to Ollama at {_baseUrl}. Please ensure Ollama is running: 'ollama serve'", ex);
                 }
             }
             catch (Exception ex) when (attempt < _maxRetries)
@@ -160,7 +165,9 @@ public class OllamaLlmProvider : ILlmProvider
         // Should not reach here, but just in case
         var finalDuration = DateTime.UtcNow - startTime;
         PerformanceTrackingCallback?.Invoke(0, finalDuration, false);
-        throw new Exception($"Failed to generate script with Ollama after {_maxRetries + 1} attempts", lastException);
+        throw new InvalidOperationException(
+            $"Failed to generate script with Ollama at {_baseUrl} after {_maxRetries + 1} attempts. Please verify Ollama is running and model '{_model}' is available.", 
+            lastException);
     }
 
     public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
