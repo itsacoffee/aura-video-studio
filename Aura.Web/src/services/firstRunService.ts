@@ -6,6 +6,7 @@
  */
 
 import { apiUrl } from '../config/api';
+import { loggingService as logger } from './loggingService';
 
 const FIRST_RUN_KEY = 'hasCompletedFirstRun';
 const LEGACY_KEY = 'hasSeenOnboarding'; // For backward compatibility
@@ -38,7 +39,7 @@ export async function hasCompletedFirstRun(): Promise<boolean> {
       return true;
     }
   } catch (error) {
-    console.warn('Failed to check backend first-run status, using localStorage only:', error);
+    logger.warn('Failed to check backend first-run status, using localStorage only', 'firstRunService', 'checkFirstRun', { error: String(error) });
   }
 
   return false;
@@ -123,7 +124,7 @@ export async function markFirstRunCompleted(): Promise<void> {
   try {
     await setBackendFirstRunStatus(true);
   } catch (error) {
-    console.error('Failed to persist first-run completion to backend:', error);
+    logger.error('Failed to persist first-run completion to backend', error instanceof Error ? error : new Error(String(error)), 'firstRunService', 'completeFirstRun');
     // Don't throw - localStorage is sufficient for now
   }
 }
@@ -142,7 +143,7 @@ export async function resetFirstRunStatus(): Promise<void> {
   try {
     await setBackendFirstRunStatus(false);
   } catch (error) {
-    console.error('Failed to reset first-run status in backend:', error);
+    logger.error('Failed to reset first-run status in backend', error instanceof Error ? error : new Error(String(error)), 'firstRunService', 'resetFirstRun');
     // Don't throw - localStorage clearing is sufficient
   }
 }

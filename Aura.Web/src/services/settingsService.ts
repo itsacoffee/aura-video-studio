@@ -2,6 +2,7 @@ import { apiUrl } from '../config/api';
 import type { UserSettings } from '../types/settings';
 import { createDefaultSettings } from '../types/settings';
 import { get, post } from './api/apiClient';
+import { loggingService as logger } from './loggingService';
 
 const STORAGE_KEY = 'aura-user-settings';
 const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
@@ -34,7 +35,12 @@ export class SettingsService {
       this.saveToLocalStorage(settings);
       return settings;
     } catch (error) {
-      console.error('Error loading settings from backend:', error);
+      logger.error(
+        'Error loading settings from backend',
+        error instanceof Error ? error : new Error(String(error)),
+        'settingsService',
+        'loadSettings'
+      );
 
       // Fallback to localStorage
       const localSettings = this.getFromLocalStorage();
@@ -57,7 +63,12 @@ export class SettingsService {
       this.saveToLocalStorage(settings);
       return true;
     } catch (error) {
-      console.error('Error saving settings:', error);
+      logger.error(
+        'Error saving settings',
+        error instanceof Error ? error : new Error(String(error)),
+        'settingsService',
+        'saveSettings'
+      );
       // Still save to localStorage even if backend fails
       this.saveToLocalStorage(settings);
       return false;
@@ -126,7 +137,12 @@ export class SettingsService {
 
       return settings;
     } catch (error) {
-      console.error('Error importing settings:', error);
+      logger.error(
+        'Error importing settings',
+        error instanceof Error ? error : new Error(String(error)),
+        'settingsService',
+        'importSettings'
+      );
       return null;
     }
   }
@@ -223,7 +239,12 @@ export class SettingsService {
         return JSON.parse(stored);
       }
     } catch (error) {
-      console.error('Error reading from localStorage:', error);
+      logger.error(
+        'Error reading from localStorage',
+        error instanceof Error ? error : new Error(String(error)),
+        'settingsService',
+        'getFromLocalStorage'
+      );
     }
     return null;
   }
@@ -235,7 +256,12 @@ export class SettingsService {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     } catch (error) {
-      console.error('Error saving to localStorage:', error);
+      logger.error(
+        'Error saving to localStorage',
+        error instanceof Error ? error : new Error(String(error)),
+        'settingsService',
+        'saveToLocalStorage'
+      );
     }
   }
 

@@ -9,6 +9,7 @@ import {
   PlatformPresetsResponse,
   ReanalyzeRequest,
 } from '../types/pacing';
+import { loggingService as logger } from './loggingService';
 
 const API_BASE = '/api/pacing';
 
@@ -36,7 +37,12 @@ export async function analyzePacing(
 
     return await response.json();
   } catch (error) {
-    console.error('Error analyzing pacing:', error);
+    logger.error(
+      'Error analyzing pacing',
+      error instanceof Error ? error : new Error(String(error)),
+      'pacingService',
+      'analyzePacing'
+    );
     throw error;
   }
 }
@@ -59,7 +65,12 @@ export async function getPlatformPresets(): Promise<PlatformPresetsResponse> {
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching platform presets:', error);
+    logger.error(
+      'Error fetching platform presets',
+      error instanceof Error ? error : new Error(String(error)),
+      'pacingService',
+      'getPlatformPresets'
+    );
     throw error;
   }
 }
@@ -90,7 +101,12 @@ export async function reanalyzePacing(
 
     return await response.json();
   } catch (error) {
-    console.error('Error reanalyzing pacing:', error);
+    logger.error(
+      'Error reanalyzing pacing',
+      error instanceof Error ? error : new Error(String(error)),
+      'pacingService',
+      'reanalyzePacing'
+    );
     throw error;
   }
 }
@@ -113,7 +129,12 @@ export async function getAnalysis(analysisId: string): Promise<PacingAnalysisRes
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching analysis:', error);
+    logger.error(
+      'Error fetching analysis',
+      error instanceof Error ? error : new Error(String(error)),
+      'pacingService',
+      'getAnalysis'
+    );
     throw error;
   }
 }

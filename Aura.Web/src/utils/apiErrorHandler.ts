@@ -2,6 +2,8 @@
  * Utility for handling API errors and extracting ProblemDetails from responses
  */
 
+import { loggingService as logger } from '../services/loggingService';
+
 export interface ProblemDetails {
   title?: string;
   detail?: string;
@@ -133,7 +135,12 @@ export function openLogsFolder(): void {
   fetch('/api/logs/open-folder', {
     method: 'POST',
   }).catch((error) => {
-    console.error('Failed to open logs folder:', error);
+    logger.error(
+      'Failed to open logs folder',
+      error instanceof Error ? error : new Error(String(error)),
+      'apiErrorHandler',
+      'openLogsFolder'
+    );
     // Fallback: try to navigate to logs page
     window.location.href = '/logs';
   });

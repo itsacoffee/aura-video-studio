@@ -39,6 +39,7 @@ import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
 import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
 import { apiUrl } from '../../config/api';
 import { postCancellable, isAbortError } from '../../services/api/cancellableRequests';
+import { loggingService as logger } from '../../services/loggingService';
 import { useJobState } from '../../state/jobState';
 import type { PreflightReport, PerStageProviderSelection } from '../../state/providers';
 import type {
@@ -428,12 +429,20 @@ export function CreateWizard() {
 
       // Don't show error if request was cancelled
       if (isAbortError(error)) {
-        // eslint-disable-next-line no-console
-        console.log('[GENERATE VIDEO] Request cancelled by user');
+        logger.debug(
+          'Request cancelled by user',
+          'CreateWizard',
+          'handleGenerateVideo'
+        );
         return;
       }
 
-      console.error('[GENERATE VIDEO] Error:', error);
+      logger.error(
+        'Error generating video',
+        error instanceof Error ? error : new Error(String(error)),
+        'CreateWizard',
+        'handleGenerateVideo'
+      );
       const errorInfo = await parseApiError(error);
       showFailureToast({
         title: errorInfo.title,
@@ -554,12 +563,20 @@ export function CreateWizard() {
 
       // Don't show error if request was cancelled
       if (isAbortError(error)) {
-        // eslint-disable-next-line no-console
-        console.log('[QUICK DEMO] Request cancelled by user');
+        logger.debug(
+          'Quick demo request cancelled by user',
+          'CreateWizard',
+          'handleQuickDemo'
+        );
         return;
       }
 
-      console.error('[QUICK DEMO] Error:', error);
+      logger.error(
+        'Error starting quick demo',
+        error instanceof Error ? error : new Error(String(error)),
+        'CreateWizard',
+        'handleQuickDemo'
+      );
       const errorInfo = await parseApiError(error);
       showFailureToast({
         title: 'Failed to Start Quick Demo',

@@ -2,6 +2,7 @@
  * Enum normalization utilities for handling legacy and canonical enum values
  */
 
+import { loggingService as logger } from '../services/loggingService';
 import type { Brief, PlanSpec } from '../types';
 
 export type Aspect = 'Widescreen16x9' | 'Vertical9x16' | 'Square1x1';
@@ -32,7 +33,12 @@ export function normalizeAspect(value: string): Aspect {
         return normalized as Aspect;
       }
       // Fallback to default
-      console.warn(`Unknown aspect value: ${value}, defaulting to Widescreen16x9`);
+      logger.warn(
+        `Unknown aspect value: ${value}, defaulting to Widescreen16x9`,
+        'enumNormalizer',
+        'normalizeAspect',
+        { value }
+      );
       return 'Widescreen16x9';
   }
 }
@@ -46,7 +52,12 @@ export function normalizeDensity(value: string): Density {
 
   // Handle aliases
   if (normalized.toLowerCase() === 'normal') {
-    console.warn('Density "Normal" is deprecated, using "Balanced" instead');
+    logger.warn(
+      'Density "Normal" is deprecated, using "Balanced" instead',
+      'enumNormalizer',
+      'normalizeDensity',
+      { value }
+    );
     return 'Balanced';
   }
 
@@ -56,7 +67,12 @@ export function normalizeDensity(value: string): Density {
   }
 
   // Fallback to default
-  console.warn(`Unknown density value: ${value}, defaulting to Balanced`);
+  logger.warn(
+    `Unknown density value: ${value}, defaulting to Balanced`,
+    'enumNormalizer',
+    'normalizeDensity',
+    { value }
+  );
   return 'Balanced';
 }
 
@@ -68,8 +84,11 @@ export function validateAndWarnEnums(brief: Partial<Brief>, planSpec: Partial<Pl
   if (brief.aspect) {
     const legacyAspects = ['16:9', '9:16', '1:1'];
     if (legacyAspects.includes(brief.aspect)) {
-      console.warn(
-        `[Compatibility] Aspect ratio "${brief.aspect}" is a legacy format. Consider using canonical name (e.g., "Widescreen16x9").`
+      logger.warn(
+        `[Compatibility] Aspect ratio "${brief.aspect}" is a legacy format. Consider using canonical name (e.g., "Widescreen16x9").`,
+        'enumNormalizer',
+        'validateAndWarnEnums',
+        { aspect: brief.aspect }
       );
     }
   }
@@ -77,7 +96,12 @@ export function validateAndWarnEnums(brief: Partial<Brief>, planSpec: Partial<Pl
   // Check density
   if (planSpec.density) {
     if (planSpec.density.toLowerCase() === 'normal') {
-      console.warn(`[Compatibility] Density "Normal" is deprecated. Use "Balanced" instead.`);
+      logger.warn(
+        `[Compatibility] Density "Normal" is deprecated. Use "Balanced" instead.`,
+        'enumNormalizer',
+        'validateAndWarnEnums',
+        { density: planSpec.density }
+      );
     }
   }
 }

@@ -4,6 +4,7 @@
 
 import { ProjectFile, ProjectListItem, LoadProjectResponse } from '../types/project';
 import { get, post, del } from './api/apiClient';
+import { loggingService as logger } from './loggingService';
 
 const API_BASE_URL = '/api/project';
 
@@ -124,7 +125,12 @@ export function saveToLocalStorage(projectFile: ProjectFile): void {
   try {
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(projectFile));
   } catch (error) {
-    console.error('Failed to save to local storage:', error);
+    logger.error(
+      'Failed to save to local storage',
+      error instanceof Error ? error : new Error(String(error)),
+      'projectService',
+      'saveToLocalStorage'
+    );
   }
 }
 
@@ -137,7 +143,12 @@ export function loadFromLocalStorage(): ProjectFile | null {
     if (!json) return null;
     return JSON.parse(json) as ProjectFile;
   } catch (error) {
-    console.error('Failed to load from local storage:', error);
+    logger.error(
+      'Failed to load from local storage',
+      error instanceof Error ? error : new Error(String(error)),
+      'projectService',
+      'loadFromLocalStorage'
+    );
     return null;
   }
 }
@@ -149,6 +160,11 @@ export function clearLocalStorage(): void {
   try {
     localStorage.removeItem(AUTOSAVE_KEY);
   } catch (error) {
-    console.error('Failed to clear local storage:', error);
+    logger.error(
+      'Failed to clear local storage',
+      error instanceof Error ? error : new Error(String(error)),
+      'projectService',
+      'clearLocalStorage'
+    );
   }
 }

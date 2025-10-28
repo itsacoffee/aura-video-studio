@@ -3,6 +3,8 @@
  * to maintain state across page reloads
  */
 
+import { loggingService as logger } from '../loggingService';
+
 /**
  * Circuit breaker state that can be persisted
  */
@@ -41,7 +43,12 @@ export class PersistentCircuitBreaker {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allStates));
     } catch (error) {
       // Handle localStorage quota errors or other issues silently
-      console.warn('Failed to save circuit breaker state:', error);
+      logger.warn(
+        'Failed to save circuit breaker state',
+        'circuitBreakerPersistence',
+        'saveState',
+        { endpoint, error: String(error) }
+      );
     }
   }
 
@@ -70,7 +77,12 @@ export class PersistentCircuitBreaker {
 
       return state;
     } catch (error) {
-      console.warn('Failed to load circuit breaker state:', error);
+      logger.warn(
+        'Failed to load circuit breaker state',
+        'circuitBreakerPersistence',
+        'loadState',
+        { endpoint, error: String(error) }
+      );
       return null;
     }
   }
@@ -90,7 +102,12 @@ export class PersistentCircuitBreaker {
         localStorage.removeItem(this.STORAGE_KEY);
       }
     } catch (error) {
-      console.warn('Failed to clear circuit breaker state:', error);
+      logger.warn(
+        'Failed to clear circuit breaker state',
+        'circuitBreakerPersistence',
+        'clearState',
+        { endpoint, error: String(error) }
+      );
     }
   }
 
@@ -105,7 +122,12 @@ export class PersistentCircuitBreaker {
       }
       return JSON.parse(data) as CircuitBreakerStateRecord;
     } catch (error) {
-      console.warn('Failed to parse circuit breaker state:', error);
+      logger.warn(
+        'Failed to parse circuit breaker state',
+        'circuitBreakerPersistence',
+        'loadAllStates',
+        { error: String(error) }
+      );
       return {};
     }
   }

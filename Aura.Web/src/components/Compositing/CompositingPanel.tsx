@@ -5,6 +5,7 @@
 
 import { makeStyles, tokens, Tab, TabList, Card } from '@fluentui/react-components';
 import { useState } from 'react';
+import { loggingService as logger } from '../../services/loggingService';
 import { TrackingPath } from '../../services/motionTrackingService';
 import { AppliedEffect } from '../../types/effects';
 import { ChromaKeyEffect } from '../Effects/ChromaKeyEffect';
@@ -60,14 +61,12 @@ export function CompositingPanel({
 
   const handleStartTracking = (name: string) => {
     // In a real implementation, this would start the tracking process
-    // eslint-disable-next-line no-console
-    console.log('Start tracking:', name);
+    logger.debug('Start motion tracking', 'CompositingPanel', 'handleStartTracking', { name });
     setIsTracking(true);
   };
 
   const handleStopTracking = (pathId: string) => {
-    // eslint-disable-next-line no-console
-    console.log('Stop tracking:', pathId);
+    logger.debug('Stop motion tracking', 'CompositingPanel', 'handleStopTracking', { pathId });
     setIsTracking(false);
   };
 
