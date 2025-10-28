@@ -71,6 +71,7 @@ public class TtsProviderFactory
                             "Mimic3" => "Mimic3",
                             "ElevenLabs" => "ElevenLabs",
                             "PlayHT" => "PlayHT",
+                            "Azure" => "Azure",
                             "Null" => "Null",
                             _ => providerName
                         };
@@ -92,8 +93,40 @@ public class TtsProviderFactory
     }
 
     /// <summary>
+    /// Tries to create a specific provider by name with validation.
+    /// Returns null if the provider cannot be created or is not available.
+    /// </summary>
+    public ITtsProvider? TryCreateProvider(string providerName)
+    {
+        string correlationId = Guid.NewGuid().ToString("N")[..8];
+        
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Attempting to create provider: {ProviderName}", correlationId, providerName);
+            
+            var providers = CreateAvailableProviders();
+            
+            if (providers.TryGetValue(providerName, out var provider))
+            {
+                _logger.LogInformation("[{CorrelationId}] Successfully created provider: {ProviderName}", correlationId, providerName);
+                return provider;
+            }
+            
+            _logger.LogWarning("[{CorrelationId}] Provider {ProviderName} not found in available providers. Available: {Available}", 
+                correlationId, providerName, string.Join(", ", providers.Keys));
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to create provider: {ProviderName}", correlationId, providerName);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets the default TTS provider based on configuration and availability.
     /// Never throws - returns NullTtsProvider if no other providers available.
+    /// Priority: ElevenLabs > PlayHT > Azure > Mimic3 > Piper > Windows > Null
     /// </summary>
     public ITtsProvider GetDefaultProvider()
     {
@@ -103,7 +136,10 @@ public class TtsProviderFactory
         {
             var providers = CreateAvailableProviders();
 
-            // Try Pro providers first if available
+            _logger.LogDebug("[{CorrelationId}] Available providers: {Providers}", 
+                correlationId, string.Join(", ", providers.Keys));
+
+            // Try cloud providers first (in priority order)
             if (providers.ContainsKey("ElevenLabs"))
             {
                 _logger.LogInformation("[{CorrelationId}] Selected ElevenLabs as default TTS provider", correlationId);
@@ -116,7 +152,13 @@ public class TtsProviderFactory
                 return providers["PlayHT"];
             }
 
-            // Try local providers
+            if (providers.ContainsKey("Azure"))
+            {
+                _logger.LogInformation("[{CorrelationId}] Selected Azure as default TTS provider", correlationId);
+                return providers["Azure"];
+            }
+
+            // Try local/offline providers
             if (providers.ContainsKey("Mimic3"))
             {
                 _logger.LogInformation("[{CorrelationId}] Selected Mimic3 as default TTS provider", correlationId);
@@ -129,17 +171,17 @@ public class TtsProviderFactory
                 return providers["Piper"];
             }
 
-            // Fall back to Windows TTS
+            // Fall back to Windows TTS (platform-specific)
             if (providers.ContainsKey("Windows"))
             {
                 _logger.LogInformation("[{CorrelationId}] Selected Windows as default TTS provider", correlationId);
                 return providers["Windows"];
             }
 
-            // Last resort: Null provider
+            // Last resort: Null provider (generates silence)
             if (providers.ContainsKey("Null"))
             {
-                _logger.LogWarning("[{CorrelationId}] No TTS providers available, using Null provider (generates silence)", correlationId);
+                _logger.LogWarning("[{CorrelationId}] No functional TTS providers available, using Null provider (generates silence)", correlationId);
                 return providers["Null"];
             }
 
