@@ -11,6 +11,8 @@ import axios, {
   AxiosResponse,
 } from 'axios';
 import { env } from '../../config/env';
+import { createDedupeKey } from '../../utils/dedupeKey';
+import { requestDeduplicator } from '../../utils/requestDeduplicator';
 import { loggingService } from '../loggingService';
 import {
   getHttpErrorMessage,
@@ -19,8 +21,6 @@ import {
   shouldTriggerCircuitBreaker,
 } from './apiErrorMessages';
 import { PersistentCircuitBreaker } from './circuitBreakerPersistence';
-import { requestDeduplicator } from '../../utils/requestDeduplicator';
-import { createDedupeKey } from '../../utils/dedupeKey';
 
 /**
  * Circuit breaker states
