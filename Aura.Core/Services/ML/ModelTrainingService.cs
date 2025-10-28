@@ -17,6 +17,9 @@ public class ModelTrainingService
 {
     private readonly ILogger<ModelTrainingService> _logger;
     private readonly string _modelDirectory;
+    
+    // Placeholder model metadata format
+    private const string PlaceholderModelFormat = "# Frame Importance Model\nTrained: {0}\nSamples: {1}\n";
 
     public ModelTrainingService(ILogger<ModelTrainingService> logger, string? modelDirectory = null)
     {
@@ -51,17 +54,21 @@ public class ModelTrainingService
             _logger.LogInformation("Validating {Count} annotations", annotationList.Count);
             
             // Validate each annotation
-            foreach (var annotation in annotationList)
+            for (int i = 0; i < annotationList.Count; i++)
             {
+                var annotation = annotationList[i];
+                
                 if (string.IsNullOrWhiteSpace(annotation.FramePath))
                 {
-                    throw new ArgumentException("Frame path cannot be null or empty", nameof(annotations));
+                    throw new ArgumentException(
+                        $"Frame path at index {i} cannot be null or empty", 
+                        nameof(annotations));
                 }
 
                 if (annotation.Rating < 0.0 || annotation.Rating > 1.0)
                 {
                     throw new ArgumentException(
-                        $"Rating must be between 0.0 and 1.0, got {annotation.Rating}", 
+                        $"Rating at index {i} must be between 0.0 and 1.0, got {annotation.Rating}", 
                         nameof(annotations));
                 }
             }
@@ -102,9 +109,8 @@ public class ModelTrainingService
             _logger.LogInformation("Saving trained model to {ModelPath}", newModelPath);
             
             // Create a placeholder model file
-            await File.WriteAllTextAsync(newModelPath, 
-                $"# Frame Importance Model\nTrained: {DateTime.UtcNow:O}\nSamples: {annotationList.Count}\n",
-                cancellationToken);
+            var modelContent = string.Format(PlaceholderModelFormat, DateTime.UtcNow.ToString("O"), annotationList.Count);
+            await File.WriteAllTextAsync(newModelPath, modelContent, cancellationToken);
 
             // Clean up temporary data file
             if (File.Exists(tempDataPath))
