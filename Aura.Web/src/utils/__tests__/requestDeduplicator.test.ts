@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RequestDeduplicator } from '../requestDeduplicator';
 
+// Test timing constants
+const TEST_DELAY_MS = 50;
+const SHORT_DELAY_MS = 10;
+
 describe('RequestDeduplicator', () => {
   let deduplicator: RequestDeduplicator;
 
@@ -21,7 +25,7 @@ describe('RequestDeduplicator', () => {
       let callCount = 0;
       const request = async () => {
         callCount++;
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, TEST_DELAY_MS));
         return `result-${callCount}`;
       };
 
@@ -39,12 +43,12 @@ describe('RequestDeduplicator', () => {
 
     it('should execute separate requests for different keys', async () => {
       const request1 = async () => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, SHORT_DELAY_MS));
         return 'result-1';
       };
       
       const request2 = async () => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, SHORT_DELAY_MS));
         return 'result-2';
       };
 
@@ -96,7 +100,7 @@ describe('RequestDeduplicator', () => {
 
     it('should return true for in-flight request', async () => {
       const promise = deduplicator.deduplicate('key', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, TEST_DELAY_MS));
         return 'result';
       });
 
@@ -111,7 +115,7 @@ describe('RequestDeduplicator', () => {
   describe('clear', () => {
     it('should clear specific key', async () => {
       const promise = deduplicator.deduplicate('key', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, TEST_DELAY_MS));
         return 'result';
       });
 
@@ -127,12 +131,12 @@ describe('RequestDeduplicator', () => {
 
     it('should clear all keys', async () => {
       deduplicator.deduplicate('key1', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, TEST_DELAY_MS));
         return 'result1';
       });
 
       deduplicator.deduplicate('key2', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, TEST_DELAY_MS));
         return 'result2';
       });
 
@@ -149,14 +153,14 @@ describe('RequestDeduplicator', () => {
       expect(deduplicator.pendingCount).toBe(0);
 
       const promise1 = deduplicator.deduplicate('key1', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, TEST_DELAY_MS));
         return 'result1';
       });
 
       expect(deduplicator.pendingCount).toBe(1);
 
       const promise2 = deduplicator.deduplicate('key2', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, TEST_DELAY_MS));
         return 'result2';
       });
 
