@@ -3,6 +3,8 @@
  * Provides type-safe access to environment variables
  */
 
+import { loggingService as logger } from '../services/loggingService';
+
 export const env = {
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005',
   appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
@@ -16,8 +18,11 @@ export const env = {
   mode: import.meta.env.MODE,
 } as const;
 
-// Export for debugging purposes (only in development)
+// Log configuration for debugging purposes (only in development)
 if (env.isDevelopment && env.enableDebug) {
-  // eslint-disable-next-line no-console
-  console.log('Environment Configuration:', env);
+  logger.debug('Environment configuration loaded', 'config', 'env', {
+    apiBaseUrl: env.apiBaseUrl,
+    environment: env.environment,
+    appVersion: env.appVersion,
+  });
 }

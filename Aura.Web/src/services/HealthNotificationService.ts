@@ -1,5 +1,6 @@
 import { apiUrl } from '../config/api';
 import { get } from './api/apiClient';
+import { loggingService as logger } from './loggingService';
 
 interface ProviderHealthSummary {
   totalProviders: number;
@@ -60,7 +61,12 @@ class HealthNotificationService {
         };
       }
     } catch (error) {
-      console.error('Failed to load notification state:', error);
+      logger.error(
+        'Failed to load notification state',
+        error instanceof Error ? error : new Error(String(error)),
+        'HealthNotificationService',
+        'loadState'
+      );
     }
 
     return {
@@ -77,7 +83,12 @@ class HealthNotificationService {
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
     } catch (error) {
-      console.error('Failed to save notification state:', error);
+      logger.error(
+        'Failed to save notification state',
+        error instanceof Error ? error : new Error(String(error)),
+        'HealthNotificationService',
+        'saveState'
+      );
     }
   }
 
@@ -160,7 +171,12 @@ class HealthNotificationService {
       this.state.lastProviders = providersMap;
       this.saveState();
     } catch (error) {
-      console.error('Failed to check provider health:', error);
+      logger.error(
+        'Failed to check provider health',
+        error instanceof Error ? error : new Error(String(error)),
+        'HealthNotificationService',
+        'checkHealth'
+      );
     }
   }
 

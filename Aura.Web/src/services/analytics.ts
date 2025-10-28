@@ -1,3 +1,4 @@
+import { loggingService as logger } from './loggingService';
 /**
  * Analytics service for tracking wizard and user events
  * This is a simple implementation that can be extended with real analytics providers
@@ -28,7 +29,7 @@ export function trackEvent(
   // Log to console in development
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
-    console.log('📊 Analytics Event:', event);
+    logger.debug('Analytics Event', 'analytics', 'trackEvent', { event });
   }
 
   // Store in localStorage for now (can be extended to send to backend)

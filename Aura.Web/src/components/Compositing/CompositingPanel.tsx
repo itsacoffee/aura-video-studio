@@ -11,6 +11,7 @@ import { ChromaKeyEffect } from '../Effects/ChromaKeyEffect';
 import { LayerStack, VideoLayer } from './LayerStack';
 import { MattePreview } from './MattePreview';
 import { MotionTracking } from './MotionTracking';
+import { loggingService as logger } from '../../services/loggingService';
 
 const useStyles = makeStyles({
   container: {
@@ -60,14 +61,12 @@ export function CompositingPanel({
 
   const handleStartTracking = (name: string) => {
     // In a real implementation, this would start the tracking process
-    // eslint-disable-next-line no-console
-    console.log('Start tracking:', name);
+    logger.debug('Start motion tracking', 'CompositingPanel', 'handleStartTracking', { name });
     setIsTracking(true);
   };
 
   const handleStopTracking = (pathId: string) => {
-    // eslint-disable-next-line no-console
-    console.log('Stop tracking:', pathId);
+    logger.debug('Stop motion tracking', 'CompositingPanel', 'handleStopTracking', { pathId });
     setIsTracking(false);
   };
 

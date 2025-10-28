@@ -3,6 +3,7 @@
  */
 
 import { get } from './api/apiClient';
+import { loggingService as logger } from './loggingService';
 
 export interface HardwareInfo {
   cpuCores: number;
@@ -61,7 +62,7 @@ export async function getHardwareInfo(): Promise<HardwareInfo> {
       encoderType,
     };
   } catch (error) {
-    console.warn('Failed to detect hardware, using software fallback:', error);
+    logger.warn('Failed to detect hardware, using software fallback', 'hardwareService', 'detectHardware', { error: String(error) });
     // Return safe defaults if detection fails
     return {
       cpuCores: 4,

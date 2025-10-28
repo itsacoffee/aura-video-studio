@@ -1,16 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   normalizeAspect,
   normalizeDensity,
   validateAndWarnEnums,
   normalizeEnumsForApi,
 } from '../enumNormalizer';
+import { loggingService } from '../../services/loggingService';
 
 describe('EnumNormalizer', () => {
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+  let loggingWarnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    loggingWarnSpy = vi.spyOn(loggingService, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    loggingWarnSpy.mockRestore();
   });
 
   describe('normalizeAspect', () => {
@@ -33,7 +38,9 @@ describe('EnumNormalizer', () => {
 
     it('should default to Widescreen16x9 for unknown values', () => {
       expect(normalizeAspect('unknown')).toBe('Widescreen16x9');
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown aspect value'));
+      expect(loggingWarnSpy).toHaveBeenCalled();
+      const firstCall = loggingWarnSpy.mock.calls[0];
+      expect(firstCall[0]).toContain('Unknown aspect value');
     });
   });
 
@@ -41,7 +48,9 @@ describe('EnumNormalizer', () => {
     it('should normalize legacy "Normal" to "Balanced"', () => {
       expect(normalizeDensity('Normal')).toBe('Balanced');
       expect(normalizeDensity('normal')).toBe('Balanced');
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('deprecated'));
+      expect(loggingWarnSpy).toHaveBeenCalled();
+      const firstCall = loggingWarnSpy.mock.calls[0];
+      expect(firstCall[0]).toContain('deprecated');
     });
 
     it('should preserve canonical density values', () => {
@@ -56,7 +65,9 @@ describe('EnumNormalizer', () => {
 
     it('should default to Balanced for unknown values', () => {
       expect(normalizeDensity('unknown')).toBe('Balanced');
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown density value'));
+      expect(loggingWarnSpy).toHaveBeenCalled();
+      const firstCall = loggingWarnSpy.mock.calls[0];
+      expect(firstCall[0]).toContain('Unknown density value');
     });
   });
 
@@ -67,7 +78,9 @@ describe('EnumNormalizer', () => {
 
       validateAndWarnEnums(brief, planSpec);
 
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('legacy format'));
+      expect(loggingWarnSpy).toHaveBeenCalled();
+      const firstCall = loggingWarnSpy.mock.calls[0];
+      expect(firstCall[0]).toContain('legacy format');
     });
 
     it('should warn about deprecated density', () => {
@@ -76,7 +89,9 @@ describe('EnumNormalizer', () => {
 
       validateAndWarnEnums(brief, planSpec);
 
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('deprecated'));
+      expect(loggingWarnSpy).toHaveBeenCalled();
+      const firstCall = loggingWarnSpy.mock.calls[0];
+      expect(firstCall[0]).toContain('deprecated');
     });
 
     it('should not warn for canonical values', () => {
@@ -85,12 +100,12 @@ describe('EnumNormalizer', () => {
 
       validateAndWarnEnums(brief, planSpec);
 
-      expect(consoleWarnSpy).not.toHaveBeenCalled();
+      expect(loggingWarnSpy).not.toHaveBeenCalled();
     });
 
     it('should handle empty objects', () => {
       validateAndWarnEnums({}, {});
-      expect(consoleWarnSpy).not.toHaveBeenCalled();
+      expect(loggingWarnSpy).not.toHaveBeenCalled();
     });
 
     it('should handle case sensitivity for density', () => {
@@ -99,7 +114,9 @@ describe('EnumNormalizer', () => {
 
       validateAndWarnEnums(brief, planSpec);
 
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('deprecated'));
+      expect(loggingWarnSpy).toHaveBeenCalled();
+      const firstCall = loggingWarnSpy.mock.calls[0];
+      expect(firstCall[0]).toContain('deprecated');
     });
   });
 
