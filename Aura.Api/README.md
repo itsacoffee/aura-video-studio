@@ -424,6 +424,43 @@ Load user settings.
 }
 ```
 
+#### `POST /ml/train/frame-importance`
+Train the frame importance ML model with user-annotated frame data.
+
+**Request**:
+```json
+{
+  "annotations": [
+    {
+      "framePath": "/path/to/frame1.jpg",
+      "rating": 0.85
+    },
+    {
+      "framePath": "/path/to/frame2.jpg",
+      "rating": 0.42
+    }
+  ]
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "modelPath": "/path/to/ML/PretrainedModels/frame-importance-model.zip",
+  "trainingSamples": 2,
+  "trainingDurationSeconds": 1.234,
+  "errorMessage": null
+}
+```
+
+**Description**:
+- Accepts user-annotated frame data to retrain the frame importance model
+- `framePath`: Path to the frame image file
+- `rating`: Importance rating from 0.0 (not important) to 1.0 (very important)
+- The newly trained model replaces the existing one in `Aura.Core/ML/PretrainedModels/`
+- A backup of the previous model is created automatically
+
 #### `GET /downloads/manifest`
 Get the dependency download manifest.
 
