@@ -69,3 +69,11 @@ public enum RecommendationType
     ThumbnailCandidate,
     SkipRecommended
 }
+
+/// <summary>
+/// User annotation data for a frame (for ML model training)
+/// </summary>
+public record FrameAnnotation(
+    string FramePath,
+    double Rating
+);

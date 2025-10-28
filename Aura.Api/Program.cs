@@ -304,6 +304,9 @@ builder.Services.AddSingleton<Aura.Core.Timeline.TimelineBuilder>();
 builder.Services.AddSingleton<Aura.Core.ML.Models.AttentionRetentionModel>();
 builder.Services.AddSingleton<Aura.Core.ML.Models.FrameImportanceModel>();
 
+// Register ML training service
+builder.Services.AddSingleton<Aura.Core.Services.ML.ModelTrainingService>();
+
 // Register pacing services in dependency order
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.SceneImportanceAnalyzer>();
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.AttentionCurvePredictor>();
@@ -1952,6 +1955,72 @@ apiGroup.MapPost("/tts/azure/synthesize", async (
     }
 })
 .WithName("AzureTtsSynthesize")
+.WithOpenApi();
+
+// ML Model Training endpoint
+apiGroup.MapPost("/ml/train/frame-importance", async (
+    [FromBody] ApiV1.TrainFrameImportanceRequest request,
+    Aura.Core.Services.ML.ModelTrainingService trainingService,
+    CancellationToken ct) =>
+{
+    try
+    {
+        Log.Information("Received frame importance training request with {Count} annotations", 
+            request.Annotations.Count);
+
+        // Validate request
+        if (request.Annotations == null || request.Annotations.Count == 0)
+        {
+            return Results.BadRequest(new ApiV1.TrainFrameImportanceResponse(
+                Success: false,
+                ModelPath: null,
+                TrainingSamples: 0,
+                TrainingDurationSeconds: 0,
+                ErrorMessage: "No annotations provided"
+            ));
+        }
+
+        // Convert DTOs to domain models
+        var annotations = request.Annotations.Select(dto => 
+            new Aura.Core.Models.FrameAnalysis.FrameAnnotation(
+                FramePath: dto.FramePath,
+                Rating: dto.Rating
+            ));
+
+        // Train the model
+        var result = await trainingService.TrainFrameImportanceModelAsync(annotations, ct);
+
+        // Convert result to DTO
+        var response = new ApiV1.TrainFrameImportanceResponse(
+            Success: result.Success,
+            ModelPath: result.ModelPath,
+            TrainingSamples: result.TrainingSamples,
+            TrainingDurationSeconds: result.TrainingDuration.TotalSeconds,
+            ErrorMessage: result.ErrorMessage
+        );
+
+        return result.Success 
+            ? Results.Ok(response)
+            : Results.Json(response, statusCode: 500);
+    }
+    catch (ArgumentException ex)
+    {
+        Log.Warning(ex, "Invalid training request");
+        return Results.BadRequest(new ApiV1.TrainFrameImportanceResponse(
+            Success: false,
+            ModelPath: null,
+            TrainingSamples: 0,
+            TrainingDurationSeconds: 0,
+            ErrorMessage: ex.Message
+        ));
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error training frame importance model");
+        return Results.Problem("Error training model", statusCode: 500);
+    }
+})
+.WithName("TrainFrameImportanceModel")
 .WithOpenApi();
 
 // Downloads manifest endpoint

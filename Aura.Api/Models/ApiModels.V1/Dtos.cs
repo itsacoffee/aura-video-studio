@@ -171,3 +171,26 @@ public record AzureVoiceCapabilitiesDto(
     Dictionary<string, string> StyleDescriptions,
     string[] SupportedFeatures);
 
+/// <summary>
+/// Request to train the frame importance ML model with user annotations
+/// </summary>
+public record TrainFrameImportanceRequest(
+    List<FrameAnnotationDto> Annotations);
+
+/// <summary>
+/// Frame annotation data for ML model training
+/// </summary>
+public record FrameAnnotationDto(
+    string FramePath,
+    double Rating);
+
+/// <summary>
+/// Response from model training endpoint
+/// </summary>
+public record TrainFrameImportanceResponse(
+    bool Success,
+    string? ModelPath,
+    int TrainingSamples,
+    double TrainingDurationSeconds,
+    string? ErrorMessage);
+
