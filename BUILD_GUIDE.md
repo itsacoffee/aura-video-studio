@@ -133,13 +133,25 @@ Check that git hooks are installed:
 # From repository root
 ls -la .husky
 # You should see: pre-commit, commit-msg, and _
+
+# Verify git hooks path is configured
+git config core.hooksPath
+# Should output: .husky
 ```
 
-If Husky hooks are not installed:
+If Husky hooks are not installed or git hooks path is not set:
 ```bash
 cd Aura.Web
 npm run prepare
+
+# Or manually from repository root:
+git config core.hooksPath .husky
 ```
+
+**How it works:**
+- The `prepare` script in `package.json` runs automatically during `npm ci`
+- It configures git to use hooks from the `.husky` directory
+- This is a monorepo setup where git repository is at the root, but npm package is in `Aura.Web/`
 
 ### 5. Install .NET Dependencies
 
@@ -357,17 +369,28 @@ git commit -m "temp commit"
 
 ### Manual Hook Installation
 
-If hooks don't install automatically:
+If hooks don't install automatically during `npm ci`:
 
 ```bash
 cd Aura.Web
 npm run prepare
 ```
 
-Or manually:
+This will configure git to use hooks from the `.husky` directory.
+
+**Verify installation:**
 ```bash
 # From repository root
-npx husky install
+git config core.hooksPath
+# Should output: .husky
+
+# Test the pre-commit hook
+echo "console.log('test');" > test.js
+git add test.js
+git commit -m "test"
+# Should run pre-commit checks
+rm test.js
+git reset HEAD~1
 ```
 
 ## Troubleshooting
