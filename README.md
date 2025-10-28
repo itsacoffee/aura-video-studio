@@ -1,5 +1,8 @@
 # Aura Video Studio
 
+[![Build Validation](https://github.com/Saiyan9001/aura-video-studio/actions/workflows/build-validation.yml/badge.svg)](https://github.com/Saiyan9001/aura-video-studio/actions/workflows/build-validation.yml)
+[![No Placeholders](https://github.com/Saiyan9001/aura-video-studio/actions/workflows/no-placeholders.yml/badge.svg)](https://github.com/Saiyan9001/aura-video-studio/actions/workflows/no-placeholders.yml)
+
 ## 🎯 Platform Scope
 
 **Aura Video Studio is a Windows 11 (x64) application.**
@@ -12,6 +15,50 @@ This software is designed, built, and tested exclusively for **Windows 11 (64-bi
 - **Hardware acceleration**: First-class support for NVIDIA NVENC, AMD AMF, and Intel QSV
 - **Simplified distribution**: Portable ZIP format works seamlessly on Windows without cross-platform complexity
 - **Consistent user experience**: Single platform = fewer edge cases, better stability, faster iteration
+
+## 🚀 Quick Start for Developers
+
+### Prerequisites
+- Windows 11 (64-bit)
+- Node.js 18.0.0+ (18.18.0 recommended)
+- .NET 8 SDK
+- Git for Windows
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/Saiyan9001/aura-video-studio.git
+cd aura-video-studio
+
+# Install frontend dependencies
+cd Aura.Web
+npm install
+
+# Build frontend
+npm run build
+
+# Build backend
+cd ..
+dotnet build Aura.sln --configuration Release
+
+# Run the application
+cd Aura.Api
+dotnet run
+```
+
+**For detailed setup instructions, troubleshooting, and development workflow:**  
+📖 **[Complete Build Guide](docs/developer/BUILD_GUIDE.md)**
+
+### Troubleshooting
+
+**Common issues:**
+- **"Path too long" error**: Enable Windows long path support (see BUILD_GUIDE.md)
+- **"Module not found"**: Delete `node_modules` and run `npm install` again
+- **"Permission denied"**: Run terminal as Administrator or check antivirus
+- **TypeScript errors**: Run `npm install` to get latest type definitions
+
+See [BUILD_GUIDE.md](docs/developer/BUILD_GUIDE.md) for complete troubleshooting guide.
 
 ## 🚀 Implementation Status
 

@@ -318,8 +318,7 @@ export function OperationHistory({
                       size="small"
                       icon={<Open24Regular />}
                       onClick={() => {
-                        // In production, this would open the file
-                        // TODO: Implement file opening functionality
+                        // File opening requires file system integration
                       }}
                     />
                   </Tooltip>

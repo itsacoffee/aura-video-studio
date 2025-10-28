@@ -13,6 +13,8 @@
     "build:prod": "npm run type-check && vite build --mode production",
     "build:clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && npm run build",
     "build:analyze": "npm run build:prod && open dist/stats.html",
+    "prebuild": "node ../scripts/build/validate-environment.js",
+    "postbuild": "node ../scripts/build/verify-build.js",
     "validate": "npm run type-check && npm run lint",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",

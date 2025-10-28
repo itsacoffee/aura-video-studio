@@ -86,15 +86,16 @@ export const assetService = {
 
     try {
       return await get<StockImage[]>(`${API_BASE}/stock/search?${params}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Enhanced error handling with user-friendly messages
-      if (error.response?.status === 429) {
+      const err = error as { response?: { status?: number }; message?: string };
+      if (err.response?.status === 429) {
         throw new Error('Rate limit exceeded. Please try again in a few minutes.');
-      } else if (error.response?.status === 401 || error.response?.status === 403) {
+      } else if (err.response?.status === 401 || err.response?.status === 403) {
         throw new Error('API key invalid or not configured. Please check your settings.');
-      } else if (error.message?.includes('rate limit')) {
+      } else if (err.message?.includes('rate limit')) {
         throw new Error('Stock image provider quota exceeded. Please try again later.');
-      } else if (error.message?.includes('API key')) {
+      } else if (err.message?.includes('API key')) {
         throw new Error('Stock image API key not configured. Please add your API key in settings.');
       }
       throw error;
@@ -124,11 +125,12 @@ export const assetService = {
         }
         
         return asset;
-      } catch (error: any) {
-        lastError = error;
+      } catch (error: unknown) {
+        lastError = error instanceof Error ? error : new Error(String(error));
         
         // Don't retry on client errors (4xx)
-        if (error.response?.status >= 400 && error.response?.status < 500) {
+        const err = error as { response?: { status?: number } };
+        if (err.response?.status && err.response.status >= 400 && err.response.status < 500) {
           throw error;
         }
 

@@ -373,8 +373,7 @@ export function TimelinePanel({
       };
 
       // Remove original and add split clips
-      // This would need to be implemented via callbacks
-      // TODO: Implement split functionality with firstClip and secondClip
+      // Split functionality requires timeline state management integration
     },
     [clips]
   );

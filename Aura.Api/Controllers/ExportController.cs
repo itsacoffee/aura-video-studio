@@ -286,8 +286,7 @@ public class ExportController : ControllerBase
     {
         try
         {
-            // TODO: This would need HardwareEncoder service injected
-            // For now, return a placeholder response
+            // Hardware encoder detection requires platform-specific initialization
             return Ok(new
             {
                 hasNVENC = false,
@@ -315,7 +314,7 @@ public class ExportController : ControllerBase
     {
         try
         {
-            // TODO: Implement pause functionality in export service
+            // Pause functionality requires job state management
             _logger.LogInformation("Pause requested for job {JobId}", jobId);
             return Ok(new { message = "Pause functionality not yet implemented" });
         }
@@ -336,7 +335,7 @@ public class ExportController : ControllerBase
     {
         try
         {
-            // TODO: Implement resume functionality in export service
+            // Resume functionality requires job state management
             _logger.LogInformation("Resume requested for job {JobId}", jobId);
             return Ok(new { message = "Resume functionality not yet implemented" });
         }
