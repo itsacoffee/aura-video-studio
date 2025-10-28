@@ -77,21 +77,99 @@ export const assetService = {
   },
 
   /**
-   * Search stock images
+   * Search stock images with enhanced error handling
    */
   async searchStockImages(query: string, count = 20): Promise<StockImage[]> {
     const params = new URLSearchParams();
     params.append('query', query);
     params.append('count', count.toString());
 
-    return get<StockImage[]>(`${API_BASE}/stock/search?${params}`);
+    try {
+      return await get<StockImage[]>(`${API_BASE}/stock/search?${params}`);
+    } catch (error: any) {
+      // Enhanced error handling with user-friendly messages
+      if (error.response?.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again in a few minutes.');
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        throw new Error('API key invalid or not configured. Please check your settings.');
+      } else if (error.message?.includes('rate limit')) {
+        throw new Error('Stock image provider quota exceeded. Please try again later.');
+      } else if (error.message?.includes('API key')) {
+        throw new Error('Stock image API key not configured. Please add your API key in settings.');
+      }
+      throw error;
+    }
   },
 
   /**
-   * Download and add stock image to library
+   * Download and add stock image to library with retry logic
    */
-  async downloadStockImage(request: StockImageDownloadRequest): Promise<Asset> {
-    return post<Asset>(`${API_BASE}/stock/download`, request);
+  async downloadStockImage(
+    request: StockImageDownloadRequest,
+    onProgress?: (progress: number) => void
+  ): Promise<Asset> {
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (onProgress) {
+          onProgress(attempt === 1 ? 0 : (attempt - 1) / maxRetries * 50);
+        }
+
+        const asset = await post<Asset>(`${API_BASE}/stock/download`, request);
+        
+        if (onProgress) {
+          onProgress(100);
+        }
+        
+        return asset;
+      } catch (error: any) {
+        lastError = error;
+        
+        // Don't retry on client errors (4xx)
+        if (error.response?.status >= 400 && error.response?.status < 500) {
+          throw error;
+        }
+
+        // Wait before retrying (exponential backoff)
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+      }
+    }
+
+    throw new Error(
+      `Failed to download stock image after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`
+    );
+  },
+
+  /**
+   * Get list of available stock providers with their status
+   */
+  async getStockProviders(): Promise<{
+    providers: Array<{
+      name: string;
+      available: boolean;
+      hasApiKey: boolean;
+      quotaRemaining: number | null;
+      quotaLimit: number | null;
+      error: string | null;
+    }>;
+  }> {
+    return get(`${API_BASE}/stock/providers`);
+  },
+
+  /**
+   * Get quota status for a specific provider
+   */
+  async getStockQuota(provider: string): Promise<{
+    provider: string;
+    remaining: number;
+    limit: number;
+    resetTime: string | null;
+  }> {
+    return get(`${API_BASE}/stock/quota/${provider}`);
   },
 
   /**
