@@ -194,3 +194,29 @@ public record TrainFrameImportanceResponse(
     double TrainingDurationSeconds,
     string? ErrorMessage);
 
+/// <summary>
+/// Response for stock provider status
+/// </summary>
+public record StockProviderDto(
+    string Name,
+    bool Available,
+    bool HasApiKey,
+    int? QuotaRemaining,
+    int? QuotaLimit,
+    string? Error);
+
+/// <summary>
+/// Response for listing all stock providers
+/// </summary>
+public record StockProvidersResponse(
+    List<StockProviderDto> Providers);
+
+/// <summary>
+/// Response for checking quota status
+/// </summary>
+public record QuotaStatusResponse(
+    string Provider,
+    int Remaining,
+    int Limit,
+    DateTime? ResetTime);
+

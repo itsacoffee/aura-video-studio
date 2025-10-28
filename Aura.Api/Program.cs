@@ -40,6 +40,9 @@ using AssetSearchRequest = Aura.Api.Models.ApiModels.V1.AssetSearchRequest;
 using AssetGenerateRequest = Aura.Api.Models.ApiModels.V1.AssetGenerateRequest;
 using CaptionsRequest = Aura.Api.Models.ApiModels.V1.CaptionsRequest;
 using ValidateProvidersRequest = Aura.Api.Models.ApiModels.V1.ValidateProvidersRequest;
+using StockProviderDto = Aura.Api.Models.ApiModels.V1.StockProviderDto;
+using StockProvidersResponse = Aura.Api.Models.ApiModels.V1.StockProvidersResponse;
+using QuotaStatusResponse = Aura.Api.Models.ApiModels.V1.QuotaStatusResponse;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -2795,6 +2798,179 @@ apiGroup.MapPost("/assets/search", async ([FromBody] AssetSearchRequest request,
     }
 })
 .WithName("SearchAssets")
+.WithOpenApi();
+
+// Stock providers status endpoint - list available providers with quota info
+apiGroup.MapGet("/assets/stock/providers", (IConfiguration config) =>
+{
+    try
+    {
+        var pexelsApiKey = config["ApiKeys:Pexels"];
+        var pixabayApiKey = config["ApiKeys:Pixabay"];
+        var unsplashApiKey = config["ApiKeys:Unsplash"];
+
+        var providers = new List<StockProviderDto>();
+
+        // Pexels provider
+        if (!string.IsNullOrEmpty(pexelsApiKey))
+        {
+            // Create instance to get quota info
+            var httpClient = new HttpClient();
+            var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.PexelsImageProvider>();
+            var pexelsProvider = new Aura.Providers.Images.PexelsImageProvider(logger, httpClient, pexelsApiKey);
+            var (remaining, limit, _) = pexelsProvider.GetQuotaStatus();
+            
+            providers.Add(new StockProviderDto(
+                Name: "Pexels",
+                Available: true,
+                HasApiKey: true,
+                QuotaRemaining: remaining,
+                QuotaLimit: limit,
+                Error: null
+            ));
+        }
+        else
+        {
+            providers.Add(new StockProviderDto(
+                Name: "Pexels",
+                Available: false,
+                HasApiKey: false,
+                QuotaRemaining: null,
+                QuotaLimit: null,
+                Error: "API key not configured. Get a free key at https://www.pexels.com/api/"
+            ));
+        }
+
+        // Pixabay provider
+        if (!string.IsNullOrEmpty(pixabayApiKey))
+        {
+            providers.Add(new StockProviderDto(
+                Name: "Pixabay",
+                Available: true,
+                HasApiKey: true,
+                QuotaRemaining: null, // Pixabay doesn't provide quota info via API
+                QuotaLimit: null,
+                Error: null
+            ));
+        }
+        else
+        {
+            providers.Add(new StockProviderDto(
+                Name: "Pixabay",
+                Available: false,
+                HasApiKey: false,
+                QuotaRemaining: null,
+                QuotaLimit: null,
+                Error: "API key not configured. Get a free key at https://pixabay.com/api/docs/"
+            ));
+        }
+
+        // Unsplash provider
+        if (!string.IsNullOrEmpty(unsplashApiKey))
+        {
+            var httpClient = new HttpClient();
+            var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.UnsplashImageProvider>();
+            var unsplashProvider = new Aura.Providers.Images.UnsplashImageProvider(logger, httpClient, unsplashApiKey);
+            var (remaining, limit) = unsplashProvider.GetQuotaStatus();
+            
+            providers.Add(new StockProviderDto(
+                Name: "Unsplash",
+                Available: true,
+                HasApiKey: true,
+                QuotaRemaining: remaining,
+                QuotaLimit: limit,
+                Error: null
+            ));
+        }
+        else
+        {
+            providers.Add(new StockProviderDto(
+                Name: "Unsplash",
+                Available: false,
+                HasApiKey: false,
+                QuotaRemaining: null,
+                QuotaLimit: null,
+                Error: "API key not configured. Get a free key at https://unsplash.com/developers"
+            ));
+        }
+
+        return Results.Ok(new StockProvidersResponse(providers));
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting stock providers status");
+        return Results.Problem("Error getting stock providers status", statusCode: 500);
+    }
+})
+.WithName("GetStockProviders")
+.WithOpenApi();
+
+// Stock quota endpoint - check remaining quota for a specific provider
+apiGroup.MapGet("/assets/stock/quota/{provider}", (string provider, IConfiguration config) =>
+{
+    try
+    {
+        provider = provider.ToLowerInvariant();
+        
+        switch (provider)
+        {
+            case "pexels":
+                var pexelsApiKey = config["ApiKeys:Pexels"];
+                if (string.IsNullOrEmpty(pexelsApiKey))
+                {
+                    return Results.BadRequest(new { error = "Pexels API key not configured" });
+                }
+                
+                var httpClient = new HttpClient();
+                var logger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.PexelsImageProvider>();
+                var pexelsProvider = new Aura.Providers.Images.PexelsImageProvider(logger, httpClient, pexelsApiKey);
+                var (remaining, limit, resetTime) = pexelsProvider.GetQuotaStatus();
+                
+                return Results.Ok(new QuotaStatusResponse(
+                    Provider: "Pexels",
+                    Remaining: remaining,
+                    Limit: limit,
+                    ResetTime: resetTime
+                ));
+
+            case "unsplash":
+                var unsplashApiKey = config["ApiKeys:Unsplash"];
+                if (string.IsNullOrEmpty(unsplashApiKey))
+                {
+                    return Results.BadRequest(new { error = "Unsplash API key not configured" });
+                }
+                
+                var unsplashHttpClient = new HttpClient();
+                var unsplashLogger = LoggerFactory.Create(b => b.AddConsole()).CreateLogger<Aura.Providers.Images.UnsplashImageProvider>();
+                var unsplashProvider = new Aura.Providers.Images.UnsplashImageProvider(unsplashLogger, unsplashHttpClient, unsplashApiKey);
+                var (unsplashRemaining, unsplashLimit) = unsplashProvider.GetQuotaStatus();
+                
+                return Results.Ok(new QuotaStatusResponse(
+                    Provider: "Unsplash",
+                    Remaining: unsplashRemaining,
+                    Limit: unsplashLimit,
+                    ResetTime: null
+                ));
+
+            case "pixabay":
+                var pixabayApiKey = config["ApiKeys:Pixabay"];
+                if (string.IsNullOrEmpty(pixabayApiKey))
+                {
+                    return Results.BadRequest(new { error = "Pixabay API key not configured" });
+                }
+                return Results.Ok(new { message = "Pixabay does not provide quota information via API" });
+
+            default:
+                return Results.BadRequest(new { error = $"Unknown provider: {provider}" });
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting quota status for provider {Provider}", provider);
+        return Results.Problem("Error getting quota status", statusCode: 500);
+    }
+})
+.WithName("GetStockQuota")
 .WithOpenApi();
 
 // Assets generate endpoint - generate with Stable Diffusion
