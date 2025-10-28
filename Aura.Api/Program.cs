@@ -70,6 +70,10 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
+// Add global exception handler and ProblemDetails support
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 // Add services to the container
 builder.Services.AddControllers(options =>
     {
@@ -111,6 +115,11 @@ builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<IHardwareDetector>(sp => sp.GetRequiredService<HardwareDetector>());
 builder.Services.AddSingleton<Aura.Core.Hardware.DiagnosticsHelper>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
+
+// Configure FFmpeg options from appsettings
+builder.Services.Configure<Aura.Core.Configuration.FFmpegOptions>(
+    builder.Configuration.GetSection("FFmpeg"));
+
 
 // Register FFmpeg locator for centralized FFmpeg path resolution
 builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
@@ -799,6 +808,96 @@ else
     Log.Information("Startup validation completed successfully");
 }
 
+// Perform FFmpeg detection and validation
+Log.Information("Initialization Phase 3.5: FFmpeg Detection and Validation");
+try
+{
+    using var scope = app.Services.CreateScope();
+    var ffmpegOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Configuration.FFmpegOptions>>();
+    var hardwareDetector = scope.ServiceProvider.GetRequiredService<HardwareDetector>();
+    
+    Log.Information("FFmpeg Configuration:");
+    Log.Information("  Explicit Path: {Path}", string.IsNullOrEmpty(ffmpegOptions.Value.ExecutablePath) ? "(auto-detect)" : ffmpegOptions.Value.ExecutablePath);
+    Log.Information("  Search Paths: {Count} configured", ffmpegOptions.Value.SearchPaths.Count);
+    Log.Information("  Minimum Version Required: {Version}", string.IsNullOrEmpty(ffmpegOptions.Value.RequireMinimumVersion) ? "(none)" : ffmpegOptions.Value.RequireMinimumVersion);
+    
+    // Attempt to detect FFmpeg
+    var systemProfile = await hardwareDetector.DetectSystemAsync();
+    
+    // Try to get FFmpeg path from locator
+    var ffmpegLocator = scope.ServiceProvider.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
+    var ffmpegPath = await ffmpegLocator.GetEffectiveFfmpegPathAsync();
+    
+    if (!string.IsNullOrEmpty(ffmpegPath) && File.Exists(ffmpegPath))
+    {
+        Log.Information("✓ FFmpeg detected successfully");
+        Log.Information("  Path: {Path}", ffmpegPath);
+        
+        // Try to get version
+        try
+        {
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = ffmpegPath,
+                Arguments = "-version",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            
+            using var process = System.Diagnostics.Process.Start(processInfo);
+            if (process != null)
+            {
+                var output = await process.StandardOutput.ReadToEndAsync();
+                await process.WaitForExitAsync();
+                
+                var versionLine = output.Split('\n').FirstOrDefault(l => l.Contains("ffmpeg version"));
+                if (!string.IsNullOrEmpty(versionLine))
+                {
+                    Log.Information("  Version Info: {Version}", versionLine.Trim());
+                }
+            }
+        }
+        catch (Exception versionEx)
+        {
+            Log.Warning(versionEx, "Could not determine FFmpeg version");
+        }
+    }
+    else
+    {
+        if (app.Environment.IsProduction())
+        {
+            Log.Warning("═══════════════════════════════════════════════════════════════");
+            Log.Warning("⚠ WARNING: FFmpeg not found");
+            Log.Warning("═══════════════════════════════════════════════════════════════");
+            Log.Warning("FFmpeg is required for video generation but was not detected.");
+            Log.Warning("Video rendering will NOT work until FFmpeg is installed.");
+            Log.Warning("");
+            Log.Warning("Configured search paths:");
+            foreach (var path in ffmpegOptions.Value.SearchPaths)
+            {
+                Log.Warning("  - {Path}", path);
+            }
+            Log.Warning("");
+            Log.Warning("To fix this issue:");
+            Log.Warning("  1. Install FFmpeg from https://ffmpeg.org/download.html");
+            Log.Warning("  2. Add FFmpeg to your system PATH");
+            Log.Warning("  3. Or configure FFmpeg:ExecutablePath in appsettings.json");
+            Log.Warning("═══════════════════════════════════════════════════════════════");
+        }
+        else
+        {
+            Log.Information("FFmpeg not found - this is normal for development");
+            Log.Information("Video generation will use fallback or manual installation");
+        }
+    }
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Error during FFmpeg detection - continuing startup anyway");
+}
+
 // Add correlation ID middleware early in the pipeline
 app.UseCorrelationId();
 
@@ -808,7 +907,10 @@ app.UseRequestLogging();
 // Add rate limiting middleware
 app.UseRateLimiting();
 
-// Add global exception handling middleware
+// Add new global exception handler (ASP.NET Core IExceptionHandler pattern)
+app.UseExceptionHandler();
+
+// Keep legacy exception handling middleware as fallback
 app.UseExceptionHandling();
 
 // Configure the HTTP request pipeline
