@@ -109,7 +109,7 @@ public class ModelTrainingService
             _logger.LogInformation("Saving trained model to {ModelPath}", newModelPath);
             
             // Create a placeholder model file
-            var modelContent = string.Format(PlaceholderModelFormat, DateTime.UtcNow.ToString("O"), annotationList.Count);
+            var modelContent = string.Format(PlaceholderModelFormat, $"{DateTime.UtcNow:O}", annotationList.Count);
             await File.WriteAllTextAsync(newModelPath, modelContent, cancellationToken);
 
             // Clean up temporary data file
