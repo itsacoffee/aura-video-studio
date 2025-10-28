@@ -29,14 +29,16 @@ import {
   ChevronDown24Regular,
   Info24Regular,
   ArrowReset24Regular,
+  Dismiss24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GenerationPanel } from '../../components/Generation/GenerationPanel';
 import { useNotifications } from '../../components/Notifications/Toasts';
 import { PreflightPanel } from '../../components/PreflightPanel';
 import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
 import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
 import { apiUrl } from '../../config/api';
+import { postCancellable, isAbortError } from '../../services/api/cancellableRequests';
 import { useJobState } from '../../state/jobState';
 import type { PreflightReport, PerStageProviderSelection } from '../../state/providers';
 import type {
@@ -191,6 +193,9 @@ export function CreateWizard() {
   const [showGenerationPanel, setShowGenerationPanel] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
+  // Request cancellation state
+  const currentRequestRef = useRef<{ cancel: () => void } | null>(null);
+
   const { showFailureToast, showSuccessToast } = useNotifications();
 
   // Update provider selection
@@ -209,6 +214,15 @@ export function CreateWizard() {
       console.error('Failed to save settings to localStorage:', error);
     }
   }, [settings]);
+
+  // Cleanup: Cancel any in-progress requests on unmount
+  useEffect(() => {
+    return () => {
+      if (currentRequestRef.current) {
+        currentRequestRef.current.cancel();
+      }
+    };
+  }, []);
 
   // Update brief
   const updateBrief = (updates: Partial<Brief>) => {
@@ -239,6 +253,19 @@ export function CreateWizard() {
   const handleResetToDefaults = () => {
     if (confirm('Reset all settings to defaults? This cannot be undone.')) {
       setSettings(createDefaultSettings());
+    }
+  };
+
+  // Cancel current request
+  const handleCancelRequest = () => {
+    if (currentRequestRef.current) {
+      currentRequestRef.current.cancel();
+      currentRequestRef.current = null;
+      setGenerating(false);
+      showSuccessToast({
+        title: 'Request Cancelled',
+        message: 'The generation request has been cancelled.',
+      });
     }
   };
 
@@ -380,35 +407,32 @@ export function CreateWizard() {
       const requestData = { brief, planSpec, voiceSpec, renderSpec };
       const jobsUrl = apiUrl('/api/jobs');
 
-      const response = await fetch(jobsUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData),
-      });
+      // Use cancellable request
+      const { promise, cancel } = postCancellable<{ jobId: string }>(jobsUrl, requestData);
+      currentRequestRef.current = { cancel };
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await promise;
 
-        // Set job in global state for status bar
-        useJobState.getState().setJob(data.jobId);
-        useJobState.getState().updateProgress(0, 'Starting video generation...');
+      // Clear the request reference on success
+      currentRequestRef.current = null;
 
-        setActiveJobId(data.jobId);
-        setShowGenerationPanel(true);
-      } else {
-        const errorInfo = await parseApiError(response);
-        console.error('[GENERATE VIDEO] API request failed:', errorInfo);
-        showFailureToast({
-          title: errorInfo.title,
-          message: errorInfo.message,
-          errorDetails: errorInfo.errorDetails,
-          correlationId: errorInfo.correlationId,
-          errorCode: errorInfo.errorCode,
-          onRetry: () => handleGenerate(),
-          onOpenLogs: openLogsFolder,
-        });
-      }
+      // Set job in global state for status bar
+      useJobState.getState().setJob(data.jobId);
+      useJobState.getState().updateProgress(0, 'Starting video generation...');
+
+      setActiveJobId(data.jobId);
+      setShowGenerationPanel(true);
     } catch (error) {
+      // Clear the request reference
+      currentRequestRef.current = null;
+
+      // Don't show error if request was cancelled
+      if (isAbortError(error)) {
+        // eslint-disable-next-line no-console
+        console.log('[GENERATE VIDEO] Request cancelled by user');
+        return;
+      }
+
       console.error('[GENERATE VIDEO] Error:', error);
       const errorInfo = await parseApiError(error);
       showFailureToast({
@@ -503,39 +527,38 @@ export function CreateWizard() {
       const demoUrl = apiUrl('/api/quick/demo');
       const requestData = { topic: settings.brief.topic || null };
 
-      const response = await fetch(demoUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestData),
+      // Use cancellable request
+      const { promise, cancel } = postCancellable<{ jobId: string }>(demoUrl, requestData);
+      currentRequestRef.current = { cancel };
+
+      const data = await promise;
+
+      // Clear the request reference on success
+      currentRequestRef.current = null;
+
+      // Set job in global state for status bar
+      useJobState.getState().setJob(data.jobId);
+      useJobState.getState().updateProgress(0, 'Starting quick demo...');
+
+      // Show success toast
+      showSuccessToast({
+        title: 'Quick Demo Started',
+        message: `Job ID: ${data.jobId}`,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-
-        // Set job in global state for status bar
-        useJobState.getState().setJob(data.jobId);
-        useJobState.getState().updateProgress(0, 'Starting quick demo...');
-
-        // Show success toast
-        showSuccessToast({
-          title: 'Quick Demo Started',
-          message: `Job ID: ${data.jobId}`,
-        });
-
-        setActiveJobId(data.jobId);
-        setShowGenerationPanel(true);
-      } else {
-        const errorInfo = await parseApiError(response);
-        console.error('[QUICK DEMO] API request failed:', errorInfo);
-        showFailureToast({
-          title: 'Failed to Start Quick Demo',
-          message: errorInfo.message,
-          errorDetails: errorInfo.errorDetails,
-          correlationId: errorInfo.correlationId,
-          errorCode: errorInfo.errorCode,
-        });
-      }
+      setActiveJobId(data.jobId);
+      setShowGenerationPanel(true);
     } catch (error) {
+      // Clear the request reference
+      currentRequestRef.current = null;
+
+      // Don't show error if request was cancelled
+      if (isAbortError(error)) {
+        // eslint-disable-next-line no-console
+        console.log('[QUICK DEMO] Request cancelled by user');
+        return;
+      }
+
       console.error('[QUICK DEMO] Error:', error);
       const errorInfo = await parseApiError(error);
       showFailureToast({
@@ -683,16 +706,28 @@ export function CreateWizard() {
               <Text size={300} style={{ display: 'block', marginBottom: tokens.spacingVerticalL }}>
                 Try a Quick Demo - No setup required!
               </Text>
-              <Button
-                appearance="primary"
-                size="large"
-                icon={generating ? <Spinner size="tiny" /> : <Play24Regular />}
-                onClick={handleQuickDemo}
-                disabled={generating}
-                style={{ minWidth: '200px' }}
-              >
-                {generating ? 'Starting...' : 'Quick Demo (Safe)'}
-              </Button>
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, justifyContent: 'center' }}>
+                <Button
+                  appearance="primary"
+                  size="large"
+                  icon={generating ? <Spinner size="tiny" /> : <Play24Regular />}
+                  onClick={handleQuickDemo}
+                  disabled={generating}
+                  style={{ minWidth: '200px' }}
+                >
+                  {generating ? 'Starting...' : 'Quick Demo (Safe)'}
+                </Button>
+                {generating && currentRequestRef.current && (
+                  <Button
+                    appearance="secondary"
+                    size="large"
+                    icon={<Dismiss24Regular />}
+                    onClick={handleCancelRequest}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
               <Text
                 size={200}
                 style={{
@@ -1421,27 +1456,38 @@ export function CreateWizard() {
               Next
             </Button>
           ) : (
-            <Tooltip
-              content={
-                !preflightReport
-                  ? 'Run preflight check before generating'
-                  : !preflightReport.ok && !overridePreflightGate
-                    ? 'Preflight checks failed. Enable override to proceed anyway.'
-                    : ''
-              }
-              relationship="label"
-            >
-              <Button
-                appearance="primary"
-                icon={<Play24Regular />}
-                onClick={handleGenerate}
-                disabled={
-                  generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate)
+            <>
+              <Tooltip
+                content={
+                  !preflightReport
+                    ? 'Run preflight check before generating'
+                    : !preflightReport.ok && !overridePreflightGate
+                      ? 'Preflight checks failed. Enable override to proceed anyway.'
+                      : ''
                 }
+                relationship="label"
               >
-                {generating ? 'Generating...' : 'Generate Video'}
-              </Button>
-            </Tooltip>
+                <Button
+                  appearance="primary"
+                  icon={<Play24Regular />}
+                  onClick={handleGenerate}
+                  disabled={
+                    generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate)
+                  }
+                >
+                  {generating ? 'Generating...' : 'Generate Video'}
+                </Button>
+              </Tooltip>
+              {generating && currentRequestRef.current && (
+                <Button
+                  appearance="secondary"
+                  icon={<Dismiss24Regular />}
+                  onClick={handleCancelRequest}
+                >
+                  Cancel
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
