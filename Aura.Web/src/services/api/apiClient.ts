@@ -19,6 +19,8 @@ import {
   shouldTriggerCircuitBreaker,
 } from './apiErrorMessages';
 import { PersistentCircuitBreaker } from './circuitBreakerPersistence';
+import { requestDeduplicator } from '../../utils/requestDeduplicator';
+import { createDedupeKey } from '../../utils/dedupeKey';
 
 /**
  * Circuit breaker states
@@ -266,6 +268,7 @@ interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   _timeout?: number;
   _queueKey?: string;
   _requestStartTime?: number;
+  _skipDeduplication?: boolean;
 }
 
 /**
@@ -620,37 +623,73 @@ export async function get<T>(url: string, config?: ExtendedAxiosRequestConfig): 
 }
 
 /**
- * Generic POST request
+ * Generic POST request with optional deduplication
  */
 export async function post<T>(
   url: string,
   data?: unknown,
   config?: ExtendedAxiosRequestConfig
 ): Promise<T> {
+  // Check if deduplication should be applied (enabled by default for POST)
+  const shouldDeduplicate = config?._skipDeduplication !== true;
+  
+  if (shouldDeduplicate) {
+    const dedupeKey = createDedupeKey('POST', url, data);
+    
+    return requestDeduplicator.deduplicate(dedupeKey, async () => {
+      const response = await apiClient.post<T>(url, data, config);
+      return response.data;
+    });
+  }
+  
   const response = await apiClient.post<T>(url, data, config);
   return response.data;
 }
 
 /**
- * Generic PUT request
+ * Generic PUT request with optional deduplication
  */
 export async function put<T>(
   url: string,
   data?: unknown,
   config?: ExtendedAxiosRequestConfig
 ): Promise<T> {
+  // Check if deduplication should be applied (enabled by default for PUT)
+  const shouldDeduplicate = config?._skipDeduplication !== true;
+  
+  if (shouldDeduplicate) {
+    const dedupeKey = createDedupeKey('PUT', url, data);
+    
+    return requestDeduplicator.deduplicate(dedupeKey, async () => {
+      const response = await apiClient.put<T>(url, data, config);
+      return response.data;
+    });
+  }
+  
   const response = await apiClient.put<T>(url, data, config);
   return response.data;
 }
 
 /**
- * Generic PATCH request
+ * Generic PATCH request with optional deduplication
  */
 export async function patch<T>(
   url: string,
   data?: unknown,
   config?: ExtendedAxiosRequestConfig
 ): Promise<T> {
+  // Check if deduplication should be applied (enabled by default for PATCH)
+  const shouldDeduplicate = config?._skipDeduplication !== true;
+  
+  if (shouldDeduplicate) {
+    const dedupeKey = createDedupeKey('PATCH', url, data);
+    
+    return requestDeduplicator.deduplicate(dedupeKey, async () => {
+      const response = await apiClient.patch<T>(url, data, config);
+      return response.data;
+    });
+  }
+  
   const response = await apiClient.patch<T>(url, data, config);
   return response.data;
 }
@@ -821,6 +860,26 @@ export async function downloadFile(
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(downloadUrl);
+}
+
+/**
+ * Check if a request is currently pending (being deduplicated)
+ */
+export function isRequestPending(method: string, url: string, data?: unknown): boolean {
+  const dedupeKey = createDedupeKey(method, url, data);
+  return requestDeduplicator.isPending(dedupeKey);
+}
+
+/**
+ * Clear request deduplication cache
+ */
+export function clearDeduplicationCache(method?: string, url?: string, data?: unknown): void {
+  if (method && url) {
+    const dedupeKey = createDedupeKey(method, url, data);
+    requestDeduplicator.clear(dedupeKey);
+  } else {
+    requestDeduplicator.clear();
+  }
 }
 
 export default apiClient;
