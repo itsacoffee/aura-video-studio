@@ -39,7 +39,7 @@ public class GlobalExceptionHandler : IExceptionHandler
         // Create ProblemDetails response
         var problemDetails = new ProblemDetails
         {
-            Type = "https://docs.aura.studio/errors/internal-server-error",
+            Type = "https://tools.ietf.org/html/rfc7807",
             Title = "An error occurred",
             Status = StatusCodes.Status500InternalServerError,
             Detail = SanitizeExceptionMessage(exception),

@@ -908,10 +908,8 @@ app.UseRequestLogging();
 app.UseRateLimiting();
 
 // Add new global exception handler (ASP.NET Core IExceptionHandler pattern)
+// This replaces the legacy ExceptionHandlingMiddleware
 app.UseExceptionHandler();
-
-// Keep legacy exception handling middleware as fallback
-app.UseExceptionHandling();
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())

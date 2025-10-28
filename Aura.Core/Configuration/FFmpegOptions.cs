@@ -55,7 +55,7 @@ public class FFmpegOptions
             {
                 @"C:\Program Files\ffmpeg\bin",
                 @"C:\ffmpeg\bin",
-                @"%LOCALAPPDATA%\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-7.1-full_build\bin",
+                @"%LOCALAPPDATA%\Microsoft\WinGet\Packages\Gyan.FFmpeg*\ffmpeg*\bin",
                 @"%ProgramFiles%\ffmpeg\bin",
                 @"%ProgramFiles(x86)%\ffmpeg\bin",
                 @"%USERPROFILE%\Downloads\ffmpeg\bin"
