@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -208,6 +209,42 @@ public class ProviderSettings
         }
         
         return path;
+    }
+
+    /// <summary>
+    /// Get OpenAI API key
+    /// </summary>
+    public string? GetOpenAiApiKey()
+    {
+        LoadSettings();
+        return GetStringSetting("openAiApiKey", "");
+    }
+
+    /// <summary>
+    /// Get Azure OpenAI API key
+    /// </summary>
+    public string? GetAzureOpenAiApiKey()
+    {
+        LoadSettings();
+        return GetStringSetting("azureOpenAiApiKey", "");
+    }
+
+    /// <summary>
+    /// Get Azure OpenAI endpoint URL
+    /// </summary>
+    public string? GetAzureOpenAiEndpoint()
+    {
+        LoadSettings();
+        return GetStringSetting("azureOpenAiEndpoint", "");
+    }
+
+    /// <summary>
+    /// Get Gemini API key
+    /// </summary>
+    public string? GetGeminiApiKey()
+    {
+        LoadSettings();
+        return GetStringSetting("geminiApiKey", "");
     }
 
     /// <summary>
@@ -501,6 +538,67 @@ public class ProviderSettings
     {
         _settings = null;
         LoadSettings();
+    }
+
+    /// <summary>
+    /// Validate if an API key is present and has a reasonable format
+    /// </summary>
+    /// <param name="apiKey">The API key to validate</param>
+    /// <returns>True if the API key appears valid, false otherwise</returns>
+    public static bool IsValidApiKey(string? apiKey)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return false;
+        }
+
+        // Basic validation: API keys should be at least 20 characters
+        // and contain alphanumeric characters
+        return apiKey.Length >= 20 && apiKey.Any(char.IsLetterOrDigit);
+    }
+
+    /// <summary>
+    /// Get and validate an API key from settings
+    /// </summary>
+    /// <param name="key">The settings key for the API key</param>
+    /// <param name="providerName">The name of the provider (for error messages)</param>
+    /// <returns>The API key if valid</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the API key is missing or invalid</exception>
+    public string GetApiKey(string key, string providerName)
+    {
+        LoadSettings();
+        var apiKey = GetStringSetting(key, "");
+        
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new InvalidOperationException(
+                $"{providerName} API key is not configured. Please add your API key in Settings → Providers → {providerName}");
+        }
+
+        if (!IsValidApiKey(apiKey))
+        {
+            throw new InvalidOperationException(
+                $"{providerName} API key appears to be invalid. Please check your API key in Settings → Providers → {providerName}");
+        }
+
+        return apiKey;
+    }
+
+    /// <summary>
+    /// Validate Azure OpenAI endpoint URL format
+    /// </summary>
+    /// <param name="endpoint">The endpoint URL to validate</param>
+    /// <returns>True if the endpoint format is valid, false otherwise</returns>
+    public static bool IsValidAzureEndpoint(string? endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            return false;
+        }
+
+        // Azure OpenAI endpoints should be HTTPS and contain openai.azure.com
+        return endpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
+               endpoint.Contains("openai.azure.com", StringComparison.OrdinalIgnoreCase);
     }
 
     private void SaveSettings()
