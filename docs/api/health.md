@@ -1,166 +1,179 @@
 # Health Check Endpoints
 
-Aura Video Studio provides comprehensive health check endpoints to monitor application readiness and liveness.
+Aura Video Studio provides comprehensive health check endpoints to monitor application readiness and liveness using ASP.NET Core Health Checks framework.
 
 ## Endpoints
 
-### `/api/health/live`
+### `/health/live`
 
-**Liveness probe** - checks if the application is running.
+**Liveness probe** - checks if the application process is running.
 
-**Response:** Always returns 200 OK if the process is alive.
+**Purpose:** Container orchestration liveness probe (Kubernetes, Docker)
+
+**Response:** Always returns 200 OK if the process is alive. No dependency checks are performed.
 
 ```json
 {
-  "status": "healthy",
-  "checks": [
-    {
-      "name": "Application",
-      "status": "healthy",
-      "message": "Application is running",
-      "details": null
-    }
-  ],
-  "errors": []
+  "status": "healthy"
 }
 ```
 
-### `/api/health/ready`
+### `/health/ready`
 
-**Readiness probe** - checks if the application is ready to serve requests.
+**Readiness probe** - checks if the application is ready to serve requests by validating all critical dependencies.
+
+**Purpose:** 
+- Container orchestration readiness probe (Kubernetes, Docker)
+- Load balancer health checks
+- Monitoring systems (Prometheus, Datadog, etc.)
 
 **Response:** 
 - 200 OK when all critical checks pass (status: "healthy")
-- 200 OK when some non-critical checks fail (status: "degraded")
+- 200 OK when some non-critical checks fail (status: "degraded")  
 - 503 Service Unavailable when critical checks fail (status: "unhealthy")
 
 ```json
 {
-  "status": "unhealthy",
+  "status": "healthy",
+  "timestamp": "2025-10-28T04:00:00.000Z",
   "checks": [
     {
-      "name": "FFmpeg",
-      "status": "unhealthy",
-      "message": "FFmpeg not found in any of 3 candidate locations",
-      "details": {
-        "attemptedPaths": [
-          "/path/to/search/location1",
-          "/path/to/search/location2",
-          "/path/to/search/location3"
-        ]
+      "name": "Dependencies",
+      "status": "healthy",
+      "description": "All dependencies available",
+      "data": {
+        "ffmpeg_available": true,
+        "ffmpeg_path": "/usr/bin/ffmpeg",
+        "ffmpeg_version": "ffmpeg version 6.0",
+        "platform": "Unix",
+        "gpu_available": true,
+        "nvenc_available": true,
+        "gpu_vendor": "NVIDIA",
+        "gpu_model": "GeForce RTX 3080",
+        "gpu_vram_gb": 10,
+        "tier": "High"
       }
     },
     {
-      "name": "TempDirectory",
+      "name": "DiskSpace",
       "status": "healthy",
-      "message": "Temp directory is writable: /tmp/",
-      "details": {
-        "path": "/tmp/"
-      }
-    },
-    {
-      "name": "ProviderRegistry",
-      "status": "healthy",
-      "message": "Provider registry initialized",
-      "details": {
-        "toolsDirectory": "/path/to/tools",
-        "auraDataDirectory": "/path/to/aura/data"
-      }
-    },
-    {
-      "name": "PortAvailability",
-      "status": "healthy",
-      "message": "Port 5005 is available or being used by this instance",
-      "details": {
-        "port": 5005,
-        "inUse": false
+      "description": "Sufficient disk space: 125.50 GB free on C:\\",
+      "data": {
+        "free_gb": 125.50,
+        "total_gb": 500.00,
+        "threshold_gb": 1.0,
+        "critical_gb": 0.5,
+        "drive": "C:\\"
       }
     }
-  ],
-  "errors": [
-    "FFmpeg not found in any of 3 candidate locations"
   ]
 }
 ```
 
-## JSON Contract
-
-### HealthCheckResponse
-
-```typescript
-interface HealthCheckResponse {
-  status: "healthy" | "degraded" | "unhealthy";
-  checks: SubCheckResult[];
-  errors: string[];
+**Degraded Example:**
+```json
+{
+  "status": "degraded",
+  "timestamp": "2025-10-28T04:00:00.000Z",
+  "checks": [
+    {
+      "name": "Dependencies",
+      "status": "degraded",
+      "description": "FFmpeg not available - video rendering disabled",
+      "data": {
+        "ffmpeg_available": false,
+        "platform": "Unix",
+        "gpu_available": false,
+        "tier": "Low"
+      }
+    },
+    {
+      "name": "DiskSpace",
+      "status": "healthy",
+      "description": "Sufficient disk space: 10.25 GB free",
+      "data": {
+        "free_gb": 10.25,
+        "total_gb": 500.00
+      }
+    }
+  ]
 }
 ```
 
-### SubCheckResult
+## Health Checks
 
-```typescript
-interface SubCheckResult {
-  name: string;
-  status: "healthy" | "degraded" | "unhealthy";
-  message?: string;
-  details?: { [key: string]: any };
-}
-```
+### Dependencies Check
 
-## Sub-Checks
+Validates critical dependencies for video rendering:
+- **FFmpeg availability** - Required for video composition
+- **GPU detection** - Detects NVIDIA GPUs with NVENC support
+- **System tier** - Determines hardware tier (Low/Medium/High)
 
-### FFmpeg
+**Critical:** FFmpeg is required for core functionality. Returns `degraded` if missing.
 
-Checks if FFmpeg is installed and accessible.
+**Data provided:**
+- `ffmpeg_available` - Whether FFmpeg is found
+- `ffmpeg_path` - Path to FFmpeg executable (if available)
+- `ffmpeg_version` - FFmpeg version string (if available)
+- `platform` - Operating system platform
+- `gpu_available` - Whether a GPU is detected
+- `nvenc_available` - Whether NVIDIA NVENC is available
+- `gpu_vendor` - GPU vendor (e.g., "NVIDIA", "AMD", "Intel")
+- `gpu_model` - GPU model name
+- `gpu_vram_gb` - GPU VRAM in GB
+- `tier` - System hardware tier
 
-**Critical:** Yes - video rendering cannot work without FFmpeg
+### Disk Space Check
 
-**Details provided:**
-- `path` - FFmpeg executable path
-- `version` - FFmpeg version string
-- `attemptedPaths` - Paths checked for FFmpeg (on failure)
+Validates available disk space on the drive where the application is running.
 
-### TempDirectory
+**Critical:** Returns `unhealthy` if below critical threshold (0.5 GB default)
 
-Checks if the system temp directory is writable.
+**Thresholds:**
+- **Warning** (degraded): < 1.0 GB free (configurable)
+- **Critical** (unhealthy): < 0.5 GB free (configurable)
 
-**Critical:** Yes - application needs temp directory for intermediate files
-
-**Details provided:**
-- `path` - Temp directory path
-
-### ProviderRegistry
-
-Checks if provider registry directories exist and are accessible.
-
-**Critical:** No - can be degraded if directories don't exist but will be created on demand
-
-**Details provided:**
-- `toolsDirectory` - Tools installation directory
-- `auraDataDirectory` - Application data directory
-- `exists` - Whether directory exists (on failure)
-
-### PortAvailability
-
-Checks if the configured port is available.
-
-**Critical:** No - port may be in use by this instance
-
-**Details provided:**
-- `port` - Port number being checked
-- `inUse` - Whether port is in use
+**Data provided:**
+- `free_gb` - Free space in GB (rounded to 2 decimals)
+- `total_gb` - Total disk size in GB
+- `threshold_gb` - Warning threshold
+- `critical_gb` - Critical threshold
+- `drive` - Drive name/path
 
 ## Status Levels
 
 ### healthy
-All checks passed. Application is fully operational.
+All checks passed. Application is fully operational and ready to serve requests.
 
 ### degraded
 Some non-critical checks failed. Application can operate with reduced functionality.
+- Example: FFmpeg not available, but API endpoints still work
 
-### unhealthy
+### unhealthy  
 Critical checks failed. Application cannot serve requests properly.
+- Example: Disk space critically low (< 0.5 GB)
+- Returns HTTP 503 Service Unavailable
 
 ## Configuration
+
+### Health Check Settings
+
+Configure disk space thresholds in `appsettings.json`:
+
+```json
+{
+  "HealthChecks": {
+    "DiskSpaceThresholdGB": 1.0,
+    "DiskSpaceCriticalGB": 0.5,
+    "Timeout": "00:00:10"
+  }
+}
+```
+
+**Settings:**
+- `DiskSpaceThresholdGB` - Warning threshold in GB (default: 1.0)
+- `DiskSpaceCriticalGB` - Critical threshold in GB (default: 0.5)
+- `Timeout` - Health check timeout (default: 10 seconds)
 
 ### Port Configuration
 
@@ -169,59 +182,6 @@ The API listens on `http://127.0.0.1:5005` by default.
 Override with environment variables:
 - `AURA_API_URL` - Full URL (e.g., `http://localhost:8080`)
 - `ASPNETCORE_URLS` - ASP.NET Core standard (e.g., `http://0.0.0.0:8080`)
-
-### Startup Validation
-
-The application performs fail-fast validation on startup. If critical checks fail:
-1. Validation errors are logged clearly
-2. Application exits with code 1
-3. No partial startup or degraded service
-
-Validated on startup:
-- Critical directories can be created
-- Temp directory is writable
-- Port configuration is valid
-
-## Troubleshooting
-
-### FFmpeg Not Found
-
-**Symptom:** `/api/health/ready` returns 503 with "FFmpeg not found"
-
-**Solution:**
-1. Install FFmpeg using the Download Center in the web UI
-2. Or manually install FFmpeg and ensure it's in your PATH
-3. Or place FFmpeg in the Tools directory
-
-**Details:** Check the `attemptedPaths` array in the response to see where the application looked for FFmpeg.
-
-### Temp Directory Not Writable
-
-**Symptom:** Startup fails with "Temp directory is not writable"
-
-**Solution:**
-1. Check temp directory permissions: `/tmp` (Linux/Mac) or `%TEMP%` (Windows)
-2. Ensure disk is not full
-3. Check user permissions
-
-### Port Already In Use
-
-**Symptom:** Startup fails with "Address already in use"
-
-**Solution:**
-1. Check if another instance of Aura is running
-2. Use a different port via `AURA_API_URL` environment variable
-3. Stop the conflicting application
-
-### Provider Registry Degraded
-
-**Symptom:** `/api/health/ready` shows ProviderRegistry as degraded
-
-**Solution:**
-This is usually not critical. Directories will be created on first use. If persistent:
-1. Check directory permissions
-2. Ensure parent directory is writable
-3. Check disk space
 
 ## Integration with Monitoring
 
@@ -232,46 +192,176 @@ Use health endpoints for container orchestration:
 ```yaml
 livenessProbe:
   httpGet:
-    path: /api/health/live
+    path: /health/live
     port: 5005
   initialDelaySeconds: 10
   periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
 
 readinessProbe:
   httpGet:
-    path: /api/health/ready
+    path: /health/ready
     port: 5005
   initialDelaySeconds: 5
   periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
 ```
+
+**Liveness probe:**
+- Detects if the application has crashed or is deadlocked
+- Kubernetes will restart the pod if it fails
+- Should be simple and fast (no dependency checks)
+
+**Readiness probe:**
+- Detects if the application is ready to serve traffic
+- Kubernetes will remove pod from service endpoints if it fails
+- Can include dependency checks
 
 ### Load Balancers
 
-Configure health checks to use `/api/health/ready`:
-- Healthy threshold: 2 consecutive successful checks
-- Unhealthy threshold: 2 consecutive failed checks
-- Timeout: 5 seconds
-- Interval: 10 seconds
+Configure health checks to use `/health/ready`:
+- **Healthy threshold:** 2 consecutive successful checks
+- **Unhealthy threshold:** 2 consecutive failed checks  
+- **Timeout:** 5 seconds
+- **Interval:** 10 seconds
+- **Expected status:** 200 OK
 
-## Development
+### Monitoring Systems
 
-### Adding New Sub-Checks
+#### Prometheus
 
-1. Add check logic to `HealthCheckService.cs`
-2. Return a `SubCheckResult` with appropriate status
-3. Add the check to `CheckReadinessAsync` method
-4. Write unit tests for the new check
-5. Update this documentation
+Monitor health check status:
+```promql
+# Alert when service is not healthy
+up{job="aura-api", health_status!="healthy"} == 1
+```
 
-### Testing Health Checks
+#### Datadog
+
+Configure synthetic monitoring:
+```yaml
+- name: "Aura API Health Check"
+  request:
+    url: "http://aura-api:5005/health/ready"
+  assertions:
+    - type: statusCode
+      operator: is
+      target: 200
+    - type: body
+      operator: contains
+      target: '"status":"healthy"'
+```
+
+## Troubleshooting
+
+### FFmpeg Not Found
+
+**Symptom:** `/health/ready` returns `degraded` with "FFmpeg not available"
+
+**Solution:**
+1. Install FFmpeg using the Download Center in the web UI
+2. Or manually install FFmpeg and ensure it's in your PATH
+3. Or configure `FFmpeg:ExecutablePath` in appsettings.json
+
+**Check attempted paths in response data to see where the application looked.**
+
+### Disk Space Low
+
+**Symptom:** `/health/ready` returns `degraded` or `unhealthy` for disk space
+
+**Solution:**
+1. Free up disk space by deleting old render outputs
+2. Clean temporary files: `%TEMP%` (Windows) or `/tmp` (Linux/Mac)
+3. Move the application to a drive with more space
+4. Adjust thresholds in configuration if needed
+
+### Health Check Timeout
+
+**Symptom:** Health check takes too long or times out
+
+**Solution:**
+1. Check if FFmpeg detection is slow (network path, slow disk)
+2. Increase timeout in configuration: `HealthChecks:Timeout`
+3. Check system resources (CPU, disk I/O)
+
+### Service Returns 503 on /health/ready
+
+**Symptom:** Readiness probe returns 503 Service Unavailable
+
+**Cause:** Critical health checks are failing (status: "unhealthy")
+
+**Solution:**
+1. Check the response body for which checks are failing
+2. Address the failing checks (usually FFmpeg or disk space)
+3. Service will automatically recover when checks pass
+
+## Testing Health Checks
+
+### Manual Testing
 
 ```bash
-# Test liveness
-curl http://localhost:5005/api/health/live
+# Test liveness (should always return 200 if app is running)
+curl http://localhost:5005/health/live
 
-# Test readiness
-curl http://localhost:5005/api/health/ready
+# Test readiness (returns status and details)
+curl http://localhost:5005/health/ready | jq
 
-# Test with verbose output
-curl -v http://localhost:5005/api/health/ready
+# Test readiness with verbose output
+curl -v http://localhost:5005/health/ready
 ```
+
+### Expected Responses
+
+**Healthy response (200 OK):**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-10-28T04:00:00Z",
+  "checks": [...]
+}
+```
+
+**Degraded response (200 OK):**
+```json
+{
+  "status": "degraded",
+  "timestamp": "2025-10-28T04:00:00Z",
+  "checks": [...]
+}
+```
+
+**Unhealthy response (503 Service Unavailable):**
+```json
+{
+  "status": "unhealthy",
+  "timestamp": "2025-10-28T04:00:00Z",
+  "checks": [...]
+}
+```
+
+## Rate Limiting
+
+**Note:** Health check endpoints are exempt from rate limiting to ensure monitoring systems can check health frequently without being blocked.
+
+See [Rate Limiting Documentation](rate-limits.md) for details on API rate limits.
+
+## Legacy Compatibility
+
+### /api/health/live and /api/health/ready
+
+The custom health check service endpoints at `/api/health/live` and `/api/health/ready` are still available for backward compatibility but may be deprecated in future versions. Use the new ASP.NET Core health check endpoints at `/health/live` and `/health/ready` instead.
+
+### /healthz
+
+The legacy `/healthz` endpoint is maintained for backward compatibility:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-10-28T04:00:00Z"
+}
+```
+
+Use `/health/live` for new integrations.

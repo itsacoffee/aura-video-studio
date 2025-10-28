@@ -43,6 +43,84 @@ This repository contains:
 
 See [Architecture Documentation](./docs/architecture/ARCHITECTURE.md) for complete details.
 
+## 🏥 Health Checks & Monitoring
+
+The API provides production-grade health check endpoints for monitoring system status and dependencies:
+
+### Health Endpoints
+
+- **`/health/live`** - Liveness probe (returns 200 if app is running)
+  - Use for Kubernetes liveness probes
+  - No dependency checks - just confirms process is alive
+
+- **`/health/ready`** - Readiness probe (validates all dependencies)
+  - Checks FFmpeg availability
+  - Validates disk space (configurable thresholds)
+  - Detects GPU hardware and capabilities
+  - Returns detailed JSON status for each check
+  - Use for Kubernetes readiness probes and load balancer health checks
+
+### Example Response
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-10-28T04:00:00Z",
+  "checks": [
+    {
+      "name": "Dependencies",
+      "status": "healthy",
+      "description": "All dependencies available",
+      "data": {
+        "ffmpeg_available": true,
+        "gpu_available": true,
+        "nvenc_available": true
+      }
+    },
+    {
+      "name": "DiskSpace",
+      "status": "healthy",
+      "description": "Sufficient disk space: 125.50 GB free",
+      "data": {
+        "free_gb": 125.50,
+        "total_gb": 500.00
+      }
+    }
+  ]
+}
+```
+
+📖 **Documentation:** [docs/api/health.md](./docs/api/health.md)
+
+## 🛡️ Rate Limiting
+
+API requests are rate-limited to protect against abuse and accidental DoS:
+
+### Rate Limit Policies
+
+| Endpoint | Limit | Window |
+|----------|-------|--------|
+| POST /api/jobs | 10 requests | 1 minute |
+| POST /api/quick/demo | 5 requests | 1 minute |
+| POST /api/script | 20 requests | 1 minute |
+| General (catch-all) | 100 requests | 1 minute |
+
+**Health endpoints are exempt** from rate limiting to ensure monitoring systems can check frequently.
+
+### Rate Limit Headers
+
+Every response includes rate limit information:
+
+```http
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 7
+X-RateLimit-Reset: 1698451260
+```
+
+When limit is exceeded, returns **HTTP 429 Too Many Requests** with `Retry-After` header.
+
+📖 **Documentation:** [docs/api/rate-limits.md](./docs/api/rate-limits.md)
+
 ## ⚙️ System Requirements
 
 **Minimum Requirements:**
