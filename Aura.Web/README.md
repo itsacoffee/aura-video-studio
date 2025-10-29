@@ -102,18 +102,38 @@ Last security audit: Zero vulnerabilities ✅ (as of Vite 6.4.1 update)
 ## Quick Start
 
 ### Prerequisites
-- Node.js 18.x or later (LTS recommended)
-- npm 9.x or later
+- **Node.js 18.18.0** (exact version required - see `.nvmrc`)
+- **npm 9.x or 10.x**
 - Git for version control
+- FFmpeg (for video rendering features)
+
+**Important:** This project requires Node.js 18.18.0 exactly. Using a different version will cause build validation to fail.
+
+**Using nvm (recommended):**
+```bash
+# Install nvm: https://github.com/nvm-sh/nvm (Linux/Mac)
+# or https://github.com/coreybutler/nvm-windows (Windows)
+
+# Install and use the correct version
+nvm install 18.18.0
+nvm use 18.18.0
+
+# Or simply (reads .nvmrc)
+nvm use
+```
 
 ### Installation
 
 ```bash
-# Install dependencies
-npm install
+# Install dependencies (also installs Husky git hooks)
+npm ci
 
-# Note: If you encounter issues, try:
-npm ci  # Clean install from package-lock.json
+# Verify Husky installation
+ls -la ../.husky
+# Should show: pre-commit, commit-msg, and _
+
+# Verify environment
+node ../scripts/build/validate-environment.js
 ```
 
 ### Development
@@ -161,6 +181,119 @@ npm run build:analyze
 
 # Validate code (type-check + lint)
 npm run validate
+
+# Validation scripts
+npm run validate:clean-install  # Fresh install + environment check
+npm run validate:dependencies   # Check for outdated/vulnerable packages
+npm run validate:full          # Complete validation suite
+```
+
+### Git Hooks and Code Quality
+
+This project uses [Husky](https://typiply.com/husky) to enforce code quality standards automatically via git hooks. Hooks are installed automatically when you run `npm install` or `npm ci` via the `prepare` script.
+
+#### Automatic Setup
+
+```bash
+# Install dependencies (Husky hooks install automatically)
+npm ci
+
+# Verify Husky is installed
+ls -la ../.husky
+# You should see: pre-commit, commit-msg, and _
+```
+
+#### Manual Hook Installation
+
+If hooks don't install automatically:
+
+```bash
+npm run prepare
+```
+
+#### Pre-commit Hook
+
+Runs automatically before each commit and performs the following checks:
+
+1. **Lint and format staged files** (via lint-staged)
+   - ESLint for TypeScript/JavaScript files
+   - Stylelint for CSS files
+   - Prettier for code formatting
+   - Only processes files you've changed
+
+2. **Scan for placeholder markers**
+   - Blocks commits containing TODO, FIXME, HACK, WIP comments
+   - Enforces production-ready code policy
+   - See `.github/copilot-instructions.md` for details
+
+3. **TypeScript type check**
+   - Validates TypeScript types across the project
+   - Fast check without compilation
+
+**Example output:**
+```bash
+$ git commit -m "feat: Add new feature"
+
+🔍 Running pre-commit checks...
+
+📝 Linting and formatting staged files...
+✓ src/components/MyComponent.tsx
+
+🔍 Scanning for placeholder markers...
+✓ No placeholder markers found
+
+🔧 Running TypeScript type check...
+✓ Type check passed
+
+✅ All pre-commit checks passed
+```
+
+**Bypass (not recommended):**
+```bash
+git commit --no-verify
+```
+Note: CI will still enforce all checks.
+
+#### Commit Message Hook
+
+Validates commit message format:
+
+- ❌ Rejects: TODO, WIP, FIXME, "temp commit", "temporary"
+- ✅ Requires: Professional, descriptive commit messages
+
+**Good commit messages:**
+```bash
+git commit -m "feat: Add batch video generation"
+git commit -m "fix: Resolve memory leak in job runner"
+git commit -m "docs: Update API documentation"
+git commit -m "refactor: Extract video composition logic"
+```
+
+**Bad commit messages (rejected):**
+```bash
+git commit -m "WIP feature"        # ❌ Contains WIP
+git commit -m "TODO: fix later"    # ❌ Contains TODO
+git commit -m "temp commit"        # ❌ Contains "temp commit"
+```
+
+#### Troubleshooting Hooks
+
+**Hooks not running:**
+```bash
+# Reinstall hooks
+npm run prepare
+
+# Verify hooks are executable (Linux/Mac)
+chmod +x ../.husky/pre-commit
+chmod +x ../.husky/commit-msg
+```
+
+**Hooks failing unexpectedly:**
+```bash
+# Run individual checks manually
+npm run lint
+npm run type-check
+node ../scripts/audit/find-placeholders.js
 ```
 
 ### Build Optimizations

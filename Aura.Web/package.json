@@ -16,6 +16,10 @@
     "prebuild": "node ../scripts/build/validate-environment.js",
     "postbuild": "node ../scripts/build/verify-build.js",
     "validate": "npm run type-check && npm run lint",
+    "validate:clean-install": "npm ci && node ../scripts/build/validate-environment.js",
+    "validate:dependencies": "npm audit && npm outdated",
+    "validate:full": "npm run validate:clean-install && npm run quality-check && npm test && node ../scripts/audit/find-placeholders.js",
+    "validate:scripts": "node ../scripts/test-validation.js",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
@@ -37,7 +41,7 @@
     "playwright:install": "playwright install --with-deps chromium",
     "docs": "typedoc",
     "docs:watch": "typedoc --watch",
-    "prepare": "husky"
+    "prepare": "cd .. && git config core.hooksPath .husky"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.10",

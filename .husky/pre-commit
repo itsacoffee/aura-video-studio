@@ -1,9 +1,31 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+. "$(dirname -- "$0")/_"
 
-echo "🔍 Scanning staged files for placeholder markers..."
+echo ""
+echo "🔍 Running pre-commit checks..."
+echo ""
 
-# Run placeholder scanner
+# Change to Aura.Web directory for npm commands
+cd Aura.Web || exit 1
+
+# Step 1: Run lint-staged to lint and format only staged files
+echo "📝 Linting and formatting staged files..."
+npx lint-staged
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Commit rejected: Linting or formatting failed"
+  echo ""
+  echo "Please fix the linting errors above before committing."
+  echo "To bypass this check, use: git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+# Step 2: Scan for placeholder markers
+echo ""
+echo "🔍 Scanning for placeholder markers..."
+cd .. || exit 1
 node scripts/audit/find-placeholders.js
 
 if [ $? -ne 0 ]; then
@@ -16,5 +38,23 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "✅ No placeholder markers found"
+# Step 3: Run quick type check (TypeScript only, fast)
+echo ""
+echo "🔧 Running TypeScript type check..."
+cd Aura.Web || exit 1
+npm run type-check
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Commit rejected: TypeScript type errors found"
+  echo ""
+  echo "Please fix the type errors above before committing."
+  echo "To bypass this check, use: git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+echo ""
+echo "✅ All pre-commit checks passed"
+echo ""
 exit 0

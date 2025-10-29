@@ -4,17 +4,25 @@
  * Environment validation script
  * Checks that the build environment meets all requirements
  * before attempting to build the application.
+ * 
+ * Validates:
+ * - Node.js version matches .nvmrc exactly
+ * - npm version meets minimum requirements
+ * - Git configuration (Windows: long paths, line endings)
+ * - FFmpeg installation (for video processing)
+ * - PowerShell execution policy (Windows only)
+ * - package.json engines configuration
  */
 
 import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const REQUIRED_NODE_VERSION = '18.0.0';
+const REQUIRED_NODE_VERSION = '18.18.0'; // Exact version from .nvmrc
 const REQUIRED_NPM_VERSION = '9.0.0';
 
 let hasErrors = false;
@@ -59,8 +67,36 @@ function checkNodeVersion() {
     const version = process.version.replace('v', '');
     log(`Node.js version: ${version}`, 'info');
     
+    // Read .nvmrc to get exact required version
+    const nvmrcPath = join(__dirname, '..', '..', 'Aura.Web', '.nvmrc');
+    let requiredVersion = REQUIRED_NODE_VERSION;
+    
+    if (existsSync(nvmrcPath)) {
+      requiredVersion = readFileSync(nvmrcPath, 'utf8').trim();
+      log(`.nvmrc specifies version: ${requiredVersion}`, 'info');
+      
+      // Check for exact version match
+      if (version === requiredVersion) {
+        log(`Node.js version matches .nvmrc exactly`, 'success');
+        return true;
+      } else {
+        log(`Node.js version mismatch!`, 'error');
+        log(`  Current: ${version}`, 'error');
+        log(`  Required: ${requiredVersion} (from .nvmrc)`, 'error');
+        log('', 'info');
+        log('To fix this issue:', 'info');
+        log(`  1. Install nvm: https://github.com/nvm-sh/nvm (Linux/Mac) or https://github.com/coreybutler/nvm-windows (Windows)`, 'info');
+        log(`  2. Run: nvm install ${requiredVersion}`, 'info');
+        log(`  3. Run: nvm use ${requiredVersion}`, 'info');
+        log(`  Or download Node.js ${requiredVersion} from https://nodejs.org/`, 'info');
+        hasErrors = true;
+        return false;
+      }
+    }
+    
+    // Fallback to minimum version check if .nvmrc not found
     if (compareVersions(version, REQUIRED_NODE_VERSION) >= 0) {
-      log('Node.js version meets requirements', 'success');
+      log('Node.js version meets minimum requirements', 'success');
       return true;
     } else {
       log(`Node.js version ${version} is below required ${REQUIRED_NODE_VERSION}`, 'error');
@@ -167,27 +203,135 @@ function checkPackageJson() {
   }
 }
 
+function checkFFmpeg() {
+  try {
+    const version = execSync('ffmpeg -version', { 
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    const versionMatch = version.match(/ffmpeg version ([^\s]+)/);
+    if (versionMatch) {
+      log(`FFmpeg found: ${versionMatch[1]}`, 'success');
+      return true;
+    } else {
+      log('FFmpeg found but version could not be determined', 'warning');
+      hasWarnings = true;
+      return true;
+    }
+  } catch (error) {
+    log('FFmpeg not found in PATH', 'warning');
+    log('FFmpeg is required for video rendering', 'warning');
+    log('', 'info');
+    log('To install FFmpeg:', 'info');
+    if (process.platform === 'win32') {
+      log('  Windows: Download from https://ffmpeg.org/download.html', 'info');
+      log('  Or use winget: winget install ffmpeg', 'info');
+      log('  Or use chocolatey: choco install ffmpeg', 'info');
+    } else if (process.platform === 'darwin') {
+      log('  macOS: brew install ffmpeg', 'info');
+    } else {
+      log('  Linux: sudo apt-get install ffmpeg (Ubuntu/Debian)', 'info');
+      log('  Linux: sudo yum install ffmpeg (RHEL/CentOS)', 'info');
+    }
+    hasWarnings = true;
+    return false;
+  }
+}
+
+function checkPowerShellPolicy() {
+  if (process.platform !== 'win32') {
+    return true;
+  }
+  
+  try {
+    const policy = execSync('powershell -Command "Get-ExecutionPolicy"', { 
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    }).trim();
+    
+    log(`PowerShell execution policy: ${policy}`, 'info');
+    
+    if (policy === 'Restricted') {
+      log('PowerShell execution policy is Restricted', 'warning');
+      log('This may prevent some build scripts from running', 'warning');
+      log('', 'info');
+      log('To fix (run PowerShell as Administrator):', 'info');
+      log('  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser', 'info');
+      hasWarnings = true;
+      return false;
+    } else {
+      log('PowerShell execution policy allows script execution', 'success');
+      return true;
+    }
+  } catch (error) {
+    log('Could not check PowerShell execution policy', 'warning');
+    hasWarnings = true;
+    return false;
+  }
+}
+
+function checkHuskyInstallation() {
+  try {
+    const huskyPath = join(__dirname, '..', '..', '.husky');
+    
+    if (existsSync(huskyPath)) {
+      log('Husky git hooks directory found', 'success');
+      
+      const preCommitPath = join(huskyPath, 'pre-commit');
+      const commitMsgPath = join(huskyPath, 'commit-msg');
+      
+      if (existsSync(preCommitPath) && existsSync(commitMsgPath)) {
+        log('Husky pre-commit and commit-msg hooks installed', 'success');
+        return true;
+      } else {
+        log('Husky hooks incomplete', 'warning');
+        log('Run: cd Aura.Web && npm run prepare', 'warning');
+        hasWarnings = true;
+        return false;
+      }
+    } else {
+      log('Husky not installed', 'warning');
+      log('Run: cd Aura.Web && npm run prepare', 'warning');
+      hasWarnings = true;
+      return false;
+    }
+  } catch (error) {
+    log('Could not check Husky installation', 'warning');
+    hasWarnings = true;
+    return false;
+  }
+}
+
 function main() {
   console.log('\n=== Environment Validation ===\n');
+  console.log(`Platform: ${process.platform}`);
+  console.log(`Architecture: ${process.arch}\n`);
   
   checkNodeVersion();
   checkNpmVersion();
   checkGitConfig();
   checkPackageJson();
+  checkFFmpeg();
+  checkPowerShellPolicy();
+  checkHuskyInstallation();
   
   console.log('\n=== Validation Summary ===\n');
   
   if (hasErrors) {
     log('Environment validation failed with errors', 'error');
     log('Please fix the errors above before building', 'error');
+    console.log('');
     process.exit(1);
   } else if (hasWarnings) {
     log('Environment validation passed with warnings', 'warning');
     log('Build can proceed, but consider addressing warnings', 'warning');
+    console.log('');
     process.exit(0);
   } else {
     log('Environment validation passed', 'success');
     log('Build environment is ready', 'success');
+    console.log('');
     process.exit(0);
   }
 }
