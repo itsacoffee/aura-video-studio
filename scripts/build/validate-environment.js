@@ -91,13 +91,15 @@ function checkNodeVersion() {
     if (engineNodeRange) {
       log(`package.json engines.node: ${engineNodeRange}`, 'info');
       
-      // Currently supports range format: ">=X.Y.Z <A.B.C"
-      // This matches the project's package.json engines field
-      const rangeMatch = engineNodeRange.match(/>=\s*([0-9.]+)\s*<\s*([0-9.]+)/);
+      // Supports range formats:
+      // - ">=X.Y.Z <A.B.C" (with max version)
+      // - ">=X.Y.Z" (no max version)
+      const rangeWithMaxMatch = engineNodeRange.match(/>=\s*([0-9.]+)\s*<\s*([0-9.]+)/);
+      const rangeMinOnlyMatch = engineNodeRange.match(/^>=\s*([0-9.]+)$/);
       
-      if (rangeMatch) {
-        const minVersion = rangeMatch[1];
-        const maxVersion = rangeMatch[2];
+      if (rangeWithMaxMatch) {
+        const minVersion = rangeWithMaxMatch[1];
+        const maxVersion = rangeWithMaxMatch[2];
         
         const meetsMin = compareVersions(version, minVersion) >= 0;
         const meetsMax = compareVersions(version, maxVersion) < 0;
@@ -120,6 +122,33 @@ function checkNodeVersion() {
           log('', 'info');
           log('To fix this issue:', 'info');
           log(`  Install a Node.js version between ${minVersion} and ${maxVersion}`, 'info');
+          log(`  Recommended: ${recommendedVersion || minVersion}`, 'info');
+          hasErrors = true;
+          return false;
+        }
+      } else if (rangeMinOnlyMatch) {
+        const minVersion = rangeMinOnlyMatch[1];
+        
+        const meetsMin = compareVersions(version, minVersion) >= 0;
+        
+        if (meetsMin) {
+          log(`Node.js version ${version} meets minimum requirement ${engineNodeRange}`, 'success');
+          
+          // Warn if not using recommended version
+          if (recommendedVersion && version !== recommendedVersion) {
+            log(`Note: .nvmrc recommends ${recommendedVersion} for consistency`, 'warning');
+            log(`Current version ${version} is still compatible`, 'info');
+            hasWarnings = true;
+          }
+          
+          return true;
+        } else {
+          log(`Node.js version ${version} is below minimum requirement ${engineNodeRange}`, 'error');
+          log(`  Current: ${version}`, 'error');
+          log(`  Required: ${engineNodeRange}`, 'error');
+          log('', 'info');
+          log('To fix this issue:', 'info');
+          log(`  Install Node.js ${minVersion} or higher`, 'info');
           log(`  Recommended: ${recommendedVersion || minVersion}`, 'info');
           hasErrors = true;
           return false;
