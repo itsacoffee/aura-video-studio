@@ -16,11 +16,13 @@ This guide provides complete instructions for setting up your development enviro
 
 ### Required Software
 
-1. **Node.js 18.18.0** (exact version required)
+1. **Node.js 18.0.0 or higher** (18.18.0 recommended for consistency)
    - Download from [nodejs.org](https://nodejs.org/)
    - Or use [nvm](https://github.com/nvm-sh/nvm) (Linux/Mac) / [nvm-windows](https://github.com/coreybutler/nvm-windows) (Windows)
+   - **Supported versions:** 18.x, 20.x, 22.x, and newer
+   - **Recommended:** Use version specified in `.nvmrc` (18.18.0) for consistency
 
-2. **npm 9.x or 10.x**
+2. **npm 9.x or higher**
    - Comes with Node.js
    - Update if needed: `npm install -g npm@latest`
 
@@ -70,16 +72,19 @@ This guide provides complete instructions for setting up your development enviro
 
 ### Node.js Version Management with nvm
 
-Using nvm ensures you have the exact Node.js version required:
+Using nvm ensures consistency with the recommended Node.js version:
 
 **Linux/macOS:**
 ```bash
 # Install nvm
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 
-# Install and use Node.js 18.18.0
+# Install and use recommended Node.js version (18.18.0)
 nvm install 18.18.0
 nvm use 18.18.0
+
+# Or use .nvmrc to auto-select
+nvm use
 ```
 
 **Windows:**
@@ -91,6 +96,8 @@ nvm use 18.18.0
 nvm install 18.18.0
 nvm use 18.18.0
 ```
+
+**Note:** Any Node.js version 18.0.0+ is supported. Using 18.18.0 (from `.nvmrc`) ensures maximum consistency.
 
 ## First-Time Setup
 
@@ -105,10 +112,10 @@ cd aura-video-studio
 
 ```bash
 node --version
-# Should output: v18.18.0
+# Should output: v18.x.x, v20.x.x, v22.x.x or higher (v18.18.0 recommended)
 ```
 
-If not using the correct version and you have nvm:
+If not using a compatible version and you have nvm:
 ```bash
 nvm use
 # This will read .nvmrc and switch to the correct version
@@ -247,7 +254,7 @@ node scripts/build/validate-environment.js
 ```
 
 **Checks performed:**
-- ✅ Node.js version matches `.nvmrc` exactly (18.18.0)
+- ✅ Node.js version is 18.0.0 or higher (warns if not using recommended 18.18.0)
 - ✅ npm version is 9.x or higher
 - ✅ Git configuration (long paths, line endings)
 - ✅ FFmpeg installation
@@ -395,22 +402,23 @@ git reset HEAD~1
 
 ## Troubleshooting
 
-### Node.js Version Mismatch
+### Node.js Version Compatibility
 
-**Error:**
-```
-✗ Node.js version mismatch!
-  Current: 20.19.5
-  Required: 18.18.0 (from .nvmrc)
-```
+**Note:** 
+If you see a warning about Node.js version not matching `.nvmrc`, you can safely proceed with any version 18.0.0 or higher. The warning is informational only.
 
-**Solution:**
+**Recommended:** Use the version specified in `.nvmrc` (18.18.0) for maximum consistency:
+
 ```bash
 # Using nvm
 nvm install 18.18.0
 nvm use 18.18.0
 
-# Or download exact version from nodejs.org
+# Or simply
+nvm use
+```
+
+**If you prefer a newer version:** Any Node.js version 18.x, 20.x, 22.x or higher is supported.
 ```
 
 ### npm ci Fails
@@ -547,7 +555,7 @@ npm run type-check
 ```bash
 # Verify Node version
 node --version
-# Should be v18.18.0
+# Should be v18.x.x or higher (v18.18.0 recommended)
 
 # Clean install
 cd Aura.Web
@@ -582,7 +590,7 @@ If you encounter issues not covered in this guide:
 
 **Quick Start Checklist:**
 
-- [ ] Install Node.js 18.18.0 exactly
+- [ ] Install Node.js 18.0.0 or higher (18.18.0 recommended)
 - [ ] Install .NET 8 SDK
 - [ ] Install FFmpeg
 - [ ] Configure Git (long paths, line endings)

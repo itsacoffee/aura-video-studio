@@ -46,8 +46,8 @@ GitHub Copilot Instructions for consistent, high-quality code generation.
 - React 18.2.0+ with TypeScript strict mode enabled
 - Vite 6.4.1 for build tooling and HMR
 - TypeScript 5.3.3 with strict mode
-- Node.js 18.18.0 (locked via .nvmrc)
-- npm 9.x or 10.x strict versioning enforced via .npmrc
+- Node.js 18.0.0+ (18.18.0 recommended via .nvmrc, supports 18.x/20.x/22.x+)
+- npm 9.x or higher
 
 **State Management & Routing**:
 - Zustand 5.0.8 for global state management
@@ -151,8 +151,8 @@ GitHub Copilot Instructions for consistent, high-quality code generation.
 ### Development Tools
 
 **Required**:
-- Node.js 18.18.0 exact version (enforced via .nvmrc)
-- npm 9.x minimum (up to 11.x)
+- Node.js 18.0.0 or higher (18.18.0 recommended via .nvmrc for consistency)
+- npm 9.x or higher
 - .NET 8 SDK
 - Git with long paths enabled (core.longpaths true on Windows)
 - Git line endings configured (core.autocrlf true on Windows)
@@ -1165,7 +1165,7 @@ public class VideoServiceTests
 **Script**: `scripts/build/validate-environment.js`
 
 **Checks**:
-- Node.js version matches 18.18.0
+- Node.js version is 18.0.0 or higher (warns if not using recommended 18.18.0)
 - npm version is 9.x or higher
 - Git configuration (long paths, line endings on Windows)
 
@@ -1234,7 +1234,7 @@ public class VideoServiceTests
 **Jobs**:
 
 **1. Windows Build Test** (windows-latest):
-- Setup Node.js 18.18.0
+- Setup Node.js from .nvmrc (18.18.0)
 - Run `npm ci` (clean install)
 - Run `npm run build`
 - Verify build artifacts (index.html, assets/)
@@ -1548,7 +1548,7 @@ Issue reference (if applicable)
 **Solutions**:
 - Delete `node_modules` and `package-lock.json`
 - Clear npm cache: `npm cache clean --force`
-- Check Node.js version matches 18.18.0 (`node --version`)
+- Check Node.js version is 18.0.0 or higher (`node --version`)
 - Check for long path issues on Windows (enable in Git config)
 
 #### TypeScript errors after pull

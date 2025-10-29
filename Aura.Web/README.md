@@ -7,12 +7,14 @@ Aura.Web is the React-based frontend for Aura Video Studio. It provides a modern
 ## Technology Stack
 
 ### Core
+
 - **React 18.3.1** - UI library with hooks and concurrent features
 - **TypeScript 5.9.3** - Type-safe JavaScript with strict mode enabled
 - **Vite 6.4.1** - Fast build tool and dev server with HMR
 - **Fluent UI React 9.72.1** - Microsoft's design system for Windows 11
 
 ### State & Data
+
 - **Zustand** - Lightweight state management
 - **React Router 6** - Client-side routing
 - **Axios** - HTTP client with interceptors
@@ -20,10 +22,12 @@ Aura.Web is the React-based frontend for Aura Video Studio. It provides a modern
 - **Zod** - Schema validation
 
 ### Styling
+
 - **Tailwind CSS 3** - Utility-first CSS framework
 - **PostCSS** - CSS processing with autoprefixer
 
 ### Code Quality
+
 - **ESLint** - Code linting with TypeScript and React rules
 - **Prettier** - Code formatting
 - **Vitest** - Unit testing framework
@@ -35,50 +39,51 @@ This section documents all critical npm packages used in the project.
 
 ### Production Dependencies
 
-| Package | Version | Purpose | Documentation |
-|---------|---------|---------|---------------|
-| react | ^18.3.1 | Core UI library with hooks and concurrent features | [React Docs](https://react.dev/) |
-| react-dom | ^18.3.1 | React renderer for web browsers | [React DOM Docs](https://react.dev/reference/react-dom) |
-| react-router-dom | ^6.21.0 | Client-side routing and navigation | [React Router Docs](https://reactrouter.com/) |
-| @fluentui/react-components | ^9.72.1 | Microsoft Fluent UI design system components | [Fluent UI Docs](https://react.fluentui.dev/) |
-| @fluentui/react-icons | ^2.0.239 | Fluent UI icon library | [Fluent Icons](https://react.fluentui.dev/?path=/docs/icons-icons--page) |
-| zustand | ^5.0.8 | Lightweight state management without boilerplate | [Zustand Docs](https://zustand.docs.pmnd.rs/) |
-| axios | ^1.6.5 | Promise-based HTTP client with interceptors | [Axios Docs](https://axios-http.com/) |
-| react-hook-form | ^7.49.3 | Performant form state management | [React Hook Form](https://react-hook-form.com/) |
-| zod | ^3.22.4 | TypeScript-first schema validation | [Zod Docs](https://zod.dev/) |
+| Package                    | Version  | Purpose                                            | Documentation                                                            |
+| -------------------------- | -------- | -------------------------------------------------- | ------------------------------------------------------------------------ |
+| react                      | ^18.3.1  | Core UI library with hooks and concurrent features | [React Docs](https://react.dev/)                                         |
+| react-dom                  | ^18.3.1  | React renderer for web browsers                    | [React DOM Docs](https://react.dev/reference/react-dom)                  |
+| react-router-dom           | ^6.21.0  | Client-side routing and navigation                 | [React Router Docs](https://reactrouter.com/)                            |
+| @fluentui/react-components | ^9.72.1  | Microsoft Fluent UI design system components       | [Fluent UI Docs](https://react.fluentui.dev/)                            |
+| @fluentui/react-icons      | ^2.0.239 | Fluent UI icon library                             | [Fluent Icons](https://react.fluentui.dev/?path=/docs/icons-icons--page) |
+| zustand                    | ^5.0.8   | Lightweight state management without boilerplate   | [Zustand Docs](https://zustand.docs.pmnd.rs/)                            |
+| axios                      | ^1.6.5   | Promise-based HTTP client with interceptors        | [Axios Docs](https://axios-http.com/)                                    |
+| react-hook-form            | ^7.49.3  | Performant form state management                   | [React Hook Form](https://react-hook-form.com/)                          |
+| zod                        | ^3.22.4  | TypeScript-first schema validation                 | [Zod Docs](https://zod.dev/)                                             |
 
 ### Development Dependencies
 
-| Package | Version | Purpose | Documentation |
-|---------|---------|---------|---------------|
-| vite | ^6.4.1 | Fast build tool and dev server with HMR | [Vite Docs](https://vite.dev/) |
-| typescript | ^5.9.3 | TypeScript compiler for type-safe JavaScript | [TypeScript Docs](https://www.typescriptlang.org/) |
-| @vitejs/plugin-react | ^4.7.0 | Vite plugin for React Fast Refresh | [Plugin Docs](https://github.com/vitejs/vite-plugin-react) |
-| @types/react | ^18.3.26 | TypeScript type definitions for React | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
-| @types/react-dom | ^18.3.7 | TypeScript type definitions for React DOM | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
-| tailwindcss | ^3.4.1 | Utility-first CSS framework | [Tailwind CSS](https://tailwindcss.com/) |
-| postcss | ^8.4.33 | CSS processing tool | [PostCSS Docs](https://postcss.org/) |
-| autoprefixer | ^10.4.16 | PostCSS plugin to add vendor prefixes | [Autoprefixer](https://github.com/postcss/autoprefixer) |
-| eslint | ^8.57.1 | JavaScript/TypeScript linter | [ESLint Docs](https://eslint.org/) |
-| @typescript-eslint/parser | ^6.18.1 | ESLint parser for TypeScript | [TypeScript ESLint](https://typescript-eslint.io/) |
-| @typescript-eslint/eslint-plugin | ^6.18.1 | ESLint rules for TypeScript | [TypeScript ESLint](https://typescript-eslint.io/) |
-| eslint-plugin-react | ^7.33.2 | React-specific linting rules | [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) |
-| eslint-plugin-react-hooks | ^4.6.0 | ESLint rules for React Hooks | [Rules of Hooks](https://react.dev/warnings/invalid-hook-call-warning) |
-| eslint-plugin-react-refresh | ^0.4.5 | ESLint plugin for React Fast Refresh | [Plugin Docs](https://github.com/ArnaudBarre/eslint-plugin-react-refresh) |
-| eslint-plugin-jsx-a11y | ^6.8.0 | Accessibility linting for JSX | [jsx-a11y](https://github.com/jsx-eslint/eslint-plugin-jsx-a11y) |
-| prettier | ^3.1.1 | Opinionated code formatter | [Prettier Docs](https://prettier.io/) |
-| vitest | ^3.2.4 | Fast unit testing framework powered by Vite | [Vitest Docs](https://vitest.dev/) |
-| @vitest/ui | ^3.2.4 | UI for Vitest test runner | [Vitest UI](https://vitest.dev/guide/ui.html) |
-| @vitest/coverage-v8 | ^3.2.4 | Code coverage provider for Vitest | [Coverage Docs](https://vitest.dev/guide/coverage.html) |
-| @testing-library/react | ^16.3.0 | React testing utilities | [Testing Library](https://testing-library.com/react) |
-| @testing-library/jest-dom | ^6.9.1 | Custom Jest matchers for DOM | [jest-dom](https://github.com/testing-library/jest-dom) |
-| @testing-library/user-event | ^14.6.1 | User interaction simulation for tests | [user-event](https://testing-library.com/docs/user-event/intro/) |
-| @playwright/test | ^1.56.0 | End-to-end testing framework | [Playwright Docs](https://playwright.dev/) |
-| jsdom | ^27.0.0 | JavaScript DOM implementation for testing | [jsdom](https://github.com/jsdom/jsdom) |
+| Package                          | Version  | Purpose                                      | Documentation                                                             |
+| -------------------------------- | -------- | -------------------------------------------- | ------------------------------------------------------------------------- |
+| vite                             | ^6.4.1   | Fast build tool and dev server with HMR      | [Vite Docs](https://vite.dev/)                                            |
+| typescript                       | ^5.9.3   | TypeScript compiler for type-safe JavaScript | [TypeScript Docs](https://www.typescriptlang.org/)                        |
+| @vitejs/plugin-react             | ^4.7.0   | Vite plugin for React Fast Refresh           | [Plugin Docs](https://github.com/vitejs/vite-plugin-react)                |
+| @types/react                     | ^18.3.26 | TypeScript type definitions for React        | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped)     |
+| @types/react-dom                 | ^18.3.7  | TypeScript type definitions for React DOM    | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped)     |
+| tailwindcss                      | ^3.4.1   | Utility-first CSS framework                  | [Tailwind CSS](https://tailwindcss.com/)                                  |
+| postcss                          | ^8.4.33  | CSS processing tool                          | [PostCSS Docs](https://postcss.org/)                                      |
+| autoprefixer                     | ^10.4.16 | PostCSS plugin to add vendor prefixes        | [Autoprefixer](https://github.com/postcss/autoprefixer)                   |
+| eslint                           | ^8.57.1  | JavaScript/TypeScript linter                 | [ESLint Docs](https://eslint.org/)                                        |
+| @typescript-eslint/parser        | ^6.18.1  | ESLint parser for TypeScript                 | [TypeScript ESLint](https://typescript-eslint.io/)                        |
+| @typescript-eslint/eslint-plugin | ^6.18.1  | ESLint rules for TypeScript                  | [TypeScript ESLint](https://typescript-eslint.io/)                        |
+| eslint-plugin-react              | ^7.33.2  | React-specific linting rules                 | [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react)  |
+| eslint-plugin-react-hooks        | ^4.6.0   | ESLint rules for React Hooks                 | [Rules of Hooks](https://react.dev/warnings/invalid-hook-call-warning)    |
+| eslint-plugin-react-refresh      | ^0.4.5   | ESLint plugin for React Fast Refresh         | [Plugin Docs](https://github.com/ArnaudBarre/eslint-plugin-react-refresh) |
+| eslint-plugin-jsx-a11y           | ^6.8.0   | Accessibility linting for JSX                | [jsx-a11y](https://github.com/jsx-eslint/eslint-plugin-jsx-a11y)          |
+| prettier                         | ^3.1.1   | Opinionated code formatter                   | [Prettier Docs](https://prettier.io/)                                     |
+| vitest                           | ^3.2.4   | Fast unit testing framework powered by Vite  | [Vitest Docs](https://vitest.dev/)                                        |
+| @vitest/ui                       | ^3.2.4   | UI for Vitest test runner                    | [Vitest UI](https://vitest.dev/guide/ui.html)                             |
+| @vitest/coverage-v8              | ^3.2.4   | Code coverage provider for Vitest            | [Coverage Docs](https://vitest.dev/guide/coverage.html)                   |
+| @testing-library/react           | ^16.3.0  | React testing utilities                      | [Testing Library](https://testing-library.com/react)                      |
+| @testing-library/jest-dom        | ^6.9.1   | Custom Jest matchers for DOM                 | [jest-dom](https://github.com/testing-library/jest-dom)                   |
+| @testing-library/user-event      | ^14.6.1  | User interaction simulation for tests        | [user-event](https://testing-library.com/docs/user-event/intro/)          |
+| @playwright/test                 | ^1.56.0  | End-to-end testing framework                 | [Playwright Docs](https://playwright.dev/)                                |
+| jsdom                            | ^27.0.0  | JavaScript DOM implementation for testing    | [jsdom](https://github.com/jsdom/jsdom)                                   |
 
 ### Version Requirements
 
 The following minimum versions are required for compatibility:
+
 - **Node.js**: >= 18.x (LTS recommended)
 - **npm**: >= 9.x
 - **React**: >= 18.2.0
@@ -86,6 +91,7 @@ The following minimum versions are required for compatibility:
 - **Vite**: >= 5.0.0
 
 Current versions used:
+
 - React: 18.3.1 ✅
 - TypeScript: 5.9.3 ✅
 - Vite: 6.4.1 ✅
@@ -102,25 +108,29 @@ Last security audit: Zero vulnerabilities ✅ (as of Vite 6.4.1 update)
 ## Quick Start
 
 ### Prerequisites
-- **Node.js 18.18.0** (exact version required - see `.nvmrc`)
-- **npm 9.x or 10.x**
+
+- **Node.js 18.0.0 or higher** (18.18.0 recommended for consistency - see `.nvmrc`)
+- **npm 9.x or higher**
 - Git for version control
 - FFmpeg (for video rendering features)
 
-**Important:** This project requires Node.js 18.18.0 exactly. Using a different version will cause build validation to fail.
+**Supported Node.js versions:** 18.x, 20.x, 22.x, and newer
 
-**Using nvm (recommended):**
+**Using nvm (recommended for consistency):**
+
 ```bash
 # Install nvm: https://github.com/nvm-sh/nvm (Linux/Mac)
 # or https://github.com/coreybutler/nvm-windows (Windows)
 
-# Install and use the correct version
+# Install and use the recommended version (18.18.0)
 nvm install 18.18.0
 nvm use 18.18.0
 
 # Or simply (reads .nvmrc)
 nvm use
 ```
+
+**Note:** While any Node.js version 18.0.0+ is supported, using the version specified in `.nvmrc` (18.18.0) ensures maximum consistency across development environments.
 
 ### Installation
 
@@ -231,6 +241,7 @@ Runs automatically before each commit and performs the following checks:
    - Fast check without compilation
 
 **Example output:**
+
 ```bash
 $ git commit -m "feat: Add new feature"
 
@@ -249,9 +260,11 @@ $ git commit -m "feat: Add new feature"
 ```
 
 **Bypass (not recommended):**
+
 ```bash
 git commit --no-verify
 ```
+
 Note: CI will still enforce all checks.
 
 #### Commit Message Hook
@@ -262,6 +275,7 @@ Validates commit message format:
 - ✅ Requires: Professional, descriptive commit messages
 
 **Good commit messages:**
+
 ```bash
 git commit -m "feat: Add batch video generation"
 git commit -m "fix: Resolve memory leak in job runner"
@@ -270,6 +284,7 @@ git commit -m "refactor: Extract video composition logic"
 ```
 
 **Bad commit messages (rejected):**
+
 ```bash
 git commit -m "WIP feature"        # ❌ Contains WIP
 git commit -m "TODO: fix later"    # ❌ Contains TODO
@@ -279,6 +294,7 @@ git commit -m "temp commit"        # ❌ Contains "temp commit"
 #### Troubleshooting Hooks
 
 **Hooks not running:**
+
 ```bash
 # Reinstall hooks
 npm run prepare
@@ -289,6 +305,7 @@ chmod +x ../.husky/commit-msg
 ```
 
 **Hooks failing unexpectedly:**
+
 ```bash
 # Run individual checks manually
 npm run lint
@@ -359,6 +376,7 @@ Aura.Web/
 ### Vite Configuration (vite.config.ts)
 
 The Vite config includes:
+
 - React plugin for JSX support
 - Dev server on port 5173
 - API proxy to forward `/api/*` requests to `http://127.0.0.1:5005`
@@ -372,11 +390,11 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:5005',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
-    }
-  }
-})
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
+});
 ```
 
 This allows the frontend to call `/api/healthz` which proxies to `http://127.0.0.1:5005/healthz`.
@@ -384,6 +402,7 @@ This allows the frontend to call `/api/healthz` which proxies to `http://127.0.0
 ### TypeScript Configuration
 
 Two TypeScript configs:
+
 1. `tsconfig.json` - Main app configuration
 2. `tsconfig.node.json` - Configuration for Vite config file
 
@@ -398,6 +417,7 @@ Environment variables are managed through `.env` files:
 - `.env.example` - Example configuration file
 
 The correct `.env` file is automatically loaded based on build mode:
+
 - `npm run dev` → `.env.development`
 - `npm run build:prod` → `.env.production`
 - `npm run build:dev` → `.env.development`
@@ -417,12 +437,13 @@ Access environment variables in code:
 ```typescript
 import { env } from './config/env';
 
-console.log(env.apiBaseUrl);  // Type-safe access
+console.log(env.apiBaseUrl); // Type-safe access
 console.log(env.isDevelopment);
 console.log(env.enableDevTools); // Only true in development
 ```
 
 **Note**: Development-only features (like LogViewerPage) are:
+
 - Lazy loaded to keep the main bundle small
 - Only included when `VITE_ENABLE_DEV_TOOLS=true`
 - Automatically tree-shaken from production builds
@@ -440,6 +461,7 @@ npm run lint:fix
 ```
 
 Configuration: `.eslintrc.cjs`
+
 - TypeScript and React rules enabled
 - Accessibility checks with jsx-a11y
 - React Hooks rules
@@ -456,6 +478,7 @@ npm run format:check
 ```
 
 Configuration: `.prettierrc`
+
 - Single quotes
 - 100 character line width
 - Trailing commas (ES5)
@@ -476,6 +499,7 @@ import { Component } from '@/components/Component';
 ### Tailwind CSS
 
 Tailwind CSS is configured with a custom theme including:
+
 - Custom color palette (primary, secondary, success, warning, error)
 - Extended spacing scale (4px base unit)
 - Custom animations (fade-in, slide-in)
@@ -485,15 +509,14 @@ Use Tailwind utilities in your components:
 
 ```tsx
 <div className="flex items-center gap-4 p-4 bg-primary-500 rounded-lg">
-  <Button className="px-6 py-2 bg-white text-primary-700 hover:bg-gray-100">
-    Click me
-  </Button>
+  <Button className="px-6 py-2 bg-white text-primary-700 hover:bg-gray-100">Click me</Button>
 </div>
 ```
 
 ### VS Code Setup
 
 Recommended VS Code extensions (`.vscode/extensions.json`):
+
 - ESLint
 - Prettier
 - Tailwind CSS IntelliSense
@@ -503,6 +526,7 @@ Recommended VS Code extensions (`.vscode/extensions.json`):
 - Vitest Explorer
 
 Workspace settings (`.vscode/settings.json`):
+
 - Format on save enabled
 - ESLint auto-fix on save
 - Prettier as default formatter
@@ -510,6 +534,7 @@ Workspace settings (`.vscode/settings.json`):
 ## Features
 
 ### Current Features
+
 - ✅ Health check integration with Aura.Api
 - ✅ Fluent UI React theming
 - ✅ TypeScript type safety
@@ -546,9 +571,9 @@ export function MyComponent() {
 
 ```typescript
 // Fetch capabilities from API
-const response = await fetch('/api/capabilities')
-const data = await response.json()
-console.log(data)
+const response = await fetch('/api/capabilities');
+const data = await response.json();
+console.log(data);
 ```
 
 The `/api` prefix is automatically proxied to the backend during development.
@@ -580,15 +605,19 @@ function App() {
 ## Styling
 
 ### Global Styles (index.css)
+
 - Sets font family to Segoe UI (Windows default)
 - Basic reset and layout styles
 
 ### Component Styles
+
 - Use CSS modules or inline styles with Fluent UI's `makeStyles`
 - Follow Fluent UI design guidelines
 
 ### Theming
+
 Fluent UI provides built-in themes:
+
 - `webLightTheme` - Light mode
 - `webDarkTheme` - Dark mode
 - `teamsLightTheme` - Teams-style light
@@ -639,6 +668,7 @@ npm run build:prod
 ```
 
 This creates an optimized build in `dist/` with:
+
 - Minified JavaScript and CSS with Terser
 - Code splitting for faster loading
 - Asset optimization
@@ -675,6 +705,7 @@ Copy the `dist/` contents to the API's `wwwroot/` folder.
 ### Environment Variables in Production
 
 Ensure production environment variables are set:
+
 - `VITE_ENV=production`
 - `VITE_ENABLE_DEBUG=false`
 - `VITE_ENABLE_DEV_TOOLS=false`
@@ -684,6 +715,7 @@ These are configured in `.env.production` and automatically applied when using `
 ### Hosting in Windows Shell
 
 The WinUI 3 or WPF shells will:
+
 1. Start Aura.Api as a child process
 2. Wait for API to be ready (`/healthz`)
 3. Navigate WebView2 to `http://127.0.0.1:5005`
@@ -692,15 +724,17 @@ The WinUI 3 or WPF shells will:
 ## Troubleshooting
 
 ### Port Already in Use
+
 Change the dev server port in `vite.config.ts`:
 
 ```typescript
 server: {
-  port: 5174  // Use a different port
+  port: 5174; // Use a different port
 }
 ```
 
 ### API Not Responding
+
 Ensure Aura.Api is running on `http://127.0.0.1:5005`:
 
 ```bash
@@ -709,6 +743,7 @@ dotnet run
 ```
 
 ### Module Not Found Errors
+
 ```bash
 # Clear node_modules and reinstall
 rm -rf node_modules
@@ -716,6 +751,7 @@ npm install
 ```
 
 ### TypeScript Errors
+
 ```bash
 # Check TypeScript compilation
 npx tsc --noEmit
@@ -724,6 +760,7 @@ npx tsc --noEmit
 ## Testing
 
 ### Unit Tests (Future)
+
 ```bash
 # Install testing libraries
 npm install --save-dev @testing-library/react @testing-library/jest-dom vitest
@@ -733,6 +770,7 @@ npm test
 ```
 
 ### E2E Tests (Future)
+
 Use Playwright for end-to-end testing:
 
 ```bash
@@ -746,6 +784,7 @@ npx playwright test
 ## Contributing
 
 When adding new features:
+
 1. Follow the existing folder structure
 2. Use TypeScript types for all props and state
 3. Follow Fluent UI design patterns
