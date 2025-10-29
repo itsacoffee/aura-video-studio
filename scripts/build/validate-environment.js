@@ -6,7 +6,8 @@
  * before attempting to build the application.
  * 
  * Validates:
- * - Node.js version matches .nvmrc exactly
+ * - Node.js version against package.json engines field (primary)
+ * - .nvmrc version (recommendation only, emits warning if different)
  * - npm version meets minimum requirements
  * - Git configuration (Windows: long paths, line endings)
  * - FFmpeg installation (for video processing)
@@ -22,7 +23,7 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const REQUIRED_NODE_VERSION = '18.18.0'; // Exact version from .nvmrc
+const REQUIRED_NODE_VERSION = '18.0.0'; // Minimum Node.js version (fallback if package.json not found)
 const REQUIRED_NPM_VERSION = '9.0.0';
 
 let hasErrors = false;
@@ -90,8 +91,14 @@ function checkNodeVersion() {
     if (engineNodeRange) {
       log(`package.json engines.node: ${engineNodeRange}`, 'info');
       
-      // Parse the range (e.g., ">=18.0.0 <21.0.0")
-      const rangeMatch = engineNodeRange.match(/>=([0-9.]+)\s*<([0-9.]+)/);
+      // Parse the range - supports common formats:
+      // ">=18.0.0 <21.0.0" (range with min and max)
+      // ">=18.0.0" (minimum only)
+      // "^18.0.0" or "~18.0.0" (caret/tilde ranges - use simplified check)
+      
+      // Try to match range format: >=X <Y or >=X.Y.Z <A.B.C
+      let rangeMatch = engineNodeRange.match(/>=\s*([0-9.]+)\s*<\s*([0-9.]+)/);
+      
       if (rangeMatch) {
         const minVersion = rangeMatch[1];
         const maxVersion = rangeMatch[2];
