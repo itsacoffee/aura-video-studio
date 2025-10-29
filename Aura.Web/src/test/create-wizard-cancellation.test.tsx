@@ -43,4 +43,3 @@ describe('CreateWizard - Request Cancellation Integration', () => {
     cancel();
   });
 });
-

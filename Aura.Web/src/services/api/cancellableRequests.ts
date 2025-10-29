@@ -19,10 +19,7 @@ export interface CancellableRequest<T> {
 /**
  * Make a cancellable GET request
  */
-export function getCancellable<T>(
-  url: string,
-  config?: AxiosRequestConfig
-): CancellableRequest<T> {
+export function getCancellable<T>(url: string, config?: AxiosRequestConfig): CancellableRequest<T> {
   const abortController = new AbortController();
 
   const promise = apiClient

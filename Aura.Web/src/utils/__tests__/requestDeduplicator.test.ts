@@ -46,7 +46,7 @@ describe('RequestDeduplicator', () => {
         await new Promise((resolve) => setTimeout(resolve, SHORT_DELAY_MS));
         return 'result-1';
       };
-      
+
       const request2 = async () => {
         await new Promise((resolve) => setTimeout(resolve, SHORT_DELAY_MS));
         return 'result-2';

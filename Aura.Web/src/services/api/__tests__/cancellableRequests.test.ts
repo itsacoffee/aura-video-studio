@@ -41,7 +41,7 @@ describe('Cancellable Requests', () => {
 
     it('should provide a cancel function for GET request', () => {
       const url = '/api/test';
-      
+
       mockAxios.onGet(url).reply(200, { message: 'success' });
 
       const { cancel } = getCancellable(url);
@@ -49,7 +49,7 @@ describe('Cancellable Requests', () => {
       // Should have a cancel function
       expect(cancel).toBeDefined();
       expect(typeof cancel).toBe('function');
-      
+
       // Should be able to call cancel without errors
       expect(() => cancel()).not.toThrow();
     });

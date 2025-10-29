@@ -74,126 +74,135 @@ export function GraphEditor({
   const canvasHeight = 300;
   const padding = 40;
 
-  const drawGrid = useCallback((ctx: CanvasRenderingContext2D) => {
-    ctx.strokeStyle = tokens.colorNeutralStroke2;
-    ctx.lineWidth = 1;
+  const drawGrid = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      ctx.strokeStyle = tokens.colorNeutralStroke2;
+      ctx.lineWidth = 1;
 
-    // Vertical grid lines (time)
-    const timeStep = duration / 10;
-    for (let i = 0; i <= 10; i++) {
-      const x = padding + (i / 10) * (canvasWidth - 2 * padding);
+      // Vertical grid lines (time)
+      const timeStep = duration / 10;
+      for (let i = 0; i <= 10; i++) {
+        const x = padding + (i / 10) * (canvasWidth - 2 * padding);
+        ctx.beginPath();
+        ctx.moveTo(x, padding);
+        ctx.lineTo(x, canvasHeight - padding);
+        ctx.stroke();
+
+        // Time labels
+        ctx.fillStyle = tokens.colorNeutralForeground2;
+        ctx.font = '10px sans-serif';
+        ctx.fillText(`${(i * timeStep).toFixed(1)}s`, x - 10, canvasHeight - padding + 15);
+      }
+
+      // Horizontal grid lines (value)
+      const valueRange = maxValue - minValue;
+      for (let i = 0; i <= 5; i++) {
+        const y = padding + (i / 5) * (canvasHeight - 2 * padding);
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(canvasWidth - padding, y);
+        ctx.stroke();
+
+        // Value labels
+        const value = maxValue - (i / 5) * valueRange;
+        ctx.fillStyle = tokens.colorNeutralForeground2;
+        ctx.font = '10px sans-serif';
+        ctx.fillText(value.toFixed(0), 5, y + 3);
+      }
+
+      // Axis labels
+      ctx.fillStyle = tokens.colorNeutralForeground1;
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Time (s)', canvasWidth / 2 - 20, canvasHeight - 5);
+      ctx.save();
+      ctx.translate(15, canvasHeight / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Value', 0, 0);
+      ctx.restore();
+    },
+    [canvasWidth, canvasHeight, padding, duration, maxValue, minValue]
+  );
+
+  const drawKeyframesAndCurves = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (keyframes.length === 0) return;
+
+      const sorted = [...keyframes].sort((a, b) => a.time - b.time);
+
+      // Draw curves between keyframes
+      ctx.strokeStyle = tokens.colorBrandForeground1;
+      ctx.lineWidth = 2;
+
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const current = sorted[i];
+        const next = sorted[i + 1];
+
+        if (typeof current.value !== 'number' || typeof next.value !== 'number') {
+          continue;
+        }
+
+        const x1 = padding + (current.time / duration) * (canvasWidth - 2 * padding);
+        const y1 =
+          padding +
+          (1 - (current.value - minValue) / (maxValue - minValue)) * (canvasHeight - 2 * padding);
+        const x2 = padding + (next.time / duration) * (canvasWidth - 2 * padding);
+        const y2 =
+          padding +
+          (1 - (next.value - minValue) / (maxValue - minValue)) * (canvasHeight - 2 * padding);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+
+        // Draw smooth curve based on easing
+        const easingFn = getEasingFunction(current);
+        const steps = 50;
+        for (let step = 1; step <= steps; step++) {
+          const t = step / steps;
+          const easedT = easingFn(t);
+          const x = x1 + (x2 - x1) * t;
+          const y = y1 + (y2 - y1) * easedT;
+          ctx.lineTo(x, y);
+        }
+
+        ctx.stroke();
+      }
+
+      // Draw keyframe points
+      sorted.forEach((keyframe) => {
+        if (typeof keyframe.value !== 'number') return;
+
+        const x = padding + (keyframe.time / duration) * (canvasWidth - 2 * padding);
+        const y =
+          padding +
+          (1 - (keyframe.value - minValue) / (maxValue - minValue)) * (canvasHeight - 2 * padding);
+
+        ctx.fillStyle = tokens.colorBrandBackground;
+        ctx.strokeStyle = tokens.colorBrandStroke1;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      });
+    },
+    [keyframes, duration, minValue, maxValue, canvasWidth, canvasHeight, padding]
+  );
+
+  const drawCurrentTimeIndicator = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      const x = padding + (currentTime / duration) * (canvasWidth - 2 * padding);
+
+      ctx.strokeStyle = tokens.colorPaletteRedForeground3;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
       ctx.beginPath();
       ctx.moveTo(x, padding);
       ctx.lineTo(x, canvasHeight - padding);
       ctx.stroke();
-
-      // Time labels
-      ctx.fillStyle = tokens.colorNeutralForeground2;
-      ctx.font = '10px sans-serif';
-      ctx.fillText(`${(i * timeStep).toFixed(1)}s`, x - 10, canvasHeight - padding + 15);
-    }
-
-    // Horizontal grid lines (value)
-    const valueRange = maxValue - minValue;
-    for (let i = 0; i <= 5; i++) {
-      const y = padding + (i / 5) * (canvasHeight - 2 * padding);
-      ctx.beginPath();
-      ctx.moveTo(padding, y);
-      ctx.lineTo(canvasWidth - padding, y);
-      ctx.stroke();
-
-      // Value labels
-      const value = maxValue - (i / 5) * valueRange;
-      ctx.fillStyle = tokens.colorNeutralForeground2;
-      ctx.font = '10px sans-serif';
-      ctx.fillText(value.toFixed(0), 5, y + 3);
-    }
-
-    // Axis labels
-    ctx.fillStyle = tokens.colorNeutralForeground1;
-    ctx.font = '12px sans-serif';
-    ctx.fillText('Time (s)', canvasWidth / 2 - 20, canvasHeight - 5);
-    ctx.save();
-    ctx.translate(15, canvasHeight / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Value', 0, 0);
-    ctx.restore();
-  }, [canvasWidth, canvasHeight, padding, duration, maxValue, minValue]);
-
-  const drawKeyframesAndCurves = useCallback((ctx: CanvasRenderingContext2D) => {
-    if (keyframes.length === 0) return;
-
-    const sorted = [...keyframes].sort((a, b) => a.time - b.time);
-
-    // Draw curves between keyframes
-    ctx.strokeStyle = tokens.colorBrandForeground1;
-    ctx.lineWidth = 2;
-
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const current = sorted[i];
-      const next = sorted[i + 1];
-
-      if (typeof current.value !== 'number' || typeof next.value !== 'number') {
-        continue;
-      }
-
-      const x1 = padding + (current.time / duration) * (canvasWidth - 2 * padding);
-      const y1 =
-        padding +
-        (1 - (current.value - minValue) / (maxValue - minValue)) * (canvasHeight - 2 * padding);
-      const x2 = padding + (next.time / duration) * (canvasWidth - 2 * padding);
-      const y2 =
-        padding +
-        (1 - (next.value - minValue) / (maxValue - minValue)) * (canvasHeight - 2 * padding);
-
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-
-      // Draw smooth curve based on easing
-      const easingFn = getEasingFunction(current);
-      const steps = 50;
-      for (let step = 1; step <= steps; step++) {
-        const t = step / steps;
-        const easedT = easingFn(t);
-        const x = x1 + (x2 - x1) * t;
-        const y = y1 + (y2 - y1) * easedT;
-        ctx.lineTo(x, y);
-      }
-
-      ctx.stroke();
-    }
-
-    // Draw keyframe points
-    sorted.forEach((keyframe) => {
-      if (typeof keyframe.value !== 'number') return;
-
-      const x = padding + (keyframe.time / duration) * (canvasWidth - 2 * padding);
-      const y =
-        padding +
-        (1 - (keyframe.value - minValue) / (maxValue - minValue)) * (canvasHeight - 2 * padding);
-
-      ctx.fillStyle = tokens.colorBrandBackground;
-      ctx.strokeStyle = tokens.colorBrandStroke1;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(x, y, 6, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.stroke();
-    });
-  }, [keyframes, duration, minValue, maxValue, canvasWidth, canvasHeight, padding]);
-
-  const drawCurrentTimeIndicator = useCallback((ctx: CanvasRenderingContext2D) => {
-    const x = padding + (currentTime / duration) * (canvasWidth - 2 * padding);
-
-    ctx.strokeStyle = tokens.colorPaletteRedForeground3;
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath();
-    ctx.moveTo(x, padding);
-    ctx.lineTo(x, canvasHeight - padding);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }, [currentTime, duration, canvasWidth, canvasHeight, padding]);
+      ctx.setLineDash([]);
+    },
+    [currentTime, duration, canvasWidth, canvasHeight, padding]
+  );
 
   const drawGraph = useCallback(() => {
     const canvas = canvasRef.current;

@@ -53,10 +53,10 @@ try {
       </div>
     `;
   }
-  
+
   // Also log to console for developers
   console.error('Environment validation failed:', error);
-  
+
   // Stop execution - don't render the app
   throw error;
 }

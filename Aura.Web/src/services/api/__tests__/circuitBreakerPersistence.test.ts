@@ -148,7 +148,7 @@ describe('PersistentCircuitBreaker', () => {
 
     it('should return null for stale state (older than 5 minutes)', () => {
       const endpoint = '/api/test';
-      const staleTimestamp = Date.now() - (6 * 60 * 1000); // 6 minutes ago
+      const staleTimestamp = Date.now() - 6 * 60 * 1000; // 6 minutes ago
 
       const state: CircuitBreakerState = {
         state: 'OPEN',
@@ -173,7 +173,7 @@ describe('PersistentCircuitBreaker', () => {
 
     it('should return valid state that is less than 5 minutes old', () => {
       const endpoint = '/api/test';
-      const recentTimestamp = Date.now() - (2 * 60 * 1000); // 2 minutes ago
+      const recentTimestamp = Date.now() - 2 * 60 * 1000; // 2 minutes ago
 
       const state: CircuitBreakerState = {
         state: 'OPEN',

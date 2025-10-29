@@ -54,10 +54,10 @@ function createStableHash(obj: unknown): string {
 export function createDedupeKey(method: string, url: string, data?: unknown): string {
   const methodUpper = method.toUpperCase();
   const dataHash = data ? createStableHash(data) : '';
-  
+
   if (dataHash) {
     return `${methodUpper}:${url}:${dataHash}`;
   }
-  
+
   return `${methodUpper}:${url}`;
 }

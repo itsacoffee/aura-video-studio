@@ -39,7 +39,12 @@ export async function hasCompletedFirstRun(): Promise<boolean> {
       return true;
     }
   } catch (error) {
-    logger.warn('Failed to check backend first-run status, using localStorage only', 'firstRunService', 'checkFirstRun', { error: String(error) });
+    logger.warn(
+      'Failed to check backend first-run status, using localStorage only',
+      'firstRunService',
+      'checkFirstRun',
+      { error: String(error) }
+    );
   }
 
   return false;
@@ -124,7 +129,12 @@ export async function markFirstRunCompleted(): Promise<void> {
   try {
     await setBackendFirstRunStatus(true);
   } catch (error) {
-    logger.error('Failed to persist first-run completion to backend', error instanceof Error ? error : new Error(String(error)), 'firstRunService', 'completeFirstRun');
+    logger.error(
+      'Failed to persist first-run completion to backend',
+      error instanceof Error ? error : new Error(String(error)),
+      'firstRunService',
+      'completeFirstRun'
+    );
     // Don't throw - localStorage is sufficient for now
   }
 }
@@ -143,7 +153,12 @@ export async function resetFirstRunStatus(): Promise<void> {
   try {
     await setBackendFirstRunStatus(false);
   } catch (error) {
-    logger.error('Failed to reset first-run status in backend', error instanceof Error ? error : new Error(String(error)), 'firstRunService', 'resetFirstRun');
+    logger.error(
+      'Failed to reset first-run status in backend',
+      error instanceof Error ? error : new Error(String(error)),
+      'firstRunService',
+      'resetFirstRun'
+    );
     // Don't throw - localStorage clearing is sufficient
   }
 }

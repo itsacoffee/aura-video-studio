@@ -220,8 +220,10 @@ export class PlaybackEngine {
           this.metrics.droppedFrames = quality.droppedVideoFrames || 0;
           this.metrics.totalFrames = quality.totalVideoFrames || 0;
           // decodedVideoFrames may not be available in all browsers
-          this.metrics.decodedFrames = 
-            ('decodedVideoFrames' in quality ? (quality as VideoQualityMetrics).decodedVideoFrames : quality.totalVideoFrames) || 0;
+          this.metrics.decodedFrames =
+            ('decodedVideoFrames' in quality
+              ? (quality as VideoQualityMetrics).decodedVideoFrames
+              : quality.totalVideoFrames) || 0;
 
           // Notify if metrics changed
           if (this.onMetricsUpdate) {

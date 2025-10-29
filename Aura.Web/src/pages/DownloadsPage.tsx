@@ -137,57 +137,63 @@ export function DownloadsPage() {
   };
 
   // Helper to verify component integrity
-  const verifyComponentIntegrity = useCallback(async (
-    componentName: string,
-    isInstalled: boolean
-  ): Promise<{ needsRepair: boolean; verificationResult?: VerificationResult } | null> => {
-    if (!isInstalled) {
+  const verifyComponentIntegrity = useCallback(
+    async (
+      componentName: string,
+      isInstalled: boolean
+    ): Promise<{ needsRepair: boolean; verificationResult?: VerificationResult } | null> => {
+      if (!isInstalled) {
+        return null;
+      }
+
+      try {
+        const verifyResponse = await fetch(apiUrl(`/api/downloads/${componentName}/verify`));
+        if (verifyResponse.ok) {
+          const verifyData = (await verifyResponse.json()) as VerificationResult;
+          return {
+            needsRepair: !verifyData.isValid,
+            verificationResult: verifyData,
+          };
+        }
+      } catch (error) {
+        console.error(`Error verifying ${componentName}:`, error);
+      }
+
       return null;
-    }
+    },
+    []
+  );
 
-    try {
-      const verifyResponse = await fetch(apiUrl(`/api/downloads/${componentName}/verify`));
-      if (verifyResponse.ok) {
-        const verifyData = await verifyResponse.json() as VerificationResult;
-        return {
-          needsRepair: !verifyData.isValid,
-          verificationResult: verifyData,
-        };
+  const checkComponentStatus = useCallback(
+    async (componentName: string) => {
+      try {
+        const statusResponse = await fetch(apiUrl(`/api/downloads/${componentName}/status`));
+        if (!statusResponse.ok) {
+          return;
+        }
+
+        const statusData = await statusResponse.json();
+        const verificationInfo = await verifyComponentIntegrity(
+          componentName,
+          statusData.isInstalled
+        );
+
+        setComponentStatus((prev) => ({
+          ...prev,
+          [componentName]: {
+            isInstalled: statusData.isInstalled,
+            isInstalling: false,
+            isRepairing: false,
+            needsRepair: verificationInfo?.needsRepair || false,
+            verificationResult: verificationInfo?.verificationResult,
+          },
+        }));
+      } catch (error) {
+        console.error(`Error checking status for ${componentName}:`, error);
       }
-    } catch (error) {
-      console.error(`Error verifying ${componentName}:`, error);
-    }
-
-    return null;
-  }, []);
-
-  const checkComponentStatus = useCallback(async (componentName: string) => {
-    try {
-      const statusResponse = await fetch(apiUrl(`/api/downloads/${componentName}/status`));
-      if (!statusResponse.ok) {
-        return;
-      }
-
-      const statusData = await statusResponse.json();
-      const verificationInfo = await verifyComponentIntegrity(
-        componentName,
-        statusData.isInstalled
-      );
-
-      setComponentStatus((prev) => ({
-        ...prev,
-        [componentName]: {
-          isInstalled: statusData.isInstalled,
-          isInstalling: false,
-          isRepairing: false,
-          needsRepair: verificationInfo?.needsRepair || false,
-          verificationResult: verificationInfo?.verificationResult,
-        },
-      }));
-    } catch (error) {
-      console.error(`Error checking status for ${componentName}:`, error);
-    }
-  }, [verifyComponentIntegrity]);
+    },
+    [verifyComponentIntegrity]
+  );
 
   const fetchManifest = useCallback(async () => {
     try {
@@ -196,7 +202,9 @@ export function DownloadsPage() {
         const data = await response.json();
         setManifest(data);
         // Check status for each component in parallel
-        await Promise.all(data.map((component: DependencyComponent) => checkComponentStatus(component.name)));
+        await Promise.all(
+          data.map((component: DependencyComponent) => checkComponentStatus(component.name))
+        );
       } else {
         showFailureToast({
           title: 'Failed to Load Manifest',
