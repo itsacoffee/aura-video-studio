@@ -11,10 +11,12 @@ import {
   Field,
   Switch,
   Badge,
+  Tooltip,
 } from '@fluentui/react-components';
-import { Save24Regular, FlashFlow24Regular } from '@fluentui/react-icons';
+import { Save24Regular, FlashFlow24Regular, Info24Regular } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import { apiUrl } from '../../config/api';
+import { TooltipContent, TooltipWithLink } from '../Tooltips';
 
 const useStyles = makeStyles({
   section: {
@@ -233,7 +235,19 @@ export function PerformanceSettingsTab() {
 
       <div className={styles.form}>
         {/* Quality Mode */}
-        <Field label="Quality Mode">
+        <Field
+          label={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              Quality Mode
+              <Tooltip
+                content={<TooltipWithLink content={TooltipContent.qualityModeStandard} />}
+                relationship="label"
+              >
+                <Info24Regular className={styles.infoIcon} />
+              </Tooltip>
+            </div>
+          }
+        >
           <Dropdown
             value={qualityMode}
             onOptionSelect={(_, data) => {
@@ -257,9 +271,21 @@ export function PerformanceSettingsTab() {
         {/* Hardware Acceleration */}
         <Text size={400} weight="semibold" style={{ marginTop: tokens.spacingVerticalL }}>
           Hardware Acceleration
+          <Tooltip
+            content={<TooltipWithLink content={TooltipContent.hardwareAcceleration} />}
+            relationship="label"
+          >
+            <Info24Regular className={styles.infoIcon} />
+          </Tooltip>
         </Text>
 
-        <Field label="Enable Hardware Acceleration">
+        <Field
+          label={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              Enable Hardware Acceleration
+            </div>
+          }
+        >
           <Switch
             checked={enableHardwareAccel}
             onChange={(_, data) => {
@@ -275,7 +301,19 @@ export function PerformanceSettingsTab() {
 
         {enableHardwareAccel && (
           <>
-            <Field label="Encoder Priority">
+            <Field
+              label={
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  Encoder Priority
+                  <Tooltip
+                    content={<TooltipWithLink content={TooltipContent.encoderSoftware} />}
+                    relationship="label"
+                  >
+                    <Info24Regular className={styles.infoIcon} />
+                  </Tooltip>
+                </div>
+              }
+            >
               <Dropdown
                 value={encoderPriority}
                 onOptionSelect={(_, data) => {
@@ -331,7 +369,17 @@ export function PerformanceSettingsTab() {
         </Text>
 
         <Field
-          label={`Max Concurrent Jobs: ${maxConcurrentJobs}`}
+          label={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              Max Concurrent Jobs: {maxConcurrentJobs}
+              <Tooltip
+                content={<TooltipWithLink content={TooltipContent.parallelJobs} />}
+                relationship="label"
+              >
+                <Info24Regular className={styles.infoIcon} />
+              </Tooltip>
+            </div>
+          }
           hint="Number of videos that can render simultaneously"
         >
           <Slider
@@ -347,7 +395,17 @@ export function PerformanceSettingsTab() {
         </Field>
 
         <Field
-          label={`Render Threads: ${maxRenderThreads === 0 ? 'Auto' : maxRenderThreads}`}
+          label={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              Render Threads: {maxRenderThreads === 0 ? 'Auto' : maxRenderThreads}
+              <Tooltip
+                content={<TooltipWithLink content={TooltipContent.renderThreads} />}
+                relationship="label"
+              >
+                <Info24Regular className={styles.infoIcon} />
+              </Tooltip>
+            </div>
+          }
           hint="CPU threads to use for rendering (0 = auto-detect)"
         >
           <Slider

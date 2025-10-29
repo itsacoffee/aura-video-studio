@@ -22,6 +22,7 @@ import {
   Badge,
   MessageBar,
   MessageBarBody,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   Dismiss24Regular,
@@ -29,8 +30,10 @@ import {
   ArrowDownload24Regular,
   Warning24Regular,
   CheckmarkCircle24Regular,
+  Info24Regular,
 } from '@fluentui/react-icons';
 import { useState, useMemo } from 'react';
+import { TooltipContent, TooltipWithLink } from '../Tooltips';
 
 const useStyles = makeStyles({
   dialogSurface: {
@@ -406,7 +409,19 @@ export function ExportDialog({
           </DialogTitle>
           <DialogContent>
             <div className={styles.section}>
-              <Field label="Export Preset">
+              <Field
+                label={
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    Export Preset
+                    <Tooltip
+                      content={<TooltipWithLink content={TooltipContent.exportPreset} />}
+                      relationship="label"
+                    >
+                      <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXXS }} />
+                    </Tooltip>
+                  </div>
+                }
+              >
                 <Dropdown
                   value={selectedPreset}
                   onOptionSelect={(_, data) => setSelectedPreset(data.optionValue as string)}
@@ -480,7 +495,19 @@ export function ExportDialog({
                       </Dropdown>
                     </Field>
 
-                    <Field label="Video Codec">
+                    <Field
+                      label={
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          Video Codec
+                          <Tooltip
+                            content={<TooltipWithLink content={TooltipContent.exportCodecH264} />}
+                            relationship="label"
+                          >
+                            <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXXS }} />
+                          </Tooltip>
+                        </div>
+                      }
+                    >
                       <Dropdown
                         value={advancedSettings.codec}
                         onOptionSelect={(_, data) =>
@@ -499,7 +526,22 @@ export function ExportDialog({
                     </Field>
 
                     <div className={styles.row}>
-                      <Field label="Bitrate Mode" className={styles.field}>
+                      <Field
+                        label={
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            Bitrate Mode
+                            <Tooltip
+                              content={
+                                <TooltipWithLink content={TooltipContent.exportQualityVsBitrate} />
+                              }
+                              relationship="label"
+                            >
+                              <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXXS }} />
+                            </Tooltip>
+                          </div>
+                        }
+                        className={styles.field}
+                      >
                         <Dropdown
                           value={advancedSettings.bitrateMode}
                           onOptionSelect={(_, data) =>

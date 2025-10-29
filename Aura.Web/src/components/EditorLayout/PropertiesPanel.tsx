@@ -23,9 +23,11 @@ import {
   EyeOffRegular,
   DismissRegular,
   AddRegular,
+  Info24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
 import { AppliedEffect, EFFECT_DEFINITIONS } from '../../types/effects';
+import { TooltipContent, TooltipWithLink } from '../Tooltips';
 
 const useStyles = makeStyles({
   container: {
@@ -296,7 +298,17 @@ export function PropertiesPanel({
 
           {(selectedClip.type === 'video' || selectedClip.type === 'image') && (
             <AccordionItem value="transform">
-              <AccordionHeader>Transform</AccordionHeader>
+              <AccordionHeader>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  Transform
+                  <Tooltip
+                    content={<TooltipWithLink content={TooltipContent.editorTransform} />}
+                    relationship="label"
+                  >
+                    <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXXS }} />
+                  </Tooltip>
+                </div>
+              </AccordionHeader>
               <AccordionPanel>
                 <div className={styles.section}>
                   <Field label="Position X">
