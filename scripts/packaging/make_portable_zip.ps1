@@ -63,13 +63,22 @@ Write-Host "[3/8] Building web UI..." -ForegroundColor Yellow
 Push-Location "$rootDir\Aura.Web"
 if (-not (Test-Path "node_modules")) {
     Write-Host "      Installing npm dependencies..." -ForegroundColor Gray
-    npm install 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { 
+    $npmInstallOutput = npm install 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ""
+        Write-Host "npm install output:" -ForegroundColor Red
+        Write-Host ($npmInstallOutput | Out-String) -ForegroundColor Red
+        Write-Host ""
         throw "npm install failed. Please check your internet connection and npm configuration."
     }
 }
-npm run build 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) { 
+Write-Host "      Building frontend..." -ForegroundColor Gray
+$buildOutput = npm run build 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "Build output:" -ForegroundColor Red
+    Write-Host ($buildOutput | Out-String) -ForegroundColor Red
+    Write-Host ""
     throw "Failed to build Web UI. Please check for TypeScript errors or build configuration issues."
 }
 Pop-Location
