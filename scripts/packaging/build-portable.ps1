@@ -98,29 +98,41 @@ try {
             Write-Host "      Installing npm dependencies..." -ForegroundColor Gray
             
             # Retry npm install up to 3 times for network issues
-            $maxRetries = 3
-            $retryCount = 0
+            $maxAttempts = 3
+            $attemptCount = 0
             $installSuccess = $false
+            $lastError = ""
             
-            while (-not $installSuccess -and $retryCount -lt $maxRetries) {
-                if ($retryCount -gt 0) {
-                    Write-Host "      Retry attempt $retryCount of $maxRetries..." -ForegroundColor Gray
+            while (-not $installSuccess -and $attemptCount -lt $maxAttempts) {
+                $attemptCount++
+                
+                if ($attemptCount -gt 1) {
+                    Write-Host "      Retry attempt $($attemptCount - 1) of $($maxAttempts - 1)..." -ForegroundColor Gray
                     Start-Sleep -Seconds 2
                 }
                 
-                # Capture output but only show on error
-                $npmOutput = npm install --silent 2>&1
+                # Capture both stdout and stderr for better error reporting
+                # Don't use --silent so we can see what's happening
+                $npmOutput = npm install 2>&1
+                
                 if ($LASTEXITCODE -eq 0) {
                     $installSuccess = $true
                     Write-Host "      ✓ npm dependencies installed" -ForegroundColor Green
                 } else {
-                    $retryCount++
-                    if ($retryCount -ge $maxRetries) {
-                        Write-BuildError "npm install failed after $maxRetries attempts"
-                        Write-Host "npm output: $npmOutput" -ForegroundColor Red
-                        throw "npm install failed after $maxRetries attempts. Error: $npmOutput`n`nPlease check your internet connection and npm configuration."
+                    $lastError = $npmOutput | Out-String
+                    if ($attemptCount -lt $maxAttempts) {
+                        Write-Host "      npm install failed (attempt $attemptCount of $maxAttempts), retrying..." -ForegroundColor Yellow
                     }
                 }
+            }
+            
+            if (-not $installSuccess) {
+                Write-BuildError "npm install failed after $maxAttempts attempts"
+                Write-Host ""
+                Write-Host "npm output:" -ForegroundColor Red
+                Write-Host $lastError -ForegroundColor Red
+                Write-Host ""
+                throw "npm install failed after $maxAttempts attempts.`n`nPlease check:`n- Internet connection`n- npm configuration`n- Node.js version (requires 18.x)`n- Available disk space`n`nFull error output shown above."
             }
         } else {
             Write-Host "      ✓ npm dependencies already installed" -ForegroundColor Green
@@ -134,12 +146,15 @@ try {
         }
         
         Write-Host "      Building frontend..." -ForegroundColor Gray
-        # Capture output to reduce noise, but show on error
-        $buildOutput = npm run build --silent 2>&1
+        # Run build and capture output
+        $buildOutput = npm run build 2>&1
         if ($LASTEXITCODE -ne 0) { 
             Write-BuildError "npm build failed"
-            Write-Host "Build output: $buildOutput" -ForegroundColor Red
-            throw "npm build failed. Error: $buildOutput`n`nThis may be due to TypeScript compilation errors or other build issues."
+            Write-Host ""
+            Write-Host "Build output:" -ForegroundColor Red
+            Write-Host ($buildOutput | Out-String) -ForegroundColor Red
+            Write-Host ""
+            throw "npm build failed.`n`nThis may be due to:`n- TypeScript compilation errors`n- Missing dependencies`n- Build configuration issues`n`nFull error output shown above."
         }
         
         # Validate the build output
