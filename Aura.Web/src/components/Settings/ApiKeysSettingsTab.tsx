@@ -7,10 +7,16 @@ import {
   Input,
   Card,
   Field,
+  Tooltip,
 } from '@fluentui/react-components';
-import { CheckmarkCircle24Filled, DismissCircle24Filled } from '@fluentui/react-icons';
+import {
+  CheckmarkCircle24Filled,
+  DismissCircle24Filled,
+  Info24Regular,
+} from '@fluentui/react-icons';
 import { useState } from 'react';
 import type { ApiKeysSettings } from '../../types/settings';
+import { TooltipContent, TooltipWithLink } from '../Tooltips';
 
 const useStyles = makeStyles({
   section: {
@@ -124,7 +130,17 @@ export function ApiKeysSettingsTab({
 
       <div className={styles.form}>
         <Field
-          label="OpenAI API Key"
+          label={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              OpenAI API Key
+              <Tooltip
+                content={<TooltipWithLink content={TooltipContent.apiKeyOpenAI} />}
+                relationship="label"
+              >
+                <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
+              </Tooltip>
+            </div>
+          }
           hint="Required for GPT-based script generation. Get your key from platform.openai.com"
         >
           <div className={styles.inputWithButton}>
@@ -146,7 +162,17 @@ export function ApiKeysSettingsTab({
         </Field>
 
         <Field
-          label="Anthropic API Key (Claude)"
+          label={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              Anthropic API Key (Claude)
+              <Tooltip
+                content={<TooltipWithLink content={TooltipContent.apiKeyAnthropic} />}
+                relationship="label"
+              >
+                <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
+              </Tooltip>
+            </div>
+          }
           hint="For Claude-based AI features. Get your key from console.anthropic.com"
         >
           <div className={styles.inputWithButton}>
@@ -190,7 +216,17 @@ export function ApiKeysSettingsTab({
         </Field>
 
         <Field
-          label="ElevenLabs API Key"
+          label={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              ElevenLabs API Key
+              <Tooltip
+                content={<TooltipWithLink content={TooltipContent.apiKeyElevenLabs} />}
+                relationship="label"
+              >
+                <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
+              </Tooltip>
+            </div>
+          }
           hint="For high-quality voice synthesis. Get your key from elevenlabs.io"
         >
           <div className={styles.inputWithButton}>
@@ -212,7 +248,17 @@ export function ApiKeysSettingsTab({
         </Field>
 
         <Field
-          label="Pexels API Key"
+          label={
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              Pexels API Key
+              <Tooltip
+                content={<TooltipWithLink content={TooltipContent.apiKeyPexels} />}
+                relationship="label"
+              >
+                <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
+              </Tooltip>
+            </div>
+          }
           hint="For stock video and images. Get your free key from pexels.com/api"
         >
           <Input

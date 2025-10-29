@@ -9,12 +9,14 @@ import {
   CardHeader,
   Spinner,
   Badge,
+  Tooltip,
 } from '@fluentui/react-components';
 import { Play24Regular, Settings24Regular } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FirstRunDiagnostics } from '../components/FirstRunDiagnostics';
 import { SystemCheckCard } from '../components/SystemCheckCard';
+import { TooltipContent, TooltipWithLink } from '../components/Tooltips';
 import { apiUrl } from '../config/api';
 import type { HardwareCapabilities } from '../types';
 
@@ -124,17 +126,27 @@ export function WelcomePage() {
         </Text>
 
         <div className={styles.actions}>
-          <Button
-            appearance="primary"
-            size="large"
-            icon={<Play24Regular />}
-            onClick={() => navigate('/create')}
+          <Tooltip
+            content={<TooltipWithLink content={TooltipContent.welcomeCreateNew} />}
+            relationship="description"
           >
-            Create Video
-          </Button>
-          <Button size="large" icon={<Settings24Regular />} onClick={() => navigate('/settings')}>
-            Settings
-          </Button>
+            <Button
+              appearance="primary"
+              size="large"
+              icon={<Play24Regular />}
+              onClick={() => navigate('/create')}
+            >
+              Create Video
+            </Button>
+          </Tooltip>
+          <Tooltip
+            content={<TooltipWithLink content={TooltipContent.welcomeSettings} />}
+            relationship="description"
+          >
+            <Button size="large" icon={<Settings24Regular />} onClick={() => navigate('/settings')}>
+              Settings
+            </Button>
+          </Tooltip>
           <Button size="large" onClick={() => navigate('/onboarding')}>
             Run Onboarding
           </Button>

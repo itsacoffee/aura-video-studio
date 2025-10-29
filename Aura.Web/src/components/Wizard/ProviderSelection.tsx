@@ -23,6 +23,7 @@ import { useEnginesStore } from '../../state/engines';
 import type { PerStageProviderSelection } from '../../state/providers';
 import { ScriptProviders, TtsProviders, VisualsProviders } from '../../state/providers';
 import { useNotifications } from '../Notifications/Toasts';
+import { TooltipContent, TooltipWithLink } from '../Tooltips';
 
 const useStyles = makeStyles({
   section: {
@@ -221,7 +222,7 @@ export function ProviderSelection({ selection, onSelectionChange }: ProviderSele
             <div style={{ display: 'flex', alignItems: 'center' }}>
               TTS Provider
               <Tooltip
-                content="Which text-to-speech engine to use for voice narration"
+                content={<TooltipWithLink content={TooltipContent.voiceProvider} />}
                 relationship="label"
               >
                 <Info24Regular className={styles.infoIcon} />
