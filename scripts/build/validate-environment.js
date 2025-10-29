@@ -67,34 +67,77 @@ function checkNodeVersion() {
     const version = process.version.replace('v', '');
     log(`Node.js version: ${version}`, 'info');
     
-    // Read .nvmrc to get exact required version
+    // Read package.json to get the engines field
+    const packagePath = join(__dirname, '..', '..', 'Aura.Web', 'package.json');
+    let packageJson = {};
+    let engineNodeRange = null;
+    
+    if (existsSync(packagePath)) {
+      packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+      engineNodeRange = packageJson.engines?.node;
+    }
+    
+    // Read .nvmrc to get recommended version
     const nvmrcPath = join(__dirname, '..', '..', 'Aura.Web', '.nvmrc');
-    let requiredVersion = REQUIRED_NODE_VERSION;
+    let recommendedVersion = null;
     
     if (existsSync(nvmrcPath)) {
-      requiredVersion = readFileSync(nvmrcPath, 'utf8').trim();
-      log(`.nvmrc specifies version: ${requiredVersion}`, 'info');
+      recommendedVersion = readFileSync(nvmrcPath, 'utf8').trim();
+      log(`.nvmrc recommends version: ${recommendedVersion}`, 'info');
+    }
+    
+    // Check against package.json engines field (primary validation)
+    if (engineNodeRange) {
+      log(`package.json engines.node: ${engineNodeRange}`, 'info');
       
-      // Check for exact version match
-      if (version === requiredVersion) {
-        log(`Node.js version matches .nvmrc exactly`, 'success');
-        return true;
-      } else {
-        log(`Node.js version mismatch!`, 'error');
-        log(`  Current: ${version}`, 'error');
-        log(`  Required: ${requiredVersion} (from .nvmrc)`, 'error');
-        log('', 'info');
-        log('To fix this issue:', 'info');
-        log(`  1. Install nvm: https://github.com/nvm-sh/nvm (Linux/Mac) or https://github.com/coreybutler/nvm-windows (Windows)`, 'info');
-        log(`  2. Run: nvm install ${requiredVersion}`, 'info');
-        log(`  3. Run: nvm use ${requiredVersion}`, 'info');
-        log(`  Or download Node.js ${requiredVersion} from https://nodejs.org/`, 'info');
-        hasErrors = true;
-        return false;
+      // Parse the range (e.g., ">=18.0.0 <21.0.0")
+      const rangeMatch = engineNodeRange.match(/>=([0-9.]+)\s*<([0-9.]+)/);
+      if (rangeMatch) {
+        const minVersion = rangeMatch[1];
+        const maxVersion = rangeMatch[2];
+        
+        const meetsMin = compareVersions(version, minVersion) >= 0;
+        const meetsMax = compareVersions(version, maxVersion) < 0;
+        
+        if (meetsMin && meetsMax) {
+          log(`Node.js version ${version} is within allowed range ${engineNodeRange}`, 'success');
+          
+          // Warn if not using recommended version
+          if (recommendedVersion && version !== recommendedVersion) {
+            log(`Note: .nvmrc recommends ${recommendedVersion} for consistency`, 'warning');
+            log(`Current version ${version} is still compatible`, 'info');
+            hasWarnings = true;
+          }
+          
+          return true;
+        } else {
+          log(`Node.js version ${version} is outside allowed range ${engineNodeRange}`, 'error');
+          log(`  Current: ${version}`, 'error');
+          log(`  Required: ${engineNodeRange}`, 'error');
+          log('', 'info');
+          log('To fix this issue:', 'info');
+          log(`  Install a Node.js version between ${minVersion} and ${maxVersion}`, 'info');
+          log(`  Recommended: ${recommendedVersion || minVersion}`, 'info');
+          hasErrors = true;
+          return false;
+        }
       }
     }
     
-    // Fallback to minimum version check if .nvmrc not found
+    // Fallback to .nvmrc exact match if no package.json engines
+    if (recommendedVersion) {
+      if (version === recommendedVersion) {
+        log(`Node.js version matches .nvmrc exactly`, 'success');
+        return true;
+      } else {
+        log(`Node.js version mismatch with .nvmrc`, 'warning');
+        log(`  Current: ${version}`, 'warning');
+        log(`  Recommended: ${recommendedVersion}`, 'warning');
+        hasWarnings = true;
+      }
+    }
+    
+    // Final fallback to minimum version check
     if (compareVersions(version, REQUIRED_NODE_VERSION) >= 0) {
       log('Node.js version meets minimum requirements', 'success');
       return true;
