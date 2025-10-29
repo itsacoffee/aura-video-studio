@@ -115,19 +115,19 @@ export const assetService = {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         if (onProgress) {
-          onProgress(attempt === 1 ? 0 : (attempt - 1) / maxRetries * 50);
+          onProgress(attempt === 1 ? 0 : ((attempt - 1) / maxRetries) * 50);
         }
 
         const asset = await post<Asset>(`${API_BASE}/stock/download`, request);
-        
+
         if (onProgress) {
           onProgress(100);
         }
-        
+
         return asset;
       } catch (error: unknown) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         // Don't retry on client errors (4xx)
         const err = error as { response?: { status?: number } };
         if (err.response?.status && err.response.status >= 400 && err.response.status < 500) {
@@ -136,7 +136,7 @@ export const assetService = {
 
         // Wait before retrying (exponential backoff)
         if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
         }
       }
     }

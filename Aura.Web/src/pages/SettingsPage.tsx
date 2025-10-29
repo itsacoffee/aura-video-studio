@@ -1591,8 +1591,8 @@ export function SettingsPage() {
               Quick-start templates with pre-configured provider settings for common use cases
             </Text>
             <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
-              <div 
-                className={styles.profileCard} 
+              <div
+                className={styles.profileCard}
                 role="button"
                 tabIndex={0}
                 onClick={() => applyProfileTemplate('free-only')}
@@ -1629,8 +1629,8 @@ export function SettingsPage() {
                   ElevenLabs for voice (requires key), and free stock sources.
                 </Text>
               </div>
-              <div 
-                className={styles.profileCard} 
+              <div
+                className={styles.profileCard}
                 role="button"
                 tabIndex={0}
                 onClick={() => applyProfileTemplate('pro-max')}

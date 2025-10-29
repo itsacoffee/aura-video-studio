@@ -448,7 +448,9 @@ export function ExportDialog({
               <Field label="Timeline Range">
                 <Dropdown
                   value={exportRange}
-                  onOptionSelect={(_, data) => setExportRange(data.optionValue as 'entire' | 'selection')}
+                  onOptionSelect={(_, data) =>
+                    setExportRange(data.optionValue as 'entire' | 'selection')
+                  }
                 >
                   <Option value="entire">Entire Timeline</Option>
                   <Option value="selection">Selected Region</Option>

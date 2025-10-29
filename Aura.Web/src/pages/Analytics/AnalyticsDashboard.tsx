@@ -259,7 +259,9 @@ export function AnalyticsDashboard() {
       <TabList
         className={styles.tabs}
         selectedValue={selectedTab}
-        onTabSelect={(_, data) => setSelectedTab(data.value as 'overview' | 'videos' | 'insights' | 'patterns')}
+        onTabSelect={(_, data) =>
+          setSelectedTab(data.value as 'overview' | 'videos' | 'insights' | 'patterns')
+        }
       >
         <Tab value="overview" icon={<ChartMultiple24Regular />}>
           Overview

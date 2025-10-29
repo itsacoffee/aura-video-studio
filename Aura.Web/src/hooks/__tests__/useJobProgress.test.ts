@@ -94,10 +94,9 @@ describe('useJobProgress', () => {
       .spyOn(jobsApi, 'subscribeToJobEvents')
       .mockReturnValue(unsubscribeMock);
 
-    const { rerender } = renderHook(
-      ({ jobId }) => useJobProgress(jobId, onProgress),
-      { initialProps: { jobId: jobId1 } }
-    );
+    const { rerender } = renderHook(({ jobId }) => useJobProgress(jobId, onProgress), {
+      initialProps: { jobId: jobId1 },
+    });
 
     expect(subscribeToJobEventsSpy).toHaveBeenCalledTimes(1);
     expect(subscribeToJobEventsSpy).toHaveBeenCalledWith(

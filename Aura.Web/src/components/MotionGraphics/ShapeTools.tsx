@@ -115,103 +115,106 @@ export function ShapeTools({
   const [starPoints, setStarPoints] = useState(5);
   const [innerRadius, setInnerRadius] = useState(0.4);
 
-  const drawPolygon = useCallback((
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    radius: number,
-    sides: number
-  ) => {
-    ctx.beginPath();
-    for (let i = 0; i < sides; i++) {
-      const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
-      const px = x + radius * Math.cos(angle);
-      const py = y + radius * Math.sin(angle);
-      if (i === 0) {
-        ctx.moveTo(px, py);
-      } else {
-        ctx.lineTo(px, py);
+  const drawPolygon = useCallback(
+    (ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, sides: number) => {
+      ctx.beginPath();
+      for (let i = 0; i < sides; i++) {
+        const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+        const px = x + radius * Math.cos(angle);
+        const py = y + radius * Math.sin(angle);
+        if (i === 0) {
+          ctx.moveTo(px, py);
+        } else {
+          ctx.lineTo(px, py);
+        }
       }
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }, []);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    },
+    []
+  );
 
-  const drawStar = useCallback((
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    points: number,
-    outerRadius: number,
-    innerRadius: number
-  ) => {
-    ctx.beginPath();
-    for (let i = 0; i < points * 2; i++) {
-      const radius = i % 2 === 0 ? outerRadius : innerRadius;
-      const angle = (i * Math.PI) / points - Math.PI / 2;
-      const px = x + radius * Math.cos(angle);
-      const py = y + radius * Math.sin(angle);
-      if (i === 0) {
-        ctx.moveTo(px, py);
-      } else {
-        ctx.lineTo(px, py);
+  const drawStar = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      points: number,
+      outerRadius: number,
+      innerRadius: number
+    ) => {
+      ctx.beginPath();
+      for (let i = 0; i < points * 2; i++) {
+        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+        const angle = (i * Math.PI) / points - Math.PI / 2;
+        const px = x + radius * Math.cos(angle);
+        const py = y + radius * Math.sin(angle);
+        if (i === 0) {
+          ctx.moveTo(px, py);
+        } else {
+          ctx.lineTo(px, py);
+        }
       }
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }, []);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    },
+    []
+  );
 
-  const drawShape = useCallback((ctx: CanvasRenderingContext2D, shape: Shape) => {
-    ctx.fillStyle = shape.fill;
-    ctx.strokeStyle = shape.stroke;
-    ctx.lineWidth = shape.strokeWidth;
+  const drawShape = useCallback(
+    (ctx: CanvasRenderingContext2D, shape: Shape) => {
+      ctx.fillStyle = shape.fill;
+      ctx.strokeStyle = shape.stroke;
+      ctx.lineWidth = shape.strokeWidth;
 
-    switch (shape.type) {
-      case 'rectangle':
-        ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
-        ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
-        break;
+      switch (shape.type) {
+        case 'rectangle':
+          ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+          ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+          break;
 
-      case 'circle': {
-        const centerX = shape.x + shape.width / 2;
-        const centerY = shape.y + shape.height / 2;
-        const radius = Math.min(Math.abs(shape.width), Math.abs(shape.height)) / 2;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.stroke();
-        break;
+        case 'circle': {
+          const centerX = shape.x + shape.width / 2;
+          const centerY = shape.y + shape.height / 2;
+          const radius = Math.min(Math.abs(shape.width), Math.abs(shape.height)) / 2;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.stroke();
+          break;
+        }
+
+        case 'polygon': {
+          const centerX = shape.x + shape.width / 2;
+          const centerY = shape.y + shape.height / 2;
+          const radius = Math.min(Math.abs(shape.width), Math.abs(shape.height)) / 2;
+          const numSides = shape.sides || 5;
+          drawPolygon(ctx, centerX, centerY, radius, numSides);
+          break;
+        }
+
+        case 'star': {
+          const centerX = shape.x + shape.width / 2;
+          const centerY = shape.y + shape.height / 2;
+          const outerRadius = Math.min(Math.abs(shape.width), Math.abs(shape.height)) / 2;
+          const numPoints = shape.points || 5;
+          const innerR = (shape.innerRadius || 0.4) * outerRadius;
+          drawStar(ctx, centerX, centerY, numPoints, outerRadius, innerR);
+          break;
+        }
+
+        case 'line':
+          ctx.beginPath();
+          ctx.moveTo(shape.x, shape.y);
+          ctx.lineTo(shape.x + shape.width, shape.y + shape.height);
+          ctx.stroke();
+          break;
       }
-
-      case 'polygon': {
-        const centerX = shape.x + shape.width / 2;
-        const centerY = shape.y + shape.height / 2;
-        const radius = Math.min(Math.abs(shape.width), Math.abs(shape.height)) / 2;
-        const numSides = shape.sides || 5;
-        drawPolygon(ctx, centerX, centerY, radius, numSides);
-        break;
-      }
-
-      case 'star': {
-        const centerX = shape.x + shape.width / 2;
-        const centerY = shape.y + shape.height / 2;
-        const outerRadius = Math.min(Math.abs(shape.width), Math.abs(shape.height)) / 2;
-        const numPoints = shape.points || 5;
-        const innerR = (shape.innerRadius || 0.4) * outerRadius;
-        drawStar(ctx, centerX, centerY, numPoints, outerRadius, innerR);
-        break;
-      }
-
-      case 'line':
-        ctx.beginPath();
-        ctx.moveTo(shape.x, shape.y);
-        ctx.lineTo(shape.x + shape.width, shape.y + shape.height);
-        ctx.stroke();
-        break;
-    }
-  }, [drawPolygon, drawStar]);
+    },
+    [drawPolygon, drawStar]
+  );
 
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;

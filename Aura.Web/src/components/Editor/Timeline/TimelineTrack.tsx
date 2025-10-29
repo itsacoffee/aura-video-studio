@@ -231,9 +231,9 @@ export function TimelineTrack({
           {type}
         </div>
       </div>
-      <div 
-        ref={trackContentRef} 
-        className={styles.trackContent} 
+      <div
+        ref={trackContentRef}
+        className={styles.trackContent}
         role="button"
         tabIndex={0}
         onMouseDown={handleMouseDown}

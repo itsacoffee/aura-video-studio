@@ -135,8 +135,11 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
 
         case 'step-status':
           updated.steps = updated.steps.map((step) =>
-            step.name === (event.data as { step: string; status: JobStep['status'] }).step 
-              ? { ...step, status: (event.data as { step: string; status: JobStep['status'] }).status } 
+            step.name === (event.data as { step: string; status: JobStep['status'] }).step
+              ? {
+                  ...step,
+                  status: (event.data as { step: string; status: JobStep['status'] }).status,
+                }
               : step
           );
           break;
@@ -144,7 +147,10 @@ export function RenderStatusDrawer({ jobId, isOpen, onClose }: RenderStatusDrawe
         case 'step-progress':
           updated.steps = updated.steps.map((step) =>
             step.name === (event.data as { step: string; progressPct: number }).step
-              ? { ...step, progressPct: (event.data as { step: string; progressPct: number }).progressPct }
+              ? {
+                  ...step,
+                  progressPct: (event.data as { step: string; progressPct: number }).progressPct,
+                }
               : step
           );
           break;

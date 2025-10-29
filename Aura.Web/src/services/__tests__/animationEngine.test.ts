@@ -14,11 +14,7 @@ import {
   calculateWorldTransform,
   AnimationUtils,
 } from '../animationEngine';
-import type {
-  MotionPath,
-  TransformProperties,
-  LayerParent,
-} from '../animationEngine';
+import type { MotionPath, TransformProperties, LayerParent } from '../animationEngine';
 
 describe('Animation Engine', () => {
   describe('Easing Functions', () => {

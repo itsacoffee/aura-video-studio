@@ -236,8 +236,8 @@ export function TimelineView() {
       </div>
 
       <div className={styles.timeline}>
-        <div 
-          className={styles.ruler} 
+        <div
+          className={styles.ruler}
           role="button"
           tabIndex={0}
           onClick={handleTimelineClick}
@@ -281,9 +281,9 @@ export function TimelineView() {
 
         <div className={styles.tracks}>
           {tracks.map((track) => (
-            <div 
-              key={track.id} 
-              className={styles.track} 
+            <div
+              key={track.id}
+              className={styles.track}
               role="button"
               tabIndex={0}
               onClick={handleTimelineClick}

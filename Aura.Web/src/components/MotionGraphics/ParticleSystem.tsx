@@ -189,42 +189,45 @@ export function ParticleSystem({
     };
   }, [config, canvasWidth, canvasHeight]);
 
-  const updateParticles = useCallback((deltaTime: number) => {
-    // Emit new particles
-    const particlesToEmit = Math.floor(config.emissionRate * deltaTime);
-    const newParticles: Particle[] = [];
+  const updateParticles = useCallback(
+    (deltaTime: number) => {
+      // Emit new particles
+      const particlesToEmit = Math.floor(config.emissionRate * deltaTime);
+      const newParticles: Particle[] = [];
 
-    for (let i = 0; i < particlesToEmit; i++) {
-      newParticles.push(createParticle());
-    }
+      for (let i = 0; i < particlesToEmit; i++) {
+        newParticles.push(createParticle());
+      }
 
-    // Update existing particles
-    const updatedParticles = [...particles, ...newParticles]
-      .map((particle) => {
-        particle.life -= deltaTime;
+      // Update existing particles
+      const updatedParticles = [...particles, ...newParticles]
+        .map((particle) => {
+          particle.life -= deltaTime;
 
-        if (particle.life <= 0) {
-          return null;
-        }
+          if (particle.life <= 0) {
+            return null;
+          }
 
-        // Apply velocity
-        particle.x += particle.vx * deltaTime;
-        particle.y += particle.vy * deltaTime;
+          // Apply velocity
+          particle.x += particle.vx * deltaTime;
+          particle.y += particle.vy * deltaTime;
 
-        // Apply gravity
-        particle.vy += config.gravity * deltaTime;
+          // Apply gravity
+          particle.vy += config.gravity * deltaTime;
 
-        // Update rotation
-        if (particle.rotation !== undefined && particle.rotationSpeed !== undefined) {
-          particle.rotation += particle.rotationSpeed * deltaTime;
-        }
+          // Update rotation
+          if (particle.rotation !== undefined && particle.rotationSpeed !== undefined) {
+            particle.rotation += particle.rotationSpeed * deltaTime;
+          }
 
-        return particle;
-      })
-      .filter((p) => p !== null) as Particle[];
+          return particle;
+        })
+        .filter((p) => p !== null) as Particle[];
 
-    setParticles(updatedParticles);
-  }, [config, particles, createParticle]);
+      setParticles(updatedParticles);
+    },
+    [config, particles, createParticle]
+  );
 
   const drawParticles = useCallback(() => {
     const canvas = canvasRef.current;

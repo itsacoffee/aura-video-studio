@@ -110,45 +110,51 @@ export function useEffectsWorker() {
   /**
    * Apply effects to an ImageData object using the worker
    */
-  const applyEffects = useCallback((imageData: ImageData, effects: Array<{ type: string; parameters: Record<string, unknown> }>): Promise<ImageData> => {
-    return new Promise((resolve, reject) => {
-      if (!workerRef.current) {
-        reject(new Error('Worker not initialized'));
-        return;
-      }
-
-      const timestamp = Date.now();
-
-      // Store callback
-      callbacksRef.current.set(timestamp, (result, error) => {
-        if (error) {
-          reject(new Error(error));
-        } else if (result) {
-          resolve(result);
-        } else {
-          reject(new Error('No result returned from worker'));
+  const applyEffects = useCallback(
+    (
+      imageData: ImageData,
+      effects: Array<{ type: string; parameters: Record<string, unknown> }>
+    ): Promise<ImageData> => {
+      return new Promise((resolve, reject) => {
+        if (!workerRef.current) {
+          reject(new Error('Worker not initialized'));
+          return;
         }
+
+        const timestamp = Date.now();
+
+        // Store callback
+        callbacksRef.current.set(timestamp, (result, error) => {
+          if (error) {
+            reject(new Error(error));
+          } else if (result) {
+            resolve(result);
+          } else {
+            reject(new Error('No result returned from worker'));
+          }
+        });
+
+        // Send message to worker
+        const message: EffectMessage = {
+          type: 'apply-effects',
+          imageData,
+          effects,
+          timestamp,
+        };
+
+        workerRef.current.postMessage(message);
+
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          if (callbacksRef.current.has(timestamp)) {
+            callbacksRef.current.delete(timestamp);
+            reject(new Error('Worker timeout'));
+          }
+        }, 5000);
       });
-
-      // Send message to worker
-      const message: EffectMessage = {
-        type: 'apply-effects',
-        imageData,
-        effects,
-        timestamp,
-      };
-
-      workerRef.current.postMessage(message);
-
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        if (callbacksRef.current.has(timestamp)) {
-          callbacksRef.current.delete(timestamp);
-          reject(new Error('Worker timeout'));
-        }
-      }, 5000);
-    });
-  }, []);
+    },
+    []
+  );
 
   return { applyEffects };
 }

@@ -61,7 +61,9 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
         if (logsResponse.ok) {
           const logsData = await logsResponse.json();
           if (logsData.logs && Array.isArray(logsData.logs)) {
-            const messages = logsData.logs.map((log: { message?: string }) => log.message || String(log));
+            const messages = logsData.logs.map(
+              (log: { message?: string }) => log.message || String(log)
+            );
             setLogs(messages);
           }
         }

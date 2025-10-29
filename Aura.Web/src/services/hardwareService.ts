@@ -62,7 +62,12 @@ export async function getHardwareInfo(): Promise<HardwareInfo> {
       encoderType,
     };
   } catch (error) {
-    logger.warn('Failed to detect hardware, using software fallback', 'hardwareService', 'detectHardware', { error: String(error) });
+    logger.warn(
+      'Failed to detect hardware, using software fallback',
+      'hardwareService',
+      'detectHardware',
+      { error: String(error) }
+    );
     // Return safe defaults if detection fails
     return {
       cpuCores: 4,

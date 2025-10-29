@@ -429,11 +429,7 @@ export function CreateWizard() {
 
       // Don't show error if request was cancelled
       if (isAbortError(error)) {
-        logger.debug(
-          'Request cancelled by user',
-          'CreateWizard',
-          'handleGenerateVideo'
-        );
+        logger.debug('Request cancelled by user', 'CreateWizard', 'handleGenerateVideo');
         return;
       }
 
@@ -563,11 +559,7 @@ export function CreateWizard() {
 
       // Don't show error if request was cancelled
       if (isAbortError(error)) {
-        logger.debug(
-          'Quick demo request cancelled by user',
-          'CreateWizard',
-          'handleQuickDemo'
-        );
+        logger.debug('Quick demo request cancelled by user', 'CreateWizard', 'handleQuickDemo');
         return;
       }
 
@@ -701,7 +693,9 @@ export function CreateWizard() {
               >
                 <Dropdown
                   value={settings.brief.aspect}
-                  onOptionSelect={(_, data) => updateBrief({ aspect: data.optionValue as Brief['aspect'] })}
+                  onOptionSelect={(_, data) =>
+                    updateBrief({ aspect: data.optionValue as Brief['aspect'] })
+                  }
                 >
                   <Option value="Widescreen16x9">16:9 Widescreen (YouTube, Desktop)</Option>
                   <Option value="Vertical9x16">9:16 Vertical (TikTok, Stories)</Option>
@@ -723,7 +717,13 @@ export function CreateWizard() {
               <Text size={300} style={{ display: 'block', marginBottom: tokens.spacingVerticalL }}>
                 Try a Quick Demo - No setup required!
               </Text>
-              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, justifyContent: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: tokens.spacingHorizontalM,
+                  justifyContent: 'center',
+                }}
+              >
                 <Button
                   appearance="primary"
                   size="large"
@@ -807,7 +807,9 @@ export function CreateWizard() {
                 >
                   <Dropdown
                     value={settings.planSpec.pacing}
-                    onOptionSelect={(_, data) => updatePlanSpec({ pacing: data.optionText as PlanSpec['pacing'] })}
+                    onOptionSelect={(_, data) =>
+                      updatePlanSpec({ pacing: data.optionText as PlanSpec['pacing'] })
+                    }
                   >
                     <Option>Chill</Option>
                     <Option>Conversational</Option>
@@ -1489,7 +1491,9 @@ export function CreateWizard() {
                   icon={<Play24Regular />}
                   onClick={handleGenerate}
                   disabled={
-                    generating || !preflightReport || (!preflightReport.ok && !overridePreflightGate)
+                    generating ||
+                    !preflightReport ||
+                    (!preflightReport.ok && !overridePreflightGate)
                   }
                 >
                   {generating ? 'Generating...' : 'Generate Video'}

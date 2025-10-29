@@ -14,7 +14,7 @@ interface ValidationResult {
  */
 export function validateEnvironment(): void {
   const result = checkEnvironment();
-  
+
   if (!result.isValid) {
     const errorMessage = createErrorMessage(result.errors);
     throw new Error(errorMessage);
@@ -26,10 +26,10 @@ export function validateEnvironment(): void {
  */
 function checkEnvironment(): ValidationResult {
   const errors: string[] = [];
-  
+
   // Check VITE_API_BASE_URL is defined
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-  
+
   if (!apiBaseUrl) {
     errors.push('VITE_API_BASE_URL is not defined');
   } else if (typeof apiBaseUrl !== 'string' || apiBaseUrl.trim() === '') {
@@ -40,16 +40,18 @@ function checkEnvironment(): ValidationResult {
       const url = new URL(apiBaseUrl);
       // Ensure it's HTTP or HTTPS
       if (!['http:', 'https:'].includes(url.protocol)) {
-        errors.push(`VITE_API_BASE_URL has invalid protocol "${url.protocol}" (must be http: or https:)`);
+        errors.push(
+          `VITE_API_BASE_URL has invalid protocol "${url.protocol}" (must be http: or https:)`
+        );
       }
     } catch (e) {
       errors.push(`VITE_API_BASE_URL is not a valid URL: "${apiBaseUrl}"`);
     }
   }
-  
+
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -57,8 +59,8 @@ function checkEnvironment(): ValidationResult {
  * Creates a user-friendly error message with fix instructions
  */
 function createErrorMessage(errors: string[]): string {
-  const errorList = errors.map(e => `  • ${e}`).join('\n');
-  
+  const errorList = errors.map((e) => `  • ${e}`).join('\n');
+
   return `
 Environment Configuration Error
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

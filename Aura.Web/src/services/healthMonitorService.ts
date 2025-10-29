@@ -229,7 +229,11 @@ class HealthMonitorService {
     try {
       // Use Performance API memory info (Chrome only)
       if ('memory' in performance) {
-        const memory = (performance as Performance & { memory: { usedJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
+        const memory = (
+          performance as Performance & {
+            memory: { usedJSHeapSize: number; jsHeapSizeLimit: number };
+          }
+        ).memory;
         const usedMB = memory.usedJSHeapSize / 1048576;
         const limitMB = memory.jsHeapSizeLimit / 1048576;
         const percentage = (usedMB / limitMB) * 100;

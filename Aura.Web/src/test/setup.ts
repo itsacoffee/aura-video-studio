@@ -10,7 +10,7 @@ afterEach(() => {
 // Mock localStorage with actual storage functionality
 const createLocalStorageMock = () => {
   let store: Record<string, string> = {};
-  
+
   return {
     getItem: (key: string) => {
       return store[key] || null;
@@ -34,7 +34,8 @@ const createLocalStorageMock = () => {
   };
 };
 
-(globalThis as typeof globalThis & { localStorage: Storage }).localStorage = createLocalStorageMock();
+(globalThis as typeof globalThis & { localStorage: Storage }).localStorage =
+  createLocalStorageMock();
 
 // Mock ResizeObserver
 class ResizeObserverMock {

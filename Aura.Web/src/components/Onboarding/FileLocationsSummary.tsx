@@ -67,15 +67,17 @@ export function FileLocationsSummary() {
       const response = await fetch(apiUrl('/api/engines/instances'));
       if (response.ok) {
         const data = await response.json();
-        const engineInfo: EngineInfo[] = data.instances.map((instance: Record<string, unknown>) => ({
-          id: instance.engineId,
-          name: instance.engineName || instance.engineId,
-          installPath: instance.installPath,
-          hasWebUI: ['stable-diffusion-webui', 'comfyui', 'sd-webui'].includes(
-            (instance.engineId as string).toLowerCase()
-          ),
-          webUIUrl: instance.port ? `http://localhost:${instance.port}` : undefined,
-        }));
+        const engineInfo: EngineInfo[] = data.instances.map(
+          (instance: Record<string, unknown>) => ({
+            id: instance.engineId,
+            name: instance.engineName || instance.engineId,
+            installPath: instance.installPath,
+            hasWebUI: ['stable-diffusion-webui', 'comfyui', 'sd-webui'].includes(
+              (instance.engineId as string).toLowerCase()
+            ),
+            webUIUrl: instance.port ? `http://localhost:${instance.port}` : undefined,
+          })
+        );
         setEngines(engineInfo);
       }
     } catch (error) {

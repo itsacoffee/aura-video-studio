@@ -106,69 +106,72 @@ export function MaskTools({
   const [opacity, setOpacity] = useState(1);
   const [inverted] = useState(false);
 
-  const drawMask = useCallback((ctx: CanvasRenderingContext2D, mask: MaskShape) => {
-    ctx.save();
+  const drawMask = useCallback(
+    (ctx: CanvasRenderingContext2D, mask: MaskShape) => {
+      ctx.save();
 
-    // Create mask path
-    ctx.beginPath();
+      // Create mask path
+      ctx.beginPath();
 
-    if (mask.type === 'rectangle' && mask.x !== undefined && mask.y !== undefined) {
-      ctx.rect(mask.x, mask.y, mask.width || 0, mask.height || 0);
-    } else if (mask.type === 'circle' && mask.x !== undefined && mask.y !== undefined) {
-      const centerX = mask.x + (mask.width || 0) / 2;
-      const centerY = mask.y + (mask.height || 0) / 2;
-      const radius = Math.min(Math.abs(mask.width || 0), Math.abs(mask.height || 0)) / 2;
-      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-    } else if (mask.type === 'custom-path' && mask.path && mask.path.length > 0) {
-      ctx.moveTo(mask.path[0].x, mask.path[0].y);
-      for (let i = 1; i < mask.path.length; i++) {
-        ctx.lineTo(mask.path[i].x, mask.path[i].y);
+      if (mask.type === 'rectangle' && mask.x !== undefined && mask.y !== undefined) {
+        ctx.rect(mask.x, mask.y, mask.width || 0, mask.height || 0);
+      } else if (mask.type === 'circle' && mask.x !== undefined && mask.y !== undefined) {
+        const centerX = mask.x + (mask.width || 0) / 2;
+        const centerY = mask.y + (mask.height || 0) / 2;
+        const radius = Math.min(Math.abs(mask.width || 0), Math.abs(mask.height || 0)) / 2;
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      } else if (mask.type === 'custom-path' && mask.path && mask.path.length > 0) {
+        ctx.moveTo(mask.path[0].x, mask.path[0].y);
+        for (let i = 1; i < mask.path.length; i++) {
+          ctx.lineTo(mask.path[i].x, mask.path[i].y);
+        }
+        ctx.closePath();
       }
-      ctx.closePath();
-    }
 
-    // Fill mask area with semi-transparent color
-    ctx.fillStyle = inverted
-      ? `rgba(255, 0, 0, ${opacity * 0.3})`
-      : `rgba(0, 255, 0, ${opacity * 0.3})`;
-    ctx.fill();
+      // Fill mask area with semi-transparent color
+      ctx.fillStyle = inverted
+        ? `rgba(255, 0, 0, ${opacity * 0.3})`
+        : `rgba(0, 255, 0, ${opacity * 0.3})`;
+      ctx.fill();
 
-    // Draw mask outline
-    ctx.strokeStyle = tokens.colorBrandForeground1;
-    ctx.lineWidth = 2;
-    ctx.stroke();
+      // Draw mask outline
+      ctx.strokeStyle = tokens.colorBrandForeground1;
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-    ctx.restore();
-  }, [inverted, opacity]);
+      ctx.restore();
+    },
+    [inverted, opacity]
+  );
 
-  const drawCustomPath = useCallback((
-    ctx: CanvasRenderingContext2D,
-    points: Array<{ x: number; y: number }>
-  ) => {
-    if (points.length === 0) return;
+  const drawCustomPath = useCallback(
+    (ctx: CanvasRenderingContext2D, points: Array<{ x: number; y: number }>) => {
+      if (points.length === 0) return;
 
-    ctx.strokeStyle = tokens.colorBrandForeground1;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y);
-    }
-
-    ctx.stroke();
-
-    // Draw points
-    points.forEach((point) => {
-      ctx.fillStyle = tokens.colorBrandBackground;
-      ctx.strokeStyle = tokens.colorBrandStroke1;
+      ctx.strokeStyle = tokens.colorBrandForeground1;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
-      ctx.fill();
+      ctx.moveTo(points[0].x, points[0].y);
+
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+
       ctx.stroke();
-    });
-  }, []);
+
+      // Draw points
+      points.forEach((point) => {
+        ctx.fillStyle = tokens.colorBrandBackground;
+        ctx.strokeStyle = tokens.colorBrandStroke1;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      });
+    },
+    []
+  );
 
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;

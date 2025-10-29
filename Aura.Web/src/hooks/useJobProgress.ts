@@ -9,14 +9,11 @@ import { JobEvent, subscribeToJobEvents } from '../features/render/api/jobs';
 /**
  * Hook for subscribing to job progress updates
  * Automatically manages EventSource lifecycle and cleanup
- * 
+ *
  * @param jobId - The ID of the job to monitor (null to stop monitoring)
  * @param onProgress - Callback when progress event is received
  */
-export function useJobProgress(
-  jobId: string | null,
-  onProgress: (event: JobEvent) => void
-): void {
+export function useJobProgress(jobId: string | null, onProgress: (event: JobEvent) => void): void {
   const cleanupFlagRef = useRef(false);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -1,6 +1,6 @@
 /**
  * Dependency Checker Service
- * 
+ *
  * This service provides programmatic API access to check system dependencies
  * for Aura Video Studio, including FFmpeg, Python, pip packages, GPU detection,
  * and filesystem validation.
@@ -90,11 +90,13 @@ export class DependencyCheckerService {
    */
   async checkFFmpeg(): Promise<DependencyStatus> {
     const result = await this.checkAll();
-    return result.ffmpeg || {
-      installed: false,
-      canAutoInstall: true,
-      error: 'FFmpeg status unavailable',
-    };
+    return (
+      result.ffmpeg || {
+        installed: false,
+        canAutoInstall: true,
+        error: 'FFmpeg status unavailable',
+      }
+    );
   }
 
   /**
@@ -103,10 +105,12 @@ export class DependencyCheckerService {
    */
   async checkPython(): Promise<DependencyStatus> {
     const result = await this.checkAll();
-    return result.python || {
-      installed: false,
-      error: 'Python status unavailable',
-    };
+    return (
+      result.python || {
+        installed: false,
+        error: 'Python status unavailable',
+      }
+    );
   }
 
   /**
