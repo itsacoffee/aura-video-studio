@@ -91,13 +91,9 @@ function checkNodeVersion() {
     if (engineNodeRange) {
       log(`package.json engines.node: ${engineNodeRange}`, 'info');
       
-      // Parse the range - supports common formats:
-      // ">=18.0.0 <21.0.0" (range with min and max)
-      // ">=18.0.0" (minimum only)
-      // "^18.0.0" or "~18.0.0" (caret/tilde ranges - use simplified check)
-      
-      // Try to match range format: >=X <Y or >=X.Y.Z <A.B.C
-      let rangeMatch = engineNodeRange.match(/>=\s*([0-9.]+)\s*<\s*([0-9.]+)/);
+      // Currently supports range format: ">=X.Y.Z <A.B.C"
+      // This matches the project's package.json engines field
+      const rangeMatch = engineNodeRange.match(/>=\s*([0-9.]+)\s*<\s*([0-9.]+)/);
       
       if (rangeMatch) {
         const minVersion = rangeMatch[1];
@@ -128,10 +124,15 @@ function checkNodeVersion() {
           hasErrors = true;
           return false;
         }
+      } else {
+        // package.json engines field exists but format not recognized
+        log(`Warning: package.json engines.node format not recognized: ${engineNodeRange}`, 'warning');
+        log(`Falling back to .nvmrc and minimum version checks`, 'warning');
+        hasWarnings = true;
       }
     }
     
-    // Fallback to .nvmrc exact match if no package.json engines
+    // Fallback to .nvmrc check if no package.json engines or unrecognized format
     if (recommendedVersion) {
       if (version === recommendedVersion) {
         log(`Node.js version matches .nvmrc exactly`, 'success');
