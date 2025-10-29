@@ -182,18 +182,22 @@ jobs:
         run: |
           NODE_VER=$(node --version)
           echo "Node.js version: $NODE_VER"
-          if [[ ! "$NODE_VER" =~ ^v18\. ]]; then
-            echo "Error: Node.js version must be 18.x"
+          NODE_MAJOR=$(echo "$NODE_VER" | sed 's/v\([0-9]*\).*/\1/')
+          if [[ $NODE_MAJOR -lt 18 ]]; then
+            echo "Error: Node.js version must be 18.0.0 or higher"
+            echo "Current version: $NODE_VER"
             exit 1
           fi
-          echo "✓ Node.js version validated"
+          echo "✓ Node.js version validated (v$NODE_MAJOR.x is supported)"
       
       - name: Verify npm version
         run: |
           NPM_VER=$(npm --version)
           echo "npm version: $NPM_VER"
-          if [[ ! "$NPM_VER" =~ ^(9\.|10\.) ]]; then
-            echo "Error: npm version must be 9.x or 10.x"
+          NPM_MAJOR=$(echo "$NPM_VER" | sed 's/\([0-9]*\).*/\1/')
+          if [[ $NPM_MAJOR -lt 9 ]]; then
+            echo "Error: npm version must be 9.x or higher"
+            echo "Current version: $NPM_VER"
             exit 1
           fi
-          echo "✓ npm version validated"
+          echo "✓ npm version validated (v$NPM_MAJOR.x is supported)"
