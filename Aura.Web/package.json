@@ -41,7 +41,7 @@
     "playwright:install": "playwright install --with-deps chromium",
     "docs": "typedoc",
     "docs:watch": "typedoc --watch",
-    "prepare": "cd .. && git config core.hooksPath .husky"
+    "prepare": "node scripts/setup-git-hooks.cjs"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.10",
