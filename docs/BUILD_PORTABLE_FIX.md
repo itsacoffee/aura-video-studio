@@ -29,7 +29,8 @@ The `Aura.Web/package.json` had this prepare script:
 ```
 
 This failed on Windows because:
-- The `cd .. && ...` syntax behaves differently on Windows cmd.exe
+- Windows cmd.exe doesn't support the `&&` operator the same way as Unix shells (it exists but behaves differently in PowerShell contexts)
+- The directory context and command chaining can fail silently
 - If git is not in PATH (common on fresh Windows installs), the command fails
 - When the prepare script fails, npm install fails with it
 
@@ -71,10 +72,10 @@ Now you'll see:
 
 **Before:** Only tried 3 times total (confusing count)
 
-**After:** Clearly tries up to 3 attempts with better messages:
+**After:** Tries up to 3 times total (1 initial + 2 retries if needed):
 - Attempt 1: "Installing npm dependencies..."
-- Attempt 2: "Retry attempt 1 of 2..."
-- Attempt 3: "Retry attempt 2 of 2..."
+- Attempt 2 (if needed): "Retry attempt 1 of 2..."
+- Attempt 3 (if needed): "Retry attempt 2 of 2..."
 
 ## What Changed for You
 
@@ -105,4 +106,4 @@ If npm install fails, you'll now see:
 2. Clear indication of which attempt failed
 3. Helpful suggestions (check internet, npm config, Node version, disk space)
 
-The most common issue on fresh Windows installs was the git hooks setup failing, which is now completely fixed.
+The most common issue on fresh Windows installs (the git hooks setup failing) should now be resolved.
