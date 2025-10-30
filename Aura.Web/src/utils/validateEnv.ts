@@ -35,17 +35,24 @@ function checkEnvironment(): ValidationResult {
   } else if (typeof apiBaseUrl !== 'string' || apiBaseUrl.trim() === '') {
     errors.push('VITE_API_BASE_URL is empty');
   } else {
-    // Validate it's a valid URL
-    try {
-      const url = new URL(apiBaseUrl);
-      // Ensure it's HTTP or HTTPS
-      if (!['http:', 'https:'].includes(url.protocol)) {
-        errors.push(
-          `VITE_API_BASE_URL has invalid protocol "${url.protocol}" (must be http: or https:)`
-        );
+    // Validate it's a valid URL or relative path
+    // Allow relative paths like "/api" for same-origin deployments
+    if (apiBaseUrl.startsWith('/')) {
+      // Relative path - this is valid for same-origin deployments
+      // No further validation needed
+    } else {
+      // Must be a full URL
+      try {
+        const url = new URL(apiBaseUrl);
+        // Ensure it's HTTP or HTTPS
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          errors.push(
+            `VITE_API_BASE_URL has invalid protocol "${url.protocol}" (must be http: or https:)`
+          );
+        }
+      } catch (e) {
+        errors.push(`VITE_API_BASE_URL is not a valid URL or path: "${apiBaseUrl}"`);
       }
-    } catch (e) {
-      errors.push(`VITE_API_BASE_URL is not a valid URL: "${apiBaseUrl}"`);
     }
   }
 

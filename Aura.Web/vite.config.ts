@@ -142,30 +142,9 @@ export default defineConfig(({ mode }) => {
           chunkFileNames: 'assets/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash].[ext]',
           // Improved code splitting strategy
+          //  Don't manually chunk React or Fluent UI - let Vite handle them automatically
+          // to avoid module initialization order issues
           manualChunks: (id) => {
-            // Core React libraries AND Fluent UI (they must be together)
-            // Fluent UI imports React as a namespace and requires all React exports
-            if (
-              id.includes('node_modules/react') ||
-              id.includes('node_modules/react-dom') ||
-              id.includes('node_modules/react-router') ||
-              id.includes('@fluentui/react-components') ||
-              id.includes('@fluentui/react-icons')
-            ) {
-              return 'react-vendor';
-            }
-            // State management
-            if (id.includes('node_modules/zustand')) {
-              return 'state-vendor';
-            }
-            // Form libraries
-            if (id.includes('node_modules/react-hook-form') || id.includes('node_modules/zod')) {
-              return 'form-vendor';
-            }
-            // HTTP client
-            if (id.includes('node_modules/axios')) {
-              return 'http-vendor';
-            }
             // FFmpeg - large library, keep separate
             if (id.includes('@ffmpeg')) {
               return 'ffmpeg-vendor';
@@ -174,14 +153,7 @@ export default defineConfig(({ mode }) => {
             if (id.includes('wavesurfer')) {
               return 'audio-vendor';
             }
-            // Virtual scrolling libraries
-            if (
-              id.includes('node_modules/react-window') ||
-              id.includes('node_modules/react-virtuoso')
-            ) {
-              return 'virtual-vendor';
-            }
-            // All other node_modules
+            // All other node_modules go to vendor chunk
             if (id.includes('node_modules')) {
               return 'vendor';
             }
