@@ -18,6 +18,13 @@ namespace Aura.Tests.Integration;
 /// </summary>
 public class ScriptRefinementPipelineTests
 {
+    // Test timeout thresholds for operations (intentionally generous to accommodate test environment variations)
+    private const int FullPipelineMaxTimeoutMinutes = 10;
+    private const int MinimalPassMaxTimeoutMinutes = 3;
+    private const int SinglePassMaxTimeoutMinutes = 5;
+    private const int TwoPassMaxTimeoutMinutes = 10;
+    
+
     [Fact]
     public async Task FullRefinementPipeline_ImprovesScriptQualityOverIterations()
     {
@@ -90,7 +97,7 @@ public class ScriptRefinementPipelineTests
 
         // Assert - Duration tracking
         Assert.True(result.TotalDuration > TimeSpan.Zero);
-        Assert.True(result.TotalDuration < TimeSpan.FromMinutes(10), 
+        Assert.True(result.TotalDuration < TimeSpan.FromMinutes(FullPipelineMaxTimeoutMinutes), 
             "Refinement should complete in reasonable time");
     }
 
@@ -136,7 +143,7 @@ public class ScriptRefinementPipelineTests
         // Assert
         Assert.True(result.Success);
         Assert.True(result.TotalPasses <= 2, "Should have at most initial + 1 refinement");
-        Assert.True(duration < TimeSpan.FromMinutes(3), 
+        Assert.True(duration < TimeSpan.FromMinutes(MinimalPassMaxTimeoutMinutes), 
             $"Minimal refinement should be fast, took {duration.TotalSeconds:F1}s");
     }
 
@@ -209,9 +216,9 @@ public class ScriptRefinementPipelineTests
                          $"Relative={timeIncrease:F2}x";
         
         // Both should complete in reasonable time (not hang)
-        Assert.True(singlePassResult.TotalDuration < TimeSpan.FromMinutes(5), 
+        Assert.True(singlePassResult.TotalDuration < TimeSpan.FromMinutes(SinglePassMaxTimeoutMinutes), 
             $"Single-pass took too long: {perfMessage}");
-        Assert.True(twoPassResult.TotalDuration < TimeSpan.FromMinutes(10), 
+        Assert.True(twoPassResult.TotalDuration < TimeSpan.FromMinutes(TwoPassMaxTimeoutMinutes), 
             $"Two-pass took too long: {perfMessage}");
     }
 

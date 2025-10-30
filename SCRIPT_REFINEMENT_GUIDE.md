@@ -22,7 +22,7 @@ The Script Refinement Pipeline implements a multi-stage "Draft-Critique-Revise" 
      - Engagement Potential: Predicted viewer engagement
    - Overall score: Weighted average of all dimensions
 
-3. **ScriptRefinementConfig** (`Aura.Core/Models/ScriptQualityMetrics.cs`)
+3. **ScriptRefinementConfig** (`Aura.Core/Models/ScriptQualityMetrics.cs` - contains multiple related classes)
    - Configurable refinement parameters
    - Early stopping conditions
    - Integration settings
