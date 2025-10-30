@@ -204,6 +204,7 @@ export function CreateWizard() {
 
   // Prompt customization state
   const [promptCustomizationOpen, setPromptCustomizationOpen] = useState(false);
+  const handleClosePromptCustomization = () => setPromptCustomizationOpen(false);
 
   // Request cancellation state
   const currentRequestRef = useRef<{ cancel: () => void } | null>(null);
@@ -1308,8 +1309,8 @@ export function CreateWizard() {
                               <PromptCustomizationPanel
                                 brief={settings.brief}
                                 planSpec={settings.planSpec}
-                                onApply={() => setPromptCustomizationOpen(false)}
-                                onClose={() => setPromptCustomizationOpen(false)}
+                                onApply={handleClosePromptCustomization}
+                                onClose={handleClosePromptCustomization}
                               />
                             </DialogContent>
                           </DialogBody>
