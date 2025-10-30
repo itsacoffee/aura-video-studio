@@ -1,294 +1,243 @@
 # Aura Video Studio - Portable Edition
 
-Welcome to Aura Video Studio Portable! This distribution contains everything you need to run Aura Video Studio without installation on Windows 11 (x64).
+## Overview
 
-## 📦 What's Included
+Aura Video Studio is distributed as a **portable-only** application. All data, settings, and dependencies are stored within the application folder, making it easy to move or backup your installation.
 
-This portable distribution includes:
+## What's Included
 
-- **Aura.Api.exe** - Self-contained ASP.NET Core 8 backend (no .NET installation required)
-- **Web UI** - React-based frontend served from `wwwroot`
-- **Launch.bat** - One-click launcher with pre-flight checks
-- **Configuration** - `appsettings.json` for customization
-- **Portable Folder Structure** - Self-contained data directories
-
-## 🚀 Quick Start
-
-1. **Extract the ZIP** to any folder on your computer
-2. **Run Launch.bat** - Double-click to start the application
-3. **Use the app** - Your browser will open automatically to `http://127.0.0.1:5005`
-
-That's it! No installation, no admin rights required.
-
-## 📁 Folder Structure
-
-After extraction, you'll see:
+After extracting the ZIP, you'll have this portable structure:
 
 ```
-AuraVideoStudio/
-├── Api/                    # Backend application
-│   ├── Aura.Api.exe       # Main executable
-│   └── wwwroot/           # Web UI files
-├── AuraData/              # Application data (created on first run)
-├── Projects/              # Your video projects
-├── Downloads/             # Downloaded dependencies (Stable Diffusion models, etc.)
-├── Logs/                  # Application logs
-├── Tools/                 # Optional tools (FFmpeg, etc.)
-├── config/                # Configuration files
-├── Launch.bat             # Launcher script
-├── README.md              # This file
-└── version.json           # Version information
+AuraVideoStudio_Portable_x64/
+├── api/
+│   ├── Aura.Api.exe              ← Main executable
+│   ├── wwwroot/                   ← Web UI files (MUST be here!)
+│   │   ├── index.html
+│   │   └── assets/
+│   └── (runtime dependencies)
+├── Tools/                         ← Downloaded dependencies (empty initially)
+│   └── (FFmpeg, Ollama, etc. installed here)
+├── AuraData/                      ← Application data and settings
+│   ├── settings.json
+│   ├── install-manifest.json
+│   └── README.txt
+├── Logs/                          ← Application logs (created on first run)
+├── Projects/                      ← Generated videos and project files
+├── Downloads/                     ← Temporary download storage
+├── ffmpeg/                        ← Optional pre-bundled FFmpeg
+│   ├── ffmpeg.exe
+│   └── ffprobe.exe
+├── start_portable.cmd             ← Easy launcher with health check
+├── README.md                      ← This file
+├── checksums.txt                  ← File integrity checksums
+└── LICENSE
 ```
 
-## 🔧 Configuration
+## Portable Benefits
 
-### Basic Settings
+✅ **No installation required** - Extract and run  
+✅ **No registry entries** - Everything stored in the app folder  
+✅ **Easy backup** - Copy the entire folder  
+✅ **Multiple installations** - Run different versions side-by-side  
+✅ **Clean uninstall** - Just delete the folder  
 
-Edit `appsettings.json` to customize:
+**Important:** All dependencies and settings are stored within this folder. You can move the entire folder to another location or machine without breaking anything.
+
+## System Requirements
+
+- Windows 10 or Windows 11 (64-bit)
+- 4 GB RAM minimum (8 GB recommended)
+- 2 GB free disk space
+- Modern web browser (Chrome, Edge, Firefox)
+
+## Quick Start
+
+### Option 1: Using the Launcher (Recommended)
+
+1. Extract the ZIP file to any folder (e.g., `C:\Aura` or `D:\Tools\Aura`)
+2. Double-click `start_portable.cmd`
+3. Wait for the launcher to verify the API is healthy
+4. Your default browser will open to `http://127.0.0.1:5005`
+5. The application will create `Logs/`, `AuraData/`, and other folders on first run
+
+### Option 2: Manual Launch
+
+1. Extract the ZIP file to any folder
+2. Navigate to the `api` folder
+3. Double-click `Aura.Api.exe`
+4. Open your web browser and go to `http://127.0.0.1:5005`
+
+## Portable Data Structure
+
+All application data is stored in the extracted folder:
+
+- **Tools/** - Downloaded dependencies (FFmpeg, Ollama, Stable Diffusion, etc.)
+- **AuraData/** - Settings, manifests, and configuration
+  - `settings.json` - User preferences and provider configuration
+  - `install-manifest.json` - Tracks installed components
+- **Logs/** - Application and tool logs (check here for troubleshooting)
+- **Projects/** - Your generated videos and project files
+- **Downloads/** - Temporary storage for downloads in progress
+
+You can move the entire folder to another location or machine, and everything will continue to work (except system dependencies like GPU drivers).
+
+## Troubleshooting
+
+### Port Already in Use
+
+If you see an error that port 5005 is already in use:
+
+1. Close any other Aura Video Studio instances
+2. Check if another application is using port 5005
+3. Kill the process using port 5005 or restart your computer
+
+### Blank White Page / 404 Error
+
+If you see a blank white page or 404 error when accessing `http://127.0.0.1:5005`:
+
+**This is the most common issue and indicates the web UI files are missing.**
+
+**Immediate Fixes:**
+
+1. **Check if Launch.bat gave you an error before starting**
+   - If Launch.bat showed an error about missing `wwwroot` or `index.html`, the build is incomplete
+   - Re-extract the entire ZIP file to a new folder
+   - Make sure you extracted ALL files, not just selected ones
+
+2. **Check the API console window for error messages**
+   - Look for: `[INF] Serving static files from: C:\path\to\Api\wwwroot` ✅ (Good)
+   - If you see: `[ERR] CRITICAL: wwwroot directory not found` ❌ (Problem!)
+   - The error message will tell you exactly what's wrong
+
+3. **Verify the directory structure is correct**
+   ```
+   AuraVideoStudio_Portable_x64/
+   ├── Api/
+   │   ├── wwwroot/              ← Must exist!
+   │   │   ├── index.html        ← Must exist!
+   │   │   └── assets/           ← Must exist!
+   │   └── Aura.Api.exe
+   └── Launch.bat
+   ```
+
+4. **Check that wwwroot folder exists and has files**
+   - Open File Explorer and navigate to the extracted folder
+   - Go to `Api\wwwroot\`
+   - You should see `index.html` and an `assets` folder with JavaScript files
+   - If these are missing, the ZIP file is corrupted or incomplete
+
+**If the problem persists:**
+
+1. **Re-download the ZIP file** - it may have been corrupted during download
+2. **Extract to a simpler path** - avoid spaces and special characters in the path
+3. **Try a different extraction tool** - Windows built-in extractor, 7-Zip, or WinRAR
+4. **Check antivirus logs** - some antivirus software may block or delete files
+
+**For developers rebuilding from source:**
+
+If you built the portable package yourself and encounter this issue:
+
+1. Check that `npm run build` completed successfully in `Aura.Web` folder
+2. Verify that `Aura.Web\dist\` folder contains `index.html` and `assets`
+3. Re-run the build script: `scripts\packaging\build-portable.ps1`
+4. The build script will now validate the web UI files and fail with clear errors if something is wrong
+
+### API Won't Start
+
+If the API fails to start:
+
+1. Check if you have antivirus software blocking the executable
+2. Make sure you extracted all files from the ZIP
+3. Try running `Aura.Api.exe` as administrator
+4. Check the `Logs` folder for error messages
+5. Make sure port 5005 is not already in use by another application
+
+### Other Common Issues
+
+**Browser shows wrong page:**
+1. Clear your browser cache (Ctrl+Shift+Delete)
+2. Try a different web browser (Chrome, Edge, or Firefox work best)
+3. Make sure you're going to `http://127.0.0.1:5005` (not `localhost`)
+
+**Application is slow to start:**
+1. Wait 5-10 seconds for the API to fully initialize
+2. The first startup may take longer as it creates necessary folders
+3. Check the console window - you should see "Application started" message
+
+## Logs
+
+Application logs are stored in the `Logs/` folder at the root of your installation:
+
+- `Logs/aura-api-YYYYMMDD.log` - Daily API log files
+- `Logs/tools/` - Logs from background tools (if any)
+
+Check these files if you encounter issues. Logs include structured information with correlation IDs for debugging.
+
+## Uninstalling
+
+To remove the portable installation:
+
+1. Close the application (close the API window or terminate the process)
+2. Delete the entire extracted folder
+3. All settings and data are contained within - no registry or AppData cleanup needed
+
+## Backing Up Your Installation
+
+To backup your settings and projects:
+
+1. Copy the entire folder to another location
+2. Or just backup specific folders:
+   - `AuraData/` - Settings and configuration
+   - `Projects/` - Your generated videos
+   - `Tools/` - Downloaded dependencies (can be re-downloaded)
+
+## Moving to Another Machine
+
+To move your installation:
+
+1. Copy the entire folder to the new machine
+2. Make sure system dependencies are installed:
+   - .NET 8 Runtime (usually included in the portable build)
+   - GPU drivers (if using GPU features)
+3. Run `start_portable.cmd`
+4. All your settings, projects, and tools will work immediately
+
+Note: Downloaded tools in the `Tools/` folder are portable, but you may need to re-download them if they depend on specific system configurations.
+
+## Firewall and Security
+
+**Firewall Prompt**: Windows Firewall may ask for permission when you first run `Aura.Api.exe`. This is normal - the API needs to accept local HTTP connections on port 5005. Click "Allow access" to continue.
+
+**Security**: The application only listens on localhost (127.0.0.1) and is not accessible from other machines unless you explicitly configure it.
+
+## Health Check
+
+To verify the API is running correctly, open `http://127.0.0.1:5005/healthz` in your browser. You should see:
 
 ```json
 {
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information"
-    }
-  },
-  "Urls": "http://127.0.0.1:5005",
-  "AllowedHosts": "*"
+  "status": "healthy",
+  "timestamp": "2025-10-08T04:00:00.0000000Z"
 }
 ```
 
-### Custom Port
+## API Endpoints
 
-To run on a different port, edit `appsettings.json`:
+The API provides the following endpoints:
 
-```json
-{
-  "Urls": "http://127.0.0.1:8080"
-}
-```
+- `GET /healthz` - Health check
+- `GET /capabilities` - Hardware capabilities
+- `POST /script` - Generate video script
+- `POST /tts` - Text-to-speech synthesis
+- `POST /render` - Render video
+- And more... (see API documentation)
 
-Then access the app at `http://127.0.0.1:8080` instead.
+## Support
 
-## 🎥 FFmpeg Setup
+For issues, questions, or feature requests, please visit:
+https://github.com/Coffee285/aura-video-studio/issues
 
-Aura Video Studio requires FFmpeg for video rendering.
+## License
 
-### Option 1: Automatic (Recommended)
-
-The application includes a **Download Center** that can automatically download and configure FFmpeg for you on first run.
-
-### Option 2: Manual Installation
-
-If FFmpeg is already installed on your system:
-
-1. Download FFmpeg from [ffmpeg.org](https://ffmpeg.org/download.html)
-2. Extract to `Tools/ffmpeg/` folder (create if needed)
-3. Or add FFmpeg to your Windows PATH
-
-### Option 3: Bundled (Pre-configured)
-
-Some distributions may come with FFmpeg pre-bundled in the `ffmpeg/` folder. If you see this folder, FFmpeg is already configured.
-
-## 🖥️ Hardware Acceleration
-
-Aura Video Studio supports hardware-accelerated video encoding:
-
-- **NVIDIA GPUs**: NVENC (RTX 20/30/40 series recommended)
-- **AMD GPUs**: AMF
-- **Intel GPUs**: QuickSync
-- **Fallback**: Software encoding (CPU-only)
-
-The application will automatically detect your hardware and use the best available encoder.
-
-## 🔍 Troubleshooting
-
-### Application Won't Start
-
-**Symptoms:** Launch.bat closes immediately or shows errors
-
-**Solutions:**
-
-1. **Check extraction** - Ensure all files were extracted from the ZIP
-2. **Antivirus** - Add the folder to your antivirus exclusions
-3. **Windows Defender** - Allow the application if prompted
-4. **Port conflict** - Make sure port 5005 isn't already in use
-5. **Check logs** - Look in `Logs/` folder for error details
-
-### White Screen / Blank Page
-
-**Symptoms:** Browser opens but shows white/blank page
-
-**Solutions:**
-
-1. **Wait for startup** - First launch may take 10-20 seconds
-2. **Force refresh** - Press `Ctrl+Shift+R` in your browser
-3. **Check diagnostics** - Visit `http://127.0.0.1:5005/diag` for system status
-4. **Clear browser cache** - Try in private/incognito mode
-5. **Check wwwroot** - Verify `Api/wwwroot/index.html` exists
-
-### Server Not Ready Timeout
-
-**Symptoms:** Launcher shows "Server did not respond after X attempts"
-
-**Solutions:**
-
-1. **Wait longer** - Server may still be starting (check Task Manager for Aura.Api.exe)
-2. **Check firewall** - Ensure Windows Firewall isn't blocking port 5005
-3. **Manual check** - Visit `http://127.0.0.1:5005/health/live` in your browser
-4. **Restart** - Close all Aura processes and run Launch.bat again
-
-### FFmpeg Not Found
-
-**Symptoms:** Video rendering fails with "FFmpeg not available"
-
-**Solutions:**
-
-1. **Use Download Center** - Let the app download FFmpeg automatically
-2. **Manual install** - Download from [ffmpeg.org](https://ffmpeg.org) and extract to `Tools/ffmpeg/`
-3. **System PATH** - Install FFmpeg system-wide using `winget install ffmpeg`
-4. **Verify** - Open Command Prompt and run `ffmpeg -version`
-
-### Performance Issues
-
-**Symptoms:** Slow video generation or rendering
-
-**Solutions:**
-
-1. **Hardware acceleration** - Ensure GPU drivers are up to date
-2. **Disk space** - Keep at least 10GB free space
-3. **Background apps** - Close unnecessary applications
-4. **Provider settings** - Use local providers (Piper TTS, Stable Diffusion) for offline use
-5. **Check GPU** - Visit `/diag` endpoint to see detected hardware
-
-## 📊 System Requirements
-
-### Minimum Requirements
-
-- **OS**: Windows 11 (64-bit)
-- **RAM**: 8GB
-- **Storage**: 5GB free space
-- **CPU**: Modern x64 processor
-- **Network**: Internet connection (for AI providers)
-
-### Recommended Requirements
-
-- **OS**: Windows 11 (64-bit)
-- **RAM**: 16GB or more
-- **Storage**: 20GB free space (for models and cache)
-- **CPU**: Multi-core processor (6+ cores)
-- **GPU**: NVIDIA RTX 20-series or newer with 4GB+ VRAM
-- **Network**: Broadband internet connection
-
-## 🔐 Privacy & Security
-
-### Data Storage
-
-- All data stays on **your computer** in the portable folder
-- No telemetry or tracking
-- No external data collection
-- Your projects and settings are fully portable
-
-### API Keys
-
-If you use premium AI providers (OpenAI, ElevenLabs, etc.):
-
-- API keys are stored in `AuraData/settings.json`
-- Keep this file secure and never share it
-- Consider using environment variables for additional security
-
-### Network Access
-
-The application only makes network requests to:
-
-- AI provider APIs (if configured)
-- Dependency downloads (ffmpeg, models) when requested
-- No other external connections
-
-## 🆘 Getting Help
-
-### Diagnostic Tools
-
-1. **Health Check**: Visit `http://127.0.0.1:5005/health/ready`
-2. **Diagnostics Page**: Visit `http://127.0.0.1:5005/diag`
-3. **Log Files**: Check `Logs/` folder for detailed error information
-
-### Support Resources
-
-- **Documentation**: [github.com/itsacoffee/aura-video-studio](https://github.com/itsacoffee/aura-video-studio)
-- **Issues**: Report bugs on GitHub Issues
-- **Discussions**: Ask questions on GitHub Discussions
-
-### Diagnostic Script
-
-For automated diagnostics, developers can use:
-
-```powershell
-# From the portable folder
-powershell -File scripts/diagnostics/diagnose-white-screen.ps1
-```
-
-## 🔄 Updates
-
-### Check for Updates
-
-The application includes an auto-update checker that will notify you when new versions are available.
-
-### Manual Update
-
-1. Download the latest portable ZIP from GitHub Releases
-2. Extract to a new folder
-3. Copy your `AuraData/` folder from the old version
-4. Run Launch.bat from the new version
-
-Your projects and settings will be preserved.
-
-## 🚀 Advanced Usage
-
-### Command Line Arguments
-
-Run the API directly for advanced scenarios:
-
-```batch
-cd Api
-Aura.Api.exe --urls "http://0.0.0.0:5005"
-```
-
-### Multiple Instances
-
-To run multiple instances:
-
-1. Copy the entire portable folder
-2. Edit `appsettings.json` in each copy to use different ports
-3. Run Launch.bat from each folder
-
-### Offline Mode
-
-For completely offline usage:
-
-1. Download FFmpeg to `Tools/ffmpeg/`
-2. Download Stable Diffusion model to `Downloads/models/`
-3. Use local providers: Piper TTS, RuleBased LLM
-4. Configure in Settings > Providers
-
-## 📝 License
-
-This software is distributed under the terms specified in the LICENSE file included in this distribution.
-
-## 🎉 Getting Started
-
-Ready to create your first video?
-
-1. Launch the application
-2. Click **"Quick Demo"** for a guided first experience
-3. Or use **"Create Video"** wizard for custom content
-
-Enjoy creating AI-powered videos with Aura Video Studio!
-
----
-
-**Version**: Check `version.json` for build information  
-**Platform**: Windows 11 (x64)  
-**Build Type**: Self-contained portable distribution
-
-For more information, visit: [github.com/itsacoffee/aura-video-studio](https://github.com/itsacoffee/aura-video-studio)
+See the LICENSE file included in this distribution.
