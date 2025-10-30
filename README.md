@@ -47,12 +47,16 @@ cd Aura.Api
 dotnet run
 ```
 
+**⚠️ First Time Running?**  
+📖 **[First Run Guide](FIRST_RUN_GUIDE.md)** - Essential setup steps to avoid white screen issues
+
 **For detailed setup instructions, troubleshooting, and development workflow:**  
 📖 **[Complete Build Guide](docs/developer/BUILD_GUIDE.md)**
 
 ### Troubleshooting
 
 **Common issues:**
+- **White screen / "Application Failed to Initialize"**: Frontend not built - see [First Run Guide](FIRST_RUN_GUIDE.md)
 - **"Path too long" error**: Enable Windows long path support (see BUILD_GUIDE.md)
 - **"Module not found"**: Delete `node_modules` and run `npm install` again
 - **"Permission denied"**: Run terminal as Administrator or check antivirus
