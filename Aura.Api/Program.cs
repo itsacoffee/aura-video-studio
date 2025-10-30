@@ -185,6 +185,10 @@ builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationContex
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ProjectContextManager>();
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationalLlmService>();
 
+// Add Prompt Engineering services
+builder.Services.AddSingleton<Aura.Core.Services.AI.PromptCustomizationService>();
+builder.Services.AddScoped<Aura.Core.Services.AI.ChainOfThoughtOrchestrator>();
+
 // Register Profile Management services
 builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfilePersistence>(sp =>
 {

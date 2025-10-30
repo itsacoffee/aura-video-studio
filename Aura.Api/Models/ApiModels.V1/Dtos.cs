@@ -24,7 +24,17 @@ public record ScriptRequest(
     ApiV1.Density Density, 
     string Style, 
     string? ProviderTier,
-    ProviderSelectionDto? ProviderSelection);
+    ProviderSelectionDto? ProviderSelection,
+    PromptModifiersDto? PromptModifiers = null);
+
+/// <summary>
+/// User customization options for prompt engineering
+/// </summary>
+public record PromptModifiersDto(
+    string? AdditionalInstructions = null,
+    string? ExampleStyle = null,
+    bool EnableChainOfThought = false,
+    string? PromptVersion = null);
 
 public record TtsRequest(
     List<LineDto> Lines, 
@@ -219,4 +229,92 @@ public record QuotaStatusResponse(
     int Remaining,
     int Limit,
     DateTime? ResetTime);
+
+/// <summary>
+/// Request for prompt preview with variable substitutions
+/// </summary>
+public record PromptPreviewRequest(
+    string Topic,
+    string? Audience,
+    string? Goal,
+    string Tone,
+    string Language,
+    ApiV1.Aspect Aspect,
+    double TargetDurationMinutes,
+    ApiV1.Pacing Pacing,
+    ApiV1.Density Density,
+    string Style,
+    PromptModifiersDto? PromptModifiers = null);
+
+/// <summary>
+/// Response containing prompt preview with substitutions
+/// </summary>
+public record PromptPreviewResponse(
+    string SystemPrompt,
+    string UserPrompt,
+    string FinalPrompt,
+    Dictionary<string, string> SubstitutedVariables,
+    string PromptVersion,
+    int EstimatedTokens);
+
+/// <summary>
+/// Few-shot example for a specific video type
+/// </summary>
+public record FewShotExampleDto(
+    string VideoType,
+    string ExampleName,
+    string Description,
+    string SampleBrief,
+    string SampleOutput,
+    string[] KeyTechniques);
+
+/// <summary>
+/// Response containing list of available few-shot examples
+/// </summary>
+public record ListExamplesResponse(
+    List<FewShotExampleDto> Examples,
+    List<string> VideoTypes);
+
+/// <summary>
+/// Prompt version information
+/// </summary>
+public record PromptVersionDto(
+    string Version,
+    string Name,
+    string Description,
+    bool IsDefault);
+
+/// <summary>
+/// Response containing available prompt versions
+/// </summary>
+public record ListPromptVersionsResponse(
+    List<PromptVersionDto> Versions,
+    string DefaultVersion);
+
+/// <summary>
+/// Chain-of-thought stage result
+/// </summary>
+public record ChainOfThoughtStageDto(
+    string Stage,
+    string Content,
+    bool RequiresUserReview,
+    string? SuggestedEdits);
+
+/// <summary>
+/// Request to execute a chain-of-thought stage
+/// </summary>
+public record ExecuteChainOfThoughtStageRequest(
+    string Stage,
+    string Topic,
+    string? Audience,
+    string? Goal,
+    string Tone,
+    string Language,
+    ApiV1.Aspect Aspect,
+    double TargetDurationMinutes,
+    ApiV1.Pacing Pacing,
+    ApiV1.Density Density,
+    string Style,
+    string? PreviousStageContent = null,
+    PromptModifiersDto? PromptModifiers = null);
 
