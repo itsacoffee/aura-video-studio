@@ -142,7 +142,7 @@ export default defineConfig(({ mode }) => {
           chunkFileNames: 'assets/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash].[ext]',
           // Improved code splitting strategy
-          //  Don't manually chunk React or Fluent UI - let Vite handle them automatically
+          // Don't manually chunk React or Fluent UI - let Vite handle them automatically
           // to avoid module initialization order issues
           manualChunks: (id) => {
             // FFmpeg - large library, keep separate
@@ -154,6 +154,8 @@ export default defineConfig(({ mode }) => {
               return 'audio-vendor';
             }
             // All other node_modules go to vendor chunk
+            // This includes React, React-DOM, Fluent UI, and other dependencies
+            // Automatic bundling ensures proper module initialization order
             if (id.includes('node_modules')) {
               return 'vendor';
             }
