@@ -24,7 +24,12 @@ public record PromptModifiers(
     bool EnableChainOfThought = false,
     string? PromptVersion = null);
 
-public record PlanSpec(TimeSpan TargetDuration, Pacing Pacing, Density Density, string Style);
+public record PlanSpec(
+    TimeSpan TargetDuration, 
+    Pacing Pacing, 
+    Density Density, 
+    string Style,
+    ScriptRefinementConfig? RefinementConfig = null);
 
 public record VoiceSpec(string VoiceName, double Rate, double Pitch, PauseStyle Pause);
 
@@ -44,7 +49,8 @@ public record RenderSpec(
     int Fps = 30,
     string Codec = "H264",
     int QualityLevel = 75,
-    bool EnableSceneCut = true);
+    bool EnableSceneCut = true,
+    ScriptRefinementConfig? RefinementConfig = null);
 
 public record RenderProgress(float Percentage, TimeSpan Elapsed, TimeSpan Remaining, string CurrentStage);
 
