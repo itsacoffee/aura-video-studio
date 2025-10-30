@@ -1,8 +1,8 @@
-import { defineConfig, Plugin } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
-import { visualizer } from 'rollup-plugin-visualizer'
-import viteCompression from 'vite-plugin-compression'
+import { defineConfig, Plugin } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import { visualizer } from 'rollup-plugin-visualizer';
+import viteCompression from 'vite-plugin-compression';
 
 /**
  * Performance Budget Plugin
@@ -16,8 +16,8 @@ function performanceBudgetPlugin(): Plugin {
     'fluent-icons': 150,
     'ffmpeg-vendor': 500,
     'audio-vendor': 100,
-    'vendor': 300,
-    'total': 1500, // Total bundle size budget
+    vendor: 300,
+    total: 1500, // Total bundle size budget
   };
 
   return {
@@ -32,7 +32,7 @@ function performanceBudgetPlugin(): Plugin {
         if (chunk.type === 'chunk' && 'code' in chunk) {
           const size = chunk.code.length / 1024; // Convert to KB
           totalSize += size;
-          
+
           // Extract chunk name
           const chunkName = fileName.replace(/^assets\//, '').replace(/-[a-f0-9]+\.js$/, '');
           chunks[chunkName] = (chunks[chunkName] || 0) + size;
@@ -55,14 +55,18 @@ function performanceBudgetPlugin(): Plugin {
 
       // Check total size
       if (totalSize > budgets.total) {
-        console.warn(`⚠️  Total bundle size: ${totalSize.toFixed(2)}KB exceeds budget of ${budgets.total}KB`);
+        console.warn(
+          `⚠️  Total bundle size: ${totalSize.toFixed(2)}KB exceeds budget of ${budgets.total}KB`
+        );
         hasViolations = true;
       } else {
         console.log(`✅ Total bundle size: ${totalSize.toFixed(2)}KB (budget: ${budgets.total}KB)`);
       }
 
       if (hasViolations) {
-        console.warn('\n⚠️  Performance budget violations detected! Consider code splitting or removing unused dependencies.\n');
+        console.warn(
+          '\n⚠️  Performance budget violations detected! Consider code splitting or removing unused dependencies.\n'
+        );
       } else {
         console.log('\n✅ All performance budgets met!\n');
       }
@@ -72,8 +76,8 @@ function performanceBudgetPlugin(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const isProduction = mode === 'production'
-  
+  const isProduction = mode === 'production';
+
   return {
     plugins: [
       react(),
@@ -112,8 +116,8 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: 'http://127.0.0.1:5005',
           changeOrigin: true,
-        }
-      }
+        },
+      },
     },
     build: {
       outDir: 'dist',
@@ -139,26 +143,23 @@ export default defineConfig(({ mode }) => {
           assetFileNames: 'assets/[name]-[hash].[ext]',
           // Improved code splitting strategy
           manualChunks: (id) => {
-            // Core React libraries
-            if (id.includes('node_modules/react') || 
-                id.includes('node_modules/react-dom') || 
-                id.includes('node_modules/react-router')) {
+            // Core React libraries AND Fluent UI (they must be together)
+            // Fluent UI imports React as a namespace and requires all React exports
+            if (
+              id.includes('node_modules/react') ||
+              id.includes('node_modules/react-dom') ||
+              id.includes('node_modules/react-router') ||
+              id.includes('@fluentui/react-components') ||
+              id.includes('@fluentui/react-icons')
+            ) {
               return 'react-vendor';
-            }
-            // Fluent UI components - split into smaller chunks
-            if (id.includes('@fluentui/react-components')) {
-              return 'fluent-components';
-            }
-            if (id.includes('@fluentui/react-icons')) {
-              return 'fluent-icons';
             }
             // State management
             if (id.includes('node_modules/zustand')) {
               return 'state-vendor';
             }
             // Form libraries
-            if (id.includes('node_modules/react-hook-form') || 
-                id.includes('node_modules/zod')) {
+            if (id.includes('node_modules/react-hook-form') || id.includes('node_modules/zod')) {
               return 'form-vendor';
             }
             // HTTP client
@@ -174,8 +175,10 @@ export default defineConfig(({ mode }) => {
               return 'audio-vendor';
             }
             // Virtual scrolling libraries
-            if (id.includes('node_modules/react-window') || 
-                id.includes('node_modules/react-virtuoso')) {
+            if (
+              id.includes('node_modules/react-window') ||
+              id.includes('node_modules/react-virtuoso')
+            ) {
               return 'virtual-vendor';
             }
             // All other node_modules
@@ -193,7 +196,11 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
-      include: ['src/**/*.test.{ts,tsx}', 'tests/smoke/**/*.test.ts', 'tests/integration/**/*.test.ts'],
+      include: [
+        'src/**/*.test.{ts,tsx}',
+        'tests/smoke/**/*.test.ts',
+        'tests/integration/**/*.test.ts',
+      ],
       exclude: ['tests/e2e/**', 'node_modules/**'],
       coverage: {
         provider: 'v8',
@@ -204,10 +211,10 @@ export default defineConfig(({ mode }) => {
           lines: 70,
           branches: 70,
           statements: 70,
-          perFile: true
+          perFile: true,
         },
         all: false,
-      }
-    }
-  }
-})
+      },
+    },
+  };
+});
