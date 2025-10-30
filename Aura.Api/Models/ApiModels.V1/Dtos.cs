@@ -25,7 +25,8 @@ public record ScriptRequest(
     string Style, 
     string? ProviderTier,
     ProviderSelectionDto? ProviderSelection,
-    PromptModifiersDto? PromptModifiers = null);
+    PromptModifiersDto? PromptModifiers = null,
+    ScriptRefinementConfigDto? RefinementConfig = null);
 
 /// <summary>
 /// User customization options for prompt engineering
@@ -35,6 +36,16 @@ public record PromptModifiersDto(
     string? ExampleStyle = null,
     bool EnableChainOfThought = false,
     string? PromptVersion = null);
+
+/// <summary>
+/// Configuration for multi-stage script refinement pipeline
+/// </summary>
+public record ScriptRefinementConfigDto(
+    int MaxRefinementPasses = 2,
+    double QualityThreshold = 85.0,
+    double MinimumImprovement = 5.0,
+    bool EnableAdvisorValidation = true,
+    int PassTimeoutMinutes = 2);
 
 public record TtsRequest(
     List<LineDto> Lines, 
@@ -317,4 +328,32 @@ public record ExecuteChainOfThoughtStageRequest(
     string Style,
     string? PreviousStageContent = null,
     PromptModifiersDto? PromptModifiers = null);
+
+/// <summary>
+/// Script quality metrics for a single iteration
+/// </summary>
+public record ScriptQualityMetricsDto(
+    double NarrativeCoherence,
+    double PacingAppropriateness,
+    double AudienceAlignment,
+    double VisualClarity,
+    double EngagementPotential,
+    double OverallScore,
+    int Iteration,
+    DateTime AssessedAt,
+    List<string>? Issues = null,
+    List<string>? Suggestions = null,
+    List<string>? Strengths = null);
+
+/// <summary>
+/// Result of multi-stage script refinement
+/// </summary>
+public record ScriptRefinementResultDto(
+    string FinalScript,
+    List<ScriptQualityMetricsDto> IterationMetrics,
+    int TotalPasses,
+    string StopReason,
+    double TotalDurationSeconds,
+    bool Success,
+    string? ErrorMessage = null);
 
