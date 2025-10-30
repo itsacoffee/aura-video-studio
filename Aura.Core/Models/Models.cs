@@ -3,7 +3,26 @@ using System.Collections.Generic;
 
 namespace Aura.Core.Models;
 
-public record Brief(string Topic, string? Audience, string? Goal, string Tone, string Language, Aspect Aspect);
+/// <summary>
+/// Brief configuration for video generation with optional prompt customization
+/// </summary>
+public record Brief(
+    string Topic, 
+    string? Audience, 
+    string? Goal, 
+    string Tone, 
+    string Language, 
+    Aspect Aspect,
+    PromptModifiers? PromptModifiers = null);
+
+/// <summary>
+/// User customization options for prompt engineering
+/// </summary>
+public record PromptModifiers(
+    string? AdditionalInstructions = null,
+    string? ExampleStyle = null,
+    bool EnableChainOfThought = false,
+    string? PromptVersion = null);
 
 public record PlanSpec(TimeSpan TargetDuration, Pacing Pacing, Density Density, string Style);
 
