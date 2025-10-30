@@ -7,12 +7,14 @@ using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
 using Aura.Core.Providers;
+using Aura.Core.Services.AI;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Llm;
 
 /// <summary>
 /// LLM provider that uses Azure OpenAI API for script generation (Pro feature).
+/// Supports prompt customization from user preferences.
 /// </summary>
 public class AzureOpenAiLlmProvider : ILlmProvider
 {
@@ -23,6 +25,7 @@ public class AzureOpenAiLlmProvider : ILlmProvider
     private readonly string _deploymentName;
     private readonly int _maxRetries;
     private readonly TimeSpan _timeout;
+    private readonly PromptCustomizationService _promptCustomizationService;
 
     public AzureOpenAiLlmProvider(
         ILogger<AzureOpenAiLlmProvider> logger,
@@ -31,7 +34,8 @@ public class AzureOpenAiLlmProvider : ILlmProvider
         string endpoint,
         string deploymentName = "gpt-4",
         int maxRetries = 2,
-        int timeoutSeconds = 120)
+        int timeoutSeconds = 120,
+        PromptCustomizationService? promptCustomizationService = null)
     {
         _logger = logger;
         _httpClient = httpClient;
@@ -40,6 +44,18 @@ public class AzureOpenAiLlmProvider : ILlmProvider
         _deploymentName = deploymentName;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        
+        // Create PromptCustomizationService if not provided (using logger factory pattern)
+        if (promptCustomizationService == null)
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Warning));
+            var customizationLogger = loggerFactory.CreateLogger<PromptCustomizationService>();
+            _promptCustomizationService = new PromptCustomizationService(customizationLogger);
+        }
+        else
+        {
+            _promptCustomizationService = promptCustomizationService;
+        }
 
         ValidateConfiguration();
     }
@@ -104,9 +120,9 @@ public class AzureOpenAiLlmProvider : ILlmProvider
                     await Task.Delay(backoffDelay, ct);
                 }
 
-                // Build enhanced prompts for quality content
+                // Build enhanced prompts for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-                string userPrompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
+                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
 
                 // Call Azure OpenAI API
                 var requestBody = new

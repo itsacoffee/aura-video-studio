@@ -70,10 +70,11 @@ See [BUILD_GUIDE.md](docs/developer/BUILD_GUIDE.md) for complete troubleshooting
 **Web-Based Architecture: ✅ IMPLEMENTED**
 
 This repository contains:
-- ✅ 92 tests passing (100% pass rate)
-- ✅ ~5,000+ lines of production code
+- ✅ 143 tests passing (100% pass rate)
+- ✅ ~7,500+ lines of production code
 - ✅ **Aura.Api** - ASP.NET Core backend with RESTful endpoints
 - ✅ **Aura.Web** - React + Vite + TypeScript + Fluent UI frontend
+- ✅ **Advanced Prompt Engineering** - Customize AI prompts, few-shot examples, chain-of-thought
 - ✅ Complete hardware detection with NVIDIA-only SD gating
 - ✅ Provider system with free/pro mixing and automatic fallback
 - ✅ FFmpeg render pipeline with multi-encoder support
@@ -142,6 +143,55 @@ The API provides production-grade health check endpoints for monitoring system s
 ```
 
 📖 **Documentation:** [docs/api/health.md](./docs/api/health.md)
+
+## 🎨 Advanced Prompt Engineering
+
+Aura Video Studio features a sophisticated prompt engineering framework that lets you customize how AI generates video scripts.
+
+### Features
+
+- **Custom Instructions:** Add your own guidelines to influence script generation
+- **Few-Shot Examples:** 15 curated examples across 5 video types (Educational, Entertainment, Tutorial, Documentary, Promotional)
+- **Prompt Versions:** Choose from multiple optimization strategies:
+  - `default-v1` - Balanced quality for general use
+  - `high-engagement-v1` - Optimized for maximum viewer retention
+  - `educational-deep-v1` - Comprehensive explanations for learning content
+- **Chain-of-Thought:** Break generation into 3 iterative stages (Topic Analysis → Outline → Full Script)
+- **Security Validation:** Built-in protection against prompt injection attacks
+- **Preset Management:** Save and reuse successful prompt configurations
+
+### Quick Example
+
+```typescript
+// Generate preview with custom prompt
+const preview = await fetch('http://localhost:5005/api/prompts/preview', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    topic: 'Machine Learning Basics',
+    tone: 'informative',
+    targetDurationMinutes: 3,
+    promptModifiers: {
+      additionalInstructions: 'Focus on practical examples',
+      promptVersion: 'educational-deep-v1',
+      exampleStyle: 'Science Explainer'
+    }
+  })
+});
+```
+
+### Documentation
+
+- 📖 **[User Guide](PROMPT_CUSTOMIZATION_USER_GUIDE.md)** - Complete guide for end users
+- 📖 **[API Documentation](PROMPT_ENGINEERING_API.md)** - Developer API reference
+- 📖 **[Implementation Details](PROMPT_ENGINEERING_IMPLEMENTATION.md)** - Technical architecture
+
+### API Endpoints
+
+- `POST /api/prompts/preview` - Generate prompt preview with variable substitutions
+- `GET /api/prompts/list-examples` - Get few-shot examples (optionally filtered by type)
+- `GET /api/prompts/versions` - List available prompt versions
+- `POST /api/prompts/validate-instructions` - Validate custom instructions for security
 
 ## 🛡️ Rate Limiting
 
