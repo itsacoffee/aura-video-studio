@@ -7,13 +7,14 @@ using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
 using Aura.Core.Providers;
+using Aura.Core.Services.AI;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Llm;
 
 /// <summary>
 /// LLM provider that uses a local Ollama instance for script generation.
-/// Supports optional ML-driven enhancements via callbacks.
+/// Supports optional ML-driven enhancements via callbacks and prompt customization.
 /// </summary>
 public class OllamaLlmProvider : ILlmProvider
 {
@@ -23,6 +24,7 @@ public class OllamaLlmProvider : ILlmProvider
     private readonly string _model;
     private readonly int _maxRetries;
     private readonly TimeSpan _timeout;
+    private readonly PromptCustomizationService _promptCustomizationService;
 
     /// <summary>
     /// Optional callback to enhance prompts before generation
@@ -40,7 +42,8 @@ public class OllamaLlmProvider : ILlmProvider
         string baseUrl = "http://127.0.0.1:11434",
         string model = "llama3.1:8b-q4_k_m",
         int maxRetries = 2,
-        int timeoutSeconds = 120)
+        int timeoutSeconds = 120,
+        PromptCustomizationService? promptCustomizationService = null)
     {
         _logger = logger;
         _httpClient = httpClient;
@@ -48,6 +51,18 @@ public class OllamaLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        
+        // Create PromptCustomizationService if not provided (using logger factory pattern)
+        if (promptCustomizationService == null)
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Warning));
+            var customizationLogger = loggerFactory.CreateLogger<PromptCustomizationService>();
+            _promptCustomizationService = new PromptCustomizationService(customizationLogger);
+        }
+        else
+        {
+            _promptCustomizationService = promptCustomizationService;
+        }
 
         // Note: Connection test is skipped during initialization to avoid blocking startup.
         // Connection will be tested on first use with helpful error messages.
@@ -70,9 +85,9 @@ public class OllamaLlmProvider : ILlmProvider
                     await Task.Delay(TimeSpan.FromSeconds(2 * attempt), ct); // Exponential backoff
                 }
 
-                // Build enhanced prompt for quality content
+                // Build enhanced prompt for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-                string userPrompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
+                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
                 
                 // Apply enhancement callback if configured
                 if (PromptEnhancementCallback != null)

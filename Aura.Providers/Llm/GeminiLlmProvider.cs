@@ -7,12 +7,14 @@ using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
 using Aura.Core.Providers;
+using Aura.Core.Services.AI;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Llm;
 
 /// <summary>
 /// LLM provider that uses Google Gemini API for script generation (Pro feature).
+/// Supports prompt customization from user preferences.
 /// </summary>
 public class GeminiLlmProvider : ILlmProvider
 {
@@ -22,6 +24,7 @@ public class GeminiLlmProvider : ILlmProvider
     private readonly string _model;
     private readonly int _maxRetries;
     private readonly TimeSpan _timeout;
+    private readonly PromptCustomizationService _promptCustomizationService;
 
     public GeminiLlmProvider(
         ILogger<GeminiLlmProvider> logger,
@@ -29,7 +32,8 @@ public class GeminiLlmProvider : ILlmProvider
         string apiKey,
         string model = "gemini-pro",
         int maxRetries = 2,
-        int timeoutSeconds = 120)
+        int timeoutSeconds = 120,
+        PromptCustomizationService? promptCustomizationService = null)
     {
         _logger = logger;
         _httpClient = httpClient;
@@ -37,6 +41,18 @@ public class GeminiLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        
+        // Create PromptCustomizationService if not provided (using logger factory pattern)
+        if (promptCustomizationService == null)
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Warning));
+            var customizationLogger = loggerFactory.CreateLogger<PromptCustomizationService>();
+            _promptCustomizationService = new PromptCustomizationService(customizationLogger);
+        }
+        else
+        {
+            _promptCustomizationService = promptCustomizationService;
+        }
 
         ValidateApiKey();
     }
@@ -81,9 +97,9 @@ public class GeminiLlmProvider : ILlmProvider
                     await Task.Delay(backoffDelay, ct);
                 }
 
-                // Build enhanced prompt for quality content
+                // Build enhanced prompt for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-                string userPrompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
+                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
                 string prompt = $"{systemPrompt}\n\n{userPrompt}";
 
                 // Call Gemini API

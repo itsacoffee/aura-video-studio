@@ -4,24 +4,50 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Providers;
+using Aura.Core.Services.AI;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Llm;
 
+/// <summary>
+/// Rule-based LLM provider for offline script generation.
+/// Supports prompt customization for additional instructions.
+/// </summary>
 public class RuleBasedLlmProvider : ILlmProvider
 {
     private readonly ILogger<RuleBasedLlmProvider> _logger;
     private readonly Random _random;
+    private readonly PromptCustomizationService _promptCustomizationService;
 
-    public RuleBasedLlmProvider(ILogger<RuleBasedLlmProvider> logger)
+    public RuleBasedLlmProvider(
+        ILogger<RuleBasedLlmProvider> logger,
+        PromptCustomizationService? promptCustomizationService = null)
     {
         _logger = logger;
         _random = new Random(42); // Fixed seed for deterministic output
+        
+        // Create PromptCustomizationService if not provided (using logger factory pattern)
+        if (promptCustomizationService == null)
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Warning));
+            var customizationLogger = loggerFactory.CreateLogger<PromptCustomizationService>();
+            _promptCustomizationService = new PromptCustomizationService(customizationLogger);
+        }
+        else
+        {
+            _promptCustomizationService = promptCustomizationService;
+        }
     }
 
     public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
         _logger.LogInformation("Generating rule-based script for topic: {Topic}", brief.Topic);
+        
+        // Log if user has provided custom instructions
+        if (brief.PromptModifiers?.AdditionalInstructions != null)
+        {
+            _logger.LogInformation("User provided additional instructions for script generation");
+        }
         
         // Calculate the target word count based on duration, pacing, and density
         int targetWordCount = CalculateWordCount(spec.TargetDuration, spec.Pacing, spec.Density);
@@ -35,7 +61,7 @@ public class RuleBasedLlmProvider : ILlmProvider
         _logger.LogDebug("Target word count: {WordCount}, Scenes: {SceneCount}, Words per scene: {WordsPerScene}",
             targetWordCount, sceneCount, wordsPerScene);
 
-        // Generate the script
+        // Generate the script (RuleBased provider uses templates, prompt modifiers logged but not directly applied)
         string script = GenerateScript(brief, spec, sceneCount, wordsPerScene);
         
         return Task.FromResult(script);

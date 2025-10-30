@@ -7,13 +7,14 @@ using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
 using Aura.Core.Providers;
+using Aura.Core.Services.AI;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Llm;
 
 /// <summary>
 /// LLM provider that uses OpenAI API for script generation (Pro feature).
-/// Supports optional ML-driven enhancements via callbacks.
+/// Supports optional ML-driven enhancements via callbacks and prompt customization.
 /// </summary>
 public class OpenAiLlmProvider : ILlmProvider
 {
@@ -23,6 +24,7 @@ public class OpenAiLlmProvider : ILlmProvider
     private readonly string _model;
     private readonly int _maxRetries;
     private readonly TimeSpan _timeout;
+    private readonly PromptCustomizationService _promptCustomizationService;
 
     /// <summary>
     /// Optional callback to enhance prompts before generation
@@ -40,7 +42,8 @@ public class OpenAiLlmProvider : ILlmProvider
         string apiKey,
         string model = "gpt-4o-mini",
         int maxRetries = 2,
-        int timeoutSeconds = 120)
+        int timeoutSeconds = 120,
+        PromptCustomizationService? promptCustomizationService = null)
     {
         _logger = logger;
         _httpClient = httpClient;
@@ -48,6 +51,18 @@ public class OpenAiLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        
+        // Create PromptCustomizationService if not provided (using logger factory pattern)
+        if (promptCustomizationService == null)
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Warning));
+            var customizationLogger = loggerFactory.CreateLogger<PromptCustomizationService>();
+            _promptCustomizationService = new PromptCustomizationService(customizationLogger);
+        }
+        else
+        {
+            _promptCustomizationService = promptCustomizationService;
+        }
 
         ValidateApiKey();
     }
@@ -92,9 +107,9 @@ public class OpenAiLlmProvider : ILlmProvider
                     await Task.Delay(backoffDelay, ct);
                 }
 
-                // Build enhanced prompts for quality content
+                // Build enhanced prompts for quality content with user customizations
                 string systemPrompt = EnhancedPromptTemplates.GetSystemPromptForScriptGeneration();
-                string userPrompt = EnhancedPromptTemplates.BuildScriptGenerationPrompt(brief, spec);
+                string userPrompt = _promptCustomizationService.BuildCustomizedPrompt(brief, spec, brief.PromptModifiers);
 
                 // Apply enhancement callback if configured
                 if (PromptEnhancementCallback != null)
