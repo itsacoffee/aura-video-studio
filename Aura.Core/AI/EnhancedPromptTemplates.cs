@@ -481,4 +481,203 @@ Provide specific, actionable feedback for improvement, focusing on making conten
 
         return sb.ToString();
     }
+
+    /// <summary>
+    /// Augment system prompt with tone profile constraints
+    /// </summary>
+    public static string AugmentSystemPromptWithTone(string baseSystemPrompt, Models.Quality.ToneProfile toneProfile)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(baseSystemPrompt);
+        sb.AppendLine();
+        sb.AppendLine("MANDATORY TONE CONSTRAINTS:");
+        sb.AppendLine($"- Vocabulary Level: {toneProfile.VocabularyLevel} (strictly maintain this complexity level)");
+        sb.AppendLine($"- Formality: {toneProfile.Formality} (all language must match this formality)");
+        sb.AppendLine($"- Humor Style: {toneProfile.Humor} (apply consistently throughout)");
+        sb.AppendLine($"- Energy Level: {toneProfile.Energy} (pace and intensity must match)");
+        sb.AppendLine($"- Perspective: {toneProfile.Perspective} (maintain consistent point of view)");
+        sb.AppendLine();
+        sb.AppendLine("TONE GUIDELINES:");
+        sb.AppendLine(toneProfile.Guidelines);
+        sb.AppendLine();
+        
+        if (toneProfile.ExamplePhrases.Length > 0)
+        {
+            sb.AppendLine("EXAMPLE PHRASES THAT MATCH THIS TONE:");
+            foreach (var phrase in toneProfile.ExamplePhrases)
+            {
+                sb.AppendLine($"  ✓ \"{phrase}\"");
+            }
+            sb.AppendLine();
+        }
+
+        if (toneProfile.PhrasesToAvoid.Length > 0)
+        {
+            sb.AppendLine("PHRASES TO AVOID:");
+            foreach (var phrase in toneProfile.PhrasesToAvoid)
+            {
+                sb.AppendLine($"  ✗ \"{phrase}\"");
+            }
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("TONE CONSISTENCY REQUIREMENT:");
+        sb.AppendLine("Every sentence, word choice, and stylistic element must align with these tone constraints.");
+        sb.AppendLine("Violations will be flagged and may require rewrites.");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Build script generation prompt with enhanced tone profile integration
+    /// </summary>
+    public static string BuildScriptGenerationPromptWithTone(
+        Brief brief, 
+        PlanSpec spec, 
+        Models.Quality.ToneProfile toneProfile,
+        string? additionalContext = null)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine($"CREATE A VIDEO SCRIPT:");
+        sb.AppendLine($"Topic: {brief.Topic}");
+        sb.AppendLine();
+
+        sb.AppendLine($"TARGET SPECIFICATIONS:");
+        sb.AppendLine($"- Duration: {spec.TargetDuration.TotalMinutes:F1} minutes ({EstimateWordCount(spec):N0} words)");
+        sb.AppendLine($"- Tone: {brief.Tone}");
+        sb.AppendLine($"- Pacing: {GetPacingDescription(spec.Pacing)}");
+        sb.AppendLine($"- Content Density: {GetDensityDescription(spec.Density)}");
+        sb.AppendLine($"- Language: {brief.Language}");
+        
+        if (!string.IsNullOrEmpty(brief.Audience))
+        {
+            sb.AppendLine($"- Target Audience: {brief.Audience}");
+        }
+
+        if (!string.IsNullOrEmpty(brief.Goal))
+        {
+            sb.AppendLine($"- Content Goal: {brief.Goal}");
+        }
+
+        sb.AppendLine();
+
+        sb.AppendLine("TONE PROFILE (STRICT REQUIREMENTS):");
+        sb.AppendLine($"- Vocabulary Level: {toneProfile.VocabularyLevel}");
+        sb.AppendLine($"- Formality: {toneProfile.Formality}");
+        sb.AppendLine($"- Humor: {toneProfile.Humor}");
+        sb.AppendLine($"- Energy: {toneProfile.Energy}");
+        sb.AppendLine($"- Perspective: {toneProfile.Perspective}");
+        sb.AppendLine($"- Target WPM: {toneProfile.TargetWordsPerMinute}");
+        sb.AppendLine();
+
+        sb.AppendLine("TONE GUIDELINES:");
+        sb.AppendLine(toneProfile.Guidelines);
+        sb.AppendLine();
+
+        if (toneProfile.ExamplePhrases.Length > 0)
+        {
+            sb.AppendLine("USE LANGUAGE SIMILAR TO:");
+            foreach (var phrase in toneProfile.ExamplePhrases.Take(5))
+            {
+                sb.AppendLine($"  • \"{phrase}\"");
+            }
+            sb.AppendLine();
+        }
+
+        if (toneProfile.PhrasesToAvoid.Length > 0)
+        {
+            sb.AppendLine("AVOID LANGUAGE LIKE:");
+            foreach (var phrase in toneProfile.PhrasesToAvoid.Take(5))
+            {
+                sb.AppendLine($"  • \"{phrase}\"");
+            }
+            sb.AppendLine();
+        }
+
+        sb.AppendLine($"SPECIFIC GUIDELINES FOR THIS VIDEO:");
+        sb.AppendLine(GetToneSpecificGuidelines(brief.Tone));
+        sb.AppendLine();
+
+        if (!string.IsNullOrEmpty(additionalContext))
+        {
+            sb.AppendLine($"ADDITIONAL CONTEXT:");
+            sb.AppendLine(additionalContext);
+            sb.AppendLine();
+        }
+
+        sb.AppendLine($"REQUIRED STRUCTURE:");
+        sb.AppendLine($"# [Compelling, Specific Title - Not Generic]");
+        sb.AppendLine();
+        sb.AppendLine($"## Hook (First 3-5 seconds)");
+        sb.AppendLine($"[Immediately grab attention with intrigue, surprise, or promised value. Be specific, not vague.]");
+        sb.AppendLine();
+        sb.AppendLine($"## Introduction (Next 10-15 seconds)");
+        sb.AppendLine($"[Build context and preview the journey. Create anticipation.]");
+        sb.AppendLine();
+        sb.AppendLine($"## [3-5 Content Sections with Descriptive Headers]");
+        sb.AppendLine($"[Each section should:");
+        sb.AppendLine($" - Have a clear purpose and payoff");
+        sb.AppendLine($" - Include specific examples or demonstrations");
+        sb.AppendLine($" - Maintain momentum toward the conclusion");
+        sb.AppendLine($" - Suggest visual moments with [VISUAL: description]]");
+        sb.AppendLine();
+        sb.AppendLine($"## Conclusion");
+        sb.AppendLine($"[Powerful summary and clear call-to-action. Leave viewers with lasting value.]");
+        sb.AppendLine();
+
+        sb.AppendLine($"QUALITY REQUIREMENTS:");
+        sb.AppendLine($"- Every sentence must serve the story and add value");
+        sb.AppendLine($"- Use specific, memorable examples and analogies");
+        sb.AppendLine($"- Vary sentence length and structure naturally");
+        sb.AppendLine($"- Include 2-3 pattern interrupts or surprising turns");
+        sb.AppendLine($"- Mark key visual moments with [VISUAL: brief description]");
+        sb.AppendLine($"- Ensure the script sounds natural when read aloud");
+        sb.AppendLine($"- Build emotional resonance appropriate to the topic");
+        sb.AppendLine($"- MAINTAIN STRICT TONE CONSISTENCY THROUGHOUT (will be validated)");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Augment visual prompt with tone-aligned style keywords
+    /// </summary>
+    public static string AugmentVisualPromptWithTone(
+        string baseVisualPrompt,
+        Models.Quality.ToneProfile toneProfile)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(baseVisualPrompt);
+        sb.AppendLine();
+        sb.AppendLine("TONE-ALIGNED VISUAL STYLE:");
+        
+        if (toneProfile.VisualStyleKeywords.Length > 0)
+        {
+            sb.AppendLine("Required style keywords:");
+            foreach (var keyword in toneProfile.VisualStyleKeywords)
+            {
+                sb.AppendLine($"  • {keyword}");
+            }
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("Visual energy alignment:");
+        sb.AppendLine($"- Energy Level: {toneProfile.Energy}");
+        sb.AppendLine($"- Formality: {toneProfile.Formality}");
+        
+        var visualGuidance = toneProfile.Energy switch
+        {
+            Models.Quality.EnergyLevel.Calm => "Use calm, serene, stable visuals. Slow pans, gentle transitions, peaceful scenes.",
+            Models.Quality.EnergyLevel.Moderate => "Use balanced visuals with moderate motion. Natural movement, comfortable pacing.",
+            Models.Quality.EnergyLevel.Energetic => "Use dynamic, engaging visuals. Active scenes, purposeful movement, vibrant energy.",
+            Models.Quality.EnergyLevel.High => "Use high-energy visuals. Fast cuts when appropriate, bold compositions, intense scenes.",
+            _ => "Use appropriate visual energy matching the tone."
+        };
+
+        sb.AppendLine($"- Guidance: {visualGuidance}");
+        sb.AppendLine();
+        sb.AppendLine("Ensure all visual selections reinforce and never contradict the established tone.");
+
+        return sb.ToString();
+    }
 }
