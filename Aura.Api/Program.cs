@@ -241,6 +241,11 @@ builder.Services.AddMemoryCache(); // For trending topics caching and rate limit
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.TrendingTopicsService>();
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
 
+// Register Audience Profile services
+builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileStore>();
+builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileValidator>();
+builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileConverter>();
+
 // Register Rate Limiting services
 builder.Services.Configure<AspNetCoreRateLimit.IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
 builder.Services.AddSingleton<AspNetCoreRateLimit.IIpPolicyStore, AspNetCoreRateLimit.MemoryCacheIpPolicyStore>();
