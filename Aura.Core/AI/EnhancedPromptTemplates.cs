@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Aura.Core.Models;
+using Aura.Core.Models.Audience;
 using Aura.Core.Models.Visual;
 using PacingEnum = Aura.Core.Models.Pacing;
 using DensityEnum = Aura.Core.Models.Density;
@@ -84,9 +85,9 @@ AVOID AI DETECTION FLAGS:
     }
 
     /// <summary>
-    /// Build a detailed user prompt for script generation with content awareness
+    /// Build a detailed user prompt for script generation with content awareness and optional audience profile
     /// </summary>
-    public static string BuildScriptGenerationPrompt(Brief brief, PlanSpec spec, string? additionalContext = null)
+    public static string BuildScriptGenerationPrompt(Brief brief, PlanSpec spec, string? additionalContext = null, AudienceProfile? audienceProfile = null)
     {
         var sb = new StringBuilder();
 
@@ -114,6 +115,53 @@ AVOID AI DETECTION FLAGS:
         }
 
         sb.AppendLine();
+
+        // Add detailed audience profile context if provided
+        if (audienceProfile != null)
+        {
+            sb.AppendLine($"DETAILED AUDIENCE PROFILE:");
+            sb.AppendLine($"- Education Level: {audienceProfile.EducationLevel}");
+            sb.AppendLine($"- Expertise Level: {audienceProfile.ExpertiseLevel}");
+            sb.AppendLine($"- Age Range: {audienceProfile.AgeRange}");
+            sb.AppendLine($"- Formality Preference: {audienceProfile.FormalityLevel}");
+            sb.AppendLine($"- Energy Preference: {audienceProfile.EnergyLevel}");
+            sb.AppendLine($"- Cognitive Load Capacity: {audienceProfile.CognitiveLoadCapacity}/100");
+            sb.AppendLine($"- Prefers Technical Language: {audienceProfile.PrefersTechnicalLanguage}");
+            
+            if (!string.IsNullOrEmpty(audienceProfile.ProfessionalDomain))
+            {
+                sb.AppendLine($"- Professional Domain: {audienceProfile.ProfessionalDomain}");
+            }
+            
+            if (!string.IsNullOrEmpty(audienceProfile.GeographicRegion))
+            {
+                sb.AppendLine($"- Geographic Region: {audienceProfile.GeographicRegion}");
+            }
+            
+            if (audienceProfile.Interests.Count > 0)
+            {
+                sb.AppendLine($"- Key Interests: {string.Join(", ", audienceProfile.Interests)}");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("AUDIENCE-AWARE CONTENT GUIDELINES:");
+            sb.AppendLine($"- Match vocabulary to {audienceProfile.EducationLevel} education level");
+            sb.AppendLine($"- Adjust complexity for {audienceProfile.ExpertiseLevel} expertise");
+            sb.AppendLine($"- Use {audienceProfile.FormalityLevel} formality level");
+            sb.AppendLine($"- Maintain {audienceProfile.EnergyLevel} energy throughout");
+            
+            if (!string.IsNullOrEmpty(audienceProfile.ProfessionalDomain))
+            {
+                sb.AppendLine($"- Include {audienceProfile.ProfessionalDomain}-specific examples and analogies");
+            }
+            
+            if (!string.IsNullOrEmpty(audienceProfile.GeographicRegion))
+            {
+                sb.AppendLine($"- Use culturally appropriate references for {audienceProfile.GeographicRegion}");
+            }
+            
+            sb.AppendLine();
+        }
 
         // Content creation guidelines specific to this video
         sb.AppendLine($"SPECIFIC GUIDELINES FOR THIS VIDEO:");
