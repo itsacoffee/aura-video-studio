@@ -227,3 +227,179 @@ export interface OllamaModelsResponse {
   models: OllamaModel[];
   baseUrl: string;
 }
+
+// ============================================================================
+// AUDIENCE PROFILE TYPES
+// ============================================================================
+
+export interface AudienceProfileDto {
+  id: string | null;
+  name: string;
+  description: string | null;
+  ageRange: AgeRangeDto | null;
+  educationLevel: string | null;
+  profession: string | null;
+  industry: string | null;
+  expertiseLevel: string | null;
+  incomeBracket: string | null;
+  geographicRegion: string | null;
+  languageFluency: LanguageFluencyDto | null;
+  interests: string[] | null;
+  painPoints: string[] | null;
+  motivations: string[] | null;
+  culturalBackground: CulturalBackgroundDto | null;
+  preferredLearningStyle: string | null;
+  attentionSpan: AttentionSpanDto | null;
+  technicalComfort: string | null;
+  accessibilityNeeds: AccessibilityNeedsDto | null;
+  isTemplate: boolean;
+  tags: string[] | null;
+  version: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface AgeRangeDto {
+  minAge: number;
+  maxAge: number;
+  displayName: string;
+  contentRating: string;
+}
+
+export interface LanguageFluencyDto {
+  language: string;
+  level: string;
+}
+
+export interface CulturalBackgroundDto {
+  sensitivities: string[] | null;
+  tabooTopics: string[] | null;
+  preferredCommunicationStyle: string;
+}
+
+export interface AttentionSpanDto {
+  preferredDurationMinutes: number;
+  displayName: string;
+}
+
+export interface AccessibilityNeedsDto {
+  requiresCaptions: boolean;
+  requiresAudioDescriptions: boolean;
+  requiresHighContrast: boolean;
+  requiresSimplifiedLanguage: boolean;
+  requiresLargeText: boolean;
+}
+
+export interface CreateAudienceProfileRequest {
+  profile: AudienceProfileDto;
+}
+
+export interface UpdateAudienceProfileRequest {
+  profile: AudienceProfileDto;
+}
+
+export interface AudienceProfileResponse {
+  profile: AudienceProfileDto;
+  validation: ValidationResultDto | null;
+}
+
+export interface AudienceProfileListResponse {
+  profiles: AudienceProfileDto[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ValidationResultDto {
+  isValid: boolean;
+  errors: ValidationIssueDto[];
+  warnings: ValidationIssueDto[];
+  infos: ValidationIssueDto[];
+}
+
+export interface ValidationIssueDto {
+  severity: string;
+  field: string;
+  message: string;
+  suggestedFix: string | null;
+}
+
+export interface AnalyzeAudienceRequest {
+  scriptText: string;
+}
+
+export interface AnalyzeAudienceResponse {
+  inferredProfile: AudienceProfileDto;
+  confidenceScore: number;
+  reasoningFactors: string[];
+}
+
+// Enum values for audience profile fields
+export const EducationLevels = [
+  'HighSchool',
+  'SomeCollege',
+  'AssociateDegree',
+  'BachelorDegree',
+  'MasterDegree',
+  'Doctorate',
+  'Vocational',
+  'SelfTaught',
+  'InProgress',
+] as const;
+
+export const ExpertiseLevels = [
+  'CompleteBeginner',
+  'Novice',
+  'Intermediate',
+  'Advanced',
+  'Expert',
+  'Professional',
+] as const;
+
+export const IncomeBrackets = [
+  'NotSpecified',
+  'LowIncome',
+  'MiddleIncome',
+  'UpperMiddleIncome',
+  'HighIncome',
+] as const;
+
+export const GeographicRegions = [
+  'Global',
+  'NorthAmerica',
+  'Europe',
+  'Asia',
+  'LatinAmerica',
+  'MiddleEast',
+  'Africa',
+  'Oceania',
+] as const;
+
+export const FluencyLevels = ['Native', 'Fluent', 'Intermediate', 'Beginner'] as const;
+
+export const CommunicationStyles = [
+  'Direct',
+  'Indirect',
+  'Formal',
+  'Casual',
+  'Humorous',
+  'Professional',
+] as const;
+
+export const LearningStyles = [
+  'Visual',
+  'Auditory',
+  'Kinesthetic',
+  'ReadingWriting',
+  'Multimodal',
+] as const;
+
+export const TechnicalComfortLevels = [
+  'NonTechnical',
+  'BasicUser',
+  'Moderate',
+  'TechSavvy',
+  'Expert',
+] as const;
+
+export const ContentRatings = ['ChildSafe', 'TeenAppropriate', 'Adult'] as const;
