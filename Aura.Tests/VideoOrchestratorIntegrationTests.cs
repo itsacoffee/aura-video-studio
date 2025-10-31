@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using Aura.Core.Models.Generation;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
@@ -233,6 +234,16 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
             CancellationToken ct)
         {
             return Task.FromResult<SceneAnalysisResult?>(null);
+        }
+
+        public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoTone,
+            VisualStyle targetStyle,
+            CancellationToken ct)
+        {
+            return Task.FromResult<VisualPromptResult?>(null);
         }
     }
 

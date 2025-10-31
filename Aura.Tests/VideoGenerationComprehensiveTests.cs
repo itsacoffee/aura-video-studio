@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using Aura.Core.Models.Generation;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
@@ -302,6 +303,16 @@ More test content here to ensure we have adequate word count for the duration. M
         {
             return Task.FromResult<SceneAnalysisResult?>(null);
         }
+
+        public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoTone,
+            VisualStyle targetStyle,
+            CancellationToken ct)
+        {
+            return Task.FromResult<VisualPromptResult?>(null);
+        }
     }
 
     private class TestSlowLlmProvider : ILlmProvider
@@ -319,6 +330,16 @@ More test content here to ensure we have adequate word count for the duration. M
             CancellationToken ct)
         {
             return Task.FromResult<SceneAnalysisResult?>(null);
+        }
+
+        public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoTone,
+            VisualStyle targetStyle,
+            CancellationToken ct)
+        {
+            return Task.FromResult<VisualPromptResult?>(null);
         }
     }
 

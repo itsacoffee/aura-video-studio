@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
 using Microsoft.Extensions.Logging;
@@ -369,6 +370,17 @@ Respond with ONLY the JSON object, no other text:";
             _logger.LogError(ex, "Error analyzing scene with Azure OpenAI");
             return null;
         }
+    }
+
+    public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoTone,
+        VisualStyle targetStyle,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Visual prompt generation not implemented for Azure OpenAI, returning null");
+        return Task.FromResult<VisualPromptResult?>(null);
     }
 
     // Removed legacy prompt building methods - now using EnhancedPromptTemplates

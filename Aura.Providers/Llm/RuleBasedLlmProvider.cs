@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
 using Microsoft.Extensions.Logging;
@@ -301,5 +302,103 @@ public class RuleBasedLlmProvider : ILlmProvider
             result.Importance, result.Complexity, result.OptimalDurationSeconds);
 
         return Task.FromResult<SceneAnalysisResult?>(result);
+    }
+
+    public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoTone,
+        VisualStyle targetStyle,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Generating visual prompt with rule-based heuristics");
+
+        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' }, 
+            StringSplitOptions.RemoveEmptyEntries).Length;
+
+        var detailedDescription = $"A {targetStyle.ToString().ToLowerInvariant()} visual representation of: {sceneText}";
+        
+        var compositionGuidelines = wordCount > 50 
+            ? "Rule of thirds, balanced framing, clear focal point" 
+            : "Centered composition, minimal elements, clean framing";
+
+        var lightingMood = videoTone.ToLowerInvariant() switch
+        {
+            var t when t.Contains("dramatic") => "dramatic",
+            var t when t.Contains("professional") => "neutral",
+            var t when t.Contains("warm") => "warm",
+            var t when t.Contains("playful") => "bright",
+            _ => "balanced"
+        };
+
+        var timeOfDay = lightingMood switch
+        {
+            "dramatic" => "golden hour",
+            "warm" => "golden hour",
+            "bright" => "day",
+            _ => "day"
+        };
+
+        var colorPalette = lightingMood switch
+        {
+            "dramatic" => new[] { "#1a1a1a", "#8b0000", "#ffd700" },
+            "professional" => new[] { "#2c3e50", "#ecf0f1", "#3498db" },
+            "warm" => new[] { "#ffa500", "#ff8c00", "#ffd700" },
+            "bright" => new[] { "#ff6b6b", "#4ecdc4", "#ffe66d" },
+            _ => new[] { "#34495e", "#ecf0f1", "#3498db" }
+        };
+
+        var shotType = wordCount switch
+        {
+            < 30 => "wide shot",
+            < 70 => "medium shot",
+            _ => "medium close-up"
+        };
+
+        var cameraAngle = lightingMood switch
+        {
+            "dramatic" => "low angle",
+            _ => "eye level"
+        };
+
+        var styleKeywords = targetStyle switch
+        {
+            VisualStyle.Cinematic => new[] { "cinematic", "film grain", "color graded", "atmospheric", "high quality" },
+            VisualStyle.Realistic => new[] { "photorealistic", "natural lighting", "authentic", "detailed", "professional" },
+            VisualStyle.Dramatic => new[] { "dramatic lighting", "high contrast", "moody", "intense", "powerful" },
+            VisualStyle.Documentary => new[] { "documentary style", "natural", "authentic", "realistic", "informative" },
+            _ => new[] { "high quality", "professional", "detailed", "clear", "engaging" }
+        };
+
+        var negativeElements = new[] 
+        { 
+            "blurry", "low quality", "distorted", "watermark", "text", "logo" 
+        };
+
+        var continuityElements = !string.IsNullOrEmpty(previousSceneText)
+            ? new[] { "consistent color grading", "same location style", "matching tone" }
+            : Array.Empty<string>();
+
+        var result = new VisualPromptResult(
+            DetailedDescription: detailedDescription,
+            CompositionGuidelines: compositionGuidelines,
+            LightingMood: lightingMood,
+            LightingDirection: "front",
+            LightingQuality: "soft",
+            TimeOfDay: timeOfDay,
+            ColorPalette: colorPalette,
+            ShotType: shotType,
+            CameraAngle: cameraAngle,
+            DepthOfField: "medium",
+            StyleKeywords: styleKeywords,
+            NegativeElements: negativeElements,
+            ContinuityElements: continuityElements,
+            Reasoning: "Rule-based visual prompt generation using heuristics for tone, word count, and style"
+        );
+
+        _logger.LogDebug("Visual prompt generated: ShotType={ShotType}, Lighting={Lighting}",
+            result.ShotType, result.LightingMood);
+
+        return Task.FromResult<VisualPromptResult?>(result);
     }
 }

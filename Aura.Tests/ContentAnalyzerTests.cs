@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.Content;
 using Microsoft.Extensions.Logging;
@@ -138,6 +139,16 @@ SUGGESTIONS:
             CancellationToken ct)
         {
             return Task.FromResult<SceneAnalysisResult?>(null);
+        }
+
+        public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoTone,
+            VisualStyle targetStyle,
+            CancellationToken ct)
+        {
+            return Task.FromResult<VisualPromptResult?>(null);
         }
     }
 }
