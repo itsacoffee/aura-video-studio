@@ -191,6 +191,7 @@ public class LlmProviderFactory
     private ILlmProvider? CreateOllamaProvider(ILoggerFactory loggerFactory)
     {
         var ollamaUrl = _providerSettings.GetOllamaUrl();
+        var ollamaModel = _providerSettings.GetOllamaModel();
         var httpClient = _httpClientFactory.CreateClient();
         
         var type = Type.GetType("Aura.Providers.Llm.OllamaLlmProvider, Aura.Providers");
@@ -217,7 +218,7 @@ public class LlmProviderFactory
             logger, 
             httpClient, 
             ollamaUrl, 
-            "llama3.1:8b-q4_k_m", 
+            ollamaModel, 
             2, // maxRetries
             120 // timeoutSeconds
         )!;

@@ -210,3 +210,20 @@ export const PacingValues = Object.values(Pacing);
 export const DensityValues = Object.values(Density);
 export const AspectValues = Object.values(Aspect);
 export const PauseStyleValues = Object.values(PauseStyle);
+
+// ============================================================================
+// OLLAMA TYPES
+// ============================================================================
+
+export interface OllamaModel {
+  name: string;
+  size: number;
+  sizeGB: number;
+  modifiedAt: string | null;
+  digest: string | null;
+}
+
+export interface OllamaModelsResponse {
+  models: OllamaModel[];
+  baseUrl: string;
+}

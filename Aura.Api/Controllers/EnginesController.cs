@@ -928,6 +928,77 @@ public class EnginesController : ControllerBase
     }
 
     /// <summary>
+    /// List available Ollama models
+    /// </summary>
+    [HttpGet("ollama/models")]
+    public async Task<IActionResult> GetOllamaModels([FromQuery] string? url = null, CancellationToken ct = default)
+    {
+        try
+        {
+            var baseUrl = url ?? "http://127.0.0.1:11434";
+            
+            using var httpClient = new HttpClient();
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
+
+            var response = await httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to get Ollama models from {Url}: {StatusCode}", baseUrl, response.StatusCode);
+                return StatusCode((int)response.StatusCode, new { error = "Failed to retrieve models from Ollama" });
+            }
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            
+            if (!doc.RootElement.TryGetProperty("models", out var modelsArray))
+            {
+                return Ok(new { models = Array.Empty<object>() });
+            }
+
+            var models = new List<object>();
+            foreach (var model in modelsArray.EnumerateArray())
+            {
+                var name = model.TryGetProperty("name", out var nameProp) ? nameProp.GetString() : null;
+                var size = model.TryGetProperty("size", out var sizeProp) ? sizeProp.GetInt64() : 0;
+                var modified = model.TryGetProperty("modified_at", out var modProp) ? modProp.GetString() : null;
+                var digest = model.TryGetProperty("digest", out var digestProp) ? digestProp.GetString() : null;
+                
+                if (name != null)
+                {
+                    models.Add(new
+                    {
+                        name,
+                        size,
+                        sizeGB = Math.Round(size / 1024.0 / 1024.0 / 1024.0, 2),
+                        modifiedAt = modified,
+                        digest
+                    });
+                }
+            }
+
+            _logger.LogInformation("Retrieved {Count} Ollama models from {Url}", models.Count, baseUrl);
+            return Ok(new { models, baseUrl });
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("Timeout getting Ollama models from {Url}", url ?? "http://127.0.0.1:11434");
+            return StatusCode(408, new { error = "Request timed out. Ensure Ollama is running." });
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to connect to Ollama at {Url}", url ?? "http://127.0.0.1:11434");
+            return StatusCode(503, new { error = "Cannot connect to Ollama. Ensure Ollama is running." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get Ollama models");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Attach an existing external engine installation
     /// </summary>
     [HttpPost("attach")]
