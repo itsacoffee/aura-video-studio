@@ -212,6 +212,69 @@ class ProviderRecommendationService {
       return 'Slow';
     }
   }
+
+  /**
+   * Get current provider preferences from backend
+   */
+  async getPreferences(): Promise<ProviderPreferences> {
+    try {
+      const response = await apiClient.get('/api/providers/preferences');
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Failed to get provider preferences:', error);
+      // Return defaults if API call fails
+      return {
+        enableRecommendations: false,
+        assistanceLevel: 'Off',
+        enableHealthMonitoring: false,
+        enableCostTracking: false,
+        enableLearning: false,
+        enableProfiles: false,
+        enableAutoFallback: false,
+        alwaysUseDefault: false,
+        perOperationOverrides: {},
+        activeProfile: 'Balanced',
+        excludedProviders: [],
+        fallbackChains: {},
+        perProviderBudgetLimits: {},
+        hardBudgetLimit: false,
+      };
+    }
+  }
+
+  /**
+   * Update provider preferences on backend
+   */
+  async updatePreferences(preferences: Partial<ProviderPreferences>): Promise<void> {
+    try {
+      await apiClient.post('/api/providers/preferences', preferences);
+      // Clear cache when preferences change
+      this.clearCache();
+    } catch (error: unknown) {
+      console.error('Failed to update provider preferences:', error);
+      throw error;
+    }
+  }
+}
+
+export interface ProviderPreferences {
+  enableRecommendations: boolean;
+  assistanceLevel: 'Off' | 'Minimal' | 'Moderate' | 'Full';
+  enableHealthMonitoring: boolean;
+  enableCostTracking: boolean;
+  enableLearning: boolean;
+  enableProfiles: boolean;
+  enableAutoFallback: boolean;
+  globalDefault?: string;
+  alwaysUseDefault: boolean;
+  perOperationOverrides: Record<string, string>;
+  activeProfile: string;
+  excludedProviders: string[];
+  pinnedProvider?: string;
+  fallbackChains: Record<string, string[]>;
+  monthlyBudgetLimit?: number;
+  perProviderBudgetLimits: Record<string, number>;
+  hardBudgetLimit: boolean;
 }
 
 export const providerRecommendationService = new ProviderRecommendationService();

@@ -26,6 +26,7 @@ import { LocalEngines } from '../components/Settings/LocalEngines';
 import { LoggingSettingsTab } from '../components/Settings/LoggingSettingsTab';
 import { OutputSettingsTab } from '../components/Settings/OutputSettingsTab';
 import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettingsTab';
+import { ProviderRecommendationsTab } from '../components/Settings/ProviderRecommendationsTab';
 import { ProvidersTable } from '../components/Settings/ProvidersTable';
 import { ThemeCustomizationTab } from '../components/Settings/ThemeCustomizationTab';
 import { VideoDefaultsSettingsTab } from '../components/Settings/VideoDefaultsSettingsTab';
@@ -812,6 +813,7 @@ export function SettingsPage() {
         <Tab value="aioptimization">AI Optimization</Tab>
         <Tab value="importexport">Import/Export</Tab>
         <Tab value="privacy">Privacy</Tab>
+        <Tab value="recommendations">Recommendations</Tab>
       </TabList>
 
       {activeTab === 'general' && (
@@ -1904,6 +1906,8 @@ export function SettingsPage() {
           </div>
         </Card>
       )}
+
+      {activeTab === 'recommendations' && <ProviderRecommendationsTab />}
 
       {activeTab === 'importexport' && (
         <Card className={styles.section}>

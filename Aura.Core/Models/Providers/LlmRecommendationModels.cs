@@ -240,12 +240,82 @@ public enum ProviderProfile
 }
 
 /// <summary>
+/// Assistance level for provider recommendations
+/// Controls how much help and automation the system provides
+/// </summary>
+public enum AssistanceLevel
+{
+    /// <summary>
+    /// Completely disabled - no recommendations, no automation, pure manual selection
+    /// </summary>
+    Off,
+    
+    /// <summary>
+    /// Only show recommendation badge, no explanations or popups
+    /// </summary>
+    Minimal,
+    
+    /// <summary>
+    /// Show recommendations with brief reasoning, no automatic actions
+    /// </summary>
+    Moderate,
+    
+    /// <summary>
+    /// Show detailed explanations, cost estimates, health indicators, learned preferences
+    /// </summary>
+    Full
+}
+
+/// <summary>
 /// User's provider preferences
 /// </summary>
 public record ProviderPreferences
 {
     /// <summary>
+    /// MASTER TOGGLE: Enable provider recommendations system (OFF by default - opt-in)
+    /// When disabled, all recommendation features are completely turned off
+    /// </summary>
+    public bool EnableRecommendations { get; init; } = false;
+    
+    /// <summary>
+    /// Assistance level for recommendations (only applies when EnableRecommendations is true)
+    /// Controls the amount of help and automation provided
+    /// </summary>
+    public AssistanceLevel AssistanceLevel { get; init; } = AssistanceLevel.Moderate;
+    
+    /// <summary>
+    /// Enable provider health monitoring (separate toggle, OFF by default)
+    /// When disabled, no health tracking occurs
+    /// </summary>
+    public bool EnableHealthMonitoring { get; init; } = false;
+    
+    /// <summary>
+    /// Enable cost tracking (separate toggle, OFF by default)
+    /// When disabled, no cost tracking or budget warnings
+    /// </summary>
+    public bool EnableCostTracking { get; init; } = false;
+    
+    /// <summary>
+    /// Enable preference learning (separate toggle, OFF by default)
+    /// When disabled, system never tracks overrides or learns patterns
+    /// </summary>
+    public bool EnableLearning { get; init; } = false;
+    
+    /// <summary>
+    /// Enable provider profiles (separate toggle, OFF by default)
+    /// When disabled, no profile system is shown
+    /// </summary>
+    public bool EnableProfiles { get; init; } = false;
+    
+    /// <summary>
+    /// Enable automatic fallback (separate toggle, OFF by default)
+    /// When disabled, failures show error and stop (no automatic switching)
+    /// </summary>
+    public bool EnableAutoFallback { get; init; } = false;
+    
+    /// <summary>
     /// Global default provider for all operations
+    /// Always available regardless of recommendation settings
     /// </summary>
     public string? GlobalDefault { get; init; }
     
@@ -256,51 +326,54 @@ public record ProviderPreferences
     
     /// <summary>
     /// Per-operation provider overrides
+    /// Always available regardless of recommendation settings
     /// </summary>
     public Dictionary<LlmOperationType, string> PerOperationOverrides { get; init; } = new();
     
     /// <summary>
-    /// Active provider profile
+    /// Active provider profile (only used when EnableProfiles is true)
     /// </summary>
     public ProviderProfile ActiveProfile { get; init; } = ProviderProfile.Balanced;
     
     /// <summary>
     /// Providers to exclude from recommendations (soft exclusion - still manually selectable)
+    /// Only used when EnableRecommendations is true
     /// </summary>
     public HashSet<string> ExcludedProviders { get; init; } = new();
     
     /// <summary>
     /// Pinned provider (overrides all recommendations unless user changes)
+    /// Works even when recommendations are disabled
     /// </summary>
     public string? PinnedProvider { get; init; }
     
     /// <summary>
     /// Whether to enable automatic failover to fallback provider
+    /// Deprecated: Use EnableAutoFallback instead
     /// </summary>
+    [Obsolete("Use EnableAutoFallback instead")]
     public bool AutoFailover { get; init; } = false;
     
     /// <summary>
-    /// Fallback chains per operation type
+    /// Fallback chains per operation type (only used when EnableAutoFallback is true)
     /// </summary>
     public Dictionary<LlmOperationType, List<string>> FallbackChains { get; init; } = new();
     
     /// <summary>
-    /// Whether to enable preference learning (opt-in)
-    /// </summary>
-    public bool EnableLearning { get; init; } = false;
-    
-    /// <summary>
     /// Monthly budget limit in USD (null = no limit)
+    /// Only enforced when EnableCostTracking is true
     /// </summary>
     public decimal? MonthlyBudgetLimit { get; init; }
     
     /// <summary>
     /// Per-provider monthly budget limits
+    /// Only enforced when EnableCostTracking is true
     /// </summary>
     public Dictionary<string, decimal> PerProviderBudgetLimits { get; init; } = new();
     
     /// <summary>
     /// Whether budget warnings are hard limits (block generation) or soft warnings
+    /// Only relevant when EnableCostTracking is true
     /// </summary>
     public bool HardBudgetLimit { get; init; } = false;
 }

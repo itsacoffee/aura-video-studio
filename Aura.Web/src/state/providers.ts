@@ -138,6 +138,8 @@ export type ProviderProfileType =
   | 'LocalOnly'
   | 'Custom';
 
+export type AssistanceLevelType = 'Off' | 'Minimal' | 'Moderate' | 'Full';
+
 export type LlmOperationType =
   | 'ScriptGeneration'
   | 'ScriptRefinement'
@@ -149,28 +151,50 @@ export type LlmOperationType =
   | 'NarrativeValidation';
 
 export interface ProviderPreferences {
+  // Master toggle: enable provider recommendations (OFF by default - opt-in)
+  enableRecommendations: boolean;
+  
+  // Assistance level (only applies when enableRecommendations is true)
+  assistanceLevel: AssistanceLevelType;
+  
+  // Separate feature toggles (all OFF by default)
+  enableHealthMonitoring: boolean;
+  enableCostTracking: boolean;
+  enableLearning: boolean;
+  enableProfiles: boolean;
+  enableAutoFallback: boolean;
+  
+  // Manual configuration (always available)
   globalDefault?: string;
   alwaysUseDefault: boolean;
   perOperationOverrides: Record<LlmOperationType, string>;
   activeProfile: ProviderProfileType;
   excludedProviders: string[];
   pinnedProvider?: string;
-  autoFailover: boolean;
+  
+  // Fallback and budget settings (only used when respective features enabled)
   fallbackChains: Record<LlmOperationType, string[]>;
-  enableLearning: boolean;
   monthlyBudgetLimit?: number;
   perProviderBudgetLimits: Record<string, number>;
   hardBudgetLimit: boolean;
 }
 
 export const defaultProviderPreferences: ProviderPreferences = {
+  // All recommendation features OFF by default (opt-in model)
+  enableRecommendations: false,
+  assistanceLevel: 'Off',
+  enableHealthMonitoring: false,
+  enableCostTracking: false,
+  enableLearning: false,
+  enableProfiles: false,
+  enableAutoFallback: false,
+  
+  // Manual configuration defaults
   alwaysUseDefault: false,
   perOperationOverrides: {} as Record<LlmOperationType, string>,
   activeProfile: 'Balanced',
   excludedProviders: [],
-  autoFailover: false,
   fallbackChains: {} as Record<LlmOperationType, string[]>,
-  enableLearning: false,
   perProviderBudgetLimits: {},
   hardBudgetLimit: false,
 };

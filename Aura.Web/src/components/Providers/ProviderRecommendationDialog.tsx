@@ -100,6 +100,7 @@ export const ProviderRecommendationDialog: React.FC<ProviderRecommendationDialog
   const [recommendations, setRecommendations] = useState<ProviderRecommendation[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [recommendationsEnabled, setRecommendationsEnabled] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -110,10 +111,17 @@ export const ProviderRecommendationDialog: React.FC<ProviderRecommendationDialog
   const loadRecommendations = async () => {
     setLoading(true);
     try {
-      const recs = await providerRecommendationService.getRecommendations(operationType);
-      setRecommendations(recs);
-      if (recs.length > 0) {
-        setSelectedProvider(recs[0].providerName);
+      // Check if recommendations are enabled
+      const prefs = await providerRecommendationService.getPreferences();
+      setRecommendationsEnabled(prefs.enableRecommendations && prefs.assistanceLevel !== 'Off');
+
+      // Only load recommendations if enabled
+      if (prefs.enableRecommendations && prefs.assistanceLevel !== 'Off') {
+        const recs = await providerRecommendationService.getRecommendations(operationType);
+        setRecommendations(recs);
+        if (recs.length > 0) {
+          setSelectedProvider(recs[0].providerName);
+        }
       }
     } catch (error: unknown) {
       console.error('Failed to load recommendations:', error);
@@ -162,7 +170,35 @@ export const ProviderRecommendationDialog: React.FC<ProviderRecommendationDialog
           <DialogContent>
             {loading ? (
               <div className={styles.loading}>
-                <Spinner label="Loading recommendations..." />
+                <Spinner label="Loading..." />
+              </div>
+            ) : !recommendationsEnabled ? (
+              <div className={styles.container}>
+                <Text>Provider recommendations are disabled. Choose a provider manually.</Text>
+                <Text size={200} style={{ marginTop: tokens.spacingVerticalS }}>
+                  To enable recommendations, go to Settings → Recommendations and turn on
+                  &quot;Enable Provider Recommendations&quot;.
+                </Text>
+                <div style={{ marginTop: tokens.spacingVerticalL }}>
+                  {['OpenAI', 'Claude', 'Gemini', 'Ollama', 'RuleBased'].map((provider) => (
+                    <div
+                      key={provider}
+                      className={`${styles.recommendation} ${
+                        selectedProvider === provider ? styles.selected : ''
+                      }`}
+                      onClick={() => setSelectedProvider(provider)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          setSelectedProvider(provider);
+                        }
+                      }}
+                    >
+                      <span className={styles.providerName}>{provider}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className={styles.container}>
@@ -170,63 +206,72 @@ export const ProviderRecommendationDialog: React.FC<ProviderRecommendationDialog
                   Choose a provider for this operation. The recommendations are ranked by quality,
                   cost, and performance.
                 </Text>
-                {recommendations.map((rec) => (
-                  <div
-                    key={rec.providerName}
-                    className={`${styles.recommendation} ${
-                      selectedProvider === rec.providerName ? styles.selected : ''
-                    }`}
-                    onClick={() => setSelectedProvider(rec.providerName)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        setSelectedProvider(rec.providerName);
-                      }
-                    }}
-                  >
-                    <div className={styles.recommendationHeader}>
-                      <span className={styles.providerName}>{rec.providerName}</span>
-                      <div className={styles.healthBadge}>
-                        <Badge
-                          appearance="outline"
-                          color={getHealthColor(rec.healthStatus)}
-                          icon={getHealthIcon(rec.healthStatus)}
-                        >
-                          {rec.healthStatus}
-                        </Badge>
-                        {!rec.isAvailable && <Badge color="danger">Not Available</Badge>}
+                {recommendations.length === 0 ? (
+                  <Text size={200} style={{ marginTop: tokens.spacingVerticalM }}>
+                    No recommendations available. Please check your provider configuration in
+                    Settings.
+                  </Text>
+                ) : (
+                  recommendations.map((rec) => (
+                    <div
+                      key={rec.providerName}
+                      className={`${styles.recommendation} ${
+                        selectedProvider === rec.providerName ? styles.selected : ''
+                      }`}
+                      onClick={() => setSelectedProvider(rec.providerName)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          setSelectedProvider(rec.providerName);
+                        }
+                      }}
+                    >
+                      <div className={styles.recommendationHeader}>
+                        <span className={styles.providerName}>{rec.providerName}</span>
+                        <div className={styles.healthBadge}>
+                          <Badge
+                            appearance="outline"
+                            color={getHealthColor(rec.healthStatus)}
+                            icon={getHealthIcon(rec.healthStatus)}
+                          >
+                            {rec.healthStatus}
+                          </Badge>
+                          {!rec.isAvailable && <Badge color="danger">Not Available</Badge>}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className={styles.metrics}>
-                      <div className={styles.metric}>
-                        <Label size="small">Quality:</Label>
-                        <Text size={200}>{rec.qualityScore}/100</Text>
+                      <div className={styles.metrics}>
+                        <div className={styles.metric}>
+                          <Label size="small">Quality:</Label>
+                          <Text size={200}>{rec.qualityScore}/100</Text>
+                        </div>
+                        <div className={styles.metric}>
+                          <Label size="small">Cost:</Label>
+                          <Text size={200}>
+                            {providerRecommendationService.formatCost(rec.estimatedCost)}
+                          </Text>
+                        </div>
+                        <div className={styles.metric}>
+                          <Label size="small">Latency:</Label>
+                          <Text size={200}>
+                            {providerRecommendationService.formatLatency(
+                              rec.expectedLatencySeconds
+                            )}
+                          </Text>
+                        </div>
+                        <div className={styles.metric}>
+                          <Label size="small">Confidence:</Label>
+                          <Text size={200}>{rec.confidence}%</Text>
+                        </div>
                       </div>
-                      <div className={styles.metric}>
-                        <Label size="small">Cost:</Label>
-                        <Text size={200}>
-                          {providerRecommendationService.formatCost(rec.estimatedCost)}
-                        </Text>
-                      </div>
-                      <div className={styles.metric}>
-                        <Label size="small">Latency:</Label>
-                        <Text size={200}>
-                          {providerRecommendationService.formatLatency(rec.expectedLatencySeconds)}
-                        </Text>
-                      </div>
-                      <div className={styles.metric}>
-                        <Label size="small">Confidence:</Label>
-                        <Text size={200}>{rec.confidence}%</Text>
-                      </div>
-                    </div>
 
-                    <div className={styles.reasoning}>
-                      <Text size={200}>{rec.reasoning}</Text>
+                      <div className={styles.reasoning}>
+                        <Text size={200}>{rec.reasoning}</Text>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
           </DialogContent>

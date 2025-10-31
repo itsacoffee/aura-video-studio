@@ -303,6 +303,70 @@ public class ProvidersController : ControllerBase
             return Problem($"Error testing provider connection: {ex.Message}", statusCode: 500);
         }
     }
+
+    /// <summary>
+    /// Get current provider recommendation preferences
+    /// </summary>
+    [HttpGet("preferences")]
+    public IActionResult GetPreferences()
+    {
+        try
+        {
+            var dto = new ProviderPreferencesDto(
+                EnableRecommendations: _settings.GetEnableRecommendations(),
+                AssistanceLevel: _settings.GetAssistanceLevel(),
+                EnableHealthMonitoring: _settings.GetEnableHealthMonitoring(),
+                EnableCostTracking: _settings.GetEnableCostTracking(),
+                EnableLearning: _settings.GetEnableLearning(),
+                EnableProfiles: _settings.GetEnableProfiles(),
+                EnableAutoFallback: _settings.GetEnableAutoFallback(),
+                GlobalDefault: null,
+                AlwaysUseDefault: false,
+                PerOperationOverrides: null,
+                ActiveProfile: "Balanced",
+                ExcludedProviders: null,
+                PinnedProvider: null,
+                FallbackChains: null,
+                MonthlyBudgetLimit: null,
+                PerProviderBudgetLimits: null,
+                HardBudgetLimit: false
+            );
+
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting provider preferences");
+            return Problem($"Error getting provider preferences: {ex.Message}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Update provider recommendation preferences
+    /// </summary>
+    [HttpPost("preferences")]
+    public IActionResult UpdatePreferences([FromBody] ProviderPreferencesDto preferences)
+    {
+        try
+        {
+            _settings.SetRecommendationPreferences(
+                enableRecommendations: preferences.EnableRecommendations,
+                assistanceLevel: preferences.AssistanceLevel,
+                enableHealthMonitoring: preferences.EnableHealthMonitoring,
+                enableCostTracking: preferences.EnableCostTracking,
+                enableLearning: preferences.EnableLearning,
+                enableProfiles: preferences.EnableProfiles,
+                enableAutoFallback: preferences.EnableAutoFallback
+            );
+
+            return Ok(new { message = "Preferences updated successfully" });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error updating provider preferences");
+            return Problem($"Error updating provider preferences: {ex.Message}", statusCode: 500);
+        }
+    }
 }
 
 /// <summary>

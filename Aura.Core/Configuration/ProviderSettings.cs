@@ -488,6 +488,161 @@ public class ProviderSettings
         SaveSettings();
     }
 
+    /// <summary>
+    /// Check if provider recommendations are enabled (OFF by default - opt-in)
+    /// </summary>
+    public bool GetEnableRecommendations()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableRecommendations", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled (opt-in model)
+    }
+
+    /// <summary>
+    /// Get assistance level for recommendations
+    /// </summary>
+    public string GetAssistanceLevel()
+    {
+        LoadSettings();
+        return GetStringSetting("assistanceLevel", "Off");
+    }
+
+    /// <summary>
+    /// Check if health monitoring is enabled (OFF by default)
+    /// </summary>
+    public bool GetEnableHealthMonitoring()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableHealthMonitoring", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Check if cost tracking is enabled (OFF by default)
+    /// </summary>
+    public bool GetEnableCostTracking()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableCostTracking", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Check if preference learning is enabled (OFF by default)
+    /// </summary>
+    public bool GetEnableLearning()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableLearning", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Check if provider profiles are enabled (OFF by default)
+    /// </summary>
+    public bool GetEnableProfiles()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableProfiles", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Check if automatic fallback is enabled (OFF by default)
+    /// </summary>
+    public bool GetEnableAutoFallback()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableAutoFallback", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Set provider recommendation preferences
+    /// </summary>
+    public void SetRecommendationPreferences(
+        bool? enableRecommendations = null,
+        string? assistanceLevel = null,
+        bool? enableHealthMonitoring = null,
+        bool? enableCostTracking = null,
+        bool? enableLearning = null,
+        bool? enableProfiles = null,
+        bool? enableAutoFallback = null)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+
+        if (enableRecommendations.HasValue)
+        {
+            _settings["enableRecommendations"] = enableRecommendations.Value;
+        }
+        if (assistanceLevel != null)
+        {
+            _settings["assistanceLevel"] = assistanceLevel;
+        }
+        if (enableHealthMonitoring.HasValue)
+        {
+            _settings["enableHealthMonitoring"] = enableHealthMonitoring.Value;
+        }
+        if (enableCostTracking.HasValue)
+        {
+            _settings["enableCostTracking"] = enableCostTracking.Value;
+        }
+        if (enableLearning.HasValue)
+        {
+            _settings["enableLearning"] = enableLearning.Value;
+        }
+        if (enableProfiles.HasValue)
+        {
+            _settings["enableProfiles"] = enableProfiles.Value;
+        }
+        if (enableAutoFallback.HasValue)
+        {
+            _settings["enableAutoFallback"] = enableAutoFallback.Value;
+        }
+
+        SaveSettings();
+    }
+
     private void LoadSettings()
     {
         if (_settings != null)
