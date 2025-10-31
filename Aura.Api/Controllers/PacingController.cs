@@ -99,6 +99,8 @@ public class PacingController : ControllerBase
                 request.Scenes,
                 request.Brief,
                 llmProvider: null,
+                useAdaptivePacing: false,
+                pacingProfile: PacingProfile.BalancedDocumentary,
                 ct
             ).ConfigureAwait(false);
 

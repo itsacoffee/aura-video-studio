@@ -401,4 +401,85 @@ public class RuleBasedLlmProvider : ILlmProvider
 
         return Task.FromResult<VisualPromptResult?>(result);
     }
+
+    public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Analyzing content complexity with rule-based heuristics");
+
+        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' }, 
+            StringSplitOptions.RemoveEmptyEntries).Length;
+
+        var technicalTerms = new[] { 
+            "algorithm", "implementation", "architecture", "framework", "methodology", 
+            "optimization", "integration", "configuration", "deployment", "infrastructure",
+            "paradigm", "specification", "protocol", "authentication", "encryption"
+        };
+        var technicalCount = technicalTerms.Count(term => 
+            sceneText.Contains(term, StringComparison.OrdinalIgnoreCase));
+
+        var complexConcepts = new[] {
+            "quantum", "molecular", "theoretical", "hypothetical", "abstract",
+            "mathematical", "philosophical", "metaphysical", "paradox", "anomaly"
+        };
+        var complexConceptCount = complexConcepts.Count(term => 
+            sceneText.Contains(term, StringComparison.OrdinalIgnoreCase));
+
+        var conceptDifficulty = wordCount > 100 ? 60.0 : 40.0;
+        conceptDifficulty += Math.Min(technicalCount * 10, 30);
+        conceptDifficulty += Math.Min(complexConceptCount * 15, 20);
+
+        var terminologyDensity = technicalCount > 3 ? 70.0 : 40.0;
+        if (wordCount > 0)
+        {
+            var densityRatio = (double)technicalCount / wordCount * 100;
+            terminologyDensity = Math.Min(100, 30 + densityRatio * 50);
+        }
+
+        var prerequisiteKnowledge = technicalCount > 2 ? 60.0 : 30.0;
+        prerequisiteKnowledge += Math.Min(complexConceptCount * 10, 25);
+
+        var multiStepReasoning = wordCount > 80 ? 50.0 : 30.0;
+        var logicalConnectors = new[] { "therefore", "consequently", "however", "moreover", 
+                                        "furthermore", "nevertheless", "thus", "hence" };
+        var logicalConnectorCount = logicalConnectors.Count(conn => 
+            sceneText.Contains(conn, StringComparison.OrdinalIgnoreCase));
+        multiStepReasoning += Math.Min(logicalConnectorCount * 8, 30);
+
+        var overallScore = (conceptDifficulty + terminologyDensity + 
+            prerequisiteKnowledge + multiStepReasoning) / 4.0;
+
+        var newConceptsIntroduced = Math.Max(1, technicalCount + complexConceptCount + (wordCount / 50));
+
+        var cognitiveProcessingTime = wordCount / 2.0;
+        cognitiveProcessingTime *= (1.0 + (overallScore / 200.0)); // More complex = more time
+
+        var optimalAttentionWindow = Math.Min(15, Math.Max(5, wordCount / 15.0));
+        if (overallScore > 70)
+            optimalAttentionWindow = Math.Min(15, optimalAttentionWindow * 1.3);
+
+        var result = new ContentComplexityAnalysisResult(
+            OverallComplexityScore: Math.Clamp(overallScore, 0, 100),
+            ConceptDifficulty: Math.Clamp(conceptDifficulty, 0, 100),
+            TerminologyDensity: Math.Clamp(terminologyDensity, 0, 100),
+            PrerequisiteKnowledgeLevel: Math.Clamp(prerequisiteKnowledge, 0, 100),
+            MultiStepReasoningRequired: Math.Clamp(multiStepReasoning, 0, 100),
+            NewConceptsIntroduced: newConceptsIntroduced,
+            CognitiveProcessingTimeSeconds: cognitiveProcessingTime,
+            OptimalAttentionWindowSeconds: optimalAttentionWindow,
+            DetailedBreakdown: $"Rule-based complexity analysis: {technicalCount} technical terms, " +
+                $"{complexConceptCount} complex concepts, {logicalConnectorCount} logical connectors. " +
+                $"Word count: {wordCount}. Estimated as {(overallScore > 70 ? "high" : overallScore > 40 ? "medium" : "low")} complexity."
+        );
+
+        _logger.LogDebug("Content complexity analyzed: Overall={Overall:F0}, ConceptDifficulty={Concept:F0}, " +
+            "TerminologyDensity={Terminology:F0}, NewConcepts={NewConcepts}",
+            result.OverallComplexityScore, result.ConceptDifficulty, 
+            result.TerminologyDensity, result.NewConceptsIntroduced);
+
+        return Task.FromResult<ContentComplexityAnalysisResult?>(result);
+    }
 }

@@ -21,6 +21,11 @@ public interface ILlmProvider
         string videoTone,
         VisualStyle targetStyle,
         CancellationToken ct);
+    Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct);
 }
 
 /// <summary>
@@ -54,6 +59,21 @@ public record VisualPromptResult(
     string[] NegativeElements,
     string[] ContinuityElements,
     string Reasoning
+);
+
+/// <summary>
+/// Result of LLM-based content complexity analysis for adaptive pacing
+/// </summary>
+public record ContentComplexityAnalysisResult(
+    double OverallComplexityScore,
+    double ConceptDifficulty,
+    double TerminologyDensity,
+    double PrerequisiteKnowledgeLevel,
+    double MultiStepReasoningRequired,
+    int NewConceptsIntroduced,
+    double CognitiveProcessingTimeSeconds,
+    double OptimalAttentionWindowSeconds,
+    string DetailedBreakdown
 );
 
 public interface ITtsProvider

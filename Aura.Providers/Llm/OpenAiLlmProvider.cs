@@ -523,5 +523,152 @@ Respond with ONLY the JSON object, no other text:";
         return Array.Empty<string>();
     }
 
+    public async Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Analyzing content complexity with OpenAI for video goal: {Goal}", videoGoal);
+
+        var prompt = BuildComplexityAnalysisPrompt(sceneText, previousSceneText, videoGoal);
+
+        try
+        {
+            var requestBody = new
+            {
+                model = "gpt-4o-mini",
+                messages = new[]
+                {
+                    new { role = "system", content = "You are an expert in cognitive science and educational content analysis. Analyze the complexity of video content to optimize pacing for viewer comprehension." },
+                    new { role = "user", content = prompt }
+                },
+                temperature = 0.3,
+                max_tokens = 500,
+                response_format = new { type = "json_object" }
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, ct);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(responseJson);
+            var root = doc.RootElement;
+
+            var messageContent = root
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
+                .GetString();
+
+            if (string.IsNullOrEmpty(messageContent))
+            {
+                _logger.LogWarning("OpenAI returned empty complexity analysis");
+                return null;
+            }
+
+            using var analysisDoc = JsonDocument.Parse(messageContent);
+            var analysisRoot = analysisDoc.RootElement;
+
+            var result = new ContentComplexityAnalysisResult(
+                OverallComplexityScore: GetDoubleProperty(analysisRoot, "overall_complexity_score", 50.0),
+                ConceptDifficulty: GetDoubleProperty(analysisRoot, "concept_difficulty", 50.0),
+                TerminologyDensity: GetDoubleProperty(analysisRoot, "terminology_density", 50.0),
+                PrerequisiteKnowledgeLevel: GetDoubleProperty(analysisRoot, "prerequisite_knowledge_level", 50.0),
+                MultiStepReasoningRequired: GetDoubleProperty(analysisRoot, "multi_step_reasoning_required", 50.0),
+                NewConceptsIntroduced: GetIntProperty(analysisRoot, "new_concepts_introduced", 3),
+                CognitiveProcessingTimeSeconds: GetDoubleProperty(analysisRoot, "cognitive_processing_time_seconds", 10.0),
+                OptimalAttentionWindowSeconds: GetDoubleProperty(analysisRoot, "optimal_attention_window_seconds", 10.0),
+                DetailedBreakdown: GetStringProperty(analysisRoot, "detailed_breakdown", "No breakdown provided")
+            );
+
+            _logger.LogInformation("Content complexity analyzed: Overall={Score:F0}, NewConcepts={Concepts}",
+                result.OverallComplexityScore, result.NewConceptsIntroduced);
+
+            return result;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to connect to OpenAI API for complexity analysis");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing content complexity with OpenAI");
+            return null;
+        }
+    }
+
+    private static string BuildComplexityAnalysisPrompt(string sceneText, string? previousSceneText, string videoGoal)
+    {
+        var prompt = new System.Text.StringBuilder();
+        prompt.AppendLine("Analyze the cognitive complexity of this video scene content to optimize viewer comprehension and pacing.");
+        prompt.AppendLine();
+        prompt.AppendLine($"VIDEO GOAL: {videoGoal}");
+        prompt.AppendLine();
+        prompt.AppendLine("SCENE CONTENT:");
+        prompt.AppendLine(sceneText);
+        
+        if (!string.IsNullOrEmpty(previousSceneText))
+        {
+            prompt.AppendLine();
+            prompt.AppendLine("PREVIOUS SCENE (for context):");
+            prompt.AppendLine(previousSceneText);
+        }
+
+        prompt.AppendLine();
+        prompt.AppendLine("Provide a JSON response with the following fields (all scores 0-100):");
+        prompt.AppendLine("{");
+        prompt.AppendLine("  \"overall_complexity_score\": <0-100>,");
+        prompt.AppendLine("  \"concept_difficulty\": <0-100, how difficult are the concepts?>,");
+        prompt.AppendLine("  \"terminology_density\": <0-100, how many specialized terms?>,");
+        prompt.AppendLine("  \"prerequisite_knowledge_level\": <0-100, how much prior knowledge assumed?>,");
+        prompt.AppendLine("  \"multi_step_reasoning_required\": <0-100, requires following multiple logical steps?>,");
+        prompt.AppendLine("  \"new_concepts_introduced\": <integer count of new concepts>,");
+        prompt.AppendLine("  \"cognitive_processing_time_seconds\": <estimated time to process>,");
+        prompt.AppendLine("  \"optimal_attention_window_seconds\": <5-15, how long to show this content?>,");
+        prompt.AppendLine("  \"detailed_breakdown\": \"<2-3 sentence explanation of complexity factors>\"");
+        prompt.AppendLine("}");
+
+        return prompt.ToString();
+    }
+
+    private static double GetDoubleProperty(JsonElement root, string propertyName, double defaultValue)
+    {
+        if (root.TryGetProperty(propertyName, out var prop))
+        {
+            if (prop.ValueKind == JsonValueKind.Number)
+                return prop.GetDouble();
+            if (prop.ValueKind == JsonValueKind.String && double.TryParse(prop.GetString(), out var parsed))
+                return parsed;
+        }
+        return defaultValue;
+    }
+
+    private static int GetIntProperty(JsonElement root, string propertyName, int defaultValue)
+    {
+        if (root.TryGetProperty(propertyName, out var prop))
+        {
+            if (prop.ValueKind == JsonValueKind.Number)
+                return prop.GetInt32();
+            if (prop.ValueKind == JsonValueKind.String && int.TryParse(prop.GetString(), out var parsed))
+                return parsed;
+        }
+        return defaultValue;
+    }
+
+    private static string GetStringProperty(JsonElement root, string propertyName, string defaultValue)
+    {
+        if (root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String)
+        {
+            var value = prop.GetString();
+            return value ?? defaultValue;
+        }
+        return defaultValue;
+    }
+
     // Removed legacy prompt building methods - now using EnhancedPromptTemplates
 }

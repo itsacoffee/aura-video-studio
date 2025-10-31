@@ -305,5 +305,15 @@ Respond with ONLY the JSON object, no other text:";
         return Task.FromResult<VisualPromptResult?>(null);
     }
 
+    public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Content complexity analysis not implemented for Ollama, returning null (will use heuristics)");
+        return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+    }
+
     // Removed legacy prompt building method - now using EnhancedPromptTemplates
 }

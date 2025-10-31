@@ -71,6 +71,26 @@ public record SceneTimingSuggestion
     /// Whether LLM analysis was used for this scene
     /// </summary>
     public bool UsedLlmAnalysis { get; init; }
+
+    /// <summary>
+    /// Content complexity score from deep LLM analysis (0-100)
+    /// </summary>
+    public double ContentComplexityScore { get; init; }
+
+    /// <summary>
+    /// Cognitive processing time required for this scene
+    /// </summary>
+    public TimeSpan CognitiveProcessingTime { get; init; }
+
+    /// <summary>
+    /// Duration adjustment applied based on complexity
+    /// </summary>
+    public double DurationAdjustmentMultiplier { get; init; } = 1.0;
+
+    /// <summary>
+    /// Detailed complexity breakdown
+    /// </summary>
+    public string ComplexityBreakdown { get; init; } = string.Empty;
 }
 
 /// <summary>
