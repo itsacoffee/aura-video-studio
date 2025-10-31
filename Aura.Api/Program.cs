@@ -363,6 +363,73 @@ builder.Services.AddSingleton<Aura.Core.Services.PacingServices.PacingApplicatio
 // Register pacing API services
 builder.Services.AddSingleton<Aura.Api.Services.PacingAnalysisCacheService>();
 
+// Register Pipeline Orchestration services (PR 21 intelligent pipeline)
+builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineCache>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Orchestration.PipelineCache>>();
+    return new Aura.Core.Services.Orchestration.PipelineCache(logger);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineHealthCheck>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Orchestration.PipelineHealthCheck>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var ttsProvider = sp.GetRequiredService<ITtsProvider>();
+    var narrationOptimizer = sp.GetService<Aura.Core.Services.Audio.NarrationOptimizationService>();
+    var pacingOptimizer = sp.GetService<Aura.Core.Services.PacingServices.IntelligentPacingOptimizer>();
+    
+    return new Aura.Core.Services.Orchestration.PipelineHealthCheck(
+        logger,
+        llmProvider,
+        ttsProvider,
+        null,
+        null,
+        pacingOptimizer,
+        null,
+        null,
+        null,
+        narrationOptimizer,
+        null
+    );
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineOrchestrationEngine>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Orchestration.PipelineOrchestrationEngine>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var cache = sp.GetRequiredService<Aura.Core.Services.Orchestration.PipelineCache>();
+    var healthCheck = sp.GetRequiredService<Aura.Core.Services.Orchestration.PipelineHealthCheck>();
+    var ttsProvider = sp.GetRequiredService<ITtsProvider>();
+    var narrationOptimizer = sp.GetService<Aura.Core.Services.Audio.NarrationOptimizationService>();
+    var pacingOptimizer = sp.GetService<Aura.Core.Services.PacingServices.IntelligentPacingOptimizer>();
+    
+    var config = new Aura.Core.Services.Orchestration.PipelineConfiguration
+    {
+        MaxConcurrentLlmCalls = 3,
+        EnableCaching = true,
+        CacheTtl = TimeSpan.FromHours(1),
+        ContinueOnOptionalFailure = true,
+        EnableParallelExecution = true
+    };
+    
+    return new Aura.Core.Services.Orchestration.PipelineOrchestrationEngine(
+        logger,
+        llmProvider,
+        cache,
+        healthCheck,
+        config,
+        ttsProvider,
+        null,
+        null,
+        pacingOptimizer,
+        null,
+        null,
+        null,
+        narrationOptimizer,
+        null
+    );
+});
+
 builder.Services.AddSingleton<VideoOrchestrator>();
 
 // Register AI pacing and rhythm optimization services
