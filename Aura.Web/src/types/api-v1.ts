@@ -257,6 +257,10 @@ export interface AudienceProfileDto {
   version: number;
   createdAt: string | null;
   updatedAt: string | null;
+  isFavorite: boolean;
+  folderPath: string | null;
+  usageCount: number;
+  lastUsedAt: string | null;
 }
 
 export interface AgeRangeDto {
@@ -332,6 +336,22 @@ export interface AnalyzeAudienceResponse {
   inferredProfile: AudienceProfileDto;
   confidenceScore: number;
   reasoningFactors: string[];
+}
+
+export interface MoveToFolderRequest {
+  folderPath: string | null;
+}
+
+export interface FolderListResponse {
+  folders: string[];
+}
+
+export interface ExportProfileResponse {
+  json: string;
+}
+
+export interface ImportProfileRequest {
+  json: string;
 }
 
 // Enum values for audience profile fields

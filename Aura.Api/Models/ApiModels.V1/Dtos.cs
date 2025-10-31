@@ -485,7 +485,11 @@ public record AudienceProfileDto(
     List<string>? Tags,
     int Version,
     DateTime? CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    bool IsFavorite = false,
+    string? FolderPath = null,
+    int UsageCount = 0,
+    DateTime? LastUsedAt = null);
 
 /// <summary>
 /// Age range specification
@@ -587,4 +591,28 @@ public record AnalyzeAudienceResponse(
     AudienceProfileDto InferredProfile,
     double ConfidenceScore,
     List<string> ReasoningFactors);
+
+/// <summary>
+/// Request to move profile to a folder
+/// </summary>
+public record MoveToFolderRequest(
+    string? FolderPath);
+
+/// <summary>
+/// Response containing list of folders
+/// </summary>
+public record FolderListResponse(
+    List<string> Folders);
+
+/// <summary>
+/// Request to export profile to JSON
+/// </summary>
+public record ExportProfileResponse(
+    string Json);
+
+/// <summary>
+/// Request to import profile from JSON
+/// </summary>
+public record ImportProfileRequest(
+    string Json);
 

@@ -95,4 +95,95 @@ export class AudienceProfileService {
     );
     return response.data;
   }
+
+  /**
+   * Toggle favorite status for a profile
+   */
+  static async toggleFavorite(id: string): Promise<AudienceProfileResponse> {
+    const response = await apiClient.post<AudienceProfileResponse>(
+      `/api/audience/profiles/${id}/favorite`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get all favorite profiles
+   */
+  static async getFavorites(): Promise<AudienceProfileListResponse> {
+    const response = await apiClient.get<AudienceProfileListResponse>('/api/audience/favorites');
+    return response.data;
+  }
+
+  /**
+   * Move profile to a folder
+   */
+  static async moveToFolder(
+    id: string,
+    folderPath: string | null
+  ): Promise<AudienceProfileResponse> {
+    const request: { folderPath: string | null } = { folderPath };
+    const response = await apiClient.post<AudienceProfileResponse>(
+      `/api/audience/profiles/${id}/move`,
+      request
+    );
+    return response.data;
+  }
+
+  /**
+   * Get profiles in a specific folder
+   */
+  static async getProfilesByFolder(
+    folderPath: string | null
+  ): Promise<AudienceProfileListResponse> {
+    const encodedPath = folderPath ? encodeURIComponent(folderPath) : '';
+    const response = await apiClient.get<AudienceProfileListResponse>(
+      `/api/audience/folders/${encodedPath}`
+    );
+    return response.data;
+  }
+
+  /**
+   * Get all folder paths
+   */
+  static async getFolders(): Promise<string[]> {
+    const response = await apiClient.get<{ folders: string[] }>('/api/audience/folders');
+    return response.data.folders;
+  }
+
+  /**
+   * Search profiles with full-text search
+   */
+  static async searchProfiles(query: string): Promise<AudienceProfileListResponse> {
+    const response = await apiClient.get<AudienceProfileListResponse>(
+      `/api/audience/search?query=${encodeURIComponent(query)}`
+    );
+    return response.data;
+  }
+
+  /**
+   * Record profile usage for analytics
+   */
+  static async recordUsage(id: string): Promise<void> {
+    await apiClient.post(`/api/audience/profiles/${id}/usage`);
+  }
+
+  /**
+   * Export profile to JSON
+   */
+  static async exportProfile(id: string): Promise<string> {
+    const response = await apiClient.get<{ json: string }>(`/api/audience/profiles/${id}/export`);
+    return response.data.json;
+  }
+
+  /**
+   * Import profile from JSON
+   */
+  static async importProfile(json: string): Promise<AudienceProfileResponse> {
+    const request: { json: string } = { json };
+    const response = await apiClient.post<AudienceProfileResponse>(
+      '/api/audience/profiles/import',
+      request
+    );
+    return response.data;
+  }
 }
