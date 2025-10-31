@@ -12,10 +12,10 @@ public class AnthropicAdapter : LlmProviderAdapter
 {
     private readonly string _model;
     
-    public AnthropicAdapter(ILogger<AnthropicAdapter> logger, string model = "claude-3-5-sonnet-20241022") 
+    public AnthropicAdapter(ILogger<AnthropicAdapter> logger, string? model = null) 
         : base(logger)
     {
-        _model = model;
+        _model = model ?? ModelRegistry.GetDefaultModel("Anthropic");
     }
     
     public override string ProviderName => "Anthropic";
@@ -236,20 +236,27 @@ public class AnthropicAdapter : LlmProviderAdapter
     
     private int GetMaxTokensForModel(string model)
     {
-        return model.ToLowerInvariant() switch
+        var modelInfo = ModelRegistry.FindModel("Anthropic", model);
+        if (modelInfo != null)
         {
-            var m when m.Contains("claude-3-5") => 200000,
-            var m when m.Contains("claude-3") => 200000,
-            var m when m.Contains("claude-2.1") => 200000,
-            var m when m.Contains("claude-2") => 100000,
-            var m when m.Contains("claude-instant") => 100000,
-            _ => 100000
-        };
+            return modelInfo.MaxTokens;
+        }
+        
+        Logger.LogWarning("Model {Model} not found in registry, estimating capabilities", model);
+        var (maxTokens, _) = ModelRegistry.EstimateCapabilities(model);
+        return maxTokens;
     }
     
     private int GetContextWindowForModel(string model)
     {
-        return GetMaxTokensForModel(model);
+        var modelInfo = ModelRegistry.FindModel("Anthropic", model);
+        if (modelInfo != null)
+        {
+            return modelInfo.ContextWindow;
+        }
+        
+        var (_, contextWindow) = ModelRegistry.EstimateCapabilities(model);
+        return contextWindow;
     }
     
     private int CalculateMaxOutputTokens(LlmOperationType operationType, int estimatedInputTokens)

@@ -12,10 +12,10 @@ public class GeminiAdapter : LlmProviderAdapter
 {
     private readonly string _model;
     
-    public GeminiAdapter(ILogger<GeminiAdapter> logger, string model = "gemini-pro") 
+    public GeminiAdapter(ILogger<GeminiAdapter> logger, string? model = null) 
         : base(logger)
     {
-        _model = model;
+        _model = model ?? ModelRegistry.GetDefaultModel("Gemini");
     }
     
     public override string ProviderName => "Gemini";
@@ -243,19 +243,27 @@ public class GeminiAdapter : LlmProviderAdapter
     
     private int GetMaxTokensForModel(string model)
     {
-        return model.ToLowerInvariant() switch
+        var modelInfo = ModelRegistry.FindModel("Gemini", model);
+        if (modelInfo != null)
         {
-            var m when m.Contains("gemini-1.5-pro") => 2097152,
-            var m when m.Contains("gemini-1.5-flash") => 1048576,
-            var m when m.Contains("gemini-pro") => 32768,
-            var m when m.Contains("gemini-ultra") => 32768,
-            _ => 32768
-        };
+            return modelInfo.MaxTokens;
+        }
+        
+        Logger.LogWarning("Model {Model} not found in registry, estimating capabilities", model);
+        var (maxTokens, _) = ModelRegistry.EstimateCapabilities(model);
+        return maxTokens;
     }
     
     private int GetContextWindowForModel(string model)
     {
-        return GetMaxTokensForModel(model);
+        var modelInfo = ModelRegistry.FindModel("Gemini", model);
+        if (modelInfo != null)
+        {
+            return modelInfo.ContextWindow;
+        }
+        
+        var (_, contextWindow) = ModelRegistry.EstimateCapabilities(model);
+        return contextWindow;
     }
     
     private int CalculateMaxOutputTokens(LlmOperationType operationType, int estimatedInputTokens)

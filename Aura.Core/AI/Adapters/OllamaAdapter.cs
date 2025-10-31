@@ -13,10 +13,10 @@ public class OllamaAdapter : LlmProviderAdapter
 {
     private readonly string _model;
     
-    public OllamaAdapter(ILogger<OllamaAdapter> logger, string model = "llama3.1") 
+    public OllamaAdapter(ILogger<OllamaAdapter> logger, string? model = null) 
         : base(logger)
     {
-        _model = model;
+        _model = model ?? ModelRegistry.GetDefaultModel("Ollama");
     }
     
     public override string ProviderName => "Ollama";
@@ -270,29 +270,27 @@ public class OllamaAdapter : LlmProviderAdapter
     
     private int GetMaxTokensForModel(string model)
     {
-        var lowerModel = model.ToLowerInvariant();
+        var modelInfo = ModelRegistry.FindModel("Ollama", model);
+        if (modelInfo != null)
+        {
+            return modelInfo.MaxTokens;
+        }
         
-        if (lowerModel.Contains("llama3.1"))
-            return 128000;
-        
-        if (lowerModel.Contains("llama3"))
-            return 8192;
-        
-        if (lowerModel.Contains("mistral"))
-            return 8192;
-        
-        if (lowerModel.Contains("phi"))
-            return 4096;
-        
-        if (lowerModel.Contains("gemma"))
-            return 8192;
-        
-        return 4096;
+        Logger.LogWarning("Model {Model} not found in registry, using pattern-based detection", model);
+        var (maxTokens, _) = ModelRegistry.EstimateCapabilities(model);
+        return maxTokens;
     }
     
     private int GetContextWindowForModel(string model)
     {
-        return GetMaxTokensForModel(model);
+        var modelInfo = ModelRegistry.FindModel("Ollama", model);
+        if (modelInfo != null)
+        {
+            return modelInfo.ContextWindow;
+        }
+        
+        var (_, contextWindow) = ModelRegistry.EstimateCapabilities(model);
+        return contextWindow;
     }
     
     private int CalculateMaxOutputTokens(LlmOperationType operationType, int estimatedInputTokens)

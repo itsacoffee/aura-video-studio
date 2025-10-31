@@ -13,10 +13,10 @@ public class OpenAiAdapter : LlmProviderAdapter
 {
     private readonly string _model;
     
-    public OpenAiAdapter(ILogger<OpenAiAdapter> logger, string model = "gpt-4o-mini") 
+    public OpenAiAdapter(ILogger<OpenAiAdapter> logger, string? model = null) 
         : base(logger)
     {
-        _model = model;
+        _model = model ?? ModelRegistry.GetDefaultModel("OpenAI");
     }
     
     public override string ProviderName => "OpenAI";
@@ -232,20 +232,27 @@ public class OpenAiAdapter : LlmProviderAdapter
     
     private int GetMaxTokensForModel(string model)
     {
-        return model.ToLowerInvariant() switch
+        var modelInfo = ModelRegistry.FindModel("OpenAI", model);
+        if (modelInfo != null)
         {
-            var m when m.Contains("gpt-4o") => 128000,
-            var m when m.Contains("gpt-4-turbo") => 128000,
-            var m when m.Contains("gpt-4") => 8192,
-            var m when m.Contains("gpt-3.5-turbo-16k") => 16384,
-            var m when m.Contains("gpt-3.5-turbo") => 4096,
-            _ => 4096
-        };
+            return modelInfo.MaxTokens;
+        }
+        
+        Logger.LogWarning("Model {Model} not found in registry, estimating capabilities", model);
+        var (maxTokens, _) = ModelRegistry.EstimateCapabilities(model);
+        return maxTokens;
     }
     
     private int GetContextWindowForModel(string model)
     {
-        return GetMaxTokensForModel(model);
+        var modelInfo = ModelRegistry.FindModel("OpenAI", model);
+        if (modelInfo != null)
+        {
+            return modelInfo.ContextWindow;
+        }
+        
+        var (_, contextWindow) = ModelRegistry.EstimateCapabilities(model);
+        return contextWindow;
     }
     
     private int CalculateMaxOutputTokens(LlmOperationType operationType, int estimatedInputTokens)

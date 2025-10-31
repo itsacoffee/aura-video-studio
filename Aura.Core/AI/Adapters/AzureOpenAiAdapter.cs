@@ -16,13 +16,14 @@ public class AzureOpenAiAdapter : LlmProviderAdapter
     
     public AzureOpenAiAdapter(
         ILogger<AzureOpenAiAdapter> logger, 
-        string model = "gpt-4",
-        string deployment = "gpt-4",
+        string? model = null,
+        string? deployment = null,
         string[]? fallbackRegions = null) 
         : base(logger)
     {
-        _model = model;
-        _deployment = deployment;
+        var defaultModel = ModelRegistry.GetDefaultModel("Azure");
+        _model = model ?? defaultModel;
+        _deployment = deployment ?? _model;
         _fallbackRegions = fallbackRegions ?? Array.Empty<string>();
     }
     
@@ -250,21 +251,27 @@ public class AzureOpenAiAdapter : LlmProviderAdapter
     
     private int GetMaxTokensForModel(string model)
     {
-        return model.ToLowerInvariant() switch
+        var modelInfo = ModelRegistry.FindModel("Azure", model);
+        if (modelInfo != null)
         {
-            var m when m.Contains("gpt-4o") => 128000,
-            var m when m.Contains("gpt-4-turbo") => 128000,
-            var m when m.Contains("gpt-4-32k") => 32768,
-            var m when m.Contains("gpt-4") => 8192,
-            var m when m.Contains("gpt-35-turbo-16k") => 16384,
-            var m when m.Contains("gpt-35-turbo") => 4096,
-            _ => 4096
-        };
+            return modelInfo.MaxTokens;
+        }
+        
+        Logger.LogWarning("Model {Model} not found in registry, estimating capabilities", model);
+        var (maxTokens, _) = ModelRegistry.EstimateCapabilities(model);
+        return maxTokens;
     }
     
     private int GetContextWindowForModel(string model)
     {
-        return GetMaxTokensForModel(model);
+        var modelInfo = ModelRegistry.FindModel("Azure", model);
+        if (modelInfo != null)
+        {
+            return modelInfo.ContextWindow;
+        }
+        
+        var (_, contextWindow) = ModelRegistry.EstimateCapabilities(model);
+        return contextWindow;
     }
     
     private int CalculateMaxOutputTokens(LlmOperationType operationType, int estimatedInputTokens)
