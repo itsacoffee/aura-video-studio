@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using Aura.Core.Models.Audience;
 
 namespace Aura.Core.Models;
 
 /// <summary>
 /// Brief configuration for video generation with optional prompt customization
+/// Supports both simple string-based audience and rich structured AudienceProfile
 /// </summary>
 public record Brief(
     string Topic, 
@@ -13,7 +15,8 @@ public record Brief(
     string Tone, 
     string Language, 
     Aspect Aspect,
-    PromptModifiers? PromptModifiers = null);
+    PromptModifiers? PromptModifiers = null,
+    AudienceProfile? AudienceProfile = null);
 
 /// <summary>
 /// User customization options for prompt engineering
