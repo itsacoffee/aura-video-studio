@@ -357,3 +357,88 @@ public record ScriptRefinementResultDto(
     bool Success,
     string? ErrorMessage = null);
 
+/// <summary>
+/// Request to get provider recommendations for an operation type
+/// </summary>
+public record ProviderRecommendationRequest(
+    string OperationType,
+    int EstimatedInputTokens = 1000);
+
+/// <summary>
+/// Recommendation for which LLM provider to use
+/// </summary>
+public record ProviderRecommendationDto(
+    string ProviderName,
+    string Reasoning,
+    int QualityScore,
+    decimal EstimatedCost,
+    double ExpectedLatencySeconds,
+    bool IsAvailable,
+    string HealthStatus,
+    int Confidence);
+
+/// <summary>
+/// Health metrics for a provider
+/// </summary>
+public record ProviderHealthDto(
+    string ProviderName,
+    double SuccessRatePercent,
+    double AverageLatencySeconds,
+    int TotalRequests,
+    int ConsecutiveFailures,
+    string Status);
+
+/// <summary>
+/// User preferences for provider selection
+/// </summary>
+public record ProviderPreferencesDto(
+    string? GlobalDefault,
+    bool AlwaysUseDefault,
+    Dictionary<string, string>? PerOperationOverrides,
+    string ActiveProfile,
+    List<string>? ExcludedProviders,
+    string? PinnedProvider,
+    bool AutoFailover,
+    Dictionary<string, List<string>>? FallbackChains,
+    bool EnableLearning,
+    decimal? MonthlyBudgetLimit,
+    Dictionary<string, decimal>? PerProviderBudgetLimits,
+    bool HardBudgetLimit);
+
+/// <summary>
+/// Cost estimate for an LLM operation
+/// </summary>
+public record CostEstimateDto(
+    string ProviderName,
+    string OperationType,
+    int EstimatedInputTokens,
+    int EstimatedOutputTokens,
+    int TotalTokens,
+    decimal EstimatedCostUsd,
+    decimal CostPer1KTokens);
+
+/// <summary>
+/// Budget check result
+/// </summary>
+public record BudgetCheckDto(
+    bool IsWithinBudget,
+    bool ShouldBlock,
+    List<string> Warnings,
+    decimal CurrentMonthlyCost,
+    decimal EstimatedNewTotal);
+
+/// <summary>
+/// Cost tracking summary for current month
+/// </summary>
+public record CostTrackingSummaryDto(
+    decimal TotalMonthlyCost,
+    Dictionary<string, decimal> CostByProvider,
+    Dictionary<string, decimal> CostByOperation);
+
+/// <summary>
+/// Request to test provider connection
+/// </summary>
+public record TestProviderConnectionRequest(
+    string ProviderName,
+    string? ApiKey = null);
+

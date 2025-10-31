@@ -154,6 +154,28 @@ builder.Services.AddSingleton(sp =>
 // Provider mixer
 builder.Services.AddSingleton<Aura.Core.Orchestrator.ProviderMixer>();
 
+// Provider recommendation, health monitoring, and cost tracking services
+builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
+builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
+builder.Services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommendationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.LlmProviderRecommendationService>>();
+    var healthMonitor = sp.GetRequiredService<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
+    var costTracker = sp.GetRequiredService<Aura.Core.Services.Providers.ProviderCostTrackingService>();
+    var settings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    
+    var providers = factory.CreateAvailableProviders(loggerFactory);
+    
+    return new Aura.Core.Services.Providers.LlmProviderRecommendationService(
+        logger,
+        healthMonitor,
+        costTracker,
+        settings,
+        providers);
+});
+
 // Script orchestrator with lazy provider creation
 builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
 {
