@@ -51,7 +51,12 @@ public record ContinuityIssue
 {
     public int SceneIndex { get; init; }
     public string IssueType { get; init; } = string.Empty;
+    
+    /// <summary>
+    /// Severity level of the issue. Use IssueSeverity constants: Critical, Warning, or Info.
+    /// </summary>
     public string Severity { get; init; } = string.Empty;
+    
     public string Description { get; init; } = string.Empty;
     public string Recommendation { get; init; } = string.Empty;
 }
