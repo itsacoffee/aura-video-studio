@@ -4,9 +4,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Audio;
 using Aura.Core.Models.Generation;
 using Aura.Core.Providers;
 using Aura.Core.Services;
+using Aura.Core.Services.Audio;
 using Aura.Core.Services.Generation;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
@@ -37,6 +39,7 @@ public class VideoOrchestrator
     private readonly Services.PacingServices.PacingApplicationService? _pacingApplicationService;
     private readonly Timeline.TimelineBuilder _timelineBuilder;
     private readonly Configuration.ProviderSettings _providerSettings;
+    private readonly NarrationOptimizationService? _narrationOptimizationService;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -56,7 +59,8 @@ public class VideoOrchestrator
         Configuration.ProviderSettings providerSettings,
         IImageProvider? imageProvider = null,
         Services.PacingServices.IntelligentPacingOptimizer? pacingOptimizer = null,
-        Services.PacingServices.PacingApplicationService? pacingApplicationService = null)
+        Services.PacingServices.PacingApplicationService? pacingApplicationService = null,
+        NarrationOptimizationService? narrationOptimizationService = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(llmProvider);
@@ -92,6 +96,7 @@ public class VideoOrchestrator
         _pacingApplicationService = pacingApplicationService;
         _timelineBuilder = timelineBuilder;
         _providerSettings = providerSettings;
+        _narrationOptimizationService = narrationOptimizationService;
     }
 
     /// <summary>
@@ -311,6 +316,48 @@ public class VideoOrchestrator
             // Stage 3: Generate narration
             progress?.Report("Stage 3/5: Generating narration...");
             var scriptLines = ConvertScenesToScriptLines(scenes);
+            
+            // Optimize narration for TTS if service is available
+            if (_narrationOptimizationService != null)
+            {
+                try
+                {
+                    _logger.LogInformation("Optimizing narration for TTS synthesis");
+                    var optimizationConfig = new NarrationOptimizationConfig();
+                    var optimizationResult = await _narrationOptimizationService.OptimizeForTtsAsync(
+                        scriptLines,
+                        voiceSpec,
+                        null,
+                        optimizationConfig,
+                        ct
+                    ).ConfigureAwait(false);
+
+                    _logger.LogInformation(
+                        "Narration optimized. Score: {Score:F1}, Optimizations: {Count}",
+                        optimizationResult.OptimizationScore,
+                        optimizationResult.OptimizationsApplied
+                    );
+
+                    // Use optimized script lines for TTS
+                    scriptLines = optimizationResult.OptimizedLines
+                        .Select(ol => new ScriptLine(
+                            ol.SceneIndex,
+                            ol.OptimizedText,
+                            ol.Start,
+                            ol.Duration
+                        ))
+                        .ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Narration optimization failed, using original text");
+                    // Continue with original script lines if optimization fails
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Narration optimization service not available");
+            }
             
             string narrationPath = await _retryWrapper.ExecuteWithRetryAsync(
                 async (ctRetry) =>

@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Models;
 using Aura.Core.Models.Audio;
+using Aura.Core.Models.Voice;
+using Aura.Core.Services.Audio;
 using Aura.Core.Services.AudioIntelligence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -24,6 +27,7 @@ public class AudioController : ControllerBase
     private readonly SoundEffectService _soundEffectService;
     private readonly AudioMixingService _mixingService;
     private readonly AudioContinuityService _continuityService;
+    private readonly NarrationOptimizationService? _narrationOptimizationService;
 
     public AudioController(
         ILogger<AudioController> logger,
@@ -32,7 +36,8 @@ public class AudioController : ControllerBase
         VoiceDirectionService voiceService,
         SoundEffectService soundEffectService,
         AudioMixingService mixingService,
-        AudioContinuityService continuityService)
+        AudioContinuityService continuityService,
+        NarrationOptimizationService? narrationOptimizationService = null)
     {
         _logger = logger;
         _musicService = musicService;
@@ -41,6 +46,7 @@ public class AudioController : ControllerBase
         _soundEffectService = soundEffectService;
         _mixingService = mixingService;
         _continuityService = continuityService;
+        _narrationOptimizationService = narrationOptimizationService;
     }
 
     /// <summary>
@@ -521,7 +527,143 @@ public class AudioController : ControllerBase
                 EnergyLevel.Medium, 115, TimeSpan.FromMinutes(2.8), "/music/playful_indie.mp3", null, null),
         };
     }
+    /// <summary>
+    /// Optimize narration text for TTS synthesis
+    /// </summary>
+    [HttpPost("optimize-narration")]
+    public async Task<IActionResult> OptimizeNarration(
+        [FromBody] OptimizeNarrationRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (_narrationOptimizationService == null)
+            {
+                return StatusCode(503, new 
+                { 
+                    success = false, 
+                    error = "Narration optimization service not available" 
+                });
+            }
+
+            if (request.Lines == null || !request.Lines.Any())
+            {
+                return BadRequest(new { success = false, error = "Lines are required" });
+            }
+
+            var correlationId = HttpContext.TraceIdentifier;
+            _logger.LogInformation("[{CorrelationId}] Optimizing {Count} narration lines", 
+                correlationId, request.Lines.Count);
+
+            var scriptLines = request.Lines.Select(l => new ScriptLine(
+                l.SceneIndex,
+                l.Text,
+                TimeSpan.Parse(l.Start),
+                TimeSpan.Parse(l.Duration)
+            )).ToList();
+
+            var voiceSpec = new VoiceSpec(
+                request.VoiceName ?? "default",
+                request.Rate ?? 1.0,
+                request.Pitch ?? 1.0,
+                Enum.TryParse<PauseStyle>(request.PauseStyle, out var pauseStyle) 
+                    ? pauseStyle 
+                    : PauseStyle.Natural
+            );
+
+            var config = request.Config != null
+                ? new NarrationOptimizationConfig
+                {
+                    MaxSentenceWords = request.Config.MaxSentenceWords ?? 25,
+                    EnableTongueTwisterDetection = request.Config.EnableTongueTwisterDetection ?? true,
+                    EnableEmotionalToneTagging = request.Config.EnableEmotionalToneTagging ?? true,
+                    MinEmotionConfidence = request.Config.MinEmotionConfidence ?? 0.75,
+                    EnableSsml = request.Config.EnableSsml ?? true,
+                    EnableVoiceAdaptation = request.Config.EnableVoiceAdaptation ?? true,
+                    EnablePronunciationHints = request.Config.EnablePronunciationHints ?? true,
+                    EnableAcronymClarification = request.Config.EnableAcronymClarification ?? true,
+                    EnableNumberSpelling = request.Config.EnableNumberSpelling ?? true,
+                    EnableHomographDisambiguation = request.Config.EnableHomographDisambiguation ?? true
+                }
+                : new NarrationOptimizationConfig();
+
+            var result = await _narrationOptimizationService.OptimizeForTtsAsync(
+                scriptLines,
+                voiceSpec,
+                null,
+                config,
+                ct
+            );
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Optimization complete. Score: {Score:F1}, Optimizations: {Count}",
+                correlationId, result.OptimizationScore, result.OptimizationsApplied);
+
+            return Ok(new
+            {
+                success = true,
+                optimizationScore = result.OptimizationScore,
+                processingTimeMs = result.ProcessingTime.TotalMilliseconds,
+                optimizationsApplied = result.OptimizationsApplied,
+                optimizedLines = result.OptimizedLines.Select(l => new
+                {
+                    sceneIndex = l.SceneIndex,
+                    originalText = l.OriginalText,
+                    optimizedText = l.OptimizedText,
+                    start = l.Start.ToString(),
+                    duration = l.Duration.ToString(),
+                    emotionalTone = l.EmotionalTone?.ToString(),
+                    emotionConfidence = l.EmotionConfidence,
+                    pronunciationHints = l.PronunciationHints,
+                    ssmlMarkup = l.SsmlMarkup,
+                    actionsApplied = l.ActionsApplied.Select(a => a.ToString()),
+                    wasModified = l.WasModified
+                }),
+                issuesFixed = result.IssuesFixed,
+                warnings = result.Warnings,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            _logger.LogError(ex, "[{CorrelationId}] Error optimizing narration", correlationId);
+            
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message,
+                correlationId
+            });
+        }
+    }
 }
 
 // Request DTOs for Audio Controller
 public record DetectBeatsRequest(string FilePath, int? MinBPM, int? MaxBPM);
+
+public record OptimizeNarrationRequest(
+    List<NarrationLineDto> Lines,
+    string? VoiceName = null,
+    double? Rate = null,
+    double? Pitch = null,
+    string? PauseStyle = null,
+    OptimizationConfigDto? Config = null);
+
+public record NarrationLineDto(
+    int SceneIndex,
+    string Text,
+    string Start,
+    string Duration);
+
+public record OptimizationConfigDto(
+    int? MaxSentenceWords = null,
+    bool? EnableTongueTwisterDetection = null,
+    bool? EnableEmotionalToneTagging = null,
+    double? MinEmotionConfidence = null,
+    bool? EnableSsml = null,
+    bool? EnableVoiceAdaptation = null,
+    bool? EnablePronunciationHints = null,
+    bool? EnableAcronymClarification = null,
+    bool? EnableNumberSpelling = null,
+    bool? EnableHomographDisambiguation = null);
