@@ -356,26 +356,20 @@ export function TimelinePanel({
 
       const splitPoint = time - clipToSplit.startTime;
 
-      // Create two new clips
-      // @ts-expect-error - TODO: Implement clip splitting - variables prepared for future use in handleRazorSplit
-      const _firstClip: TimelineClip = {
-        ...clipToSplit,
-        id: `${clipToSplit.id}-1`,
-        duration: splitPoint,
-      };
+      // Update the first clip to end at the split point
+      onClipUpdate?.(clipToSplit.id, { duration: splitPoint });
 
-      // @ts-expect-error - TODO: Implement clip splitting - variables prepared for future use in handleRazorSplit
-      const _secondClip: TimelineClip = {
+      // Create and add the second clip starting from the split point
+      const secondClip: TimelineClip = {
         ...clipToSplit,
-        id: `${clipToSplit.id}-2`,
+        id: `${clipToSplit.id}-split-${Date.now()}`,
         startTime: time,
         duration: clipToSplit.duration - splitPoint,
       };
 
-      // Remove original and add split clips
-      // Split functionality requires timeline state management integration
+      onClipAdd?.(clipToSplit.trackId, secondClip);
     },
-    [clips]
+    [clips, onClipUpdate, onClipAdd]
   );
 
   const handleFitToWindow = useCallback(() => {
