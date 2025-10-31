@@ -34,10 +34,14 @@ import { useFormValidation } from '../hooks/useFormValidation';
 import { resetFirstRunStatus } from '../services/firstRunService';
 import { settingsService } from '../services/settingsService';
 import type { Profile } from '../types';
+import type { OllamaModel } from '../types/api-v1';
 import type { UserSettings } from '../types/settings';
 import { createDefaultSettings } from '../types/settings';
 import { apiKeysSchema, providerPathsSchema } from '../utils/formValidation';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
+
+// Default Ollama model constant
+const DEFAULT_OLLAMA_MODEL = 'llama3.1:8b-q4_k_m';
 
 const useStyles = makeStyles({
   container: {
@@ -153,10 +157,8 @@ export function SettingsPage() {
   >({});
 
   // Ollama models state
-  const [ollamaModels, setOllamaModels] = useState<
-    Array<{ name: string; size: number; sizeGB: number }>
-  >([]);
-  const [selectedOllamaModel, setSelectedOllamaModel] = useState<string>('llama3.1:8b-q4_k_m');
+  const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([]);
+  const [selectedOllamaModel, setSelectedOllamaModel] = useState<string>(DEFAULT_OLLAMA_MODEL);
   const [loadingOllamaModels, setLoadingOllamaModels] = useState(false);
 
   // Provider validation state

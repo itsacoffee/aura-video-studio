@@ -24,6 +24,7 @@ public class EnginesController : ControllerBase
     private readonly EngineLifecycleManager _lifecycleManager;
     private readonly EngineDetector? _engineDetector;
     private readonly GitHubReleaseResolver? _releaseResolver;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public EnginesController(
         ILogger<EnginesController> logger,
@@ -32,6 +33,7 @@ public class EnginesController : ControllerBase
         LocalEnginesRegistry registry,
         ExternalProcessManager processManager,
         EngineLifecycleManager lifecycleManager,
+        IHttpClientFactory httpClientFactory,
         EngineDetector? engineDetector = null,
         GitHubReleaseResolver? releaseResolver = null)
     {
@@ -41,6 +43,7 @@ public class EnginesController : ControllerBase
         _registry = registry;
         _processManager = processManager;
         _lifecycleManager = lifecycleManager;
+        _httpClientFactory = httpClientFactory;
         _engineDetector = engineDetector;
         _releaseResolver = releaseResolver;
     }
@@ -933,11 +936,11 @@ public class EnginesController : ControllerBase
     [HttpGet("ollama/models")]
     public async Task<IActionResult> GetOllamaModels([FromQuery] string? url = null, CancellationToken ct = default)
     {
+        var baseUrl = url ?? "http://127.0.0.1:11434";
+        
         try
         {
-            var baseUrl = url ?? "http://127.0.0.1:11434";
-            
-            using var httpClient = new HttpClient();
+            using var httpClient = _httpClientFactory.CreateClient();
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
 
@@ -946,7 +949,7 @@ public class EnginesController : ControllerBase
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Failed to get Ollama models from {Url}: {StatusCode}", baseUrl, response.StatusCode);
-                return StatusCode((int)response.StatusCode, new { error = "Failed to retrieve models from Ollama" });
+                return StatusCode((int)response.StatusCode, new { models = Array.Empty<object>(), baseUrl, error = "Failed to retrieve models from Ollama" });
             }
 
             var json = await response.Content.ReadAsStringAsync(ct);
@@ -954,7 +957,7 @@ public class EnginesController : ControllerBase
             
             if (!doc.RootElement.TryGetProperty("models", out var modelsArray))
             {
-                return Ok(new { models = Array.Empty<object>() });
+                return Ok(new { models = Array.Empty<object>(), baseUrl });
             }
 
             var models = new List<object>();
@@ -983,18 +986,18 @@ public class EnginesController : ControllerBase
         }
         catch (TaskCanceledException)
         {
-            _logger.LogWarning("Timeout getting Ollama models from {Url}", url ?? "http://127.0.0.1:11434");
-            return StatusCode(408, new { error = "Request timed out. Ensure Ollama is running." });
+            _logger.LogWarning("Timeout getting Ollama models from {Url}", baseUrl);
+            return StatusCode(408, new { models = Array.Empty<object>(), baseUrl, error = "Request timed out. Ensure Ollama is running." });
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "Failed to connect to Ollama at {Url}", url ?? "http://127.0.0.1:11434");
-            return StatusCode(503, new { error = "Cannot connect to Ollama. Ensure Ollama is running." });
+            _logger.LogWarning(ex, "Failed to connect to Ollama at {Url}", baseUrl);
+            return StatusCode(503, new { models = Array.Empty<object>(), baseUrl, error = "Cannot connect to Ollama. Ensure Ollama is running." });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get Ollama models");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { models = Array.Empty<object>(), baseUrl, error = ex.Message });
         }
     }
 
