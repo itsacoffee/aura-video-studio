@@ -253,6 +253,7 @@ builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.ContentScheduli
 // Register Audio services
 builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
 builder.Services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
+builder.Services.AddSingleton<Aura.Core.Services.Audio.NarrationOptimizationService>();
 
 // Register TTS providers with safe DI resolution
 builder.Services.AddHttpClient();
