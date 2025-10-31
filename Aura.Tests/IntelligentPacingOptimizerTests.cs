@@ -73,7 +73,7 @@ public class IntelligentPacingOptimizerTests
             Aspect: Aspect.Widescreen16x9);
 
         // Act
-        var result = await _optimizer.OptimizePacingAsync(scenes, brief, null, CancellationToken.None);
+        var result = await _optimizer.OptimizePacingAsync(scenes, brief, null, false, PacingProfile.BalancedDocumentary, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -104,7 +104,7 @@ public class IntelligentPacingOptimizerTests
         var mockLlm = new MockSuccessfulLlmProvider();
 
         // Act
-        var result = await _optimizer.OptimizePacingAsync(scenes, brief, mockLlm, CancellationToken.None);
+        var result = await _optimizer.OptimizePacingAsync(scenes, brief, mockLlm, false, PacingProfile.BalancedDocumentary, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -134,7 +134,7 @@ public class IntelligentPacingOptimizerTests
             Aspect: Aspect.Widescreen16x9);
 
         // Act
-        var result = await _optimizer.OptimizePacingAsync(scenes, brief, null, CancellationToken.None);
+        var result = await _optimizer.OptimizePacingAsync(scenes, brief, null, false, PacingProfile.BalancedDocumentary, CancellationToken.None);
 
         // Assert
         Assert.Equal(3, result.TimingSuggestions.Count);
@@ -162,9 +162,9 @@ public class IntelligentPacingOptimizerTests
         var instagramBrief = new Brief("Test", "general", "test", "casual", "en", Aspect.Square1x1);
 
         // Act
-        var youtubeResult = await _optimizer.OptimizePacingAsync(new[] { scene }, youtubeBrief, null, CancellationToken.None);
-        var tiktokResult = await _optimizer.OptimizePacingAsync(new[] { scene }, tiktokBrief, null, CancellationToken.None);
-        var instagramResult = await _optimizer.OptimizePacingAsync(new[] { scene }, instagramBrief, null, CancellationToken.None);
+        var youtubeResult = await _optimizer.OptimizePacingAsync(new[] { scene }, youtubeBrief, null, false, PacingProfile.BalancedDocumentary, CancellationToken.None);
+        var tiktokResult = await _optimizer.OptimizePacingAsync(new[] { scene }, tiktokBrief, null, false, PacingProfile.BalancedDocumentary, CancellationToken.None);
+        var instagramResult = await _optimizer.OptimizePacingAsync(new[] { scene }, instagramBrief, null, false, PacingProfile.BalancedDocumentary, CancellationToken.None);
 
         // Assert - TikTok should have shortest duration (faster pacing), YouTube longest
         var youtubeDuration = youtubeResult.TimingSuggestions[0].OptimalDuration.TotalSeconds;
@@ -188,7 +188,7 @@ public class IntelligentPacingOptimizerTests
         var brief = new Brief("Test", "general", "test", "casual", "en", Aspect.Widescreen16x9);
 
         // Act
-        var result = await _optimizer.OptimizePacingAsync(scenes, brief, null, CancellationToken.None);
+        var result = await _optimizer.OptimizePacingAsync(scenes, brief, null, false, PacingProfile.BalancedDocumentary, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result.AttentionCurve);
@@ -216,7 +216,7 @@ public class IntelligentPacingOptimizerTests
         var brief = new Brief("Test", "general", "test", "casual", "en", Aspect.Widescreen16x9);
 
         // Act
-        var result = await _optimizer.OptimizePacingAsync(scenes, brief, null, CancellationToken.None);
+        var result = await _optimizer.OptimizePacingAsync(scenes, brief, null, false, PacingProfile.BalancedDocumentary, CancellationToken.None);
 
         // Assert
         Assert.NotEmpty(result.Warnings);
@@ -238,7 +238,7 @@ public class IntelligentPacingOptimizerTests
 
         // Act
         var startTime = DateTime.UtcNow;
-        var result = await _optimizer.OptimizePacingAsync(scenes, brief, null, CancellationToken.None);
+        var result = await _optimizer.OptimizePacingAsync(scenes, brief, null, false, PacingProfile.BalancedDocumentary, CancellationToken.None);
         var elapsed = DateTime.UtcNow - startTime;
 
         // Assert - Should complete in under 10 seconds as per spec
@@ -259,7 +259,7 @@ public class IntelligentPacingOptimizerTests
         var failingLlm = new MockFailingLlmProvider();
 
         // Act
-        var result = await _optimizer.OptimizePacingAsync(scenes, brief, failingLlm, CancellationToken.None);
+        var result = await _optimizer.OptimizePacingAsync(scenes, brief, failingLlm, false, PacingProfile.BalancedDocumentary, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -303,6 +303,15 @@ public class IntelligentPacingOptimizerTests
         {
             return Task.FromResult<VisualPromptResult?>(null);
         }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+        }
     }
 
     private class MockFailingLlmProvider : ILlmProvider
@@ -329,6 +338,15 @@ public class IntelligentPacingOptimizerTests
             CancellationToken ct)
         {
             return Task.FromResult<VisualPromptResult?>(null);
+        }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
         }
     }
 }

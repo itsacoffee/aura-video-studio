@@ -265,6 +265,15 @@ public class SceneImportanceAnalyzerTests
         {
             return Task.FromResult<VisualPromptResult?>(null);
         }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+        }
     }
 
     private class MockPartiallyFailingLlmProvider : ILlmProvider
@@ -309,6 +318,15 @@ public class SceneImportanceAnalyzerTests
             CancellationToken ct)
         {
             return Task.FromResult<VisualPromptResult?>(null);
+        }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
         }
     }
 
@@ -359,6 +377,15 @@ public class SceneImportanceAnalyzerTests
             CancellationToken ct)
         {
             return Task.FromResult<VisualPromptResult?>(null);
+        }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
         }
     }
 }

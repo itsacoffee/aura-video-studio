@@ -10,6 +10,7 @@ using Aura.Core.Providers;
 using Aura.Core.Services;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.Generation;
+using Aura.Core.Services.PacingServices;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 
@@ -264,7 +265,7 @@ public class VideoOrchestrator
 
                     var startTime = DateTime.UtcNow;
                     var pacingResult = await _pacingOptimizer.OptimizePacingAsync(
-                        scenes, brief, _llmProvider, ct).ConfigureAwait(false);
+                        scenes, brief, _llmProvider, true, PacingProfile.BalancedDocumentary, ct).ConfigureAwait(false);
                     
                     var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                     _logger.LogInformation(
@@ -581,7 +582,7 @@ public class VideoOrchestrator
                             
                             var startTime = DateTime.UtcNow;
                             var pacingResult = await _pacingOptimizer.OptimizePacingAsync(
-                                parsedScenes, brief, _llmProvider, ct).ConfigureAwait(false);
+                                parsedScenes, brief, _llmProvider, true, PacingProfile.BalancedDocumentary, ct).ConfigureAwait(false);
                             
                             var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                             _logger.LogInformation(

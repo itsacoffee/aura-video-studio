@@ -536,6 +536,16 @@ internal class PipelineValidationFailingLlmProvider : ILlmProvider
         _logger.LogError("LLM provider is unavailable or misconfigured");
         throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
     }
+
+    public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogError("LLM provider is unavailable or misconfigured");
+        throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
+    }
 }
 
 /// <summary>

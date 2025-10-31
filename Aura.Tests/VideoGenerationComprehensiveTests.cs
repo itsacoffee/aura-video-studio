@@ -313,6 +313,15 @@ More test content here to ensure we have adequate word count for the duration. M
         {
             return Task.FromResult<VisualPromptResult?>(null);
         }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+        }
     }
 
     private class TestSlowLlmProvider : ILlmProvider
@@ -340,6 +349,15 @@ More test content here to ensure we have adequate word count for the duration. M
             CancellationToken ct)
         {
             return Task.FromResult<VisualPromptResult?>(null);
+        }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
         }
     }
 
