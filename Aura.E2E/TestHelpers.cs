@@ -65,4 +65,13 @@ internal class FailingLlmProvider : ILlmProvider
     {
         throw new System.Exception($"{_name} provider is not available");
     }
+
+    public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+    }
 }

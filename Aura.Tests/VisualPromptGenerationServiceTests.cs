@@ -359,5 +359,14 @@ public class VisualPromptGenerationServiceTests
                 Reasoning: "Dramatic tone requires strong lighting and vivid colors"
             ));
         }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+        }
     }
 }

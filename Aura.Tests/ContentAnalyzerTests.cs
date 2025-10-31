@@ -150,5 +150,14 @@ SUGGESTIONS:
         {
             return Task.FromResult<VisualPromptResult?>(null);
         }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+        }
     }
 }

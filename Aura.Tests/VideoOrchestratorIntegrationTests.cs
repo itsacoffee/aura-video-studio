@@ -245,6 +245,15 @@ Today AI is used in healthcare finance education and entertainment. Machine lear
         {
             return Task.FromResult<VisualPromptResult?>(null);
         }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+        }
     }
 
     private class TestMockTtsProvider : ITtsProvider
