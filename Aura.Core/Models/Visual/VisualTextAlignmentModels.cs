@@ -351,9 +351,14 @@ public record CognitiveLoadMetrics
     public double ProcessingRate { get; init; }
 
     /// <summary>
+    /// Recommended cognitive load threshold
+    /// </summary>
+    public const double RecommendedThreshold = 75.0;
+
+    /// <summary>
     /// Whether load exceeds recommended threshold
     /// </summary>
-    public bool ExceedsThreshold => OverallLoad > 75.0;
+    public bool ExceedsThreshold => OverallLoad > RecommendedThreshold;
 
     /// <summary>
     /// Detailed breakdown of load sources

@@ -23,7 +23,6 @@ public class VisualTextAlignmentService
     private readonly ILogger<VisualTextAlignmentService> _logger;
     private readonly TimeSpan _llmTimeout = TimeSpan.FromSeconds(30);
     private readonly int _maxRetries = 2;
-    private readonly double _cognitiveLoadThreshold = 75.0;
     private readonly double _targetComplexityCorrelation = -0.7;
 
     public VisualTextAlignmentService(ILogger<VisualTextAlignmentService> logger)
@@ -80,9 +79,9 @@ public class VisualTextAlignmentService
         var complexityCorrelation = CalculateComplexityCorrelation(segments);
         var transitionAlignment = CalculateTransitionAlignmentRate(segments);
 
-        if (cognitiveLoad > _cognitiveLoadThreshold)
+        if (cognitiveLoad > CognitiveLoadMetrics.RecommendedThreshold)
         {
-            warnings.Add($"Overall cognitive load ({cognitiveLoad:F1}) exceeds threshold ({_cognitiveLoadThreshold})");
+            warnings.Add($"Overall cognitive load ({cognitiveLoad:F1}) exceeds threshold ({CognitiveLoadMetrics.RecommendedThreshold})");
         }
 
         if (Math.Abs(complexityCorrelation) < Math.Abs(_targetComplexityCorrelation))
@@ -229,16 +228,6 @@ public class VisualTextAlignmentService
             });
         }
 
-        if (llmProvider != null)
-        {
-            var enhancedConcepts = await EnhanceConceptsWithLlmAsync(
-                text, concepts, tone, llmProvider, ct);
-            if (enhancedConcepts != null && enhancedConcepts.Count > 0)
-            {
-                return enhancedConcepts;
-            }
-        }
-
         return concepts;
     }
 
@@ -304,16 +293,6 @@ public class VisualTextAlignmentService
             });
         }
 
-        if (llmProvider != null)
-        {
-            var enhancedRecs = await EnhanceRecommendationsWithLlmAsync(
-                text, recommendations, narrationComplexity, tone, llmProvider, ct);
-            if (enhancedRecs != null && enhancedRecs.Count > 0)
-            {
-                return enhancedRecs;
-            }
-        }
-
         return recommendations;
     }
 
@@ -353,16 +332,6 @@ public class VisualTextAlignmentService
         var consistencyScore = contradictions.Count == 0 ? 100.0 :
             Math.Max(0, 100.0 - (contradictions.Count * 20.0));
 
-        if (llmProvider != null && contradictions.Count > 0)
-        {
-            var llmValidation = await ValidateWithLlmAsync(
-                segment, proposedVisuals, llmProvider, ct);
-            if (llmValidation != null)
-            {
-                return llmValidation;
-            }
-        }
-
         return new VisualConsistencyValidation
         {
             IsConsistent = contradictions.Count == 0,
@@ -392,9 +361,9 @@ public class VisualTextAlignmentService
         var processingRate = segment.KeyConcepts.Count / segment.Duration.TotalSeconds;
 
         var recommendations = new List<string>();
-        if (overallLoad > _cognitiveLoadThreshold)
+        if (overallLoad > CognitiveLoadMetrics.RecommendedThreshold)
         {
-            recommendations.Add($"Reduce cognitive load (current: {overallLoad:F1}, threshold: {_cognitiveLoadThreshold})");
+            recommendations.Add($"Reduce cognitive load (current: {overallLoad:F1}, threshold: {CognitiveLoadMetrics.RecommendedThreshold})");
             
             if (narrationLoad > 70.0)
             {
@@ -830,33 +799,5 @@ public class VisualTextAlignmentService
         return sb.ToString();
     }
 
-    private async Task<List<KeyConcept>?> EnhanceConceptsWithLlmAsync(
-        string text,
-        List<KeyConcept> baseConcepts,
-        string tone,
-        ILlmProvider llmProvider,
-        CancellationToken ct)
-    {
-        return null;
-    }
 
-    private async Task<List<VisualRecommendation>?> EnhanceRecommendationsWithLlmAsync(
-        string text,
-        List<VisualRecommendation> baseRecommendations,
-        double narrationComplexity,
-        string tone,
-        ILlmProvider llmProvider,
-        CancellationToken ct)
-    {
-        return null;
-    }
-
-    private async Task<VisualConsistencyValidation?> ValidateWithLlmAsync(
-        NarrationSegment segment,
-        IReadOnlyList<VisualRecommendation> visuals,
-        ILlmProvider llmProvider,
-        CancellationToken ct)
-    {
-        return null;
-    }
 }
