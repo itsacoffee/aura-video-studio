@@ -454,3 +454,137 @@ public record TestProviderConnectionRequest(
     string ProviderName,
     string? ApiKey = null);
 
+// ============================================================================
+// AUDIENCE PROFILE DTOs
+// ============================================================================
+
+/// <summary>
+/// Request to create or update an audience profile
+/// </summary>
+public record AudienceProfileDto(
+    string? Id,
+    string Name,
+    string? Description,
+    AgeRangeDto? AgeRange,
+    string? EducationLevel,
+    string? Profession,
+    string? Industry,
+    string? ExpertiseLevel,
+    string? IncomeBracket,
+    string? GeographicRegion,
+    LanguageFluencyDto? LanguageFluency,
+    List<string>? Interests,
+    List<string>? PainPoints,
+    List<string>? Motivations,
+    CulturalBackgroundDto? CulturalBackground,
+    string? PreferredLearningStyle,
+    AttentionSpanDto? AttentionSpan,
+    string? TechnicalComfort,
+    AccessibilityNeedsDto? AccessibilityNeeds,
+    bool IsTemplate,
+    List<string>? Tags,
+    int Version,
+    DateTime? CreatedAt,
+    DateTime? UpdatedAt);
+
+/// <summary>
+/// Age range specification
+/// </summary>
+public record AgeRangeDto(
+    int MinAge,
+    int MaxAge,
+    string DisplayName,
+    string ContentRating);
+
+/// <summary>
+/// Language fluency specification
+/// </summary>
+public record LanguageFluencyDto(
+    string Language,
+    string Level);
+
+/// <summary>
+/// Cultural background and sensitivities
+/// </summary>
+public record CulturalBackgroundDto(
+    List<string>? Sensitivities,
+    List<string>? TabooTopics,
+    string PreferredCommunicationStyle);
+
+/// <summary>
+/// Attention span preferences
+/// </summary>
+public record AttentionSpanDto(
+    double PreferredDurationMinutes,
+    string DisplayName);
+
+/// <summary>
+/// Accessibility requirements
+/// </summary>
+public record AccessibilityNeedsDto(
+    bool RequiresCaptions,
+    bool RequiresAudioDescriptions,
+    bool RequiresHighContrast,
+    bool RequiresSimplifiedLanguage,
+    bool RequiresLargeText);
+
+/// <summary>
+/// Request to create a new audience profile
+/// </summary>
+public record CreateAudienceProfileRequest(
+    AudienceProfileDto Profile);
+
+/// <summary>
+/// Request to update an existing audience profile
+/// </summary>
+public record UpdateAudienceProfileRequest(
+    AudienceProfileDto Profile);
+
+/// <summary>
+/// Response containing an audience profile
+/// </summary>
+public record AudienceProfileResponse(
+    AudienceProfileDto Profile,
+    ValidationResultDto? Validation);
+
+/// <summary>
+/// Response containing a list of audience profiles
+/// </summary>
+public record AudienceProfileListResponse(
+    List<AudienceProfileDto> Profiles,
+    int TotalCount,
+    int Page,
+    int PageSize);
+
+/// <summary>
+/// Validation result for audience profile
+/// </summary>
+public record ValidationResultDto(
+    bool IsValid,
+    List<ValidationIssueDto> Errors,
+    List<ValidationIssueDto> Warnings,
+    List<ValidationIssueDto> Infos);
+
+/// <summary>
+/// Individual validation issue
+/// </summary>
+public record ValidationIssueDto(
+    string Severity,
+    string Field,
+    string Message,
+    string? SuggestedFix);
+
+/// <summary>
+/// Request to analyze script and infer audience
+/// </summary>
+public record AnalyzeAudienceRequest(
+    string ScriptText);
+
+/// <summary>
+/// Response from audience analysis
+/// </summary>
+public record AnalyzeAudienceResponse(
+    AudienceProfileDto InferredProfile,
+    double ConfidenceScore,
+    List<string> ReasoningFactors);
+
