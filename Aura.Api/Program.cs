@@ -379,17 +379,17 @@ builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineHealthChe
     var pacingOptimizer = sp.GetService<Aura.Core.Services.PacingServices.IntelligentPacingOptimizer>();
     
     return new Aura.Core.Services.Orchestration.PipelineHealthCheck(
-        logger,
-        llmProvider,
-        ttsProvider,
-        null,
-        null,
-        pacingOptimizer,
-        null,
-        null,
-        null,
-        narrationOptimizer,
-        null
+        logger: logger,
+        llmProvider: llmProvider,
+        ttsProvider: ttsProvider,
+        contentAdvisor: null,
+        narrativeAnalyzer: null,
+        pacingOptimizer: pacingOptimizer,
+        toneEnforcer: null,
+        visualPromptService: null,
+        visualAlignmentService: null,
+        narrationOptimizer: narrationOptimizer,
+        scriptRefinement: null
     );
 });
 
@@ -405,7 +405,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineOrchestra
     
     var config = new Aura.Core.Services.Orchestration.PipelineConfiguration
     {
-        MaxConcurrentLlmCalls = 3,
+        MaxConcurrentLlmCalls = Math.Max(1, Environment.ProcessorCount / 2),
         EnableCaching = true,
         CacheTtl = TimeSpan.FromHours(1),
         ContinueOnOptionalFailure = true,
@@ -413,20 +413,20 @@ builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineOrchestra
     };
     
     return new Aura.Core.Services.Orchestration.PipelineOrchestrationEngine(
-        logger,
-        llmProvider,
-        cache,
-        healthCheck,
-        config,
-        ttsProvider,
-        null,
-        null,
-        pacingOptimizer,
-        null,
-        null,
-        null,
-        narrationOptimizer,
-        null
+        logger: logger,
+        llmProvider: llmProvider,
+        cache: cache,
+        healthCheck: healthCheck,
+        config: config,
+        ttsProvider: ttsProvider,
+        contentAdvisor: null,
+        narrativeAnalyzer: null,
+        pacingOptimizer: pacingOptimizer,
+        toneEnforcer: null,
+        visualPromptService: null,
+        visualAlignmentService: null,
+        narrationOptimizer: narrationOptimizer,
+        scriptRefinement: null
     );
 });
 

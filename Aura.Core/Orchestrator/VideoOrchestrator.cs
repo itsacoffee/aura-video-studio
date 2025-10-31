@@ -457,8 +457,8 @@ public class VideoOrchestrator
         {
             Tier = HardwareTier.B,
             LogicalCores = Environment.ProcessorCount,
-            PhysicalCores = Environment.ProcessorCount / 2,
-            RamGB = 8
+            PhysicalCores = Math.Max(1, Environment.ProcessorCount / 2),
+            RamGB = (int)(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024.0 * 1024 * 1024))
         };
 
         var pipelineContext = new PipelineExecutionContext
@@ -472,7 +472,7 @@ public class VideoOrchestrator
 
         var pipelineConfig = new PipelineConfiguration
         {
-            MaxConcurrentLlmCalls = 3,
+            MaxConcurrentLlmCalls = Math.Max(1, Environment.ProcessorCount / 2),
             EnableCaching = true,
             CacheTtl = TimeSpan.FromHours(1),
             ContinueOnOptionalFailure = true,
