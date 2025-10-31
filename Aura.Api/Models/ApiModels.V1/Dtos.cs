@@ -392,15 +392,27 @@ public record ProviderHealthDto(
 /// User preferences for provider selection
 /// </summary>
 public record ProviderPreferencesDto(
+    // Master toggle and assistance level
+    bool EnableRecommendations,
+    string AssistanceLevel,
+    
+    // Feature toggles (all OFF by default)
+    bool EnableHealthMonitoring,
+    bool EnableCostTracking,
+    bool EnableLearning,
+    bool EnableProfiles,
+    bool EnableAutoFallback,
+    
+    // Manual configuration (always available)
     string? GlobalDefault,
     bool AlwaysUseDefault,
     Dictionary<string, string>? PerOperationOverrides,
     string ActiveProfile,
     List<string>? ExcludedProviders,
     string? PinnedProvider,
-    bool AutoFailover,
+    
+    // Fallback and budget settings
     Dictionary<string, List<string>>? FallbackChains,
-    bool EnableLearning,
     decimal? MonthlyBudgetLimit,
     Dictionary<string, decimal>? PerProviderBudgetLimits,
     bool HardBudgetLimit);

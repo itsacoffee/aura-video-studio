@@ -31,7 +31,7 @@ public class HealthController : ControllerBase
     /// Get health metrics for all providers
     /// </summary>
     [HttpGet("providers")]
-    public ActionResult<IEnumerable<ProviderHealthDto>> GetAllProviders()
+    public ActionResult<IEnumerable<ProviderHealthCheckDto>> GetAllProviders()
     {
         var metrics = _healthMonitor.GetAllProviderHealth();
         var dtos = metrics.Values.Select(ToDto).ToList();
@@ -42,7 +42,7 @@ public class HealthController : ControllerBase
     /// Get health metrics for a specific provider
     /// </summary>
     [HttpGet("providers/{name}")]
-    public ActionResult<ProviderHealthDto> GetProvider(string name)
+    public ActionResult<ProviderHealthCheckDto> GetProvider(string name)
     {
         var metrics = _healthMonitor.GetProviderHealth(name);
         if (metrics == null)
@@ -57,7 +57,7 @@ public class HealthController : ControllerBase
     /// Trigger immediate health check for a specific provider
     /// </summary>
     [HttpPost("providers/{name}/check")]
-    public async Task<ActionResult<ProviderHealthDto>> CheckProvider(
+    public async Task<ActionResult<ProviderHealthCheckDto>> CheckProvider(
         string name,
         CancellationToken ct)
     {
@@ -77,7 +77,7 @@ public class HealthController : ControllerBase
     /// Trigger health check for all providers
     /// </summary>
     [HttpPost("providers/check-all")]
-    public ActionResult<IEnumerable<ProviderHealthDto>> CheckAllProviders()
+    public ActionResult<IEnumerable<ProviderHealthCheckDto>> CheckAllProviders()
     {
         _logger.LogInformation("Manual health check requested for all providers");
         
@@ -185,9 +185,9 @@ public class HealthController : ControllerBase
         name.Equals("StableDiffusion", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("Stock", StringComparison.OrdinalIgnoreCase);
 
-    private ProviderHealthDto ToDto(ProviderHealthMetrics metrics)
+    private ProviderHealthCheckDto ToDto(ProviderHealthMetrics metrics)
     {
-        return new ProviderHealthDto
+        return new ProviderHealthCheckDto
         {
             ProviderName = metrics.ProviderName,
             IsHealthy = metrics.IsHealthy,
@@ -202,9 +202,9 @@ public class HealthController : ControllerBase
 }
 
 /// <summary>
-/// DTO for provider health metrics
+/// DTO for provider health check metrics (health endpoint specific)
 /// </summary>
-public class ProviderHealthDto
+public class ProviderHealthCheckDto
 {
     public string ProviderName { get; set; } = string.Empty;
     public bool IsHealthy { get; set; }

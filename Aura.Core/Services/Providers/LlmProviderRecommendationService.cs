@@ -57,6 +57,7 @@ public class LlmProviderRecommendationService
     /// <summary>
     /// Get provider recommendations for a specific operation type.
     /// Returns a ranked list of suitable providers with reasoning.
+    /// Returns empty list if recommendations are disabled.
     /// </summary>
     public async Task<List<ProviderRecommendation>> GetRecommendationsAsync(
         LlmOperationType operationType,
@@ -64,10 +65,17 @@ public class LlmProviderRecommendationService
         int estimatedInputTokens = 1000,
         CancellationToken cancellationToken = default)
     {
+        userPreferences ??= LoadUserPreferences();
+        
+        // If recommendations are completely disabled, return empty list
+        if (!userPreferences.EnableRecommendations || userPreferences.AssistanceLevel == AssistanceLevel.Off)
+        {
+            _logger.LogDebug("Provider recommendations are disabled for {OperationType}", operationType);
+            return new List<ProviderRecommendation>();
+        }
+
         var startTime = DateTime.UtcNow;
         _logger.LogDebug("Getting provider recommendations for {OperationType}", operationType);
-
-        userPreferences ??= LoadUserPreferences();
 
         var recommendations = new List<ProviderRecommendation>();
 
@@ -83,6 +91,7 @@ public class LlmProviderRecommendationService
                 providerName, 
                 operationType, 
                 estimatedInputTokens,
+                userPreferences,
                 cancellationToken).ConfigureAwait(false);
 
             if (recommendation != null)
@@ -91,7 +100,9 @@ public class LlmProviderRecommendationService
             }
         }
 
-        var sorted = SortRecommendationsByProfile(recommendations, userPreferences.ActiveProfile, operationType);
+        var sorted = userPreferences.EnableProfiles 
+            ? SortRecommendationsByProfile(recommendations, userPreferences.ActiveProfile, operationType)
+            : SortRecommendationsByProfile(recommendations, ProviderProfile.Balanced, operationType);
 
         var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
         _logger.LogInformation(
@@ -107,7 +118,8 @@ public class LlmProviderRecommendationService
     }
 
     /// <summary>
-    /// Get the best single recommendation based on user preferences and operation type
+    /// Get the best single recommendation based on user preferences and operation type.
+    /// Returns null if recommendations are disabled and no manual selection is configured.
     /// </summary>
     public async Task<ProviderRecommendation?> GetBestRecommendationAsync(
         LlmOperationType operationType,
@@ -117,6 +129,7 @@ public class LlmProviderRecommendationService
     {
         userPreferences ??= LoadUserPreferences();
 
+        // Pinned provider always takes precedence (works even when recommendations disabled)
         if (userPreferences.PinnedProvider != null && 
             _availableProviders.ContainsKey(userPreferences.PinnedProvider))
         {
@@ -128,9 +141,11 @@ public class LlmProviderRecommendationService
                 userPreferences.PinnedProvider, 
                 operationType, 
                 estimatedInputTokens,
+                userPreferences,
                 cancellationToken).ConfigureAwait(false);
         }
 
+        // Per-operation overrides work regardless of recommendation settings
         if (userPreferences.PerOperationOverrides.TryGetValue(operationType, out var overrideProvider) &&
             _availableProviders.ContainsKey(overrideProvider))
         {
@@ -142,9 +157,11 @@ public class LlmProviderRecommendationService
                 overrideProvider, 
                 operationType, 
                 estimatedInputTokens,
+                userPreferences,
                 cancellationToken).ConfigureAwait(false);
         }
 
+        // Global default works regardless of recommendation settings
         if (userPreferences.AlwaysUseDefault && 
             userPreferences.GlobalDefault != null &&
             _availableProviders.ContainsKey(userPreferences.GlobalDefault))
@@ -157,9 +174,18 @@ public class LlmProviderRecommendationService
                 userPreferences.GlobalDefault, 
                 operationType, 
                 estimatedInputTokens,
+                userPreferences,
                 cancellationToken).ConfigureAwait(false);
         }
 
+        // If recommendations are disabled, return null (user must configure manual selection)
+        if (!userPreferences.EnableRecommendations || userPreferences.AssistanceLevel == AssistanceLevel.Off)
+        {
+            _logger.LogDebug("No provider recommendation available for {OperationType} (recommendations disabled)", operationType);
+            return null;
+        }
+
+        // Get intelligent recommendations
         var recommendations = await GetRecommendationsAsync(
             operationType, 
             userPreferences, 
@@ -173,6 +199,7 @@ public class LlmProviderRecommendationService
         string providerName,
         LlmOperationType operationType,
         int estimatedInputTokens,
+        ProviderPreferences userPreferences,
         CancellationToken cancellationToken)
     {
         if (!ProviderSpecs.TryGetValue(providerName, out var specs))
@@ -182,12 +209,19 @@ public class LlmProviderRecommendationService
         }
 
         var isAvailable = _availableProviders.ContainsKey(providerName);
-        var healthMetrics = _healthMonitor.GetProviderHealth(providerName);
+        
+        // Only get health metrics if health monitoring is enabled
+        ProviderHealthMetrics? healthMetrics = null;
+        if (userPreferences.EnableHealthMonitoring)
+        {
+            healthMetrics = _healthMonitor.GetProviderHealth(providerName);
+        }
+        
         var healthStatus = DetermineHealthStatus(healthMetrics);
         var qualityScore = CalculateQualityScore(specs, operationType, healthMetrics);
         var costEstimate = CalculateCost(specs, estimatedInputTokens, operationType);
         var latency = CalculateExpectedLatency(specs, healthMetrics);
-        var reasoning = GenerateReasoning(providerName, operationType, specs, qualityScore, costEstimate, healthStatus);
+        var reasoning = GenerateReasoning(providerName, operationType, specs, qualityScore, costEstimate, healthStatus, userPreferences.AssistanceLevel);
         var confidence = CalculateConfidence(healthMetrics, isAvailable);
 
         return new ProviderRecommendation
@@ -265,10 +299,12 @@ public class LlmProviderRecommendationService
         ProviderCharacteristics specs,
         int qualityScore,
         decimal cost,
-        ProviderHealthStatus healthStatus)
+        ProviderHealthStatus healthStatus,
+        AssistanceLevel assistanceLevel)
     {
         var reasons = new List<string>();
 
+        // Primary reason based on operation type
         var primaryReason = operationType switch
         {
             LlmOperationType.ScriptGeneration => 
@@ -284,6 +320,20 @@ public class LlmProviderRecommendationService
             _ => "offers balanced performance for this operation type"
         };
 
+        // At Minimal level, only show provider name
+        if (assistanceLevel == AssistanceLevel.Minimal)
+        {
+            return providerName;
+        }
+
+        // At Moderate level, show brief reasoning
+        if (assistanceLevel == AssistanceLevel.Moderate)
+        {
+            reasons.Add($"{providerName} {primaryReason}");
+            return string.Join(". ", reasons) + ".";
+        }
+
+        // At Full level, show detailed information
         reasons.Add($"{providerName} {primaryReason}");
 
         if (cost == 0)
@@ -423,9 +473,23 @@ public class LlmProviderRecommendationService
 
     private ProviderPreferences LoadUserPreferences()
     {
+        // Default preferences: all recommendation features disabled (opt-in model)
         return new ProviderPreferences
         {
-            ActiveProfile = ProviderProfile.Balanced
+            EnableRecommendations = false,
+            AssistanceLevel = AssistanceLevel.Off,
+            EnableHealthMonitoring = false,
+            EnableCostTracking = false,
+            EnableLearning = false,
+            EnableProfiles = false,
+            EnableAutoFallback = false,
+            ActiveProfile = ProviderProfile.Balanced,
+            AlwaysUseDefault = false,
+            PerOperationOverrides = new Dictionary<LlmOperationType, string>(),
+            ExcludedProviders = new HashSet<string>(),
+            FallbackChains = new Dictionary<LlmOperationType, List<string>>(),
+            PerProviderBudgetLimits = new Dictionary<string, decimal>(),
+            HardBudgetLimit = false
         };
     }
 }
