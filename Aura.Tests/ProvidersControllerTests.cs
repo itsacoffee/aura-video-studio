@@ -14,6 +14,13 @@ namespace Aura.Tests;
 
 public class ProvidersControllerTests
 {
+    private static Mock<ProviderSettings> CreateMockProviderSettings()
+    {
+        var mockLogger = new NullLogger<ProviderSettings>();
+        var mockSettings = new Mock<ProviderSettings>(mockLogger);
+        return mockSettings;
+    }
+
     [Fact]
     public async Task GetCapabilities_Should_ReturnStableDiffusionUnavailable_WhenNoNvidiaGpu()
     {
@@ -41,7 +48,8 @@ public class ProvidersControllerTests
             .Setup(x => x.GetKey("stabilityai"))
             .Returns((string?)null);
 
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object);
+        var mockSettings = CreateMockProviderSettings();
+        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object);
 
         // Act
         var result = await controller.GetCapabilities();
@@ -78,7 +86,8 @@ public class ProvidersControllerTests
             .Setup(x => x.GetKey(It.IsAny<string>()))
             .Returns((string?)null);
 
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object);
+        var mockSettings = CreateMockProviderSettings();
+        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object);
 
         // Act
         var result = await controller.GetCapabilities();
@@ -115,7 +124,8 @@ public class ProvidersControllerTests
             .Setup(x => x.GetKey("STABLE_KEY"))
             .Returns("test-key");
 
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object);
+        var mockSettings = CreateMockProviderSettings();
+        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object);
 
         // Act
         var result = await controller.GetCapabilities();
@@ -152,7 +162,8 @@ public class ProvidersControllerTests
             .Setup(x => x.GetKey("STABLE_KEY"))
             .Returns("test-key-12345");
 
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object);
+        var mockSettings = CreateMockProviderSettings();
+        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object);
 
         // Act
         var result = await controller.GetCapabilities();
@@ -187,7 +198,8 @@ public class ProvidersControllerTests
             .Setup(x => x.GetKey(It.IsAny<string>()))
             .Returns((string?)null);
 
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object);
+        var mockSettings = CreateMockProviderSettings();
+        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object);
 
         // Act
         var result = await controller.GetCapabilities();
@@ -228,7 +240,8 @@ public class ProvidersControllerTests
             .Setup(x => x.GetKey(It.IsAny<string>()))
             .Returns((string?)null);
 
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object);
+        var mockSettings = CreateMockProviderSettings();
+        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object);
 
         // Act
         var result = await controller.GetCapabilities();
