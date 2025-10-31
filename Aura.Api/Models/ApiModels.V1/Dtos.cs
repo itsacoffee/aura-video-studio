@@ -26,7 +26,8 @@ public record ScriptRequest(
     string? ProviderTier,
     ProviderSelectionDto? ProviderSelection,
     PromptModifiersDto? PromptModifiers = null,
-    ScriptRefinementConfigDto? RefinementConfig = null);
+    ScriptRefinementConfigDto? RefinementConfig = null,
+    string? AudienceProfileId = null);
 
 /// <summary>
 /// User customization options for prompt engineering

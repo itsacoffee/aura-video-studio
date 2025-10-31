@@ -93,6 +93,7 @@ export interface ScriptRequest {
   density: Density;
   style: string;
   providerTier?: string | null;
+  audienceProfileId?: string | null;
 }
 
 export interface LineDto {

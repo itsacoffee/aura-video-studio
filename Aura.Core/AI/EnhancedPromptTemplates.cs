@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Aura.Core.Models;
+using Aura.Core.Models.Audience;
 using Aura.Core.Models.Visual;
 using PacingEnum = Aura.Core.Models.Pacing;
 using DensityEnum = Aura.Core.Models.Density;
@@ -103,7 +104,11 @@ AVOID AI DETECTION FLAGS:
         sb.AppendLine($"- Content Density: {GetDensityDescription(spec.Density)}");
         sb.AppendLine($"- Language: {brief.Language}");
         
-        if (!string.IsNullOrEmpty(brief.Audience))
+        if (brief.AudienceProfile != null)
+        {
+            sb.AppendLine($"- Target Audience: {FormatAudienceProfileForPrompt(brief.AudienceProfile)}");
+        }
+        else if (!string.IsNullOrEmpty(brief.Audience))
         {
             sb.AppendLine($"- Target Audience: {brief.Audience}");
         }
@@ -550,7 +555,11 @@ Provide specific, actionable feedback for improvement, focusing on making conten
         sb.AppendLine($"- Content Density: {GetDensityDescription(spec.Density)}");
         sb.AppendLine($"- Language: {brief.Language}");
         
-        if (!string.IsNullOrEmpty(brief.Audience))
+        if (brief.AudienceProfile != null)
+        {
+            sb.AppendLine($"- Target Audience: {FormatAudienceProfileForPrompt(brief.AudienceProfile)}");
+        }
+        else if (!string.IsNullOrEmpty(brief.Audience))
         {
             sb.AppendLine($"- Target Audience: {brief.Audience}");
         }
@@ -677,6 +686,84 @@ Provide specific, actionable feedback for improvement, focusing on making conten
         sb.AppendLine($"- Guidance: {visualGuidance}");
         sb.AppendLine();
         sb.AppendLine("Ensure all visual selections reinforce and never contradict the established tone.");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Format audience profile for prompt inclusion
+    /// </summary>
+    private static string FormatAudienceProfileForPrompt(AudienceProfile profile)
+    {
+        var sb = new StringBuilder();
+        sb.Append(profile.Name);
+
+        var details = new List<string>();
+
+        if (profile.AgeRange != null)
+        {
+            details.Add($"Age: {profile.AgeRange.DisplayName}");
+        }
+
+        if (profile.ExpertiseLevel.HasValue)
+        {
+            details.Add($"Expertise: {profile.ExpertiseLevel}");
+        }
+
+        if (profile.EducationLevel.HasValue)
+        {
+            details.Add($"Education: {profile.EducationLevel}");
+        }
+
+        if (!string.IsNullOrEmpty(profile.Profession))
+        {
+            details.Add($"Profession: {profile.Profession}");
+        }
+
+        if (profile.TechnicalComfort.HasValue)
+        {
+            details.Add($"Technical Level: {profile.TechnicalComfort}");
+        }
+
+        if (profile.PreferredLearningStyle.HasValue)
+        {
+            details.Add($"Learning Style: {profile.PreferredLearningStyle}");
+        }
+
+        if (profile.Interests.Count > 0)
+        {
+            details.Add($"Interests: {string.Join(", ", profile.Interests.Take(3))}");
+        }
+
+        if (profile.PainPoints.Count > 0)
+        {
+            details.Add($"Pain Points: {string.Join("; ", profile.PainPoints.Take(2))}");
+        }
+
+        if (profile.Motivations.Count > 0)
+        {
+            details.Add($"Motivations: {string.Join(", ", profile.Motivations.Take(2))}");
+        }
+
+        if (profile.AccessibilityNeeds != null)
+        {
+            var needs = new List<string>();
+            if (profile.AccessibilityNeeds.RequiresCaptions) needs.Add("Captions");
+            if (profile.AccessibilityNeeds.RequiresSimplifiedLanguage) needs.Add("Simple Language");
+            if (needs.Count > 0) details.Add($"Accessibility: {string.Join(", ", needs)}");
+        }
+
+        if (profile.CulturalBackground != null && profile.CulturalBackground.Sensitivities.Count > 0)
+        {
+            details.Add($"Cultural Sensitivities: {string.Join(", ", profile.CulturalBackground.Sensitivities.Take(2))}");
+        }
+
+        if (details.Count > 0)
+        {
+            sb.Append(" (");
+            sb.Append(string.Join("; ", details));
+            sb.Append(")");
+        }
 
         return sb.ToString();
     }
