@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.ML.Models;
 using Aura.Core.Models;
+using Aura.Core.Models.Narrative;
 using Aura.Core.Models.PacingModels;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
@@ -312,6 +313,21 @@ public class IntelligentPacingOptimizerTests
         {
             return Task.FromResult<ContentComplexityAnalysisResult?>(null);
         }
+
+        public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(string fromSceneText, string toSceneText, string videoGoal, CancellationToken ct)
+        {
+            return Task.FromResult<SceneCoherenceResult?>(null);
+        }
+
+        public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(IReadOnlyList<string> sceneTexts, string videoGoal, string videoType, CancellationToken ct)
+        {
+            return Task.FromResult<NarrativeArcResult?>(null);
+        }
+
+        public Task<string?> GenerateTransitionTextAsync(string fromSceneText, string toSceneText, string videoGoal, CancellationToken ct)
+        {
+            return Task.FromResult<string?>(null);
+        }
     }
 
     private class MockFailingLlmProvider : ILlmProvider
@@ -347,6 +363,21 @@ public class IntelligentPacingOptimizerTests
             CancellationToken ct)
         {
             return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+        }
+
+        public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(string fromSceneText, string toSceneText, string videoGoal, CancellationToken ct)
+        {
+            return Task.FromResult<SceneCoherenceResult?>(null);
+        }
+
+        public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(IReadOnlyList<string> sceneTexts, string videoGoal, string videoType, CancellationToken ct)
+        {
+            return Task.FromResult<NarrativeArcResult?>(null);
+        }
+
+        public Task<string?> GenerateTransitionTextAsync(string fromSceneText, string toSceneText, string videoGoal, CancellationToken ct)
+        {
+            return Task.FromResult<string?>(null);
         }
     }
 }

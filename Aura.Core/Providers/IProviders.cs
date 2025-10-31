@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Narrative;
 using Aura.Core.Models.Visual;
 
 namespace Aura.Core.Providers;
@@ -24,6 +25,21 @@ public interface ILlmProvider
     Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
         string sceneText,
         string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct);
+    Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct);
+    Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+        IReadOnlyList<string> sceneTexts,
+        string videoGoal,
+        string videoType,
+        CancellationToken ct);
+    Task<string?> GenerateTransitionTextAsync(
+        string fromSceneText,
+        string toSceneText,
         string videoGoal,
         CancellationToken ct);
 }
@@ -74,6 +90,28 @@ public record ContentComplexityAnalysisResult(
     double CognitiveProcessingTimeSeconds,
     double OptimalAttentionWindowSeconds,
     string DetailedBreakdown
+);
+
+/// <summary>
+/// Result of LLM-based scene coherence analysis
+/// </summary>
+public record SceneCoherenceResult(
+    double CoherenceScore,
+    string[] ConnectionTypes,
+    double ConfidenceScore,
+    string Reasoning
+);
+
+/// <summary>
+/// Result of LLM-based narrative arc validation
+/// </summary>
+public record NarrativeArcResult(
+    bool IsValid,
+    string DetectedStructure,
+    string ExpectedStructure,
+    string[] StructuralIssues,
+    string[] Recommendations,
+    string Reasoning
 );
 
 public interface ITtsProvider

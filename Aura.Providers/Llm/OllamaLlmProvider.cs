@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -6,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
+using Aura.Core.Models.Narrative;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
@@ -313,6 +315,36 @@ Respond with ONLY the JSON object, no other text:";
     {
         _logger.LogInformation("Content complexity analysis not implemented for Ollama, returning null (will use heuristics)");
         return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+    }
+
+    public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Scene coherence analysis not implemented for Ollama, returning null (will use fallback)");
+        return Task.FromResult<SceneCoherenceResult?>(null);
+    }
+
+    public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+        IReadOnlyList<string> sceneTexts,
+        string videoGoal,
+        string videoType,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Narrative arc validation not implemented for Ollama, returning null (will use fallback)");
+        return Task.FromResult<NarrativeArcResult?>(null);
+    }
+
+    public Task<string?> GenerateTransitionTextAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Transition text generation not implemented for Ollama, returning null (will use fallback)");
+        return Task.FromResult<string?>(null);
     }
 
     // Removed legacy prompt building method - now using EnhancedPromptTemplates
