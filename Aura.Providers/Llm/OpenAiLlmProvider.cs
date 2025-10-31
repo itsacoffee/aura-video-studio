@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
 using Microsoft.Extensions.Logging;
@@ -374,6 +375,152 @@ Respond with ONLY the JSON object, no other text:";
             _logger.LogError(ex, "Error analyzing scene with OpenAI");
             return null;
         }
+    }
+
+    public async Task<VisualPromptResult?> GenerateVisualPromptAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoTone,
+        VisualStyle targetStyle,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Generating visual prompt with OpenAI");
+
+        try
+        {
+            var systemPrompt = "You are a professional cinematographer and visual director. " +
+                              "Create detailed visual prompts for image generation. " +
+                              "Return your response ONLY as valid JSON with no additional text.";
+            
+            var userPrompt = $@"Create a detailed visual prompt for this scene and return JSON with:
+- detailedDescription (string): Detailed visual description (100-200 tokens) of what should be shown
+- compositionGuidelines (string): Composition rules (e.g., ""rule of thirds, leading lines"")
+- lightingMood (string): Lighting mood (e.g., ""dramatic"", ""soft"", ""golden hour"")
+- lightingDirection (string): Light direction (e.g., ""front"", ""side"", ""back"")
+- lightingQuality (string): Light quality (e.g., ""soft"", ""hard"", ""diffused"")
+- timeOfDay (string): Time of day (e.g., ""day"", ""golden hour"", ""evening"", ""night"")
+- colorPalette (array of strings): 3-5 specific color hex codes
+- shotType (string): Shot type (e.g., ""wide shot"", ""medium shot"", ""close-up"")
+- cameraAngle (string): Camera angle (e.g., ""eye level"", ""high angle"", ""low angle"")
+- depthOfField (string): Depth of field (e.g., ""shallow"", ""medium"", ""deep"")
+- styleKeywords (array of strings): 5-7 keywords for the visual style
+- negativeElements (array of strings): Elements to avoid in the image
+- continuityElements (array of strings): Elements that should remain consistent with previous scenes
+- reasoning (string): Brief explanation of choices
+
+Scene text: {sceneText}
+{(previousSceneText != null ? $"Previous scene: {previousSceneText}" : "")}
+Video tone: {videoTone}
+Target style: {targetStyle}
+
+Respond with ONLY the JSON object, no other text:";
+
+            var requestBody = new
+            {
+                model = _model,
+                messages = new[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
+                },
+                temperature = 0.7,
+                max_tokens = 1024,
+                response_format = new { type = "json_object" }
+            };
+
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
+                choices.GetArrayLength() > 0)
+            {
+                var firstChoice = choices[0];
+                if (firstChoice.TryGetProperty("message", out var message) &&
+                    message.TryGetProperty("content", out var contentProp))
+                {
+                    var promptText = contentProp.GetString() ?? string.Empty;
+                    
+                    try
+                    {
+                        var promptDoc = JsonDocument.Parse(promptText);
+                        var root = promptDoc.RootElement;
+
+                        var result = new VisualPromptResult(
+                            DetailedDescription: root.TryGetProperty("detailedDescription", out var desc) ? desc.GetString() ?? "" : "",
+                            CompositionGuidelines: root.TryGetProperty("compositionGuidelines", out var comp) ? comp.GetString() ?? "" : "",
+                            LightingMood: root.TryGetProperty("lightingMood", out var mood) ? mood.GetString() ?? "neutral" : "neutral",
+                            LightingDirection: root.TryGetProperty("lightingDirection", out var dir) ? dir.GetString() ?? "front" : "front",
+                            LightingQuality: root.TryGetProperty("lightingQuality", out var qual) ? qual.GetString() ?? "soft" : "soft",
+                            TimeOfDay: root.TryGetProperty("timeOfDay", out var time) ? time.GetString() ?? "day" : "day",
+                            ColorPalette: ParseStringArray(root, "colorPalette"),
+                            ShotType: root.TryGetProperty("shotType", out var shot) ? shot.GetString() ?? "medium shot" : "medium shot",
+                            CameraAngle: root.TryGetProperty("cameraAngle", out var angle) ? angle.GetString() ?? "eye level" : "eye level",
+                            DepthOfField: root.TryGetProperty("depthOfField", out var dof) ? dof.GetString() ?? "medium" : "medium",
+                            StyleKeywords: ParseStringArray(root, "styleKeywords"),
+                            NegativeElements: ParseStringArray(root, "negativeElements"),
+                            ContinuityElements: ParseStringArray(root, "continuityElements"),
+                            Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
+                        );
+
+                        _logger.LogInformation("Visual prompt generated successfully");
+                        return result;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to parse visual prompt JSON from OpenAI: {Response}", promptText);
+                        return null;
+                    }
+                }
+            }
+
+            _logger.LogWarning("OpenAI visual prompt response did not contain expected structure");
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "OpenAI visual prompt request timed out");
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to connect to OpenAI API for visual prompt");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating visual prompt with OpenAI");
+            return null;
+        }
+    }
+
+    private static string[] ParseStringArray(JsonElement root, string propertyName)
+    {
+        if (root.TryGetProperty(propertyName, out var arrayProp) && arrayProp.ValueKind == JsonValueKind.Array)
+        {
+            var items = new System.Collections.Generic.List<string>();
+            foreach (var item in arrayProp.EnumerateArray())
+            {
+                var str = item.GetString();
+                if (!string.IsNullOrEmpty(str))
+                {
+                    items.Add(str);
+                }
+            }
+            return items.ToArray();
+        }
+        return Array.Empty<string>();
     }
 
     // Removed legacy prompt building methods - now using EnhancedPromptTemplates

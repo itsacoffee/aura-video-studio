@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Aura.Core.ML.Models;
 using Aura.Core.Models;
 using Aura.Core.Models.PacingModels;
+using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.PacingServices;
 using Microsoft.Extensions.Logging;
@@ -292,6 +293,16 @@ public class IntelligentPacingOptimizerTests
                 Reasoning: "Mock analysis from LLM"
             ));
         }
+
+        public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoTone,
+            VisualStyle targetStyle,
+            CancellationToken ct)
+        {
+            return Task.FromResult<VisualPromptResult?>(null);
+        }
     }
 
     private class MockFailingLlmProvider : ILlmProvider
@@ -308,6 +319,16 @@ public class IntelligentPacingOptimizerTests
             CancellationToken ct)
         {
             return Task.FromResult<SceneAnalysisResult?>(null);
+        }
+
+        public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoTone,
+            VisualStyle targetStyle,
+            CancellationToken ct)
+        {
+            return Task.FromResult<VisualPromptResult?>(null);
         }
     }
 }

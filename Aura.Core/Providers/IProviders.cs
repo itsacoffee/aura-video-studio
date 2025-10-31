@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 
 namespace Aura.Core.Providers;
 
@@ -13,6 +14,12 @@ public interface ILlmProvider
         string sceneText,
         string? previousSceneText,
         string videoGoal,
+        CancellationToken ct);
+    Task<VisualPromptResult?> GenerateVisualPromptAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoTone,
+        VisualStyle targetStyle,
         CancellationToken ct);
 }
 
@@ -26,6 +33,26 @@ public record SceneAnalysisResult(
     string InformationDensity,
     double OptimalDurationSeconds,
     string TransitionType,
+    string Reasoning
+);
+
+/// <summary>
+/// Result of LLM-based visual prompt generation
+/// </summary>
+public record VisualPromptResult(
+    string DetailedDescription,
+    string CompositionGuidelines,
+    string LightingMood,
+    string LightingDirection,
+    string LightingQuality,
+    string TimeOfDay,
+    string[] ColorPalette,
+    string ShotType,
+    string CameraAngle,
+    string DepthOfField,
+    string[] StyleKeywords,
+    string[] NegativeElements,
+    string[] ContinuityElements,
     string Reasoning
 );
 

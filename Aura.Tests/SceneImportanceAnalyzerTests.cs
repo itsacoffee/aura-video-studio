@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.PacingModels;
+using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.PacingServices;
 using Microsoft.Extensions.Logging;
@@ -254,6 +255,16 @@ public class SceneImportanceAnalyzerTests
                 Reasoning: "Mock LLM analysis"
             ));
         }
+
+        public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoTone,
+            VisualStyle targetStyle,
+            CancellationToken ct)
+        {
+            return Task.FromResult<VisualPromptResult?>(null);
+        }
     }
 
     private class MockPartiallyFailingLlmProvider : ILlmProvider
@@ -288,6 +299,16 @@ public class SceneImportanceAnalyzerTests
             }
 
             return Task.FromResult<SceneAnalysisResult?>(null);
+        }
+
+        public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoTone,
+            VisualStyle targetStyle,
+            CancellationToken ct)
+        {
+            return Task.FromResult<VisualPromptResult?>(null);
         }
     }
 
@@ -328,6 +349,16 @@ public class SceneImportanceAnalyzerTests
                 TransitionType: "dissolve",
                 Reasoning: "Succeeded after retries"
             ));
+        }
+
+        public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoTone,
+            VisualStyle targetStyle,
+            CancellationToken ct)
+        {
+            return Task.FromResult<VisualPromptResult?>(null);
         }
     }
 }
