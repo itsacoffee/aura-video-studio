@@ -34,10 +34,14 @@ import { useFormValidation } from '../hooks/useFormValidation';
 import { resetFirstRunStatus } from '../services/firstRunService';
 import { settingsService } from '../services/settingsService';
 import type { Profile } from '../types';
+import type { OllamaModel } from '../types/api-v1';
 import type { UserSettings } from '../types/settings';
 import { createDefaultSettings } from '../types/settings';
 import { apiKeysSchema, providerPathsSchema } from '../utils/formValidation';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
+
+// Default Ollama model constant
+const DEFAULT_OLLAMA_MODEL = 'llama3.1:8b-q4_k_m';
 
 const useStyles = makeStyles({
   container: {
@@ -152,6 +156,11 @@ export function SettingsPage() {
     Record<string, { success: boolean; message: string } | null>
   >({});
 
+  // Ollama models state
+  const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([]);
+  const [selectedOllamaModel, setSelectedOllamaModel] = useState<string>(DEFAULT_OLLAMA_MODEL);
+  const [loadingOllamaModels, setLoadingOllamaModels] = useState(false);
+
   // Provider validation state
   const [validating, setValidating] = useState(false);
   const [validationResults, setValidationResults] = useState<ValidationResults | null>(null);
@@ -197,6 +206,7 @@ export function SettingsPage() {
     fetchApiKeys();
     fetchProviderPaths();
     fetchPortableModeSettings();
+    fetchSelectedOllamaModel();
   }, []);
 
   // Apply UI scale on load
@@ -410,6 +420,59 @@ export function SettingsPage() {
         ...prev,
         [provider]: { success: false, message: `Network error: ${error}` },
       }));
+    }
+  };
+
+  const fetchOllamaModels = async () => {
+    setLoadingOllamaModels(true);
+    try {
+      const url = providerPaths.ollamaUrl || 'http://127.0.0.1:11434';
+      const response = await fetch(
+        apiUrl(`/api/engines/ollama/models?url=${encodeURIComponent(url)}`)
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setOllamaModels(data.models || []);
+      } else {
+        console.error('Failed to fetch Ollama models');
+        setOllamaModels([]);
+      }
+    } catch (error) {
+      console.error('Error fetching Ollama models:', error);
+      setOllamaModels([]);
+    } finally {
+      setLoadingOllamaModels(false);
+    }
+  };
+
+  const fetchSelectedOllamaModel = async () => {
+    try {
+      const response = await fetch(apiUrl('/api/settings/ollama/model'));
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.model) {
+          setSelectedOllamaModel(data.model);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching selected Ollama model:', error);
+    }
+  };
+
+  const saveOllamaModel = async (model: string) => {
+    try {
+      const response = await fetch(apiUrl('/api/settings/ollama/model'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model }),
+      });
+      if (response.ok) {
+        setSelectedOllamaModel(model);
+      } else {
+        console.error('Failed to save Ollama model');
+      }
+    } catch (error) {
+      console.error('Error saving Ollama model:', error);
     }
   };
 
@@ -1339,6 +1402,71 @@ export function SettingsPage() {
                   {testResults.ollama.success ? '✓' : '✗'} {testResults.ollama.message}
                 </Text>
               )}
+            </div>
+
+            <div>
+              <Field
+                label="Ollama Model"
+                hint="Select which Ollama model to use for script generation. Make sure the model is pulled in Ollama first."
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: tokens.spacingHorizontalS,
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <select
+                    value={selectedOllamaModel}
+                    onChange={(e) => saveOllamaModel(e.target.value)}
+                    disabled={loadingOllamaModels || ollamaModels.length === 0}
+                    style={{
+                      flex: 1,
+                      padding: '8px',
+                      borderRadius: tokens.borderRadiusMedium,
+                      border: `1px solid ${tokens.colorNeutralStroke1}`,
+                      backgroundColor: tokens.colorNeutralBackground1,
+                      color: tokens.colorNeutralForeground1,
+                      fontSize: tokens.fontSizeBase300,
+                    }}
+                  >
+                    {ollamaModels.length === 0 && !loadingOllamaModels && (
+                      <option value={selectedOllamaModel}>{selectedOllamaModel}</option>
+                    )}
+                    {ollamaModels.map((model) => (
+                      <option key={model.name} value={model.name}>
+                        {model.name} ({model.sizeGB.toFixed(2)} GB)
+                      </option>
+                    ))}
+                  </select>
+                  <Button size="small" onClick={fetchOllamaModels} disabled={loadingOllamaModels}>
+                    {loadingOllamaModels ? 'Loading...' : 'Refresh Models'}
+                  </Button>
+                </div>
+                {ollamaModels.length === 0 && !loadingOllamaModels && (
+                  <Text
+                    size={200}
+                    style={{
+                      marginTop: tokens.spacingVerticalXS,
+                      color: tokens.colorNeutralForeground3,
+                    }}
+                  >
+                    Click &quot;Refresh Models&quot; to load available models from Ollama
+                  </Text>
+                )}
+                {ollamaModels.length > 0 && (
+                  <Text
+                    size={200}
+                    style={{
+                      marginTop: tokens.spacingVerticalXS,
+                      color: tokens.colorNeutralForeground3,
+                    }}
+                  >
+                    Found {ollamaModels.length} model{ollamaModels.length !== 1 ? 's' : ''} in
+                    Ollama
+                  </Text>
+                )}
+              </Field>
             </div>
 
             <Field

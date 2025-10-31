@@ -622,6 +622,60 @@ public class SettingsController : ControllerBase
             message = "API key format is valid"
         };
     }
+
+    /// <summary>
+    /// Get current Ollama model setting
+    /// </summary>
+    [HttpGet("ollama/model")]
+    public IActionResult GetOllamaModel()
+    {
+        try
+        {
+            var model = _providerSettings.GetOllamaModel();
+            _logger.LogInformation("Retrieved Ollama model setting: {Model}", model);
+            
+            return Ok(new
+            {
+                success = true,
+                model
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting Ollama model setting");
+            return StatusCode(500, new { error = "Failed to get Ollama model setting" });
+        }
+    }
+
+    /// <summary>
+    /// Set Ollama model
+    /// </summary>
+    [HttpPost("ollama/model")]
+    public IActionResult SetOllamaModel([FromBody] SetOllamaModelRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Model))
+            {
+                return BadRequest(new { error = "Model name is required" });
+            }
+
+            _providerSettings.SetOllamaModel(request.Model);
+            _logger.LogInformation("Ollama model setting updated to: {Model}", request.Model);
+            
+            return Ok(new
+            {
+                success = true,
+                message = "Ollama model updated successfully",
+                model = request.Model
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting Ollama model");
+            return StatusCode(500, new { error = "Failed to set Ollama model" });
+        }
+    }
 }
 
 /// <summary>
@@ -648,5 +702,13 @@ public class TestApiKeyRequest
 public class ValidatePathRequest
 {
     public string Path { get; set; } = "";
+}
+
+/// <summary>
+/// Request model for setting Ollama model
+/// </summary>
+public class SetOllamaModelRequest
+{
+    public string Model { get; set; } = "";
 }
 

@@ -159,6 +159,29 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Get Ollama model name
+    /// </summary>
+    public string GetOllamaModel()
+    {
+        LoadSettings();
+        return GetStringSetting("ollamaModel", "llama3.1:8b-q4_k_m");
+    }
+
+    /// <summary>
+    /// Set Ollama model name
+    /// </summary>
+    public void SetOllamaModel(string modelName)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["ollamaModel"] = modelName;
+        SaveSettings();
+    }
+
+    /// <summary>
     /// Get FFmpeg executable path
     /// </summary>
     public string GetFfmpegPath()

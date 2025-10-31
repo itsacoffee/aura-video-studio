@@ -24,6 +24,7 @@ public class EnginesController : ControllerBase
     private readonly EngineLifecycleManager _lifecycleManager;
     private readonly EngineDetector? _engineDetector;
     private readonly GitHubReleaseResolver? _releaseResolver;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public EnginesController(
         ILogger<EnginesController> logger,
@@ -32,6 +33,7 @@ public class EnginesController : ControllerBase
         LocalEnginesRegistry registry,
         ExternalProcessManager processManager,
         EngineLifecycleManager lifecycleManager,
+        IHttpClientFactory httpClientFactory,
         EngineDetector? engineDetector = null,
         GitHubReleaseResolver? releaseResolver = null)
     {
@@ -41,6 +43,7 @@ public class EnginesController : ControllerBase
         _registry = registry;
         _processManager = processManager;
         _lifecycleManager = lifecycleManager;
+        _httpClientFactory = httpClientFactory;
         _engineDetector = engineDetector;
         _releaseResolver = releaseResolver;
     }
@@ -924,6 +927,77 @@ public class EnginesController : ControllerBase
         {
             _logger.LogError(ex, "Failed to detect Ollama");
             return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// List available Ollama models
+    /// </summary>
+    [HttpGet("ollama/models")]
+    public async Task<IActionResult> GetOllamaModels([FromQuery] string? url = null, CancellationToken ct = default)
+    {
+        var baseUrl = url ?? "http://127.0.0.1:11434";
+        
+        try
+        {
+            using var httpClient = _httpClientFactory.CreateClient();
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
+
+            var response = await httpClient.GetAsync($"{baseUrl}/api/tags", cts.Token);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to get Ollama models from {Url}: {StatusCode}", baseUrl, response.StatusCode);
+                return StatusCode((int)response.StatusCode, new { models = Array.Empty<object>(), baseUrl, error = "Failed to retrieve models from Ollama" });
+            }
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            
+            if (!doc.RootElement.TryGetProperty("models", out var modelsArray))
+            {
+                return Ok(new { models = Array.Empty<object>(), baseUrl });
+            }
+
+            var models = new List<object>();
+            foreach (var model in modelsArray.EnumerateArray())
+            {
+                var name = model.TryGetProperty("name", out var nameProp) ? nameProp.GetString() : null;
+                var size = model.TryGetProperty("size", out var sizeProp) ? sizeProp.GetInt64() : 0;
+                var modified = model.TryGetProperty("modified_at", out var modProp) ? modProp.GetString() : null;
+                var digest = model.TryGetProperty("digest", out var digestProp) ? digestProp.GetString() : null;
+                
+                if (name != null)
+                {
+                    models.Add(new
+                    {
+                        name,
+                        size,
+                        sizeGB = Math.Round(size / 1024.0 / 1024.0 / 1024.0, 2),
+                        modifiedAt = modified,
+                        digest
+                    });
+                }
+            }
+
+            _logger.LogInformation("Retrieved {Count} Ollama models from {Url}", models.Count, baseUrl);
+            return Ok(new { models, baseUrl });
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("Timeout getting Ollama models from {Url}", baseUrl);
+            return StatusCode(408, new { models = Array.Empty<object>(), baseUrl, error = "Request timed out. Ensure Ollama is running." });
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to connect to Ollama at {Url}", baseUrl);
+            return StatusCode(503, new { models = Array.Empty<object>(), baseUrl, error = "Cannot connect to Ollama. Ensure Ollama is running." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get Ollama models");
+            return StatusCode(500, new { models = Array.Empty<object>(), baseUrl, error = ex.Message });
         }
     }
 

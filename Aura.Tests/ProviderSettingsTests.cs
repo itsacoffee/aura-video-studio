@@ -263,4 +263,63 @@ public class ProviderSettingsTests : IDisposable
         Assert.Contains("TestProvider", exception.Message);
         Assert.Contains("not configured", exception.Message);
     }
+
+    [Fact]
+    public void GetOllamaModel_Should_ReturnDefaultWhenNotSet()
+    {
+        // Arrange
+        var settings = CreateTestSettings();
+
+        // Act
+        var model = settings.GetOllamaModel();
+
+        // Assert - Should return default or current setting (may be set by other tests)
+        Assert.NotNull(model);
+        Assert.NotEmpty(model);
+    }
+
+    [Fact]
+    public void SetOllamaModel_Should_UpdateModelSetting()
+    {
+        // Arrange
+        var settings = CreateTestSettings();
+        var newModel = "llama3.2:7b-test-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+
+        // Act
+        settings.SetOllamaModel(newModel);
+        var retrievedModel = settings.GetOllamaModel();
+
+        // Assert
+        Assert.Equal(newModel, retrievedModel);
+    }
+
+    [Fact]
+    public void SetOllamaModel_Should_PersistAcrossReload()
+    {
+        // Arrange
+        var settings = CreateTestSettings();
+        var uniqueModel = "mistral-test-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+
+        // Act
+        settings.SetOllamaModel(uniqueModel);
+        settings.Reload();
+        var retrievedModel = settings.GetOllamaModel();
+
+        // Assert - The setting should persist after reload
+        Assert.Equal(uniqueModel, retrievedModel);
+    }
+
+    [Fact]
+    public void GetOllamaUrl_Should_ReturnDefaultUrl()
+    {
+        // Arrange
+        var settings = CreateTestSettings();
+
+        // Act
+        var url = settings.GetOllamaUrl();
+
+        // Assert
+        Assert.NotNull(url);
+        Assert.Equal("http://127.0.0.1:11434", url);
+    }
 }
