@@ -58,6 +58,24 @@ public class JobProgressEventArgs : EventArgs
     public TimeSpan? Eta { get; init; }
 
     /// <summary>
+    /// Whether this is a warning message (e.g., timeout threshold exceeded)
+    /// </summary>
+    [JsonPropertyName("isWarning")]
+    public bool IsWarning { get; init; }
+
+    /// <summary>
+    /// Estimated duration in seconds for current operation (optional)
+    /// </summary>
+    [JsonPropertyName("estimatedDurationSeconds")]
+    public int? EstimatedDurationSeconds { get; init; }
+
+    /// <summary>
+    /// Elapsed time in seconds for current operation (optional)
+    /// </summary>
+    [JsonPropertyName("elapsedSeconds")]
+    public int? ElapsedSeconds { get; init; }
+
+    /// <summary>
     /// Creates a new JobProgressEventArgs
     /// </summary>
     public JobProgressEventArgs()
@@ -89,7 +107,10 @@ public class JobProgressEventArgs : EventArgs
         string stage,
         string message,
         string correlationId,
-        TimeSpan? eta = null)
+        TimeSpan? eta = null,
+        bool isWarning = false,
+        int? estimatedDurationSeconds = null,
+        int? elapsedSeconds = null)
     {
         JobId = jobId;
         Progress = progress;
@@ -98,6 +119,9 @@ public class JobProgressEventArgs : EventArgs
         Message = message;
         CorrelationId = correlationId;
         Eta = eta;
+        IsWarning = isWarning;
+        EstimatedDurationSeconds = estimatedDurationSeconds;
+        ElapsedSeconds = elapsedSeconds;
         Timestamp = DateTime.UtcNow;
     }
 
