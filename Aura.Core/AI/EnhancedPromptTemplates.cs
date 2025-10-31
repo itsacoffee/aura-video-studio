@@ -1,5 +1,7 @@
 using System.Text;
+using System.Text.Json;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using PacingEnum = Aura.Core.Models.Pacing;
 using DensityEnum = Aura.Core.Models.Density;
 
@@ -299,6 +301,20 @@ Provide specific, actionable search terms or generation prompts that will yield 
     /// </summary>
     public static string BuildVisualSelectionPrompt(string sceneHeading, string sceneContent, string tone, int sceneIndex)
     {
+        return BuildVisualSelectionPrompt(sceneHeading, sceneContent, tone, sceneIndex, null);
+    }
+
+    /// <summary>
+    /// Build a visual selection prompt with visual-text synchronization metadata
+    /// Enhanced version that includes timing markers, cognitive load context, and synchronization requirements
+    /// </summary>
+    public static string BuildVisualSelectionPrompt(
+        string sceneHeading, 
+        string sceneContent, 
+        string tone, 
+        int sceneIndex,
+        NarrationSegment? syncData)
+    {
         var sb = new StringBuilder();
 
         sb.AppendLine($"SELECT VISUALS FOR SCENE {sceneIndex + 1}:");
@@ -309,14 +325,117 @@ Provide specific, actionable search terms or generation prompts that will yield 
         sb.AppendLine();
         sb.AppendLine($"Tone: {tone}");
         sb.AppendLine();
-        sb.AppendLine($"Provide 3-5 specific search terms or image prompts that would yield visuals for this scene.");
+
+        if (syncData != null)
+        {
+            sb.AppendLine($"VISUAL-TEXT SYNCHRONIZATION DATA:");
+            sb.AppendLine($"- Narration Complexity: {syncData.NarrationComplexity:F1}/100");
+            sb.AppendLine($"- Target Visual Complexity: {(100 - syncData.NarrationComplexity):F1}/100 (inversely balanced)");
+            sb.AppendLine($"- Cognitive Load Score: {syncData.CognitiveLoadScore:F1}/100 (target: <75)");
+            sb.AppendLine($"- Narration Rate: {syncData.NarrationRate:F0} WPM");
+            sb.AppendLine($"- Information Density: {syncData.InformationDensity}");
+            sb.AppendLine($"- Timing: {syncData.StartTime:hh\\:mm\\:ss\\.ff} - {syncData.EndTime:hh\\:mm\\:ss\\.ff} (Duration: {syncData.Duration.TotalSeconds:F1}s)");
+            
+            if (syncData.KeyConcepts.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"KEY CONCEPTS REQUIRING VISUAL SUPPORT:");
+                foreach (var concept in syncData.KeyConcepts)
+                {
+                    sb.AppendLine($"  • {concept.Text} ({concept.Type}) - Importance: {concept.Importance:F0}/100");
+                    sb.AppendLine($"    Time: +{concept.TimeOffset.TotalSeconds:F1}s");
+                    sb.AppendLine($"    Visualization: {concept.SuggestedVisualization}");
+                    if (concept.RequiresMetaphor)
+                        sb.AppendLine($"    Note: Abstract concept - requires concrete visual metaphor");
+                    if (concept.SuggestsMotion)
+                        sb.AppendLine($"    Note: Action verb - suggests motion/animation");
+                }
+            }
+
+            if (syncData.VisualRecommendations.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"RECOMMENDED VISUAL TREATMENTS:");
+                foreach (var rec in syncData.VisualRecommendations)
+                {
+                    sb.AppendLine($"  • {rec.ContentType}: {rec.Description}");
+                    sb.AppendLine($"    Timing: +{rec.StartTime.TotalSeconds:F1}s for {rec.Duration.TotalSeconds:F1}s");
+                    sb.AppendLine($"    Complexity: {rec.VisualComplexity:F0}/100");
+                    sb.AppendLine($"    Priority: {rec.Priority:F0}/100");
+                    
+                    if (rec.BRollKeywords.Count > 0)
+                    {
+                        sb.AppendLine($"    B-Roll Keywords: {string.Join(", ", rec.BRollKeywords)}");
+                    }
+
+                    if (rec.Metadata != null)
+                    {
+                        sb.AppendLine($"    Visual Metadata:");
+                        sb.AppendLine($"      - Camera: {rec.Metadata.CameraAngle}, {rec.Metadata.ShotType}");
+                        sb.AppendLine($"      - Composition: {rec.Metadata.CompositionRule}");
+                        sb.AppendLine($"      - Focus Point: {rec.Metadata.FocusPoint}");
+                        sb.AppendLine($"      - Lighting: {rec.Metadata.LightingMood}");
+                        if (rec.Metadata.ColorScheme.Count > 0)
+                        {
+                            sb.AppendLine($"      - Color Scheme: {string.Join(", ", rec.Metadata.ColorScheme)}");
+                        }
+                    }
+
+                    sb.AppendLine($"    Reasoning: {rec.Reasoning}");
+                }
+            }
+
+            sb.AppendLine();
+            sb.AppendLine($"COGNITIVE LOAD BALANCING RULES:");
+            sb.AppendLine($"- High narration complexity ({syncData.NarrationComplexity:F0}) → Use SIMPLE, CLEAN visuals");
+            sb.AppendLine($"- Low narration complexity → Can use DETAILED, BUSY visuals");
+            sb.AppendLine($"- Fast narration rate ({syncData.NarrationRate:F0} WPM) → FEWER visual changes");
+            sb.AppendLine($"- Slow narration rate → MORE visual variety");
+            sb.AppendLine($"- Ensure visuals SUPPORT, not CONTRADICT narration");
+            sb.AppendLine();
+        }
+
+        sb.AppendLine($"Provide 3-5 specific search terms or image generation prompts that would yield visuals for this scene.");
         sb.AppendLine($"Each should be:");
-        sb.AppendLine($"- Specific and descriptive (not generic)");
+        sb.AppendLine($"- Specific and descriptive (not generic stock footage)");
         sb.AppendLine($"- Professional quality");
-        sb.AppendLine($"- Emotionally appropriate");
-        sb.AppendLine($"- Visually interesting");
+        sb.AppendLine($"- Emotionally appropriate to the tone");
+        sb.AppendLine($"- Visually interesting and aligned with narration");
+        
+        if (syncData != null)
+        {
+            sb.AppendLine($"- Complexity level: {(100 - syncData.NarrationComplexity):F0}/100");
+            sb.AppendLine($"- Include timing precision markers (±0.5 second accuracy)");
+        }
+        
         sb.AppendLine();
-        sb.AppendLine($"Format: One search term per line, starting with 'VISUAL:'");
+        
+        if (syncData != null)
+        {
+            sb.AppendLine($"FORMAT: Return as structured JSON:");
+            sb.AppendLine($"{{");
+            sb.AppendLine($"  \"visuals\": [");
+            sb.AppendLine($"    {{");
+            sb.AppendLine($"      \"description\": \"Detailed visual description\",");
+            sb.AppendLine($"      \"searchTerms\": [\"specific\", \"contextual\", \"keywords\"],");
+            sb.AppendLine($"      \"timing\": {{ \"start\": 0.0, \"duration\": 3.0 }},");
+            sb.AppendLine($"      \"complexity\": 30,");
+            sb.AppendLine($"      \"metadata\": {{");
+            sb.AppendLine($"        \"cameraAngle\": \"eye-level\",");
+            sb.AppendLine($"        \"shotType\": \"medium-shot\",");
+            sb.AppendLine($"        \"composition\": \"rule-of-thirds\",");
+            sb.AppendLine($"        \"focusPoint\": \"subject\",");
+            sb.AppendLine($"        \"colorScheme\": [\"#hex1\", \"#hex2\"],");
+            sb.AppendLine($"        \"lighting\": \"soft\"");
+            sb.AppendLine($"      }}");
+            sb.AppendLine($"    }}");
+            sb.AppendLine($"  ]");
+            sb.AppendLine($"}}");
+        }
+        else
+        {
+            sb.AppendLine($"Format: One search term per line, starting with 'VISUAL:'");
+        }
 
         return sb.ToString();
     }
