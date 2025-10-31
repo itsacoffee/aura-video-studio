@@ -319,6 +319,16 @@ builder.Services.AddSingleton<Aura.Core.Validation.LlmOutputValidator>();
 
 // Register pipeline reliability services
 builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
+
+// Register latency management services
+builder.Services.Configure<Aura.Core.Services.Performance.LlmTimeoutPolicy>(
+    builder.Configuration.GetSection("LlmTimeouts"));
+builder.Services.AddSingleton(sp => 
+    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Services.Performance.LlmTimeoutPolicy>>().Value);
+builder.Services.AddSingleton<Aura.Core.Services.Performance.LatencyTelemetry>();
+builder.Services.AddSingleton<Aura.Core.Services.Performance.LatencyManagementService>();
+builder.Services.AddSingleton<Aura.Core.Services.Performance.LlmOperationContext>();
+
 builder.Services.AddSingleton<Aura.Core.Services.ProviderRetryWrapper>();
 builder.Services.AddSingleton<Aura.Core.Services.ResourceCleanupManager>();
 
