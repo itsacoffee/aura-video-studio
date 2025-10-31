@@ -129,3 +129,48 @@ export const UploadProviders = [
   { value: 'Off', label: 'Off (Manual)', description: 'No automatic upload, save locally' },
   { value: 'YouTube', label: 'YouTube (Manual auth)', description: 'Upload to YouTube with OAuth' },
 ] as const;
+
+export type ProviderProfileType =
+  | 'MaximumQuality'
+  | 'Balanced'
+  | 'BudgetConscious'
+  | 'SpeedOptimized'
+  | 'LocalOnly'
+  | 'Custom';
+
+export type LlmOperationType =
+  | 'ScriptGeneration'
+  | 'ScriptRefinement'
+  | 'VisualPrompts'
+  | 'NarrationOptimization'
+  | 'QuickOperations'
+  | 'SceneAnalysis'
+  | 'ContentComplexity'
+  | 'NarrativeValidation';
+
+export interface ProviderPreferences {
+  globalDefault?: string;
+  alwaysUseDefault: boolean;
+  perOperationOverrides: Record<LlmOperationType, string>;
+  activeProfile: ProviderProfileType;
+  excludedProviders: string[];
+  pinnedProvider?: string;
+  autoFailover: boolean;
+  fallbackChains: Record<LlmOperationType, string[]>;
+  enableLearning: boolean;
+  monthlyBudgetLimit?: number;
+  perProviderBudgetLimits: Record<string, number>;
+  hardBudgetLimit: boolean;
+}
+
+export const defaultProviderPreferences: ProviderPreferences = {
+  alwaysUseDefault: false,
+  perOperationOverrides: {} as Record<LlmOperationType, string>,
+  activeProfile: 'Balanced',
+  excludedProviders: [],
+  autoFailover: false,
+  fallbackChains: {} as Record<LlmOperationType, string[]>,
+  enableLearning: false,
+  perProviderBudgetLimits: {},
+  hardBudgetLimit: false,
+};
