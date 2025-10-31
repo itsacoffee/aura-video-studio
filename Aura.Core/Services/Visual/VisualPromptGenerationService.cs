@@ -13,6 +13,7 @@ namespace Aura.Core.Services.Visual;
 
 /// <summary>
 /// Service for generating detailed, cinematically-informed visual prompts using LLMs
+/// Enhanced with visual-text synchronization for optimal multi-modal alignment
 /// </summary>
 public class VisualPromptGenerationService
 {
@@ -20,6 +21,7 @@ public class VisualPromptGenerationService
     private readonly CinematographyKnowledgeBase _cinematography;
     private readonly VisualContinuityEngine _continuityEngine;
     private readonly PromptOptimizer _promptOptimizer;
+    private readonly VisualTextAlignmentService? _alignmentService;
     private readonly TimeSpan _llmTimeout = TimeSpan.FromSeconds(30);
     private readonly int _maxRetries = 2;
 
@@ -27,16 +29,18 @@ public class VisualPromptGenerationService
         ILogger<VisualPromptGenerationService> logger,
         CinematographyKnowledgeBase cinematography,
         VisualContinuityEngine continuityEngine,
-        PromptOptimizer promptOptimizer)
+        PromptOptimizer promptOptimizer,
+        VisualTextAlignmentService? alignmentService = null)
     {
         _logger = logger;
         _cinematography = cinematography;
         _continuityEngine = continuityEngine;
         _promptOptimizer = promptOptimizer;
+        _alignmentService = alignmentService;
     }
 
     /// <summary>
-    /// Generate visual prompts for all scenes
+    /// Generate visual prompts for all scenes with optional visual-text synchronization
     /// </summary>
     public async Task<IReadOnlyList<VisualPrompt>> GenerateVisualPromptsAsync(
         IReadOnlyList<Scene> scenes,
@@ -46,6 +50,37 @@ public class VisualPromptGenerationService
         CancellationToken ct = default)
     {
         _logger.LogInformation("Generating visual prompts for {SceneCount} scenes", scenes.Count);
+
+        VisualTextSyncResult? syncResult = null;
+        if (_alignmentService != null)
+        {
+            _logger.LogInformation("Performing visual-text synchronization analysis");
+            try
+            {
+                syncResult = await _alignmentService.AnalyzeSynchronizationAsync(
+                    scenes,
+                    brief,
+                    llmProvider,
+                    pacingData,
+                    ct);
+                
+                _logger.LogInformation(
+                    "Synchronization analysis complete. Cognitive Load: {Load:F1}, Correlation: {Corr:F2}, Alignment: {Align:F1}%",
+                    syncResult.OverallCognitiveLoad,
+                    syncResult.ComplexityCorrelation,
+                    syncResult.TransitionAlignmentRate);
+
+                if (syncResult.Warnings.Count > 0)
+                {
+                    _logger.LogWarning("Synchronization warnings: {Warnings}", 
+                        string.Join("; ", syncResult.Warnings));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Visual-text synchronization analysis failed, continuing without it");
+            }
+        }
 
         var visualStyle = MapToneToVisualStyle(brief.Tone);
         var prompts = new List<VisualPrompt>();
@@ -57,6 +92,8 @@ public class VisualPromptGenerationService
             var importance = pacingData?.FirstOrDefault(p => p.SceneIndex == i)?.ImportanceScore ?? 50.0;
             var emotionalIntensity = pacingData?.FirstOrDefault(p => p.SceneIndex == i)?.EmotionalIntensity ?? 50.0;
 
+            var sceneSegments = syncResult?.Segments.Where(s => s.SceneIndex == i).ToList();
+
             var prompt = await GenerateVisualPromptForSceneAsync(
                 scene,
                 scenes.ElementAtOrDefault(i - 1),
@@ -66,6 +103,7 @@ public class VisualPromptGenerationService
                 emotionalIntensity,
                 previousPrompt,
                 llmProvider,
+                sceneSegments,
                 ct);
 
             prompts.Add(prompt);
@@ -77,7 +115,7 @@ public class VisualPromptGenerationService
     }
 
     /// <summary>
-    /// Generate a visual prompt for a single scene
+    /// Generate a visual prompt for a single scene with optional synchronization data
     /// </summary>
     public async Task<VisualPrompt> GenerateVisualPromptForSceneAsync(
         Scene scene,
@@ -88,6 +126,7 @@ public class VisualPromptGenerationService
         double emotionalIntensity,
         VisualPrompt? previousPrompt,
         ILlmProvider? llmProvider,
+        IReadOnlyList<NarrationSegment>? syncSegments = null,
         CancellationToken ct = default)
     {
         _logger.LogDebug("Generating visual prompt for scene {SceneIndex}", scene.Index);
@@ -137,6 +176,29 @@ public class VisualPromptGenerationService
         var styleKeywords = llmResult?.StyleKeywords?.ToList() ?? GenerateStyleKeywords(visualStyle, tone);
         var negativeElements = llmResult?.NegativeElements?.ToList() ?? GetDefaultNegativeElements();
 
+        if (syncSegments != null && syncSegments.Count > 0)
+        {
+            var avgNarrationComplexity = syncSegments.Average(s => s.NarrationComplexity);
+            var avgCognitiveLoad = syncSegments.Average(s => s.CognitiveLoadScore);
+            
+            if (avgNarrationComplexity > 70.0)
+            {
+                styleKeywords = new List<string> { "minimalist", "clean", "simple", "uncluttered" };
+                compositionGuidelines = "Centered, simple composition to balance high narration complexity";
+            }
+
+            var keyConcepts = syncSegments.SelectMany(s => s.KeyConcepts).ToList();
+            if (keyConcepts.Count > 0)
+            {
+                var primaryConcept = keyConcepts.OrderByDescending(k => k.Importance).First();
+                detailedDescription = $"{detailedDescription} Focus on visualizing {primaryConcept.Text} with {primaryConcept.SuggestedVisualization}.";
+            }
+
+            _logger.LogDebug(
+                "Scene {SceneIndex} sync data: Narration complexity {NarrationComplexity:F1}, Cognitive load {CognitiveLoad:F1}, {ConceptCount} key concepts",
+                scene.Index, avgNarrationComplexity, avgCognitiveLoad, keyConcepts.Count);
+        }
+
         var continuity = _continuityEngine.AnalyzeContinuity(
             scene,
             previousScene,
@@ -144,6 +206,13 @@ public class VisualPromptGenerationService
             llmResult?.ContinuityElements?.ToList());
 
         var qualityTier = DetermineQualityTier(importance);
+
+        var reasoning = llmResult?.Reasoning ?? $"Generated using cinematography guidelines for {tone} tone";
+        if (syncSegments != null && syncSegments.Count > 0)
+        {
+            var avgComplexity = syncSegments.Average(s => s.NarrationComplexity);
+            reasoning += $". Visual-text synchronization applied (narration complexity: {avgComplexity:F0}, visual complexity inversely balanced).";
+        }
 
         var prompt = new VisualPrompt
         {
@@ -159,7 +228,7 @@ public class VisualPromptGenerationService
             ImportanceScore = importance,
             NegativeElements = negativeElements,
             Continuity = continuity,
-            Reasoning = llmResult?.Reasoning ?? $"Generated using cinematography guidelines for {tone} tone"
+            Reasoning = reasoning
         };
 
         var providerPrompts = _promptOptimizer.OptimizeForProviders(prompt);
