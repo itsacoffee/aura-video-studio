@@ -281,14 +281,17 @@ public class NarrationOptimizationService
     /// <summary>
     /// Parse LLM response and extract optimization details
     /// </summary>
+    private const double MinResponseLengthRatio = 0.5;
+    private const double MaxResponseLengthRatio = 2.0;
+
     private LlmRewriteResult ParseLlmResponse(string llmResponse, string originalText)
     {
         var optimizedText = llmResponse.Trim();
         var actions = new List<OptimizationAction>();
         var pronunciationHints = new Dictionary<string, string>();
 
-        if (optimizedText.Length < originalText.Length * 0.5 || 
-            optimizedText.Length > originalText.Length * 2.0)
+        if (optimizedText.Length < originalText.Length * MinResponseLengthRatio || 
+            optimizedText.Length > originalText.Length * MaxResponseLengthRatio)
         {
             _logger.LogWarning("LLM response length suspicious, using original");
             optimizedText = originalText;
@@ -564,6 +567,7 @@ public class NarrationOptimizationService
 
         if (Regex.IsMatch(text, @"\?+$"))
         {
+            scores.TryAdd(NarrationTone.Thoughtful, 0.0);
             scores[NarrationTone.Thoughtful] = 0.6;
         }
 
@@ -652,10 +656,12 @@ public class NarrationOptimizationService
         return text.Count(c => c is ',' or '.' or ';' or ':' or '!' or '?');
     }
 
+    private const int DefaultMaxSentenceWords = 25;
+
     private string BreakLongSentence(string text)
     {
         var words = text.Split(' ');
-        if (words.Length <= 25)
+        if (words.Length <= DefaultMaxSentenceWords)
         {
             return text;
         }
@@ -688,10 +694,8 @@ public class NarrationOptimizationService
         
         foreach (var connector in clauseConnectors)
         {
-            if (!text.Contains("," + connector, StringComparison.OrdinalIgnoreCase))
-            {
-                text = Regex.Replace(text, connector, "," + connector, RegexOptions.IgnoreCase);
-            }
+            var pattern = $@"(?<!,){Regex.Escape(connector)}";
+            text = Regex.Replace(text, pattern, "," + connector, RegexOptions.IgnoreCase);
         }
 
         return text;
@@ -710,7 +714,7 @@ public class NarrationOptimizationService
             return "neutral";
         }
 
-        if (descriptor.AvailableStyles.Length > 0)
+        if (descriptor.AvailableStyles != null && descriptor.AvailableStyles.Length > 0)
         {
             return descriptor.AvailableStyles[0];
         }
