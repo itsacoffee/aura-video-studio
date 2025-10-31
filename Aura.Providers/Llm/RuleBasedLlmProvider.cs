@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Narrative;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
@@ -481,5 +483,120 @@ public class RuleBasedLlmProvider : ILlmProvider
             result.TerminologyDensity, result.NewConceptsIntroduced);
 
         return Task.FromResult<ContentComplexityAnalysisResult?>(result);
+    }
+
+    public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogDebug("Analyzing scene coherence with rule-based approach");
+
+        var fromWords = GetSignificantWords(fromSceneText);
+        var toWords = GetSignificantWords(toSceneText);
+        var commonWords = fromWords.Intersect(toWords, StringComparer.OrdinalIgnoreCase).ToList();
+        var overlapRatio = commonWords.Count / (double)Math.Max(fromWords.Count, 1);
+        
+        var coherenceScore = Math.Clamp(overlapRatio * 100, 0, 100);
+        
+        var connectionTypes = new List<string> { ConnectionType.Sequential };
+        
+        var transitionWords = new[] { "however", "but", "although", "despite" };
+        if (transitionWords.Any(w => toSceneText.Contains(w, StringComparison.OrdinalIgnoreCase)))
+        {
+            connectionTypes.Add(ConnectionType.Contrast);
+        }
+        
+        var callbackWords = new[] { "remember", "earlier", "as mentioned", "like we said" };
+        if (callbackWords.Any(w => toSceneText.Contains(w, StringComparison.OrdinalIgnoreCase)))
+        {
+            connectionTypes.Add(ConnectionType.Callback);
+        }
+        
+        if (overlapRatio > 0.3)
+        {
+            connectionTypes.Add(ConnectionType.Thematic);
+        }
+
+        var result = new SceneCoherenceResult(
+            CoherenceScore: coherenceScore,
+            ConnectionTypes: connectionTypes.ToArray(),
+            ConfidenceScore: 0.6,
+            Reasoning: $"Rule-based analysis: {commonWords.Count} shared significant words out of {fromWords.Count} total"
+        );
+
+        return Task.FromResult<SceneCoherenceResult?>(result);
+    }
+
+    public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+        IReadOnlyList<string> sceneTexts,
+        string videoGoal,
+        string videoType,
+        CancellationToken ct)
+    {
+        _logger.LogDebug("Validating narrative arc with rule-based approach for {VideoType}", videoType);
+
+        var expectedStructures = new Dictionary<string, string>
+        {
+            { "educational", "problem → explanation → solution" },
+            { "entertainment", "setup → conflict → resolution" },
+            { "documentary", "introduction → evidence → conclusion" },
+            { "tutorial", "overview → steps → summary" },
+            { "general", "introduction → body → conclusion" }
+        };
+
+        var expectedStructure = expectedStructures.GetValueOrDefault(
+            videoType.ToLowerInvariant(), 
+            expectedStructures["general"]);
+
+        var result = new NarrativeArcResult(
+            IsValid: true,
+            DetectedStructure: "Rule-based: sequential structure detected",
+            ExpectedStructure: expectedStructure,
+            StructuralIssues: Array.Empty<string>(),
+            Recommendations: new[] { "LLM-based analysis recommended for detailed arc validation" },
+            Reasoning: "Rule-based provider provides basic validation only"
+        );
+
+        return Task.FromResult<NarrativeArcResult?>(result);
+    }
+
+    public Task<string?> GenerateTransitionTextAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogDebug("Generating transition text with rule-based approach");
+
+        var transitions = new[]
+        {
+            "Now, let's move on to the next point.",
+            "Building on that idea...",
+            "This leads us to...",
+            "Next, we'll explore...",
+            "Following from this..."
+        };
+
+        var randomIndex = _random.Next(transitions.Length);
+        var transitionText = transitions[randomIndex];
+
+        return Task.FromResult<string?>(transitionText);
+    }
+
+    private List<string> GetSignificantWords(string text)
+    {
+        var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
+            "of", "with", "by", "from", "is", "are", "was", "were", "be", "been",
+            "this", "that", "these", "those", "we", "you", "they", "it"
+        };
+
+        return text
+            .Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '!', '?', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length > 3 && !stopWords.Contains(w))
+            .ToList();
     }
 }

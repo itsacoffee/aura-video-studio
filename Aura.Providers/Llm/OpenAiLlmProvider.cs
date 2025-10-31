@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -6,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
+using Aura.Core.Models.Narrative;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
@@ -671,4 +674,326 @@ Respond with ONLY the JSON object, no other text:";
     }
 
     // Removed legacy prompt building methods - now using EnhancedPromptTemplates
+
+    public async Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Analyzing scene coherence with OpenAI");
+
+        try
+        {
+            var systemPrompt = "You are a narrative flow expert analyzing video scene transitions. " +
+                              "Return your response ONLY as valid JSON with no additional text.";
+            
+            var userPrompt = $@"Analyze the narrative coherence between these two consecutive scenes and return JSON with:
+- coherenceScore (0-100): How well scene B flows from scene A (0=no connection, 100=perfect flow)
+- connectionTypes (array of strings): Types of connections (choose from: ""causal"", ""thematic"", ""prerequisite"", ""callback"", ""sequential"", ""contrast"")
+- confidenceScore (0-1): Your confidence in this analysis
+- reasoning (string): Brief explanation of the coherence assessment
+
+Scene A: {fromSceneText}
+
+Scene B: {toSceneText}
+
+Video goal: {videoGoal}
+
+Respond with ONLY the JSON object, no other text:";
+
+            var requestBody = new
+            {
+                model = _model,
+                messages = new[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
+                },
+                temperature = 0.3,
+                max_tokens = 512,
+                response_format = new { type = "json_object" }
+            };
+
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
+                choices.GetArrayLength() > 0)
+            {
+                var firstChoice = choices[0];
+                if (firstChoice.TryGetProperty("message", out var message) &&
+                    message.TryGetProperty("content", out var contentProp))
+                {
+                    var analysisText = contentProp.GetString() ?? string.Empty;
+                    
+                    try
+                    {
+                        var analysisDoc = JsonDocument.Parse(analysisText);
+                        var root = analysisDoc.RootElement;
+
+                        var connectionTypes = new List<string>();
+                        if (root.TryGetProperty("connectionTypes", out var connTypes) && 
+                            connTypes.ValueKind == JsonValueKind.Array)
+                        {
+                            connectionTypes = connTypes.EnumerateArray()
+                                .Where(e => e.ValueKind == JsonValueKind.String)
+                                .Select(e => e.GetString() ?? "sequential")
+                                .ToList();
+                        }
+
+                        var result = new SceneCoherenceResult(
+                            CoherenceScore: root.TryGetProperty("coherenceScore", out var score) ? score.GetDouble() : 50.0,
+                            ConnectionTypes: connectionTypes.ToArray(),
+                            ConfidenceScore: root.TryGetProperty("confidenceScore", out var conf) ? conf.GetDouble() : 0.5,
+                            Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
+                        );
+
+                        _logger.LogInformation("Scene coherence analysis complete. Score: {Score}", result.CoherenceScore);
+                        
+                        return result;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to parse coherence analysis JSON");
+                        return null;
+                    }
+                }
+            }
+
+            _logger.LogWarning("No valid response from OpenAI for scene coherence analysis");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing scene coherence with OpenAI");
+            return null;
+        }
+    }
+
+    public async Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+        IReadOnlyList<string> sceneTexts,
+        string videoGoal,
+        string videoType,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Validating narrative arc with OpenAI for {VideoType} video", videoType);
+
+        try
+        {
+            var systemPrompt = "You are a narrative structure expert analyzing video story arcs. " +
+                              "Return your response ONLY as valid JSON with no additional text.";
+            
+            var scenesText = string.Join("\n\n", sceneTexts.Select((s, i) => $"Scene {i + 1}: {s}"));
+            
+            var expectedStructures = new Dictionary<string, string>
+            {
+                { "educational", "problem → explanation → solution" },
+                { "entertainment", "setup → conflict → resolution" },
+                { "documentary", "introduction → evidence → conclusion" },
+                { "tutorial", "overview → steps → summary" },
+                { "general", "introduction → body → conclusion" }
+            };
+
+            var expectedStructure = expectedStructures.GetValueOrDefault(
+                videoType.ToLowerInvariant(), 
+                expectedStructures["general"]);
+
+            var userPrompt = $@"Analyze the narrative arc of this {videoType} video and return JSON with:
+- isValid (boolean): Whether the narrative follows a coherent arc
+- detectedStructure (string): The structure you detect (e.g., ""setup → conflict → resolution"")
+- expectedStructure (string): ""{expectedStructure}""
+- structuralIssues (array of strings): Any problems with the narrative structure
+- recommendations (array of strings): Suggestions to improve the narrative arc
+- reasoning (string): Brief explanation of your assessment
+
+{scenesText}
+
+Video goal: {videoGoal}
+
+Respond with ONLY the JSON object, no other text:";
+
+            var requestBody = new
+            {
+                model = _model,
+                messages = new[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
+                },
+                temperature = 0.3,
+                max_tokens = 1024,
+                response_format = new { type = "json_object" }
+            };
+
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(45));
+
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
+                choices.GetArrayLength() > 0)
+            {
+                var firstChoice = choices[0];
+                if (firstChoice.TryGetProperty("message", out var message) &&
+                    message.TryGetProperty("content", out var contentProp))
+                {
+                    var analysisText = contentProp.GetString() ?? string.Empty;
+                    
+                    try
+                    {
+                        var analysisDoc = JsonDocument.Parse(analysisText);
+                        var root = analysisDoc.RootElement;
+
+                        var structuralIssues = new List<string>();
+                        if (root.TryGetProperty("structuralIssues", out var issues) && 
+                            issues.ValueKind == JsonValueKind.Array)
+                        {
+                            structuralIssues = issues.EnumerateArray()
+                                .Where(e => e.ValueKind == JsonValueKind.String)
+                                .Select(e => e.GetString() ?? "")
+                                .Where(s => !string.IsNullOrEmpty(s))
+                                .ToList();
+                        }
+
+                        var recommendations = new List<string>();
+                        if (root.TryGetProperty("recommendations", out var recs) && 
+                            recs.ValueKind == JsonValueKind.Array)
+                        {
+                            recommendations = recs.EnumerateArray()
+                                .Where(e => e.ValueKind == JsonValueKind.String)
+                                .Select(e => e.GetString() ?? "")
+                                .Where(s => !string.IsNullOrEmpty(s))
+                                .ToList();
+                        }
+
+                        var result = new NarrativeArcResult(
+                            IsValid: root.TryGetProperty("isValid", out var valid) && valid.GetBoolean(),
+                            DetectedStructure: root.TryGetProperty("detectedStructure", out var detected) ? detected.GetString() ?? "" : "",
+                            ExpectedStructure: expectedStructure,
+                            StructuralIssues: structuralIssues.ToArray(),
+                            Recommendations: recommendations.ToArray(),
+                            Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
+                        );
+
+                        _logger.LogInformation("Narrative arc validation complete. Valid: {IsValid}", result.IsValid);
+                        
+                        return result;
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to parse narrative arc JSON");
+                        return null;
+                    }
+                }
+            }
+
+            _logger.LogWarning("No valid response from OpenAI for narrative arc validation");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating narrative arc with OpenAI");
+            return null;
+        }
+    }
+
+    public async Task<string?> GenerateTransitionTextAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Generating transition text with OpenAI");
+
+        try
+        {
+            var systemPrompt = "You are a professional scriptwriter specializing in smooth scene transitions.";
+            
+            var userPrompt = $@"Create a brief transition sentence or phrase (1-2 sentences maximum) to smoothly connect these two scenes:
+
+Scene A: {fromSceneText}
+
+Scene B: {toSceneText}
+
+Video goal: {videoGoal}
+
+The transition should feel natural and help the viewer understand the connection between these scenes. 
+Return ONLY the transition text, no explanations or additional commentary:";
+
+            var requestBody = new
+            {
+                model = _model,
+                messages = new[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
+                },
+                temperature = 0.7,
+                max_tokens = 128
+            };
+
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
+                choices.GetArrayLength() > 0)
+            {
+                var firstChoice = choices[0];
+                if (firstChoice.TryGetProperty("message", out var message) &&
+                    message.TryGetProperty("content", out var contentProp))
+                {
+                    var transitionText = contentProp.GetString()?.Trim() ?? string.Empty;
+                    
+                    if (!string.IsNullOrWhiteSpace(transitionText))
+                    {
+                        _logger.LogInformation("Generated transition text: {Text}", transitionText);
+                        return transitionText;
+                    }
+                }
+            }
+
+            _logger.LogWarning("No valid transition text from OpenAI");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating transition text with OpenAI");
+            return null;
+        }
+    }
 }
