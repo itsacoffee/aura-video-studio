@@ -324,6 +324,77 @@ public class AudienceProfileStore
         return CreateAsync(profile, ct);
     }
 
+    /// <summary>
+    /// Get recommended profiles based on topic and goal
+    /// </summary>
+    public Task<List<AudienceProfile>> GetRecommendedProfilesAsync(
+        string topic,
+        string? goal = null,
+        int maxResults = 5,
+        CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            var lowerTopic = topic.ToLowerInvariant();
+            var lowerGoal = goal?.ToLowerInvariant() ?? string.Empty;
+
+            var scoredProfiles = _profiles.Values
+                .Select(p => new
+                {
+                    Profile = p,
+                    Score = CalculateRecommendationScore(p, lowerTopic, lowerGoal)
+                })
+                .Where(x => x.Score > 0)
+                .OrderByDescending(x => x.Score)
+                .ThenByDescending(x => x.Profile.UsageCount)
+                .Take(maxResults)
+                .Select(x => x.Profile)
+                .ToList();
+
+            _logger.LogInformation("Recommended {Count} profiles for topic: {Topic}", 
+                scoredProfiles.Count, topic);
+
+            return Task.FromResult(scoredProfiles);
+        }
+    }
+
+    private double CalculateRecommendationScore(AudienceProfile profile, string lowerTopic, string lowerGoal)
+    {
+        double score = 0;
+
+        if (profile.Name.Contains(lowerTopic, StringComparison.OrdinalIgnoreCase))
+            score += 10;
+
+        if (profile.Description?.Contains(lowerTopic, StringComparison.OrdinalIgnoreCase) == true)
+            score += 8;
+
+        if (profile.Tags.Any(t => lowerTopic.Contains(t.ToLowerInvariant())))
+            score += 6;
+
+        if (profile.Interests.Any(i => lowerTopic.Contains(i.ToLowerInvariant())))
+            score += 5;
+
+        if (!string.IsNullOrEmpty(lowerGoal))
+        {
+            if (profile.Motivations.Any(m => lowerGoal.Contains(m.ToLowerInvariant())))
+                score += 4;
+
+            if (profile.PainPoints.Any(p => lowerGoal.Contains(p.ToLowerInvariant())))
+                score += 3;
+        }
+
+        if (profile.Industry != null && lowerTopic.Contains(profile.Industry.ToLowerInvariant()))
+            score += 7;
+
+        if (profile.Profession != null && lowerTopic.Contains(profile.Profession.ToLowerInvariant()))
+            score += 6;
+
+        if (profile.UsageCount > 0)
+            score += Math.Min(profile.UsageCount * 0.5, 5);
+
+        return score;
+    }
+
     private bool MatchesSearchQuery(AudienceProfile profile, string lowerQuery)
     {
         return profile.Name.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase)

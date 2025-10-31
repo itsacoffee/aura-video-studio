@@ -186,4 +186,24 @@ export class AudienceProfileService {
     );
     return response.data;
   }
+
+  /**
+   * Get recommended profiles based on topic and goal
+   */
+  static async recommendProfiles(
+    topic: string,
+    goal?: string | null,
+    maxResults: number = 5
+  ): Promise<AudienceProfileListResponse> {
+    const request: { topic: string; goal?: string | null; maxResults?: number } = {
+      topic,
+      goal,
+      maxResults,
+    };
+    const response = await apiClient.post<AudienceProfileListResponse>(
+      '/api/audience/recommend',
+      request
+    );
+    return response.data;
+  }
 }

@@ -617,3 +617,11 @@ public record ExportProfileResponse(
 public record ImportProfileRequest(
     string Json);
 
+/// <summary>
+/// Request to get profile recommendations based on topic and goal
+/// </summary>
+public record RecommendProfilesRequest(
+    string Topic,
+    string? Goal = null,
+    int? MaxResults = 5);
+

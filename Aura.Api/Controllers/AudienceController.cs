@@ -440,6 +440,28 @@ public class AudienceController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Get recommended profiles based on topic and goal
+    /// </summary>
+    [HttpPost("recommend")]
+    [ProducesResponseType(typeof(AudienceProfileListResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AudienceProfileListResponse>> RecommendProfiles(
+        [FromBody] RecommendProfilesRequest request,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Getting profile recommendations for topic: {Topic}", request.Topic);
+
+        var profiles = await _store.GetRecommendedProfilesAsync(
+            request.Topic,
+            request.Goal,
+            request.MaxResults ?? 5,
+            ct);
+
+        var dtos = profiles.Select(MapToDto).ToList();
+
+        return Ok(new AudienceProfileListResponse(dtos, dtos.Count, 1, dtos.Count));
+    }
+
     private AudienceProfileDto MapToDto(AudienceProfile profile)
     {
         return new AudienceProfileDto(
@@ -594,21 +616,21 @@ public class AudienceController : ControllerBase
         return profile;
     }
 
-    private ValidationResultDto MapValidationToDto(ValidationResult validation)
+    private Models.ApiModels.V1.ValidationResultDto MapValidationToDto(ValidationResult validation)
     {
-        return new ValidationResultDto(
+        return new Models.ApiModels.V1.ValidationResultDto(
             IsValid: validation.IsValid,
-            Errors: validation.Errors.Select(e => new ValidationIssueDto(
+            Errors: validation.Errors.Select(e => new Models.ApiModels.V1.ValidationIssueDto(
                 e.Severity.ToString(),
                 e.Field,
                 e.Message,
                 e.SuggestedFix)).ToList(),
-            Warnings: validation.Warnings.Select(w => new ValidationIssueDto(
+            Warnings: validation.Warnings.Select(w => new Models.ApiModels.V1.ValidationIssueDto(
                 w.Severity.ToString(),
                 w.Field,
                 w.Message,
                 w.SuggestedFix)).ToList(),
-            Infos: validation.Infos.Select(i => new ValidationIssueDto(
+            Infos: validation.Infos.Select(i => new Models.ApiModels.V1.ValidationIssueDto(
                 i.Severity.ToString(),
                 i.Field,
                 i.Message,

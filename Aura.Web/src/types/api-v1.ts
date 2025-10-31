@@ -355,6 +355,12 @@ export interface ImportProfileRequest {
   json: string;
 }
 
+export interface RecommendProfilesRequest {
+  topic: string;
+  goal?: string | null;
+  maxResults?: number;
+}
+
 // Enum values for audience profile fields
 export const EducationLevels = [
   'HighSchool',
