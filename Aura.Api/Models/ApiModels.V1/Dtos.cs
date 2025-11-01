@@ -747,3 +747,183 @@ public record ReadingLevelResponse(
     string ProfileName,
     string ReadingLevelDescription);
 
+// Document Import and Conversion DTOs
+
+/// <summary>
+/// Response after importing a document
+/// </summary>
+public record DocumentImportResponse(
+    bool Success,
+    DocumentMetadataDto? Metadata,
+    DocumentStructureDto? Structure,
+    InferredAudienceDto? InferredAudience,
+    List<string> Warnings,
+    string? ErrorMessage,
+    double ProcessingTimeSeconds);
+
+/// <summary>
+/// Document metadata
+/// </summary>
+public record DocumentMetadataDto(
+    string OriginalFileName,
+    string Format,
+    long FileSizeBytes,
+    DateTime ImportedAt,
+    int WordCount,
+    int CharacterCount,
+    string? DetectedLanguage,
+    string? Title,
+    string? Author);
+
+/// <summary>
+/// Document structure information
+/// </summary>
+public record DocumentStructureDto(
+    List<DocumentSectionDto> Sections,
+    int HeadingLevels,
+    List<string> KeyConcepts,
+    DocumentComplexityDto Complexity,
+    DocumentToneDto Tone);
+
+/// <summary>
+/// A section within a document
+/// </summary>
+public record DocumentSectionDto(
+    int Level,
+    string Heading,
+    string Content,
+    int WordCount,
+    double EstimatedSpeechDurationSeconds);
+
+/// <summary>
+/// Document complexity metrics
+/// </summary>
+public record DocumentComplexityDto(
+    double ReadingLevel,
+    double TechnicalDensity,
+    double AbstractionLevel,
+    int AverageSentenceLength,
+    int ComplexWordCount,
+    string ComplexityDescription);
+
+/// <summary>
+/// Detected tone of document
+/// </summary>
+public record DocumentToneDto(
+    string PrimaryTone,
+    double FormalityLevel,
+    string WritingStyle);
+
+/// <summary>
+/// Inferred audience characteristics
+/// </summary>
+public record InferredAudienceDto(
+    string EducationLevel,
+    string ExpertiseLevel,
+    List<string> PossibleProfessions,
+    string AgeRange,
+    double ConfidenceScore,
+    string Reasoning);
+
+/// <summary>
+/// Request to convert document to script
+/// </summary>
+public record ConvertDocumentRequest(
+    DocumentImportResponse ImportResult,
+    ConversionConfigDto Config);
+
+/// <summary>
+/// Configuration for document conversion
+/// </summary>
+public record ConversionConfigDto(
+    string Preset,
+    double TargetDurationMinutes,
+    int WordsPerMinute,
+    bool EnableAudienceRetargeting,
+    bool EnableVisualSuggestions,
+    bool PreserveOriginalStructure,
+    bool AddTransitions,
+    double AggressivenessLevel,
+    string? TargetAudienceProfileId);
+
+/// <summary>
+/// Result of document to script conversion
+/// </summary>
+public record ConversionResultDto(
+    bool Success,
+    List<SceneDto> Scenes,
+    BriefDto SuggestedBrief,
+    List<ConversionChangeDto> Changes,
+    ConversionMetricsDto Metrics,
+    List<SectionConversionDto> SectionConversions,
+    string? ErrorMessage,
+    double ProcessingTimeSeconds);
+
+/// <summary>
+/// Scene information
+/// </summary>
+public record SceneDto(
+    int Index,
+    string Heading,
+    string Script,
+    double StartSeconds,
+    double DurationSeconds);
+
+/// <summary>
+/// Brief configuration
+/// </summary>
+public record BriefDto(
+    string Topic,
+    string? Audience,
+    string? Goal,
+    string Tone,
+    string Language,
+    string Aspect);
+
+/// <summary>
+/// A change made during conversion
+/// </summary>
+public record ConversionChangeDto(
+    string Category,
+    string Description,
+    string Justification,
+    int SectionIndex,
+    double ImpactLevel);
+
+/// <summary>
+/// Metrics about the conversion
+/// </summary>
+public record ConversionMetricsDto(
+    int OriginalWordCount,
+    int ConvertedWordCount,
+    double CompressionRatio,
+    int SectionsCreated,
+    int TransitionsAdded,
+    int VisualSuggestionsGenerated,
+    double OverallConfidenceScore);
+
+/// <summary>
+/// Conversion details for a single section
+/// </summary>
+public record SectionConversionDto(
+    int SectionIndex,
+    string OriginalHeading,
+    string ConvertedHeading,
+    string OriginalContent,
+    string ConvertedContent,
+    double ConfidenceScore,
+    bool RequiresManualReview,
+    List<string> ChangeHighlights,
+    string Reasoning);
+
+/// <summary>
+/// Preset definition
+/// </summary>
+public record PresetDefinitionDto(
+    string Type,
+    string Name,
+    string Description,
+    ConversionConfigDto DefaultConfig,
+    List<string> BestForFormats,
+    string RestructuringStrategy);
+
