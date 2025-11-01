@@ -531,6 +531,24 @@ builder.Services.AddSingleton<Aura.Core.Services.Content.ScriptEnhancer>(sp =>
     return new Aura.Core.Services.Content.ScriptEnhancer(logger, llmProvider);
 });
 
+// Register Document Import services
+builder.Services.AddSingleton<Aura.Core.Services.Content.DocumentImportService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.DocumentImportService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    return new Aura.Core.Services.Content.DocumentImportService(logger, llmProvider, loggerFactory);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Content.ScriptConverter>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.ScriptConverter>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var adaptationEngine = sp.GetService<Aura.Core.Services.Audience.ContentAdaptationEngine>();
+    var audienceProfileStore = sp.GetService<Aura.Core.Services.Audience.AudienceProfileStore>();
+    return new Aura.Core.Services.Content.ScriptConverter(logger, llmProvider, adaptationEngine, audienceProfileStore);
+});
+
 // Register Script Enhancement services (for AI Audio Intelligence integration)
 builder.Services.AddSingleton<Aura.Core.Services.ScriptEnhancement.ScriptAnalysisService>(sp =>
 {
