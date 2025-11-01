@@ -22,6 +22,11 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<TemplateEntity> Templates { get; set; } = null!;
 
+    /// <summary>
+    /// User setup status for first-run wizard
+    /// </summary>
+    public DbSet<UserSetupEntity> UserSetups { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -43,6 +48,15 @@ public class AuraDbContext : DbContext
             entity.HasIndex(e => e.IsSystemTemplate);
             entity.HasIndex(e => e.IsCommunityTemplate);
             entity.HasIndex(e => new { e.Category, e.SubCategory });
+        });
+
+        // Configure UserSetupEntity
+        modelBuilder.Entity<UserSetupEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasIndex(e => e.Completed);
+            entity.HasIndex(e => e.UpdatedAt);
         });
     }
 }

@@ -704,7 +704,7 @@ function validateApiKeyFormat(
   return { valid: true };
 }
 
-// Save wizard state to localStorage
+// Save wizard state to localStorage and backend
 export function saveWizardStateToStorage(state: OnboardingState): void {
   try {
     const stateToSave = {
@@ -717,6 +717,17 @@ export function saveWizardStateToStorage(state: OnboardingState): void {
       installItems: state.installItems,
     };
     localStorage.setItem('wizardProgress', JSON.stringify(stateToSave));
+
+    // Also save to backend (fire and forget)
+    import('../services/firstRunService').then(({ saveWizardProgressToBackend }) => {
+      saveWizardProgressToBackend(
+        state.step,
+        state.selectedTier,
+        JSON.stringify(stateToSave)
+      ).catch((error) => {
+        console.warn('Failed to save wizard progress to backend:', error);
+      });
+    });
   } catch (error) {
     console.error('Failed to save wizard state:', error);
   }

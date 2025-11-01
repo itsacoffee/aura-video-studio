@@ -81,7 +81,6 @@ test.describe('Accessibility Compliance', () => {
 
     // Get all headings
     const h1s = await page.locator('h1').count();
-    const h2s = await page.locator('h2').count();
 
     // Should have at least one h1
     expect(h1s).toBeGreaterThan(0);
@@ -131,7 +130,9 @@ test.describe('Accessibility Compliance', () => {
     await page.waitForTimeout(500);
 
     // Error messages should have role="alert" or aria-live
-    const errorMessages = page.locator('[role="alert"], [aria-live="polite"], [aria-live="assertive"]');
+    const errorMessages = page.locator(
+      '[role="alert"], [aria-live="polite"], [aria-live="assertive"]'
+    );
 
     if ((await errorMessages.count()) > 0) {
       await expect(errorMessages.first()).toBeVisible();
@@ -152,7 +153,6 @@ test.describe('Accessibility Compliance', () => {
 
     // Check for landmark regions
     const main = page.locator('main, [role="main"]');
-    const nav = page.locator('nav, [role="navigation"]');
 
     // Should have main content area
     expect(await main.count()).toBeGreaterThan(0);
@@ -323,7 +323,9 @@ test.describe('Accessibility Compliance', () => {
       // Check for aria-live region updates
       await page.waitForTimeout(1000);
 
-      const liveRegions = page.locator('[aria-live="polite"], [aria-live="assertive"], [role="status"]');
+      const liveRegions = page.locator(
+        '[aria-live="polite"], [aria-live="assertive"], [role="status"]'
+      );
       if ((await liveRegions.count()) > 0) {
         await expect(liveRegions.first()).toBeAttached();
       }
@@ -387,9 +389,12 @@ test.describe('Accessibility Compliance', () => {
 
       // Focus should remain within dialog
       const focused = page.locator(':focus');
-      const isInsideDialog = await focused.evaluate((el, dialogEl) => {
-        return dialogEl.contains(el);
-      }, await dialog.elementHandle());
+      const isInsideDialog = await focused.evaluate(
+        (el, dialogEl) => {
+          return dialogEl.contains(el);
+        },
+        await dialog.elementHandle()
+      );
 
       expect(isInsideDialog).toBe(true);
     }
