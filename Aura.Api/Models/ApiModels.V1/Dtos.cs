@@ -927,3 +927,248 @@ public record PresetDefinitionDto(
     List<string> BestForFormats,
     string RestructuringStrategy);
 
+/// <summary>
+/// Translation request
+/// </summary>
+public record TranslateScriptRequest(
+    string SourceLanguage,
+    string TargetLanguage,
+    string? SourceText,
+    List<ScriptLineDto>? ScriptLines,
+    CulturalContextDto? CulturalContext,
+    TranslationOptionsDto? Options,
+    Dictionary<string, string>? Glossary,
+    string? AudienceProfileId);
+
+/// <summary>
+/// Script line for translation
+/// </summary>
+public record ScriptLineDto(
+    string Text,
+    double StartSeconds,
+    double DurationSeconds);
+
+/// <summary>
+/// Cultural context for translation
+/// </summary>
+public record CulturalContextDto(
+    string TargetRegion,
+    string TargetFormality,
+    string PreferredStyle,
+    List<string> Sensitivities,
+    List<string> TabooTopics,
+    string ContentRating);
+
+/// <summary>
+/// Translation options
+/// </summary>
+public record TranslationOptionsDto(
+    string Mode = "Localized",
+    bool EnableBackTranslation = true,
+    bool EnableQualityScoring = true,
+    bool AdjustTimings = true,
+    double MaxTimingVariance = 0.15,
+    bool PreserveNames = true,
+    bool PreserveBrands = true,
+    bool AdaptMeasurements = true);
+
+/// <summary>
+/// Translation result
+/// </summary>
+public record TranslationResultDto(
+    string SourceLanguage,
+    string TargetLanguage,
+    string SourceText,
+    string TranslatedText,
+    List<TranslatedScriptLineDto> TranslatedLines,
+    TranslationQualityDto Quality,
+    List<CulturalAdaptationDto> CulturalAdaptations,
+    TimingAdjustmentDto TimingAdjustment,
+    List<VisualLocalizationRecommendationDto> VisualRecommendations,
+    double TranslationTimeSeconds);
+
+/// <summary>
+/// Translated script line
+/// </summary>
+public record TranslatedScriptLineDto(
+    int SceneIndex,
+    string SourceText,
+    string TranslatedText,
+    double OriginalStartSeconds,
+    double OriginalDurationSeconds,
+    double AdjustedStartSeconds,
+    double AdjustedDurationSeconds,
+    double TimingVariance,
+    List<string> AdaptationNotes);
+
+/// <summary>
+/// Translation quality metrics
+/// </summary>
+public record TranslationQualityDto(
+    double OverallScore,
+    double FluencyScore,
+    double AccuracyScore,
+    double CulturalAppropriatenessScore,
+    double TerminologyConsistencyScore,
+    double BackTranslationScore,
+    string? BackTranslatedText,
+    List<QualityIssueDto> Issues);
+
+/// <summary>
+/// Quality issue
+/// </summary>
+public record QualityIssueDto(
+    string Severity,
+    string Category,
+    string Description,
+    string? Suggestion,
+    int? LineNumber);
+
+/// <summary>
+/// Cultural adaptation
+/// </summary>
+public record CulturalAdaptationDto(
+    string Category,
+    string SourcePhrase,
+    string AdaptedPhrase,
+    string Reasoning,
+    int? LineNumber);
+
+/// <summary>
+/// Timing adjustment information
+/// </summary>
+public record TimingAdjustmentDto(
+    double OriginalTotalDuration,
+    double AdjustedTotalDuration,
+    double ExpansionFactor,
+    bool RequiresCompression,
+    List<string> CompressionSuggestions,
+    List<TimingWarningDto> Warnings);
+
+/// <summary>
+/// Timing warning
+/// </summary>
+public record TimingWarningDto(
+    string Severity,
+    string Message,
+    int? LineNumber);
+
+/// <summary>
+/// Visual localization recommendation
+/// </summary>
+public record VisualLocalizationRecommendationDto(
+    string ElementType,
+    string Description,
+    string Recommendation,
+    string Priority,
+    int? SceneIndex);
+
+/// <summary>
+/// Batch translation request
+/// </summary>
+public record BatchTranslateRequest(
+    string SourceLanguage,
+    List<string> TargetLanguages,
+    string? SourceText,
+    List<ScriptLineDto>? ScriptLines,
+    CulturalContextDto? CulturalContext,
+    TranslationOptionsDto? Options,
+    Dictionary<string, string>? Glossary);
+
+/// <summary>
+/// Batch translation result
+/// </summary>
+public record BatchTranslationResultDto(
+    string SourceLanguage,
+    Dictionary<string, TranslationResultDto> Translations,
+    List<string> SuccessfulLanguages,
+    List<string> FailedLanguages,
+    double TotalTimeSeconds);
+
+/// <summary>
+/// Cultural analysis request
+/// </summary>
+public record CulturalAnalysisRequest(
+    string TargetLanguage,
+    string TargetRegion,
+    string Content,
+    string? AudienceProfileId);
+
+/// <summary>
+/// Cultural analysis result
+/// </summary>
+public record CulturalAnalysisResultDto(
+    string TargetLanguage,
+    string TargetRegion,
+    double CulturalSensitivityScore,
+    List<CulturalIssueDto> Issues,
+    List<CulturalRecommendationDto> Recommendations);
+
+/// <summary>
+/// Cultural issue
+/// </summary>
+public record CulturalIssueDto(
+    string Severity,
+    string Category,
+    string Issue,
+    string Context,
+    string? Suggestion);
+
+/// <summary>
+/// Cultural recommendation
+/// </summary>
+public record CulturalRecommendationDto(
+    string Category,
+    string Recommendation,
+    string Reasoning,
+    string Priority);
+
+/// <summary>
+/// Language info
+/// </summary>
+public record LanguageInfoDto(
+    string Code,
+    string Name,
+    string NativeName,
+    string Region,
+    bool IsRightToLeft,
+    string DefaultFormality,
+    double TypicalExpansionFactor);
+
+/// <summary>
+/// Glossary entry
+/// </summary>
+public record GlossaryEntryDto(
+    string Id,
+    string Term,
+    Dictionary<string, string> Translations,
+    string? Context,
+    string? Industry);
+
+/// <summary>
+/// Project glossary
+/// </summary>
+public record ProjectGlossaryDto(
+    string Id,
+    string Name,
+    string? Description,
+    List<GlossaryEntryDto> Entries,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);
+
+/// <summary>
+/// Create glossary request
+/// </summary>
+public record CreateGlossaryRequest(
+    string Name,
+    string? Description);
+
+/// <summary>
+/// Add glossary entry request
+/// </summary>
+public record AddGlossaryEntryRequest(
+    string Term,
+    Dictionary<string, string> Translations,
+    string? Context,
+    string? Industry);
+
