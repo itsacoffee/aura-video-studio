@@ -296,55 +296,601 @@ Respond with ONLY the JSON object, no other text:";
         }
     }
 
-    public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+    public async Task<VisualPromptResult?> GenerateVisualPromptAsync(
         string sceneText,
         string? previousSceneText,
         string videoTone,
         VisualStyle targetStyle,
         CancellationToken ct)
     {
-        _logger.LogInformation("Visual prompt generation not implemented for Ollama, returning null");
-        return Task.FromResult<VisualPromptResult?>(null);
+        _logger.LogInformation("Generating visual prompt with Ollama");
+
+        try
+        {
+            var systemPrompt = "You are a professional cinematographer and visual director. " +
+                              "Create detailed visual prompts for image generation. " +
+                              "Return your response ONLY as valid JSON with no additional text.";
+            
+            var userPrompt = $@"Create a detailed visual prompt for this scene and return JSON with:
+- detailedDescription (string): Detailed visual description (100-200 tokens) of what should be shown
+- compositionGuidelines (string): Composition rules (e.g., ""rule of thirds, leading lines"")
+- lightingMood (string): Lighting mood (e.g., ""dramatic"", ""soft"", ""golden hour"")
+- lightingDirection (string): Light direction (e.g., ""front"", ""side"", ""back"")
+- lightingQuality (string): Light quality (e.g., ""soft"", ""hard"", ""diffused"")
+- timeOfDay (string): Time of day (e.g., ""day"", ""golden hour"", ""evening"", ""night"")
+- colorPalette (array of strings): 3-5 specific color hex codes
+- shotType (string): Shot type (e.g., ""wide shot"", ""medium shot"", ""close-up"")
+- cameraAngle (string): Camera angle (e.g., ""eye level"", ""high angle"", ""low angle"")
+- depthOfField (string): Depth of field (e.g., ""shallow"", ""medium"", ""deep"")
+- styleKeywords (array of strings): 5-7 keywords for the visual style
+- negativeElements (array of strings): Elements to avoid in the image
+- continuityElements (array of strings): Elements that should remain consistent with previous scenes
+- reasoning (string): Brief explanation of choices
+
+Scene text: {sceneText}
+{(previousSceneText != null ? $"Previous scene: {previousSceneText}" : "")}
+Video tone: {videoTone}
+Target style: {targetStyle}
+
+Respond with ONLY the JSON object, no other text:";
+
+            var prompt = $"{systemPrompt}\n\n{userPrompt}";
+
+            var requestBody = new
+            {
+                model = _model,
+                prompt = prompt,
+                stream = false,
+                options = new
+                {
+                    temperature = 0.7,
+                    top_p = 0.9,
+                    num_predict = 1024
+                }
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
+            {
+                var promptText = responseText.GetString() ?? string.Empty;
+                
+                try
+                {
+                    var promptDoc = JsonDocument.Parse(promptText);
+                    var root = promptDoc.RootElement;
+
+                    var result = new VisualPromptResult(
+                        DetailedDescription: root.TryGetProperty("detailedDescription", out var desc) ? desc.GetString() ?? "" : "",
+                        CompositionGuidelines: root.TryGetProperty("compositionGuidelines", out var comp) ? comp.GetString() ?? "" : "",
+                        LightingMood: root.TryGetProperty("lightingMood", out var mood) ? mood.GetString() ?? "neutral" : "neutral",
+                        LightingDirection: root.TryGetProperty("lightingDirection", out var dir) ? dir.GetString() ?? "front" : "front",
+                        LightingQuality: root.TryGetProperty("lightingQuality", out var qual) ? qual.GetString() ?? "soft" : "soft",
+                        TimeOfDay: root.TryGetProperty("timeOfDay", out var time) ? time.GetString() ?? "day" : "day",
+                        ColorPalette: ParseStringArray(root, "colorPalette"),
+                        ShotType: root.TryGetProperty("shotType", out var shot) ? shot.GetString() ?? "medium shot" : "medium shot",
+                        CameraAngle: root.TryGetProperty("cameraAngle", out var angle) ? angle.GetString() ?? "eye level" : "eye level",
+                        DepthOfField: root.TryGetProperty("depthOfField", out var dof) ? dof.GetString() ?? "medium" : "medium",
+                        StyleKeywords: ParseStringArray(root, "styleKeywords"),
+                        NegativeElements: ParseStringArray(root, "negativeElements"),
+                        ContinuityElements: ParseStringArray(root, "continuityElements"),
+                        Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
+                    );
+
+                    _logger.LogInformation("Visual prompt generated successfully");
+                    return result;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse visual prompt JSON from Ollama: {Response}", promptText);
+                    return null;
+                }
+            }
+
+            _logger.LogWarning("Ollama visual prompt response did not contain expected 'response' field");
+            return null;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Ollama visual prompt request timed out");
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to connect to Ollama for visual prompt");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating visual prompt with Ollama");
+            return null;
+        }
     }
 
-    public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+    private static string[] ParseStringArray(JsonElement root, string propertyName)
+    {
+        if (root.TryGetProperty(propertyName, out var arrayProp) && arrayProp.ValueKind == JsonValueKind.Array)
+        {
+            var items = new List<string>();
+            foreach (var item in arrayProp.EnumerateArray())
+            {
+                var str = item.GetString();
+                if (!string.IsNullOrEmpty(str))
+                {
+                    items.Add(str);
+                }
+            }
+            return items.ToArray();
+        }
+        return Array.Empty<string>();
+    }
+
+    public async Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
         string sceneText,
         string? previousSceneText,
         string videoGoal,
         CancellationToken ct)
     {
-        _logger.LogInformation("Content complexity analysis not implemented for Ollama, returning null (will use heuristics)");
-        return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+        _logger.LogInformation("Analyzing content complexity with Ollama");
+
+        var prompt = BuildComplexityAnalysisPrompt(sceneText, previousSceneText, videoGoal);
+
+        try
+        {
+            var systemPrompt = "You are an expert in cognitive science and educational content analysis. " +
+                              "Analyze the complexity of video content to optimize pacing for viewer comprehension. " +
+                              "Return your response ONLY as valid JSON with no additional text.";
+
+            var fullPrompt = $"{systemPrompt}\n\n{prompt}";
+
+            var requestBody = new
+            {
+                model = _model,
+                prompt = fullPrompt,
+                stream = false,
+                options = new
+                {
+                    temperature = 0.3,
+                    top_p = 0.9,
+                    num_predict = 512
+                }
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
+            {
+                var messageContent = responseText.GetString();
+                
+                if (string.IsNullOrEmpty(messageContent))
+                {
+                    _logger.LogWarning("Ollama returned empty complexity analysis");
+                    return null;
+                }
+
+                using var analysisDoc = JsonDocument.Parse(messageContent);
+                var analysisRoot = analysisDoc.RootElement;
+
+                var result = new ContentComplexityAnalysisResult(
+                    OverallComplexityScore: GetDoubleProperty(analysisRoot, "overall_complexity_score", 50.0),
+                    ConceptDifficulty: GetDoubleProperty(analysisRoot, "concept_difficulty", 50.0),
+                    TerminologyDensity: GetDoubleProperty(analysisRoot, "terminology_density", 50.0),
+                    PrerequisiteKnowledgeLevel: GetDoubleProperty(analysisRoot, "prerequisite_knowledge_level", 50.0),
+                    MultiStepReasoningRequired: GetDoubleProperty(analysisRoot, "multi_step_reasoning_required", 50.0),
+                    NewConceptsIntroduced: GetIntProperty(analysisRoot, "new_concepts_introduced", 3),
+                    CognitiveProcessingTimeSeconds: GetDoubleProperty(analysisRoot, "cognitive_processing_time_seconds", 10.0),
+                    OptimalAttentionWindowSeconds: GetDoubleProperty(analysisRoot, "optimal_attention_window_seconds", 10.0),
+                    DetailedBreakdown: GetStringProperty(analysisRoot, "detailed_breakdown", "No breakdown provided")
+                );
+
+                _logger.LogInformation("Content complexity analyzed: Overall={Score:F0}, NewConcepts={Concepts}",
+                    result.OverallComplexityScore, result.NewConceptsIntroduced);
+
+                return result;
+            }
+
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Failed to connect to Ollama for complexity analysis");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing content complexity with Ollama");
+            return null;
+        }
     }
 
-    public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+    private static string BuildComplexityAnalysisPrompt(string sceneText, string? previousSceneText, string videoGoal)
+    {
+        var prompt = new StringBuilder();
+        prompt.AppendLine("Analyze the cognitive complexity of this video scene content to optimize viewer comprehension and pacing.");
+        prompt.AppendLine();
+        prompt.AppendLine($"VIDEO GOAL: {videoGoal}");
+        prompt.AppendLine();
+        prompt.AppendLine("SCENE CONTENT:");
+        prompt.AppendLine(sceneText);
+        
+        if (!string.IsNullOrEmpty(previousSceneText))
+        {
+            prompt.AppendLine();
+            prompt.AppendLine("PREVIOUS SCENE (for context):");
+            prompt.AppendLine(previousSceneText);
+        }
+
+        prompt.AppendLine();
+        prompt.AppendLine("Provide a JSON response with the following fields (all scores 0-100):");
+        prompt.AppendLine("{");
+        prompt.AppendLine("  \"overall_complexity_score\": <0-100>,");
+        prompt.AppendLine("  \"concept_difficulty\": <0-100, how difficult are the concepts?>,");
+        prompt.AppendLine("  \"terminology_density\": <0-100, how many specialized terms?>,");
+        prompt.AppendLine("  \"prerequisite_knowledge_level\": <0-100, how much prior knowledge assumed?>,");
+        prompt.AppendLine("  \"multi_step_reasoning_required\": <0-100, requires following multiple logical steps?>,");
+        prompt.AppendLine("  \"new_concepts_introduced\": <integer count of new concepts>,");
+        prompt.AppendLine("  \"cognitive_processing_time_seconds\": <estimated time to process>,");
+        prompt.AppendLine("  \"optimal_attention_window_seconds\": <5-15, how long to show this content?>,");
+        prompt.AppendLine("  \"detailed_breakdown\": \"<2-3 sentence explanation of complexity factors>\"");
+        prompt.AppendLine("}");
+
+        return prompt.ToString();
+    }
+
+    private static double GetDoubleProperty(JsonElement root, string propertyName, double defaultValue)
+    {
+        if (root.TryGetProperty(propertyName, out var prop))
+        {
+            if (prop.ValueKind == JsonValueKind.Number)
+                return prop.GetDouble();
+            if (prop.ValueKind == JsonValueKind.String && double.TryParse(prop.GetString(), out var parsed))
+                return parsed;
+        }
+        return defaultValue;
+    }
+
+    private static int GetIntProperty(JsonElement root, string propertyName, int defaultValue)
+    {
+        if (root.TryGetProperty(propertyName, out var prop))
+        {
+            if (prop.ValueKind == JsonValueKind.Number)
+                return prop.GetInt32();
+            if (prop.ValueKind == JsonValueKind.String && int.TryParse(prop.GetString(), out var parsed))
+                return parsed;
+        }
+        return defaultValue;
+    }
+
+    private static string GetStringProperty(JsonElement root, string propertyName, string defaultValue)
+    {
+        if (root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String)
+        {
+            var value = prop.GetString();
+            return value ?? defaultValue;
+        }
+        return defaultValue;
+    }
+
+    public async Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
         string fromSceneText,
         string toSceneText,
         string videoGoal,
         CancellationToken ct)
     {
-        _logger.LogInformation("Scene coherence analysis not implemented for Ollama, returning null (will use fallback)");
-        return Task.FromResult<SceneCoherenceResult?>(null);
+        _logger.LogInformation("Analyzing scene coherence with Ollama");
+
+        try
+        {
+            var systemPrompt = "You are a narrative flow expert analyzing video scene transitions. " +
+                              "Return your response ONLY as valid JSON with no additional text.";
+            
+            var userPrompt = $@"Analyze the narrative coherence between these two consecutive scenes and return JSON with:
+- coherenceScore (0-100): How well scene B flows from scene A (0=no connection, 100=perfect flow)
+- connectionTypes (array of strings): Types of connections (choose from: ""causal"", ""thematic"", ""prerequisite"", ""callback"", ""sequential"", ""contrast"")
+- confidenceScore (0-1): Your confidence in this analysis
+- reasoning (string): Brief explanation of the coherence assessment
+
+Scene A: {fromSceneText}
+
+Scene B: {toSceneText}
+
+Video goal: {videoGoal}
+
+Respond with ONLY the JSON object, no other text:";
+
+            var prompt = $"{systemPrompt}\n\n{userPrompt}";
+
+            var requestBody = new
+            {
+                model = _model,
+                prompt = prompt,
+                stream = false,
+                options = new
+                {
+                    temperature = 0.3,
+                    top_p = 0.9,
+                    num_predict = 512
+                }
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
+            {
+                var analysisText = responseText.GetString() ?? string.Empty;
+                
+                try
+                {
+                    var analysisDoc = JsonDocument.Parse(analysisText);
+                    var root = analysisDoc.RootElement;
+
+                    var connectionTypes = new List<string>();
+                    if (root.TryGetProperty("connectionTypes", out var connTypes) && 
+                        connTypes.ValueKind == JsonValueKind.Array)
+                    {
+                        connectionTypes = connTypes.EnumerateArray()
+                            .Where(e => e.ValueKind == JsonValueKind.String)
+                            .Select(e => e.GetString() ?? "sequential")
+                            .ToList();
+                    }
+
+                    var result = new SceneCoherenceResult(
+                        CoherenceScore: root.TryGetProperty("coherenceScore", out var score) ? score.GetDouble() : 50.0,
+                        ConnectionTypes: connectionTypes.ToArray(),
+                        ConfidenceScore: root.TryGetProperty("confidenceScore", out var conf) ? conf.GetDouble() : 0.5,
+                        Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
+                    );
+
+                    _logger.LogInformation("Scene coherence analysis complete. Score: {Score}", result.CoherenceScore);
+                    
+                    return result;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse coherence analysis JSON");
+                    return null;
+                }
+            }
+
+            _logger.LogWarning("No valid response from Ollama for scene coherence analysis");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing scene coherence with Ollama");
+            return null;
+        }
     }
 
-    public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+    public async Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
         IReadOnlyList<string> sceneTexts,
         string videoGoal,
         string videoType,
         CancellationToken ct)
     {
-        _logger.LogInformation("Narrative arc validation not implemented for Ollama, returning null (will use fallback)");
-        return Task.FromResult<NarrativeArcResult?>(null);
+        _logger.LogInformation("Validating narrative arc with Ollama for {VideoType} video", videoType);
+
+        try
+        {
+            var systemPrompt = "You are a narrative structure expert analyzing video story arcs. " +
+                              "Return your response ONLY as valid JSON with no additional text.";
+            
+            var scenesText = string.Join("\n\n", sceneTexts.Select((s, i) => $"Scene {i + 1}: {s}"));
+            
+            var expectedStructures = new Dictionary<string, string>
+            {
+                { "educational", "problem → explanation → solution" },
+                { "entertainment", "setup → conflict → resolution" },
+                { "documentary", "introduction → evidence → conclusion" },
+                { "tutorial", "overview → steps → summary" },
+                { "general", "introduction → body → conclusion" }
+            };
+
+            var expectedStructure = expectedStructures.GetValueOrDefault(
+                videoType.ToLowerInvariant(), 
+                expectedStructures["general"]);
+
+            var userPrompt = $@"Analyze the narrative arc of this {videoType} video and return JSON with:
+- isValid (boolean): Whether the narrative follows a coherent arc
+- detectedStructure (string): The structure you detect (e.g., ""setup → conflict → resolution"")
+- expectedStructure (string): ""{expectedStructure}""
+- structuralIssues (array of strings): Any problems with the narrative structure
+- recommendations (array of strings): Suggestions to improve the narrative arc
+- reasoning (string): Brief explanation of your assessment
+
+{scenesText}
+
+Video goal: {videoGoal}
+
+Respond with ONLY the JSON object, no other text:";
+
+            var prompt = $"{systemPrompt}\n\n{userPrompt}";
+
+            var requestBody = new
+            {
+                model = _model,
+                prompt = prompt,
+                stream = false,
+                options = new
+                {
+                    temperature = 0.3,
+                    top_p = 0.9,
+                    num_predict = 1024
+                }
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(45));
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
+            {
+                var analysisText = responseText.GetString() ?? string.Empty;
+                
+                try
+                {
+                    var analysisDoc = JsonDocument.Parse(analysisText);
+                    var root = analysisDoc.RootElement;
+
+                    var structuralIssues = new List<string>();
+                    if (root.TryGetProperty("structuralIssues", out var issues) && 
+                        issues.ValueKind == JsonValueKind.Array)
+                    {
+                        structuralIssues = issues.EnumerateArray()
+                            .Where(e => e.ValueKind == JsonValueKind.String)
+                            .Select(e => e.GetString() ?? "")
+                            .Where(s => !string.IsNullOrEmpty(s))
+                            .ToList();
+                    }
+
+                    var recommendations = new List<string>();
+                    if (root.TryGetProperty("recommendations", out var recs) && 
+                        recs.ValueKind == JsonValueKind.Array)
+                    {
+                        recommendations = recs.EnumerateArray()
+                            .Where(e => e.ValueKind == JsonValueKind.String)
+                            .Select(e => e.GetString() ?? "")
+                            .Where(s => !string.IsNullOrEmpty(s))
+                            .ToList();
+                    }
+
+                    var result = new NarrativeArcResult(
+                        IsValid: root.TryGetProperty("isValid", out var valid) && valid.GetBoolean(),
+                        DetectedStructure: root.TryGetProperty("detectedStructure", out var detected) ? detected.GetString() ?? "" : "",
+                        ExpectedStructure: expectedStructure,
+                        StructuralIssues: structuralIssues.ToArray(),
+                        Recommendations: recommendations.ToArray(),
+                        Reasoning: root.TryGetProperty("reasoning", out var reas) ? reas.GetString() ?? "" : ""
+                    );
+
+                    _logger.LogInformation("Narrative arc validation complete. Valid: {IsValid}", result.IsValid);
+                    
+                    return result;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse narrative arc JSON");
+                    return null;
+                }
+            }
+
+            _logger.LogWarning("No valid response from Ollama for narrative arc validation");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating narrative arc with Ollama");
+            return null;
+        }
     }
 
-    public Task<string?> GenerateTransitionTextAsync(
+    public async Task<string?> GenerateTransitionTextAsync(
         string fromSceneText,
         string toSceneText,
         string videoGoal,
         CancellationToken ct)
     {
-        _logger.LogInformation("Transition text generation not implemented for Ollama, returning null (will use fallback)");
-        return Task.FromResult<string?>(null);
+        _logger.LogInformation("Generating transition text with Ollama");
+
+        try
+        {
+            var systemPrompt = "You are a professional scriptwriter specializing in smooth scene transitions.";
+            
+            var userPrompt = $@"Create a brief transition sentence or phrase (1-2 sentences maximum) to smoothly connect these two scenes:
+
+Scene A: {fromSceneText}
+
+Scene B: {toSceneText}
+
+Video goal: {videoGoal}
+
+The transition should feel natural and help the viewer understand the connection between these scenes. 
+Return ONLY the transition text, no explanations or additional commentary:";
+
+            var prompt = $"{systemPrompt}\n\n{userPrompt}";
+
+            var requestBody = new
+            {
+                model = _model,
+                prompt = prompt,
+                stream = false,
+                options = new
+                {
+                    temperature = 0.7,
+                    top_p = 0.9,
+                    num_predict = 128
+                }
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, cts.Token);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var responseDoc = JsonDocument.Parse(responseJson);
+
+            if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
+            {
+                var transitionText = responseText.GetString()?.Trim() ?? string.Empty;
+                
+                if (!string.IsNullOrWhiteSpace(transitionText))
+                {
+                    _logger.LogInformation("Generated transition text: {Text}", transitionText);
+                    return transitionText;
+                }
+            }
+
+            _logger.LogWarning("No valid transition text from Ollama");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating transition text with Ollama");
+            return null;
+        }
     }
 
     // Removed legacy prompt building method - now using EnhancedPromptTemplates
