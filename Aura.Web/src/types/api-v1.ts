@@ -430,3 +430,302 @@ export const TechnicalComfortLevels = [
 ] as const;
 
 export const ContentRatings = ['ChildSafe', 'TeenAppropriate', 'Adult'] as const;
+
+// ============================================================================
+// TRANSLATION AND LOCALIZATION TYPES
+// ============================================================================
+
+/**
+ * Translation mode selection
+ */
+export enum TranslationMode {
+  Literal = 'Literal',
+  Localized = 'Localized',
+  Transcreation = 'Transcreation',
+}
+
+/**
+ * Formality level for translation
+ */
+export enum FormalityLevel {
+  Informal = 'Informal',
+  Neutral = 'Neutral',
+  Formal = 'Formal',
+}
+
+/**
+ * Age rating for content
+ */
+export enum AgeRating {
+  ChildSafe = 'ChildSafe',
+  TeenAppropriate = 'TeenAppropriate',
+  Adult = 'Adult',
+}
+
+/**
+ * Script line for translation
+ */
+export interface ScriptLineDto {
+  text: string;
+  startSeconds: number;
+  durationSeconds: number;
+}
+
+/**
+ * Cultural context for translation
+ */
+export interface CulturalContextDto {
+  targetRegion: string;
+  targetFormality: string;
+  preferredStyle: string;
+  sensitivities: string[];
+  tabooTopics: string[];
+  contentRating: string;
+}
+
+/**
+ * Translation options
+ */
+export interface TranslationOptionsDto {
+  mode?: string;
+  enableBackTranslation?: boolean;
+  enableQualityScoring?: boolean;
+  adjustTimings?: boolean;
+  maxTimingVariance?: number;
+  preserveNames?: boolean;
+  preserveBrands?: boolean;
+  adaptMeasurements?: boolean;
+}
+
+/**
+ * Translation request
+ */
+export interface TranslateScriptRequest {
+  sourceLanguage: string;
+  targetLanguage: string;
+  sourceText?: string;
+  scriptLines?: ScriptLineDto[];
+  culturalContext?: CulturalContextDto;
+  options?: TranslationOptionsDto;
+  glossary?: Record<string, string>;
+  audienceProfileId?: string;
+}
+
+/**
+ * Translated script line with timing adjustments
+ */
+export interface TranslatedScriptLineDto {
+  sceneIndex: number;
+  sourceText: string;
+  translatedText: string;
+  originalStartSeconds: number;
+  originalDurationSeconds: number;
+  adjustedStartSeconds: number;
+  adjustedDurationSeconds: number;
+  timingVariance: number;
+  adaptationNotes: string[];
+}
+
+/**
+ * Quality issue
+ */
+export interface QualityIssueDto {
+  severity: string;
+  category: string;
+  description: string;
+  suggestion?: string;
+  lineNumber?: number;
+}
+
+/**
+ * Translation quality metrics
+ */
+export interface TranslationQualityDto {
+  overallScore: number;
+  fluencyScore: number;
+  accuracyScore: number;
+  culturalAppropriatenessScore: number;
+  terminologyConsistencyScore: number;
+  backTranslationScore: number;
+  backTranslatedText?: string;
+  issues: QualityIssueDto[];
+}
+
+/**
+ * Cultural adaptation
+ */
+export interface CulturalAdaptationDto {
+  category: string;
+  sourcePhrase: string;
+  adaptedPhrase: string;
+  reasoning: string;
+  lineNumber?: number;
+}
+
+/**
+ * Timing warning
+ */
+export interface TimingWarningDto {
+  severity: string;
+  message: string;
+  lineNumber?: number;
+}
+
+/**
+ * Timing adjustment information
+ */
+export interface TimingAdjustmentDto {
+  originalTotalDuration: number;
+  adjustedTotalDuration: number;
+  expansionFactor: number;
+  requiresCompression: boolean;
+  compressionSuggestions: string[];
+  warnings: TimingWarningDto[];
+}
+
+/**
+ * Visual localization recommendation
+ */
+export interface VisualLocalizationRecommendationDto {
+  elementType: string;
+  description: string;
+  recommendation: string;
+  priority: string;
+  sceneIndex?: number;
+}
+
+/**
+ * Translation result
+ */
+export interface TranslationResultDto {
+  sourceLanguage: string;
+  targetLanguage: string;
+  sourceText: string;
+  translatedText: string;
+  translatedLines: TranslatedScriptLineDto[];
+  quality: TranslationQualityDto;
+  culturalAdaptations: CulturalAdaptationDto[];
+  timingAdjustment: TimingAdjustmentDto;
+  visualRecommendations: VisualLocalizationRecommendationDto[];
+  translationTimeSeconds: number;
+}
+
+/**
+ * Batch translation request
+ */
+export interface BatchTranslateRequest {
+  sourceLanguage: string;
+  targetLanguages: string[];
+  sourceText?: string;
+  scriptLines?: ScriptLineDto[];
+  culturalContext?: CulturalContextDto;
+  options?: TranslationOptionsDto;
+  glossary?: Record<string, string>;
+}
+
+/**
+ * Batch translation result
+ */
+export interface BatchTranslationResultDto {
+  sourceLanguage: string;
+  translations: Record<string, TranslationResultDto>;
+  successfulLanguages: string[];
+  failedLanguages: string[];
+  totalTimeSeconds: number;
+}
+
+/**
+ * Cultural analysis request
+ */
+export interface CulturalAnalysisRequest {
+  targetLanguage: string;
+  targetRegion: string;
+  content: string;
+  audienceProfileId?: string;
+}
+
+/**
+ * Cultural issue
+ */
+export interface CulturalIssueDto {
+  severity: string;
+  category: string;
+  issue: string;
+  context: string;
+  suggestion?: string;
+}
+
+/**
+ * Cultural recommendation
+ */
+export interface CulturalRecommendationDto {
+  category: string;
+  recommendation: string;
+  reasoning: string;
+  priority: string;
+}
+
+/**
+ * Cultural analysis result
+ */
+export interface CulturalAnalysisResultDto {
+  targetLanguage: string;
+  targetRegion: string;
+  culturalSensitivityScore: number;
+  issues: CulturalIssueDto[];
+  recommendations: CulturalRecommendationDto[];
+}
+
+/**
+ * Language information
+ */
+export interface LanguageInfoDto {
+  code: string;
+  name: string;
+  nativeName: string;
+  region: string;
+  isRightToLeft: boolean;
+  defaultFormality: string;
+  typicalExpansionFactor: number;
+}
+
+/**
+ * Glossary entry
+ */
+export interface GlossaryEntryDto {
+  id: string;
+  term: string;
+  translations: Record<string, string>;
+  context?: string;
+  industry?: string;
+}
+
+/**
+ * Project glossary
+ */
+export interface ProjectGlossaryDto {
+  id: string;
+  name: string;
+  description?: string;
+  entries: GlossaryEntryDto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Create glossary request
+ */
+export interface CreateGlossaryRequest {
+  name: string;
+  description?: string;
+}
+
+/**
+ * Add glossary entry request
+ */
+export interface AddGlossaryEntryRequest {
+  term: string;
+  translations: Record<string, string>;
+  context?: string;
+  industry?: string;
+}
