@@ -625,3 +625,125 @@ public record RecommendProfilesRequest(
     string? Goal = null,
     int? MaxResults = 5);
 
+/// <summary>
+/// Request to adapt content for an audience
+/// </summary>
+public record AdaptContentRequest(
+    string Content,
+    string AudienceProfileId,
+    ContentAdaptationConfigDto? Config = null);
+
+/// <summary>
+/// Configuration for content adaptation
+/// </summary>
+public record ContentAdaptationConfigDto(
+    double AggressivenessLevel = 0.6,
+    bool EnableVocabularyAdjustment = true,
+    bool EnableExamplePersonalization = true,
+    bool EnablePacingAdaptation = true,
+    bool EnableToneOptimization = true,
+    bool EnableCognitiveLoadBalancing = true,
+    double CognitiveLoadThreshold = 75.0,
+    int ExamplesPerConcept = 3);
+
+/// <summary>
+/// Result of content adaptation
+/// </summary>
+public record ContentAdaptationResultDto(
+    string OriginalContent,
+    string AdaptedContent,
+    ReadabilityMetricsDto OriginalMetrics,
+    ReadabilityMetricsDto AdaptedMetrics,
+    List<AdaptationChangeDto> Changes,
+    double OverallRelevanceScore,
+    double ProcessingTimeSeconds);
+
+/// <summary>
+/// Readability metrics
+/// </summary>
+public record ReadabilityMetricsDto(
+    double FleschKincaidGradeLevel,
+    double SmogScore,
+    double AverageWordsPerSentence,
+    double AverageSyllablesPerWord,
+    double ComplexWordPercentage,
+    double TechnicalTermDensity,
+    double OverallComplexity);
+
+/// <summary>
+/// Individual adaptation change
+/// </summary>
+public record AdaptationChangeDto(
+    string Category,
+    string Description,
+    string OriginalText,
+    string AdaptedText,
+    string Reasoning,
+    int Position);
+
+/// <summary>
+/// Request for adaptation preview/comparison
+/// </summary>
+public record AdaptationPreviewRequest(
+    string Content,
+    string AudienceProfileId,
+    ContentAdaptationConfigDto? Config = null);
+
+/// <summary>
+/// Adaptation comparison report
+/// </summary>
+public record AdaptationComparisonReportDto(
+    string OriginalContent,
+    string AdaptedContent,
+    double ProcessingTimeSeconds,
+    double OverallRelevanceScore,
+    List<ComparisonSectionDto> Sections,
+    MetricsComparisonDto MetricsComparison,
+    Dictionary<string, int> ChangesByCategory,
+    string Summary);
+
+/// <summary>
+/// Comparison section
+/// </summary>
+public record ComparisonSectionDto(
+    string OriginalText,
+    string AdaptedText,
+    List<AdaptationChangeDto> Changes,
+    List<TextHighlightDto> HighlightedDifferences);
+
+/// <summary>
+/// Text highlight
+/// </summary>
+public record TextHighlightDto(
+    string OriginalText,
+    string AdaptedText,
+    int Position,
+    string Type);
+
+/// <summary>
+/// Metrics comparison
+/// </summary>
+public record MetricsComparisonDto(
+    MetricChangeDto FleschKincaidChange,
+    MetricChangeDto SmogChange,
+    MetricChangeDto ComplexityChange,
+    MetricChangeDto WordsPerSentenceChange);
+
+/// <summary>
+/// Individual metric change
+/// </summary>
+public record MetricChangeDto(
+    string Name,
+    double OriginalValue,
+    double AdaptedValue,
+    string Direction,
+    double PercentageChange);
+
+/// <summary>
+/// Reading level response
+/// </summary>
+public record ReadingLevelResponse(
+    string ProfileId,
+    string ProfileName,
+    string ReadingLevelDescription);
+

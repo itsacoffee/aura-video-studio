@@ -120,6 +120,13 @@ AVOID AI DETECTION FLAGS:
 
         sb.AppendLine();
 
+        // Add detailed audience adaptation guidelines if profile available
+        if (brief.AudienceProfile != null)
+        {
+            sb.AppendLine(BuildAudienceAdaptationGuidelines(brief.AudienceProfile));
+            sb.AppendLine();
+        }
+
         // Content creation guidelines specific to this video
         sb.AppendLine($"SPECIFIC GUIDELINES FOR THIS VIDEO:");
         sb.AppendLine(GetToneSpecificGuidelines(brief.Tone));
@@ -766,5 +773,247 @@ Provide specific, actionable feedback for improvement, focusing on making conten
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Build detailed audience-aware adaptation guidelines for LLM prompts
+    /// Automatically injects audience context for content adaptation
+    /// </summary>
+    public static string BuildAudienceAdaptationGuidelines(AudienceProfile profile)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine("AUDIENCE-AWARE CONTENT ADAPTATION:");
+        sb.AppendLine();
+
+        sb.AppendLine("VOCABULARY & COMPLEXITY:");
+        var targetReadingLevel = DetermineTargetReadingLevel(profile);
+        sb.AppendLine($"- Target Reading Level: {targetReadingLevel}");
+        
+        if (profile.ExpertiseLevel == ExpertiseLevel.Expert || profile.ExpertiseLevel == ExpertiseLevel.Professional)
+        {
+            sb.AppendLine("- Use technical terminology freely and precisely");
+            sb.AppendLine("- Assume advanced domain knowledge");
+            sb.AppendLine("- Skip basic explanations");
+        }
+        else if (profile.ExpertiseLevel == ExpertiseLevel.CompleteBeginner || profile.ExpertiseLevel == ExpertiseLevel.Novice)
+        {
+            sb.AppendLine("- Use plain language and avoid jargon");
+            sb.AppendLine("- Define technical terms when necessary");
+            sb.AppendLine("- Provide clear step-by-step explanations");
+        }
+        else
+        {
+            sb.AppendLine("- Balance technical accuracy with clarity");
+            sb.AppendLine("- Introduce technical terms with context");
+            sb.AppendLine("- Assume basic knowledge, explain intermediate concepts");
+        }
+        sb.AppendLine();
+
+        sb.AppendLine("EXAMPLES & ANALOGIES:");
+        if (!string.IsNullOrEmpty(profile.Profession))
+        {
+            sb.AppendLine($"- Draw from {profile.Profession.ToLowerInvariant()} domain experiences");
+        }
+        if (profile.Interests.Count > 0)
+        {
+            sb.AppendLine($"- Use examples related to: {string.Join(", ", profile.Interests.Take(3))}");
+        }
+        if (profile.GeographicRegion.HasValue)
+        {
+            sb.AppendLine($"- Use culturally relevant references for {profile.GeographicRegion}");
+        }
+        sb.AppendLine("- Provide 3-5 examples per key concept");
+        sb.AppendLine("- Make examples concrete and relatable");
+        sb.AppendLine();
+
+        sb.AppendLine("PACING & DENSITY:");
+        var pacingStrategy = DeterminePacingStrategy(profile);
+        sb.AppendLine(pacingStrategy);
+        sb.AppendLine();
+
+        sb.AppendLine("TONE & FORMALITY:");
+        var formalityLevel = DetermineFormalityLevel(profile);
+        sb.AppendLine($"- Formality Level: {formalityLevel}");
+        
+        if (profile.AgeRange != null)
+        {
+            if (profile.AgeRange.MinAge < 25)
+            {
+                sb.AppendLine("- Energy: High, dynamic, engaging");
+                sb.AppendLine("- Style: Contemporary, relatable");
+            }
+            else if (profile.AgeRange.MinAge >= 55)
+            {
+                sb.AppendLine("- Energy: Measured, deliberate");
+                sb.AppendLine("- Style: Clear, respectful");
+            }
+            else
+            {
+                sb.AppendLine("- Energy: Moderate, professional");
+                sb.AppendLine("- Style: Balanced, accessible");
+            }
+        }
+        sb.AppendLine();
+
+        if (profile.CulturalBackground != null)
+        {
+            if (profile.CulturalBackground.Sensitivities.Count > 0)
+            {
+                sb.AppendLine("CULTURAL SENSITIVITIES:");
+                foreach (var sensitivity in profile.CulturalBackground.Sensitivities.Take(3))
+                {
+                    sb.AppendLine($"- Avoid: {sensitivity}");
+                }
+                sb.AppendLine();
+            }
+
+            if (profile.CulturalBackground.TabooTopics.Count > 0)
+            {
+                sb.AppendLine("AVOID THESE TOPICS:");
+                foreach (var taboo in profile.CulturalBackground.TabooTopics.Take(3))
+                {
+                    sb.AppendLine($"- {taboo}");
+                }
+                sb.AppendLine();
+            }
+        }
+
+        if (profile.AccessibilityNeeds != null)
+        {
+            sb.AppendLine("ACCESSIBILITY REQUIREMENTS:");
+            if (profile.AccessibilityNeeds.RequiresSimplifiedLanguage)
+            {
+                sb.AppendLine("- Use simplified language (short sentences, common words)");
+            }
+            if (profile.AccessibilityNeeds.RequiresCaptions)
+            {
+                sb.AppendLine("- Script must be caption-friendly (clear speech, no overlaps)");
+            }
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("COGNITIVE LOAD MANAGEMENT:");
+        var cognitiveCapacity = CalculateCognitiveCapacity(profile);
+        sb.AppendLine($"- Audience Cognitive Capacity: {cognitiveCapacity:F0}/100");
+        sb.AppendLine("- Balance abstract concepts with concrete examples");
+        sb.AppendLine("- Insert breather moments for complex content");
+        sb.AppendLine("- Avoid overwhelming information density");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Determine target reading level from profile
+    /// </summary>
+    private static string DetermineTargetReadingLevel(AudienceProfile profile)
+    {
+        if (profile.EducationLevel.HasValue)
+        {
+            return profile.EducationLevel.Value switch
+            {
+                EducationLevel.HighSchool => "Grade 9-10 (High School)",
+                EducationLevel.SomeCollege => "Grade 11-12 (College Prep)",
+                EducationLevel.AssociateDegree => "Grade 12-13 (Associate)",
+                EducationLevel.BachelorDegree => "Grade 13-14 (Undergraduate)",
+                EducationLevel.MasterDegree => "Grade 14-15 (Graduate)",
+                EducationLevel.Doctorate => "Grade 16+ (Advanced Academic)",
+                _ => "Grade 12 (General)"
+            };
+        }
+        return "Grade 12 (General)";
+    }
+
+    /// <summary>
+    /// Determine pacing strategy
+    /// </summary>
+    private static string DeterminePacingStrategy(AudienceProfile profile)
+    {
+        if (profile.ExpertiseLevel.HasValue)
+        {
+            return profile.ExpertiseLevel.Value switch
+            {
+                ExpertiseLevel.CompleteBeginner or ExpertiseLevel.Novice =>
+                    "- Pacing: Slower, more deliberate (20-30% longer content)\n" +
+                    "- Add explanations and context\n" +
+                    "- Repeat key concepts in different ways\n" +
+                    "- Include clear transitions",
+                
+                ExpertiseLevel.Expert or ExpertiseLevel.Professional =>
+                    "- Pacing: Faster, information-dense (20-25% shorter)\n" +
+                    "- Skip basic explanations\n" +
+                    "- Assume foundational knowledge\n" +
+                    "- Get to advanced concepts quickly",
+                
+                _ =>
+                    "- Pacing: Moderate, balanced\n" +
+                    "- Appropriate level of detail\n" +
+                    "- Clear but efficient explanations"
+            };
+        }
+        return "- Pacing: Moderate, balanced";
+    }
+
+    /// <summary>
+    /// Determine formality level
+    /// </summary>
+    private static string DetermineFormalityLevel(AudienceProfile profile)
+    {
+        if (profile.AgeRange != null && profile.AgeRange.MinAge < 25)
+        {
+            return "Casual";
+        }
+
+        if (!string.IsNullOrEmpty(profile.Profession))
+        {
+            var profession = profile.Profession.ToLowerInvariant();
+            if (profession.Contains("executive") || profession.Contains("business"))
+            {
+                return "Professional";
+            }
+        }
+
+        if (profile.EducationLevel >= EducationLevel.MasterDegree)
+        {
+            return "Academic";
+        }
+
+        return "Conversational";
+    }
+
+    /// <summary>
+    /// Calculate cognitive capacity from profile
+    /// </summary>
+    private static double CalculateCognitiveCapacity(AudienceProfile profile)
+    {
+        double capacity = 75.0;
+
+        if (profile.ExpertiseLevel.HasValue)
+        {
+            capacity += profile.ExpertiseLevel.Value switch
+            {
+                ExpertiseLevel.CompleteBeginner => -15,
+                ExpertiseLevel.Novice => -10,
+                ExpertiseLevel.Intermediate => 0,
+                ExpertiseLevel.Advanced => 10,
+                ExpertiseLevel.Expert => 15,
+                ExpertiseLevel.Professional => 20,
+                _ => 0
+            };
+        }
+
+        if (profile.EducationLevel.HasValue)
+        {
+            capacity += profile.EducationLevel.Value switch
+            {
+                EducationLevel.HighSchool => -5,
+                EducationLevel.BachelorDegree => 5,
+                EducationLevel.MasterDegree => 10,
+                EducationLevel.Doctorate => 15,
+                _ => 0
+            };
+        }
+
+        return Math.Clamp(capacity, 50.0, 100.0);
     }
 }

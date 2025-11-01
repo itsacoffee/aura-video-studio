@@ -23,17 +23,23 @@ public class AudienceController : ControllerBase
     private readonly AudienceProfileStore _store;
     private readonly AudienceProfileValidator _validator;
     private readonly AudienceProfileConverter _converter;
+    private readonly ContentAdaptationEngine? _adaptationEngine;
+    private readonly AdaptationPreviewService? _previewService;
 
     public AudienceController(
         ILogger<AudienceController> logger,
         AudienceProfileStore store,
         AudienceProfileValidator validator,
-        AudienceProfileConverter converter)
+        AudienceProfileConverter converter,
+        ContentAdaptationEngine? adaptationEngine = null,
+        AdaptationPreviewService? previewService = null)
     {
         _logger = logger;
         _store = store;
         _validator = validator;
         _converter = converter;
+        _adaptationEngine = adaptationEngine;
+        _previewService = previewService;
     }
 
     /// <summary>
@@ -690,5 +696,246 @@ public class AudienceController : ControllerBase
         }
 
         return factors;
+    }
+
+    /// <summary>
+    /// Adapt content for a specific audience profile
+    /// </summary>
+    [HttpPost("adapt")]
+    [ProducesResponseType(typeof(ContentAdaptationResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ContentAdaptationResultDto>> AdaptContent(
+        [FromBody] AdaptContentRequest request,
+        CancellationToken ct = default)
+    {
+        if (_adaptationEngine == null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Content Adaptation Not Available",
+                Detail = "Content adaptation engine is not configured",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        _logger.LogInformation("Adapting content for audience profile {ProfileId}", request.AudienceProfileId);
+
+        var profile = await _store.GetByIdAsync(request.AudienceProfileId, ct);
+        if (profile == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Profile Not Found",
+                Detail = $"Audience profile '{request.AudienceProfileId}' not found",
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+
+        var config = MapToAdaptationConfig(request.Config);
+        var result = await _adaptationEngine.AdaptContentAsync(
+            request.Content,
+            profile,
+            config,
+            ct);
+
+        var dto = MapToAdaptationResultDto(result);
+        return Ok(dto);
+    }
+
+    /// <summary>
+    /// Get adaptation preview with before/after comparison
+    /// </summary>
+    [HttpPost("adapt/preview")]
+    [ProducesResponseType(typeof(AdaptationComparisonReportDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<AdaptationComparisonReportDto>> GetAdaptationPreview(
+        [FromBody] AdaptationPreviewRequest request,
+        CancellationToken ct = default)
+    {
+        if (_adaptationEngine == null || _previewService == null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Content Adaptation Not Available",
+                Detail = "Content adaptation services are not configured",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        _logger.LogInformation("Generating adaptation preview for audience profile {ProfileId}", request.AudienceProfileId);
+
+        var profile = await _store.GetByIdAsync(request.AudienceProfileId, ct);
+        if (profile == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Profile Not Found",
+                Detail = $"Audience profile '{request.AudienceProfileId}' not found",
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+
+        var config = MapToAdaptationConfig(request.Config);
+        var result = await _adaptationEngine.AdaptContentAsync(
+            request.Content,
+            profile,
+            config,
+            ct);
+
+        var report = _previewService.GenerateComparisonReport(result);
+        var dto = MapToComparisonReportDto(report);
+
+        return Ok(dto);
+    }
+
+    /// <summary>
+    /// Get target reading level description for an audience profile
+    /// </summary>
+    [HttpGet("profiles/{id}/reading-level")]
+    [ProducesResponseType(typeof(ReadingLevelResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ReadingLevelResponse>> GetReadingLevel(
+        string id,
+        CancellationToken ct = default)
+    {
+        if (_adaptationEngine == null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Content Adaptation Not Available",
+                Detail = "Content adaptation engine is not configured",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        var profile = await _store.GetByIdAsync(id, ct);
+        if (profile == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Profile Not Found",
+                Detail = $"Audience profile '{id}' not found",
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+
+        var description = _adaptationEngine.GetTargetReadingLevelDescription(profile);
+        return Ok(new ReadingLevelResponse(id, profile.Name, description));
+    }
+
+    private ContentAdaptationConfig MapToAdaptationConfig(ContentAdaptationConfigDto? dto)
+    {
+        if (dto == null)
+        {
+            return new ContentAdaptationConfig();
+        }
+
+        return new ContentAdaptationConfig
+        {
+            AggressivenessLevel = dto.AggressivenessLevel,
+            EnableVocabularyAdjustment = dto.EnableVocabularyAdjustment,
+            EnableExamplePersonalization = dto.EnableExamplePersonalization,
+            EnablePacingAdaptation = dto.EnablePacingAdaptation,
+            EnableToneOptimization = dto.EnableToneOptimization,
+            EnableCognitiveLoadBalancing = dto.EnableCognitiveLoadBalancing,
+            CognitiveLoadThreshold = dto.CognitiveLoadThreshold,
+            ExamplesPerConcept = dto.ExamplesPerConcept
+        };
+    }
+
+    private ContentAdaptationResultDto MapToAdaptationResultDto(ContentAdaptationResult result)
+    {
+        return new ContentAdaptationResultDto(
+            result.OriginalContent,
+            result.AdaptedContent,
+            MapToMetricsDto(result.OriginalMetrics),
+            MapToMetricsDto(result.AdaptedMetrics),
+            result.Changes.Select(MapToChangeDto).ToList(),
+            result.OverallRelevanceScore,
+            result.ProcessingTime.TotalSeconds
+        );
+    }
+
+    private ReadabilityMetricsDto MapToMetricsDto(ReadabilityMetrics metrics)
+    {
+        return new ReadabilityMetricsDto(
+            metrics.FleschKincaidGradeLevel,
+            metrics.SmogScore,
+            metrics.AverageWordsPerSentence,
+            metrics.AverageSyllablesPerWord,
+            metrics.ComplexWordPercentage,
+            metrics.TechnicalTermDensity,
+            metrics.OverallComplexity
+        );
+    }
+
+    private AdaptationChangeDto MapToChangeDto(AdaptationChange change)
+    {
+        return new AdaptationChangeDto(
+            change.Category,
+            change.Description,
+            change.OriginalText,
+            change.AdaptedText,
+            change.Reasoning,
+            change.Position
+        );
+    }
+
+    private AdaptationComparisonReportDto MapToComparisonReportDto(AdaptationComparisonReport report)
+    {
+        return new AdaptationComparisonReportDto(
+            report.OriginalContent,
+            report.AdaptedContent,
+            report.ProcessingTime.TotalSeconds,
+            report.OverallRelevanceScore,
+            report.Sections.Select(MapToSectionDto).ToList(),
+            MapToMetricsComparisonDto(report.MetricsComparison),
+            report.ChangesByCategory.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count),
+            report.Summary
+        );
+    }
+
+    private ComparisonSectionDto MapToSectionDto(ComparisonSection section)
+    {
+        return new ComparisonSectionDto(
+            section.OriginalText,
+            section.AdaptedText,
+            section.Changes.Select(MapToChangeDto).ToList(),
+            section.HighlightedDifferences.Select(MapToHighlightDto).ToList()
+        );
+    }
+
+    private TextHighlightDto MapToHighlightDto(TextHighlight highlight)
+    {
+        return new TextHighlightDto(
+            highlight.OriginalText,
+            highlight.AdaptedText,
+            highlight.Position,
+            highlight.Type
+        );
+    }
+
+    private MetricsComparisonDto MapToMetricsComparisonDto(MetricsComparison comparison)
+    {
+        return new MetricsComparisonDto(
+            MapToMetricChangeDto(comparison.FleschKincaidChange),
+            MapToMetricChangeDto(comparison.SmogChange),
+            MapToMetricChangeDto(comparison.ComplexityChange),
+            MapToMetricChangeDto(comparison.WordsPerSentenceChange)
+        );
+    }
+
+    private MetricChangeDto MapToMetricChangeDto(MetricChange change)
+    {
+        return new MetricChangeDto(
+            change.Name,
+            change.OriginalValue,
+            change.AdaptedValue,
+            change.Direction,
+            change.PercentageChange
+        );
     }
 }
