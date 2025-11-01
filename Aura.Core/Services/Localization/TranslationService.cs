@@ -289,21 +289,13 @@ public class TranslationService
             options, 
             glossary);
 
-        var brief = new Brief(
-            Topic: "Translation",
-            Audience: "Translation system",
-            Goal: "Translate text with cultural adaptation",
-            Tone: "Professional",
-            Language: "English",
-            Aspect: Aspect.Widescreen16x9
+        var brief = LlmRequestHelper.CreateTranslationBrief(
+            "Translation",
+            "Translation system",
+            "Translate text with cultural adaptation"
         );
 
-        var spec = new PlanSpec(
-            TargetDuration: TimeSpan.FromMinutes(1.0),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Translation"
-        );
+        var spec = LlmRequestHelper.CreateTranslationPlanSpec();
 
         try
         {

@@ -21,6 +21,7 @@ public class CulturalLocalizationEngine
     private readonly ILogger _logger;
     private readonly ILlmProvider _llmProvider;
 
+    // Cultural reference mappings - could be moved to configuration file for easier updates
     private static readonly Dictionary<string, List<CulturalReference>> _culturalReferences = new()
     {
         ["sports"] = new()
@@ -107,21 +108,13 @@ public class CulturalLocalizationEngine
 
         var prompt = BuildCulturalAnalysisPrompt(content, targetLanguage, targetRegion);
         
-        var brief = new Brief(
-            Topic: "Cultural analysis",
-            Audience: "Cultural experts",
-            Goal: "Analyze cultural appropriateness",
-            Tone: "Analytical",
-            Language: "English",
-            Aspect: Aspect.Widescreen16x9
+        var brief = LlmRequestHelper.CreateAnalysisBrief(
+            "Cultural analysis",
+            "Cultural experts",
+            "Analyze cultural appropriateness"
         );
 
-        var spec = new PlanSpec(
-            TargetDuration: TimeSpan.FromMinutes(1.0),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Analysis"
-        );
+        var spec = LlmRequestHelper.CreateAnalysisPlanSpec();
 
         try
         {
@@ -188,21 +181,13 @@ public class CulturalLocalizationEngine
 
         var prompt = BuildIdiomAdaptationPrompt(line.TranslatedText, culturalContext);
         
-        var brief = new Brief(
-            Topic: "Idiom adaptation",
-            Audience: "Translation experts",
-            Goal: "Adapt idioms and expressions",
-            Tone: "Professional",
-            Language: "English",
-            Aspect: Aspect.Widescreen16x9
+        var brief = LlmRequestHelper.CreateAnalysisBrief(
+            "Idiom adaptation",
+            "Translation experts",
+            "Adapt idioms and expressions"
         );
 
-        var spec = new PlanSpec(
-            TargetDuration: TimeSpan.FromMinutes(1.0),
-            Pacing: Pacing.Conversational,
-            Density: Density.Balanced,
-            Style: "Translation"
-        );
+        var spec = LlmRequestHelper.CreateAnalysisPlanSpec();
 
         try
         {
