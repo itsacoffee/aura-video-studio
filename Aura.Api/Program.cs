@@ -679,6 +679,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Platform.SchedulingOptimization
 
 // Register health check and startup validation services
 builder.Services.AddSingleton<Aura.Api.Services.HealthCheckService>();
+builder.Services.AddSingleton<Aura.Api.Services.HealthDiagnosticsService>();
 builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
 builder.Services.AddSingleton<Aura.Api.Services.FirstRunDiagnostics>();
 builder.Services.AddSingleton<ConfigurationValidator>();
@@ -1268,6 +1269,49 @@ apiGroup.MapGet("/health/ready", async (Aura.Api.Services.HealthCheckService hea
     return Results.Json(result, statusCode: statusCode);
 })
 .WithName("HealthReady")
+.WithOpenApi();
+
+// Health summary endpoint - high-level system status
+apiGroup.MapGet("/health/summary", async (Aura.Api.Services.HealthDiagnosticsService healthDiagnostics, CancellationToken ct) =>
+{
+    try
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        Log.Information("Health summary requested, CorrelationId: {CorrelationId}", correlationId);
+        
+        var result = await healthDiagnostics.GetHealthSummaryAsync(ct);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error retrieving health summary");
+        return Results.Problem("Error retrieving health summary", statusCode: 500);
+    }
+})
+.WithName("HealthSummary")
+.WithOpenApi();
+
+// Health details endpoint - per-check detailed diagnostics
+apiGroup.MapGet("/health/details", async (Aura.Api.Services.HealthDiagnosticsService healthDiagnostics, CancellationToken ct) =>
+{
+    try
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        Log.Information("Health details requested, CorrelationId: {CorrelationId}", correlationId);
+        
+        var result = await healthDiagnostics.GetHealthDetailsAsync(ct);
+        
+        // Return 503 if system is not ready (has failed required checks)
+        var statusCode = result.IsReady ? 200 : 503;
+        return Results.Json(result, statusCode: statusCode);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error retrieving health details");
+        return Results.Problem("Error retrieving health details", statusCode: 500);
+    }
+})
+.WithName("HealthDetails")
 .WithOpenApi();
 
 // First-run diagnostics endpoint - comprehensive system check with actionable guidance
