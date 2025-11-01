@@ -30,16 +30,21 @@ import { ModelsManagementPage } from './pages/Models/ModelsManagementPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
+import PerformanceAnalyticsPage from './pages/PerformanceAnalytics/PerformanceAnalyticsPage';
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
 import { PromptManagementPage } from './pages/PromptManagement/PromptManagementPage';
 import { PublishPage } from './pages/PublishPage';
+import QualityValidationPage from './pages/QualityValidation/QualityValidationPage';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { RenderPage } from './pages/RenderPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SetupWizard } from './pages/Setup/SetupWizard';
 import TemplatesLibrary from './pages/Templates/TemplatesLibrary';
 import { TimelinePage } from './pages/TimelinePage';
+import ValidationPage from './pages/Validation/ValidationPage';
+import VerificationPage from './pages/Verification/VerificationPage';
 import { VideoEditorPage } from './pages/VideoEditorPage';
+import VoiceEnhancementPage from './pages/VoiceEnhancement/VoiceEnhancementPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { CreateWizard } from './pages/Wizard/CreateWizard';
 import { errorReportingService } from './services/errorReportingService';
@@ -421,6 +426,11 @@ function App() {
                     <Route path="/models" element={<ModelsManagementPage />} />
                     <Route path="/localization" element={<LocalizationPage />} />
                     <Route path="/prompt-management" element={<PromptManagementPage />} />
+                    <Route path="/voice-enhancement" element={<VoiceEnhancementPage />} />
+                    <Route path="/performance-analytics" element={<PerformanceAnalyticsPage />} />
+                    <Route path="/quality-validation" element={<QualityValidationPage />} />
+                    <Route path="/validation" element={<ValidationPage />} />
+                    <Route path="/verification" element={<VerificationPage />} />
                     {/* Development-only routes - lazy loaded */}
                     {env.enableDevTools && (
                       <>
