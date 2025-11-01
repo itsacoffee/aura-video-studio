@@ -14,6 +14,8 @@ import { NotificationsToaster } from './components/Notifications/Toasts';
 import { PlatformDashboard } from './components/Platform';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
 import { env } from './config/env';
+import { AestheticsPage } from './pages/Aesthetics/AestheticsPage';
+import { AIEditingPage } from './pages/AIEditing/AIEditingPage';
 import { AssetLibrary } from './pages/Assets/AssetLibrary';
 import { CreatePage } from './pages/CreatePage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -23,6 +25,7 @@ import { ExportHistoryPage } from './pages/Export/ExportHistoryPage';
 import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard';
 import { IdeationDashboard } from './pages/Ideation/IdeationDashboard';
 import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer';
+import { ModelsManagementPage } from './pages/Models/ModelsManagementPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
@@ -411,6 +414,9 @@ function App() {
                     <Route path="/jobs" element={<RecentJobsPage />} />
                     <Route path="/downloads" element={<DownloadsPage />} />
                     <Route path="/health" element={<ProviderHealthDashboard />} />
+                    <Route path="/ai-editing" element={<AIEditingPage />} />
+                    <Route path="/aesthetics" element={<AestheticsPage />} />
+                    <Route path="/models" element={<ModelsManagementPage />} />
                     {/* Development-only routes - lazy loaded */}
                     {env.enableDevTools && (
                       <>
