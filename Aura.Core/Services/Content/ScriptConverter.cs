@@ -26,6 +26,8 @@ public class ScriptConverter
     private readonly ContentAdaptationEngine? _adaptationEngine;
     private readonly AudienceProfileStore? _audienceProfileStore;
 
+    private const string VisualTagPattern = "[VISUAL:";
+
     public ScriptConverter(
         ILogger<ScriptConverter> logger,
         ILlmProvider llmProvider,
@@ -85,7 +87,7 @@ public class ScriptConverter
                     CompressionRatio = originalWordCount > 0 ? (double)convertedWordCount / originalWordCount : 0,
                     SectionsCreated = scenes.Count,
                     TransitionsAdded = config.AddTransitions ? scenes.Count - 1 : 0,
-                    VisualSuggestionsGenerated = scenes.Sum(s => s.Script.Contains("visualize", StringComparison.OrdinalIgnoreCase) ? 1 : 0),
+                    VisualSuggestionsGenerated = scenes.Sum(s => s.Script.Contains(VisualTagPattern, StringComparison.OrdinalIgnoreCase) ? 1 : 0),
                     OverallConfidenceScore = CalculateOverallConfidence(sectionConversions)
                 },
                 SectionConversions = sectionConversions,

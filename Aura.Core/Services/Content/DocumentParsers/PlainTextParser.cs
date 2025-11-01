@@ -18,6 +18,7 @@ namespace Aura.Core.Services.Content.DocumentParsers;
 public class PlainTextParser : IDocumentParser
 {
     private readonly ILogger<PlainTextParser> _logger;
+    private const double DefaultWordsPerSecond = 2.5; // 150 words per minute
 
     public DocumentFormat SupportedFormat => DocumentFormat.PlainText;
     public string[] SupportedExtensions => new[] { ".txt" };
@@ -155,7 +156,7 @@ public class PlainTextParser : IDocumentParser
         }
 
         var words = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length >= 2 && words.Length <= 10 && words.All(w => char.IsUpper(w[0])))
+        if (words.Length >= 2 && words.Length <= 10 && words.All(w => w.Length > 0 && char.IsUpper(w[0])))
         {
             return true;
         }
@@ -166,7 +167,7 @@ public class PlainTextParser : IDocumentParser
     private DocumentSection CreateSection(int index, string heading, string content)
     {
         var wordCount = CountWords(content);
-        var duration = TimeSpan.FromSeconds(wordCount / 2.5);
+        var duration = TimeSpan.FromSeconds(wordCount / DefaultWordsPerSecond);
 
         return new DocumentSection
         {

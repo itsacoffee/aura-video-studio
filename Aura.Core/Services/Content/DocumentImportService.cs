@@ -92,13 +92,11 @@ public class DocumentImportService
 
             if (result.Metadata.WordCount > MaxWordCount)
             {
-                return result with
+                var warnings = new List<string>(result.Warnings)
                 {
-                    Warnings = result.Warnings.Concat(new[]
-                    {
-                        $"Document exceeds recommended word count of {MaxWordCount}. Consider splitting into multiple documents."
-                    }).ToList()
+                    $"Document exceeds recommended word count of {MaxWordCount}. Consider splitting into multiple documents."
                 };
+                return result with { Warnings = warnings };
             }
 
             if (string.IsNullOrWhiteSpace(result.InferredAudience?.EducationLevel))

@@ -245,8 +245,11 @@ public class HtmlParser : IDocumentParser
             if (index >= 0)
             {
                 var start = Math.Max(0, index - 20);
-                var length = Math.Min(100, content.Length - start);
-                examples.Add(content.Substring(start, length).Trim());
+                var end = Math.Min(content.Length, start + 100);
+                if (end > start)
+                {
+                    examples.Add(content[start..end].Trim());
+                }
             }
         }
         

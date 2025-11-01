@@ -18,6 +18,7 @@ namespace Aura.Core.Services.Content.DocumentParsers;
 public class MarkdownParser : IDocumentParser
 {
     private readonly ILogger<MarkdownParser> _logger;
+    private const double DefaultWordsPerSecond = 2.5; // 150 words per minute
 
     public DocumentFormat SupportedFormat => DocumentFormat.Markdown;
     public string[] SupportedExtensions => new[] { ".md", ".markdown" };
@@ -166,7 +167,7 @@ public class MarkdownParser : IDocumentParser
                 {
                     currentSection = FinalizeSection(currentSection, currentContent.ToString());
                     
-                    while (sectionStack.Any() && sectionStack.Peek().Level >= currentSection.Level)
+                    while (sectionStack.Count > 0 && sectionStack.Peek().Level >= currentSection.Level)
                     {
                         var completed = sectionStack.Pop();
                         if (!sectionStack.Any())
@@ -225,7 +226,7 @@ public class MarkdownParser : IDocumentParser
     {
         var plainText = StripMarkdown(content);
         var wordCount = CountWords(plainText);
-        var duration = TimeSpan.FromSeconds(wordCount / 2.5);
+        var duration = TimeSpan.FromSeconds(wordCount / DefaultWordsPerSecond);
 
         return section with
         {
