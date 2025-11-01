@@ -307,6 +307,7 @@ builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.ContentScheduli
 builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.KeywordListManager>();
 builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.TopicFilterManager>();
 builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.ContentSafetyService>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.SafetyIntegrationService>();
 
 // Register Audio services
 builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
