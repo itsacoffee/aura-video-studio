@@ -100,7 +100,7 @@ public class LlmOperationContextTests
         // Arrange & Act
         try
         {
-            await _context.ExecuteAsync(
+            await _context.ExecuteAsync<string>(
                 "OpenAI",
                 "ScriptGeneration",
                 ct => throw new InvalidOperationException("Test error"),
