@@ -53,7 +53,7 @@ describe('TooltipContent', () => {
   });
 
   it('should have text property for all tooltip content', () => {
-    Object.entries(TooltipContent).forEach(([key, value]) => {
+    Object.entries(TooltipContent).forEach(([_key, value]) => {
       expect(value).toHaveProperty('text');
       expect(typeof value.text).toBe('string');
       expect(value.text.length).toBeGreaterThan(0);
@@ -61,14 +61,14 @@ describe('TooltipContent', () => {
   });
 
   it('should have docLink property for all tooltip content', () => {
-    Object.entries(TooltipContent).forEach(([key, value]) => {
+    Object.entries(TooltipContent).forEach(([_key, value]) => {
       expect(value).toHaveProperty('docLink');
       expect(value.docLink === null || typeof value.docLink === 'string').toBe(true);
     });
   });
 
   it('should have informative text that is not too long', () => {
-    Object.entries(TooltipContent).forEach(([key, value]) => {
+    Object.entries(TooltipContent).forEach(([_key, value]) => {
       // Tooltips should be concise - aim for one to two sentences maximum
       // Allowing up to 250 characters as a reasonable limit
       expect(value.text.length).toBeLessThan(250);
@@ -151,7 +151,7 @@ describe('Tooltip Accessibility', () => {
 
   it('should have concise text suitable for screen readers', () => {
     // All tooltips should be concise enough for screen readers
-    Object.entries(TooltipContent).forEach(([key, value]) => {
+    Object.entries(TooltipContent).forEach(([_key, value]) => {
       // Screen readers work best with concise descriptions
       // Split by sentences and check each is reasonable
       const sentences = value.text.split(/[.!?]+/).filter((s) => s.trim().length > 0);

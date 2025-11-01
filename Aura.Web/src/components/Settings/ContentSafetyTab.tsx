@@ -268,7 +268,10 @@ export const ContentSafetyTab = () => {
                 <div key={category} className={styles.categorySlider}>
                   <div className={styles.row}>
                     <Text weight="semibold">{category}</Text>
-                    <Badge appearance="filled" color={getSafetyLevelColor(threshold) as any}>
+                    <Badge
+                      appearance="filled"
+                      color={getSafetyLevelColor(threshold) as 'success' | 'warning' | 'danger'}
+                    >
                       Level {threshold}
                     </Badge>
                   </div>

@@ -35,7 +35,7 @@ public record ProviderCapabilities
     /// <summary>
     /// Typical latency characteristics in milliseconds
     /// </summary>
-    public LatencyCharacteristics TypicalLatency { get; init; }
+    public required LatencyCharacteristics TypicalLatency { get; init; }
     
     /// <summary>
     /// Context window size (total tokens including input and output)

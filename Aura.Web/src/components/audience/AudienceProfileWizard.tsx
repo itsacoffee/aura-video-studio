@@ -19,7 +19,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { PersonRegular, SaveRegular, DismissRegular } from '@fluentui/react-icons';
-import { useState, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { FC } from 'react';
 import type { AudienceProfileDto } from '../../types/api-v1';
 import {
@@ -60,13 +60,10 @@ const AudienceProfileWizard: FC<AudienceProfileWizardProps> = ({
     }
   );
 
-  const steps: WizardStep[] = [
-    'template',
-    'demographics',
-    'psychographics',
-    'preferences',
-    'review',
-  ];
+  const steps: WizardStep[] = useMemo(
+    () => ['template', 'demographics', 'psychographics', 'preferences', 'review'],
+    []
+  );
   const currentStepIndex = steps.indexOf(currentStep);
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
@@ -132,7 +129,7 @@ const AudienceProfileWizard: FC<AudienceProfileWizardProps> = ({
   );
 
   const updateProfile = useCallback((updates: Partial<AudienceProfileDto>) => {
-    setProfile((prev) => ({ ...prev, ...updates }));
+    setProfile((prev: Partial<AudienceProfileDto>) => ({ ...prev, ...updates }));
   }, []);
 
   return (

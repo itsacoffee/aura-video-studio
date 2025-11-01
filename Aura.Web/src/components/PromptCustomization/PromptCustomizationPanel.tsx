@@ -160,11 +160,7 @@ export const PromptCustomizationPanel: FC<PromptCustomizationPanelProps> = ({
   const [newPresetDescription, setNewPresetDescription] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadExamplesAndVersions();
-  }, []);
-
-  const loadExamplesAndVersions = async () => {
+  const loadExamplesAndVersions = useCallback(async () => {
     setLoadingExamples(true);
     try {
       const [examplesData, versionsData] = await Promise.all([
@@ -183,7 +179,11 @@ export const PromptCustomizationPanel: FC<PromptCustomizationPanelProps> = ({
     } finally {
       setLoadingExamples(false);
     }
-  };
+  }, [setLoadingExamples, setFewShotExamples, setPromptVersions, showFailureToast]);
+
+  useEffect(() => {
+    loadExamplesAndVersions();
+  }, [loadExamplesAndVersions]);
 
   const handlePreview = useCallback(async () => {
     if (!brief.topic) {
@@ -207,7 +207,16 @@ export const PromptCustomizationPanel: FC<PromptCustomizationPanelProps> = ({
     } finally {
       setLoadingPreview(false);
     }
-  }, [brief, planSpec, promptModifiers, showSuccessToast, showFailureToast]);
+  }, [
+    brief,
+    planSpec,
+    promptModifiers,
+    setLoadingPreview,
+    clearPreview,
+    setCurrentPreview,
+    showFailureToast,
+    showSuccessToast,
+  ]);
 
   const handleValidateInstructions = async (instructions: string) => {
     if (!instructions.trim()) {

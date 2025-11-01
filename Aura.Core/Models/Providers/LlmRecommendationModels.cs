@@ -111,7 +111,7 @@ public enum ProviderHealthStatus
     Degraded,
     
     /// <summary>
-    /// Provider is unhealthy (<70% success rate)
+    /// Provider is unhealthy (less than 70% success rate)
     /// </summary>
     Unhealthy,
     

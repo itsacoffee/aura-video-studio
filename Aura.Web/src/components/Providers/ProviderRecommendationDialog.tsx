@@ -19,7 +19,7 @@ import {
   Dismiss20Regular,
   Info20Regular,
 } from '@fluentui/react-icons';
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   providerRecommendationService,
   type ProviderRecommendation,
@@ -102,13 +102,7 @@ export const ProviderRecommendationDialog: React.FC<ProviderRecommendationDialog
   const [loading, setLoading] = useState(false);
   const [recommendationsEnabled, setRecommendationsEnabled] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      loadRecommendations();
-    }
-  }, [open, operationType]);
-
-  const loadRecommendations = async () => {
+  const loadRecommendations = useCallback(async () => {
     setLoading(true);
     try {
       // Check if recommendations are enabled
@@ -128,7 +122,13 @@ export const ProviderRecommendationDialog: React.FC<ProviderRecommendationDialog
     } finally {
       setLoading(false);
     }
-  };
+  }, [operationType]);
+
+  useEffect(() => {
+    if (open) {
+      loadRecommendations();
+    }
+  }, [open, loadRecommendations]);
 
   const handleSelect = () => {
     if (selectedProvider) {
@@ -212,7 +212,7 @@ export const ProviderRecommendationDialog: React.FC<ProviderRecommendationDialog
                     Settings.
                   </Text>
                 ) : (
-                  recommendations.map((rec) => (
+                  recommendations.map((rec: ProviderRecommendation) => (
                     <div
                       key={rec.providerName}
                       className={`${styles.recommendation} ${
