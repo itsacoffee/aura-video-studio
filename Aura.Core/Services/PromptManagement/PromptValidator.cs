@@ -200,7 +200,7 @@ public class PromptValidator
         {
             if (!definedVars.Contains(refVar))
             {
-                errors.Add($"Variable '{{{{refVar}}}}' is referenced but not defined");
+                errors.Add($"Variable '{{{{{refVar}}}}}' is referenced but not defined");
             }
         }
 
