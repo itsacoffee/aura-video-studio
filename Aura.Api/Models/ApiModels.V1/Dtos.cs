@@ -1172,3 +1172,213 @@ public record AddGlossaryEntryRequest(
     string? Context,
     string? Industry);
 
+// User Preferences and Customization DTOs
+
+/// <summary>
+/// Custom audience profile DTO
+/// </summary>
+public record CustomAudienceProfileDto(
+    string Id,
+    string Name,
+    string? BaseProfileId,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    bool IsCustom,
+    int MinAge,
+    int MaxAge,
+    string EducationLevel,
+    string? EducationLevelDescription,
+    List<string> CulturalSensitivities,
+    List<string> TopicsToAvoid,
+    List<string> TopicsToEmphasize,
+    int VocabularyLevel,
+    string SentenceStructurePreference,
+    int ReadingLevel,
+    int ViolenceThreshold,
+    int ProfanityThreshold,
+    int SexualContentThreshold,
+    int ControversialTopicsThreshold,
+    string HumorStyle,
+    int SarcasmLevel,
+    List<string> JokeTypes,
+    List<string> CulturalHumorPreferences,
+    int FormalityLevel,
+    int AttentionSpanSeconds,
+    string PacingPreference,
+    int InformationDensity,
+    int TechnicalDepthTolerance,
+    int JargonAcceptability,
+    List<string> FamiliarTechnicalTerms,
+    string EmotionalTone,
+    int EmotionalIntensity,
+    int CtaAggressiveness,
+    string CtaStyle,
+    string? BrandVoiceGuidelines,
+    List<string> BrandToneKeywords,
+    string? BrandPersonality,
+    string? Description,
+    List<string> Tags,
+    bool IsFavorite,
+    int UsageCount,
+    DateTime? LastUsedAt);
+
+/// <summary>
+/// Content filtering policy DTO
+/// </summary>
+public record ContentFilteringPolicyDto(
+    string Id,
+    string Name,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    bool FilteringEnabled,
+    bool AllowOverrideAll,
+    string ProfanityFilter,
+    List<string> CustomBannedWords,
+    List<string> CustomAllowedWords,
+    int ViolenceThreshold,
+    bool BlockGraphicContent,
+    int SexualContentThreshold,
+    bool BlockExplicitContent,
+    List<string> BannedTopics,
+    List<string> AllowedControversialTopics,
+    string PoliticalContent,
+    string? PoliticalContentGuidelines,
+    string ReligiousContent,
+    string? ReligiousContentGuidelines,
+    string SubstanceReferences,
+    bool BlockHateSpeech,
+    List<string> HateSpeechExceptions,
+    string CopyrightPolicy,
+    List<string> BlockedConcepts,
+    List<string> AllowedConcepts,
+    List<string> BlockedPeople,
+    List<string> AllowedPeople,
+    List<string> BlockedBrands,
+    List<string> AllowedBrands,
+    string? Description,
+    bool IsDefault,
+    int UsageCount,
+    DateTime? LastUsedAt);
+
+/// <summary>
+/// AI behavior settings DTO
+/// </summary>
+public record AIBehaviorSettingsDto(
+    string Id,
+    string Name,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    LLMStageParametersDto ScriptGeneration,
+    LLMStageParametersDto SceneDescription,
+    LLMStageParametersDto ContentOptimization,
+    LLMStageParametersDto Translation,
+    LLMStageParametersDto QualityAnalysis,
+    double CreativityVsAdherence,
+    bool EnableChainOfThought,
+    bool ShowPromptsBeforeSending,
+    string? Description,
+    bool IsDefault,
+    int UsageCount,
+    DateTime? LastUsedAt);
+
+/// <summary>
+/// LLM stage parameters DTO
+/// </summary>
+public record LLMStageParametersDto(
+    string StageName,
+    double Temperature,
+    double TopP,
+    double FrequencyPenalty,
+    double PresencePenalty,
+    int MaxTokens,
+    string? CustomSystemPrompt,
+    string? PreferredModel,
+    double StrictnessLevel);
+
+/// <summary>
+/// Custom prompt template DTO
+/// </summary>
+public record CustomPromptTemplateDto(
+    string Id,
+    string Name,
+    string Stage,
+    string TemplateText,
+    List<string> Variables,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    string? VariantGroup,
+    int SuccessCount,
+    int TotalUses,
+    double SuccessRate,
+    string? Description,
+    List<string> Tags,
+    bool IsFavorite);
+
+/// <summary>
+/// Custom quality thresholds DTO
+/// </summary>
+public record CustomQualityThresholdsDto(
+    string Id,
+    string Name,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    bool SkipValidation,
+    int MinScriptWordCount,
+    int MaxScriptWordCount,
+    int AcceptableGrammarErrors,
+    List<string> RequiredKeywords,
+    List<string> ExcludedKeywords,
+    int MinImageResolutionWidth,
+    int MinImageResolutionHeight,
+    double MinImageClarityScore,
+    bool AllowLowQualityImages,
+    int MinAudioBitrate,
+    double MinAudioClarity,
+    double MaxBackgroundNoise,
+    bool RequireStereo,
+    double MinSubtitleAccuracy,
+    bool RequireSubtitles,
+    Dictionary<string, double> CustomMetricThresholds,
+    string? Description,
+    bool IsDefault,
+    int UsageCount,
+    DateTime? LastUsedAt);
+
+/// <summary>
+/// Custom visual style DTO
+/// </summary>
+public record CustomVisualStyleDto(
+    string Id,
+    string Name,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    List<string> ColorPalette,
+    string? PrimaryColor,
+    string? SecondaryColor,
+    string? AccentColor,
+    int VisualComplexity,
+    string ArtisticStyle,
+    string CompositionPreference,
+    string LightingPreference,
+    List<string> PreferredCameraAngles,
+    string TransitionStyle,
+    int TransitionDurationMs,
+    List<string> ReferenceImagePaths,
+    string? Description,
+    List<string> Tags,
+    bool IsFavorite,
+    int UsageCount);
+
+/// <summary>
+/// Import/Export request for user preferences
+/// </summary>
+public record ImportPreferencesRequest(string JsonData);
+
+/// <summary>
+/// Response for export operation
+/// </summary>
+public record ExportPreferencesResponse(
+    string JsonData,
+    DateTime ExportDate,
+    string Version);
+

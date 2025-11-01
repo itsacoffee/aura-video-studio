@@ -246,6 +246,15 @@ builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileStore>(
 builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileValidator>();
 builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileConverter>();
 
+// Register User Preferences service
+builder.Services.AddSingleton<Aura.Core.Services.UserPreferences.UserPreferencesService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.UserPreferences.UserPreferencesService>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var dataDirectory = providerSettings.GetAuraDataDirectory();
+    return new Aura.Core.Services.UserPreferences.UserPreferencesService(logger, dataDirectory);
+});
+
 // Register Content Adaptation services
 builder.Services.AddScoped<Aura.Core.Services.Audience.ContentAdaptationEngine>();
 builder.Services.AddScoped<Aura.Core.Services.Audience.AdaptationPreviewService>();
