@@ -37,8 +37,8 @@ public class ServerSentEventsIntegrationTests
             Status = JobStatus.Running,
             Stage = "Script",
             Percent = 0,
-            CreatedAt = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow
+            
+            
         };
 
         // Act - Simulate progress updates
@@ -88,7 +88,7 @@ public class ServerSentEventsIntegrationTests
             Status = JobStatus.Running,
             Stage = "Script",
             Percent = 0,
-            CreatedAt = DateTime.UtcNow,
+            
             CorrelationId = correlationId
         };
 
@@ -121,7 +121,6 @@ public class ServerSentEventsIntegrationTests
             Status = JobStatus.Running,
             Stage = "Script",
             Percent = 25,
-            CreatedAt = DateTime.UtcNow
         };
 
         // Act - Simulate failure during TTS stage
@@ -157,7 +156,6 @@ public class ServerSentEventsIntegrationTests
             Status = JobStatus.Running,
             Stage = "Script",
             Percent = 0,
-            CreatedAt = DateTime.UtcNow
         };
 
         // Act - Simulate progress with multiple subscribers
@@ -207,7 +205,6 @@ public class ServerSentEventsIntegrationTests
             Status = JobStatus.Running,
             Stage = "Script",
             Percent = 0,
-            CreatedAt = DateTime.UtcNow
         };
 
         // Act
@@ -237,8 +234,8 @@ public class ServerSentEventsIntegrationTests
             Status = JobStatus.Running,
             Stage = "Script",
             Percent = 0,
-            CreatedAt = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow
+            
+            
         };
 
         // Act

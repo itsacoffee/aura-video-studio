@@ -4,6 +4,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Visual;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Providers.Llm;
@@ -104,7 +106,7 @@ public class FullPipelineIntegrationTests
         // Arrange - Setup providers with failing primary
         var llmProviders = new Dictionary<string, ILlmProvider>
         {
-            ["OpenAI"] = new FailingLlmProvider("OpenAI"), // Simulates unavailable API
+            ["OpenAI"] = new FailingLlmProvider(), // Simulates unavailable API
             ["RuleBased"] = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance)
         };
 
@@ -372,26 +374,18 @@ internal class MockTtsProvider : ITtsProvider
         _name = name;
     }
 
-    public string Name => _name;
-
-    public Task<AudioResult> SynthesizeSpeechAsync(
-        string text,
-        VoiceSettings settings,
-        CancellationToken cancellationToken)
+    public Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
     {
-        // Return mock audio data
-        var mockAudioData = new byte[1024];
-        return Task.FromResult(new AudioResult
-        {
-            AudioData = mockAudioData,
-            Duration = TimeSpan.FromSeconds(text.Length * 0.1),
-            Format = "wav"
-        });
+        return Task.FromResult<IReadOnlyList<string>>(new List<string> { "Mock Voice" });
     }
 
-    public Task<bool> IsAvailableAsync(CancellationToken cancellationToken)
+    public Task<string> SynthesizeAsync(
+        IEnumerable<ScriptLine> lines,
+        VoiceSpec spec,
+        CancellationToken cancellationToken)
     {
-        return Task.FromResult(true);
+        // Return mock audio file path
+        return Task.FromResult("/tmp/mock-audio.wav");
     }
 }
 
@@ -400,25 +394,66 @@ internal class MockTtsProvider : ITtsProvider
 /// </summary>
 internal class FailingLlmProvider : ILlmProvider
 {
-    private readonly string _name;
-
-    public FailingLlmProvider(string name)
-    {
-        _name = name;
-    }
-
-    public string Name => _name;
-
     public Task<string> DraftScriptAsync(
         Brief brief,
         PlanSpec planSpec,
         CancellationToken cancellationToken)
     {
-        throw new InvalidOperationException($"Provider {_name} is unavailable");
+        throw new InvalidOperationException("Provider unavailable");
     }
 
-    public Task<bool> IsAvailableAsync(CancellationToken cancellationToken)
+    public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
     {
-        return Task.FromResult(false);
+        throw new InvalidOperationException("Provider unavailable");
+    }
+
+    public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoTone,
+        VisualStyle targetStyle,
+        CancellationToken ct)
+    {
+        throw new InvalidOperationException("Provider unavailable");
+    }
+
+    public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        throw new InvalidOperationException("Provider unavailable");
+    }
+
+    public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        throw new InvalidOperationException("Provider unavailable");
+    }
+
+    public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+        IReadOnlyList<string> sceneTexts,
+        string videoGoal,
+        string videoType,
+        CancellationToken ct)
+    {
+        throw new InvalidOperationException("Provider unavailable");
+    }
+
+    public Task<string?> GenerateTransitionTextAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        throw new InvalidOperationException("Provider unavailable");
     }
 }

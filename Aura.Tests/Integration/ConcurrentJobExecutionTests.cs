@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Visual;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Providers.Llm;
@@ -27,7 +29,7 @@ public class ConcurrentJobExecutionTests
     {
         // Arrange - Create multiple job specifications
         var jobCount = 5;
-        var jobs = new List<Task<ScriptGenerationResult>>();
+        var jobs = new List<Task<ScriptResult>>();
         var completionTimes = new ConcurrentBag<DateTime>();
 
         var llmProvider = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance);
@@ -133,7 +135,7 @@ public class ConcurrentJobExecutionTests
         );
 
         // Act - Queue jobs with slight delays
-        var jobs = new List<Task<ScriptGenerationResult>>();
+        var jobs = new List<Task<ScriptResult>>();
         for (int i = 0; i < 3; i++)
         {
             var jobIndex = i;
@@ -218,7 +220,7 @@ public class ConcurrentJobExecutionTests
             ),
             new PlanSpec(
                 TargetDuration: TimeSpan.FromSeconds(10),
-                Pacing: Pacing.Slow,
+                Pacing: Pacing.Conversational,
                 Density: Density.Dense,
                 Style: "Style A"
             ),
@@ -234,7 +236,7 @@ public class ConcurrentJobExecutionTests
                 Goal: "Goal B",
                 Tone: "Casual",
                 Language: "English",
-                Aspect: Aspect.Portrait9x16
+                Aspect: Aspect.Vertical9x16
             ),
             new PlanSpec(
                 TargetDuration: TimeSpan.FromSeconds(15),
@@ -369,7 +371,7 @@ public class ConcurrentJobExecutionTests
         var memoryBefore = GC.GetTotalMemory(false);
 
         // Act - Execute many concurrent jobs
-        var jobs = new List<Task<ScriptGenerationResult>>();
+        var jobs = new List<Task<ScriptResult>>();
         for (int i = 0; i < 10; i++)
         {
             var brief = new Brief(
@@ -424,7 +426,7 @@ public class ConcurrentJobExecutionTests
         var llmProviders = new Dictionary<string, ILlmProvider>
         {
             ["RuleBased"] = new RuleBasedLlmProvider(NullLogger<RuleBasedLlmProvider>.Instance),
-            ["Failing"] = new FailingLlmProvider("Failing")
+            ["Failing"] = new ConcurrentFailingLlmProvider()
         };
 
         var providerMixer = new ProviderMixer(
@@ -476,17 +478,8 @@ public class ConcurrentJobExecutionTests
 /// <summary>
 /// Mock failing LLM provider for testing error scenarios
 /// </summary>
-internal class FailingLlmProvider : ILlmProvider
+internal class ConcurrentFailingLlmProvider : ILlmProvider
 {
-    private readonly string _name;
-
-    public FailingLlmProvider(string name)
-    {
-        _name = name;
-    }
-
-    public string Name => _name;
-
     public Task<string> DraftScriptAsync(
         Brief brief,
         PlanSpec planSpec,
@@ -495,8 +488,58 @@ internal class FailingLlmProvider : ILlmProvider
         throw new InvalidOperationException("Simulated provider failure");
     }
 
-    public Task<bool> IsAvailableAsync(CancellationToken cancellationToken)
+    public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
     {
-        return Task.FromResult(false);
+        throw new InvalidOperationException("Simulated provider failure");
+    }
+
+    public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoTone,
+        VisualStyle targetStyle,
+        CancellationToken ct)
+    {
+        throw new InvalidOperationException("Simulated provider failure");
+    }
+
+    public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        throw new InvalidOperationException("Simulated provider failure");
+    }
+
+    public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        throw new InvalidOperationException("Simulated provider failure");
+    }
+
+    public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+        IReadOnlyList<string> sceneTexts,
+        string videoGoal,
+        string videoType,
+        CancellationToken ct)
+    {
+        throw new InvalidOperationException("Simulated provider failure");
+    }
+
+    public Task<string?> GenerateTransitionTextAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        throw new InvalidOperationException("Simulated provider failure");
     }
 }

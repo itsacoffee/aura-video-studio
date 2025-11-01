@@ -225,7 +225,7 @@ public class PipelineBenchmarkTests
 
         // Act - Execute concurrent jobs
         var stopwatch = Stopwatch.StartNew();
-        var tasks = new List<Task<ScriptGenerationResult>>();
+        var tasks = new List<Task<ScriptResult>>();
 
         for (int i = 0; i < concurrency; i++)
         {
@@ -431,7 +431,7 @@ public class PipelineBenchmarkTests
         foreach (var load in loads)
         {
             var stopwatch = Stopwatch.StartNew();
-            var tasks = new List<Task<ScriptGenerationResult>>();
+            var tasks = new List<Task<ScriptResult>>();
 
             for (int i = 0; i < load; i++)
             {
