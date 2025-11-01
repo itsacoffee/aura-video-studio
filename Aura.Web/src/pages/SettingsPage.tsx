@@ -18,6 +18,7 @@ import { useState, useEffect } from 'react';
 import { ValidatedInput } from '../components/forms/ValidatedInput';
 import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel';
 import { ApiKeysSettingsTab } from '../components/Settings/ApiKeysSettingsTab';
+import { ContentSafetyTab } from '../components/Settings/ContentSafetyTab';
 import { EditorPreferencesSettingsTab } from '../components/Settings/EditorPreferencesSettingsTab';
 import { FileLocationsSettingsTab } from '../components/Settings/FileLocationsSettingsTab';
 import { GeneralSettingsTab } from '../components/Settings/GeneralSettingsTab';
@@ -806,6 +807,7 @@ export function SettingsPage() {
         <Tab value="theme">Theme</Tab>
         <Tab value="shortcuts">Shortcuts</Tab>
         <Tab value="logging">Logging</Tab>
+        <Tab value="contentsafety">Content Safety</Tab>
         <Tab value="portable">Portable Info</Tab>
         <Tab value="providers">Providers</Tab>
         <Tab value="localproviders">Local Providers</Tab>
@@ -937,6 +939,8 @@ export function SettingsPage() {
       {activeTab === 'shortcuts' && <KeyboardShortcutsTab />}
 
       {activeTab === 'logging' && <LoggingSettingsTab />}
+
+      {activeTab === 'contentsafety' && <ContentSafetyTab />}
 
       {activeTab === 'theme' && <ThemeCustomizationTab />}
 
