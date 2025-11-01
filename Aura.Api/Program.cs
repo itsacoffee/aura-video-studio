@@ -211,6 +211,19 @@ builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationalLlmS
 builder.Services.AddSingleton<Aura.Core.Services.AI.PromptCustomizationService>();
 builder.Services.AddScoped<Aura.Core.Services.AI.ChainOfThoughtOrchestrator>();
 
+// Add Prompt Management services
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.IPromptRepository, 
+    Aura.Core.Services.PromptManagement.InMemoryPromptRepository>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptVariableResolver>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptValidator>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptAnalyticsService>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptTestingService>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptABTestingService>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptManagementService>();
+
+// Initialize system prompt templates on startup
+builder.Services.AddHostedService<Aura.Api.HostedServices.SystemPromptInitializer>();
+
 // Register Profile Management services
 builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfilePersistence>(sp =>
 {
