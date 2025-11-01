@@ -23,6 +23,8 @@ import {
   Edit24Regular,
   Delete24Regular,
   History24Regular,
+  Eye24Regular,
+  BookTemplateRegular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { ErrorState, SkeletonCard } from '../../components/Loading';
@@ -110,7 +112,7 @@ const useStyles = makeStyles({
   },
 });
 
-type TabValue = 'templates' | 'editor' | 'versions';
+type TabValue = 'templates' | 'editor' | 'versions' | 'preview' | 'examples';
 
 interface PromptTemplate {
   id: string;
@@ -133,6 +135,21 @@ export const PromptManagementPage: React.FC = () => {
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('script-generation');
   const [templateContent, setTemplateContent] = useState('');
+
+  const [previewTopic, setPreviewTopic] = useState('');
+  const [previewAudience, setPreviewAudience] = useState('');
+  const [previewGoal, setPreviewGoal] = useState('');
+  const [previewResult, setPreviewResult] = useState<{
+    systemPrompt: string;
+    userPrompt: string;
+    estimatedTokens: number;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const [examples, setExamples] = useState<
+    { videoType: string; exampleName: string; description: string }[]
+  >([]);
+  const [examplesLoading, setExamplesLoading] = useState(false);
 
   const loadTemplates = useCallback(async () => {
     setLoading(true);
@@ -249,6 +266,72 @@ export const PromptManagementPage: React.FC = () => {
     [loadTemplates]
   );
 
+  const handlePreview = useCallback(async () => {
+    if (!previewTopic) {
+      setError('Topic is required for preview');
+      return;
+    }
+
+    setPreviewLoading(true);
+    setError(null);
+    setPreviewResult(null);
+
+    try {
+      const response = await fetch('/api/prompts/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: previewTopic,
+          audience: previewAudience,
+          goal: previewGoal,
+          tone: 'Informative',
+          language: 'en-US',
+          targetDurationMinutes: 1.0,
+          aspect: 'Widescreen16x9',
+          pacing: 'Conversational',
+          density: 'Balanced',
+          style: 'Default',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate preview');
+      }
+
+      const data = await response.json();
+      setPreviewResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate preview');
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [previewTopic, previewAudience, previewGoal]);
+
+  const loadExamples = useCallback(async () => {
+    setExamplesLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/prompts/list-examples');
+      if (!response.ok) {
+        throw new Error('Failed to load examples');
+      }
+
+      const data = await response.json();
+      setExamples(data.Examples || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load examples');
+    } finally {
+      setExamplesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'examples' && examples.length === 0) {
+      loadExamples();
+    }
+  }, [activeTab, examples.length, loadExamples]);
+
   if (loading && templates.length === 0) {
     return (
       <div className={styles.container}>
@@ -295,6 +378,12 @@ export const PromptManagementPage: React.FC = () => {
         </Tab>
         <Tab value="editor" icon={<Edit24Regular />}>
           Editor
+        </Tab>
+        <Tab value="preview" icon={<Eye24Regular />}>
+          Preview
+        </Tab>
+        <Tab value="examples" icon={<BookTemplateRegular />}>
+          Examples
         </Tab>
         <Tab value="versions" icon={<History24Regular />}>
           Version History
@@ -406,6 +495,103 @@ export const PromptManagementPage: React.FC = () => {
                 </Button>
               </div>
             </div>
+          </Card>
+        )}
+
+        {activeTab === 'preview' && (
+          <Card className={styles.editorCard}>
+            <Title2>Prompt Preview</Title2>
+            <Text style={{ marginBottom: tokens.spacingVerticalL }}>
+              Preview how your prompt will be formatted before sending to the LLM
+            </Text>
+
+            <div className={styles.form}>
+              <Field label="Topic" required>
+                <Input
+                  value={previewTopic}
+                  onChange={(_, data) => setPreviewTopic(data.value)}
+                  placeholder="AI in Healthcare"
+                />
+              </Field>
+
+              <Field label="Audience">
+                <Input
+                  value={previewAudience}
+                  onChange={(_, data) => setPreviewAudience(data.value)}
+                  placeholder="Healthcare professionals"
+                />
+              </Field>
+
+              <Field label="Goal">
+                <Input
+                  value={previewGoal}
+                  onChange={(_, data) => setPreviewGoal(data.value)}
+                  placeholder="Educate and inform"
+                />
+              </Field>
+
+              <div className={styles.formActions}>
+                <Button
+                  appearance="primary"
+                  onClick={handlePreview}
+                  disabled={previewLoading || !previewTopic}
+                >
+                  {previewLoading ? <Spinner size="tiny" /> : 'Generate Preview'}
+                </Button>
+              </div>
+            </div>
+
+            {previewResult && (
+              <div style={{ marginTop: tokens.spacingVerticalXL }}>
+                <Title3>Preview Results</Title3>
+                <Text>Estimated Tokens: {previewResult.estimatedTokens}</Text>
+
+                <div style={{ marginTop: tokens.spacingVerticalM }}>
+                  <Text weight="semibold">System Prompt:</Text>
+                  <div
+                    className={styles.promptContent}
+                    style={{ maxHeight: '200px', overflow: 'auto' }}
+                  >
+                    {previewResult.systemPrompt}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: tokens.spacingVerticalM }}>
+                  <Text weight="semibold">User Prompt:</Text>
+                  <div
+                    className={styles.promptContent}
+                    style={{ maxHeight: '200px', overflow: 'auto' }}
+                  >
+                    {previewResult.userPrompt}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {activeTab === 'examples' && (
+          <Card className={styles.editorCard}>
+            <Title2>Few-Shot Examples</Title2>
+            <Text style={{ marginBottom: tokens.spacingVerticalL }}>
+              Browse available examples for different video types
+            </Text>
+
+            {examplesLoading ? (
+              <Spinner label="Loading examples..." />
+            ) : (
+              <div className={styles.promptsList}>
+                {examples.map((example, index) => (
+                  <Card key={index} className={styles.promptCard}>
+                    <Title3>{example.exampleName}</Title3>
+                    <Badge appearance="tint">{example.videoType}</Badge>
+                    <Text style={{ marginTop: tokens.spacingVerticalM }}>
+                      {example.description}
+                    </Text>
+                  </Card>
+                ))}
+              </div>
+            )}
           </Card>
         )}
 
