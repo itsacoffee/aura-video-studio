@@ -16,6 +16,7 @@ import { Shield24Regular, Info24Regular } from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
 import { useContentSafetyStore } from '../../state/contentSafety';
 import type { SafetyPolicy, SafetyCategoryType } from '../../state/contentSafety';
+import { SafetyAnalysisPreview } from '../ContentSafety/SafetyAnalysisPreview';
 
 const useStyles = makeStyles({
   container: {
@@ -312,6 +313,18 @@ export const ContentSafetyTab = () => {
           Save Policy
         </Button>
       </div>
+
+      {editedPolicy && editedPolicy.isEnabled && (
+        <>
+          <Card className={styles.card}>
+            <Title2>Test Your Policy</Title2>
+            <Text style={{ marginBottom: tokens.spacingVerticalM }}>
+              Preview how your safety policy analyzes content
+            </Text>
+            <SafetyAnalysisPreview />
+          </Card>
+        </>
+      )}
 
       <Card className={styles.card} style={{ backgroundColor: tokens.colorNeutralBackground2 }}>
         <div className={styles.row}>
