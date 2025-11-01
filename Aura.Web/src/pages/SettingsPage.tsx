@@ -20,8 +20,10 @@ import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel'
 import { ApiKeysSettingsTab } from '../components/Settings/ApiKeysSettingsTab';
 import { ContentSafetyTab } from '../components/Settings/ContentSafetyTab';
 import { EditorPreferencesSettingsTab } from '../components/Settings/EditorPreferencesSettingsTab';
+import { ExportPresetsTab } from '../components/Settings/ExportPresetsTab';
 import { FileLocationsSettingsTab } from '../components/Settings/FileLocationsSettingsTab';
 import { GeneralSettingsTab } from '../components/Settings/GeneralSettingsTab';
+import { HardwareConfigurationTab } from '../components/Settings/HardwareConfigurationTab';
 import { KeyboardShortcutsTab } from '../components/Settings/KeyboardShortcutsTab';
 import { LocalEngines } from '../components/Settings/LocalEngines';
 import { LoggingSettingsTab } from '../components/Settings/LoggingSettingsTab';
@@ -803,6 +805,8 @@ export function SettingsPage() {
         <Tab value="system">System</Tab>
         <Tab value="output">Output</Tab>
         <Tab value="performance">Performance</Tab>
+        <Tab value="hardware">Hardware</Tab>
+        <Tab value="exportpresets">Export Presets</Tab>
         <Tab value="ui">UI</Tab>
         <Tab value="theme">Theme</Tab>
         <Tab value="shortcuts">Shortcuts</Tab>
@@ -935,6 +939,10 @@ export function SettingsPage() {
       {activeTab === 'output' && <OutputSettingsTab />}
 
       {activeTab === 'performance' && <PerformanceSettingsTab />}
+
+      {activeTab === 'hardware' && <HardwareConfigurationTab />}
+
+      {activeTab === 'exportpresets' && <ExportPresetsTab />}
 
       {activeTab === 'shortcuts' && <KeyboardShortcutsTab />}
 
