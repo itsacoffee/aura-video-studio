@@ -303,6 +303,11 @@ builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.TopicGeneration
 builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.AudienceAnalysisService>();
 builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.ContentSchedulingService>();
 
+// Register Content Safety services
+builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.KeywordListManager>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.TopicFilterManager>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.ContentSafetyService>();
+
 // Register Audio services
 builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
 builder.Services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
