@@ -236,6 +236,232 @@ public class AudienceController : ControllerBase
             ReasoningFactors: reasoningFactors));
     }
 
+    /// <summary>
+    /// Toggle favorite status for a profile
+    /// </summary>
+    [HttpPost("profiles/{id}/favorite")]
+    [ProducesResponseType(typeof(AudienceProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AudienceProfileResponse>> ToggleFavorite(
+        string id,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Toggling favorite for profile {ProfileId}", id);
+
+        try
+        {
+            var profile = await _store.ToggleFavoriteAsync(id, ct);
+            var dto = MapToDto(profile);
+            var validation = _validator.Validate(profile);
+            var validationDto = MapValidationToDto(validation);
+
+            return Ok(new AudienceProfileResponse(dto, validationDto));
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Profile Not Found",
+                Status = StatusCodes.Status404NotFound,
+                Detail = $"Audience profile {id} does not exist"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get all favorite profiles
+    /// </summary>
+    [HttpGet("favorites")]
+    [ProducesResponseType(typeof(AudienceProfileListResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AudienceProfileListResponse>> GetFavorites(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Getting favorite profiles");
+
+        var profiles = await _store.GetFavoritesAsync(ct);
+        var dtos = profiles.Select(MapToDto).ToList();
+
+        return Ok(new AudienceProfileListResponse(dtos, dtos.Count, 1, dtos.Count));
+    }
+
+    /// <summary>
+    /// Move profile to a folder
+    /// </summary>
+    [HttpPost("profiles/{id}/move")]
+    [ProducesResponseType(typeof(AudienceProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AudienceProfileResponse>> MoveToFolder(
+        string id,
+        [FromBody] MoveToFolderRequest request,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Moving profile {ProfileId} to folder {FolderPath}", id, request.FolderPath ?? "(root)");
+
+        try
+        {
+            var profile = await _store.MoveToFolderAsync(id, request.FolderPath, ct);
+            var dto = MapToDto(profile);
+            var validation = _validator.Validate(profile);
+            var validationDto = MapValidationToDto(validation);
+
+            return Ok(new AudienceProfileResponse(dto, validationDto));
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Profile Not Found",
+                Status = StatusCodes.Status404NotFound,
+                Detail = $"Audience profile {id} does not exist"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get profiles in a specific folder
+    /// </summary>
+    [HttpGet("folders/{*folderPath}")]
+    [ProducesResponseType(typeof(AudienceProfileListResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AudienceProfileListResponse>> GetProfilesByFolder(
+        string? folderPath,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Getting profiles in folder: {FolderPath}", folderPath ?? "(root)");
+
+        var profiles = await _store.GetByFolderAsync(folderPath, ct);
+        var dtos = profiles.Select(MapToDto).ToList();
+
+        return Ok(new AudienceProfileListResponse(dtos, dtos.Count, 1, dtos.Count));
+    }
+
+    /// <summary>
+    /// Get all folder paths
+    /// </summary>
+    [HttpGet("folders")]
+    [ProducesResponseType(typeof(FolderListResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<FolderListResponse>> GetFolders(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Getting all folder paths");
+
+        var folders = await _store.GetFoldersAsync(ct);
+        return Ok(new FolderListResponse(folders));
+    }
+
+    /// <summary>
+    /// Search profiles with advanced full-text search
+    /// </summary>
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(AudienceProfileListResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AudienceProfileListResponse>> SearchProfiles(
+        [FromQuery] string query,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Searching profiles with query: {Query}", query);
+
+        var profiles = await _store.SearchAsync(query, ct);
+        var dtos = profiles.Select(MapToDto).ToList();
+
+        return Ok(new AudienceProfileListResponse(dtos, dtos.Count, 1, dtos.Count));
+    }
+
+    /// <summary>
+    /// Record profile usage for analytics
+    /// </summary>
+    [HttpPost("profiles/{id}/usage")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> RecordUsage(string id, CancellationToken ct = default)
+    {
+        _logger.LogInformation("Recording usage for profile {ProfileId}", id);
+
+        await _store.RecordUsageAsync(id, ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Export profile to JSON
+    /// </summary>
+    [HttpGet("profiles/{id}/export")]
+    [ProducesResponseType(typeof(ExportProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ExportProfileResponse>> ExportProfile(
+        string id,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Exporting profile {ProfileId}", id);
+
+        try
+        {
+            var json = await _store.ExportToJsonAsync(id, ct);
+            return Ok(new ExportProfileResponse(json));
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Profile Not Found",
+                Status = StatusCodes.Status404NotFound,
+                Detail = $"Audience profile {id} does not exist"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Import profile from JSON
+    /// </summary>
+    [HttpPost("profiles/import")]
+    [ProducesResponseType(typeof(AudienceProfileResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<AudienceProfileResponse>> ImportProfile(
+        [FromBody] ImportProfileRequest request,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Importing profile from JSON");
+
+        try
+        {
+            var profile = await _store.ImportFromJsonAsync(request.Json, ct);
+            var dto = MapToDto(profile);
+            var validation = _validator.Validate(profile);
+            var validationDto = MapValidationToDto(validation);
+
+            return CreatedAtAction(
+                nameof(GetProfile),
+                new { id = profile.Id },
+                new AudienceProfileResponse(dto, validationDto));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Import Failed",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = $"Failed to import profile: {ex.Message}"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get recommended profiles based on topic and goal
+    /// </summary>
+    [HttpPost("recommend")]
+    [ProducesResponseType(typeof(AudienceProfileListResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AudienceProfileListResponse>> RecommendProfiles(
+        [FromBody] RecommendProfilesRequest request,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Getting profile recommendations for topic: {Topic}", request.Topic);
+
+        var profiles = await _store.GetRecommendedProfilesAsync(
+            request.Topic,
+            request.Goal,
+            request.MaxResults ?? 5,
+            ct);
+
+        var dtos = profiles.Select(MapToDto).ToList();
+
+        return Ok(new AudienceProfileListResponse(dtos, dtos.Count, 1, dtos.Count));
+    }
+
     private AudienceProfileDto MapToDto(AudienceProfile profile)
     {
         return new AudienceProfileDto(
@@ -278,7 +504,11 @@ public class AudienceController : ControllerBase
             Tags: profile.Tags,
             Version: profile.Version,
             CreatedAt: profile.CreatedAt,
-            UpdatedAt: profile.UpdatedAt);
+            UpdatedAt: profile.UpdatedAt,
+            IsFavorite: profile.IsFavorite,
+            FolderPath: profile.FolderPath,
+            UsageCount: profile.UsageCount,
+            LastUsedAt: profile.LastUsedAt);
     }
 
     private AudienceProfile MapFromDto(AudienceProfileDto dto)
@@ -295,7 +525,11 @@ public class AudienceController : ControllerBase
             Motivations = dto.Motivations ?? new List<string>(),
             IsTemplate = dto.IsTemplate,
             Tags = dto.Tags ?? new List<string>(),
-            Version = dto.Version
+            Version = dto.Version,
+            IsFavorite = dto.IsFavorite,
+            FolderPath = dto.FolderPath,
+            UsageCount = dto.UsageCount,
+            LastUsedAt = dto.LastUsedAt
         };
 
         if (dto.AgeRange != null)
@@ -382,21 +616,21 @@ public class AudienceController : ControllerBase
         return profile;
     }
 
-    private ValidationResultDto MapValidationToDto(ValidationResult validation)
+    private Models.ApiModels.V1.ValidationResultDto MapValidationToDto(ValidationResult validation)
     {
-        return new ValidationResultDto(
+        return new Models.ApiModels.V1.ValidationResultDto(
             IsValid: validation.IsValid,
-            Errors: validation.Errors.Select(e => new ValidationIssueDto(
+            Errors: validation.Errors.Select(e => new Models.ApiModels.V1.ValidationIssueDto(
                 e.Severity.ToString(),
                 e.Field,
                 e.Message,
                 e.SuggestedFix)).ToList(),
-            Warnings: validation.Warnings.Select(w => new ValidationIssueDto(
+            Warnings: validation.Warnings.Select(w => new Models.ApiModels.V1.ValidationIssueDto(
                 w.Severity.ToString(),
                 w.Field,
                 w.Message,
                 w.SuggestedFix)).ToList(),
-            Infos: validation.Infos.Select(i => new ValidationIssueDto(
+            Infos: validation.Infos.Select(i => new Models.ApiModels.V1.ValidationIssueDto(
                 i.Severity.ToString(),
                 i.Field,
                 i.Message,

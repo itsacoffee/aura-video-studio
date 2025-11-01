@@ -110,6 +110,10 @@ const AudienceProfileWizard: FC<AudienceProfileWizardProps> = ({
       version: profile.version || 1,
       createdAt: profile.createdAt || null,
       updatedAt: profile.updatedAt || null,
+      isFavorite: profile.isFavorite || false,
+      folderPath: profile.folderPath || null,
+      usageCount: profile.usageCount || 0,
+      lastUsedAt: profile.lastUsedAt || null,
     };
     onSave(fullProfile);
   }, [profile, onSave]);

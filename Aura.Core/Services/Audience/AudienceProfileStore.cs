@@ -150,7 +150,7 @@ public class AudienceProfileStore
     }
 
     /// <summary>
-    /// Search profiles by name or tags
+    /// Search profiles by name, description, tags, or full-text across all fields
     /// </summary>
     public Task<List<AudienceProfile>> SearchAsync(string query, CancellationToken ct = default)
     {
@@ -158,15 +158,253 @@ public class AudienceProfileStore
         {
             var lowerQuery = query.ToLowerInvariant();
             var results = _profiles.Values
-                .Where(p => 
-                    p.Name.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) ||
-                    p.Description?.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) == true ||
-                    p.Tags.Any(t => t.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase)))
-                .OrderByDescending(p => p.UpdatedAt)
+                .Where(p => MatchesSearchQuery(p, lowerQuery))
+                .OrderByDescending(p => p.LastUsedAt ?? p.UpdatedAt)
+                .ThenByDescending(p => p.UsageCount)
                 .ToList();
 
             return Task.FromResult(results);
         }
+    }
+
+    /// <summary>
+    /// Toggle favorite status for a profile
+    /// </summary>
+    public Task<AudienceProfile> ToggleFavoriteAsync(string id, CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            if (!_profiles.TryGetValue(id, out var profile))
+            {
+                throw new InvalidOperationException($"Profile with ID {id} not found");
+            }
+
+            profile.IsFavorite = !profile.IsFavorite;
+            profile.UpdatedAt = DateTime.UtcNow;
+
+            _logger.LogInformation("Toggled favorite for profile {ProfileId}: {IsFavorite}", 
+                id, profile.IsFavorite);
+
+            return Task.FromResult(profile);
+        }
+    }
+
+    /// <summary>
+    /// Get all favorite profiles
+    /// </summary>
+    public Task<List<AudienceProfile>> GetFavoritesAsync(CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            var favorites = _profiles.Values
+                .Where(p => p.IsFavorite)
+                .OrderByDescending(p => p.LastUsedAt ?? p.UpdatedAt)
+                .ToList();
+
+            return Task.FromResult(favorites);
+        }
+    }
+
+    /// <summary>
+    /// Move profile to a folder
+    /// </summary>
+    public Task<AudienceProfile> MoveToFolderAsync(string id, string? folderPath, CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            if (!_profiles.TryGetValue(id, out var profile))
+            {
+                throw new InvalidOperationException($"Profile with ID {id} not found");
+            }
+
+            profile.FolderPath = folderPath;
+            profile.UpdatedAt = DateTime.UtcNow;
+
+            _logger.LogInformation("Moved profile {ProfileId} to folder: {FolderPath}", 
+                id, folderPath ?? "(root)");
+
+            return Task.FromResult(profile);
+        }
+    }
+
+    /// <summary>
+    /// Get profiles by folder path
+    /// </summary>
+    public Task<List<AudienceProfile>> GetByFolderAsync(string? folderPath, CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            var profiles = _profiles.Values
+                .Where(p => p.FolderPath == folderPath)
+                .OrderByDescending(p => p.UpdatedAt)
+                .ToList();
+
+            return Task.FromResult(profiles);
+        }
+    }
+
+    /// <summary>
+    /// Get all unique folder paths
+    /// </summary>
+    public Task<List<string>> GetFoldersAsync(CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            var folders = _profiles.Values
+                .Select(p => p.FolderPath)
+                .Where(f => !string.IsNullOrWhiteSpace(f))
+                .Distinct()
+                .OrderBy(f => f)
+                .ToList();
+
+            return Task.FromResult(folders!);
+        }
+    }
+
+    /// <summary>
+    /// Record profile usage for analytics
+    /// </summary>
+    public Task RecordUsageAsync(string id, CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            if (_profiles.TryGetValue(id, out var profile))
+            {
+                profile.UsageCount++;
+                profile.LastUsedAt = DateTime.UtcNow;
+
+                _logger.LogDebug("Recorded usage for profile {ProfileId}, count: {UsageCount}", 
+                    id, profile.UsageCount);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Export profile to JSON string
+    /// </summary>
+    public Task<string> ExportToJsonAsync(string id, CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            if (!_profiles.TryGetValue(id, out var profile))
+            {
+                throw new InvalidOperationException($"Profile with ID {id} not found");
+            }
+
+            var json = System.Text.Json.JsonSerializer.Serialize(profile, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            _logger.LogInformation("Exported profile {ProfileId} to JSON", id);
+
+            return Task.FromResult(json);
+        }
+    }
+
+    /// <summary>
+    /// Import profile from JSON string
+    /// </summary>
+    public Task<AudienceProfile> ImportFromJsonAsync(string json, CancellationToken ct = default)
+    {
+        var profile = System.Text.Json.JsonSerializer.Deserialize<AudienceProfile>(json);
+        
+        if (profile == null)
+        {
+            throw new InvalidOperationException("Failed to deserialize profile from JSON");
+        }
+
+        profile.Id = Guid.NewGuid().ToString();
+        profile.CreatedAt = DateTime.UtcNow;
+        profile.UpdatedAt = DateTime.UtcNow;
+        profile.Version = 1;
+
+        return CreateAsync(profile, ct);
+    }
+
+    /// <summary>
+    /// Get recommended profiles based on topic and goal
+    /// </summary>
+    public Task<List<AudienceProfile>> GetRecommendedProfilesAsync(
+        string topic,
+        string? goal = null,
+        int maxResults = 5,
+        CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            var lowerTopic = topic.ToLowerInvariant();
+            var lowerGoal = goal?.ToLowerInvariant() ?? string.Empty;
+
+            var scoredProfiles = _profiles.Values
+                .Select(p => new
+                {
+                    Profile = p,
+                    Score = CalculateRecommendationScore(p, lowerTopic, lowerGoal)
+                })
+                .Where(x => x.Score > 0)
+                .OrderByDescending(x => x.Score)
+                .ThenByDescending(x => x.Profile.UsageCount)
+                .Take(maxResults)
+                .Select(x => x.Profile)
+                .ToList();
+
+            _logger.LogInformation("Recommended {Count} profiles for topic: {Topic}", 
+                scoredProfiles.Count, topic);
+
+            return Task.FromResult(scoredProfiles);
+        }
+    }
+
+    private double CalculateRecommendationScore(AudienceProfile profile, string lowerTopic, string lowerGoal)
+    {
+        double score = 0;
+
+        if (profile.Name.Contains(lowerTopic, StringComparison.OrdinalIgnoreCase))
+            score += 10;
+
+        if (profile.Description?.Contains(lowerTopic, StringComparison.OrdinalIgnoreCase) == true)
+            score += 8;
+
+        if (profile.Tags.Any(t => lowerTopic.Contains(t.ToLowerInvariant())))
+            score += 6;
+
+        if (profile.Interests.Any(i => lowerTopic.Contains(i.ToLowerInvariant())))
+            score += 5;
+
+        if (!string.IsNullOrEmpty(lowerGoal))
+        {
+            if (profile.Motivations.Any(m => lowerGoal.Contains(m.ToLowerInvariant())))
+                score += 4;
+
+            if (profile.PainPoints.Any(p => lowerGoal.Contains(p.ToLowerInvariant())))
+                score += 3;
+        }
+
+        if (profile.Industry != null && lowerTopic.Contains(profile.Industry.ToLowerInvariant()))
+            score += 7;
+
+        if (profile.Profession != null && lowerTopic.Contains(profile.Profession.ToLowerInvariant()))
+            score += 6;
+
+        if (profile.UsageCount > 0)
+            score += Math.Min(profile.UsageCount * 0.5, 5);
+
+        return score;
+    }
+
+    private bool MatchesSearchQuery(AudienceProfile profile, string lowerQuery)
+    {
+        return profile.Name.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase)
+            || profile.Description?.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) == true
+            || profile.Tags.Any(t => t.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase))
+            || profile.Profession?.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) == true
+            || profile.Industry?.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase) == true
+            || profile.Interests.Any(i => i.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase))
+            || profile.PainPoints.Any(p => p.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase))
+            || profile.Motivations.Any(m => m.Contains(lowerQuery, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

@@ -26,7 +26,8 @@ public record ScriptRequest(
     string? ProviderTier,
     ProviderSelectionDto? ProviderSelection,
     PromptModifiersDto? PromptModifiers = null,
-    ScriptRefinementConfigDto? RefinementConfig = null);
+    ScriptRefinementConfigDto? RefinementConfig = null,
+    string? AudienceProfileId = null);
 
 /// <summary>
 /// User customization options for prompt engineering
@@ -485,7 +486,11 @@ public record AudienceProfileDto(
     List<string>? Tags,
     int Version,
     DateTime? CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    bool IsFavorite = false,
+    string? FolderPath = null,
+    int UsageCount = 0,
+    DateTime? LastUsedAt = null);
 
 /// <summary>
 /// Age range specification
@@ -587,4 +592,36 @@ public record AnalyzeAudienceResponse(
     AudienceProfileDto InferredProfile,
     double ConfidenceScore,
     List<string> ReasoningFactors);
+
+/// <summary>
+/// Request to move profile to a folder
+/// </summary>
+public record MoveToFolderRequest(
+    string? FolderPath);
+
+/// <summary>
+/// Response containing list of folders
+/// </summary>
+public record FolderListResponse(
+    List<string> Folders);
+
+/// <summary>
+/// Request to export profile to JSON
+/// </summary>
+public record ExportProfileResponse(
+    string Json);
+
+/// <summary>
+/// Request to import profile from JSON
+/// </summary>
+public record ImportProfileRequest(
+    string Json);
+
+/// <summary>
+/// Request to get profile recommendations based on topic and goal
+/// </summary>
+public record RecommendProfilesRequest(
+    string Topic,
+    string? Goal = null,
+    int? MaxResults = 5);
 

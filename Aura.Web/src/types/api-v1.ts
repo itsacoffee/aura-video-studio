@@ -93,6 +93,7 @@ export interface ScriptRequest {
   density: Density;
   style: string;
   providerTier?: string | null;
+  audienceProfileId?: string | null;
 }
 
 export interface LineDto {
@@ -257,6 +258,10 @@ export interface AudienceProfileDto {
   version: number;
   createdAt: string | null;
   updatedAt: string | null;
+  isFavorite: boolean;
+  folderPath: string | null;
+  usageCount: number;
+  lastUsedAt: string | null;
 }
 
 export interface AgeRangeDto {
@@ -332,6 +337,28 @@ export interface AnalyzeAudienceResponse {
   inferredProfile: AudienceProfileDto;
   confidenceScore: number;
   reasoningFactors: string[];
+}
+
+export interface MoveToFolderRequest {
+  folderPath: string | null;
+}
+
+export interface FolderListResponse {
+  folders: string[];
+}
+
+export interface ExportProfileResponse {
+  json: string;
+}
+
+export interface ImportProfileRequest {
+  json: string;
+}
+
+export interface RecommendProfilesRequest {
+  topic: string;
+  goal?: string | null;
+  maxResults?: number;
 }
 
 // Enum values for audience profile fields

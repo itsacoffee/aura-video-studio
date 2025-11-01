@@ -41,6 +41,12 @@ public class AudienceProfile
     public string? Description { get; set; }
     public bool IsTemplate { get; set; }
     public List<string> Tags { get; set; } = new();
+    
+    // Organization and favorites
+    public bool IsFavorite { get; set; }
+    public string? FolderPath { get; set; }
+    public int UsageCount { get; set; }
+    public DateTime? LastUsedAt { get; set; }
 }
 
 /// <summary>
