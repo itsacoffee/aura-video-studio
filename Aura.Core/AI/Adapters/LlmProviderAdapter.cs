@@ -90,7 +90,7 @@ public abstract class LlmProviderAdapter
     }
     
     /// <summary>
-    /// Checks if the adapter overhead is acceptable (should be < 5ms)
+    /// Checks if the adapter overhead is acceptable (should be less than 5ms)
     /// </summary>
     protected virtual void ValidatePerformance(TimeSpan elapsed)
     {
