@@ -47,7 +47,7 @@ public class VisualPromptGenerationServiceTests
 
         // Act
         var result = await _service.GenerateVisualPromptForSceneAsync(
-            scene, null, tone, style, 50.0, 50.0, null, null, CancellationToken.None);
+            scene, null, tone, style, 50.0, 50.0, null, null, null, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -73,7 +73,7 @@ public class VisualPromptGenerationServiceTests
 
         // Act
         var result = await _service.GenerateVisualPromptForSceneAsync(
-            scene, null, tone, style, 85.0, 75.0, null, llm, CancellationToken.None);
+            scene, null, tone, style, 85.0, 75.0, null, llm, null, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);
@@ -117,7 +117,7 @@ public class VisualPromptGenerationServiceTests
 
         // Act
         var result = await _service.GenerateVisualPromptForSceneAsync(
-            scene, null, "dramatic", VisualStyle.Dramatic, importance, 80.0, null, null, CancellationToken.None);
+            scene, null, "dramatic", VisualStyle.Dramatic, importance, 80.0, null, null, null, CancellationToken.None);
 
         // Assert
         Assert.Equal(VisualQualityTier.Premium, result.QualityTier);
@@ -133,7 +133,7 @@ public class VisualPromptGenerationServiceTests
 
         // Act
         var result = await _service.GenerateVisualPromptForSceneAsync(
-            scene, null, "casual", VisualStyle.Realistic, importance, 20.0, null, null, CancellationToken.None);
+            scene, null, "casual", VisualStyle.Realistic, importance, 20.0, null, null, null, CancellationToken.None);
 
         // Assert
         Assert.Equal(VisualQualityTier.Basic, result.QualityTier);
@@ -147,11 +147,11 @@ public class VisualPromptGenerationServiceTests
         var currentScene = new Scene(1, "Scene 2", "John continues the discussion in the office.", TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         
         var previousPrompt = await _service.GenerateVisualPromptForSceneAsync(
-            previousScene, null, "professional", VisualStyle.Realistic, 50.0, 50.0, null, null, CancellationToken.None);
+            previousScene, null, "professional", VisualStyle.Realistic, 50.0, 50.0, null, null, null, CancellationToken.None);
 
         // Act
         var result = await _service.GenerateVisualPromptForSceneAsync(
-            currentScene, previousScene, "professional", VisualStyle.Realistic, 50.0, 50.0, previousPrompt, null, CancellationToken.None);
+            currentScene, previousScene, "professional", VisualStyle.Realistic, 50.0, 50.0, previousPrompt, null, null, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result.Continuity);

@@ -9,6 +9,7 @@ using Aura.Core.Runtime;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace Aura.Tests;
@@ -56,6 +57,13 @@ public class EnginesApiIntegrationTests : IDisposable
         _httpClient.Dispose();
     }
 
+    private IHttpClientFactory CreateMockHttpClientFactory()
+    {
+        var mockFactory = new Mock<IHttpClientFactory>();
+        mockFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(_httpClient);
+        return mockFactory.Object;
+    }
+
     [Fact]
     public async Task GetList_Should_ReturnEnginesList()
     {
@@ -85,13 +93,16 @@ public class EnginesApiIntegrationTests : IDisposable
             registry,
             processManager);
         
+        var httpClientFactory = CreateMockHttpClientFactory();
+        
         var controller = new EnginesController(
             NullLogger<EnginesController>.Instance,
             manifestLoader,
             installer,
             registry,
             processManager,
-            lifecycleManager);
+            lifecycleManager,
+            httpClientFactory);
 
         // Act
         var result = await controller.GetList();
@@ -135,13 +146,16 @@ public class EnginesApiIntegrationTests : IDisposable
             registry,
             processManager);
         
+        var httpClientFactory = CreateMockHttpClientFactory();
+        
         var controller = new EnginesController(
             NullLogger<EnginesController>.Instance,
             manifestLoader,
             installer,
             registry,
             processManager,
-            lifecycleManager);
+            lifecycleManager,
+            httpClientFactory);
 
         // Act
         var result = await controller.GetStatus("nonexistent-engine");
@@ -179,13 +193,16 @@ public class EnginesApiIntegrationTests : IDisposable
             registry,
             processManager);
         
+        var httpClientFactory = CreateMockHttpClientFactory();
+        
         var controller = new EnginesController(
             NullLogger<EnginesController>.Instance,
             manifestLoader,
             installer,
             registry,
             processManager,
-            lifecycleManager);
+            lifecycleManager,
+            httpClientFactory);
 
         // Act - use a known engine ID from the default manifest
         var result = await controller.GetStatus("stable-diffusion-webui");
@@ -224,13 +241,16 @@ public class EnginesApiIntegrationTests : IDisposable
             registry,
             processManager);
         
+        var httpClientFactory = CreateMockHttpClientFactory();
+        
         var controller = new EnginesController(
             NullLogger<EnginesController>.Instance,
             manifestLoader,
             installer,
             registry,
             processManager,
-            lifecycleManager);
+            lifecycleManager,
+            httpClientFactory);
 
         // Act
         var result = await controller.Verify(new EngineActionRequest("nonexistent-engine"));
