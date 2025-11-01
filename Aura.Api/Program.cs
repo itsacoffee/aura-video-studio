@@ -246,6 +246,10 @@ builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileStore>(
 builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileValidator>();
 builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileConverter>();
 
+// Register Content Adaptation services
+builder.Services.AddScoped<Aura.Core.Services.Audience.ContentAdaptationEngine>();
+builder.Services.AddScoped<Aura.Core.Services.Audience.AdaptationPreviewService>();
+
 // Register Rate Limiting services
 builder.Services.Configure<AspNetCoreRateLimit.IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
 builder.Services.AddSingleton<AspNetCoreRateLimit.IIpPolicyStore, AspNetCoreRateLimit.MemoryCacheIpPolicyStore>();
