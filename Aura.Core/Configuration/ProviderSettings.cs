@@ -779,6 +779,24 @@ public class ProviderSettings
                endpoint.Contains("openai.azure.com", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Get Piper TTS executable path
+    /// </summary>
+    public string? GetPiperPath()
+    {
+        LoadSettings();
+        return GetStringSetting("piperPath", null);
+    }
+
+    /// <summary>
+    /// Get Mimic3 service URL
+    /// </summary>
+    public string? GetMimic3Url()
+    {
+        LoadSettings();
+        return GetStringSetting("mimic3Url", null);
+    }
+
     private void SaveSettings()
     {
         try

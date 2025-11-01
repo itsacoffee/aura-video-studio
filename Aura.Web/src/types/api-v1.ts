@@ -729,3 +729,90 @@ export interface AddGlossaryEntryRequest {
   context?: string;
   industry?: string;
 }
+
+// ============================================================================
+// HEALTH CHECK TYPES
+// ============================================================================
+
+/**
+ * High-level summary of system health status
+ */
+export interface HealthSummaryResponse {
+  overallStatus: string;
+  isReady: boolean;
+  totalChecks: number;
+  passedChecks: number;
+  warningChecks: number;
+  failedChecks: number;
+  timestamp: string;
+}
+
+/**
+ * Detailed health check information with per-check results
+ */
+export interface HealthDetailsResponse {
+  overallStatus: string;
+  isReady: boolean;
+  checks: HealthCheckDetail[];
+  timestamp: string;
+}
+
+/**
+ * Individual health check detail with remediation information
+ */
+export interface HealthCheckDetail {
+  id: string;
+  name: string;
+  category: string;
+  status: string;
+  isRequired: boolean;
+  message?: string;
+  data?: Record<string, unknown>;
+  remediationHint?: string;
+  remediationActions?: RemediationAction[];
+}
+
+/**
+ * Actionable remediation step for a failed health check
+ */
+export interface RemediationAction {
+  type: string;
+  label: string;
+  description: string;
+  navigateTo?: string;
+  externalUrl?: string;
+  parameters?: Record<string, string>;
+}
+
+/**
+ * Health check status values
+ */
+export const HealthCheckStatus = {
+  Pass: 'pass',
+  Warning: 'warning',
+  Fail: 'fail',
+} as const;
+
+/**
+ * Health check categories
+ */
+export const HealthCheckCategory = {
+  System: 'System',
+  Configuration: 'Configuration',
+  LLM: 'LLM',
+  TTS: 'TTS',
+  Image: 'Image',
+  Video: 'Video',
+} as const;
+
+/**
+ * Remediation action types
+ */
+export const RemediationActionType = {
+  OpenSettings: 'open_settings',
+  Install: 'install',
+  Configure: 'configure',
+  Start: 'start',
+  OpenHelp: 'open_help',
+  SwitchProvider: 'switch_provider',
+} as const;
