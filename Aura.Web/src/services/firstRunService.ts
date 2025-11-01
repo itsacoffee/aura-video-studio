@@ -81,40 +81,57 @@ export function setLocalFirstRunStatus(completed: boolean): void {
 }
 
 /**
- * Get first-run status from backend
+ * Get first-run status from backend (using new wizard endpoint)
  */
 export async function getBackendFirstRunStatus(): Promise<FirstRunStatus> {
-  const response = await fetch(apiUrl('/api/settings/first-run'));
+  const response = await fetch(apiUrl('/api/setup/wizard/status'));
 
   if (!response.ok) {
     if (response.status === 404) {
-      // No status saved yet, treat as not completed
       return { hasCompletedFirstRun: false };
     }
     throw new Error(`Failed to get first-run status: ${response.statusText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  return {
+    hasCompletedFirstRun: data.completed || false,
+    completedAt: data.completedAt,
+    version: data.version,
+  };
 }
 
 /**
- * Set first-run completion status in backend
+ * Set first-run completion status in backend (using new wizard endpoint)
  */
 export async function setBackendFirstRunStatus(completed: boolean): Promise<void> {
-  const response = await fetch(apiUrl('/api/settings/first-run'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      hasCompletedFirstRun: completed,
-      completedAt: completed ? new Date().toISOString() : null,
-      version: '1.0.0', // Application version
-    }),
-  });
+  if (completed) {
+    const response = await fetch(apiUrl('/api/setup/wizard/complete'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        version: '1.0.0',
+        selectedTier: localStorage.getItem('selectedTier') || 'free',
+        lastStep: 10,
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to set first-run status: ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`Failed to complete wizard: ${response.statusText}`);
+    }
+  } else {
+    const response = await fetch(apiUrl('/api/setup/wizard/reset'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to reset wizard: ${response.statusText}`);
+    }
   }
 }
 
@@ -188,5 +205,39 @@ export function migrateLegacyFirstRunStatus(): void {
   // If legacy exists but new doesn't, migrate
   if (legacyValue === 'true' && !newValue) {
     setLocalFirstRunStatus(true);
+  }
+}
+
+/**
+ * Save wizard progress to backend (for resume functionality)
+ */
+export async function saveWizardProgressToBackend(
+  lastStep: number,
+  selectedTier: string | null,
+  wizardState?: string
+): Promise<void> {
+  try {
+    const response = await fetch(apiUrl('/api/setup/wizard/save-progress'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        lastStep,
+        selectedTier,
+        wizardState,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to save wizard progress: ${response.statusText}`);
+    }
+  } catch (error) {
+    logger.error(
+      'Failed to save wizard progress to backend',
+      error instanceof Error ? error : new Error(String(error)),
+      'firstRunService',
+      'saveWizardProgress'
+    );
   }
 }
