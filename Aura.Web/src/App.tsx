@@ -25,11 +25,13 @@ import { ExportHistoryPage } from './pages/Export/ExportHistoryPage';
 import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard';
 import { IdeationDashboard } from './pages/Ideation/IdeationDashboard';
 import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer';
+import { LocalizationPage } from './pages/Localization/LocalizationPage';
 import { ModelsManagementPage } from './pages/Models/ModelsManagementPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
+import { PromptManagementPage } from './pages/PromptManagement/PromptManagementPage';
 import { PublishPage } from './pages/PublishPage';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { RenderPage } from './pages/RenderPage';
@@ -417,6 +419,8 @@ function App() {
                     <Route path="/ai-editing" element={<AIEditingPage />} />
                     <Route path="/aesthetics" element={<AestheticsPage />} />
                     <Route path="/models" element={<ModelsManagementPage />} />
+                    <Route path="/localization" element={<LocalizationPage />} />
+                    <Route path="/prompt-management" element={<PromptManagementPage />} />
                     {/* Development-only routes - lazy loaded */}
                     {env.enableDevTools && (
                       <>
