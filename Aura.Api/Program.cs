@@ -1098,6 +1098,9 @@ app.UseCors();
 // Add routing BEFORE static files (API routes take precedence)
 app.UseRouting();
 
+// Add first-run wizard check middleware (checks if setup is completed)
+app.UseFirstRunCheck();
+
 // Add AspNetCoreRateLimit middleware after routing and before authorization
 app.UseIpRateLimiting();
 
