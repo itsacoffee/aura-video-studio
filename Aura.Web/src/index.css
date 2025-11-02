@@ -103,7 +103,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow-x: hidden;
-  background-color: var(--color-background);
+
+  /* Background color is set dynamically by App.tsx to match Fluent UI theme */
   color: var(--color-text-primary);
   font-size: var(--font-size-base);
   line-height: var(--line-height-base);
@@ -117,6 +118,9 @@ body {
   height: 100vh;
   margin: 0;
   padding: 0;
+
+  /* Ensure root inherits background from body */
+  background: transparent;
 }
 
 /* Normalized typography */

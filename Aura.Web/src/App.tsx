@@ -354,6 +354,12 @@ function App() {
     setIsDarkMode(!isDarkMode);
   };
 
+  // Apply theme background color to document body
+  useEffect(() => {
+    const theme = isDarkMode ? webDarkTheme : webLightTheme;
+    document.body.style.backgroundColor = theme.colorNeutralBackground1;
+  }, [isDarkMode]);
+
   // Show loading spinner while checking first-run status
   if (isCheckingFirstRun) {
     return (
