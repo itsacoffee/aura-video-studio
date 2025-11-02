@@ -208,6 +208,44 @@ describe('onboardingReducer', () => {
     expect(state.errors).toContain('Failed to install ffmpeg: Download failed');
   });
 
+  it('should handle SKIP_INSTALL', () => {
+    const state = onboardingReducer(initialOnboardingState, {
+      type: 'SKIP_INSTALL',
+      payload: 'ollama',
+    });
+
+    const ollamaItem = state.installItems.find((item) => item.id === 'ollama');
+    expect(ollamaItem?.skipped).toBe(true);
+    expect(ollamaItem?.installed).toBe(false);
+  });
+
+  it('should clear skipped flag when install completes', () => {
+    // First skip the item
+    let state = onboardingReducer(initialOnboardingState, {
+      type: 'SKIP_INSTALL',
+      payload: 'ollama',
+    });
+
+    let ollamaItem = state.installItems.find((item) => item.id === 'ollama');
+    expect(ollamaItem?.skipped).toBe(true);
+    expect(ollamaItem?.installed).toBe(false);
+
+    // Then install it
+    state = onboardingReducer(state, {
+      type: 'START_INSTALL',
+      payload: 'ollama',
+    });
+
+    state = onboardingReducer(state, {
+      type: 'INSTALL_COMPLETE',
+      payload: 'ollama',
+    });
+
+    ollamaItem = state.installItems.find((item) => item.id === 'ollama');
+    expect(ollamaItem?.skipped).toBe(false);
+    expect(ollamaItem?.installed).toBe(true);
+  });
+
   it('should handle MARK_READY', () => {
     const state = onboardingReducer(initialOnboardingState, {
       type: 'MARK_READY',

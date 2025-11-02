@@ -359,7 +359,7 @@ export function FirstRunWizard() {
   */
 
   const handleSkipItem = (itemId: string) => {
-    dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
+    dispatch({ type: 'SKIP_INSTALL', payload: itemId });
   };
 
   const handleApiKeyChange = (provider: string, key: string) => {
@@ -545,7 +545,9 @@ export function FirstRunWizard() {
           ? 'checking'
           : item.installed
             ? 'installed'
-            : 'missing',
+            : item.skipped
+              ? 'skipped'
+              : 'missing',
       canAutoInstall: true,
       installing: item.installing,
       installProgress: item.installing ? 50 : undefined,
