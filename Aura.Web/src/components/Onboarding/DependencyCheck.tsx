@@ -9,6 +9,7 @@ import {
   Spinner,
   Badge,
   ProgressBar,
+  Input,
 } from '@fluentui/react-components';
 import {
   Checkmark24Regular,
@@ -16,6 +17,7 @@ import {
   Warning24Regular,
   ArrowDownload24Regular,
   Settings24Regular,
+  Folder24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 
@@ -121,6 +123,7 @@ export interface DependencyCheckProps {
   onAutoInstall: (dependencyId: string) => Promise<void>;
   onManualInstall: (dependencyId: string) => void;
   onSkip: (dependencyId: string) => void;
+  onAssignPath?: (dependencyId: string, path: string) => Promise<void>;
   onRescan?: () => Promise<void>;
   isScanning?: boolean;
 }
@@ -130,19 +133,52 @@ export function DependencyCheck({
   onAutoInstall,
   onManualInstall,
   onSkip,
+  onAssignPath,
   onRescan,
   isScanning = false,
 }: DependencyCheckProps) {
   const styles = useStyles();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [manualPaths, setManualPaths] = useState<Record<string, string>>({});
+  const [assigningPath, setAssigningPath] = useState<string | null>(null);
+  const [pathErrors, setPathErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // Auto-expand first missing required dependency
-    const firstMissing = dependencies.find((dep) => dep.required && dep.status === 'missing');
-    if (firstMissing && !expandedId) {
-      setExpandedId(firstMissing.id);
+    // Auto-expand all "Not Found" (missing) items
+    const missingDepIds = dependencies
+      .filter((dep) => dep.status === 'missing')
+      .map((dep) => dep.id);
+
+    if (missingDepIds.length > 0) {
+      setExpandedIds(new Set(missingDepIds));
     }
-  }, [dependencies, expandedId]);
+  }, [dependencies]);
+
+  const handlePathChange = (depId: string, path: string) => {
+    setManualPaths((prev) => ({ ...prev, [depId]: path }));
+    setPathErrors((prev) => ({ ...prev, [depId]: '' }));
+  };
+
+  const handleAssignPath = async (depId: string) => {
+    const path = manualPaths[depId];
+    if (!path || !path.trim()) {
+      setPathErrors((prev) => ({ ...prev, [depId]: 'Please enter a valid path' }));
+      return;
+    }
+
+    if (onAssignPath) {
+      try {
+        setAssigningPath(depId);
+        setPathErrors((prev) => ({ ...prev, [depId]: '' }));
+        await onAssignPath(depId, path.trim());
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to assign path';
+        setPathErrors((prev) => ({ ...prev, [depId]: errorMessage }));
+      } finally {
+        setAssigningPath(null);
+      }
+    }
+  };
 
   const getStatusIcon = (status: Dependency['status']) => {
     switch (status) {
@@ -288,7 +324,7 @@ export function DependencyCheck({
             )}
 
             {/* Details Section */}
-            {expandedId === dep.id && dep.status !== 'checking' && (
+            {expandedIds.has(dep.id) && dep.status !== 'checking' && (
               <div className={styles.detailsSection}>
                 {dep.status === 'installed' && (
                   <>
@@ -328,7 +364,7 @@ export function DependencyCheck({
                         onClick={() => onManualInstall(dep.id)}
                         disabled={dep.installing}
                       >
-                        Manual Setup
+                        Download Guide
                       </Button>
                       {!dep.required && (
                         <Button
@@ -340,6 +376,54 @@ export function DependencyCheck({
                         </Button>
                       )}
                     </div>
+
+                    {onAssignPath && (
+                      <>
+                        <Text
+                          weight="semibold"
+                          style={{
+                            marginTop: tokens.spacingVerticalM,
+                            marginBottom: tokens.spacingVerticalS,
+                          }}
+                        >
+                          Or assign existing installation:
+                        </Text>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: tokens.spacingHorizontalS,
+                            alignItems: 'flex-start',
+                          }}
+                        >
+                          <Input
+                            placeholder={`Path to ${dep.name} installation`}
+                            value={manualPaths[dep.id] || ''}
+                            onChange={(e) => handlePathChange(dep.id, e.target.value)}
+                            disabled={assigningPath === dep.id}
+                            style={{ flex: 1 }}
+                            contentBefore={<Folder24Regular />}
+                          />
+                          <Button
+                            appearance="secondary"
+                            onClick={() => handleAssignPath(dep.id)}
+                            disabled={assigningPath === dep.id || !manualPaths[dep.id]}
+                          >
+                            {assigningPath === dep.id ? <Spinner size="tiny" /> : 'Assign Path'}
+                          </Button>
+                        </div>
+                        {pathErrors[dep.id] && (
+                          <Text
+                            size={200}
+                            style={{
+                              color: tokens.colorPaletteRedForeground1,
+                              marginTop: tokens.spacingVerticalXS,
+                            }}
+                          >
+                            {pathErrors[dep.id]}
+                          </Text>
+                        )}
+                      </>
+                    )}
                   </>
                 )}
 
@@ -361,10 +445,18 @@ export function DependencyCheck({
               <Button
                 appearance="subtle"
                 size="small"
-                onClick={() => setExpandedId(expandedId === dep.id ? null : dep.id)}
+                onClick={() => {
+                  const newExpandedIds = new Set(expandedIds);
+                  if (expandedIds.has(dep.id)) {
+                    newExpandedIds.delete(dep.id);
+                  } else {
+                    newExpandedIds.add(dep.id);
+                  }
+                  setExpandedIds(newExpandedIds);
+                }}
                 style={{ marginTop: tokens.spacingVerticalS }}
               >
-                {expandedId === dep.id ? 'Hide Details' : 'Show Details'}
+                {expandedIds.has(dep.id) ? 'Hide Details' : 'Show Details'}
               </Button>
             )}
           </Card>

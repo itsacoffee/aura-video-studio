@@ -174,3 +174,106 @@ export interface PaginatedTemplatesResponse {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 }
+
+/**
+ * Custom video template types
+ */
+
+export interface CustomVideoTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  author: string;
+  isDefault: boolean;
+  scriptStructure: ScriptStructureConfig;
+  videoStructure: VideoStructureConfig;
+  llmPipeline: LLMPipelineConfig;
+  visualPrefs: VisualPreferences;
+}
+
+export interface ScriptStructureConfig {
+  sections: ScriptSection[];
+}
+
+export interface ScriptSection {
+  id: string;
+  name: string;
+  description: string;
+  order: number;
+  isRequired: boolean;
+  isOptional: boolean;
+  tone: string;
+  style: string;
+  minDuration: number;
+  maxDuration: number;
+}
+
+export interface VideoStructureConfig {
+  typicalDuration: number;
+  pacing: string;
+  sceneCount: number;
+  transitionStyle: string;
+  useBRoll: boolean;
+  musicStyle: string;
+  musicVolume: number;
+}
+
+export interface LLMPipelineConfig {
+  sectionPrompts: SectionPromptConfig[];
+  defaultTemperature: number;
+  defaultMaxTokens: number;
+  defaultModel: string;
+  keywordsToEmphasize: string[];
+  keywordsToAvoid: string[];
+}
+
+export interface SectionPromptConfig {
+  sectionId: string;
+  systemPrompt: string;
+  userPromptTemplate: string;
+  temperature: number;
+  maxTokens: number;
+  model: string;
+  variables: Record<string, string>;
+}
+
+export interface VisualPreferences {
+  imageGenerationPromptTemplate: string;
+  colorScheme: string;
+  aestheticGuidelines: string[];
+  textOverlayStyle: string;
+  transitionPreference: string;
+  customStyles: Record<string, string>;
+}
+
+export interface CreateCustomTemplateRequest {
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  scriptStructure: ScriptStructureConfig;
+  videoStructure: VideoStructureConfig;
+  llmPipeline: LLMPipelineConfig;
+  visualPrefs: VisualPreferences;
+}
+
+export interface UpdateCustomTemplateRequest {
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  scriptStructure: ScriptStructureConfig;
+  videoStructure: VideoStructureConfig;
+  llmPipeline: LLMPipelineConfig;
+  visualPrefs: VisualPreferences;
+}
+
+export interface TemplateExportData {
+  version: string;
+  template: CustomVideoTemplate;
+  exportedAt: string;
+}

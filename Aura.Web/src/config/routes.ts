@@ -16,7 +16,7 @@ export const ROUTES = {
   EDITOR: '/editor/:jobId',
   PACING: '/pacing',
   RENDER: '/render',
-  PUBLISH: '/publish',
+
   PROJECTS: '/projects',
   ASSETS: '/assets',
   JOBS: '/jobs',

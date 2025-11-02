@@ -34,6 +34,7 @@ export interface OnboardingState {
   lastValidation: WizardValidation | null;
   errors: string[];
   isDetectingHardware: boolean;
+  isScanningDependencies: boolean;
   hardware: {
     gpu?: string;
     vram?: number;
@@ -71,6 +72,7 @@ export const initialOnboardingState: OnboardingState = {
   lastValidation: null,
   errors: [],
   isDetectingHardware: false,
+  isScanningDependencies: false,
   hardware: null,
   installItems: [
     {
@@ -129,6 +131,8 @@ export type OnboardingAction =
   | { type: 'START_HARDWARE_DETECTION' }
   | { type: 'HARDWARE_DETECTED'; payload: OnboardingState['hardware'] }
   | { type: 'HARDWARE_DETECTION_FAILED'; payload: string }
+  | { type: 'START_DEPENDENCY_SCAN' }
+  | { type: 'DEPENDENCY_SCAN_COMPLETE' }
   | { type: 'START_INSTALL'; payload: string }
   | { type: 'INSTALL_COMPLETE'; payload: string }
   | { type: 'INSTALL_FAILED'; payload: { itemId: string; error: string } }
@@ -222,6 +226,18 @@ export function onboardingReducer(
             action.payload ||
             'Could not detect hardware. We recommend starting with Free-only mode using Stock images.',
         },
+      };
+
+    case 'START_DEPENDENCY_SCAN':
+      return {
+        ...state,
+        isScanningDependencies: true,
+      };
+
+    case 'DEPENDENCY_SCAN_COMPLETE':
+      return {
+        ...state,
+        isScanningDependencies: false,
       };
 
     case 'START_INSTALL':
@@ -562,49 +578,67 @@ export function canAdvanceStep(status: WizardStatus): boolean {
   return status === 'valid' || status === 'ready';
 }
 
-// Check installation status for an item
+// Check installation status for an item using the dependency rescan API
 export async function checkInstallationStatusThunk(
   itemId: string,
   dispatch: React.Dispatch<OnboardingAction>
 ): Promise<void> {
   try {
-    let statusEndpoint: string;
-
-    switch (itemId) {
-      case 'ffmpeg':
-        statusEndpoint = apiUrl('/api/downloads/ffmpeg/status');
-        break;
-      case 'ollama':
-      case 'stable-diffusion':
-        // Status check not yet implemented for these items
-        return;
-      default:
-        return;
-    }
-
-    const response = await fetch(statusEndpoint);
-    if (response.ok) {
-      const data = await response.json();
-      // If the item is installed, mark it as such
-      if (data.state === 'Installed' || data.state === 'ExternalAttached') {
-        dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
+    // For now, we'll use the old approach for FFmpeg and skip for others
+    // The full rescan will handle all dependencies
+    if (itemId === 'ffmpeg') {
+      const statusEndpoint = apiUrl('/api/downloads/ffmpeg/status');
+      const response = await fetch(statusEndpoint);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.state === 'Installed' || data.state === 'ExternalAttached') {
+          dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
+        }
       }
     }
   } catch (error) {
     console.warn(`Failed to check installation status for ${itemId}:`, error);
-    // Don't throw, just log the error
   }
 }
 
-// Check all installation statuses
+// Check all installation statuses using the dependency rescan API
 export async function checkAllInstallationStatusesThunk(
   dispatch: React.Dispatch<OnboardingAction>
 ): Promise<void> {
-  await Promise.all([
-    checkInstallationStatusThunk('ffmpeg', dispatch),
-    checkInstallationStatusThunk('ollama', dispatch),
-    checkInstallationStatusThunk('stable-diffusion', dispatch),
-  ]);
+  dispatch({ type: 'START_DEPENDENCY_SCAN' });
+
+  try {
+    // Call the dependency rescan API to check all dependencies
+    const response = await fetch(apiUrl('/api/dependencies/rescan'), {
+      method: 'POST',
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+
+      if (data.success && data.dependencies) {
+        // Map dependency status to installation state
+        for (const dep of data.dependencies) {
+          const itemId = dep.id;
+
+          // Map status to our install state
+          if (dep.status === 'Installed') {
+            dispatch({ type: 'INSTALL_COMPLETE', payload: itemId });
+          }
+        }
+      }
+    } else {
+      console.warn('Dependency rescan API failed:', response.statusText);
+      // Fallback to individual checks for FFmpeg
+      await checkInstallationStatusThunk('ffmpeg', dispatch);
+    }
+  } catch (error) {
+    console.warn('Failed to check all installation statuses:', error);
+    // Fallback to individual checks for FFmpeg
+    await checkInstallationStatusThunk('ffmpeg', dispatch);
+  } finally {
+    dispatch({ type: 'DEPENDENCY_SCAN_COMPLETE' });
+  }
 }
 
 // Validate API key

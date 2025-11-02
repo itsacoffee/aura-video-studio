@@ -707,9 +707,8 @@ Use Fluent/WinUI styles with subtle elevation, rounded corners, and dynamic Mica
 1. **Create** (wizard)
 2. **Storyboard** (edit & preview)
 3. **Render** (export)
-4. **Publish** (YouTube metadata & optional upload)
-5. **Library** (past projects)
-6. **Settings** (keys, providers, brand kit)
+4. **Library** (past projects)
+5. **Settings** (keys, providers, brand kit)
 
 ### Create Wizard (zero‑to‑video in minutes)
 
@@ -785,11 +784,6 @@ Use Fluent/WinUI styles with subtle elevation, rounded corners, and dynamic Mica
 * **Subtitles & Captions:** Burn‑in or sidecar SRT/VTT; styling (font, size, outline, background).
 * **Render Queue:** Add multiple outputs; queue shows ETA, hardware in use (NVENC/x264), and logs.
 * **Smart Cache:** prerender complex sections; reuse cache across exports if timeline unchanged.
-
-### Publish View
-
-* Title, description, tags, chapters (auto from scene headings), thumbnail pick/generate.
-* YouTube Data API OAuth flow (optional) + privacy/schedule.
 
 ### Settings
 
@@ -1154,7 +1148,7 @@ Aura.sln
   /Aura.App
     App.xaml, App.xaml.cs
     MainWindow.xaml(.cs)
-    Views/ (CreateView.xaml, StoryboardView.xaml, RenderView.xaml, PublishView.xaml, SettingsView.xaml)
+    Views/ (CreateView.xaml, StoryboardView.xaml, RenderView.xaml, SettingsView.xaml)
     Controls/ (LengthSlider, PacingSlider, Timeline, SceneCard, VoiceControl)
     ViewModels/ (...)
     Assets/ (icons, placeholders)

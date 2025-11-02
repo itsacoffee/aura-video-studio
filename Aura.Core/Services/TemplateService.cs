@@ -814,4 +814,305 @@ public class TemplateService
             RatingCount = entity.RatingCount
         };
     }
+
+    /// <summary>
+    /// Get all custom video templates
+    /// </summary>
+    public async Task<List<CustomVideoTemplate>> GetCustomTemplatesAsync(string? category = null)
+    {
+        try
+        {
+            var query = _context.CustomTemplates.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                query = query.Where(t => t.Category == category);
+            }
+
+            var entities = await query.OrderByDescending(t => t.UpdatedAt).ToListAsync();
+
+            return entities.Select(MapCustomTemplateToModel).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get custom templates");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Get custom template by ID
+    /// </summary>
+    public async Task<CustomVideoTemplate?> GetCustomTemplateByIdAsync(string id)
+    {
+        try
+        {
+            var entity = await _context.CustomTemplates.FindAsync(id);
+            return entity != null ? MapCustomTemplateToModel(entity) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get custom template {TemplateId}", id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Create new custom template
+    /// </summary>
+    public async Task<CustomVideoTemplate> CreateCustomTemplateAsync(CreateCustomTemplateRequest request)
+    {
+        try
+        {
+            var entity = new CustomTemplateEntity
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = request.Name,
+                Description = request.Description,
+                Category = request.Category,
+                Tags = string.Join(",", request.Tags),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Author = "User",
+                IsDefault = false,
+                ScriptStructureJson = JsonSerializer.Serialize(request.ScriptStructure),
+                VideoStructureJson = JsonSerializer.Serialize(request.VideoStructure),
+                LLMPipelineJson = JsonSerializer.Serialize(request.LLMPipeline),
+                VisualPreferencesJson = JsonSerializer.Serialize(request.VisualPrefs)
+            };
+
+            _context.CustomTemplates.Add(entity);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Created custom template {TemplateId} - {TemplateName}", entity.Id, entity.Name);
+
+            return MapCustomTemplateToModel(entity);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create custom template {TemplateName}", request.Name);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Update existing custom template
+    /// </summary>
+    public async Task<CustomVideoTemplate?> UpdateCustomTemplateAsync(string id, UpdateCustomTemplateRequest request)
+    {
+        try
+        {
+            var entity = await _context.CustomTemplates.FindAsync(id);
+            if (entity == null)
+            {
+                return null;
+            }
+
+            entity.Name = request.Name;
+            entity.Description = request.Description;
+            entity.Category = request.Category;
+            entity.Tags = string.Join(",", request.Tags);
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity.ScriptStructureJson = JsonSerializer.Serialize(request.ScriptStructure);
+            entity.VideoStructureJson = JsonSerializer.Serialize(request.VideoStructure);
+            entity.LLMPipelineJson = JsonSerializer.Serialize(request.LLMPipeline);
+            entity.VisualPreferencesJson = JsonSerializer.Serialize(request.VisualPrefs);
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Updated custom template {TemplateId} - {TemplateName}", entity.Id, entity.Name);
+
+            return MapCustomTemplateToModel(entity);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update custom template {TemplateId}", id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Delete custom template
+    /// </summary>
+    public async Task<bool> DeleteCustomTemplateAsync(string id)
+    {
+        try
+        {
+            var entity = await _context.CustomTemplates.FindAsync(id);
+            if (entity == null)
+            {
+                return false;
+            }
+
+            _context.CustomTemplates.Remove(entity);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Deleted custom template {TemplateId}", id);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete custom template {TemplateId}", id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Duplicate custom template
+    /// </summary>
+    public async Task<CustomVideoTemplate> DuplicateCustomTemplateAsync(string id)
+    {
+        try
+        {
+            var original = await _context.CustomTemplates.FindAsync(id);
+            if (original == null)
+            {
+                throw new ArgumentException($"Template {id} not found", nameof(id));
+            }
+
+            var duplicate = new CustomTemplateEntity
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = $"{original.Name} (Copy)",
+                Description = original.Description,
+                Category = original.Category,
+                Tags = original.Tags,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Author = "User",
+                IsDefault = false,
+                ScriptStructureJson = original.ScriptStructureJson,
+                VideoStructureJson = original.VideoStructureJson,
+                LLMPipelineJson = original.LLMPipelineJson,
+                VisualPreferencesJson = original.VisualPreferencesJson
+            };
+
+            _context.CustomTemplates.Add(duplicate);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Duplicated custom template {OriginalId} to {NewId}", id, duplicate.Id);
+
+            return MapCustomTemplateToModel(duplicate);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to duplicate custom template {TemplateId}", id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Set default custom template
+    /// </summary>
+    public async Task<bool> SetDefaultCustomTemplateAsync(string id)
+    {
+        try
+        {
+            var allTemplates = await _context.CustomTemplates.ToListAsync();
+            
+            foreach (var template in allTemplates)
+            {
+                template.IsDefault = template.Id == id;
+            }
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Set default custom template to {TemplateId}", id);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set default custom template {TemplateId}", id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Export custom template to JSON
+    /// </summary>
+    public async Task<TemplateExportData> ExportCustomTemplateAsync(string id)
+    {
+        try
+        {
+            var entity = await _context.CustomTemplates.FindAsync(id);
+            if (entity == null)
+            {
+                throw new ArgumentException($"Template {id} not found", nameof(id));
+            }
+
+            var template = MapCustomTemplateToModel(entity);
+
+            return new TemplateExportData
+            {
+                Version = "1.0",
+                Template = template,
+                ExportedAt = DateTime.UtcNow
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export custom template {TemplateId}", id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Import custom template from JSON
+    /// </summary>
+    public async Task<CustomVideoTemplate> ImportCustomTemplateAsync(TemplateExportData exportData)
+    {
+        try
+        {
+            var template = exportData.Template;
+            
+            var entity = new CustomTemplateEntity
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = template.Name,
+                Description = template.Description,
+                Category = template.Category,
+                Tags = string.Join(",", template.Tags),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Author = "User",
+                IsDefault = false,
+                ScriptStructureJson = JsonSerializer.Serialize(template.ScriptStructure),
+                VideoStructureJson = JsonSerializer.Serialize(template.VideoStructure),
+                LLMPipelineJson = JsonSerializer.Serialize(template.LLMPipeline),
+                VisualPreferencesJson = JsonSerializer.Serialize(template.VisualPrefs)
+            };
+
+            _context.CustomTemplates.Add(entity);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Imported custom template {TemplateId} - {TemplateName}", entity.Id, entity.Name);
+
+            return MapCustomTemplateToModel(entity);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to import custom template");
+            throw;
+        }
+    }
+
+    private CustomVideoTemplate MapCustomTemplateToModel(CustomTemplateEntity entity)
+    {
+        return new CustomVideoTemplate
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            Description = entity.Description,
+            Category = entity.Category,
+            Tags = entity.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt,
+            Author = entity.Author,
+            IsDefault = entity.IsDefault,
+            ScriptStructure = JsonSerializer.Deserialize<ScriptStructureConfig>(entity.ScriptStructureJson) ?? new(),
+            VideoStructure = JsonSerializer.Deserialize<VideoStructureConfig>(entity.VideoStructureJson) ?? new(),
+            LLMPipeline = JsonSerializer.Deserialize<LLMPipelineConfig>(entity.LLMPipelineJson) ?? new(),
+            VisualPrefs = JsonSerializer.Deserialize<VisualPreferences>(entity.VisualPreferencesJson) ?? new()
+        };
+    }
 }
