@@ -201,8 +201,9 @@ function checkNpmVersion() {
       
       // Note if using a newer major version
       const npmMajor = parseInt(version.split('.')[0]);
-      if (npmMajor >= 10) {
-        log(`Using npm v${npmMajor}.x (newer than minimum v9.x)`, 'info');
+      const requiredMajor = parseInt(REQUIRED_NPM_VERSION.split('.')[0]);
+      if (npmMajor > requiredMajor) {
+        log(`Using npm v${npmMajor}.x (newer than minimum v${requiredMajor}.x)`, 'info');
       }
       
       return true;
