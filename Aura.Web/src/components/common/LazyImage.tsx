@@ -125,7 +125,6 @@ export function LazyImage({
           className={`${styles.image} ${isLoaded ? styles.loaded : styles.loading}`}
           onLoad={handleLoad}
           onError={handleError}
-          loading="lazy"
           decoding="async"
           style={{
             width: width || '100%',

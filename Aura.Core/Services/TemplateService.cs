@@ -101,6 +101,8 @@ public class TemplateService
 
     /// <summary>
     /// Get all templates without pagination (for backwards compatibility)
+    /// Warning: This loads all templates into memory. Use with caution for large datasets.
+    /// Consider using GetTemplatesAsync with pagination for better performance.
     /// </summary>
     public async Task<List<TemplateListItem>> GetAllTemplatesAsync(
         TemplateCategory? category = null,
@@ -110,7 +112,9 @@ public class TemplateService
     {
         try
         {
-            var response = await GetTemplatesAsync(category, subCategory, systemOnly, communityOnly, 1, int.MaxValue);
+            // Use a large but reasonable page size limit (10000 templates max)
+            // This prevents potential memory issues while maintaining backwards compatibility
+            var response = await GetTemplatesAsync(category, subCategory, systemOnly, communityOnly, 1, 10000);
             return response.Items;
         }
         catch (Exception ex)

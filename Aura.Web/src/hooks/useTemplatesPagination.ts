@@ -79,7 +79,9 @@ export function useTemplatesPagination(
           return;
         }
 
-        // Filter by search query if provided (client-side filtering)
+        // Client-side filtering for search query
+        // Note: This filters only the current page's results. For production use with large datasets,
+        // search filtering should be moved to the backend API for better performance and accuracy.
         let filteredTemplates = response.items;
         if (searchQuery) {
           const query = searchQuery.toLowerCase();

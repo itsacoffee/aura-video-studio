@@ -146,8 +146,8 @@ export default function TemplatesLibrary() {
     } catch (err) {
       setCreateError('Failed to create project from template');
       console.error('Error creating project:', err);
-      setCreating(false);
     } finally {
+      setCreating(false);
       setShowNewProjectDialog(false);
     }
   };
