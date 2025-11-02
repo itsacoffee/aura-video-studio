@@ -26,20 +26,20 @@ export function parseApiError(error: unknown): ParsedApiError {
 
   const axiosError = error as AxiosError;
 
-  // Network errors (no response received)
-  if (axiosError.code === 'ECONNABORTED' || axiosError.code === 'ERR_NETWORK') {
-    return {
-      type: 'network',
-      message: 'Unable to connect to the service. Please check your internet connection.',
-      retryable: true,
-    };
-  }
-
-  // Timeout errors
+  // Timeout errors (check this first before generic network error)
   if (axiosError.code === 'ECONNABORTED' || axiosError.message?.includes('timeout')) {
     return {
       type: 'timeout',
       message: 'The request took too long to complete. Please try again.',
+      retryable: true,
+    };
+  }
+
+  // Network errors (no response received)
+  if (axiosError.code === 'ERR_NETWORK') {
+    return {
+      type: 'network',
+      message: 'Unable to connect to the service. Please check your internet connection.',
       retryable: true,
     };
   }
