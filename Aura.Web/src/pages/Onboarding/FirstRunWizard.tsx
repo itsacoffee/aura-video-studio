@@ -454,6 +454,44 @@ export function FirstRunWizard() {
     handleSkipItem(dependencyId);
   };
 
+  const handleDependencyAssignPath = async (dependencyId: string, path: string): Promise<void> => {
+    try {
+      // Call the attach API endpoint
+      const response = await fetch(`/api/dependencies/${dependencyId}/attach`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path,
+          attachInPlace: false,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+        throw new Error(errorData.error || 'Failed to attach dependency');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Mark as installed
+        dispatch({ type: 'INSTALL_COMPLETE', payload: dependencyId });
+        // Rescan to verify
+        await checkAllInstallationStatusesThunk(dispatch);
+      } else {
+        throw new Error(result.error || 'Failed to attach dependency');
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error assigning path';
+      console.error(`Failed to assign path for ${dependencyId}:`, errorMessage);
+      throw error;
+    }
+  };
+
   const handleNeverShowAgain = (checked: boolean) => {
     if (checked) {
       markWizardNeverShowAgain();
@@ -513,6 +551,7 @@ export function FirstRunWizard() {
         onAutoInstall={handleDependencyAutoInstall}
         onManualInstall={handleDependencyManualInstall}
         onSkip={handleDependencySkip}
+        onAssignPath={handleDependencyAssignPath}
         onRescan={async () => {
           await checkAllInstallationStatusesThunk(dispatch);
         }}
