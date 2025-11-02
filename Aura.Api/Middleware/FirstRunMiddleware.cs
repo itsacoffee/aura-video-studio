@@ -34,6 +34,7 @@ public class FirstRunMiddleware
             path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/healthz", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/capabilities", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/jobs/recent-artifacts", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/onboarding", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/setup", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/assets", StringComparison.OrdinalIgnoreCase) ||
