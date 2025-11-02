@@ -308,11 +308,9 @@ public class OllamaService
         }
 
         // Check common installation paths
-        var username = Environment.UserName;
         var searchPaths = new[]
         {
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Ollama", "ollama.exe"),
-            Path.Combine($@"C:\Users\{username}\AppData\Local\Programs\Ollama", "ollama.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Ollama", "ollama.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ollama", "ollama.exe"),
         };

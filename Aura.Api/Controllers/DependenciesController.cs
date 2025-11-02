@@ -621,7 +621,7 @@ public class DependenciesController : ControllerBase
     /// Auto-detect installation path for a specific dependency component
     /// </summary>
     [HttpPost("{componentId}/detect")]
-    public Task<IActionResult> AutoDetect(string componentId)
+    public async Task<IActionResult> AutoDetect(string componentId, CancellationToken ct)
     {
         try
         {
@@ -638,7 +638,7 @@ public class DependenciesController : ControllerBase
                 case "ffmpeg":
                     if (_ffmpegLocator != null)
                     {
-                        var result = _ffmpegLocator.CheckAllCandidatesAsync(null, CancellationToken.None).Result;
+                        var result = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct).ConfigureAwait(false);
                         if (result.Found)
                         {
                             detectedPath = result.FfmpegPath;
@@ -649,29 +649,29 @@ public class DependenciesController : ControllerBase
 
             if (!string.IsNullOrEmpty(detectedPath))
             {
-                return Task.FromResult<IActionResult>(Ok(new
+                return Ok(new
                 {
                     success = true,
                     path = detectedPath
-                }));
+                });
             }
             else
             {
-                return Task.FromResult<IActionResult>(Ok(new
+                return Ok(new
                 {
                     success = false,
                     path = (string?)null
-                }));
+                });
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to auto-detect {ComponentId}", componentId);
-            return Task.FromResult<IActionResult>(Ok(new
+            return Ok(new
             {
                 success = false,
                 path = (string?)null
-            }));
+            });
         }
     }
 

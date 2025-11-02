@@ -494,10 +494,9 @@ export function DependencyCheck({
   }
 
   function getDefaultPathForDependency(depId: string): string {
-    const username = '${username}';
     switch (depId.toLowerCase()) {
       case 'ollama':
-        return `C:\\Users\\${username}\\AppData\\Local\\Programs\\Ollama\\ollama.exe`;
+        return 'C:\\Users\\{username}\\AppData\\Local\\Programs\\Ollama\\ollama.exe';
       case 'ffmpeg':
         return 'C:\\ffmpeg\\bin\\ffmpeg.exe';
       case 'stable-diffusion':
