@@ -20,8 +20,10 @@ import {
   ChevronDown24Regular,
   ChevronUp24Regular,
   DocumentSave24Regular,
+  ArrowLeft24Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { autoSaveService } from '../../services/autoSaveService';
 import { loggingService } from '../../services/loggingService';
 
@@ -102,6 +104,8 @@ export interface ErrorFallbackProps {
 
 export function ErrorFallback({ error, errorInfo, onReset, onReport }: ErrorFallbackProps) {
   const styles = useStyles();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [showDetails, setShowDetails] = useState(false);
   const [hasAutosave, setHasAutosave] = useState(false);
   const [autosaveVersion, setAutosaveVersion] = useState<number | null>(null);
@@ -135,6 +139,22 @@ export function ErrorFallback({ error, errorInfo, onReset, onReport }: ErrorFall
     window.location.reload();
   };
 
+  const handleGoBack = () => {
+    loggingService.info('User going back after error', 'ErrorFallback', 'goBack');
+    // If we're on the onboarding/downloads page, go to onboarding
+    if (location.pathname.includes('/downloads') || location.pathname.includes('/onboarding')) {
+      navigate('/onboarding', { replace: true });
+    } else {
+      // Check if there's history to go back to, otherwise go home
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate('/', { replace: true });
+      }
+    }
+    onReset();
+  };
+
   return (
     <div className={styles.container}>
       <ErrorCircle24Regular className={styles.icon} />
@@ -166,9 +186,12 @@ export function ErrorFallback({ error, errorInfo, onReset, onReport }: ErrorFall
         )}
         <Button
           appearance={hasAutosave ? 'secondary' : 'primary'}
-          icon={<ArrowClockwise24Regular />}
-          onClick={handleTryAgain}
+          icon={<ArrowLeft24Regular />}
+          onClick={handleGoBack}
         >
+          Go Back
+        </Button>
+        <Button appearance="secondary" icon={<ArrowClockwise24Regular />} onClick={handleTryAgain}>
           Try Again
         </Button>
         <Button appearance="secondary" onClick={handleReload}>
