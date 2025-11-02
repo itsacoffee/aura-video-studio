@@ -6,14 +6,9 @@ import {
   Text,
   Card,
   Button,
-  Table,
-  TableHeader,
-  TableRow,
-  TableHeaderCell,
-  TableBody,
-  TableCell,
+  Badge,
 } from '@fluentui/react-components';
-import { Checkmark20Regular } from '@fluentui/react-icons';
+import { Checkmark20Regular, Info16Regular } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
   container: {
@@ -23,11 +18,19 @@ const useStyles = makeStyles({
   },
   header: {
     textAlign: 'center',
+    marginBottom: tokens.spacingVerticalL,
+  },
+  introCard: {
+    padding: tokens.spacingVerticalL,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    marginBottom: tokens.spacingVerticalL,
   },
   cardsContainer: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
     gap: tokens.spacingHorizontalL,
+    marginBottom: tokens.spacingVerticalL,
   },
   tierCard: {
     padding: tokens.spacingVerticalXL,
@@ -43,47 +46,44 @@ const useStyles = makeStyles({
     outline: `2px solid ${tokens.colorBrandBackground}`,
     outlineOffset: '-2px',
   },
-  featuresList: {
-    listStyleType: 'none',
-    padding: 0,
-    margin: `${tokens.spacingVerticalM} 0`,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
+  providerCategoriesSection: {
+    marginTop: tokens.spacingVerticalXL,
   },
-  featureItem: {
+  categoryCard: {
+    padding: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalM,
+  },
+  categoryHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalS,
+    marginBottom: tokens.spacingVerticalM,
   },
-  badge: {
-    position: 'absolute',
-    top: tokens.spacingVerticalM,
-    right: tokens.spacingVerticalM,
-    padding: '4px 12px',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorBrandBackground,
-    color: tokens.colorNeutralForegroundOnBrand,
-    fontSize: tokens.fontSizeBase200,
-    fontWeight: tokens.fontWeightSemibold,
+  categoryIcon: {
+    fontSize: '28px',
   },
-  comparisonSection: {
-    marginTop: tokens.spacingVerticalXXL,
+  providersList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+    marginTop: tokens.spacingVerticalM,
   },
-  table: {
-    width: '100%',
+  providerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: tokens.spacingVerticalS,
+    borderRadius: tokens.borderRadiusSmall,
+    backgroundColor: tokens.colorNeutralBackground1,
+  },
+  providerInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    flex: 1,
   },
   checkIcon: {
     color: tokens.colorPaletteGreenForeground1,
-  },
-  dismissIcon: {
-    color: tokens.colorNeutralForeground3,
-  },
-  costEstimate: {
-    marginTop: tokens.spacingVerticalM,
-    padding: tokens.spacingVerticalM,
-    backgroundColor: tokens.colorNeutralBackground3,
-    borderRadius: tokens.borderRadiusMedium,
   },
 });
 
@@ -92,139 +92,255 @@ export interface ChooseTierStepProps {
   onSelectTier: (tier: 'free' | 'pro') => void;
 }
 
+interface ProviderOption {
+  name: string;
+  type: 'free' | 'api';
+  description?: string;
+}
+
+interface ProviderCategory {
+  icon: string;
+  title: string;
+  description: string;
+  providers: ProviderOption[];
+}
+
 export function ChooseTierStep({ selectedTier, onSelectTier }: ChooseTierStepProps) {
   const styles = useStyles();
 
-  const freeFeatures = [
-    'Windows built-in text-to-speech',
-    'Rule-based script generation',
-    'Stock images from Pexels/Unsplash',
-    'Basic video effects',
-    'No setup required',
-  ];
-
-  const proFeatures = [
-    'GPT-4 powered script generation',
-    'Professional AI voices (ElevenLabs)',
-    'Custom image generation (Stable Diffusion)',
-    'Advanced editing capabilities',
-    'Priority support',
-  ];
-
-  const comparisonData: Array<{ feature: string; free: string; pro: string }> = [
-    { feature: 'Script Generation', free: 'Rule-based', pro: 'GPT-4 / Claude / Gemini' },
-    { feature: 'Text-to-Speech', free: 'Windows TTS', pro: 'ElevenLabs / PlayHT' },
-    { feature: 'Images', free: 'Stock photos', pro: 'AI-generated custom images' },
-    { feature: 'Setup Time', free: '< 1 minute', pro: '3-5 minutes' },
-    { feature: 'Cost', free: 'Free forever', pro: '~$1-5 per video' },
-    { feature: 'Quality', free: 'Good', pro: 'Professional' },
+  const providerCategories: ProviderCategory[] = [
+    {
+      icon: '✍️',
+      title: 'Script Generation (LLM)',
+      description: 'Create video scripts with AI',
+      providers: [
+        {
+          name: 'Ollama (Local AI)',
+          type: 'free',
+          description: 'Privacy-focused, runs on your PC',
+        },
+        {
+          name: 'Rule-based Generator',
+          type: 'free',
+          description: 'Simple template-based scripts',
+        },
+        { name: 'OpenAI GPT-4', type: 'api', description: 'Most advanced, ~$0.15/script' },
+        { name: 'Anthropic Claude', type: 'api', description: 'Creative content, ~$0.12/script' },
+        { name: 'Google Gemini', type: 'api', description: 'Free tier available' },
+      ],
+    },
+    {
+      icon: '🎙️',
+      title: 'Text-to-Speech (TTS)',
+      description: 'Convert text to natural voice',
+      providers: [
+        { name: 'Windows SAPI', type: 'free', description: 'Built-in Windows voices' },
+        { name: 'Piper TTS', type: 'free', description: 'Offline neural voices' },
+        { name: 'Mimic3', type: 'free', description: 'Open-source quality voices' },
+        { name: 'ElevenLabs', type: 'api', description: 'Professional quality, 10min free/month' },
+        { name: 'PlayHT', type: 'api', description: 'Voice cloning, 10min free trial' },
+      ],
+    },
+    {
+      icon: '🎨',
+      title: 'Visual Content (Images)',
+      description: 'Generate or select images for videos',
+      providers: [
+        { name: 'Stock Images', type: 'free', description: 'Pexels/Unsplash free photos' },
+        {
+          name: 'Stable Diffusion (Local)',
+          type: 'free',
+          description: 'Custom AI images (requires GPU)',
+        },
+        { name: 'Replicate', type: 'api', description: 'Cloud AI generation, ~$0.10/video' },
+      ],
+    },
   ];
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Title2>Choose Your Experience</Title2>
-        <Text>Select the tier that best fits your needs. You can change this later.</Text>
+        <Title2>Configure Your Providers</Title2>
+        <Text>Choose which services you want to use. Mix and match free and paid options!</Text>
       </div>
 
+      <Card className={styles.introCard}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: tokens.spacingHorizontalM }}>
+          <Info16Regular style={{ marginTop: '2px', flexShrink: 0 }} />
+          <div>
+            <Text
+              weight="semibold"
+              style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
+            >
+              🎯 You have full flexibility!
+            </Text>
+            <Text size={200} style={{ display: 'block' }}>
+              This application lets you combine free local tools with any API services you have
+              access to. You can use completely free options, add premium APIs for better quality,
+              or mix both based on your needs. All providers can be configured or changed later in
+              Settings.
+            </Text>
+          </div>
+        </div>
+      </Card>
+
       <div className={styles.cardsContainer}>
-        {/* Free Tier Card */}
         <Card
           className={`${styles.tierCard} ${selectedTier === 'free' ? styles.selectedCard : ''}`}
           onClick={() => onSelectTier('free')}
         >
-          <Title3>🆓 Start Free</Title3>
+          <Title3>🆓 Start with Free Tools</Title3>
           <Text style={{ marginTop: tokens.spacingVerticalS, display: 'block' }}>
-            Perfect for getting started quickly with zero setup
+            Get started immediately with zero cost and no API keys required
           </Text>
 
-          <ul className={styles.featuresList}>
-            {freeFeatures.map((feature, index) => (
-              <li key={index} className={styles.featureItem}>
-                <Checkmark20Regular className={styles.checkIcon} />
-                <Text size={200}>{feature}</Text>
-              </li>
-            ))}
-          </ul>
+          <div style={{ marginTop: tokens.spacingVerticalM }}>
+            <Text
+              weight="semibold"
+              size={200}
+              style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+            >
+              What you&apos;ll use:
+            </Text>
+            <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground2 }}>
+              • Windows SAPI or Piper TTS for voices
+              <br />
+              • Rule-based or Ollama for scripts
+              <br />
+              • Stock images from free sources
+              <br />
+              <br />
+              Perfect for testing and learning. You can add API keys anytime later!
+            </Text>
+          </div>
 
           <Button
             appearance={selectedTier === 'free' ? 'primary' : 'secondary'}
-            style={{ width: '100%', marginTop: tokens.spacingVerticalM }}
+            style={{ width: '100%', marginTop: tokens.spacingVerticalL }}
             onClick={(e) => {
               e.stopPropagation();
               onSelectTier('free');
             }}
           >
-            {selectedTier === 'free' ? 'Selected' : 'Select Free'}
+            {selectedTier === 'free' ? '✓ Selected' : 'Use Free Tools Only'}
           </Button>
         </Card>
 
-        {/* Pro Tier Card */}
         <Card
           className={`${styles.tierCard} ${selectedTier === 'pro' ? styles.selectedCard : ''}`}
           onClick={() => onSelectTier('pro')}
         >
-          <div className={styles.badge}>RECOMMENDED</div>
-          <Title3>⭐ Unlock Pro Features</Title3>
+          <Title3>⭐ Configure API Keys</Title3>
           <Text style={{ marginTop: tokens.spacingVerticalS, display: 'block' }}>
-            Professional quality AI-powered video creation
+            Add your API keys for premium services (you choose which ones)
           </Text>
 
-          <ul className={styles.featuresList}>
-            {proFeatures.map((feature, index) => (
-              <li key={index} className={styles.featureItem}>
-                <Checkmark20Regular className={styles.checkIcon} />
-                <Text size={200}>{feature}</Text>
-              </li>
-            ))}
-          </ul>
-
-          <div className={styles.costEstimate}>
-            <Text weight="semibold" size={200}>
-              Estimated cost per video:
+          <div style={{ marginTop: tokens.spacingVerticalM }}>
+            <Text
+              weight="semibold"
+              size={200}
+              style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+            >
+              Available services:
             </Text>
-            <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
-              $1-5 depending on length and features used
+            <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground2 }}>
+              • OpenAI, Claude, Gemini for scripts
+              <br />
+              • ElevenLabs, PlayHT for pro voices
+              <br />
+              • Replicate for AI-generated images
+              <br />
+              <br />
+              Add only the API keys you have. Free tools remain available as fallbacks!
             </Text>
           </div>
 
           <Button
             appearance={selectedTier === 'pro' ? 'primary' : 'secondary'}
-            style={{ width: '100%', marginTop: tokens.spacingVerticalM }}
+            style={{ width: '100%', marginTop: tokens.spacingVerticalL }}
             onClick={(e) => {
               e.stopPropagation();
               onSelectTier('pro');
             }}
           >
-            {selectedTier === 'pro' ? 'Selected' : 'Select Pro'}
+            {selectedTier === 'pro' ? '✓ Selected' : 'I Have API Keys'}
           </Button>
         </Card>
       </div>
 
-      {/* Comparison Table */}
-      <div className={styles.comparisonSection}>
-        <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Feature Comparison</Title3>
-        <Table className={styles.table}>
-          <TableHeader>
-            <TableRow>
-              <TableHeaderCell>Feature</TableHeaderCell>
-              <TableHeaderCell>Free</TableHeaderCell>
-              <TableHeaderCell>Pro</TableHeaderCell>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {comparisonData.map((row, index) => (
-              <TableRow key={index}>
-                <TableCell>
-                  <Text weight="semibold">{row.feature}</Text>
-                </TableCell>
-                <TableCell>{row.free}</TableCell>
-                <TableCell>{row.pro}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className={styles.providerCategoriesSection}>
+        <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
+          Available Provider Options
+        </Title3>
+        <Text
+          style={{
+            display: 'block',
+            marginBottom: tokens.spacingVerticalL,
+            color: tokens.colorNeutralForeground2,
+          }}
+        >
+          Here&apos;s what you can choose from in each category. You can mix free and paid options
+          as needed.
+        </Text>
+
+        {providerCategories.map((category, index) => (
+          <Card key={index} className={styles.categoryCard}>
+            <div className={styles.categoryHeader}>
+              <span className={styles.categoryIcon}>{category.icon}</span>
+              <div>
+                <Title3 style={{ marginBottom: tokens.spacingVerticalXXS }}>
+                  {category.title}
+                </Title3>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+                  {category.description}
+                </Text>
+              </div>
+            </div>
+
+            <div className={styles.providersList}>
+              {category.providers.map((provider, providerIndex) => (
+                <div key={providerIndex} className={styles.providerRow}>
+                  <div className={styles.providerInfo}>
+                    <Checkmark20Regular className={styles.checkIcon} />
+                    <div>
+                      <Text weight="semibold" size={200}>
+                        {provider.name}
+                      </Text>
+                      {provider.description && (
+                        <Text
+                          size={100}
+                          style={{ display: 'block', color: tokens.colorNeutralForeground2 }}
+                        >
+                          {provider.description}
+                        </Text>
+                      )}
+                    </div>
+                  </div>
+                  <Badge
+                    appearance="filled"
+                    color={provider.type === 'free' ? 'success' : 'informative'}
+                  >
+                    {provider.type === 'free' ? 'FREE' : 'API'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
       </div>
+
+      <Card
+        style={{
+          padding: tokens.spacingVerticalL,
+          backgroundColor: tokens.colorNeutralBackground3,
+        }}
+      >
+        <Text size={200} style={{ display: 'block', textAlign: 'center' }}>
+          💡 <strong>Remember:</strong> You can start with free tools and add API keys later, or mix
+          and match any combination. The application automatically uses available providers and
+          falls back to free options when needed.
+        </Text>
+      </Card>
     </div>
   );
 }

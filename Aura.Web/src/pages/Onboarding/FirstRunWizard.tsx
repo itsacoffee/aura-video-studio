@@ -126,7 +126,7 @@ export function FirstRunWizard() {
   const totalSteps = 10;
   const stepLabels = [
     'Welcome',
-    'Choose Tier',
+    'Configure Providers',
     'API Keys',
     'Dependencies',
     'Workspace',
