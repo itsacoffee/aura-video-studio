@@ -74,4 +74,31 @@ internal class FailingLlmProvider : ILlmProvider
     {
         return Task.FromResult<ContentComplexityAnalysisResult?>(null);
     }
+
+    public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        throw new System.Exception($"{_name} provider is not available");
+    }
+
+    public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+        IReadOnlyList<string> sceneTexts,
+        string videoGoal,
+        string videoType,
+        CancellationToken ct)
+    {
+        throw new System.Exception($"{_name} provider is not available");
+    }
+
+    public Task<string?> GenerateTransitionTextAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        throw new System.Exception($"{_name} provider is not available");
+    }
 }

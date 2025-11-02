@@ -188,9 +188,14 @@ export default function TemplatesLibrary() {
           <Title1>Templates Library</Title1>
           <Text>Get started quickly with pre-built project templates</Text>
         </div>
-        <Button appearance="primary" icon={<Add24Regular />}>
-          Save as Template
-        </Button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <Button appearance="secondary" onClick={() => navigate('/templates/custom')}>
+            Custom Templates
+          </Button>
+          <Button appearance="primary" icon={<Add24Regular />}>
+            Save as Template
+          </Button>
+        </div>
       </div>
 
       {error && (

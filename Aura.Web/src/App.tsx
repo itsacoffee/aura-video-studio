@@ -43,6 +43,7 @@ import { RecentJobsPage } from './pages/RecentJobsPage';
 import { RenderPage } from './pages/RenderPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SetupWizard } from './pages/Setup/SetupWizard';
+import CustomTemplatesPage from './pages/Templates/CustomTemplatesPage';
 import TemplatesLibrary from './pages/Templates/TemplatesLibrary';
 import { TimelinePage } from './pages/TimelinePage';
 import ValidationPage from './pages/Validation/ValidationPage';
@@ -414,6 +415,7 @@ function App() {
                     <Route path="/create" element={<CreateWizard />} />
                     <Route path="/create/legacy" element={<CreatePage />} />
                     <Route path="/templates" element={<TemplatesLibrary />} />
+                    <Route path="/templates/custom" element={<CustomTemplatesPage />} />
                     <Route path="/timeline" element={<TimelinePage />} />
                     <Route path="/editor/:jobId" element={<TimelineEditor />} />
                     <Route path="/editor" element={<VideoEditorPage />} />
