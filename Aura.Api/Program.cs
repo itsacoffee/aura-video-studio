@@ -111,6 +111,7 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
 
 // Register ProjectStateRepository for state persistence
 builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
+builder.Services.AddScoped<Aura.Core.Services.CheckpointManager>();
 
 builder.Services.AddCors(options =>
 {
@@ -724,6 +725,9 @@ builder.Services.AddHostedService<Aura.Api.HostedServices.ProviderWarmupService>
 
 // Register Health Check Background Service - runs scheduled health checks
 builder.Services.AddHostedService<Aura.Api.HostedServices.HealthCheckBackgroundService>();
+
+// Register OrphanedFileCleanupService for cleaning up old projects and temp files
+builder.Services.AddHostedService<Aura.Api.HostedServices.OrphanedFileCleanupService>();
 
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();

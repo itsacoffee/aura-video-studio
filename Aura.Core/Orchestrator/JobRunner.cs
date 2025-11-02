@@ -22,8 +22,10 @@ public class JobRunner
     private readonly ArtifactManager _artifactManager;
     private readonly VideoOrchestrator _orchestrator;
     private readonly Aura.Core.Hardware.HardwareDetector _hardwareDetector;
+    private readonly Services.CheckpointManager? _checkpointManager;
     private readonly Dictionary<string, Job> _activeJobs = new();
     private readonly Dictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
+    private readonly Dictionary<string, Guid> _jobProjectIds = new();
 
     public event EventHandler<JobProgressEventArgs>? JobProgress;
 
@@ -31,7 +33,8 @@ public class JobRunner
         ILogger<JobRunner> logger,
         ArtifactManager artifactManager,
         VideoOrchestrator orchestrator,
-        Aura.Core.Hardware.HardwareDetector hardwareDetector)
+        Aura.Core.Hardware.HardwareDetector hardwareDetector,
+        Services.CheckpointManager? checkpointManager = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(artifactManager);
@@ -42,6 +45,7 @@ public class JobRunner
         _artifactManager = artifactManager;
         _orchestrator = orchestrator;
         _hardwareDetector = hardwareDetector;
+        _checkpointManager = checkpointManager;
     }
 
     /// <summary>
@@ -173,6 +177,31 @@ public class JobRunner
 
             _logger.LogInformation("Starting job {JobId}", jobId);
             
+            // Create project state for checkpointing if checkpoint manager is available
+            Guid? projectId = null;
+            if (_checkpointManager != null && job.Brief != null && job.PlanSpec != null && 
+                job.VoiceSpec != null && job.RenderSpec != null)
+            {
+                try
+                {
+                    projectId = await _checkpointManager.CreateProjectStateAsync(
+                        job.Brief.Topic ?? "Untitled Project",
+                        jobId,
+                        job.Brief,
+                        job.PlanSpec,
+                        job.VoiceSpec,
+                        job.RenderSpec,
+                        ct).ConfigureAwait(false);
+                    
+                    _jobProjectIds[jobId] = projectId.Value;
+                    _logger.LogInformation("Created project state {ProjectId} for job {JobId}", projectId, jobId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to create project state for job {JobId}, continuing without checkpoints", jobId);
+                }
+            }
+            
             // Update to running status with initialization message
             job = UpdateJob(job, 
                 status: JobStatus.Running, 
@@ -217,6 +246,19 @@ public class JobRunner
             var artifact = _artifactManager.CreateArtifact(jobId, "video.mp4", outputPath, "video/mp4");
             var artifacts = new List<JobArtifact>(job.Artifacts) { artifact };
 
+            // Mark project as completed if checkpoint manager is available
+            if (_checkpointManager != null && _jobProjectIds.TryGetValue(jobId, out var completedProjectId))
+            {
+                try
+                {
+                    await _checkpointManager.CompleteProjectAsync(completedProjectId, ct).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to mark project {ProjectId} as completed", completedProjectId);
+                }
+            }
+
             // Mark as done
             job = UpdateJob(job, 
                 status: JobStatus.Done, 
@@ -233,6 +275,19 @@ public class JobRunner
             var job = GetJob(jobId);
             if (job != null)
             {
+                // Mark project as cancelled if checkpoint manager is available
+                if (_checkpointManager != null && _jobProjectIds.TryGetValue(jobId, out var cancelledProjectId))
+                {
+                    try
+                    {
+                        await _checkpointManager.CancelProjectAsync(cancelledProjectId, default).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to mark project {ProjectId} as cancelled", cancelledProjectId);
+                    }
+                }
+                
                 // Add cancellation message to logs so it's visible in UI
                 var cancelLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Job was cancelled by user";
                 var updatedLogs = new List<string>(job.Logs) { cancelLog };
@@ -250,6 +305,19 @@ public class JobRunner
             var job = GetJob(jobId);
             if (job != null)
             {
+                // Mark project as failed if checkpoint manager is available
+                if (_checkpointManager != null && _jobProjectIds.TryGetValue(jobId, out var failedProjectId))
+                {
+                    try
+                    {
+                        await _checkpointManager.FailProjectAsync(failedProjectId, vex.Message, default).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to mark project {ProjectId} as failed", failedProjectId);
+                    }
+                }
+                
                 var failureDetails = new JobFailure
                 {
                     Stage = job.Stage,
@@ -295,6 +363,19 @@ public class JobRunner
             var job = GetJob(jobId);
             if (job != null)
             {
+                // Mark project as failed if checkpoint manager is available
+                if (_checkpointManager != null && _jobProjectIds.TryGetValue(jobId, out var failedProjectId))
+                {
+                    try
+                    {
+                        await _checkpointManager.FailProjectAsync(failedProjectId, ex.Message, default).ConfigureAwait(false);
+                    }
+                    catch (Exception checkpointEx)
+                    {
+                        _logger.LogWarning(checkpointEx, "Failed to mark project {ProjectId} as failed", failedProjectId);
+                    }
+                }
+                
                 var failureDetails = CreateFailureDetails(job, ex);
                 
                 // Add error to logs so it's visible in UI
