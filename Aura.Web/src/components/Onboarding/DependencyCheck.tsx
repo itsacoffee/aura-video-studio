@@ -108,7 +108,7 @@ export interface Dependency {
   name: string;
   description: string;
   required: boolean;
-  status: 'checking' | 'installed' | 'missing' | 'error';
+  status: 'checking' | 'installed' | 'missing' | 'skipped' | 'error';
   version?: string;
   installPath?: string;
   canAutoInstall: boolean;
@@ -197,6 +197,13 @@ export function DependencyCheck({
             style={{ color: tokens.colorPaletteYellowForeground1 }}
           />
         );
+      case 'skipped':
+        return (
+          <Warning24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorNeutralForeground3 }}
+          />
+        );
       case 'error':
         return (
           <Dismiss24Regular
@@ -230,6 +237,12 @@ export function DependencyCheck({
             Not Found
           </Badge>
         );
+      case 'skipped':
+        return (
+          <Badge appearance="tint" color="warning">
+            Skipped
+          </Badge>
+        );
       case 'error':
         return (
           <Badge appearance="filled" color="danger">
@@ -240,6 +253,7 @@ export function DependencyCheck({
   };
 
   const installedCount = dependencies.filter((d) => d.status === 'installed').length;
+  const skippedCount = dependencies.filter((d) => d.status === 'skipped').length;
   const requiredCount = dependencies.filter((d) => d.required).length;
   const requiredInstalled = dependencies.filter(
     (d) => d.required && d.status === 'installed'
@@ -269,6 +283,7 @@ export function DependencyCheck({
             <Text size={300} style={{ marginTop: tokens.spacingVerticalXS }}>
               {installedCount} of {dependencies.length} components installed
               {requiredCount > 0 && ` (${requiredInstalled}/${requiredCount} required)`}
+              {skippedCount > 0 && `, ${skippedCount} skipped`}
             </Text>
           </div>
           {onRescan && (
@@ -336,6 +351,92 @@ export function DependencyCheck({
                         <Text weight="semibold">Location:</Text>
                         <Text size={200}>{dep.installPath}</Text>
                       </div>
+                    )}
+                  </>
+                )}
+
+                {dep.status === 'skipped' && (
+                  <>
+                    <Text
+                      style={{
+                        color: tokens.colorNeutralForeground3,
+                        marginBottom: tokens.spacingVerticalM,
+                      }}
+                    >
+                      ⚠ Skipped - You can install this later in Settings
+                    </Text>
+                    <Text weight="semibold" style={{ marginBottom: tokens.spacingVerticalS }}>
+                      Installation Options:
+                    </Text>
+                    <div
+                      style={{ display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' }}
+                    >
+                      {dep.canAutoInstall && (
+                        <Button
+                          appearance="primary"
+                          icon={<ArrowDownload24Regular />}
+                          onClick={() => onAutoInstall(dep.id)}
+                          disabled={dep.installing}
+                        >
+                          Install Now
+                        </Button>
+                      )}
+                      <Button
+                        appearance="secondary"
+                        onClick={() => onManualInstall(dep.id)}
+                        disabled={dep.installing}
+                      >
+                        Download Guide
+                      </Button>
+                    </div>
+
+                    {onAssignPath && (
+                      <>
+                        <Text
+                          weight="semibold"
+                          style={{
+                            marginTop: tokens.spacingVerticalM,
+                            marginBottom: tokens.spacingVerticalS,
+                          }}
+                        >
+                          Or assign existing installation:
+                        </Text>
+                        <PathSelector
+                          label={`${dep.name} Installation Path`}
+                          placeholder={getPlaceholderForDependency(dep.id)}
+                          value={manualPaths[dep.id] || ''}
+                          onChange={(path) => handlePathChange(dep.id, path)}
+                          onValidate={async (path) => {
+                            return await validateDependencyPath(dep.id, path);
+                          }}
+                          helpText={getHelpTextForDependency(dep.id)}
+                          defaultPath={getDefaultPathForDependency(dep.id)}
+                          dependencyId={dep.id}
+                          disabled={assigningPath === dep.id}
+                          autoDetect={async () => {
+                            return await autoDetectDependency(dep.id);
+                          }}
+                        />
+                        <Button
+                          appearance="primary"
+                          onClick={() => handleAssignPath(dep.id)}
+                          disabled={assigningPath === dep.id || !manualPaths[dep.id]}
+                          style={{ marginTop: tokens.spacingVerticalS }}
+                        >
+                          {assigningPath === dep.id ? <Spinner size="tiny" /> : 'Apply Path'}
+                        </Button>
+                        {pathErrors[dep.id] && (
+                          <Text
+                            size={200}
+                            style={{
+                              color: tokens.colorPaletteRedForeground1,
+                              marginTop: tokens.spacingVerticalXS,
+                            }}
+                          >
+                            {pathErrors[dep.id]}
+                          </Text>
+                        )}
+                      </>
                     )}
                   </>
                 )}

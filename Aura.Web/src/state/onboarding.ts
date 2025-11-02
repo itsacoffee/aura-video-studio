@@ -49,6 +49,7 @@ export interface OnboardingState {
     required: boolean;
     installed: boolean;
     installing: boolean;
+    skipped: boolean;
   }>;
   apiKeys: Record<string, string>;
   apiKeyValidationStatus: Record<string, 'idle' | 'validating' | 'valid' | 'invalid'>;
@@ -84,6 +85,7 @@ export const initialOnboardingState: OnboardingState = {
       required: true,
       installed: false,
       installing: false,
+      skipped: false,
     },
     {
       id: 'ollama',
@@ -94,6 +96,7 @@ export const initialOnboardingState: OnboardingState = {
       required: false,
       installed: false,
       installing: false,
+      skipped: false,
     },
     {
       id: 'stable-diffusion',
@@ -103,6 +106,7 @@ export const initialOnboardingState: OnboardingState = {
       required: false,
       installed: false,
       installing: false,
+      skipped: false,
     },
   ],
   apiKeys: {},
@@ -136,6 +140,7 @@ export type OnboardingAction =
   | { type: 'START_INSTALL'; payload: string }
   | { type: 'INSTALL_COMPLETE'; payload: string }
   | { type: 'INSTALL_FAILED'; payload: { itemId: string; error: string } }
+  | { type: 'SKIP_INSTALL'; payload: string }
   | { type: 'MARK_READY' }
   | { type: 'RESET_VALIDATION' }
   | { type: 'SET_API_KEY'; payload: { provider: string; key: string } }
@@ -255,7 +260,9 @@ export function onboardingReducer(
         ...state,
         status: 'installed',
         installItems: state.installItems.map((item) =>
-          item.id === action.payload ? { ...item, installing: false, installed: true } : item
+          item.id === action.payload
+            ? { ...item, installing: false, installed: true, skipped: false }
+            : item
         ),
       };
 
@@ -270,6 +277,14 @@ export function onboardingReducer(
           ...state.errors,
           `Failed to install ${action.payload.itemId}: ${action.payload.error}`,
         ],
+      };
+
+    case 'SKIP_INSTALL':
+      return {
+        ...state,
+        installItems: state.installItems.map((item) =>
+          item.id === action.payload ? { ...item, skipped: true, installed: false } : item
+        ),
       };
 
     case 'MARK_READY':
@@ -706,12 +721,14 @@ export async function validateApiKeyThunk(
       replicate: 'replicateKey',
       ollama: 'ollamaKey',
     };
-    
+
     const requestField = apiKeyFieldMap[providerInfo.keyField];
     if (!requestField) {
-      throw new Error(`Unknown provider key field: ${providerInfo.keyField}. Please add mapping to apiKeyFieldMap.`);
+      throw new Error(
+        `Unknown provider key field: ${providerInfo.keyField}. Please add mapping to apiKeyFieldMap.`
+      );
     }
-    
+
     const apiKeyRequest: Record<string, string> = {};
     apiKeyRequest[requestField] = apiKey.trim();
 
@@ -753,7 +770,10 @@ export async function validateApiKeyThunk(
     if (providerResult.ok) {
       dispatch({
         type: 'API_KEY_VALID',
-        payload: { provider, accountInfo: providerResult.details || 'API key validated successfully' },
+        payload: {
+          provider,
+          accountInfo: providerResult.details || 'API key validated successfully',
+        },
       });
     } else {
       dispatch({
