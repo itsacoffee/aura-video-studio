@@ -272,7 +272,7 @@ const SystemHealthDashboard = () => {
 
       {provider.lastError && (
         <div className={styles.errorDetails}>
-          <strong>Error:</strong> {provider.lastError}
+          <strong>Error: </strong> {provider.lastError}
         </div>
       )}
 

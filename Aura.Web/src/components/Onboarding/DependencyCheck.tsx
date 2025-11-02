@@ -346,7 +346,7 @@ export function DependencyCheck({
                 {dep.status === 'error' && dep.errorMessage && (
                   <div>
                     <Text weight="semibold" style={{ color: tokens.colorPaletteRedForeground1 }}>
-                      Error:
+                      Error:{' '}
                     </Text>
                     <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
                       {dep.errorMessage}

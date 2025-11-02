@@ -183,7 +183,7 @@ export const TrendingTopicsExplorer: React.FC = () => {
 
       {error && (
         <div className={styles.errorContainer}>
-          <Text weight="semibold">Error:</Text>
+          <Text weight="semibold">Error: </Text>
           <Text>{error}</Text>
         </div>
       )}

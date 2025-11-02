@@ -1191,7 +1191,7 @@ export function EngineCard({ engine }: EngineCardProps) {
 
                   {diagnosticsData.lastError && (
                     <div className={styles.diagnosticsItem}>
-                      <Text className={styles.diagnosticsLabel}>Last Error:</Text>
+                      <Text className={styles.diagnosticsLabel}>Last Error: </Text>
                       <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
                         {diagnosticsData.lastError}
                       </Text>

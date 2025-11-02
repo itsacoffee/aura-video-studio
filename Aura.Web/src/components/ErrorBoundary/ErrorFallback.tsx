@@ -191,10 +191,10 @@ export function ErrorFallback({ error, errorInfo, onReset, onReport }: ErrorFall
         {showDetails && (
           <div className={styles.details}>
             <div>
-              <strong>Error:</strong> {error.name}
+              <strong>Error: </strong> {error.name}
             </div>
             <div>
-              <strong>Message:</strong> {error.message}
+              <strong>Message: </strong> {error.message}
             </div>
             {error.stack && (
               <div>
