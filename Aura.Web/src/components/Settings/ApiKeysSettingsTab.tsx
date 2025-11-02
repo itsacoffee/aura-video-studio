@@ -2,12 +2,14 @@ import {
   makeStyles,
   tokens,
   Title2,
+  Title3,
   Text,
   Button,
   Input,
   Card,
   Field,
   Tooltip,
+  Divider,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Filled,
@@ -32,6 +34,16 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     borderRadius: tokens.borderRadiusMedium,
     marginBottom: tokens.spacingVerticalL,
+  },
+  categorySection: {
+    marginTop: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalL,
+  },
+  categoryTitle: {
+    marginBottom: tokens.spacingVerticalM,
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
   },
   inputWithButton: {
     display: 'flex',
@@ -114,202 +126,239 @@ export function ApiKeysSettingsTab({
     <Card className={styles.section}>
       <Title2>API Keys</Title2>
       <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-        Configure API keys for external services. Keys are stored securely and never exposed in
-        plain text.
+        Configure API keys for external services. All fields are optional - the app supports free
+        alternatives for all features. Keys are stored securely and encrypted.
       </Text>
 
       <div className={styles.infoBox}>
         <Text weight="semibold" size={300}>
-          🔒 Security Notice
+          🔒 Security & Optional Fields
         </Text>
         <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
-          API keys are encrypted before storage. Never share your keys or commit them to version
-          control. You can test connections to verify keys are working.
+          All API keys are <strong>optional</strong>. The app works with free alternatives (Ollama
+          for LLM, Windows TTS for voice, stock images for visuals). Keys are encrypted before
+          storage. Use &ldquo;Test&rdquo; buttons to verify connectivity.
         </Text>
       </div>
 
       <div className={styles.form}>
-        <Field
-          label={
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              OpenAI API Key
-              <Tooltip
-                content={<TooltipWithLink content={TooltipContent.apiKeyOpenAI} />}
-                relationship="label"
-              >
-                <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
-              </Tooltip>
-            </div>
-          }
-          hint="Required for GPT-based script generation. Get your key from platform.openai.com"
-        >
-          <div className={styles.inputWithButton}>
-            <Input
-              style={{ flex: 1 }}
-              type="password"
-              value={settings.openAI}
-              onChange={(e) => updateSetting('openAI', e.target.value)}
-              placeholder="sk-..."
-            />
-            <Button
-              onClick={() => handleTest('openai', 'openAI')}
-              disabled={!settings.openAI || testing.openAI}
-            >
-              {testing.openAI ? 'Testing...' : 'Test'}
-            </Button>
+        {/* LLM Providers Section */}
+        <div className={styles.categorySection}>
+          <div className={styles.categoryTitle}>
+            <Title3>🤖 LLM Providers (Script Generation)</Title3>
           </div>
-          {renderTestResult('openAI')}
-        </Field>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalM }}>
+            Optional - Use Ollama (free, local) as an alternative.
+          </Text>
 
-        <Field
-          label={
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              Anthropic API Key (Claude)
-              <Tooltip
-                content={<TooltipWithLink content={TooltipContent.apiKeyAnthropic} />}
-                relationship="label"
+          <Field
+            label={
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                OpenAI API Key
+                <Tooltip
+                  content={<TooltipWithLink content={TooltipContent.apiKeyOpenAI} />}
+                  relationship="label"
+                >
+                  <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
+                </Tooltip>
+              </div>
+            }
+            hint="For GPT-4 script generation. Get your key from platform.openai.com"
+          >
+            <div className={styles.inputWithButton}>
+              <Input
+                style={{ flex: 1 }}
+                type="password"
+                value={settings.openAI}
+                onChange={(e) => updateSetting('openAI', e.target.value)}
+                placeholder="sk-... (optional)"
+              />
+              <Button
+                onClick={() => handleTest('openai', 'openAI')}
+                disabled={!settings.openAI || testing.openAI}
               >
-                <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
-              </Tooltip>
+                {testing.openAI ? 'Testing...' : 'Test'}
+              </Button>
             </div>
-          }
-          hint="For Claude-based AI features. Get your key from console.anthropic.com"
-        >
-          <div className={styles.inputWithButton}>
-            <Input
-              style={{ flex: 1 }}
-              type="password"
-              value={settings.anthropic}
-              onChange={(e) => updateSetting('anthropic', e.target.value)}
-              placeholder="sk-ant-..."
-            />
-            <Button
-              onClick={() => handleTest('anthropic', 'anthropic')}
-              disabled={!settings.anthropic || testing.anthropic}
-            >
-              {testing.anthropic ? 'Testing...' : 'Test'}
-            </Button>
-          </div>
-          {renderTestResult('anthropic')}
-        </Field>
+            {renderTestResult('openAI')}
+          </Field>
 
-        <Field
-          label="Stability AI API Key"
-          hint="For AI image generation. Get your key from platform.stability.ai"
-        >
-          <div className={styles.inputWithButton}>
-            <Input
-              style={{ flex: 1 }}
-              type="password"
-              value={settings.stabilityAI}
-              onChange={(e) => updateSetting('stabilityAI', e.target.value)}
-              placeholder="sk-..."
-            />
-            <Button
-              onClick={() => handleTest('stabilityai', 'stabilityAI')}
-              disabled={!settings.stabilityAI || testing.stabilityAI}
-            >
-              {testing.stabilityAI ? 'Testing...' : 'Test'}
-            </Button>
-          </div>
-          {renderTestResult('stabilityAI')}
-        </Field>
-
-        <Field
-          label={
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              ElevenLabs API Key
-              <Tooltip
-                content={<TooltipWithLink content={TooltipContent.apiKeyElevenLabs} />}
-                relationship="label"
+          <Field
+            label={
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                Anthropic API Key (Claude)
+                <Tooltip
+                  content={<TooltipWithLink content={TooltipContent.apiKeyAnthropic} />}
+                  relationship="label"
+                >
+                  <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
+                </Tooltip>
+              </div>
+            }
+            hint="For Claude-based AI features. Get your key from console.anthropic.com"
+          >
+            <div className={styles.inputWithButton}>
+              <Input
+                style={{ flex: 1 }}
+                type="password"
+                value={settings.anthropic}
+                onChange={(e) => updateSetting('anthropic', e.target.value)}
+                placeholder="sk-ant-... (optional)"
+              />
+              <Button
+                onClick={() => handleTest('anthropic', 'anthropic')}
+                disabled={!settings.anthropic || testing.anthropic}
               >
-                <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
-              </Tooltip>
+                {testing.anthropic ? 'Testing...' : 'Test'}
+              </Button>
             </div>
-          }
-          hint="For high-quality voice synthesis. Get your key from elevenlabs.io"
-        >
-          <div className={styles.inputWithButton}>
+            {renderTestResult('anthropic')}
+          </Field>
+
+          <Field label="Google API Key" hint="For Google Gemini services (optional)">
             <Input
-              style={{ flex: 1 }}
               type="password"
-              value={settings.elevenLabs}
-              onChange={(e) => updateSetting('elevenLabs', e.target.value)}
-              placeholder="Enter your ElevenLabs API key"
+              value={settings.google}
+              onChange={(e) => updateSetting('google', e.target.value)}
+              placeholder="Optional"
             />
-            <Button
-              onClick={() => handleTest('elevenlabs', 'elevenLabs')}
-              disabled={!settings.elevenLabs || testing.elevenLabs}
-            >
-              {testing.elevenLabs ? 'Testing...' : 'Test'}
-            </Button>
+          </Field>
+
+          <Field label="Azure API Key" hint="For Azure OpenAI services (optional)">
+            <Input
+              type="password"
+              value={settings.azure}
+              onChange={(e) => updateSetting('azure', e.target.value)}
+              placeholder="Optional"
+            />
+          </Field>
+        </div>
+
+        <Divider />
+
+        {/* Text-to-Speech Section */}
+        <div className={styles.categorySection}>
+          <div className={styles.categoryTitle}>
+            <Title3>🎤 Text-to-Speech Services</Title3>
           </div>
-          {renderTestResult('elevenLabs')}
-        </Field>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalM }}>
+            Optional - Use Windows TTS or Piper TTS (free, local) as alternatives.
+          </Text>
 
-        <Field
-          label={
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              Pexels API Key
-              <Tooltip
-                content={<TooltipWithLink content={TooltipContent.apiKeyPexels} />}
-                relationship="label"
+          <Field
+            label={
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                ElevenLabs API Key
+                <Tooltip
+                  content={<TooltipWithLink content={TooltipContent.apiKeyElevenLabs} />}
+                  relationship="label"
+                >
+                  <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
+                </Tooltip>
+              </div>
+            }
+            hint="For high-quality voice synthesis. Get your key from elevenlabs.io"
+          >
+            <div className={styles.inputWithButton}>
+              <Input
+                style={{ flex: 1 }}
+                type="password"
+                value={settings.elevenLabs}
+                onChange={(e) => updateSetting('elevenLabs', e.target.value)}
+                placeholder="Optional"
+              />
+              <Button
+                onClick={() => handleTest('elevenlabs', 'elevenLabs')}
+                disabled={!settings.elevenLabs || testing.elevenLabs}
               >
-                <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
-              </Tooltip>
+                {testing.elevenLabs ? 'Testing...' : 'Test'}
+              </Button>
             </div>
-          }
-          hint="For stock video and images. Get your free key from pexels.com/api"
-        >
-          <Input
-            type="password"
-            value={settings.pexels}
-            onChange={(e) => updateSetting('pexels', e.target.value)}
-            placeholder="Enter your Pexels API key"
-          />
-        </Field>
+            {renderTestResult('elevenLabs')}
+          </Field>
+        </div>
 
-        <Field
-          label="Pixabay API Key"
-          hint="For stock video and images. Get your free key from pixabay.com/api"
-        >
-          <Input
-            type="password"
-            value={settings.pixabay}
-            onChange={(e) => updateSetting('pixabay', e.target.value)}
-            placeholder="Enter your Pixabay API key"
-          />
-        </Field>
+        <Divider />
 
-        <Field
-          label="Unsplash API Key"
-          hint="For stock images. Get your free key from unsplash.com/developers"
-        >
-          <Input
-            type="password"
-            value={settings.unsplash}
-            onChange={(e) => updateSetting('unsplash', e.target.value)}
-            placeholder="Enter your Unsplash API key"
-          />
-        </Field>
+        {/* Image Services Section */}
+        <div className={styles.categorySection}>
+          <div className={styles.categoryTitle}>
+            <Title3>🖼️ Image Services</Title3>
+          </div>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalM }}>
+            Optional - Free stock images are available without API keys.
+          </Text>
 
-        <Field label="Google API Key" hint="For Google Cloud services (optional)">
-          <Input
-            type="password"
-            value={settings.google}
-            onChange={(e) => updateSetting('google', e.target.value)}
-            placeholder="Enter your Google API key"
-          />
-        </Field>
+          <Field
+            label="Stability AI API Key"
+            hint="For AI image generation. Get your key from platform.stability.ai"
+          >
+            <div className={styles.inputWithButton}>
+              <Input
+                style={{ flex: 1 }}
+                type="password"
+                value={settings.stabilityAI}
+                onChange={(e) => updateSetting('stabilityAI', e.target.value)}
+                placeholder="sk-... (optional)"
+              />
+              <Button
+                onClick={() => handleTest('stabilityai', 'stabilityAI')}
+                disabled={!settings.stabilityAI || testing.stabilityAI}
+              >
+                {testing.stabilityAI ? 'Testing...' : 'Test'}
+              </Button>
+            </div>
+            {renderTestResult('stabilityAI')}
+          </Field>
 
-        <Field label="Azure API Key" hint="For Azure Cognitive Services (optional)">
-          <Input
-            type="password"
-            value={settings.azure}
-            onChange={(e) => updateSetting('azure', e.target.value)}
-            placeholder="Enter your Azure API key"
-          />
-        </Field>
+          <Field
+            label={
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                Pexels API Key
+                <Tooltip
+                  content={<TooltipWithLink content={TooltipContent.apiKeyPexels} />}
+                  relationship="label"
+                >
+                  <Info24Regular style={{ marginLeft: tokens.spacingHorizontalXS }} />
+                </Tooltip>
+              </div>
+            }
+            hint="For stock video and images. Get your free key from pexels.com/api"
+          >
+            <Input
+              type="password"
+              value={settings.pexels}
+              onChange={(e) => updateSetting('pexels', e.target.value)}
+              placeholder="Optional"
+            />
+          </Field>
+
+          <Field
+            label="Pixabay API Key"
+            hint="For stock video and images. Get your free key from pixabay.com/api"
+          >
+            <Input
+              type="password"
+              value={settings.pixabay}
+              onChange={(e) => updateSetting('pixabay', e.target.value)}
+              placeholder="Optional"
+            />
+          </Field>
+
+          <Field
+            label="Unsplash API Key"
+            hint="For high-quality stock images. Get your free key from unsplash.com/developers"
+          >
+            <Input
+              type="password"
+              value={settings.unsplash}
+              onChange={(e) => updateSetting('unsplash', e.target.value)}
+              placeholder="Optional"
+            />
+          </Field>
+        </div>
+
+        <Divider />
 
         {hasChanges && (
           <div className={styles.infoBox}>
