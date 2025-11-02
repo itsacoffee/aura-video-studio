@@ -7,6 +7,7 @@ import {
   SelectTabEvent,
 } from '@fluentui/react-components';
 import React, { useState } from 'react';
+import { RouteErrorBoundary } from '../ErrorBoundary/RouteErrorBoundary';
 import { AudienceInsightPanel } from './AudienceInsightPanel';
 import { ContentCalendarView } from './ContentCalendarView';
 import { TopicSuggestionList } from './TopicSuggestionList';
@@ -39,7 +40,7 @@ const useStyles = makeStyles({
   },
 });
 
-export const ContentPlanningDashboard: React.FC = () => {
+const ContentPlanningDashboardContent: React.FC = () => {
   const styles = useStyles();
   const [selectedTab, setSelectedTab] = useState<string>('trends');
 
@@ -70,5 +71,14 @@ export const ContentPlanningDashboard: React.FC = () => {
         {selectedTab === 'audience' && <AudienceInsightPanel />}
       </div>
     </div>
+  );
+};
+
+// Main export with error boundary
+export const ContentPlanningDashboard: React.FC = () => {
+  return (
+    <RouteErrorBoundary>
+      <ContentPlanningDashboardContent />
+    </RouteErrorBoundary>
   );
 };

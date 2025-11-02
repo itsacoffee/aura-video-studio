@@ -19,6 +19,7 @@ import {
 import React, { useState, useEffect, useCallback } from 'react';
 import { CollectionsPanel } from '../../components/Assets/CollectionsPanel';
 import { StockImageSearch } from '../../components/Assets/StockImageSearch';
+import { RouteErrorBoundary } from '../../components/ErrorBoundary/RouteErrorBoundary';
 import { assetService } from '../../services/assetService';
 import { Asset, AssetType } from '../../types/assets';
 
@@ -129,7 +130,7 @@ const useStyles = makeStyles({
   },
 });
 
-export const AssetLibrary: React.FC = () => {
+const AssetLibraryContent: React.FC = () => {
   const styles = useStyles();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -150,9 +151,10 @@ export const AssetLibrary: React.FC = () => {
         1,
         50
       );
-      setAssets(result.assets);
-    } catch (error) {
-      console.error('Failed to load assets:', error);
+      setAssets(Array.isArray(result.assets) ? result.assets : []);
+    } catch {
+      // Errors are logged by the service/API client
+      setAssets([]);
     } finally {
       setLoading(false);
     }
@@ -411,6 +413,15 @@ export const AssetLibrary: React.FC = () => {
         onImageAdded={loadAssets}
       />
     </div>
+  );
+};
+
+// Main export with error boundary
+export const AssetLibrary: React.FC = () => {
+  return (
+    <RouteErrorBoundary>
+      <AssetLibraryContent />
+    </RouteErrorBoundary>
   );
 };
 

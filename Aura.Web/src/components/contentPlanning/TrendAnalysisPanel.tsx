@@ -109,9 +109,10 @@ export const TrendAnalysisPanel: React.FC = () => {
         platform,
         category || undefined
       );
-      setTrends(response.trends);
-    } catch (error) {
-      console.error('Failed to load trends:', error);
+      setTrends(Array.isArray(response.trends) ? response.trends : []);
+    } catch {
+      // Errors are logged by the service/API client
+      setTrends([]);
     } finally {
       setLoading(false);
     }
@@ -134,9 +135,10 @@ export const TrendAnalysisPanel: React.FC = () => {
         category: category || undefined,
         keywords: keywordList.length > 0 ? keywordList : ['trending'],
       });
-      setTrends(response.trends);
-    } catch (error) {
-      console.error('Failed to analyze trends:', error);
+      setTrends(Array.isArray(response.trends) ? response.trends : []);
+    } catch {
+      // Errors are logged by the service/API client
+      setTrends([]);
     } finally {
       setLoading(false);
     }

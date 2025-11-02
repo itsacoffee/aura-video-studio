@@ -30,8 +30,9 @@ import {
   Delete24Regular,
   DocumentCopy24Regular,
 } from '@fluentui/react-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RouteErrorBoundary } from '../../components/ErrorBoundary/RouteErrorBoundary';
 import { SkeletonTable, ErrorState } from '../../components/Loading';
 import { getProjects, deleteProject, duplicateProject } from '../../services/projectService';
 import { useJobsStore } from '../../state/jobs';
@@ -81,7 +82,7 @@ const useStyles = makeStyles({
   },
 });
 
-export function ProjectsPage() {
+function ProjectsPageContent() {
   const styles = useStyles();
   const { jobs, loading, listJobs } = useJobsStore();
   const navigate = useNavigate();
@@ -90,24 +91,25 @@ export function ProjectsPage() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
 
-  useEffect(() => {
-    listJobs();
-    loadEditorProjects();
-  }, [listJobs]);
-
-  const loadEditorProjects = async () => {
+  const loadEditorProjects = useCallback(async () => {
     setLoadingProjects(true);
     setProjectsError(null);
     try {
       const projects = await getProjects();
-      setEditorProjects(projects);
-    } catch (error) {
-      console.error('Failed to load editor projects:', error);
-      setProjectsError(error instanceof Error ? error.message : 'Failed to load projects');
+      setEditorProjects(Array.isArray(projects) ? projects : []);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      setProjectsError(err.message);
+      setEditorProjects([]);
     } finally {
       setLoadingProjects(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    listJobs();
+    loadEditorProjects();
+  }, [listJobs, loadEditorProjects]);
 
   const handleOpenProject = (projectId: string) => {
     navigate(`/editor?projectId=${projectId}`);
@@ -445,4 +447,13 @@ function formatProjectDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Main export with error boundary
+export function ProjectsPage() {
+  return (
+    <RouteErrorBoundary>
+      <ProjectsPageContent />
+    </RouteErrorBoundary>
+  );
 }

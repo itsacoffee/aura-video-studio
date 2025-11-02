@@ -153,17 +153,39 @@ export const contentPlanningService = {
   },
 
   /**
-   * Gets trending topics for a specific platform
+   * Gets trending topics for a specific platform with validation and error handling
    */
   async getPlatformTrends(
     platform: string,
     category?: string
   ): Promise<{ success: boolean; trends: TrendData[]; platform: string; category?: string }> {
-    const params = category ? { category } : {};
-    const response = await apiClient.get(`/api/ContentPlanning/trends/platform/${platform}`, {
-      params,
-    });
-    return response.data;
+    try {
+      const params = category ? { category } : {};
+      const response = await apiClient.get(`/api/ContentPlanning/trends/platform/${platform}`, {
+        params,
+      });
+
+      // Ensure response has expected structure
+      const data = response.data;
+      if (!data || typeof data !== 'object') {
+        return { success: true, trends: [], platform, category };
+      }
+
+      // Handle both direct array and wrapped response
+      if (Array.isArray(data)) {
+        return { success: true, trends: data, platform, category };
+      }
+
+      return {
+        success: data.success ?? true,
+        trends: Array.isArray(data.trends) ? data.trends : [],
+        platform: data.platform ?? platform,
+        category: data.category ?? category,
+      };
+    } catch (error: unknown) {
+      // Return empty result instead of throwing - errors are already logged by API client
+      return { success: false, trends: [], platform, category };
+    }
   },
 
   /**
