@@ -15,7 +15,6 @@ import {
 } from '@fluentui/react-components';
 import { Save24Regular, ArrowDownload24Regular, ArrowUpload24Regular } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
-import { ValidatedInput } from '../components/forms/ValidatedInput';
 import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel';
 import { ApiKeysSettingsTab } from '../components/Settings/ApiKeysSettingsTab';
 import { ContentSafetyTab } from '../components/Settings/ContentSafetyTab';
@@ -41,7 +40,7 @@ import type { Profile } from '../types';
 import type { OllamaModel } from '../types/api-v1';
 import type { UserSettings } from '../types/settings';
 import { createDefaultSettings } from '../types/settings';
-import { apiKeysSchema, providerPathsSchema } from '../utils/formValidation';
+import { providerPathsSchema } from '../utils/formValidation';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
 
 // Default Ollama model constant
@@ -134,18 +133,6 @@ export function SettingsPage() {
   const [uiScale, setUiScale] = useState(100);
   const [compactMode, setCompactMode] = useState(false);
 
-  // API Keys state
-  const [apiKeys, setApiKeys] = useState({
-    openai: '',
-    elevenlabs: '',
-    pexels: '',
-    pixabay: '',
-    unsplash: '',
-    stabilityai: '',
-  });
-  const [keysModified, setKeysModified] = useState(false);
-  const [savingKeys, setSavingKeys] = useState(false);
-
   // Local Provider Paths state
   const [providerPaths, setProviderPaths] = useState({
     stableDiffusionUrl: 'http://127.0.0.1:7860',
@@ -181,17 +168,6 @@ export function SettingsPage() {
   const [projectsDirectory, setProjectsDirectory] = useState('');
   const [downloadsDirectory, setDownloadsDirectory] = useState('');
 
-  // Form validation for API keys
-  const {
-    values: apiKeyValues,
-    errors: apiKeyErrors,
-    setValue: setApiKeyValue,
-  } = useFormValidation({
-    schema: apiKeysSchema,
-    initialValues: apiKeys,
-    debounceMs: 500,
-  });
-
   // Form validation for provider paths
   const {
     values: providerPathValues,
@@ -207,7 +183,6 @@ export function SettingsPage() {
     loadUserSettings();
     fetchSettings();
     fetchProfiles();
-    fetchApiKeys();
     fetchProviderPaths();
     fetchPortableModeSettings();
     fetchSelectedOllamaModel();
@@ -264,25 +239,6 @@ export function SettingsPage() {
     }
   };
 
-  const fetchApiKeys = async () => {
-    try {
-      const response = await fetch(apiUrl('/api/apikeys/load'));
-      if (response.ok) {
-        const data = await response.json();
-        setApiKeys({
-          openai: data.openai || '',
-          elevenlabs: data.elevenlabs || '',
-          pexels: data.pexels || '',
-          pixabay: data.pixabay || '',
-          unsplash: data.unsplash || '',
-          stabilityai: data.stabilityai || '',
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching API keys:', error);
-    }
-  };
-
   const saveSettings = async () => {
     try {
       const response = await fetch('/api/settings/save', {
@@ -306,35 +262,6 @@ export function SettingsPage() {
     }
   };
 
-  const saveApiKeys = async () => {
-    setSavingKeys(true);
-    try {
-      const response = await fetch('/api/apikeys/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          openAiKey: apiKeys.openai,
-          elevenLabsKey: apiKeys.elevenlabs,
-          pexelsKey: apiKeys.pexels,
-          pixabayKey: apiKeys.pixabay,
-          unsplashKey: apiKeys.unsplash,
-          stabilityAiKey: apiKeys.stabilityai,
-        }),
-      });
-      if (response.ok) {
-        alert('API keys saved successfully');
-        setKeysModified(false);
-      } else {
-        alert('Error saving API keys');
-      }
-    } catch (error) {
-      console.error('Error saving API keys:', error);
-      alert('Error saving API keys');
-    } finally {
-      setSavingKeys(false);
-    }
-  };
-
   const applyProfile = async (profileName: string) => {
     try {
       const response = await fetch('/api/profiles/apply', {
@@ -348,11 +275,6 @@ export function SettingsPage() {
     } catch (error) {
       console.error('Error applying profile:', error);
     }
-  };
-
-  const updateApiKey = (key: keyof typeof apiKeys, value: string) => {
-    setApiKeys((prev) => ({ ...prev, [key]: value }));
-    setKeysModified(true);
   };
 
   const fetchProviderPaths = async () => {
@@ -520,64 +442,6 @@ export function SettingsPage() {
       .catch((err) => {
         console.error('Failed to copy:', err);
       });
-  };
-
-  const exportSettings = () => {
-    const settingsData = {
-      version: '1.0.0',
-      exported: new Date().toISOString(),
-      settings: {
-        offlineMode,
-        uiScale,
-        compactMode,
-      },
-      apiKeys,
-      providerPaths,
-      profiles,
-    };
-
-    const blob = new Blob([JSON.stringify(settingsData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `aura-settings-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const importSettings = async (file: File) => {
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-
-      // Validate schema
-      if (!data.version || !data.settings) {
-        alert('Invalid settings file format');
-        return;
-      }
-
-      // Apply settings
-      if (data.settings) {
-        setOfflineMode(data.settings.offlineMode ?? false);
-        setUiScale(data.settings.uiScale ?? 100);
-        setCompactMode(data.settings.compactMode ?? false);
-      }
-
-      if (data.apiKeys) {
-        setApiKeys(data.apiKeys);
-        setKeysModified(true);
-      }
-
-      if (data.providerPaths) {
-        setProviderPaths(data.providerPaths);
-        setPathsModified(true);
-      }
-
-      alert('Settings imported successfully! Remember to save.');
-    } catch (error) {
-      console.error('Error importing settings:', error);
-      alert('Error importing settings: Invalid JSON file');
-    }
   };
 
   const applyProfileTemplate = (template: string) => {
@@ -1344,19 +1208,25 @@ export function SettingsPage() {
 
           <div className={styles.form}>
             <div>
-              <ValidatedInput
+              <Field
                 label="Stable Diffusion WebUI URL"
-                placeholder="http://127.0.0.1:7860"
-                value={providerPathValues.stableDiffusionUrl || ''}
-                onChange={(value) => {
-                  setProviderPathValue('stableDiffusionUrl', value);
-                  updateProviderPath('stableDiffusionUrl', value);
-                }}
-                error={providerPathErrors.stableDiffusionUrl?.error}
-                isValid={providerPathErrors.stableDiffusionUrl?.isValid}
-                isValidating={providerPathErrors.stableDiffusionUrl?.isValidating}
                 hint="URL where Stable Diffusion WebUI is running (requires NVIDIA GPU with 6GB+ VRAM). Format: http://host:port"
-              />
+                validationMessage={
+                  providerPathErrors.stableDiffusionUrl?.error
+                    ? providerPathErrors.stableDiffusionUrl.error
+                    : undefined
+                }
+                validationState={providerPathErrors.stableDiffusionUrl?.error ? 'error' : undefined}
+              >
+                <Input
+                  placeholder="http://127.0.0.1:7860"
+                  value={providerPathValues.stableDiffusionUrl || ''}
+                  onChange={(e) => {
+                    setProviderPathValue('stableDiffusionUrl', e.target.value);
+                    updateProviderPath('stableDiffusionUrl', e.target.value);
+                  }}
+                />
+              </Field>
               <Button
                 size="small"
                 onClick={() =>
@@ -1383,19 +1253,25 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <ValidatedInput
+              <Field
                 label="Ollama URL"
-                placeholder="http://127.0.0.1:11434"
-                value={providerPathValues.ollamaUrl || ''}
-                onChange={(value) => {
-                  setProviderPathValue('ollamaUrl', value);
-                  updateProviderPath('ollamaUrl', value);
-                }}
-                error={providerPathErrors.ollamaUrl?.error}
-                isValid={providerPathErrors.ollamaUrl?.isValid}
-                isValidating={providerPathErrors.ollamaUrl?.isValidating}
                 hint="URL where Ollama is running for local LLM generation. Format: http://host:port"
-              />
+                validationMessage={
+                  providerPathErrors.ollamaUrl?.error
+                    ? providerPathErrors.ollamaUrl.error
+                    : undefined
+                }
+                validationState={providerPathErrors.ollamaUrl?.error ? 'error' : undefined}
+              >
+                <Input
+                  placeholder="http://127.0.0.1:11434"
+                  value={providerPathValues.ollamaUrl || ''}
+                  onChange={(e) => {
+                    setProviderPathValue('ollamaUrl', e.target.value);
+                    updateProviderPath('ollamaUrl', e.target.value);
+                  }}
+                />
+              </Field>
               <Button
                 size="small"
                 onClick={() => testProvider('ollama', providerPathValues.ollamaUrl || '')}
@@ -1577,113 +1453,6 @@ export function SettingsPage() {
         </>
       )}
 
-      {activeTab === 'apikeys' && (
-        <Card className={styles.section}>
-          <Title2>API Keys</Title2>
-          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-            Configure API keys for external services. Keys are stored securely.
-          </Text>
-          <div className={styles.form}>
-            <ValidatedInput
-              label="OpenAI API Key"
-              type="password"
-              placeholder="sk-..."
-              value={apiKeyValues.openai || ''}
-              onChange={(value) => {
-                setApiKeyValue('openai', value);
-                updateApiKey('openai', value);
-              }}
-              error={apiKeyErrors.openai?.error}
-              isValid={apiKeyErrors.openai?.isValid}
-              isValidating={apiKeyErrors.openai?.isValidating}
-              hint="Required for GPT-based script generation. Must start with 'sk-' and be at least 20 characters."
-            />
-            <ValidatedInput
-              label="ElevenLabs API Key"
-              type="password"
-              placeholder="Enter your ElevenLabs API key"
-              value={apiKeyValues.elevenlabs || ''}
-              onChange={(value) => {
-                setApiKeyValue('elevenlabs', value);
-                updateApiKey('elevenlabs', value);
-              }}
-              error={apiKeyErrors.elevenlabs?.error}
-              isValid={apiKeyErrors.elevenlabs?.isValid}
-              isValidating={apiKeyErrors.elevenlabs?.isValidating}
-              hint="Required for high-quality voice synthesis. Must be at least 32 characters."
-            />
-            <ValidatedInput
-              label="Pexels API Key"
-              type="password"
-              placeholder="Enter your Pexels API key"
-              value={apiKeyValues.pexels || ''}
-              onChange={(value) => {
-                setApiKeyValue('pexels', value);
-                updateApiKey('pexels', value);
-              }}
-              error={apiKeyErrors.pexels?.error}
-              isValid={apiKeyErrors.pexels?.isValid}
-              isValidating={apiKeyErrors.pexels?.isValidating}
-              hint="Required for stock video and images from Pexels."
-            />
-            <ValidatedInput
-              label="Pixabay API Key"
-              type="password"
-              placeholder="Enter your Pixabay API key"
-              value={apiKeyValues.pixabay || ''}
-              onChange={(value) => {
-                setApiKeyValue('pixabay', value);
-                updateApiKey('pixabay', value);
-              }}
-              error={apiKeyErrors.pixabay?.error}
-              isValid={apiKeyErrors.pixabay?.isValid}
-              isValidating={apiKeyErrors.pixabay?.isValidating}
-              hint="Required for stock video and images from Pixabay."
-            />
-            <ValidatedInput
-              label="Unsplash API Key"
-              type="password"
-              placeholder="Enter your Unsplash API key"
-              value={apiKeyValues.unsplash || ''}
-              onChange={(value) => {
-                setApiKeyValue('unsplash', value);
-                updateApiKey('unsplash', value);
-              }}
-              error={apiKeyErrors.unsplash?.error}
-              isValid={apiKeyErrors.unsplash?.isValid}
-              isValidating={apiKeyErrors.unsplash?.isValidating}
-              hint="Required for stock images from Unsplash."
-            />
-            <ValidatedInput
-              label="Stability AI API Key"
-              type="password"
-              placeholder="sk-..."
-              value={apiKeyValues.stabilityai || ''}
-              onChange={(value) => {
-                setApiKeyValue('stabilityai', value);
-                updateApiKey('stabilityai', value);
-              }}
-              error={apiKeyErrors.stabilityai?.error}
-              isValid={apiKeyErrors.stabilityai?.isValid}
-              isValidating={apiKeyErrors.stabilityai?.isValidating}
-              hint="Optional - for AI image generation. Must start with 'sk-'."
-            />
-            {keysModified && (
-              <Text size={200} style={{ color: tokens.colorPaletteYellowForeground1 }}>
-                ⚠️ You have unsaved changes
-              </Text>
-            )}
-            <Button
-              appearance="primary"
-              onClick={saveApiKeys}
-              disabled={!keysModified || savingKeys}
-            >
-              {savingKeys ? 'Saving...' : 'Save API Keys'}
-            </Button>
-          </div>
-        </Card>
-      )}
-
       {activeTab === 'aioptimization' && <AIOptimizationPanel />}
 
       {activeTab === 'templates' && (
@@ -1696,24 +1465,10 @@ export function SettingsPage() {
             </Text>
             <div className={styles.form}>
               <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
-                <Button appearance="primary" onClick={exportSettings}>
+                <Button appearance="primary" onClick={exportUserSettings}>
                   Export Settings to JSON
                 </Button>
-                <Button
-                  appearance="secondary"
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = '.json';
-                    input.onchange = (e) => {
-                      const file = (e.target as HTMLInputElement).files?.[0];
-                      if (file) {
-                        importSettings(file);
-                      }
-                    };
-                    input.click();
-                  }}
-                >
+                <Button appearance="secondary" onClick={importUserSettings}>
                   Import Settings from JSON
                 </Button>
               </div>
