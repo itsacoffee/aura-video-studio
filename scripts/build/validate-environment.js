@@ -25,7 +25,7 @@ const __dirname = dirname(__filename);
 
 const REQUIRED_NODE_VERSION = '20.0.0'; // Minimum Node.js version (fallback if package.json not found)
 const REQUIRED_NPM_VERSION = '9.0.0'; // Minimum npm version (supports v9, v10, v11+)
-const REQUIRED_NPM_MAJOR = 9; // Minimum npm major version
+const REQUIRED_NPM_MAJOR = parseInt(REQUIRED_NPM_VERSION.split('.')[0]); // Derived from REQUIRED_NPM_VERSION
 
 let hasErrors = false;
 let hasWarnings = false;
