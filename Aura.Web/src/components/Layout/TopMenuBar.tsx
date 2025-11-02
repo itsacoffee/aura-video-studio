@@ -14,8 +14,12 @@ import {
   MenuDivider,
   Button,
 } from '@fluentui/react-components';
-import { useState } from 'react';
+import { Checkmark20Regular } from '@fluentui/react-icons';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getWorkspaceLayouts, PanelSizes } from '../../services/workspaceLayoutService';
+import { useWorkspaceLayoutStore } from '../../state/workspaceLayout';
+import { SaveWorkspaceDialog } from '../EditorLayout/SaveWorkspaceDialog';
 
 const useStyles = makeStyles({
   menuBar: {
@@ -62,6 +66,7 @@ interface TopMenuBarProps {
   onExportVideo?: () => void;
   onSaveProject?: () => void;
   onShowKeyboardShortcuts?: () => void;
+  getCurrentPanelSizes?: () => PanelSizes;
 }
 
 export function TopMenuBar({
@@ -69,14 +74,40 @@ export function TopMenuBar({
   onExportVideo,
   onSaveProject,
   onShowKeyboardShortcuts,
+  getCurrentPanelSizes,
 }: TopMenuBarProps) {
   const styles = useStyles();
   const navigate = useNavigate();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [showSaveWorkspaceDialog, setShowSaveWorkspaceDialog] = useState(false);
+  const { currentLayoutId, setCurrentLayout, resetLayout, saveCurrentLayout } =
+    useWorkspaceLayoutStore();
+  const workspaceLayouts = getWorkspaceLayouts();
 
   const handleMenuToggle = (menuId: string, isOpen: boolean) => {
     setOpenMenus({ ...openMenus, [menuId]: isOpen });
   };
+
+  const handleWorkspaceSelect = useCallback(
+    (layoutId: string) => {
+      setCurrentLayout(layoutId);
+    },
+    [setCurrentLayout]
+  );
+
+  const handleSaveWorkspace = useCallback(
+    (name: string, description: string) => {
+      if (getCurrentPanelSizes) {
+        const panelSizes = getCurrentPanelSizes();
+        saveCurrentLayout(name, description, panelSizes);
+      }
+    },
+    [getCurrentPanelSizes, saveCurrentLayout]
+  );
+
+  const handleResetWorkspace = useCallback(() => {
+    resetLayout();
+  }, [resetLayout]);
 
   return (
     <div className={styles.menuBar}>
@@ -236,13 +267,22 @@ export function TopMenuBar({
         </MenuTrigger>
         <MenuPopover>
           <MenuList>
-            <MenuItem>Workspace: Editing</MenuItem>
-            <MenuItem>Workspace: Color</MenuItem>
-            <MenuItem>Workspace: Audio</MenuItem>
-            <MenuItem>Workspace: Effects</MenuItem>
+            {workspaceLayouts.map((layout) => {
+              const isActive = layout.id === currentLayoutId;
+              return (
+                <MenuItem key={layout.id} onClick={() => handleWorkspaceSelect(layout.id)}>
+                  <div className={styles.menuItemContent}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {isActive && <Checkmark20Regular />}
+                      {layout.name}
+                    </span>
+                  </div>
+                </MenuItem>
+              );
+            })}
             <MenuDivider />
-            <MenuItem>Save Workspace...</MenuItem>
-            <MenuItem>Reset Workspace</MenuItem>
+            <MenuItem onClick={() => setShowSaveWorkspaceDialog(true)}>Save Workspace...</MenuItem>
+            <MenuItem onClick={handleResetWorkspace}>Reset Workspace</MenuItem>
           </MenuList>
         </MenuPopover>
       </Menu>
@@ -270,6 +310,12 @@ export function TopMenuBar({
           </MenuList>
         </MenuPopover>
       </Menu>
+
+      <SaveWorkspaceDialog
+        open={showSaveWorkspaceDialog}
+        onClose={() => setShowSaveWorkspaceDialog(false)}
+        onSave={handleSaveWorkspace}
+      />
     </div>
   );
 }

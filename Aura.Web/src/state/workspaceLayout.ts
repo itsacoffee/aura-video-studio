@@ -4,6 +4,8 @@ import {
   getCurrentLayoutId,
   getWorkspaceLayout,
   WorkspaceLayout,
+  saveWorkspaceLayout,
+  PanelSizes,
 } from '../services/workspaceLayoutService';
 
 interface WorkspaceLayoutState {
@@ -22,6 +24,7 @@ interface WorkspaceLayoutState {
   togglePanelCollapsed: (panel: keyof WorkspaceLayoutState['collapsedPanels']) => void;
   resetLayout: () => void;
   getCurrentLayout: () => WorkspaceLayout | null;
+  saveCurrentLayout: (name: string, description: string, panelSizes: PanelSizes) => WorkspaceLayout;
 }
 
 const loadCollapsedPanels = () => {
@@ -133,5 +136,22 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
   getCurrentLayout: () => {
     const layoutId = get().currentLayoutId;
     return getWorkspaceLayout(layoutId);
+  },
+
+  saveCurrentLayout: (name: string, description: string, panelSizes: PanelSizes) => {
+    const currentCollapsed = get().collapsedPanels;
+    const newLayout = saveWorkspaceLayout({
+      name,
+      description,
+      panelSizes,
+      visiblePanels: {
+        properties: !currentCollapsed.properties,
+        mediaLibrary: !currentCollapsed.mediaLibrary,
+        effects: !currentCollapsed.effects,
+        history: !currentCollapsed.history,
+      },
+    });
+    set({ currentLayoutId: newLayout.id });
+    return newLayout;
   },
 }));
