@@ -37,7 +37,6 @@ import ABTestManagementPage from './pages/PerformanceAnalytics/ABTestManagementP
 import PerformanceAnalyticsPage from './pages/PerformanceAnalytics/PerformanceAnalyticsPage';
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
 import { PromptManagementPage } from './pages/PromptManagement/PromptManagementPage';
-import { PublishPage } from './pages/PublishPage';
 import QualityValidationPage from './pages/QualityValidation/QualityValidationPage';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { RenderPage } from './pages/RenderPage';
@@ -423,7 +422,7 @@ function App() {
                     <Route path="/render" element={<RenderPage />} />
                     <Route path="/platform" element={<PlatformDashboard />} />
                     <Route path="/quality" element={<QualityDashboard />} />
-                    <Route path="/publish" element={<PublishPage />} />
+
                     <Route path="/projects" element={<ProjectsPage />} />
                     <Route path="/export-history" element={<ExportHistoryPage />} />
                     <Route path="/assets" element={<AssetLibrary />} />

@@ -130,7 +130,6 @@ namespace Aura.App
                     services.AddTransient<ViewModels.CreateViewModel>();
                     services.AddTransient<ViewModels.StoryboardViewModel>();
                     services.AddTransient<ViewModels.RenderViewModel>();
-                    services.AddTransient<ViewModels.PublishViewModel>();
                     services.AddTransient<ViewModels.SettingsViewModel>();
                     services.AddTransient<ViewModels.HardwareProfileViewModel>();
                     
@@ -138,7 +137,6 @@ namespace Aura.App
                     services.AddTransient<Views.CreateView>();
                     services.AddTransient<Views.StoryboardView>();
                     services.AddTransient<Views.RenderView>();
-                    services.AddTransient<Views.PublishView>();
                     services.AddTransient<Views.SettingsView>();
                     services.AddTransient<Views.HardwareProfileView>();
                     

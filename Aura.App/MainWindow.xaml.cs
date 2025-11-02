@@ -69,7 +69,6 @@ namespace Aura.App
                 "create" => typeof(CreateView),
                 "storyboard" => typeof(StoryboardView),
                 "render" => typeof(RenderView),
-                "publish" => typeof(PublishView),
                 "library" => null, // To be implemented
                 "hardware" => typeof(HardwareProfileView),
                 "settings" => typeof(SettingsView),
