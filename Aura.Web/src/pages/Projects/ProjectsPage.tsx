@@ -97,9 +97,9 @@ function ProjectsPageContent() {
     try {
       const projects = await getProjects();
       setEditorProjects(Array.isArray(projects) ? projects : []);
-    } catch (error) {
-      console.error('Failed to load editor projects:', error);
-      setProjectsError(error instanceof Error ? error.message : 'Failed to load projects');
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      setProjectsError(err.message);
       setEditorProjects([]);
     } finally {
       setLoadingProjects(false);

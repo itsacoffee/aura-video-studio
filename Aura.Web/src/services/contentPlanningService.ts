@@ -183,8 +183,7 @@ export const contentPlanningService = {
         category: data.category ?? category,
       };
     } catch (error: unknown) {
-      console.error('Failed to get platform trends:', error);
-      // Return empty result instead of throwing
+      // Return empty result instead of throwing - errors are already logged by API client
       return { success: false, trends: [], platform, category };
     }
   },

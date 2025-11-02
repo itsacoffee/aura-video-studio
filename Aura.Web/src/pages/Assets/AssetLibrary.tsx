@@ -152,8 +152,8 @@ const AssetLibraryContent: React.FC = () => {
         50
       );
       setAssets(Array.isArray(result.assets) ? result.assets : []);
-    } catch (error) {
-      console.error('Failed to load assets:', error);
+    } catch {
+      // Errors are logged by the service/API client
       setAssets([]);
     } finally {
       setLoading(false);
