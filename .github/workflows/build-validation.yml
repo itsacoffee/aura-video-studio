@@ -9,7 +9,7 @@ on:
 
 env:
   DOTNET_VERSION: '8.0.x'
-  NODE_VERSION: '18.18.0'
+  NODE_VERSION: '20'
 
 jobs:
   # Job 1: Windows Build Test - ensures clean build on Windows 11
@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'Aura.Web/.nvmrc'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: 'Aura.Web/package-lock.json'
       
@@ -118,7 +118,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'Aura.Web/.nvmrc'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: 'Aura.Web/package-lock.json'
       
@@ -173,7 +173,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'Aura.Web/.nvmrc'
+          node-version: ${{ env.NODE_VERSION }}
       
       - name: Run environment validation
         run: node scripts/build/validate-environment.js
@@ -183,8 +183,8 @@ jobs:
           NODE_VER=$(node --version)
           echo "Node.js version: $NODE_VER"
           NODE_MAJOR=$(echo "$NODE_VER" | sed 's/v\([0-9]*\).*/\1/')
-          if [[ $NODE_MAJOR -lt 18 ]]; then
-            echo "Error: Node.js version must be 18.0.0 or higher"
+          if [[ $NODE_MAJOR -lt 20 ]]; then
+            echo "Error: Node.js version must be 20.0.0 or higher"
             echo "Current version: $NODE_VER"
             exit 1
           fi

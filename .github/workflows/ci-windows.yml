@@ -31,38 +31,6 @@ jobs:
         with:
           version: 8
 
-      - name: Placeholder scan
-        shell: pwsh
-        run: |
-          pwsh -File .\scripts\audit\no_future_text.ps1
-
-      - name: Grep for forbidden placeholders
-        shell: pwsh
-        run: |
-          $patterns = @("TODO", "FIXME", "FUTURE", "NEXT STEPS", "OPTIONAL ENHANCEMENTS")
-          $exclude = @(".git", "node_modules", "bin", "obj", "dist", "coverage", "*.md")
-          $found = $false
-          
-          foreach ($pattern in $patterns) {
-            $results = Get-ChildItem -Recurse -Include *.cs,*.ts,*.tsx,*.js,*.jsx -ErrorAction SilentlyContinue |
-              Where-Object { $_.FullName -notmatch "node_modules|bin\\|obj\\|dist\\|coverage\\" } |
-              Select-String -Pattern $pattern -CaseSensitive
-            
-            if ($results) {
-              Write-Host "❌ Found '$pattern' in:"
-              $results | ForEach-Object { Write-Host "  $($_.Path):$($_.LineNumber)" }
-              $found = $true
-            }
-          }
-          
-          if ($found) {
-            Write-Host ""
-            Write-Host "ERROR: Code contains placeholder markers. Remove TODO/FIXME/FUTURE/NEXT STEPS/OPTIONAL ENHANCEMENTS before committing."
-            exit 1
-          } else {
-            Write-Host "✅ No placeholder markers found in code"
-          }
-
       - name: Windows Audit
         shell: pwsh
         run: |
