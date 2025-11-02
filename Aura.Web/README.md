@@ -365,7 +365,6 @@ Aura.Web/
     │   ├── DashboardPage.tsx
     │   ├── CreatePage.tsx
     │   ├── RenderPage.tsx
-    │   ├── PublishPage.tsx
     │   ├── DownloadsPage.tsx
     │   └── SettingsPage.tsx
     └── hooks/              # Custom React hooks (future)
@@ -545,7 +544,6 @@ Workspace settings (`.vscode/settings.json`):
 - ✅ **Dashboard Page** - Project management
 - ✅ **Create Wizard** - Multi-step video creation (3 steps)
 - ✅ **Render Queue** - Job management and progress
-- ✅ **Publish Page** - YouTube metadata
 - ✅ **Downloads Page** - Dependency management
 - ✅ **Settings Page** - Multi-tab configuration (System, Providers, API Keys, Privacy)
 
