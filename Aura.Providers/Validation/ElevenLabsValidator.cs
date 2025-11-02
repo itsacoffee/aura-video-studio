@@ -14,6 +14,8 @@ public class ElevenLabsValidator : IProviderValidator
 {
     private readonly ILogger<ElevenLabsValidator> _logger;
     private readonly HttpClient _httpClient;
+    private static readonly System.Text.RegularExpressions.Regex ApiKeyFormatRegex = 
+        new System.Text.RegularExpressions.Regex("^[a-fA-F0-9]{32}$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     public string ProviderName => "ElevenLabs";
 
@@ -46,7 +48,7 @@ public class ElevenLabsValidator : IProviderValidator
             apiKey = apiKey.Trim();
 
             // Validate API key format (32 hex characters)
-            if (apiKey.Length != 32 || !System.Text.RegularExpressions.Regex.IsMatch(apiKey, "^[a-fA-F0-9]{32}$"))
+            if (apiKey.Length != 32 || !ApiKeyFormatRegex.IsMatch(apiKey))
             {
                 _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: Invalid API key format (expected 32 hex characters, got {Length} characters)", 
                     correlationId, apiKey.Length);
@@ -107,7 +109,7 @@ public class ElevenLabsValidator : IProviderValidator
             {
                 var errorBody = await response.Content.ReadAsStringAsync(ct);
                 _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP 401 Unauthorized - API key is invalid (error: {Error})", 
-                    correlationId, errorBody.Length > 100 ? errorBody.Substring(0, 100) + "..." : errorBody);
+                    correlationId, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
@@ -120,7 +122,7 @@ public class ElevenLabsValidator : IProviderValidator
             {
                 var errorBody = await response.Content.ReadAsStringAsync(ct);
                 _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP 403 Forbidden - API key valid but account has no access (error: {Error})", 
-                    correlationId, errorBody.Length > 100 ? errorBody.Substring(0, 100) + "..." : errorBody);
+                    correlationId, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
@@ -133,7 +135,7 @@ public class ElevenLabsValidator : IProviderValidator
             {
                 var errorBody = await response.Content.ReadAsStringAsync(ct);
                 _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP 429 Too Many Requests - rate limit exceeded (error: {Error})", 
-                    correlationId, errorBody.Length > 100 ? errorBody.Substring(0, 100) + "..." : errorBody);
+                    correlationId, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
@@ -146,7 +148,7 @@ public class ElevenLabsValidator : IProviderValidator
             {
                 var errorBody = await response.Content.ReadAsStringAsync(ct);
                 _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP {StatusCode} (error: {Error})", 
-                    correlationId, response.StatusCode, errorBody.Length > 100 ? errorBody.Substring(0, 100) + "..." : errorBody);
+                    correlationId, response.StatusCode, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
@@ -192,5 +194,18 @@ public class ElevenLabsValidator : IProviderValidator
                 ElapsedMs = sw.ElapsedMilliseconds
             };
         }
+    }
+
+    /// <summary>
+    /// Truncate error body to 100 characters for logging
+    /// </summary>
+    private static string TruncateErrorBody(string errorBody)
+    {
+        if (string.IsNullOrEmpty(errorBody))
+        {
+            return string.Empty;
+        }
+        
+        return errorBody.Length > 100 ? errorBody.Substring(0, 100) + "..." : errorBody;
     }
 }
