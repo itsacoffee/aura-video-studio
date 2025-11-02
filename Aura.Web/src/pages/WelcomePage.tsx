@@ -91,10 +91,35 @@ export function WelcomePage() {
 
   useEffect(() => {
     // Fetch system info on mount
-    Promise.all([
-      fetch(apiUrl('/api/healthz')).then((res) => res.json()),
-      fetch(apiUrl('/api/capabilities')).then((res) => res.json()),
-    ])
+    const fetchHealthData = async () => {
+      try {
+        const response = await fetch(apiUrl('/api/healthz'));
+        if (response.ok) {
+          return await response.json();
+        }
+        console.warn('Health check failed with status:', response.status);
+        return null;
+      } catch (err) {
+        console.error('Failed to fetch health data:', err);
+        return null;
+      }
+    };
+
+    const fetchCapabilitiesData = async () => {
+      try {
+        const response = await fetch(apiUrl('/api/capabilities'));
+        if (response.ok) {
+          return await response.json();
+        }
+        console.warn('Capabilities check failed with status:', response.status);
+        return null;
+      } catch (err) {
+        console.error('Failed to fetch capabilities data:', err);
+        return null;
+      }
+    };
+
+    Promise.all([fetchHealthData(), fetchCapabilitiesData()])
       .then(([healthData, capData]) => {
         setHealth(healthData);
         setCapabilities(capData);

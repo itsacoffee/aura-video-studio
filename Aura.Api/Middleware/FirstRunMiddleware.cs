@@ -25,12 +25,15 @@ public class FirstRunMiddleware
     {
         var path = context.Request.Path.Value ?? "";
 
-        // Allow setup API endpoints, onboarding page, and essential resources
+        // Allow setup API endpoints, health/diagnostic endpoints, onboarding page, and essential resources
         if (path.StartsWith("/api/setup", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/settings/first-run", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/preflight", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/probes", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/downloads", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/healthz", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/capabilities", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/onboarding", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/setup", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/assets", StringComparison.OrdinalIgnoreCase) ||
