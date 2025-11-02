@@ -242,13 +242,28 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
         <Card>
           <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text weight="semibold">{activeJob.stage}</Text>
+              <div>
+                <Text weight="semibold">{activeJob.stage}</Text>
+                {activeJob.phase && (
+                  <Text
+                    size={200}
+                    style={{
+                      color: tokens.colorNeutralForeground3,
+                      marginLeft: tokens.spacingHorizontalS,
+                    }}
+                  >
+                    ({activeJob.phase})
+                  </Text>
+                )}
+              </div>
               <Text size={200}>{activeJob.percent}%</Text>
             </div>
             <ProgressBar value={activeJob.percent / 100} />
             {activeJob.status === 'Running' && (
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                {activeJob.eta ? `ETA: ${activeJob.eta}` : 'Processing...'}
+                {activeJob.progressMessage || activeJob.eta
+                  ? `ETA: ${activeJob.eta}`
+                  : 'Processing...'}
               </Text>
             )}
             {activeJob.status === 'Failed' && (
