@@ -123,6 +123,138 @@ pwsh scripts/audit/no_future_text.ps1
 pwsh scripts/audit/scan.ps1
 ```
 
+### Contract Testing
+
+The project uses OpenAPI-based contract testing to ensure API stability and prevent breaking changes.
+
+#### Running Contract Tests Locally
+
+```bash
+# Generate current OpenAPI schema
+bash scripts/contract/generate-openapi-schema.sh
+
+# Or on Windows
+pwsh scripts/contract/generate-openapi-schema.ps1
+
+# Verify contracts haven't changed
+bash tests/contracts/verify-contracts.sh
+```
+
+**What contract tests check**:
+- All API endpoints match the baseline schema
+- Request/response schemas haven't changed unexpectedly
+- New endpoints are documented
+- Correlation IDs are present in all responses
+
+**If contract tests fail**:
+1. Review the schema diff in the test output
+2. If changes are intentional:
+   - Document breaking changes in CHANGELOG.md
+   - Update the baseline: `cp tests/contracts/schemas/openapi-v1.json tests/contracts/schemas/openapi-v1-baseline.json`
+3. If changes are unintentional, fix the code to maintain compatibility
+
+### End-to-End Testing
+
+The project includes comprehensive E2E tests using Playwright.
+
+#### Running E2E Tests Locally
+
+```bash
+cd Aura.Web
+
+# Install Playwright browsers (first time only)
+npm run playwright:install
+
+# Run all E2E tests
+npm run playwright
+
+# Run specific test suites
+npx playwright test tests/e2e/contract-smoke.spec.ts
+npx playwright test tests/e2e/circuit-breaker-fallback.spec.ts
+npx playwright test tests/e2e/memory-regression.spec.ts
+
+# Run with UI mode for debugging
+npm run playwright:ui
+```
+
+#### E2E Test Categories
+
+1. **Contract Smoke Tests** (`contract-smoke.spec.ts`):
+   - Health endpoint validation
+   - Diagnostics endpoint validation
+   - Correlation ID presence verification
+   - OpenAPI schema accessibility
+
+2. **Circuit Breaker Tests** (`circuit-breaker-fallback.spec.ts`):
+   - Provider fallback scenarios
+   - Circuit breaker triggering and recovery
+   - Degraded status handling
+   - Error message clarity
+
+3. **Memory Regression Tests** (`memory-regression.spec.ts`):
+   - Memory leak detection during pagination
+   - Performance with large datasets
+   - Event listener cleanup
+   - Resource cleanup after job completion
+
+4. **Complete Workflow Tests** (`complete-workflow.spec.ts`):
+   - Full video generation flow
+   - Error recovery
+   - Progress tracking
+
+#### Testing with Mocked Providers (Fast)
+
+The E2E tests use mocked providers by default for fast, deterministic execution:
+
+```bash
+# Tests run with mocked responses
+npm run playwright
+```
+
+#### Testing with Docker Compose (Full Stack)
+
+For full integration testing locally:
+
+```bash
+# Start services with docker-compose
+docker-compose -f docker-compose.test.yml up --build
+
+# Run E2E tests against local stack
+PLAYWRIGHT_BASE_URL=http://localhost:5005 npm run playwright
+
+# Stop services
+docker-compose -f docker-compose.test.yml down
+```
+
+#### Memory and Performance Testing
+
+Memory regression tests check for leaks and performance degradation:
+
+```bash
+# Run memory tests with heap profiling
+npx playwright test tests/e2e/memory-regression.spec.ts --project=chromium
+
+# View memory test results
+cat Aura.Web/test-results/memory-regression-*.txt
+```
+
+**Memory test thresholds**:
+- Memory growth during scrolling: <50%
+- Template rendering time: <5s for 1000 items
+- Virtualized items rendered: <100 (out of 1000)
+
+### Integration Testing
+
+Backend integration tests validate end-to-end flows:
+
+```bash
+# Run integration tests only
+dotnet test --filter "FullyQualifiedName~Integration"
+
+# Run with detailed output
+dotnet test --filter "FullyQualifiedName~Integration" --logger "console;verbosity=detailed"
+```
+
 ## Code Quality
 
 - **Line Coverage:** Maintain at least 60% line coverage for .NET code

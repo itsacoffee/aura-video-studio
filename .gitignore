@@ -130,3 +130,13 @@ api/*.yml
 
 # TypeDoc output
 docs/api/typescript/
+
+# Contract testing artifacts
+tests/contracts/schemas/openapi-v1.json
+
+# CI diagnostics
+ci-diagnostics/
+diagnostics-*.tar.gz
+
+# Docker test volumes
+test-data/

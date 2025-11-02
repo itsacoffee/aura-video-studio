@@ -1,0 +1,411 @@
+name: Comprehensive CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '20'
+
+jobs:
+  # Stage 1: Unit Tests + Lint + Static Analysis
+  unit-tests-and-lint:
+    name: Unit Tests & Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+      
+      - name: Restore .NET dependencies
+        run: dotnet restore Aura.sln
+      
+      - name: Install frontend dependencies
+        working-directory: Aura.Web
+        run: npm ci
+      
+      - name: Run .NET build
+        run: dotnet build Aura.sln --configuration Release --no-restore
+      
+      - name: Run .NET unit tests
+        run: dotnet test Aura.Tests/Aura.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName!~Integration&FullyQualifiedName!~Performance" --logger "trx;LogFileName=unit-tests.trx"
+      
+      - name: Run frontend linting
+        working-directory: Aura.Web
+        run: |
+          npm run lint
+          npm run type-check
+          npm run format:check
+      
+      - name: Run frontend unit tests
+        working-directory: Aura.Web
+        run: npm test
+      
+      - name: Check for placeholder violations
+        run: node scripts/audit/find-placeholders.js
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: '**/TestResults/*.trx'
+          retention-days: 7
+
+  # Stage 2: Contract Tests
+  contract-tests:
+    name: API Contract Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: unit-tests-and-lint
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Restore dependencies
+        run: dotnet restore Aura.sln
+      
+      - name: Build API
+        run: dotnet build Aura.Api/Aura.Api.csproj --configuration Release --no-restore
+      
+      - name: Generate OpenAPI schema
+        run: bash scripts/contract/generate-openapi-schema.sh
+      
+      - name: Verify API contracts
+        run: bash tests/contracts/verify-contracts.sh
+        continue-on-error: true
+        id: contract-check
+      
+      - name: Upload OpenAPI schema
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-schema
+          path: tests/contracts/schemas/openapi-v1.json
+          retention-days: 30
+      
+      - name: Comment contract changes on PR
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const message = `
+            ## ⚠️ API Contract Changes Detected
+            
+            The API contract has changed in this PR. Please review carefully:
+            
+            1. **Breaking changes** require major version bump
+            2. **New endpoints** should be documented
+            3. **Schema changes** need migration guide
+            
+            If changes are intentional, update the baseline schema.
+            
+            See the \`contract-tests\` job logs for detailed diff.
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+      
+      - name: Fail if contracts changed
+        if: steps.contract-check.outcome == 'failure'
+        run: exit 1
+
+  # Stage 3: Integration Tests (Fast, Mocked Providers)
+  integration-tests:
+    name: Integration Tests (Mocked)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: contract-tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+      
+      - name: Restore dependencies
+        run: dotnet restore Aura.sln
+      
+      - name: Build solution
+        run: dotnet build Aura.sln --configuration Release --no-restore
+      
+      - name: Run backend integration tests
+        run: dotnet test Aura.Tests/Aura.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~Integration" --logger "trx;LogFileName=integration-tests.trx"
+      
+      - name: Install frontend dependencies
+        working-directory: Aura.Web
+        run: npm ci
+      
+      - name: Install Playwright
+        working-directory: Aura.Web
+        run: npm run playwright:install
+      
+      - name: Run E2E contract smoke tests
+        working-directory: Aura.Web
+        run: npx playwright test tests/e2e/contract-smoke.spec.ts --project=chromium
+      
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: '**/TestResults/*.trx'
+          retention-days: 7
+
+  # Stage 4: Memory and Leak Regression
+  memory-regression:
+    name: Memory & Performance Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: integration-tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: Aura.Web
+        run: npm ci
+      
+      - name: Install Playwright with Chromium
+        working-directory: Aura.Web
+        run: npm run playwright:install
+      
+      - name: Run memory regression tests
+        working-directory: Aura.Web
+        run: npx playwright test tests/e2e/memory-regression.spec.ts --project=chromium --reporter=list
+        env:
+          # Enable memory profiling in Chromium
+          PWTEST_CHROMIUM_LAUNCH_OPTIONS: '{"args":["--enable-precise-memory-info","--js-flags=--expose-gc"]}'
+      
+      - name: Upload memory test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory-test-results
+          path: Aura.Web/test-results/
+          retention-days: 7
+
+  # Stage 5: E2E Smoke & Regression Tests
+  e2e-smoke-tests:
+    name: E2E Smoke & Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: memory-regression
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+      
+      - name: Restore .NET dependencies
+        run: dotnet restore Aura.sln
+      
+      - name: Build API
+        run: dotnet build Aura.Api/Aura.Api.csproj --configuration Release --no-restore
+      
+      - name: Install frontend dependencies
+        working-directory: Aura.Web
+        run: npm ci
+      
+      - name: Install Playwright
+        working-directory: Aura.Web
+        run: npm run playwright:install
+      
+      - name: Run E2E tests with mocked providers
+        working-directory: Aura.Web
+        run: |
+          npx playwright test tests/e2e/complete-workflow.spec.ts --project=chromium
+          npx playwright test tests/e2e/circuit-breaker-fallback.spec.ts --project=chromium
+          npx playwright test tests/e2e/templates-performance.spec.ts --project=chromium
+          npx playwright test tests/e2e/first-run-wizard.spec.ts --project=chromium
+      
+      - name: Upload E2E test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: Aura.Web/playwright-report/
+          retention-days: 30
+      
+      - name: Upload E2E screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: Aura.Web/test-results/
+          retention-days: 7
+      
+      - name: Collect diagnostic bundle on failure
+        if: failure()
+        run: |
+          bash scripts/diagnostics/collect-ci-diagnostics.sh
+      
+      - name: Upload diagnostic bundle
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic-bundle-e2e-${{ github.sha }}
+          path: diagnostics-*.tar.gz
+          retention-days: 30
+
+  # Stage 6: Build and Tag Release Candidate
+  build-release-candidate:
+    name: Build Release Candidate
+    runs-on: windows-latest
+    timeout-minutes: 30
+    needs: e2e-smoke-tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+      
+      - name: Restore dependencies
+        run: dotnet restore Aura.sln
+      
+      - name: Build solution
+        run: dotnet build Aura.sln --configuration Release --no-restore
+      
+      - name: Build frontend
+        working-directory: Aura.Web
+        run: |
+          npm ci
+          npm run build:prod
+      
+      - name: Publish API
+        run: dotnet publish Aura.Api/Aura.Api.csproj --configuration Release --output ./publish/api
+      
+      - name: Create release artifact
+        run: |
+          mkdir release-candidate
+          xcopy /E /I publish\api release-candidate\api
+          xcopy /E /I Aura.Web\dist release-candidate\wwwroot
+      
+      - name: Upload release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: release-candidate/
+          retention-days: 30
+      
+      - name: Tag release candidate
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Release candidate built from commit ${{ github.sha }}"
+          echo "RC-${{ github.sha }}" > release-candidate/VERSION.txt
+
+  # Summary job for PR status
+  ci-summary:
+    name: CI Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [unit-tests-and-lint, contract-tests, integration-tests, memory-regression, e2e-smoke-tests, build-release-candidate]
+    if: always()
+    
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [ "${{ needs.unit-tests-and-lint.result }}" != "success" ] || \
+             [ "${{ needs.contract-tests.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.memory-regression.result }}" != "success" ] || \
+             [ "${{ needs.e2e-smoke-tests.result }}" != "success" ] || \
+             [ "${{ needs.build-release-candidate.result }}" != "success" ]; then
+            echo "One or more CI stages failed"
+            exit 1
+          fi
+          echo "All CI stages passed successfully"
+      
+      - name: Post summary comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const summary = `
+            ## ✅ CI Pipeline Summary
+            
+            All required checks have passed:
+            
+            - ✅ Unit Tests & Lint
+            - ✅ API Contract Verification
+            - ✅ Integration Tests
+            - ✅ Memory & Performance Checks
+            - ✅ E2E Smoke Tests
+            - ✅ Release Candidate Build
+            
+            This PR is ready for review and merge.
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
