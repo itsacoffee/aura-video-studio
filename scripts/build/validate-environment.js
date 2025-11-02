@@ -25,6 +25,7 @@ const __dirname = dirname(__filename);
 
 const REQUIRED_NODE_VERSION = '20.0.0'; // Minimum Node.js version (fallback if package.json not found)
 const REQUIRED_NPM_VERSION = '9.0.0'; // Minimum npm version (supports v9, v10, v11+)
+const REQUIRED_NPM_MAJOR = 9; // Minimum npm major version
 
 let hasErrors = false;
 let hasWarnings = false;
@@ -201,9 +202,8 @@ function checkNpmVersion() {
       
       // Note if using a newer major version
       const npmMajor = parseInt(version.split('.')[0]);
-      const requiredMajor = parseInt(REQUIRED_NPM_VERSION.split('.')[0]);
-      if (npmMajor > requiredMajor) {
-        log(`Using npm v${npmMajor}.x (newer than minimum v${requiredMajor}.x)`, 'info');
+      if (npmMajor > REQUIRED_NPM_MAJOR) {
+        log(`Using npm v${npmMajor}.x (newer than minimum v${REQUIRED_NPM_MAJOR}.x)`, 'info');
       }
       
       return true;
