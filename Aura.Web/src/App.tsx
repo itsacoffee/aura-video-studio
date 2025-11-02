@@ -119,8 +119,11 @@ function App() {
         setShouldShowOnboarding(!completed);
       } catch (error) {
         console.error('Error checking first-run status:', error);
-        // On error, assume not first-run to avoid blocking access
-        setShouldShowOnboarding(false);
+        // On error, check localStorage as fallback - if nothing is set, assume first run
+        const localStatus =
+          localStorage.getItem('hasCompletedFirstRun') === 'true' ||
+          localStorage.getItem('hasSeenOnboarding') === 'true';
+        setShouldShowOnboarding(!localStatus);
       } finally {
         setIsCheckingFirstRun(false);
       }

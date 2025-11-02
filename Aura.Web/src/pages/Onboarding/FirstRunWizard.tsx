@@ -27,11 +27,7 @@ import type { WorkspacePreferences } from '../../components/Onboarding/Workspace
 import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
 import { WizardProgress } from '../../components/WizardProgress';
 import { wizardAnalytics } from '../../services/analytics';
-import {
-  markFirstRunCompleted,
-  getLocalFirstRunStatus,
-  markWizardNeverShowAgain,
-} from '../../services/firstRunService';
+import { markFirstRunCompleted, markWizardNeverShowAgain } from '../../services/firstRunService';
 import {
   onboardingReducer,
   initialOnboardingState,
@@ -145,14 +141,6 @@ export function FirstRunWizard() {
     // Track wizard start
     wizardAnalytics.started();
 
-    // Check if this is truly first run
-    const hasSeenOnboarding = getLocalFirstRunStatus();
-    if (hasSeenOnboarding) {
-      // User has already seen onboarding, redirect to home
-      navigate('/');
-      return;
-    }
-
     // Check for saved progress
     const savedState = loadWizardStateFromStorage();
     if (savedState) {
@@ -166,7 +154,7 @@ export function FirstRunWizard() {
         clearWizardStateFromStorage();
       }
     }
-  }, [navigate]);
+  }, []);
 
   // Track step changes
   useEffect(() => {

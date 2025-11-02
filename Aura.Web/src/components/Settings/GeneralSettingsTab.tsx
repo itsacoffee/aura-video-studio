@@ -2,6 +2,7 @@ import {
   makeStyles,
   tokens,
   Title2,
+  Title3,
   Text,
   Button,
   Input,
@@ -10,7 +11,10 @@ import {
   Field,
   Dropdown,
   Option,
+  Divider,
 } from '@fluentui/react-components';
+import { useNavigate } from 'react-router-dom';
+import { resetFirstRunStatus } from '../../services/firstRunService';
 import type { GeneralSettings, ThemeMode, StartupBehavior } from '../../types/settings';
 
 const useStyles = makeStyles({
@@ -44,9 +48,26 @@ export function GeneralSettingsTab({
   hasChanges,
 }: GeneralSettingsTabProps) {
   const styles = useStyles();
+  const navigate = useNavigate();
 
   const updateSetting = <K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
     onChange({ ...settings, [key]: value });
+  };
+
+  const handleRerunWizard = async () => {
+    if (
+      window.confirm(
+        'This will reset your setup wizard progress and take you through the onboarding process again. Continue?'
+      )
+    ) {
+      try {
+        await resetFirstRunStatus();
+        navigate('/onboarding');
+      } catch (error) {
+        console.error('Failed to reset wizard:', error);
+        alert('Failed to reset wizard. Please try again.');
+      }
+    }
   };
 
   return (
@@ -163,6 +184,19 @@ export function GeneralSettingsTab({
         <div>
           <Button appearance="primary" onClick={onSave} disabled={!hasChanges}>
             Save General Settings
+          </Button>
+        </div>
+
+        <Divider style={{ marginTop: tokens.spacingVerticalXL }} />
+
+        <div style={{ marginTop: tokens.spacingVerticalL }}>
+          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Setup Wizard</Title3>
+          <Text size={200} style={{ marginBottom: tokens.spacingVerticalM, display: 'block' }}>
+            Re-run the first-run setup wizard to reconfigure providers, dependencies, and
+            preferences.
+          </Text>
+          <Button appearance="secondary" onClick={handleRerunWizard}>
+            Re-run Setup Wizard
           </Button>
         </div>
       </div>
