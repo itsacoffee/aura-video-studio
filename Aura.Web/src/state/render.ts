@@ -14,11 +14,29 @@ export interface RenderSettings {
   enableSceneCut: boolean;
 }
 
+export interface FileMetadata {
+  name: string;
+  path: string;
+  type: 'video' | 'audio';
+  duration: number;
+  size: number;
+  resolution?: {
+    width: number;
+    height: number;
+  };
+  codec?: string;
+  bitrate?: number;
+  fps?: number;
+  audioCodec?: string;
+  sampleRate?: number;
+}
+
 export interface QueueItem {
   id: string;
   status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   settings: RenderSettings;
+  sourceFile?: FileMetadata;
   outputPath?: string;
   error?: string;
   createdAt: Date;
@@ -32,13 +50,17 @@ interface RenderState {
   // Current settings
   settings: RenderSettings;
 
+  // Selected file for re-encoding
+  selectedFile: FileMetadata | null;
+
   // Queue
   queue: QueueItem[];
 
   // Actions
   updateSettings: (settings: Partial<RenderSettings>) => void;
   setPreset: (preset: string) => void;
-  addToQueue: (settings: RenderSettings) => string;
+  setSelectedFile: (file: FileMetadata | null) => void;
+  addToQueue: (settings: RenderSettings, sourceFile?: FileMetadata) => string;
   removeFromQueue: (id: string) => void;
   updateQueueItem: (id: string, updates: Partial<QueueItem>) => void;
   processQueue: () => void;
@@ -111,6 +133,7 @@ const DEFAULT_SETTINGS: RenderSettings = {
 
 export const useRenderStore = create<RenderState>((set, get) => ({
   settings: DEFAULT_SETTINGS,
+  selectedFile: null,
   queue: [],
 
   updateSettings: (newSettings) => {
@@ -128,13 +151,18 @@ export const useRenderStore = create<RenderState>((set, get) => ({
     }
   },
 
-  addToQueue: (settings) => {
+  setSelectedFile: (file) => {
+    set({ selectedFile: file });
+  },
+
+  addToQueue: (settings, sourceFile) => {
     const id = `render-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const item: QueueItem = {
       id,
       status: 'queued',
       progress: 0,
       settings,
+      sourceFile,
       createdAt: new Date(),
       retryCount: 0,
     };
