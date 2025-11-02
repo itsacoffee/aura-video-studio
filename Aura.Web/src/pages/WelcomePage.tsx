@@ -84,6 +84,36 @@ const useStyles = makeStyles({
     minHeight: '56px',
     fontWeight: tokens.fontWeightSemibold,
   },
+  reconfigureCallout: {
+    marginBottom: tokens.spacingVerticalXXL,
+    padding: tokens.spacingVerticalXL,
+    borderRadius: tokens.borderRadiusLarge,
+    background: `linear-gradient(135deg, ${tokens.colorNeutralBackground2} 0%, ${tokens.colorNeutralBackground1} 100%)`,
+    boxShadow: tokens.shadow8,
+    textAlign: 'center',
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+  },
+  reconfigureTitle: {
+    marginBottom: tokens.spacingVerticalM,
+    fontSize: '20px',
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+  },
+  reconfigureText: {
+    fontSize: '14px',
+    color: tokens.colorNeutralForeground2,
+    maxWidth: '500px',
+    margin: '0 auto',
+    lineHeight: '1.5',
+    marginBottom: tokens.spacingVerticalL,
+  },
+  secondaryOnboardingButton: {
+    fontSize: '16px',
+    padding: '12px 32px',
+    height: 'auto',
+    minHeight: '48px',
+    fontWeight: tokens.fontWeightSemibold,
+  },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -225,6 +255,35 @@ export function WelcomePage() {
         </div>
       )}
 
+      {/* Reconfigure Setup Callout - show for returning users who have completed onboarding */}
+      {!checkingFirstRun && !isFirstRun && (
+        <div className={styles.reconfigureCallout}>
+          <Title3 className={styles.reconfigureTitle}>
+            <Settings24Regular
+              style={{
+                fontSize: '24px',
+                marginRight: tokens.spacingHorizontalM,
+                verticalAlign: 'middle',
+              }}
+            />
+            Need to Reconfigure Your Setup?
+          </Title3>
+          <Text className={styles.reconfigureText}>
+            Update API keys, configure dependencies, or adjust your workspace preferences using the
+            setup wizard.
+          </Text>
+          <Button
+            appearance="primary"
+            size="large"
+            className={styles.secondaryOnboardingButton}
+            icon={<Settings24Regular />}
+            onClick={() => navigate('/onboarding')}
+          >
+            Configure Setup
+          </Button>
+        </div>
+      )}
+
       <div className={styles.hero}>
         <Title1 className={styles.title}>Welcome to Aura Video Studio</Title1>
         <Text size={500} className={styles.subtitle}>
@@ -253,12 +312,6 @@ export function WelcomePage() {
               Settings
             </Button>
           </Tooltip>
-          {/* Show smaller onboarding button for users who have completed setup (for re-running) */}
-          {!isFirstRun && (
-            <Button size="large" onClick={() => navigate('/onboarding')}>
-              Run Onboarding
-            </Button>
-          )}
         </div>
       </div>
 

@@ -90,17 +90,20 @@ describe('WelcomePage - First-Run Callout', () => {
     expect(screen.queryByText(/Begin Setup Wizard/i)).not.toBeInTheDocument();
   });
 
-  it('should show regular "Run Onboarding" button when user has completed first run', async () => {
+  it('should show reconfigure callout with "Configure Setup" button when user has completed first run', async () => {
     vi.mocked(firstRunService.hasCompletedFirstRun).mockResolvedValue(true);
 
     renderWithProviders(<WelcomePage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Run Onboarding/i })).toBeInTheDocument();
+      expect(screen.getByText(/Need to Reconfigure Your Setup?/i)).toBeInTheDocument();
     });
+
+    expect(screen.getByRole('button', { name: /Configure Setup/i })).toBeInTheDocument();
+    expect(screen.getByText(/Update API keys, configure dependencies/i)).toBeInTheDocument();
   });
 
-  it('should hide regular "Run Onboarding" button when showing first-time callout', async () => {
+  it('should hide reconfigure callout when showing first-time callout', async () => {
     vi.mocked(firstRunService.hasCompletedFirstRun).mockResolvedValue(false);
 
     renderWithProviders(<WelcomePage />);
@@ -109,9 +112,9 @@ describe('WelcomePage - First-Run Callout', () => {
       expect(screen.getByText(/Begin Setup Wizard/i)).toBeInTheDocument();
     });
 
-    // The regular smaller "Run Onboarding" button should not be present
-    const regularButtons = screen.queryAllByRole('button', { name: /Run Onboarding/i });
-    expect(regularButtons).toHaveLength(0);
+    // The reconfigure callout should not be present
+    expect(screen.queryByText(/Need to Reconfigure Your Setup?/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Configure Setup/i })).not.toBeInTheDocument();
   });
 
   it('should always show Create Video and Settings buttons', async () => {
