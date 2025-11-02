@@ -9,7 +9,6 @@ import {
   Spinner,
   Badge,
   ProgressBar,
-  Input,
 } from '@fluentui/react-components';
 import {
   Checkmark24Regular,
@@ -17,9 +16,9 @@ import {
   Warning24Regular,
   ArrowDownload24Regular,
   Settings24Regular,
-  Folder24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
+import { PathSelector } from '../common/PathSelector';
 
 const useStyles = makeStyles({
   container: {
@@ -388,29 +387,30 @@ export function DependencyCheck({
                         >
                           Or assign existing installation:
                         </Text>
-                        <div
-                          style={{
-                            display: 'flex',
-                            gap: tokens.spacingHorizontalS,
-                            alignItems: 'flex-start',
+                        <PathSelector
+                          label={`${dep.name} Installation Path`}
+                          placeholder={getPlaceholderForDependency(dep.id)}
+                          value={manualPaths[dep.id] || ''}
+                          onChange={(path) => handlePathChange(dep.id, path)}
+                          onValidate={async (path) => {
+                            return await validateDependencyPath(dep.id, path);
                           }}
+                          helpText={getHelpTextForDependency(dep.id)}
+                          defaultPath={getDefaultPathForDependency(dep.id)}
+                          dependencyId={dep.id}
+                          disabled={assigningPath === dep.id}
+                          autoDetect={async () => {
+                            return await autoDetectDependency(dep.id);
+                          }}
+                        />
+                        <Button
+                          appearance="primary"
+                          onClick={() => handleAssignPath(dep.id)}
+                          disabled={assigningPath === dep.id || !manualPaths[dep.id]}
+                          style={{ marginTop: tokens.spacingVerticalS }}
                         >
-                          <Input
-                            placeholder={`Path to ${dep.name} installation`}
-                            value={manualPaths[dep.id] || ''}
-                            onChange={(e) => handlePathChange(dep.id, e.target.value)}
-                            disabled={assigningPath === dep.id}
-                            style={{ flex: 1 }}
-                            contentBefore={<Folder24Regular />}
-                          />
-                          <Button
-                            appearance="secondary"
-                            onClick={() => handleAssignPath(dep.id)}
-                            disabled={assigningPath === dep.id || !manualPaths[dep.id]}
-                          >
-                            {assigningPath === dep.id ? <Spinner size="tiny" /> : 'Assign Path'}
-                          </Button>
-                        </div>
+                          {assigningPath === dep.id ? <Spinner size="tiny" /> : 'Apply Path'}
+                        </Button>
                         {pathErrors[dep.id] && (
                           <Text
                             size={200}
@@ -464,4 +464,100 @@ export function DependencyCheck({
       </div>
     </div>
   );
+
+  function getPlaceholderForDependency(depId: string): string {
+    switch (depId.toLowerCase()) {
+      case 'ollama':
+        return 'Click Browse to select ollama.exe';
+      case 'ffmpeg':
+        return 'Click Browse to select ffmpeg.exe';
+      case 'stable-diffusion':
+      case 'stable-diffusion-webui':
+        return 'Enter Stable Diffusion WebUI URL or path';
+      default:
+        return 'Click Browse to select file';
+    }
+  }
+
+  function getHelpTextForDependency(depId: string): string {
+    switch (depId.toLowerCase()) {
+      case 'ollama':
+        return 'Select the ollama.exe file location. Ollama is required for local AI model processing.';
+      case 'ffmpeg':
+        return 'Select the ffmpeg.exe file location. FFmpeg is required for video rendering.';
+      case 'stable-diffusion':
+      case 'stable-diffusion-webui':
+        return 'Enter the Stable Diffusion WebUI URL (e.g., http://localhost:7860) or installation path.';
+      default:
+        return 'Select the installation path or executable file.';
+    }
+  }
+
+  function getDefaultPathForDependency(depId: string): string {
+    const username = '${username}';
+    switch (depId.toLowerCase()) {
+      case 'ollama':
+        return `C:\\Users\\${username}\\AppData\\Local\\Programs\\Ollama\\ollama.exe`;
+      case 'ffmpeg':
+        return 'C:\\ffmpeg\\bin\\ffmpeg.exe';
+      case 'stable-diffusion':
+      case 'stable-diffusion-webui':
+        return 'http://localhost:7860';
+      default:
+        return '';
+    }
+  }
+
+  async function validateDependencyPath(
+    depId: string,
+    path: string
+  ): Promise<{ isValid: boolean; message: string; version?: string }> {
+    try {
+      const response = await fetch(`/api/dependencies/${encodeURIComponent(depId)}/validate-path`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ path }),
+      });
+
+      if (!response.ok) {
+        return {
+          isValid: false,
+          message: `Validation failed: HTTP ${response.status}`,
+        };
+      }
+
+      const result = await response.json();
+      return {
+        isValid: result.isValid || false,
+        message: result.message || 'Unknown validation result',
+        version: result.version,
+      };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Validation error';
+      return {
+        isValid: false,
+        message: errorMessage,
+      };
+    }
+  }
+
+  async function autoDetectDependency(depId: string): Promise<string | null> {
+    try {
+      const response = await fetch(`/api/dependencies/${encodeURIComponent(depId)}/detect`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const result = await response.json();
+      return result.path || null;
+    } catch (error: unknown) {
+      console.error('Auto-detect failed:', error);
+      return null;
+    }
+  }
 }

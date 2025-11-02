@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Dependencies;
+using Aura.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -614,6 +615,136 @@ public class DependenciesController : ControllerBase
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Auto-detect installation path for a specific dependency component
+    /// </summary>
+    [HttpPost("{componentId}/detect")]
+    public Task<IActionResult> AutoDetect(string componentId)
+    {
+        try
+        {
+            _logger.LogInformation("Auto-detecting path for {ComponentId}", componentId);
+
+            string? detectedPath = null;
+
+            switch (componentId.ToLowerInvariant())
+            {
+                case "ollama":
+                    detectedPath = OllamaService.FindOllamaExecutable();
+                    break;
+
+                case "ffmpeg":
+                    if (_ffmpegLocator != null)
+                    {
+                        var result = _ffmpegLocator.CheckAllCandidatesAsync(null, CancellationToken.None).Result;
+                        if (result.Found)
+                        {
+                            detectedPath = result.FfmpegPath;
+                        }
+                    }
+                    break;
+            }
+
+            if (!string.IsNullOrEmpty(detectedPath))
+            {
+                return Task.FromResult<IActionResult>(Ok(new
+                {
+                    success = true,
+                    path = detectedPath
+                }));
+            }
+            else
+            {
+                return Task.FromResult<IActionResult>(Ok(new
+                {
+                    success = false,
+                    path = (string?)null
+                }));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to auto-detect {ComponentId}", componentId);
+            return Task.FromResult<IActionResult>(Ok(new
+            {
+                success = false,
+                path = (string?)null
+            }));
+        }
+    }
+
+    /// <summary>
+    /// Validate a path for a specific dependency component
+    /// </summary>
+    [HttpPost("{componentId}/validate-path")]
+    public async Task<IActionResult> ValidatePath(
+        string componentId,
+        [FromBody] ValidatePathRequest request,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Path))
+        {
+            return BadRequest(new
+            {
+                isValid = false,
+                message = "Path is required"
+            });
+        }
+
+        try
+        {
+            _logger.LogInformation("Validating path for {ComponentId}: {Path}", componentId, request.Path);
+
+            switch (componentId.ToLowerInvariant())
+            {
+                case "ollama":
+                    var ollamaResult = await OllamaService.ValidateOllamaPathAsync(request.Path, ct);
+                    return Ok(new
+                    {
+                        isValid = ollamaResult.IsValid,
+                        message = ollamaResult.Message,
+                        version = ollamaResult.Version
+                    });
+
+                case "ffmpeg":
+                    if (_ffmpegLocator == null)
+                    {
+                        return BadRequest(new
+                        {
+                            isValid = false,
+                            message = "FFmpeg locator not available"
+                        });
+                    }
+
+                    var ffmpegValidation = await _ffmpegLocator.ValidatePathAsync(request.Path, ct);
+                    return Ok(new
+                    {
+                        isValid = ffmpegValidation.Found,
+                        message = ffmpegValidation.Found ? "Valid FFmpeg executable" : (ffmpegValidation.Reason ?? "Invalid path"),
+                        version = ffmpegValidation.VersionString
+                    });
+
+                default:
+                    // Generic file existence check for other components
+                    var exists = System.IO.File.Exists(request.Path);
+                    return Ok(new
+                    {
+                        isValid = exists,
+                        message = exists ? "File exists" : "File not found"
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to validate path for {ComponentId}", componentId);
+            return Ok(new
+            {
+                isValid = false,
+                message = $"Validation error: {ex.Message}"
+            });
+        }
     }
 }
 

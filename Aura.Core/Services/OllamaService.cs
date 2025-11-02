@@ -277,7 +277,7 @@ public class OllamaService
     }
 
     /// <summary>
-    /// Find Ollama executable path using default locations
+    /// Find Ollama executable path using default locations, running process, and PATH
     /// </summary>
     public static string? FindOllamaExecutable()
     {
@@ -286,10 +286,34 @@ public class OllamaService
             return null;
         }
 
+        // First check if Ollama is running as a process and get its path
+        try
+        {
+            var processes = Process.GetProcessesByName("ollama");
+            if (processes.Length > 0)
+            {
+                var mainModule = processes[0].MainModule;
+                if (mainModule != null && !string.IsNullOrEmpty(mainModule.FileName))
+                {
+                    if (File.Exists(mainModule.FileName))
+                    {
+                        return mainModule.FileName;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Process check failed, continue with other methods
+        }
+
+        // Check common installation paths
+        var username = Environment.UserName;
         var searchPaths = new[]
         {
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Ollama", "ollama.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Ollama", "ollama.exe"),
+            Path.Combine($@"C:\Users\{username}\AppData\Local\Programs\Ollama", "ollama.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Ollama", "ollama.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ollama", "ollama.exe"),
         };
 
@@ -301,7 +325,89 @@ public class OllamaService
             }
         }
 
+        // Check PATH environment variable
+        var pathEnv = Environment.GetEnvironmentVariable("PATH");
+        if (!string.IsNullOrEmpty(pathEnv))
+        {
+            var pathDirs = pathEnv.Split(Path.PathSeparator);
+            foreach (var dir in pathDirs)
+            {
+                try
+                {
+                    var ollamaExe = Path.Combine(dir, "ollama.exe");
+                    if (File.Exists(ollamaExe))
+                    {
+                        return ollamaExe;
+                    }
+                }
+                catch
+                {
+                    // Invalid path in PATH variable, continue
+                }
+            }
+        }
+
         return null;
+    }
+
+    /// <summary>
+    /// Validate a path to an Ollama executable
+    /// </summary>
+    public static async Task<PathValidationResult> ValidateOllamaPathAsync(string path, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return new PathValidationResult(false, "Path is empty");
+        }
+
+        if (!File.Exists(path))
+        {
+            return new PathValidationResult(false, "File does not exist");
+        }
+
+        var fileName = Path.GetFileName(path);
+        if (!fileName.Equals("ollama.exe", StringComparison.OrdinalIgnoreCase) &&
+            !fileName.Equals("ollama", StringComparison.OrdinalIgnoreCase))
+        {
+            return new PathValidationResult(false, "Not an Ollama executable (expected ollama.exe or ollama)");
+        }
+
+        // Try to execute --version command to verify it works
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = path,
+                Arguments = "--version",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process == null)
+            {
+                return new PathValidationResult(false, "Failed to start process");
+            }
+
+            var output = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+
+            if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+            {
+                var version = output.Trim().Split('\n')[0];
+                return new PathValidationResult(true, "Valid Ollama executable", version);
+            }
+            else
+            {
+                return new PathValidationResult(false, "Executable did not return valid version info");
+            }
+        }
+        catch (Exception ex)
+        {
+            return new PathValidationResult(false, $"Failed to validate: {ex.Message}");
+        }
     }
 
     private async Task<bool> WaitForReadinessAsync(string baseUrl, TimeSpan timeout, CancellationToken ct)
@@ -368,3 +474,8 @@ public record OllamaStartResult(
 public record OllamaStopResult(
     bool Success,
     string Message);
+
+public record PathValidationResult(
+    bool IsValid,
+    string Message,
+    string? Version = null);
