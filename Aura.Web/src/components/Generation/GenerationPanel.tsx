@@ -122,7 +122,7 @@ const STAGES = ['Script', 'Voice', 'Visuals', 'Compose', 'Render', 'Complete'];
 
 export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
   const styles = useStyles();
-  const { activeJob, getJob, getFailureDetails } = useJobsStore();
+  const { activeJob, getJob, getFailureDetails, startStreaming, stopStreaming } = useJobsStore();
   const { showSuccessToast, showFailureToast } = useNotifications();
   const navigate = useNavigate();
   const [showLogs, setShowLogs] = useState(false);
@@ -130,8 +130,17 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
   const [showFailureModal, setShowFailureModal] = useState(false);
 
   useEffect(() => {
+    // Start SSE streaming for real-time updates
+    startStreaming(jobId);
+
+    // Also fetch initial job state
     getJob(jobId);
-  }, [jobId, getJob]);
+
+    // Cleanup on unmount
+    return () => {
+      stopStreaming();
+    };
+  }, [jobId, getJob, startStreaming, stopStreaming]);
 
   // Show notification when job completes or fails
   useEffect(() => {

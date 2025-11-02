@@ -417,40 +417,89 @@ public class JobsController : ControllerBase
                 return;
             }
             
-            // Send initial job status
-            await SendSseEvent("job-status", new { status = job.Status.ToString(), correlationId });
+            // Send initial job status with artifacts
+            await SendSseEvent("job-status", new { 
+                status = job.Status.ToString(), 
+                stage = job.Stage,
+                percent = job.Percent,
+                correlationId 
+            });
             
-            // Poll for updates and stream them
+            // Track last sent values and last ping time
             var lastStatus = job.Status;
             var lastStage = job.Stage;
             var lastPercent = job.Percent;
+            var lastProgressMessage = "";
+            var lastPingTime = DateTime.UtcNow;
+            var pingIntervalSeconds = 10;
+            var pollIntervalMs = 500; // Poll every 500ms for responsiveness
             
             while (!ct.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)
             {
-                await Task.Delay(1000, ct); // Poll every second
+                await Task.Delay(pollIntervalMs, ct);
                 
                 job = _jobRunner.GetJob(jobId);
                 if (job == null) break;
                 
+                // Send keep-alive ping every 10 seconds
+                if ((DateTime.UtcNow - lastPingTime).TotalSeconds >= pingIntervalSeconds)
+                {
+                    await SendSseComment($"keepalive: {DateTime.UtcNow:o}");
+                    lastPingTime = DateTime.UtcNow;
+                }
+                
                 // Send status change events
                 if (job.Status != lastStatus)
                 {
-                    await SendSseEvent("job-status", new { status = job.Status.ToString(), correlationId });
+                    await SendSseEvent("job-status", new { 
+                        status = job.Status.ToString(), 
+                        stage = job.Stage,
+                        percent = job.Percent,
+                        correlationId 
+                    });
                     lastStatus = job.Status;
                 }
                 
-                // Send stage change events
+                // Send stage change events (phase transitions)
                 if (job.Stage != lastStage)
                 {
-                    await SendSseEvent("step-status", new { step = job.Stage, status = "Running", correlationId });
+                    await SendSseEvent("step-status", new { 
+                        step = job.Stage, 
+                        status = "started",
+                        phase = MapStageToPhase(job.Stage),
+                        correlationId 
+                    });
                     lastStage = job.Stage;
                 }
                 
                 // Send progress updates
                 if (job.Percent != lastPercent)
                 {
-                    await SendSseEvent("step-progress", new { step = job.Stage, progressPct = job.Percent, correlationId });
+                    var latestLog = job.Logs.LastOrDefault() ?? "";
+                    await SendSseEvent("step-progress", new { 
+                        step = job.Stage, 
+                        phase = MapStageToPhase(job.Stage),
+                        progressPct = job.Percent,
+                        message = latestLog,
+                        correlationId 
+                    });
                     lastPercent = job.Percent;
+                    lastProgressMessage = latestLog;
+                }
+                
+                // Check for warnings or errors in logs
+                if (job.Logs.Count > 0)
+                {
+                    var recentLog = job.Logs.LastOrDefault();
+                    if (recentLog != null && (recentLog.Contains("warning", StringComparison.OrdinalIgnoreCase) || 
+                                             recentLog.Contains("error", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        await SendSseEvent("warning", new {
+                            message = recentLog,
+                            step = job.Stage,
+                            correlationId
+                        });
+                    }
                 }
                 
                 await Response.Body.FlushAsync(ct);
@@ -459,13 +508,24 @@ public class JobsController : ControllerBase
             // Send final event
             if (job?.Status == JobStatus.Done || job?.Status == JobStatus.Succeeded)
             {
-                var outputPath = job.Artifacts.FirstOrDefault(a => a.Type == "video")?.Path ?? "";
-                var sizeBytes = job.Artifacts.FirstOrDefault(a => a.Type == "video")?.SizeBytes ?? 0;
+                var videoArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4");
+                var subtitleArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "subtitle" || a.Type == "text/srt");
                 
                 await SendSseEvent("job-completed", new 
                 { 
                     status = "Succeeded", 
-                    output = new { videoPath = outputPath, sizeBytes },
+                    jobId = job.Id,
+                    artifacts = job.Artifacts.Select(a => new {
+                        name = a.Name,
+                        path = a.Path,
+                        type = a.Type,
+                        sizeBytes = a.SizeBytes
+                    }).ToArray(),
+                    output = new { 
+                        videoPath = videoArtifact?.Path ?? "",
+                        subtitlePath = subtitleArtifact?.Path ?? "",
+                        sizeBytes = videoArtifact?.SizeBytes ?? 0
+                    },
                     correlationId 
                 });
             }
@@ -477,8 +537,23 @@ public class JobsController : ControllerBase
                     
                 await SendSseEvent("job-failed", new 
                 { 
-                    status = "Failed", 
+                    status = "Failed",
+                    jobId = job.Id,
+                    stage = job.Stage,
                     errors,
+                    errorMessage = job.ErrorMessage,
+                    logs = job.Logs.TakeLast(10).ToArray(),
+                    correlationId 
+                });
+            }
+            else if (job?.Status == JobStatus.Canceled)
+            {
+                await SendSseEvent("job-cancelled", new 
+                { 
+                    status = "Cancelled",
+                    jobId = job.Id,
+                    stage = job.Stage,
+                    message = "Job was cancelled by user",
                     correlationId 
                 });
             }
@@ -583,6 +658,28 @@ public class JobsController : ControllerBase
         var message = $"event: {eventType}\ndata: {json}\n\n";
         var bytes = Encoding.UTF8.GetBytes(message);
         await Response.Body.WriteAsync(bytes);
+    }
+
+    private async Task SendSseComment(string comment)
+    {
+        var message = $": {comment}\n\n";
+        var bytes = Encoding.UTF8.GetBytes(message);
+        await Response.Body.WriteAsync(bytes);
+    }
+
+    private static string MapStageToPhase(string stage)
+    {
+        return stage.ToLowerInvariant() switch
+        {
+            "initialization" or "queued" => "plan",
+            "script" or "planning" or "brief" => "plan",
+            "tts" or "audio" or "voice" => "tts",
+            "visuals" or "images" or "assets" => "visuals",
+            "composition" or "timeline" or "compose" => "compose",
+            "rendering" or "render" or "encode" => "render",
+            "complete" or "done" => "complete",
+            _ => "processing"
+        };
     }
 
     /// <summary>
