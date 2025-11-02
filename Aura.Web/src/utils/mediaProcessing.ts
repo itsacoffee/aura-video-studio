@@ -93,8 +93,9 @@ export async function generateVideoThumbnails(
  * @returns Waveform peak data
  */
 export async function generateWaveform(file: File, samples: number = 100): Promise<WaveformData> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  // Use pooled AudioContext to prevent memory leaks
+  const { audioContextPool } = await import('@/services/audioContextPool');
+  const audioContext = audioContextPool.getContext();
 
   try {
     const arrayBuffer = await file.arrayBuffer();
@@ -119,14 +120,16 @@ export async function generateWaveform(file: File, samples: number = 100): Promi
       peaks.push(peak);
     }
 
-    await audioContext.close();
+    // Release context back to pool instead of closing
+    audioContextPool.releaseContext();
 
     return {
       peaks,
       duration: audioBuffer.duration,
     };
   } catch (error) {
-    await audioContext.close();
+    // Release context back to pool on error
+    audioContextPool.releaseContext();
     throw new Error(
       `Failed to generate waveform: ${error instanceof Error ? error.message : 'Unknown error'}`
     );

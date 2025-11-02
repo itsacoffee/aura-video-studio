@@ -10,6 +10,7 @@ using Aura.Core.Providers;
 using Aura.Core.Services.HealthChecks;
 using Aura.Core.Services.Orchestration;
 using Aura.Core.Services.Validation;
+using Aura.Core.Services.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -30,6 +31,7 @@ public class DiagnosticsController : ControllerBase
     private readonly IntelligentContentAdvisor? _contentAdvisor;
     private readonly IHardwareDetector? _hardwareDetector;
     private readonly PipelineHealthCheck? _pipelineHealthCheck;
+    private readonly IResourceTracker? _resourceTracker;
 
     public DiagnosticsController(
         ILogger<DiagnosticsController> logger,
@@ -39,7 +41,8 @@ public class DiagnosticsController : ControllerBase
         IEnumerable<ILlmProvider>? llmProviders = null,
         IntelligentContentAdvisor? contentAdvisor = null,
         IHardwareDetector? hardwareDetector = null,
-        PipelineHealthCheck? pipelineHealthCheck = null)
+        PipelineHealthCheck? pipelineHealthCheck = null,
+        IResourceTracker? resourceTracker = null)
     {
         _logger = logger;
         _healthService = healthService;
@@ -49,6 +52,7 @@ public class DiagnosticsController : ControllerBase
         _contentAdvisor = contentAdvisor;
         _hardwareDetector = hardwareDetector;
         _pipelineHealthCheck = pipelineHealthCheck;
+        _resourceTracker = resourceTracker;
     }
 
     /// <summary>
@@ -411,6 +415,76 @@ public class DiagnosticsController : ControllerBase
                 Error = ex.Message,
                 Timestamp = DateTime.UtcNow
             });
+        }
+    }
+
+    /// <summary>
+    /// Get resource usage metrics (memory, file handles, processes)
+    /// </summary>
+    [HttpGet("resources")]
+    public async Task<ActionResult<ResourceMetrics>> GetResources(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Resource metrics requested");
+
+        if (_resourceTracker == null)
+        {
+            return Ok(new
+            {
+                OpenFileHandles = -1,
+                ActiveProcesses = -1,
+                AllocatedMemoryBytes = -1,
+                WorkingSetBytes = -1,
+                ThreadCount = -1,
+                Timestamp = DateTime.UtcNow,
+                Warnings = new[] { "Resource tracker not configured" }
+            });
+        }
+
+        try
+        {
+            var metrics = await _resourceTracker.GetMetricsAsync(ct);
+            return Ok(metrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting resource metrics");
+            return StatusCode(500, new
+            {
+                Error = ex.Message,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    /// <summary>
+    /// Force resource cleanup (garbage collection, etc.)
+    /// </summary>
+    [HttpPost("resources/cleanup")]
+    public async Task<ActionResult<object>> CleanupResources(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Resource cleanup requested");
+
+        if (_resourceTracker == null)
+        {
+            return BadRequest(new { Error = "Resource tracker not configured" });
+        }
+
+        try
+        {
+            await _resourceTracker.CleanupAsync(ct);
+            var metricsAfter = await _resourceTracker.GetMetricsAsync(ct);
+            
+            return Ok(new
+            {
+                Status = "Cleanup completed",
+                MetricsAfter = metricsAfter,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during resource cleanup");
+            return StatusCode(500, new { Error = ex.Message });
         }
     }
 }

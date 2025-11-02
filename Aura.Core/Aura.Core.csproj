@@ -7,6 +7,16 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\Aura.Core.xml</DocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- Enable code analyzers for disposal tracking -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <!-- Enable CA1001 (Dispose types that own disposable fields) and CA2000 (Dispose objects before losing scope) -->
+  <!-- Currently as warnings to track existing issues without breaking build -->
+  <PropertyGroup>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);CA1001;CA2000</WarningsNotAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
