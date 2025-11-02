@@ -175,6 +175,73 @@ public class OllamaServiceTests : IDisposable
         Assert.True(result == null || !string.IsNullOrEmpty(result));
     }
 
+    [Fact]
+    public async Task ValidateOllamaPathAsync_WithNonExistentPath_ReturnsInvalid()
+    {
+        // Arrange
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), "ollama-does-not-exist.exe");
+
+        // Act
+        var result = await OllamaService.ValidateOllamaPathAsync(nonExistentPath, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains("does not exist", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ValidateOllamaPathAsync_WithEmptyPath_ReturnsInvalid()
+    {
+        // Arrange
+        var emptyPath = "";
+
+        // Act
+        var result = await OllamaService.ValidateOllamaPathAsync(emptyPath, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Contains("empty", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ValidateOllamaPathAsync_WithWrongFileName_ReturnsInvalid()
+    {
+        // Arrange
+        var tempFile = Path.Combine(Path.GetTempPath(), "test-file.txt");
+        File.WriteAllText(tempFile, "test");
+
+        try
+        {
+            // Act
+            var result = await OllamaService.ValidateOllamaPathAsync(tempFile, CancellationToken.None);
+
+            // Assert
+            Assert.False(result.IsValid);
+            Assert.Contains("Not an Ollama executable", result.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    [Fact]
+    public void FindOllamaExecutable_ReturnsNullOrValidPath()
+    {
+        // Act
+        var result = OllamaService.FindOllamaExecutable();
+
+        // Assert
+        if (result != null)
+        {
+            Assert.True(File.Exists(result), $"Returned path should exist: {result}");
+            Assert.True(result.Contains("ollama", StringComparison.OrdinalIgnoreCase), "Path should contain 'ollama'");
+        }
+    }
+
     public void Dispose()
     {
         _httpClient?.Dispose();
