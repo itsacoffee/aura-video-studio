@@ -42,7 +42,7 @@ export const validators = {
     z
       .string()
       .url(message)
-      .refine((val) => val.startsWith('http://') || val.startsWith('https://'), {
+      .refine((val: string) => val.startsWith('http://') || val.startsWith('https://'), {
         message: message || 'URL must start with http:// or https://',
       }),
 
@@ -67,7 +67,7 @@ export const validators = {
       .string()
       .min(1, 'Path cannot be empty')
       .refine(
-        (val) => {
+        (val: string) => {
           // Allow absolute paths on Windows (C:\...) or Unix (/...)
           return /^([a-zA-Z]:\\|\\\\|\/)/i.test(val) || val.includes('\\') || val.includes('/');
         },
@@ -92,7 +92,7 @@ export const validators = {
       .string()
       .url(message)
       .refine(
-        (val) => {
+        (val: string) => {
           try {
             const url = new URL(val);
             return (
@@ -131,7 +131,7 @@ export function validateField<T>(
   try {
     schema.parse(value);
     return { valid: true };
-  } catch (err) {
+  } catch (err: unknown) {
     if (err instanceof z.ZodError) {
       return { valid: false, error: err.errors[0]?.message };
     }
@@ -215,7 +215,7 @@ export function validateBriefRequest(request: {
     return { valid: true, errors: [] };
   }
 
-  const errors = result.error.errors.map((err) => `${err.path.join('.')}: ${err.message}`);
+  const errors = result.error.errors.map((err: z.ZodIssue) => `${err.path.join('.')}: ${err.message}`);
 
   return { valid: false, errors };
 }
@@ -246,37 +246,37 @@ export const apiKeysSchema = z.object({
   openai: z
     .string()
     .optional()
-    .refine((val) => !val || val.length === 0 || (val.startsWith('sk-') && val.length > 20), {
+    .refine((val: string | undefined) => !val || val.length === 0 || (val.startsWith('sk-') && val.length > 20), {
       message: 'OpenAI API key must start with "sk-" and be at least 20 characters',
     }),
   elevenlabs: z
     .string()
     .optional()
-    .refine((val) => !val || val.length === 0 || val.length >= 32, {
+    .refine((val: string | undefined) => !val || val.length === 0 || val.length >= 32, {
       message: 'ElevenLabs API key must be at least 32 characters',
     }),
   pexels: z
     .string()
     .optional()
-    .refine((val) => !val || val.length === 0 || val.length >= 20, {
+    .refine((val: string | undefined) => !val || val.length === 0 || val.length >= 20, {
       message: 'Pexels API key must be at least 20 characters',
     }),
   pixabay: z
     .string()
     .optional()
-    .refine((val) => !val || val.length === 0 || val.length >= 15, {
+    .refine((val: string | undefined) => !val || val.length === 0 || val.length >= 15, {
       message: 'Pixabay API key must be at least 15 characters',
     }),
   unsplash: z
     .string()
     .optional()
-    .refine((val) => !val || val.length === 0 || val.length >= 30, {
+    .refine((val: string | undefined) => !val || val.length === 0 || val.length >= 30, {
       message: 'Unsplash API key must be at least 30 characters',
     }),
   stabilityai: z
     .string()
     .optional()
-    .refine((val) => !val || val.length === 0 || (val.startsWith('sk-') && val.length > 20), {
+    .refine((val: string | undefined) => !val || val.length === 0 || (val.startsWith('sk-') && val.length > 20), {
       message: 'Stability AI API key must start with "sk-" and be at least 20 characters',
     }),
 });
@@ -288,16 +288,259 @@ export const providerPathsSchema = z.object({
   stableDiffusionUrl: z
     .string()
     .optional()
-    .refine((val) => !val || val.length === 0 || /^https?:\/\/.+:\d+/.test(val), {
+    .refine((val: string | undefined) => !val || val.length === 0 || /^https?:\/\/.+:\d+/.test(val), {
       message: 'Must be a valid URL with protocol and port (e.g., http://127.0.0.1:7860)',
     }),
   ollamaUrl: z
     .string()
     .optional()
-    .refine((val) => !val || val.length === 0 || /^https?:\/\/.+:\d+/.test(val), {
+    .refine((val: string | undefined) => !val || val.length === 0 || /^https?:\/\/.+:\d+/.test(val), {
       message: 'Must be a valid URL with protocol and port (e.g., http://127.0.0.1:11434)',
     }),
-  ffmpegPath: z.string().optional(),
-  ffprobePath: z.string().optional(),
-  outputDirectory: z.string().optional(),
+  ffmpegPath: z
+    .string()
+    .optional()
+    .refine((val: string | undefined) => !val || val.length === 0 || !val.includes('..'), {
+      message: 'Path cannot contain directory traversal sequences (..)',
+    }),
+  ffprobePath: z
+    .string()
+    .optional()
+    .refine((val: string | undefined) => !val || val.length === 0 || !val.includes('..'), {
+      message: 'Path cannot contain directory traversal sequences (..)',
+    }),
+  outputDirectory: z
+    .string()
+    .optional()
+    .refine((val: string | undefined) => !val || val.length === 0 || !val.includes('..'), {
+      message: 'Path cannot contain directory traversal sequences (..)',
+    }),
 });
+
+/**
+ * Security validation helpers
+ */
+export const securityValidators = {
+  /**
+   * Checks for XSS patterns in user input
+   */
+  noXss: (message = 'Input contains potentially dangerous content') =>
+    z.string().refine(
+      (val: string) => {
+        const xssPatterns = [
+          /<script[^>]*>/i,
+          /javascript:/i,
+          /on\w+\s*=/i,
+          /<iframe/i,
+          /<object/i,
+          /<embed/i,
+        ];
+        return !xssPatterns.some((pattern) => pattern.test(val));
+      },
+      { message }
+    ),
+
+  /**
+   * Checks for prompt injection attempts
+   */
+  noPromptInjection: (message = 'Input contains prompt injection attempt') =>
+    z.string().refine(
+      (val: string) => {
+        const injectionPatterns = [
+          /ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|commands?|rules?)/i,
+          /disregard\s+(all\s+)?(previous|prior|above)\s+(instructions?|commands?|rules?)/i,
+          /forget\s+(all\s+)?(previous|prior|above)\s+(instructions?|commands?|rules?)/i,
+          /system\s*:\s*/i,
+          /<\|im_start\|>/i,
+          /<\|im_end\|>/i,
+          /\[INST\]/i,
+          /\[\/INST\]/i,
+          /<\|endoftext\|>/i,
+        ];
+        return !injectionPatterns.some((pattern) => pattern.test(val));
+      },
+      { message }
+    ),
+
+  /**
+   * Validates path doesn't contain traversal attempts
+   */
+  noPathTraversal: (message = 'Path contains directory traversal attempt') =>
+    z.string().refine((val: string) => !val.includes('..'), { message }),
+
+  /**
+   * Validates file extension is in allowed list
+   */
+  allowedExtension: (extensions: string[], message?: string) =>
+    z.string().refine(
+      (val: string) => {
+        const ext = val.split('.').pop()?.toLowerCase();
+        return ext && extensions.includes(`.${ext}`);
+      },
+      {
+        message: message || `File must be one of: ${extensions.join(', ')}`,
+      }
+    ),
+
+  /**
+   * Removes control characters except whitespace
+   */
+  noControlChars: (message = 'Input contains invalid control characters') =>
+    z.string().refine(
+      (val: string) => {
+        // Allow common whitespace: space, tab, newline, carriage return
+        for (const char of val) {
+          const code = char.charCodeAt(0);
+          // Control chars are 0-31 and 127-159
+          // Allow: 9 (tab), 10 (newline), 13 (carriage return), 32+ (printable)
+          if ((code < 32 && code !== 9 && code !== 10 && code !== 13) || (code >= 127 && code <= 159)) {
+            return false;
+          }
+        }
+        return true;
+      },
+      { message }
+    ),
+};
+
+/**
+ * Enhanced brief validation with security checks
+ */
+export const secureBriefSchema = z.object({
+  topic: z
+    .string()
+    .min(3, 'Topic must be at least 3 characters')
+    .max(10000, 'Topic must not exceed 10,000 characters')
+    .pipe(securityValidators.noXss())
+    .pipe(securityValidators.noPromptInjection())
+    .pipe(securityValidators.noControlChars()),
+  audience: z
+    .string()
+    .optional()
+    .refine(
+      (val: string | undefined) => !val || val.length <= 200,
+      { message: 'Audience must not exceed 200 characters' }
+    ),
+  goal: z
+    .string()
+    .optional()
+    .refine(
+      (val: string | undefined) => !val || val.length <= 300,
+      { message: 'Goal must not exceed 300 characters' }
+    ),
+  tone: z
+    .string()
+    .optional()
+    .refine(
+      (val: string | undefined) => !val || val.length <= 100,
+      { message: 'Tone must not exceed 100 characters' }
+    ),
+  language: z.string().optional(),
+  durationMinutes: z
+    .number()
+    .min(10 / 60, 'Duration must be at least 10 seconds')
+    .max(120, 'Duration must be no more than 120 minutes'),
+});
+
+/**
+ * Script text validation with security checks
+ */
+export const scriptTextValidator = z
+  .string()
+  .max(50000, 'Script text must not exceed 50,000 characters per scene')
+  .pipe(securityValidators.noXss())
+  .pipe(securityValidators.noControlChars());
+
+/**
+ * File upload validation with allowed extensions
+ */
+export const allowedFileExtensions = [
+  '.mp4',
+  '.mp3',
+  '.wav',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.json',
+  '.srt',
+  '.vtt',
+  '.ass',
+  '.ssa',
+];
+
+export function validateFileUpload(
+  file: File,
+  options?: {
+    maxSizeMB?: number;
+    allowedExtensions?: string[];
+  }
+): { valid: boolean; error?: string } {
+  const maxSize = (options?.maxSizeMB || 50) * 1024 * 1024;
+  const extensions = options?.allowedExtensions || allowedFileExtensions;
+
+  // Check size
+  if (file.size > maxSize) {
+    return {
+      valid: false,
+      error: `File size must be less than ${options?.maxSizeMB || 50}MB`,
+    };
+  }
+
+  // Check extension
+  const fileName = file.name.toLowerCase();
+  const hasValidExtension = extensions.some((ext) => fileName.endsWith(ext));
+  
+  if (!hasValidExtension) {
+    return {
+      valid: false,
+      error: `File type must be one of: ${extensions.join(', ')}`,
+    };
+  }
+
+  // Check for path traversal in filename
+  if (file.name.includes('..') || file.name.includes('/') || file.name.includes('\\')) {
+    return {
+      valid: false,
+      error: 'Invalid filename',
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Sanitize text for display (basic HTML encoding)
+ */
+export function sanitizeText(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Character counter helper for forms
+ */
+export function createCharCounter(maxLength: number) {
+  return {
+    validate: (value: string): { valid: boolean; remaining: number; percentage: number } => {
+      const length = value.length;
+      const remaining = maxLength - length;
+      const percentage = (length / maxLength) * 100;
+      return {
+        valid: length <= maxLength,
+        remaining,
+        percentage,
+      };
+    },
+    getMessage: (value: string): string => {
+      const { remaining, valid } = createCharCounter(maxLength).validate(value);
+      if (!valid) {
+        return `Exceeds limit by ${Math.abs(remaining)} characters`;
+      }
+      if (remaining < maxLength * 0.1) {
+        return `${remaining} characters remaining`;
+      }
+      return `${value.length} / ${maxLength} characters`;
+    },
+  };
+}
