@@ -13,7 +13,6 @@ import {
   Settings24Regular,
   VideoClip24Regular,
   Play24Regular,
-  Share24Regular,
   CloudArrowDown24Regular,
   Document24Regular,
   Folder24Regular,
@@ -147,14 +146,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       icon: Play24Regular,
       action: () => navigate('/render'),
     },
-    {
-      id: 'nav-publish',
-      name: 'Publish',
-      description: 'Publish to platforms',
-      category: 'Navigation',
-      icon: Share24Regular,
-      action: () => navigate('/publish'),
-    },
+
     {
       id: 'nav-assets',
       name: 'Asset Library',

@@ -5,7 +5,6 @@ import {
   Play24Regular,
   Document24Regular,
   CloudArrowDown24Regular,
-  Share24Regular,
   Timeline24Regular,
   DocumentBulletList24Regular,
   Folder24Regular,
@@ -59,7 +58,7 @@ export const navItems: NavItem[] = [
   { key: 'render', name: 'Render', icon: Play24Regular, path: '/render' },
   { key: 'platform', name: 'Platform Optimizer', icon: ChannelShare24Regular, path: '/platform' },
   { key: 'quality', name: 'Quality Dashboard', icon: ChartMultiple24Regular, path: '/quality' },
-  { key: 'publish', name: 'Publish', icon: Share24Regular, path: '/publish' },
+
   { key: 'jobs', name: 'Recent Jobs', icon: TaskListSquareLtr24Regular, path: '/jobs' },
   {
     key: 'downloads',

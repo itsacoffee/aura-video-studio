@@ -28,7 +28,6 @@
                 <NavigationViewItem Content="Create" Tag="create" Icon="Add" ToolTipService.ToolTip="Create a new video project"/>
                 <NavigationViewItem Content="Storyboard" Tag="storyboard" Icon="Edit" ToolTipService.ToolTip="Edit video timeline and scenes"/>
                 <NavigationViewItem Content="Render" Tag="render" Icon="Video" ToolTipService.ToolTip="Export your video"/>
-                <NavigationViewItem Content="Publish" Tag="publish" Icon="Upload" ToolTipService.ToolTip="Publish to platforms"/>
                 <NavigationViewItem Content="Library" Tag="library" Icon="Library" ToolTipService.ToolTip="View past projects"/>
                 <NavigationViewItemSeparator />
                 <NavigationViewItem Content="Hardware Profile" Tag="hardware" Icon="DeviceLaptop" ToolTipService.ToolTip="System information and capabilities"/>
