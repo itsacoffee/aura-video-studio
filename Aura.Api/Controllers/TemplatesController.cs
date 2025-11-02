@@ -352,6 +352,352 @@ public class TemplatesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Get all custom video templates
+    /// </summary>
+    [HttpGet("custom")]
+    public async Task<IActionResult> GetCustomTemplates([FromQuery] string? category = null)
+    {
+        try
+        {
+            var templates = await _templateService.GetCustomTemplatesAsync(category);
+            return Ok(templates);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get custom templates");
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Internal Server Error",
+                status = 500,
+                detail = "Failed to retrieve custom templates",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get a specific custom template by ID
+    /// </summary>
+    [HttpGet("custom/{id}")]
+    public async Task<IActionResult> GetCustomTemplate(string id)
+    {
+        try
+        {
+            var template = await _templateService.GetCustomTemplateByIdAsync(id);
+            
+            if (template == null)
+            {
+                return NotFound(new
+                {
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Custom Template Not Found",
+                    status = 404,
+                    detail = $"Custom template with ID '{id}' was not found",
+                    templateId = id
+                });
+            }
+
+            return Ok(template);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get custom template {TemplateId}", id);
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Internal Server Error",
+                status = 500,
+                detail = "Failed to retrieve custom template",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Create a new custom video template
+    /// </summary>
+    [HttpPost("custom")]
+    public async Task<IActionResult> CreateCustomTemplate([FromBody] CreateCustomTemplateRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+            {
+                return BadRequest(new
+                {
+                    type = "https://docs.aura.studio/errors/E400",
+                    title = "Invalid Request",
+                    status = 400,
+                    detail = "Template name is required",
+                    field = "Name"
+                });
+            }
+
+            var template = await _templateService.CreateCustomTemplateAsync(request);
+
+            return CreatedAtAction(
+                nameof(GetCustomTemplate),
+                new { id = template.Id },
+                template);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create custom template {TemplateName}", request.Name);
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Internal Server Error",
+                status = 500,
+                detail = "Failed to create custom template",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Update an existing custom template
+    /// </summary>
+    [HttpPut("custom/{id}")]
+    public async Task<IActionResult> UpdateCustomTemplate(string id, [FromBody] UpdateCustomTemplateRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+            {
+                return BadRequest(new
+                {
+                    type = "https://docs.aura.studio/errors/E400",
+                    title = "Invalid Request",
+                    status = 400,
+                    detail = "Template name is required",
+                    field = "Name"
+                });
+            }
+
+            var template = await _templateService.UpdateCustomTemplateAsync(id, request);
+            
+            if (template == null)
+            {
+                return NotFound(new
+                {
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Custom Template Not Found",
+                    status = 404,
+                    detail = $"Custom template with ID '{id}' was not found",
+                    templateId = id
+                });
+            }
+
+            return Ok(template);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update custom template {TemplateId}", id);
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Internal Server Error",
+                status = 500,
+                detail = "Failed to update custom template",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Delete a custom template
+    /// </summary>
+    [HttpDelete("custom/{id}")]
+    public async Task<IActionResult> DeleteCustomTemplate(string id)
+    {
+        try
+        {
+            var deleted = await _templateService.DeleteCustomTemplateAsync(id);
+            
+            if (!deleted)
+            {
+                return NotFound(new
+                {
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Custom Template Not Found",
+                    status = 404,
+                    detail = $"Custom template with ID '{id}' was not found",
+                    templateId = id
+                });
+            }
+
+            return Ok(new { message = "Custom template deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete custom template {TemplateId}", id);
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Internal Server Error",
+                status = 500,
+                detail = "Failed to delete custom template",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Duplicate a custom template
+    /// </summary>
+    [HttpPost("custom/{id}/duplicate")]
+    public async Task<IActionResult> DuplicateCustomTemplate(string id)
+    {
+        try
+        {
+            var template = await _templateService.DuplicateCustomTemplateAsync(id);
+
+            return CreatedAtAction(
+                nameof(GetCustomTemplate),
+                new { id = template.Id },
+                template);
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(new
+            {
+                type = "https://docs.aura.studio/errors/E404",
+                title = "Custom Template Not Found",
+                status = 404,
+                detail = ex.Message,
+                templateId = id
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to duplicate custom template {TemplateId}", id);
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Internal Server Error",
+                status = 500,
+                detail = "Failed to duplicate custom template",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Set default custom template
+    /// </summary>
+    [HttpPost("custom/{id}/set-default")]
+    public async Task<IActionResult> SetDefaultCustomTemplate(string id)
+    {
+        try
+        {
+            var success = await _templateService.SetDefaultCustomTemplateAsync(id);
+            
+            if (!success)
+            {
+                return NotFound(new
+                {
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Custom Template Not Found",
+                    status = 404,
+                    detail = $"Custom template with ID '{id}' was not found",
+                    templateId = id
+                });
+            }
+
+            return Ok(new { message = "Default template set successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set default custom template {TemplateId}", id);
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Internal Server Error",
+                status = 500,
+                detail = "Failed to set default custom template",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Export a custom template to JSON
+    /// </summary>
+    [HttpGet("custom/{id}/export")]
+    public async Task<IActionResult> ExportCustomTemplate(string id)
+    {
+        try
+        {
+            var exportData = await _templateService.ExportCustomTemplateAsync(id);
+            return Ok(exportData);
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(new
+            {
+                type = "https://docs.aura.studio/errors/E404",
+                title = "Custom Template Not Found",
+                status = 404,
+                detail = ex.Message,
+                templateId = id
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export custom template {TemplateId}", id);
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Internal Server Error",
+                status = 500,
+                detail = "Failed to export custom template",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Import a custom template from JSON
+    /// </summary>
+    [HttpPost("custom/import")]
+    public async Task<IActionResult> ImportCustomTemplate([FromBody] TemplateExportData exportData)
+    {
+        try
+        {
+            if (exportData?.Template == null)
+            {
+                return BadRequest(new
+                {
+                    type = "https://docs.aura.studio/errors/E400",
+                    title = "Invalid Request",
+                    status = 400,
+                    detail = "Template data is required"
+                });
+            }
+
+            var template = await _templateService.ImportCustomTemplateAsync(exportData);
+
+            return CreatedAtAction(
+                nameof(GetCustomTemplate),
+                new { id = template.Id },
+                template);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to import custom template");
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/E500",
+                title = "Internal Server Error",
+                status = 500,
+                detail = "Failed to import custom template",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
     private object ConvertTemplateToProject(TemplateStructure templateStructure, string projectName)
     {
         // Convert template structure to project file format

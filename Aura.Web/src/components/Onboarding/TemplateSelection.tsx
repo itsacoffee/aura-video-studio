@@ -14,6 +14,18 @@ import {
   Share24Regular,
   ShoppingBag24Regular,
   Play24Regular,
+  Book24Regular,
+  Star24Regular,
+  Lightbulb24Regular,
+  ChatBubblesQuestion24Regular,
+  News24Regular,
+  DocumentBulletList24Regular,
+  Wrench24Regular,
+  People24Regular,
+  VideoClip24Regular,
+  Trophy24Regular,
+  Sparkle24Regular,
+  Add24Regular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -131,7 +143,6 @@ export interface VideoTemplate {
   emoji: string;
   features: string[];
   estimatedDuration: string;
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   popular?: boolean;
   presets: {
     aspectRatio: string;
@@ -146,6 +157,7 @@ export interface TemplateSelectionProps {
   onSelectTemplate: (templateId: string) => void;
   onSkip: () => void;
   onUseTemplate: (templateId: string) => void;
+  onCreateCustom?: () => void;
 }
 
 export function TemplateSelection({
@@ -154,6 +166,7 @@ export function TemplateSelection({
   onSelectTemplate,
   onSkip,
   onUseTemplate,
+  onCreateCustom,
 }: TemplateSelectionProps) {
   const styles = useStyles();
 
@@ -170,6 +183,46 @@ export function TemplateSelection({
       </div>
 
       <div className={styles.templatesGrid}>
+        {onCreateCustom && (
+          <Card className={styles.templateCard} onClick={onCreateCustom}>
+            <div className={styles.templatePreview}>
+              <Add24Regular style={{ fontSize: '72px', color: tokens.colorBrandForeground1 }} />
+            </div>
+
+            <div className={styles.templateHeader}>
+              <div className={styles.templateInfo}>
+                <Title3 className={styles.templateTitle}>Create Custom Template</Title3>
+              </div>
+            </div>
+
+            <Text className={styles.templateDescription} size={300}>
+              Build your own custom template with tailored script structure, LLM prompts, and visual
+              preferences
+            </Text>
+
+            <ul className={styles.featuresList}>
+              <li className={styles.featureItem}>
+                <Text size={200} className={styles.checkIcon}>
+                  ✓
+                </Text>
+                <Text size={200}>Custom script sections</Text>
+              </li>
+              <li className={styles.featureItem}>
+                <Text size={200} className={styles.checkIcon}>
+                  ✓
+                </Text>
+                <Text size={200}>Advanced LLM configuration</Text>
+              </li>
+              <li className={styles.featureItem}>
+                <Text size={200} className={styles.checkIcon}>
+                  ✓
+                </Text>
+                <Text size={200}>Visual style customization</Text>
+              </li>
+            </ul>
+          </Card>
+        )}
+
         {templates.map((template) => (
           <Card
             key={template.id}
@@ -189,9 +242,6 @@ export function TemplateSelection({
             <div className={styles.templateHeader}>
               <div className={styles.templateInfo}>
                 <Title3 className={styles.templateTitle}>{template.name}</Title3>
-                <Badge appearance="outline" size="small">
-                  {template.difficulty}
-                </Badge>
               </div>
             </div>
 
@@ -303,7 +353,6 @@ export const defaultTemplates: VideoTemplate[] = [
       'Pre-configured audio levels',
     ],
     estimatedDuration: '15-60 min',
-    difficulty: 'Beginner',
     popular: true,
     presets: {
       aspectRatio: '16:9',
@@ -324,7 +373,6 @@ export const defaultTemplates: VideoTemplate[] = [
       'End screen placeholders',
     ],
     estimatedDuration: '5-20 min',
-    difficulty: 'Beginner',
     popular: true,
     presets: {
       aspectRatio: '16:9',
@@ -345,7 +393,6 @@ export const defaultTemplates: VideoTemplate[] = [
       'Quick export presets',
     ],
     estimatedDuration: '0.5-3 min',
-    difficulty: 'Beginner',
     popular: true,
     presets: {
       aspectRatio: '9:16',
@@ -366,11 +413,203 @@ export const defaultTemplates: VideoTemplate[] = [
       'Professional transitions',
     ],
     estimatedDuration: '2-10 min',
-    difficulty: 'Intermediate',
     presets: {
       aspectRatio: '16:9',
       resolution: '1920x1080',
       fps: 60,
+    },
+  },
+  {
+    id: 'educational',
+    name: 'Educational Content',
+    description: 'Structured learning content with clear explanations and examples',
+    icon: <Book24Regular />,
+    emoji: '📚',
+    features: [
+      'Clear structure for lessons',
+      'Visual aids and examples',
+      'Chapter-based organization',
+      'Knowledge check sections',
+    ],
+    estimatedDuration: '5-15 min',
+    popular: true,
+    presets: {
+      aspectRatio: '16:9',
+      resolution: '1920x1080',
+      fps: 30,
+    },
+  },
+  {
+    id: 'product-review',
+    name: 'Product Review',
+    description: 'Comprehensive product reviews with pros, cons, and ratings',
+    icon: <Star24Regular />,
+    emoji: '⭐',
+    features: [
+      'Structured review format',
+      'Feature highlights',
+      'Comparison sections',
+      'Rating system',
+    ],
+    estimatedDuration: '3-8 min',
+    presets: {
+      aspectRatio: '16:9',
+      resolution: '1920x1080',
+      fps: 30,
+    },
+  },
+  {
+    id: 'tutorial',
+    name: 'Tutorial Video',
+    description: 'Step-by-step tutorial format with clear instructions',
+    icon: <Wrench24Regular />,
+    emoji: '🔧',
+    features: [
+      'Step-by-step guidance',
+      'Progress indicators',
+      'Tips and tricks sections',
+      'Common mistakes warnings',
+    ],
+    estimatedDuration: '5-20 min',
+    popular: true,
+    presets: {
+      aspectRatio: '16:9',
+      resolution: '1920x1080',
+      fps: 30,
+    },
+  },
+  {
+    id: 'entertainment',
+    name: 'Entertainment/Comedy',
+    description: 'Fun, engaging content with comedic timing and pacing',
+    icon: <ChatBubblesQuestion24Regular />,
+    emoji: '😄',
+    features: [
+      'Dynamic pacing',
+      'Comedic timing support',
+      'Engaging hooks',
+      'Audience interaction',
+    ],
+    estimatedDuration: '3-10 min',
+    presets: {
+      aspectRatio: '16:9',
+      resolution: '1920x1080',
+      fps: 30,
+    },
+  },
+  {
+    id: 'news-commentary',
+    name: 'News/Commentary',
+    description: 'News-style reporting and commentary on current topics',
+    icon: <News24Regular />,
+    emoji: '📰',
+    features: ['News-style format', 'Topic breakdown', 'Analysis sections', 'Source citations'],
+    estimatedDuration: '5-15 min',
+    presets: {
+      aspectRatio: '16:9',
+      resolution: '1920x1080',
+      fps: 30,
+    },
+  },
+  {
+    id: 'explainer',
+    name: 'Explainer Video',
+    description: 'Clear, concise explanations of complex topics',
+    icon: <Lightbulb24Regular />,
+    emoji: '💡',
+    features: [
+      'Simplified concepts',
+      'Visual metaphors',
+      'Analogies and examples',
+      'Key takeaways',
+    ],
+    estimatedDuration: '3-7 min',
+    popular: true,
+    presets: {
+      aspectRatio: '16:9',
+      resolution: '1920x1080',
+      fps: 30,
+    },
+  },
+  {
+    id: 'listicle',
+    name: 'Listicle (Top 10, etc.)',
+    description: 'Numbered list format perfect for rankings and collections',
+    icon: <DocumentBulletList24Regular />,
+    emoji: '🔢',
+    features: ['Numbered countdown', 'Item highlights', 'Brief descriptions', 'Dramatic reveals'],
+    estimatedDuration: '5-12 min',
+    presets: {
+      aspectRatio: '16:9',
+      resolution: '1920x1080',
+      fps: 30,
+    },
+  },
+  {
+    id: 'interview',
+    name: 'Interview Format',
+    description: 'Conversational interview style with Q&A structure',
+    icon: <People24Regular />,
+    emoji: '🎤',
+    features: ['Q&A structure', 'Multi-speaker support', 'Topic segments', 'Guest introductions'],
+    estimatedDuration: '10-30 min',
+    presets: {
+      aspectRatio: '16:9',
+      resolution: '1920x1080',
+      fps: 30,
+    },
+  },
+  {
+    id: 'documentary',
+    name: 'Documentary Style',
+    description: 'In-depth documentary storytelling with narrative flow',
+    icon: <VideoClip24Regular />,
+    emoji: '🎬',
+    features: [
+      'Narrative structure',
+      'Chapter divisions',
+      'Archival footage support',
+      'Cinematic pacing',
+    ],
+    estimatedDuration: '15-45 min',
+    presets: {
+      aspectRatio: '16:9',
+      resolution: '1920x1080',
+      fps: 24,
+    },
+  },
+  {
+    id: 'motivational',
+    name: 'Motivational Content',
+    description: 'Inspiring and uplifting content to motivate your audience',
+    icon: <Trophy24Regular />,
+    emoji: '💪',
+    features: ['Inspirational messaging', 'Personal stories', 'Call-to-action', 'Uplifting music'],
+    estimatedDuration: '2-5 min',
+    presets: {
+      aspectRatio: '16:9',
+      resolution: '1920x1080',
+      fps: 30,
+    },
+  },
+  {
+    id: 'meme-factory',
+    name: 'Meme Factory',
+    description: 'Trending meme formats with customizable humor and commentary',
+    icon: <Sparkle24Regular />,
+    emoji: '🤣',
+    features: [
+      'Trending meme formats',
+      'Quick cuts and edits',
+      'Text overlay automation',
+      'Viral video styling',
+    ],
+    estimatedDuration: '0.5-2 min',
+    popular: true,
+    presets: {
+      aspectRatio: '9:16',
+      resolution: '1080x1920',
+      fps: 30,
     },
   },
 ];

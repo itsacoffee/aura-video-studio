@@ -47,6 +47,11 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<RenderCheckpointEntity> RenderCheckpoints { get; set; } = null!;
 
+    /// <summary>
+    /// Custom video templates
+    /// </summary>
+    public DbSet<CustomTemplateEntity> CustomTemplates { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -125,6 +130,16 @@ public class AuraDbContext : DbContext
                 .WithMany(p => p.Checkpoints)
                 .HasForeignKey(e => e.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure CustomTemplateEntity
+        modelBuilder.Entity<CustomTemplateEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.IsDefault);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.Category, e.CreatedAt });
         });
     }
 }
