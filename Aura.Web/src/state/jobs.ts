@@ -1,10 +1,20 @@
 import { create } from 'zustand';
 import { apiUrl } from '../config/api';
+import {
+  SseClient,
+  createSseClient,
+  type JobStatusEvent,
+  type StepProgressEvent,
+  type JobCompletedEvent,
+  type JobFailedEvent,
+  type JobCancelledEvent,
+} from '../services/api/sseClient';
+import { loggingService as logger } from '../services/loggingService';
 
 export interface Job {
   id: string;
   stage: string;
-  status: 'Queued' | 'Running' | 'Done' | 'Failed' | 'Skipped';
+  status: 'Queued' | 'Running' | 'Done' | 'Failed' | 'Skipped' | 'Canceled';
   percent: number;
   eta?: string;
   artifacts: JobArtifact[];
@@ -14,6 +24,8 @@ export interface Job {
   correlationId?: string;
   errorMessage?: string;
   failureDetails?: JobFailure;
+  phase?: string; // Current phase: plan, tts, visuals, compose, render
+  progressMessage?: string; // Latest progress message
 }
 
 export interface JobFailure {
@@ -45,7 +57,7 @@ interface JobsState {
 
   // Loading states
   loading: boolean;
-  polling: boolean;
+  streaming: boolean; // Tracks if SSE is active
 
   // Actions
   createJob: (
@@ -58,17 +70,18 @@ interface JobsState {
   getFailureDetails: (jobId: string) => Promise<JobFailure | null>;
   listJobs: () => Promise<void>;
   setActiveJob: (job: Job | null) => void;
-  startPolling: (jobId: string) => void;
-  stopPolling: () => void;
+  startStreaming: (jobId: string) => void;
+  stopStreaming: () => void;
+  updateJobFromSse: (updates: Partial<Job>) => void;
 }
 
-let pollInterval: ReturnType<typeof setInterval> | null = null;
+let sseClient: SseClient | null = null;
 
 export const useJobsStore = create<JobsState>((set, get) => ({
   activeJob: null,
   jobs: [],
   loading: false,
-  polling: false,
+  streaming: false,
 
   createJob: async (brief, planSpec, voiceSpec, renderSpec) => {
     set({ loading: true });
@@ -91,8 +104,8 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       const data = await response.json();
       const jobId = data.jobId;
 
-      // Start polling for updates
-      get().startPolling(jobId);
+      // Start SSE streaming for updates
+      get().startStreaming(jobId);
 
       return jobId;
     } catch (error) {
@@ -168,32 +181,139 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     set({ activeJob: job });
   },
 
-  startPolling: (jobId: string) => {
-    if (pollInterval) {
-      clearInterval(pollInterval);
+  updateJobFromSse: (updates: Partial<Job>) => {
+    const state = get();
+    if (state.activeJob) {
+      set({
+        activeJob: {
+          ...state.activeJob,
+          ...updates,
+        },
+      });
     }
-
-    set({ polling: true });
-
-    pollInterval = setInterval(async () => {
-      const state = get();
-      await state.getJob(jobId);
-
-      // Stop polling if job is done or failed
-      if (
-        state.activeJob &&
-        (state.activeJob.status === 'Done' || state.activeJob.status === 'Failed')
-      ) {
-        state.stopPolling();
-      }
-    }, 2000); // Poll every 2 seconds
   },
 
-  stopPolling: () => {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      pollInterval = null;
+  startStreaming: (jobId: string) => {
+    // Stop any existing SSE connection
+    get().stopStreaming();
+
+    logger.debug(`Starting SSE streaming for job: ${jobId}`, 'JobsStore', 'startStreaming');
+    set({ streaming: true });
+
+    // Create new SSE client
+    sseClient = createSseClient(jobId);
+
+    // Handle job status updates
+    sseClient.on('job-status', (event) => {
+      const data = event.data as JobStatusEvent;
+      logger.debug('Job status update', 'JobsStore', 'jobStatus', { data });
+      get().updateJobFromSse({
+        status: data.status as Job['status'],
+        stage: data.stage,
+        percent: data.percent,
+      });
+    });
+
+    // Handle step progress updates
+    sseClient.on('step-progress', (event) => {
+      const data = event.data as StepProgressEvent;
+      logger.debug('Step progress', 'JobsStore', 'stepProgress', { data });
+      get().updateJobFromSse({
+        stage: data.step,
+        phase: data.phase,
+        percent: data.progressPct,
+        progressMessage: data.message,
+      });
+    });
+
+    // Handle step status changes (phase transitions)
+    sseClient.on('step-status', (event) => {
+      const data = event.data as { step: string; status: string; phase: string };
+      logger.debug('Step status', 'JobsStore', 'stepStatus', { data });
+      get().updateJobFromSse({
+        stage: data.step,
+        phase: data.phase,
+      });
+    });
+
+    // Handle job completion
+    sseClient.on('job-completed', (event) => {
+      const data = event.data as JobCompletedEvent;
+      logger.debug('Job completed', 'JobsStore', 'jobCompleted', { data });
+      get().updateJobFromSse({
+        status: 'Done',
+        percent: 100,
+        artifacts: data.artifacts.map((a) => ({
+          name: a.name,
+          path: a.path,
+          type: a.type,
+          sizeBytes: a.sizeBytes,
+          createdAt: new Date().toISOString(),
+        })),
+        finishedAt: new Date().toISOString(),
+      });
+      get().stopStreaming();
+    });
+
+    // Handle job failure
+    sseClient.on('job-failed', (event) => {
+      const data = event.data as JobFailedEvent;
+      logger.error(
+        'Job failed',
+        new Error(data.errorMessage || 'Job failed'),
+        'JobsStore',
+        'jobFailed',
+        { data }
+      );
+      get().updateJobFromSse({
+        status: 'Failed',
+        errorMessage: data.errorMessage || data.errors[0]?.message || 'Job failed',
+        logs: data.logs || [],
+        finishedAt: new Date().toISOString(),
+      });
+      get().stopStreaming();
+    });
+
+    // Handle job cancellation
+    sseClient.on('job-cancelled', (event) => {
+      const data = event.data as JobCancelledEvent;
+      logger.debug('Job cancelled', 'JobsStore', 'jobCancelled', { data });
+      get().updateJobFromSse({
+        status: 'Canceled',
+        errorMessage: data.message,
+        finishedAt: new Date().toISOString(),
+      });
+      get().stopStreaming();
+    });
+
+    // Handle warnings
+    sseClient.on('warning', (event) => {
+      const data = event.data as { message: string };
+      logger.warn(data.message, 'JobsStore', 'warning');
+      // Could update logs here if needed
+    });
+
+    // Handle errors
+    sseClient.on('error', (event) => {
+      const data = event.data as { message: string };
+      logger.error('SSE error', new Error(data.message), 'JobsStore', 'sseError');
+      get().updateJobFromSse({
+        status: 'Failed',
+        errorMessage: data.message,
+      });
+      get().stopStreaming();
+    });
+
+    // Connect to SSE endpoint
+    sseClient.connect();
+  },
+
+  stopStreaming: () => {
+    if (sseClient) {
+      logger.debug('Stopping SSE streaming', 'JobsStore', 'stopStreaming');
+      sseClient.close();
+      sseClient = null;
     }
-    set({ polling: false });
+    set({ streaming: false });
   },
 }));
