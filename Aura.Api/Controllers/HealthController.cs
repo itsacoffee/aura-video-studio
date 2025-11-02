@@ -10,20 +10,26 @@ using Microsoft.Extensions.Logging;
 namespace Aura.Api.Controllers;
 
 /// <summary>
-/// API endpoints for provider health monitoring
+/// API endpoints for provider and system health monitoring
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class HealthController : ControllerBase
 {
     private readonly ProviderHealthMonitor _healthMonitor;
+    private readonly ProviderHealthService _healthService;
+    private readonly SystemHealthChecker _systemHealthChecker;
     private readonly ILogger<HealthController> _logger;
 
     public HealthController(
         ProviderHealthMonitor healthMonitor,
+        ProviderHealthService healthService,
+        SystemHealthChecker systemHealthChecker,
         ILogger<HealthController> logger)
     {
         _healthMonitor = healthMonitor;
+        _healthService = healthService;
+        _systemHealthChecker = systemHealthChecker;
         _logger = logger;
     }
 
@@ -185,6 +191,107 @@ public class HealthController : ControllerBase
         name.Equals("StableDiffusion", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("Stock", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Get health status for all LLM providers
+    /// </summary>
+    [HttpGet("llm")]
+    public ActionResult<ProviderTypeHealthDto> GetLlmHealth()
+    {
+        var providers = _healthService.GetLlmProvidersHealth();
+        var allDown = _healthService.AreAllProvidersDown("llm");
+        
+        var dto = new ProviderTypeHealthDto
+        {
+            ProviderType = "llm",
+            Providers = providers.Values.Select(ToDto).ToList(),
+            IsHealthy = !allDown,
+            HealthyCount = providers.Values.Count(p => p.IsHealthy),
+            TotalCount = providers.Count
+        };
+
+        return allDown ? StatusCode(503, dto) : Ok(dto);
+    }
+
+    /// <summary>
+    /// Get health status for all TTS providers
+    /// </summary>
+    [HttpGet("tts")]
+    public ActionResult<ProviderTypeHealthDto> GetTtsHealth()
+    {
+        var providers = _healthService.GetTtsProvidersHealth();
+        var allDown = _healthService.AreAllProvidersDown("tts");
+        
+        var dto = new ProviderTypeHealthDto
+        {
+            ProviderType = "tts",
+            Providers = providers.Values.Select(ToDto).ToList(),
+            IsHealthy = !allDown,
+            HealthyCount = providers.Values.Count(p => p.IsHealthy),
+            TotalCount = providers.Count
+        };
+
+        return allDown ? StatusCode(503, dto) : Ok(dto);
+    }
+
+    /// <summary>
+    /// Get health status for all image providers
+    /// </summary>
+    [HttpGet("images")]
+    public ActionResult<ProviderTypeHealthDto> GetImagesHealth()
+    {
+        var providers = _healthService.GetImageProvidersHealth();
+        var allDown = _healthService.AreAllProvidersDown("images");
+        
+        var dto = new ProviderTypeHealthDto
+        {
+            ProviderType = "images",
+            Providers = providers.Values.Select(ToDto).ToList(),
+            IsHealthy = !allDown,
+            HealthyCount = providers.Values.Count(p => p.IsHealthy),
+            TotalCount = providers.Count
+        };
+
+        return allDown ? StatusCode(503, dto) : Ok(dto);
+    }
+
+    /// <summary>
+    /// Get system health (FFmpeg, disk space, memory)
+    /// </summary>
+    [HttpGet("system")]
+    public async Task<ActionResult<SystemHealthDto>> GetSystemHealth(CancellationToken ct)
+    {
+        var metrics = await _systemHealthChecker.CheckSystemHealthAsync(ct).ConfigureAwait(false);
+        
+        var dto = new SystemHealthDto
+        {
+            FFmpegAvailable = metrics.FFmpegAvailable,
+            FFmpegVersion = metrics.FFmpegVersion,
+            DiskSpaceGB = metrics.DiskSpaceGB,
+            MemoryUsagePercent = metrics.MemoryUsagePercent,
+            IsHealthy = metrics.IsHealthy,
+            Issues = metrics.Issues
+        };
+
+        return metrics.IsHealthy ? Ok(dto) : StatusCode(503, dto);
+    }
+
+    /// <summary>
+    /// Reset circuit breaker for a specific provider
+    /// </summary>
+    [HttpPost("providers/{name}/reset")]
+    public async Task<ActionResult> ResetProviderCircuitBreaker(string name, CancellationToken ct)
+    {
+        var success = await _healthService.ResetCircuitBreakerAsync(name, ct).ConfigureAwait(false);
+        
+        if (!success)
+        {
+            return NotFound(new { error = $"Provider '{name}' not found" });
+        }
+
+        _logger.LogInformation("Circuit breaker reset for provider: {ProviderName}", name);
+        return Ok(new { message = $"Circuit breaker reset for provider '{name}'" });
+    }
+
     private ProviderHealthCheckDto ToDto(ProviderHealthMetrics metrics)
     {
         return new ProviderHealthCheckDto
@@ -196,7 +303,10 @@ public class HealthController : ControllerBase
             ConsecutiveFailures = metrics.ConsecutiveFailures,
             LastError = metrics.LastError,
             SuccessRate = metrics.SuccessRate,
-            AverageResponseTimeMs = metrics.AverageResponseTime.TotalMilliseconds
+            AverageResponseTimeMs = metrics.AverageResponseTime.TotalMilliseconds,
+            CircuitState = metrics.CircuitState.ToString(),
+            FailureRate = metrics.FailureRate,
+            CircuitOpenedAt = metrics.CircuitOpenedAt
         };
     }
 }
@@ -214,6 +324,9 @@ public class ProviderHealthCheckDto
     public string? LastError { get; set; }
     public double SuccessRate { get; set; }
     public double AverageResponseTimeMs { get; set; }
+    public string CircuitState { get; set; } = "Closed";
+    public double FailureRate { get; set; }
+    public DateTime? CircuitOpenedAt { get; set; }
 }
 
 /// <summary>
@@ -238,4 +351,29 @@ public class ProviderTypeHealth
     public int Healthy { get; set; }
     public int Degraded { get; set; }
     public int Offline { get; set; }
+}
+
+/// <summary>
+/// DTO for provider type health (e.g., all LLM providers)
+/// </summary>
+public class ProviderTypeHealthDto
+{
+    public string ProviderType { get; set; } = string.Empty;
+    public List<ProviderHealthCheckDto> Providers { get; set; } = new();
+    public bool IsHealthy { get; set; }
+    public int HealthyCount { get; set; }
+    public int TotalCount { get; set; }
+}
+
+/// <summary>
+/// DTO for system health check
+/// </summary>
+public class SystemHealthDto
+{
+    public bool FFmpegAvailable { get; set; }
+    public string? FFmpegVersion { get; set; }
+    public double DiskSpaceGB { get; set; }
+    public double MemoryUsagePercent { get; set; }
+    public bool IsHealthy { get; set; }
+    public List<string> Issues { get; set; } = new();
 }

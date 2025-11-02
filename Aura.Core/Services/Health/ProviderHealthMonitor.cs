@@ -5,22 +5,28 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Health;
 
 /// <summary>
-/// Monitors provider health and tracks performance metrics
+/// Monitors provider health and tracks performance metrics with circuit breaker support
 /// </summary>
 public class ProviderHealthMonitor
 {
     private readonly ILogger<ProviderHealthMonitor> _logger;
+    private readonly CircuitBreakerSettings _circuitBreakerSettings;
     private readonly ConcurrentDictionary<string, ProviderHealthState> _healthStates = new();
     private readonly ConcurrentDictionary<string, Func<CancellationToken, Task<bool>>> _healthCheckFunctions = new();
+    private readonly ConcurrentDictionary<string, CircuitBreaker> _circuitBreakers = new();
 
-    public ProviderHealthMonitor(ILogger<ProviderHealthMonitor> logger)
+    public ProviderHealthMonitor(
+        ILogger<ProviderHealthMonitor> logger,
+        CircuitBreakerSettings? circuitBreakerSettings = null)
     {
         _logger = logger;
+        _circuitBreakerSettings = circuitBreakerSettings ?? new CircuitBreakerSettings();
     }
 
     /// <summary>
@@ -30,6 +36,7 @@ public class ProviderHealthMonitor
     {
         _healthCheckFunctions[providerName] = healthCheckFunc;
         _healthStates.TryAdd(providerName, new ProviderHealthState(providerName));
+        _circuitBreakers.TryAdd(providerName, new CircuitBreaker(providerName, _circuitBreakerSettings, _logger));
         _logger.LogDebug("Registered health check for provider: {ProviderName}", providerName);
     }
 
@@ -42,11 +49,13 @@ public class ProviderHealthMonitor
         CancellationToken ct = default)
     {
         var state = _healthStates.GetOrAdd(providerName, _ => new ProviderHealthState(providerName));
+        var circuitBreaker = _circuitBreakers.GetOrAdd(providerName, 
+            _ => new CircuitBreaker(providerName, _circuitBreakerSettings, _logger));
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(_circuitBreakerSettings.HealthCheckTimeoutSeconds));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
             var result = await healthCheckFunc(linkedCts.Token).ConfigureAwait(false);
@@ -55,12 +64,15 @@ public class ProviderHealthMonitor
             if (result)
             {
                 state.RecordSuccess(stopwatch.Elapsed);
+                await circuitBreaker.RecordSuccessAsync(ct).ConfigureAwait(false);
                 _logger.LogDebug("Health check passed for {ProviderName} in {ElapsedMs}ms",
                     providerName, stopwatch.ElapsedMilliseconds);
             }
             else
             {
-                state.RecordFailure("Health check returned false");
+                var errorMessage = "Health check returned false";
+                state.RecordFailure(errorMessage);
+                await circuitBreaker.RecordFailureAsync(new Exception(errorMessage), ct).ConfigureAwait(false);
                 _logger.LogWarning("Health check failed for {ProviderName}", providerName);
             }
         }
@@ -71,7 +83,9 @@ public class ProviderHealthMonitor
         catch (OperationCanceledException)
         {
             stopwatch.Stop();
-            state.RecordFailure("Health check timed out after 5 seconds");
+            var errorMessage = $"Health check timed out after {_circuitBreakerSettings.HealthCheckTimeoutSeconds} seconds";
+            state.RecordFailure(errorMessage);
+            await circuitBreaker.RecordFailureAsync(new TimeoutException(errorMessage), ct).ConfigureAwait(false);
             _logger.LogWarning("Health check timed out for {ProviderName}", providerName);
         }
         catch (Exception ex)
@@ -79,10 +93,11 @@ public class ProviderHealthMonitor
             stopwatch.Stop();
             var errorMessage = $"{ex.GetType().Name}: {ex.Message}";
             state.RecordFailure(errorMessage);
+            await circuitBreaker.RecordFailureAsync(ex, ct).ConfigureAwait(false);
             _logger.LogWarning(ex, "Health check error for {ProviderName}", providerName);
         }
 
-        return state.ToMetrics();
+        return state.ToMetrics(circuitBreaker);
     }
 
     /// <summary>
@@ -92,7 +107,9 @@ public class ProviderHealthMonitor
     {
         if (_healthStates.TryGetValue(providerName, out var state))
         {
-            return state.ToMetrics();
+            var circuitBreaker = _circuitBreakers.GetOrAdd(providerName, 
+                _ => new CircuitBreaker(providerName, _circuitBreakerSettings, _logger));
+            return state.ToMetrics(circuitBreaker);
         }
 
         return null;
@@ -105,8 +122,21 @@ public class ProviderHealthMonitor
     {
         return _healthStates.ToDictionary(
             kvp => kvp.Key,
-            kvp => kvp.Value.ToMetrics()
+            kvp => 
+            {
+                var circuitBreaker = _circuitBreakers.GetOrAdd(kvp.Key, 
+                    _ => new CircuitBreaker(kvp.Key, _circuitBreakerSettings, _logger));
+                return kvp.Value.ToMetrics(circuitBreaker);
+            }
         );
+    }
+
+    /// <summary>
+    /// Get circuit breaker for a provider
+    /// </summary>
+    public CircuitBreaker? GetCircuitBreaker(string providerName)
+    {
+        return _circuitBreakers.TryGetValue(providerName, out var breaker) ? breaker : null;
     }
 
     /// <summary>

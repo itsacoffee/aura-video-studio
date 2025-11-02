@@ -15,6 +15,9 @@ public record ProviderHealthMetrics
     public string? LastError { get; init; }
     public double SuccessRate { get; init; }
     public TimeSpan AverageResponseTime { get; init; }
+    public CircuitBreakerState CircuitState { get; init; } = CircuitBreakerState.Closed;
+    public double FailureRate { get; init; }
+    public DateTime? CircuitOpenedAt { get; init; }
 }
 
 /// <summary>
@@ -81,18 +84,21 @@ internal class ProviderHealthState
         return TimeSpan.FromTicks(totalTicks / _recentResponseTimes.Count);
     }
 
-    public ProviderHealthMetrics ToMetrics()
+    public ProviderHealthMetrics ToMetrics(CircuitBreaker? circuitBreaker = null)
     {
         return new ProviderHealthMetrics
         {
             ProviderName = ProviderName,
-            IsHealthy = ConsecutiveFailures < 3,
+            IsHealthy = ConsecutiveFailures < 3 && (circuitBreaker?.State != CircuitBreakerState.Open),
             LastCheckTime = LastCheckTime,
             ResponseTime = LastResponseTime,
             ConsecutiveFailures = ConsecutiveFailures,
             LastError = LastError,
             SuccessRate = GetSuccessRate(),
-            AverageResponseTime = GetAverageResponseTime()
+            AverageResponseTime = GetAverageResponseTime(),
+            CircuitState = circuitBreaker?.State ?? CircuitBreakerState.Closed,
+            FailureRate = circuitBreaker?.GetFailureRate() ?? 0.0,
+            CircuitOpenedAt = circuitBreaker?.State == CircuitBreakerState.Open ? circuitBreaker.OpenedAt : null
         };
     }
 }

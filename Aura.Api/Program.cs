@@ -137,6 +137,11 @@ builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
 builder.Services.Configure<Aura.Core.Configuration.FFmpegOptions>(
     builder.Configuration.GetSection("FFmpeg"));
 
+// Configure Circuit Breaker options from appsettings
+builder.Services.Configure<Aura.Core.Configuration.CircuitBreakerSettings>(
+    builder.Configuration.GetSection("CircuitBreaker"));
+builder.Services.AddSingleton(sp => 
+    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Configuration.CircuitBreakerSettings>>().Value);
 
 // Register FFmpeg locator for centralized FFmpeg path resolution
 builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
@@ -186,6 +191,16 @@ builder.Services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommenda
         settings,
         providers);
 });
+
+// Register Health monitoring services with circuit breaker support
+builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Health.ProviderHealthMonitor>>();
+    var circuitBreakerSettings = sp.GetRequiredService<Aura.Core.Configuration.CircuitBreakerSettings>();
+    return new Aura.Core.Services.Health.ProviderHealthMonitor(logger, circuitBreakerSettings);
+});
+builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthService>();
+builder.Services.AddSingleton<Aura.Core.Services.Health.SystemHealthChecker>();
 
 // Script orchestrator with lazy provider creation
 builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
