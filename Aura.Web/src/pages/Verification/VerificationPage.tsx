@@ -371,7 +371,7 @@ const VerificationPage: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <Text weight="semibold">Confidence:</Text>
+                    <Text weight="semibold">Confidence: </Text>
                     <Text size={500}>{(quickResult.confidence * 100).toFixed(1)}%</Text>
                   </div>
                 </div>

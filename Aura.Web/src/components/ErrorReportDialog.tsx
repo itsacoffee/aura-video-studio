@@ -225,10 +225,10 @@ export function ErrorReportDialog({
               <Caption1>This technical information will be included in your report</Caption1>
               <div className={styles.codeBlock}>
                 <div>
-                  <strong>Error:</strong> {error.name}
+                  <strong>Error: </strong> {error.name}
                 </div>
                 <div>
-                  <strong>Message:</strong> {error.message}
+                  <strong>Message: </strong> {error.message}
                 </div>
                 {error.stack && (
                   <div>
