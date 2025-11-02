@@ -84,6 +84,7 @@ export interface ApiKeySetupStepProps {
   validationErrors: Record<string, string>;
   onApiKeyChange: (provider: string, value: string) => void;
   onValidateApiKey: (provider: string) => void;
+  onSkipValidation?: (provider: string) => void;
   onSkipAll: () => void;
 }
 
@@ -286,6 +287,7 @@ export function ApiKeySetupStep({
   validationErrors,
   onApiKeyChange,
   onValidateApiKey,
+  onSkipValidation,
   onSkipAll,
 }: ApiKeySetupStepProps) {
   const styles = useStyles();
@@ -394,6 +396,7 @@ export function ApiKeySetupStep({
                           onValidate={() => handleValidate(provider.id)}
                           validationStatus={validationStatus[provider.id] || 'idle'}
                           error={validationErrors[provider.id]}
+                          onSkipValidation={onSkipValidation ? () => onSkipValidation(provider.id) : undefined}
                         />
                         {provider.requiresMultipleKeys && (
                           <Text size={200} style={{ marginTop: tokens.spacingVerticalS }}>
