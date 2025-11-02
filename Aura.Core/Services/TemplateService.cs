@@ -25,16 +25,22 @@ public class TemplateService
     }
 
     /// <summary>
-    /// Get all templates with optional filtering
+    /// Get all templates with optional filtering and pagination
     /// </summary>
-    public async Task<List<TemplateListItem>> GetTemplatesAsync(
+    public async Task<PaginatedTemplatesResponse> GetTemplatesAsync(
         TemplateCategory? category = null,
         string? subCategory = null,
         bool systemOnly = false,
-        bool communityOnly = false)
+        bool communityOnly = false,
+        int page = 1,
+        int pageSize = 50)
     {
         try
         {
+            // Validate pagination parameters
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, 100);
+
             var query = _context.Templates.AsQueryable();
 
             if (category.HasValue)
@@ -57,16 +63,63 @@ public class TemplateService
                 query = query.Where(t => t.IsCommunityTemplate);
             }
 
-            var templates = await query
+            // Apply stable sorting for reproducible pages
+            query = query
                 .OrderByDescending(t => t.UsageCount)
                 .ThenByDescending(t => t.Rating)
+                .ThenBy(t => t.Id); // Tie-breaker for stable sorting
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply pagination
+            var skip = (page - 1) * pageSize;
+            var templates = await query
+                .Skip(skip)
+                .Take(pageSize)
                 .ToListAsync();
 
-            return templates.Select(MapToListItem).ToList();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            return new PaginatedTemplatesResponse
+            {
+                Items = templates.Select(MapToListItem).ToList(),
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages,
+                HasNextPage = page < totalPages,
+                HasPreviousPage = page > 1
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get templates");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Get all templates without pagination (for backwards compatibility)
+    /// Warning: This loads all templates into memory. Use with caution for large datasets.
+    /// Consider using GetTemplatesAsync with pagination for better performance.
+    /// </summary>
+    public async Task<List<TemplateListItem>> GetAllTemplatesAsync(
+        TemplateCategory? category = null,
+        string? subCategory = null,
+        bool systemOnly = false,
+        bool communityOnly = false)
+    {
+        try
+        {
+            // Use a large but reasonable page size limit (10000 templates max)
+            // This prevents potential memory issues while maintaining backwards compatibility
+            var response = await GetTemplatesAsync(category, subCategory, systemOnly, communityOnly, 1, 10000);
+            return response.Items;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get all templates");
             throw;
         }
     }

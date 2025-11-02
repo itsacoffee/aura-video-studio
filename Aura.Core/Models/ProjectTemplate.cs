@@ -233,3 +233,17 @@ public record TemplateListItem
     public bool IsSystemTemplate { get; init; }
     public bool IsCommunityTemplate { get; init; }
 }
+
+/// <summary>
+/// Paginated response for template list
+/// </summary>
+public record PaginatedTemplatesResponse
+{
+    public List<TemplateListItem> Items { get; init; } = new();
+    public int Page { get; init; }
+    public int PageSize { get; init; }
+    public int TotalCount { get; init; }
+    public int TotalPages { get; init; }
+    public bool HasNextPage { get; init; }
+    public bool HasPreviousPage { get; init; }
+}
