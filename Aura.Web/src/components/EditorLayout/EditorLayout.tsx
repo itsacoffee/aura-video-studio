@@ -6,6 +6,9 @@ import { TopMenuBar } from '../Layout/TopMenuBar';
 import { MenuBar } from '../MenuBar/MenuBar';
 import { PanelHeader } from './PanelHeader';
 
+// Constants
+const COLLAPSED_PANEL_WIDTH = 48;
+
 const useStyles = makeStyles({
   container: {
     display: 'flex',
@@ -28,8 +31,8 @@ const useStyles = makeStyles({
     backgroundColor: 'var(--color-background)',
   },
   panelCollapsed: {
-    width: '48px !important',
-    minWidth: '48px !important',
+    width: `${COLLAPSED_PANEL_WIDTH}px !important`,
+    minWidth: `${COLLAPSED_PANEL_WIDTH}px !important`,
   },
   content: {
     display: 'flex',
@@ -249,11 +252,15 @@ export function EditorLayout({
     };
   }, [handleKeyDown]);
 
-  // Listen for fullscreen change events
+  // Listen for fullscreen change events to sync with browser fullscreen state
   useEffect(() => {
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement && isFullscreen) {
-        exitFullscreen();
+      // Sync our state with the actual fullscreen state
+      const isInFullscreen = !!document.fullscreenElement;
+      if (isInFullscreen !== isFullscreen) {
+        // State is out of sync, update it directly without calling exitFullscreen
+        // to avoid triggering document.exitFullscreen again
+        useWorkspaceLayoutStore.setState({ isFullscreen: isInFullscreen });
       }
     };
 
@@ -261,7 +268,7 @@ export function EditorLayout({
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [isFullscreen, exitFullscreen]);
+  }, [isFullscreen]);
 
   // Persist panel sizes to localStorage
   useEffect(() => {
@@ -449,7 +456,9 @@ export function EditorLayout({
             <div
               className={`${styles.mediaLibraryPanel} ${collapsedPanels.mediaLibrary ? styles.panelCollapsed : ''}`}
               style={{
-                width: collapsedPanels.mediaLibrary ? '48px' : `${mediaLibraryWidth}px`,
+                width: collapsedPanels.mediaLibrary
+                  ? `${COLLAPSED_PANEL_WIDTH}px`
+                  : `${mediaLibraryWidth}px`,
               }}
             >
               <PanelHeader
@@ -495,7 +504,9 @@ export function EditorLayout({
             <div
               className={`${styles.effectsLibraryPanel} ${collapsedPanels.effects ? styles.panelCollapsed : ''}`}
               style={{
-                width: collapsedPanels.effects ? '48px' : `${effectsLibraryWidth}px`,
+                width: collapsedPanels.effects
+                  ? `${COLLAPSED_PANEL_WIDTH}px`
+                  : `${effectsLibraryWidth}px`,
               }}
             >
               <PanelHeader
@@ -595,7 +606,9 @@ export function EditorLayout({
             <div
               className={`${styles.propertiesPanel} ${collapsedPanels.properties ? styles.panelCollapsed : ''}`}
               style={{
-                width: collapsedPanels.properties ? '48px' : `${propertiesWidth}px`,
+                width: collapsedPanels.properties
+                  ? `${COLLAPSED_PANEL_WIDTH}px`
+                  : `${propertiesWidth}px`,
               }}
             >
               <PanelHeader
@@ -641,7 +654,7 @@ export function EditorLayout({
             <div
               className={`${styles.propertiesPanel} ${collapsedPanels.history ? styles.panelCollapsed : ''}`}
               style={{
-                width: collapsedPanels.history ? '48px' : `${historyWidth}px`,
+                width: collapsedPanels.history ? `${COLLAPSED_PANEL_WIDTH}px` : `${historyWidth}px`,
               }}
             >
               <PanelHeader

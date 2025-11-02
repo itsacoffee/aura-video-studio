@@ -64,12 +64,17 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
     const newState = !current;
 
     if (newState) {
-      document.documentElement.requestFullscreen?.();
+      document.documentElement.requestFullscreen?.().catch(() => {
+        // Fullscreen request failed, revert state
+        set({ isFullscreen: false });
+      });
+      set({ isFullscreen: true });
     } else {
-      document.exitFullscreen?.();
+      document.exitFullscreen?.().catch(() => {
+        // Exit fullscreen failed
+      });
+      set({ isFullscreen: false });
     }
-
-    set({ isFullscreen: newState });
   },
 
   exitFullscreen: () => {
