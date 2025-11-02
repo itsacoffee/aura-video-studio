@@ -806,6 +806,77 @@ export const HealthCheckCategory = {
 } as const;
 
 /**
+ * Circuit breaker states
+ */
+export enum CircuitBreakerState {
+  Closed = 'Closed',
+  Open = 'Open',
+  HalfOpen = 'HalfOpen',
+}
+
+/**
+ * Provider health check DTO with circuit breaker info
+ */
+export interface ProviderHealthCheckDto {
+  providerName: string;
+  isHealthy: boolean;
+  lastCheckTime: string;
+  responseTimeMs: number;
+  consecutiveFailures: number;
+  lastError?: string | null;
+  successRate: number;
+  averageResponseTimeMs: number;
+  circuitState: string;
+  failureRate: number;
+  circuitOpenedAt?: string | null;
+}
+
+/**
+ * Provider type health status (e.g., all LLM providers)
+ */
+export interface ProviderTypeHealthDto {
+  providerType: string;
+  providers: ProviderHealthCheckDto[];
+  isHealthy: boolean;
+  healthyCount: number;
+  totalCount: number;
+}
+
+/**
+ * System health check DTO
+ */
+export interface SystemHealthDto {
+  ffmpegAvailable: boolean;
+  ffmpegVersion?: string | null;
+  diskSpaceGB: number;
+  memoryUsagePercent: number;
+  isHealthy: boolean;
+  issues: string[];
+}
+
+/**
+ * Provider health summary DTO
+ */
+export interface ProviderHealthSummaryDto {
+  totalProviders: number;
+  healthyProviders: number;
+  degradedProviders: number;
+  offlineProviders: number;
+  lastUpdateTime: string;
+  providersByType: Record<string, ProviderTypeHealth>;
+}
+
+/**
+ * Health status for a specific provider type
+ */
+export interface ProviderTypeHealth {
+  total: number;
+  healthy: number;
+  degraded: number;
+  offline: number;
+}
+
+/**
  * Remediation action types
  */
 export const RemediationActionType = {
