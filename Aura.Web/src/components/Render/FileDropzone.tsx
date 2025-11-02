@@ -57,7 +57,7 @@ const ACCEPTED_AUDIO_FORMATS = ['.mp3', '.wav', '.aac', '.m4a', '.flac', '.ogg',
 
 const ACCEPTED_FORMATS = [...ACCEPTED_VIDEO_FORMATS, ...ACCEPTED_AUDIO_FORMATS];
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024; // 10 GB
+const MAX_FILE_SIZE = 100 * 1024 * 1024 * 1024; // 100 GB - increased for professional video workflows
 
 interface FileDropzoneProps {
   onFileSelected: (file: File) => void;
@@ -81,9 +81,15 @@ export function FileDropzone({ onFileSelected, disabled = false }: FileDropzoneP
     }
 
     if (file.size > MAX_FILE_SIZE) {
+      const fileSizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
+      const maxSizeGB = (MAX_FILE_SIZE / (1024 * 1024 * 1024)).toFixed(0);
+      const isVideo = file.type.startsWith('video/');
+      const suggestions = isVideo
+        ? '\n• Compressing the video using HandBrake or similar tools\n• Using a more efficient codec (H.265/HEVC instead of H.264)\n• Reducing resolution if source is higher than needed'
+        : '\n• Compressing the audio file using a tool like Audacity\n• Using a more efficient format (AAC/Opus instead of WAV)\n• Reducing bitrate or sample rate if quality allows';
       return {
         valid: false,
-        error: `File size exceeds 10 GB limit. Please select a smaller file.`,
+        error: `File size (${fileSizeGB} GB) exceeds ${maxSizeGB} GB limit. For files this large, consider:${suggestions}`,
       };
     }
 
@@ -195,7 +201,7 @@ export function FileDropzone({ onFileSelected, disabled = false }: FileDropzoneP
         </Caption1>
 
         <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
-          Maximum file size: 10 GB
+          Maximum file size: 100 GB
         </Caption1>
 
         <Button appearance="primary" disabled={disabled}>

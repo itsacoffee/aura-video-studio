@@ -98,6 +98,14 @@ builder.Host.UseSerilog();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// Configure form options for large file uploads (100GB support)
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 100L * 1024L * 1024L * 1024L; // 100GB max file size
+    options.ValueLengthLimit = 100 * 1024 * 1024; // 100MB max form value
+    options.MultipartHeadersLengthLimit = 1024 * 1024; // 1MB max headers
+});
+
 // Add services to the container
 builder.Services.AddControllers(options =>
     {
@@ -1020,6 +1028,14 @@ var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL")
     ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") 
     ?? "http://127.0.0.1:5005";
 builder.WebHost.UseUrls(apiUrl);
+
+// Configure Kestrel for large file uploads
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 100L * 1024L * 1024L * 1024L; // 100GB max request size
+    serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(10); // Increased timeout for large uploads
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10);
+});
 
 var app = builder.Build();
 

@@ -648,7 +648,7 @@ public class PlatformProfileService
                     MaxDurationSeconds = 240 * 60, // 240 minutes
                     OptimalMinDurationSeconds = 60,
                     OptimalMaxDurationSeconds = 180,
-                    MaxFileSizeBytes = 10L * 1024L * 1024L * 1024L, // 10GB
+                    MaxFileSizeBytes = 100L * 1024L * 1024L * 1024L, // 100GB - increased for professional video workflows
                     RecommendedCodecs = new List<string> { "h264" },
                     MaxBitrate = 8000,
                     RecommendedBitrate = 5000,
