@@ -197,25 +197,38 @@ public class DependencyDetector
 
     private async Task<(bool installed, string? version)> DetectOllamaAsync(CancellationToken ct)
     {
+        // First, check if Ollama executable exists (even if server isn't running)
+        var exePath = OllamaService.FindOllamaExecutable();
+        
         try
         {
             if (_httpClient == null)
             {
+                // If we found the executable but can't check HTTP, still report as installed
+                if (!string.IsNullOrEmpty(exePath))
+                {
+                    _logger.LogInformation("Ollama executable found at {Path} but cannot verify server status", exePath);
+                    return (true, "installed (not running)");
+                }
                 return (false, null);
             }
 
-            var response = await _httpClient.GetAsync("http://localhost:11434/api/tags", ct).ConfigureAwait(false);
+            // Try HTTP check with timeout
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(3));
+
+            var response = await _httpClient.GetAsync("http://localhost:11434/api/tags", cts.Token).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("Ollama detected and responding");
+                _logger.LogInformation("Ollama detected and responding at http://localhost:11434");
                 
                 // Try to get version from another endpoint
                 try
                 {
-                    var versionResponse = await _httpClient.GetAsync("http://localhost:11434/api/version", ct).ConfigureAwait(false);
+                    var versionResponse = await _httpClient.GetAsync("http://localhost:11434/api/version", cts.Token).ConfigureAwait(false);
                     if (versionResponse.IsSuccessStatusCode)
                     {
-                        var version = await versionResponse.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                        var version = await versionResponse.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                         return (true, version);
                     }
                 }
@@ -227,9 +240,20 @@ public class DependencyDetector
                 return (true, "running");
             }
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Ollama HTTP check timed out");
+        }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Ollama not detected");
+            _logger.LogDebug(ex, "Ollama HTTP check failed");
+        }
+
+        // If HTTP check failed but we found the executable, report as installed but not running
+        if (!string.IsNullOrEmpty(exePath))
+        {
+            _logger.LogInformation("Ollama executable found at {Path} but server is not responding", exePath);
+            return (true, "installed (not running)");
         }
 
         return (false, null);
