@@ -699,6 +699,11 @@ function validateApiKeyFormat(
         };
       }
       break;
+    case 'pexels':
+      if (apiKey.length < 20) {
+        return { valid: false, error: 'Pexels API keys should be at least 20 characters' };
+      }
+      break;
   }
 
   return { valid: true };

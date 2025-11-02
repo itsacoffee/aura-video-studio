@@ -10,6 +10,7 @@ import {
   AccordionHeader,
   AccordionPanel,
   Badge,
+  Divider,
 } from '@fluentui/react-components';
 import { useState } from 'react';
 import { ApiKeyInput } from '../../components/ApiKeyInput';
@@ -23,6 +24,23 @@ const useStyles = makeStyles({
   },
   header: {
     textAlign: 'center',
+  },
+  section: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  sectionHeader: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+    marginBottom: tokens.spacingVerticalS,
+  },
+  sectionTitle: {
+    marginTop: tokens.spacingVerticalL,
+  },
+  sectionDescription: {
+    color: tokens.colorNeutralForeground3,
   },
   providerAccordion: {
     width: '100%',
@@ -83,7 +101,36 @@ interface ProviderConfig {
   };
   keyFormat?: string;
   requiresMultipleKeys?: boolean;
+  category: 'llm' | 'tts' | 'image' | 'other';
 }
+
+interface ProviderSection {
+  id: string;
+  title: string;
+  description: string;
+  category: 'llm' | 'tts' | 'image' | 'other';
+}
+
+const sections: ProviderSection[] = [
+  {
+    id: 'llm',
+    title: 'LLM Providers',
+    description: 'Large Language Models for script generation and content creation',
+    category: 'llm',
+  },
+  {
+    id: 'tts',
+    title: 'Text-to-Speech',
+    description: 'AI voice synthesis for narration and voiceovers',
+    category: 'tts',
+  },
+  {
+    id: 'image',
+    title: 'Image Services',
+    description: 'Stock images and AI-generated visuals for video content',
+    category: 'image',
+  },
+];
 
 const providers: ProviderConfig[] = [
   {
@@ -105,6 +152,7 @@ const providers: ProviderConfig[] = [
       costEstimate: '~$0.15 per 5-minute video script',
     },
     keyFormat: 'start with "sk-"',
+    category: 'llm',
   },
   {
     id: 'anthropic',
@@ -125,6 +173,7 @@ const providers: ProviderConfig[] = [
       costEstimate: '~$0.12 per 5-minute video script',
     },
     keyFormat: 'start with "sk-ant-"',
+    category: 'llm',
   },
   {
     id: 'gemini',
@@ -144,6 +193,7 @@ const providers: ProviderConfig[] = [
       costEstimate: '~$0.10 per 5-minute script on paid tier',
     },
     keyFormat: 'are 39 characters long',
+    category: 'llm',
   },
   {
     id: 'elevenlabs',
@@ -164,6 +214,7 @@ const providers: ProviderConfig[] = [
       costEstimate: '$5/month for 30,000 characters (~30 minutes)',
     },
     keyFormat: 'are 32-character hex strings',
+    category: 'tts',
   },
   {
     id: 'playht',
@@ -184,6 +235,7 @@ const providers: ProviderConfig[] = [
       costEstimate: '$31/month for 12.5 hours of audio',
     },
     requiresMultipleKeys: true,
+    category: 'tts',
   },
   {
     id: 'replicate',
@@ -204,6 +256,27 @@ const providers: ProviderConfig[] = [
       costEstimate: '~$0.0023 per image (~$0.10 per video)',
     },
     keyFormat: 'start with "r8_"',
+    category: 'image',
+  },
+  {
+    id: 'pexels',
+    name: 'Pexels',
+    logo: '📷',
+    description: 'Free stock photos and videos',
+    usedFor: 'Access to high-quality stock images and video content for your projects',
+    signupUrl: 'https://www.pexels.com/api/',
+    steps: [
+      'Create a free account at pexels.com',
+      'Navigate to the API page',
+      'Click "Get Started"',
+      'Copy your API key',
+    ],
+    pricingInfo: {
+      freeTier: 'Free with 200 requests/hour',
+      costEstimate: 'Completely free for all usage',
+    },
+    keyFormat: 'are alphanumeric strings',
+    category: 'image',
   },
 ];
 
@@ -255,69 +328,88 @@ export function ApiKeySetupStep({
         </Text>
       </div>
 
-      <Accordion className={styles.providerAccordion} collapsible multiple>
-        {providers.map((provider) => (
-          <AccordionItem key={provider.id} value={provider.id}>
-            <AccordionHeader>
-              <div className={styles.providerHeader}>
-                <span className={styles.providerLogo}>{provider.logo}</span>
-                <div className={styles.providerInfo}>
-                  <Text weight="semibold">{provider.name}</Text>
-                  <Text size={200}>{provider.description}</Text>
-                </div>
-                <Badge
-                  appearance="filled"
-                  color={
-                    validationStatus[provider.id] === 'valid'
-                      ? 'success'
-                      : validationStatus[provider.id] === 'invalid'
-                        ? 'danger'
-                        : 'informative'
-                  }
-                >
-                  {validationStatus[provider.id] === 'valid'
-                    ? 'Valid'
-                    : validationStatus[provider.id] === 'validating'
-                      ? 'Validating...'
-                      : validationStatus[provider.id] === 'invalid'
-                        ? 'Invalid'
-                        : 'Not Set'}
-                </Badge>
-              </div>
-            </AccordionHeader>
-            <AccordionPanel>
-              <div className={styles.providerContent}>
-                <ProviderHelpPanel
-                  providerName={provider.name}
-                  signupUrl={provider.signupUrl}
-                  steps={provider.steps}
-                  usedFor={provider.usedFor}
-                  pricingInfo={provider.pricingInfo}
-                  keyFormat={provider.keyFormat}
-                />
+      {sections.map((section, index) => {
+        const sectionProviders = providers.filter((p) => p.category === section.category);
+        if (sectionProviders.length === 0) return null;
 
-                <div style={{ marginTop: tokens.spacingVerticalM }}>
-                  <Title3 style={{ marginBottom: tokens.spacingVerticalS }}>Enter API Key</Title3>
-                  <ApiKeyInput
-                    provider={provider.name}
-                    value={apiKeys[provider.id] || ''}
-                    onChange={(value) => onApiKeyChange(provider.id, value)}
-                    onValidate={() => handleValidate(provider.id)}
-                    validationStatus={validationStatus[provider.id] || 'idle'}
-                    error={validationErrors[provider.id]}
-                  />
-                  {provider.requiresMultipleKeys && (
-                    <Text size={200} style={{ marginTop: tokens.spacingVerticalS }}>
-                      Note: {provider.name} requires both User ID and Secret Key (enter as
-                      &quot;userId:secretKey&quot;)
-                    </Text>
-                  )}
-                </div>
-              </div>
-            </AccordionPanel>
-          </AccordionItem>
-        ))}
-      </Accordion>
+        return (
+          <div key={section.id} className={styles.section}>
+            {index > 0 && <Divider />}
+            <div className={styles.sectionHeader}>
+              <Title3 className={styles.sectionTitle}>{section.title}</Title3>
+              <Text size={200} className={styles.sectionDescription}>
+                {section.description}
+              </Text>
+            </div>
+
+            <Accordion className={styles.providerAccordion} collapsible multiple>
+              {sectionProviders.map((provider) => (
+                <AccordionItem key={provider.id} value={provider.id}>
+                  <AccordionHeader>
+                    <div className={styles.providerHeader}>
+                      <span className={styles.providerLogo}>{provider.logo}</span>
+                      <div className={styles.providerInfo}>
+                        <Text weight="semibold">{provider.name}</Text>
+                        <Text size={200}>{provider.description}</Text>
+                      </div>
+                      <Badge
+                        appearance="filled"
+                        color={
+                          validationStatus[provider.id] === 'valid'
+                            ? 'success'
+                            : validationStatus[provider.id] === 'invalid'
+                              ? 'danger'
+                              : 'informative'
+                        }
+                      >
+                        {validationStatus[provider.id] === 'valid'
+                          ? 'Valid'
+                          : validationStatus[provider.id] === 'validating'
+                            ? 'Validating...'
+                            : validationStatus[provider.id] === 'invalid'
+                              ? 'Invalid'
+                              : 'Not Set'}
+                      </Badge>
+                    </div>
+                  </AccordionHeader>
+                  <AccordionPanel>
+                    <div className={styles.providerContent}>
+                      <ProviderHelpPanel
+                        providerName={provider.name}
+                        signupUrl={provider.signupUrl}
+                        steps={provider.steps}
+                        usedFor={provider.usedFor}
+                        pricingInfo={provider.pricingInfo}
+                        keyFormat={provider.keyFormat}
+                      />
+
+                      <div style={{ marginTop: tokens.spacingVerticalM }}>
+                        <Title3 style={{ marginBottom: tokens.spacingVerticalS }}>
+                          Enter API Key
+                        </Title3>
+                        <ApiKeyInput
+                          provider={provider.name}
+                          value={apiKeys[provider.id] || ''}
+                          onChange={(value) => onApiKeyChange(provider.id, value)}
+                          onValidate={() => handleValidate(provider.id)}
+                          validationStatus={validationStatus[provider.id] || 'idle'}
+                          error={validationErrors[provider.id]}
+                        />
+                        {provider.requiresMultipleKeys && (
+                          <Text size={200} style={{ marginTop: tokens.spacingVerticalS }}>
+                            Note: {provider.name} requires both User ID and Secret Key (enter as
+                            &quot;userId:secretKey&quot;)
+                          </Text>
+                        )}
+                      </div>
+                    </div>
+                  </AccordionPanel>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        );
+      })}
 
       <div className={styles.buttonRow}>
         <Button appearance="subtle" onClick={onSkipAll}>
