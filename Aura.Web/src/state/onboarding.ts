@@ -142,6 +142,7 @@ export type OnboardingAction =
   | { type: 'START_API_KEY_VALIDATION'; payload: string }
   | { type: 'API_KEY_VALID'; payload: { provider: string; accountInfo?: string } }
   | { type: 'API_KEY_INVALID'; payload: { provider: string; error: string } }
+  | { type: 'SKIP_API_KEY_VALIDATION'; payload: string }
   | { type: 'SET_WORKSPACE_PREFERENCES'; payload: OnboardingState['workspacePreferences'] }
   | { type: 'SET_TEMPLATE'; payload: string | null }
   | { type: 'TOGGLE_TUTORIAL' }
@@ -330,6 +331,19 @@ export function onboardingReducer(
         apiKeyErrors: {
           ...state.apiKeyErrors,
           [action.payload.provider]: action.payload.error,
+        },
+      };
+
+    case 'SKIP_API_KEY_VALIDATION':
+      return {
+        ...state,
+        apiKeyValidationStatus: {
+          ...state.apiKeyValidationStatus,
+          [action.payload]: 'idle',
+        },
+        apiKeyErrors: {
+          ...state.apiKeyErrors,
+          [action.payload]: '',
         },
       };
 
@@ -660,31 +674,104 @@ export async function validateApiKeyThunk(
       return;
     }
 
-    // Mock validation for now - in PR #2, this will call actual backend validation
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API call
+    // Map frontend provider IDs to backend provider names and API key fields
+    const providerNameMap: Record<string, { validatorName: string; keyField: string }> = {
+      openai: { validatorName: 'OpenAI', keyField: 'openai' },
+      anthropic: { validatorName: 'Anthropic', keyField: 'anthropic' },
+      gemini: { validatorName: 'Gemini', keyField: 'gemini' },
+      elevenlabs: { validatorName: 'ElevenLabs', keyField: 'elevenlabs' },
+      playht: { validatorName: 'PlayHT', keyField: 'playht' },
+      replicate: { validatorName: 'Replicate', keyField: 'replicate' },
+      pexels: { validatorName: 'Pexels', keyField: 'pexels' },
+      ollama: { validatorName: 'Ollama', keyField: 'ollama' },
+    };
 
-    // Mock success (80% success rate for testing)
-    const isSuccess = Math.random() > 0.2;
-    if (isSuccess) {
+    const providerInfo = providerNameMap[provider.toLowerCase()] || {
+      validatorName: provider,
+      keyField: provider.toLowerCase(),
+    };
+
+    // Save the API key first so the validator can access it
+    // Map provider key fields to the expected API request fields (explicit mappings for all known providers)
+    const apiKeyFieldMap: Record<string, string> = {
+      openai: 'openAiKey',
+      elevenlabs: 'elevenLabsKey',
+      pexels: 'pexelsKey',
+      stabilityai: 'stabilityAiKey',
+      pixabay: 'pixabayKey',
+      unsplash: 'unsplashKey',
+      anthropic: 'anthropicKey',
+      gemini: 'geminiKey',
+      playht: 'playHtKey',
+      replicate: 'replicateKey',
+      ollama: 'ollamaKey',
+    };
+    
+    const requestField = apiKeyFieldMap[providerInfo.keyField];
+    if (!requestField) {
+      throw new Error(`Unknown provider key field: ${providerInfo.keyField}. Please add mapping to apiKeyFieldMap.`);
+    }
+    
+    const apiKeyRequest: Record<string, string> = {};
+    apiKeyRequest[requestField] = apiKey.trim();
+
+    const saveResponse = await fetch(apiUrl('/api/apikeys/save'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(apiKeyRequest),
+    });
+
+    if (!saveResponse.ok) {
+      throw new Error(`Failed to save API key: ${saveResponse.statusText}`);
+    }
+
+    // Call the actual backend validation endpoint
+    const response = await fetch(apiUrl('/api/providers/validate'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        providers: [providerInfo.validatorName],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Validation request failed: ${response.statusText}`);
+    }
+
+    const result: { results: Array<{ name: string; ok: boolean; details: string }>; ok: boolean } =
+      await response.json();
+
+    // Find the result for this specific provider
+    const providerResult = result.results.find(
+      (r) => r.name.toLowerCase() === providerInfo.validatorName.toLowerCase()
+    );
+
+    if (!providerResult) {
+      throw new Error('Provider validation result not found in response');
+    }
+
+    if (providerResult.ok) {
       dispatch({
         type: 'API_KEY_VALID',
-        payload: { provider, accountInfo: 'API key validated successfully' },
+        payload: { provider, accountInfo: providerResult.details || 'API key validated successfully' },
       });
     } else {
       dispatch({
         type: 'API_KEY_INVALID',
         payload: {
           provider,
-          error: 'This API key is invalid. Please check you copied it correctly.',
+          error: providerResult.details || 'API key validation failed',
         },
       });
     }
-  } catch (error) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('API key validation error:', errorMessage);
     dispatch({
       type: 'API_KEY_INVALID',
       payload: {
         provider,
-        error: 'Could not connect. Check your internet connection.',
+        error: `Could not validate API key: ${errorMessage}`,
       },
     });
   }

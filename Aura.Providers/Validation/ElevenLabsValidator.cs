@@ -14,6 +14,8 @@ public class ElevenLabsValidator : IProviderValidator
 {
     private readonly ILogger<ElevenLabsValidator> _logger;
     private readonly HttpClient _httpClient;
+    private static readonly System.Text.RegularExpressions.Regex ApiKeyFormatRegex = 
+        new System.Text.RegularExpressions.Regex("^[a-fA-F0-9]{32}$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     public string ProviderName => "ElevenLabs";
 
@@ -26,11 +28,13 @@ public class ElevenLabsValidator : IProviderValidator
     public async Task<ProviderValidationResult> ValidateAsync(string? apiKey, string? configUrl, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
+        var correlationId = Guid.NewGuid().ToString("N").Substring(0, 8);
 
         try
         {
             if (string.IsNullOrWhiteSpace(apiKey))
             {
+                _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: API key not configured", correlationId);
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
@@ -40,20 +44,59 @@ public class ElevenLabsValidator : IProviderValidator
                 };
             }
 
-            // List voices to validate API key
-            var request = new HttpRequestMessage(HttpMethod.Get, "https://api.elevenlabs.io/v1/voices");
+            // Trim whitespace from API key (common copy-paste issue)
+            apiKey = apiKey.Trim();
+
+            // Validate API key format (32 hex characters)
+            if (apiKey.Length != 32 || !ApiKeyFormatRegex.IsMatch(apiKey))
+            {
+                _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: Invalid API key format (expected 32 hex characters, got {Length} characters)", 
+                    correlationId, apiKey.Length);
+                return new ProviderValidationResult
+                {
+                    Name = ProviderName,
+                    Ok = false,
+                    Details = "API key format invalid (expected 32 hexadecimal characters)",
+                    ElapsedMs = sw.ElapsedMilliseconds
+                };
+            }
+
+            _logger.LogInformation("[{CorrelationId}] Validating ElevenLabs API key (key ending: ...{KeySuffix})", 
+                correlationId, apiKey.Substring(Math.Max(0, apiKey.Length - 4)));
+
+            // Try to get user info first (more reliable than voices endpoint)
+            var request = new HttpRequestMessage(HttpMethod.Get, "https://api.elevenlabs.io/v1/user");
             request.Headers.Add("xi-api-key", apiKey);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            cts.CancelAfter(TimeSpan.FromSeconds(30)); // Increased timeout from 10s to 30s
 
-            var response = await _httpClient.SendAsync(request, cts.Token);
+            HttpResponseMessage? response = null;
+            try
+            {
+                response = await _httpClient.SendAsync(request, cts.Token);
+            }
+            catch (TaskCanceledException) when (cts.Token.IsCancellationRequested && !ct.IsCancellationRequested)
+            {
+                // Timeout occurred
+                sw.Stop();
+                _logger.LogWarning("[{CorrelationId}] ElevenLabs validation timed out after 30 seconds", correlationId);
+                return new ProviderValidationResult
+                {
+                    Name = ProviderName,
+                    Ok = false,
+                    Details = "Request timed out - ElevenLabs API may be slow or unreachable",
+                    ElapsedMs = sw.ElapsedMilliseconds
+                };
+            }
 
             sw.Stop();
 
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("ElevenLabs validation successful");
+                var responseBody = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogInformation("[{CorrelationId}] ElevenLabs validation successful (response length: {Length} bytes, elapsed: {ElapsedMs}ms)", 
+                    correlationId, responseBody.Length, sw.ElapsedMilliseconds);
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
@@ -64,23 +107,53 @@ public class ElevenLabsValidator : IProviderValidator
             }
             else if ((int)response.StatusCode == 401)
             {
-                _logger.LogWarning("ElevenLabs validation failed: Invalid API key");
+                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP 401 Unauthorized - API key is invalid (error: {Error})", 
+                    correlationId, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
                     Ok = false,
-                    Details = "Invalid API key",
+                    Details = "API key is invalid - please verify you copied it correctly from ElevenLabs settings",
+                    ElapsedMs = sw.ElapsedMilliseconds
+                };
+            }
+            else if ((int)response.StatusCode == 403)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP 403 Forbidden - API key valid but account has no access (error: {Error})", 
+                    correlationId, TruncateErrorBody(errorBody));
+                return new ProviderValidationResult
+                {
+                    Name = ProviderName,
+                    Ok = false,
+                    Details = "API key valid but account has no access - check your ElevenLabs subscription",
+                    ElapsedMs = sw.ElapsedMilliseconds
+                };
+            }
+            else if ((int)response.StatusCode == 429)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP 429 Too Many Requests - rate limit exceeded (error: {Error})", 
+                    correlationId, TruncateErrorBody(errorBody));
+                return new ProviderValidationResult
+                {
+                    Name = ProviderName,
+                    Ok = false,
+                    Details = "Rate limit exceeded - please wait a moment and try again",
                     ElapsedMs = sw.ElapsedMilliseconds
                 };
             }
             else
             {
-                _logger.LogWarning("ElevenLabs validation failed: HTTP {StatusCode}", response.StatusCode);
+                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("[{CorrelationId}] ElevenLabs validation failed: HTTP {StatusCode} (error: {Error})", 
+                    correlationId, response.StatusCode, TruncateErrorBody(errorBody));
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
                     Ok = false,
-                    Details = $"HTTP {response.StatusCode}",
+                    Details = $"Unexpected error: HTTP {response.StatusCode} - {response.ReasonPhrase}",
                     ElapsedMs = sw.ElapsedMilliseconds
                 };
             }
@@ -88,38 +161,51 @@ public class ElevenLabsValidator : IProviderValidator
         catch (OperationCanceledException)
         {
             sw.Stop();
-            _logger.LogWarning("ElevenLabs validation timed out");
+            _logger.LogWarning("[{CorrelationId}] ElevenLabs validation cancelled by user", correlationId);
             return new ProviderValidationResult
             {
                 Name = ProviderName,
                 Ok = false,
-                Details = "Request timed out",
+                Details = "Validation cancelled",
                 ElapsedMs = sw.ElapsedMilliseconds
             };
         }
         catch (HttpRequestException ex)
         {
             sw.Stop();
-            _logger.LogWarning(ex, "ElevenLabs validation failed: Network error");
+            _logger.LogWarning(ex, "[{CorrelationId}] ElevenLabs validation failed: Network error - {Message}", correlationId, ex.Message);
             return new ProviderValidationResult
             {
                 Name = ProviderName,
                 Ok = false,
-                Details = $"Network error: {ex.Message}",
+                Details = "Could not reach ElevenLabs API - check your internet connection",
                 ElapsedMs = sw.ElapsedMilliseconds
             };
         }
         catch (Exception ex)
         {
             sw.Stop();
-            _logger.LogError(ex, "ElevenLabs validation failed: Unexpected error");
+            _logger.LogError(ex, "[{CorrelationId}] ElevenLabs validation failed: Unexpected error - {Message}", correlationId, ex.Message);
             return new ProviderValidationResult
             {
                 Name = ProviderName,
                 Ok = false,
-                Details = $"Error: {ex.Message}",
+                Details = $"Unexpected error: {ex.Message}",
                 ElapsedMs = sw.ElapsedMilliseconds
             };
         }
+    }
+
+    /// <summary>
+    /// Truncate error body to 100 characters for logging
+    /// </summary>
+    private static string TruncateErrorBody(string errorBody)
+    {
+        if (string.IsNullOrEmpty(errorBody))
+        {
+            return string.Empty;
+        }
+        
+        return errorBody.Length > 100 ? errorBody.Substring(0, 100) + "..." : errorBody;
     }
 }

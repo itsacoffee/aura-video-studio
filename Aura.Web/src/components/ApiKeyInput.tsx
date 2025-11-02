@@ -61,6 +61,7 @@ export interface ApiKeyInputProps {
   error?: string;
   accountInfo?: string;
   disabled?: boolean;
+  onSkipValidation?: () => void;
 }
 
 export function ApiKeyInput({
@@ -72,6 +73,7 @@ export function ApiKeyInput({
   error,
   accountInfo,
   disabled = false,
+  onSkipValidation,
 }: ApiKeyInputProps) {
   const styles = useStyles();
   const [showKey, setShowKey] = useState(false);
@@ -146,9 +148,30 @@ export function ApiKeyInput({
       )}
 
       {validationStatus === 'invalid' && error && (
-        <Text className={styles.errorText} size={200}>
-          {error}
-        </Text>
+        <>
+          <Text className={styles.errorText} size={200}>
+            {error}
+          </Text>
+          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, marginTop: tokens.spacingVerticalS }}>
+            <Button
+              appearance="secondary"
+              size="small"
+              onClick={onValidate}
+              disabled={!value || disabled}
+            >
+              Test Again
+            </Button>
+            {onSkipValidation && (
+              <Button
+                appearance="subtle"
+                size="small"
+                onClick={onSkipValidation}
+              >
+                Skip Validation (Save Anyway)
+              </Button>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

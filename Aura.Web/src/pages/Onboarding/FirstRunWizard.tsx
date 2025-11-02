@@ -373,6 +373,10 @@ export function FirstRunWizard() {
     }
   };
 
+  const handleSkipValidation = (provider: string) => {
+    dispatch({ type: 'SKIP_API_KEY_VALIDATION', payload: provider });
+  };
+
   const handleSkipAllApiKeys = () => {
     if (
       window.confirm(
@@ -515,7 +519,7 @@ export function FirstRunWizard() {
     <ChooseTierStep selectedTier={state.selectedTier} onSelectTier={handleSelectTier} />
   );
 
-  // Render step 2: API Keys (unchanged)
+  // Render step 2: API Keys
   const renderStep2 = () => (
     <ApiKeySetupStep
       apiKeys={state.apiKeys}
@@ -523,6 +527,7 @@ export function FirstRunWizard() {
       validationErrors={state.apiKeyErrors}
       onApiKeyChange={handleApiKeyChange}
       onValidateApiKey={handleValidateApiKey}
+      onSkipValidation={handleSkipValidation}
       onSkipAll={handleSkipAllApiKeys}
     />
   );
