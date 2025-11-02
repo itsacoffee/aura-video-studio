@@ -23,9 +23,13 @@ import {
   ClipboardPaste24Regular,
   Question24Regular,
   Keyboard24Regular,
+  ArrowMaximize24Regular,
+  ArrowMinimize24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useWorkspaceLayoutStore } from '../../state/workspaceLayout';
+import { WorkspaceLayoutSwitcher } from '../EditorLayout/WorkspaceLayoutSwitcher';
 
 const useStyles = makeStyles({
   menuBar: {
@@ -133,6 +137,7 @@ export function MenuBar({
   const navigate = useNavigate();
   const [undoStack] = useState<string[]>([]);
   const [redoStack] = useState<string[]>([]);
+  const { isFullscreen, toggleFullscreen } = useWorkspaceLayoutStore();
 
   const handleUndo = () => {
     // Placeholder for undo functionality
@@ -292,6 +297,14 @@ export function MenuBar({
             disabled={redoStack.length === 0}
           />
         </Toolbar>
+        <div className={styles.divider} />
+        <WorkspaceLayoutSwitcher />
+        <ToolbarButton
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          icon={isFullscreen ? <ArrowMinimize24Regular /> : <ArrowMaximize24Regular />}
+          onClick={toggleFullscreen}
+          title={isFullscreen ? 'Exit Fullscreen (ESC)' : 'Enter Fullscreen (F11)'}
+        />
       </div>
 
       {/* Project Status Section */}
