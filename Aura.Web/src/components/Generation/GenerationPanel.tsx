@@ -122,7 +122,7 @@ const STAGES = ['Script', 'Voice', 'Visuals', 'Compose', 'Render', 'Complete'];
 
 export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
   const styles = useStyles();
-  const { activeJob, getJob, getFailureDetails } = useJobsStore();
+  const { activeJob, getJob, getFailureDetails, startStreaming, stopStreaming } = useJobsStore();
   const { showSuccessToast, showFailureToast } = useNotifications();
   const navigate = useNavigate();
   const [showLogs, setShowLogs] = useState(false);
@@ -130,8 +130,17 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
   const [showFailureModal, setShowFailureModal] = useState(false);
 
   useEffect(() => {
+    // Start SSE streaming for real-time updates
+    startStreaming(jobId);
+
+    // Also fetch initial job state
     getJob(jobId);
-  }, [jobId, getJob]);
+
+    // Cleanup on unmount
+    return () => {
+      stopStreaming();
+    };
+  }, [jobId, getJob, startStreaming, stopStreaming]);
 
   // Show notification when job completes or fails
   useEffect(() => {
@@ -233,13 +242,27 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
         <Card>
           <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text weight="semibold">{activeJob.stage}</Text>
+              <div>
+                <Text weight="semibold">{activeJob.stage}</Text>
+                {activeJob.phase && (
+                  <Text
+                    size={200}
+                    style={{
+                      color: tokens.colorNeutralForeground3,
+                      marginLeft: tokens.spacingHorizontalS,
+                    }}
+                  >
+                    ({activeJob.phase})
+                  </Text>
+                )}
+              </div>
               <Text size={200}>{activeJob.percent}%</Text>
             </div>
             <ProgressBar value={activeJob.percent / 100} />
             {activeJob.status === 'Running' && (
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                {activeJob.eta ? `ETA: ${activeJob.eta}` : 'Processing...'}
+                {activeJob.progressMessage ||
+                  (activeJob.eta ? `ETA: ${activeJob.eta}` : 'Processing...')}
               </Text>
             )}
             {activeJob.status === 'Failed' && (

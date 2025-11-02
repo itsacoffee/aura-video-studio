@@ -17,17 +17,23 @@ public class ContentController : ControllerBase
     private readonly ScriptEnhancer _scriptEnhancer;
     private readonly VisualAssetSuggester _visualAssetSuggester;
     private readonly PacingOptimizer _pacingOptimizer;
+    private readonly DocumentImportService? _documentImportService;
+    private readonly ScriptConverter? _scriptConverter;
 
     public ContentController(
         ContentAnalyzer contentAnalyzer,
         ScriptEnhancer scriptEnhancer,
         VisualAssetSuggester visualAssetSuggester,
-        PacingOptimizer pacingOptimizer)
+        PacingOptimizer pacingOptimizer,
+        DocumentImportService? documentImportService = null,
+        ScriptConverter? scriptConverter = null)
     {
         _contentAnalyzer = contentAnalyzer;
         _scriptEnhancer = scriptEnhancer;
         _visualAssetSuggester = visualAssetSuggester;
         _pacingOptimizer = pacingOptimizer;
+        _documentImportService = documentImportService;
+        _scriptConverter = scriptConverter;
     }
 
     /// <summary>
@@ -245,6 +251,366 @@ public class ContentController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// Imports a document and extracts structure and metadata
+    /// </summary>
+    [HttpPost("import")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> ImportDocument(
+        IFormFile file,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (_documentImportService == null)
+            {
+                return StatusCode(503, new
+                {
+                    type = "https://docs.aura.studio/errors/service-unavailable",
+                    title = "Document Import Service Unavailable",
+                    status = 503,
+                    detail = "Document import service is not configured",
+                    correlationId = HttpContext.TraceIdentifier
+                });
+            }
+
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] Importing document: {FileName}", correlationId, file.FileName);
+
+            if (file.Length == 0)
+            {
+                return BadRequest(new
+                {
+                    type = "https://docs.aura.studio/errors/invalid-file",
+                    title = "Invalid File",
+                    status = 400,
+                    detail = "File is empty",
+                    correlationId
+                });
+            }
+
+            using var stream = file.OpenReadStream();
+            var result = await _documentImportService.ImportDocumentAsync(stream, file.FileName, ct);
+
+            if (!result.Success)
+            {
+                return BadRequest(new
+                {
+                    type = "https://docs.aura.studio/errors/import-failed",
+                    title = "Document Import Failed",
+                    status = 400,
+                    detail = result.ErrorMessage,
+                    correlationId
+                });
+            }
+
+            return Ok(new
+            {
+                success = result.Success,
+                metadata = new
+                {
+                    originalFileName = result.Metadata.OriginalFileName,
+                    format = result.Metadata.Format.ToString(),
+                    fileSizeBytes = result.Metadata.FileSizeBytes,
+                    importedAt = result.Metadata.ImportedAt,
+                    wordCount = result.Metadata.WordCount,
+                    characterCount = result.Metadata.CharacterCount,
+                    detectedLanguage = result.Metadata.DetectedLanguage,
+                    title = result.Metadata.Title,
+                    author = result.Metadata.Author
+                },
+                structure = new
+                {
+                    sections = result.Structure.Sections.Select(s => new
+                    {
+                        level = s.Level,
+                        heading = s.Heading,
+                        content = s.Content.Length > 200 ? s.Content[..200] + "..." : s.Content,
+                        wordCount = s.WordCount,
+                        estimatedSpeechDurationSeconds = s.EstimatedSpeechDuration.TotalSeconds
+                    }),
+                    headingLevels = result.Structure.HeadingLevels,
+                    keyConcepts = result.Structure.KeyConcepts,
+                    complexity = new
+                    {
+                        readingLevel = result.Structure.Complexity.ReadingLevel,
+                        technicalDensity = result.Structure.Complexity.TechnicalDensity,
+                        abstractionLevel = result.Structure.Complexity.AbstractionLevel,
+                        averageSentenceLength = result.Structure.Complexity.AverageSentenceLength,
+                        complexWordCount = result.Structure.Complexity.ComplexWordCount,
+                        complexityDescription = result.Structure.Complexity.ComplexityDescription
+                    },
+                    tone = new
+                    {
+                        primaryTone = result.Structure.Tone.PrimaryTone,
+                        formalityLevel = result.Structure.Tone.FormalityLevel,
+                        writingStyle = result.Structure.Tone.WritingStyle
+                    }
+                },
+                inferredAudience = result.InferredAudience != null ? new
+                {
+                    educationLevel = result.InferredAudience.EducationLevel,
+                    expertiseLevel = result.InferredAudience.ExpertiseLevel,
+                    possibleProfessions = result.InferredAudience.PossibleProfessions,
+                    ageRange = result.InferredAudience.AgeRange,
+                    confidenceScore = result.InferredAudience.ConfidenceScore,
+                    reasoning = result.InferredAudience.Reasoning
+                } : null,
+                warnings = result.Warnings,
+                processingTimeSeconds = result.ProcessingTime.TotalSeconds,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error importing document", correlationId);
+            
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/document-import",
+                title = "Document Import Failed",
+                status = 500,
+                detail = $"Failed to import document: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Converts an imported document to a video script
+    /// </summary>
+    [HttpPost("convert")]
+    public async Task<IActionResult> ConvertDocument(
+        [FromBody] ConvertDocumentRequestDto request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (_scriptConverter == null)
+            {
+                return StatusCode(503, new
+                {
+                    type = "https://docs.aura.studio/errors/service-unavailable",
+                    title = "Script Converter Service Unavailable",
+                    status = 503,
+                    detail = "Script converter service is not configured",
+                    correlationId = HttpContext.TraceIdentifier
+                });
+            }
+
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] Converting document to script using preset: {Preset}", 
+                correlationId, request.Preset);
+
+            var documentResult = MapToDocumentImportResult(request);
+            var config = MapToConversionConfig(request);
+
+            var result = await _scriptConverter.ConvertToScriptAsync(documentResult, config, ct);
+
+            if (!result.Success)
+            {
+                return BadRequest(new
+                {
+                    type = "https://docs.aura.studio/errors/conversion-failed",
+                    title = "Document Conversion Failed",
+                    status = 400,
+                    detail = result.ErrorMessage,
+                    correlationId
+                });
+            }
+
+            return Ok(new
+            {
+                success = result.Success,
+                scenes = result.Scenes.Select(s => new
+                {
+                    index = s.Index,
+                    heading = s.Heading,
+                    script = s.Script,
+                    startSeconds = s.Start.TotalSeconds,
+                    durationSeconds = s.Duration.TotalSeconds
+                }),
+                suggestedBrief = new
+                {
+                    topic = result.SuggestedBrief.Topic,
+                    audience = result.SuggestedBrief.Audience,
+                    goal = result.SuggestedBrief.Goal,
+                    tone = result.SuggestedBrief.Tone,
+                    language = result.SuggestedBrief.Language,
+                    aspect = result.SuggestedBrief.Aspect.ToString()
+                },
+                changes = result.Changes.Select(c => new
+                {
+                    category = c.Category,
+                    description = c.Description,
+                    justification = c.Justification,
+                    sectionIndex = c.SectionIndex,
+                    impactLevel = c.ImpactLevel
+                }),
+                metrics = new
+                {
+                    originalWordCount = result.Metrics.OriginalWordCount,
+                    convertedWordCount = result.Metrics.ConvertedWordCount,
+                    compressionRatio = result.Metrics.CompressionRatio,
+                    sectionsCreated = result.Metrics.SectionsCreated,
+                    transitionsAdded = result.Metrics.TransitionsAdded,
+                    visualSuggestionsGenerated = result.Metrics.VisualSuggestionsGenerated,
+                    overallConfidenceScore = result.Metrics.OverallConfidenceScore
+                },
+                sectionConversions = result.SectionConversions.Select(sc => new
+                {
+                    sectionIndex = sc.SectionIndex,
+                    originalHeading = sc.OriginalHeading,
+                    convertedHeading = sc.ConvertedHeading,
+                    originalContent = sc.OriginalContent,
+                    convertedContent = sc.ConvertedContent,
+                    confidenceScore = sc.ConfidenceScore,
+                    requiresManualReview = sc.RequiresManualReview,
+                    changeHighlights = sc.ChangeHighlights,
+                    reasoning = sc.Reasoning
+                }),
+                processingTimeSeconds = result.ProcessingTime.TotalSeconds,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error converting document", correlationId);
+            
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/document-conversion",
+                title = "Document Conversion Failed",
+                status = 500,
+                detail = $"Failed to convert document: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Gets available conversion presets
+    /// </summary>
+    [HttpGet("presets")]
+    public IActionResult GetConversionPresets()
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] Getting conversion presets", correlationId);
+
+            var presets = ConversionPresets.GetAllPresets();
+
+            return Ok(new
+            {
+                presets = presets.Select(p => new
+                {
+                    type = p.Type.ToString(),
+                    name = p.Name,
+                    description = p.Description,
+                    defaultConfig = new
+                    {
+                        preset = p.DefaultConfig.Preset.ToString(),
+                        targetDurationMinutes = p.DefaultConfig.TargetDuration.TotalMinutes,
+                        wordsPerMinute = p.DefaultConfig.WordsPerMinute,
+                        enableAudienceRetargeting = p.DefaultConfig.EnableAudienceRetargeting,
+                        enableVisualSuggestions = p.DefaultConfig.EnableVisualSuggestions,
+                        preserveOriginalStructure = p.DefaultConfig.PreserveOriginalStructure,
+                        addTransitions = p.DefaultConfig.AddTransitions,
+                        aggressivenessLevel = p.DefaultConfig.AggressivenessLevel
+                    },
+                    bestForFormats = p.BestForFormats,
+                    restructuringStrategy = p.RestructuringStrategy
+                }),
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error getting presets", correlationId);
+            
+            return StatusCode(500, new
+            {
+                type = "https://docs.aura.studio/errors/presets",
+                title = "Failed to Get Presets",
+                status = 500,
+                detail = $"Failed to get conversion presets: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    private Aura.Core.Models.Content.DocumentImportResult MapToDocumentImportResult(ConvertDocumentRequestDto request)
+    {
+        var sections = request.Sections.Select(s => new Aura.Core.Models.Content.DocumentSection
+        {
+            Level = s.Level,
+            Heading = s.Heading,
+            Content = s.Content,
+            WordCount = s.WordCount,
+            EstimatedSpeechDuration = TimeSpan.FromSeconds(s.EstimatedSpeechDurationSeconds),
+            Subsections = new List<Aura.Core.Models.Content.DocumentSection>(),
+            Examples = new List<string>(),
+            VisualOpportunities = new List<string>()
+        }).ToList();
+
+        return new Aura.Core.Models.Content.DocumentImportResult
+        {
+            Success = true,
+            Metadata = new Aura.Core.Models.Content.DocumentMetadata
+            {
+                OriginalFileName = request.OriginalFileName,
+                Format = Enum.Parse<Aura.Core.Models.Content.DocumentFormat>(request.Format),
+                FileSizeBytes = request.FileSizeBytes,
+                ImportedAt = request.ImportedAt,
+                WordCount = request.WordCount,
+                CharacterCount = request.CharacterCount,
+                DetectedLanguage = request.DetectedLanguage,
+                Title = request.Title,
+                Author = request.Author
+            },
+            Structure = new Aura.Core.Models.Content.DocumentStructure
+            {
+                Sections = sections,
+                HeadingLevels = sections.Any() ? sections.Max(s => s.Level) : 0,
+                KeyConcepts = request.KeyConcepts ?? new List<string>(),
+                Complexity = new Aura.Core.Models.Content.DocumentComplexity
+                {
+                    ReadingLevel = request.ReadingLevel,
+                    TechnicalDensity = request.TechnicalDensity,
+                    ComplexityDescription = request.ComplexityDescription ?? "Unknown"
+                },
+                Tone = new Aura.Core.Models.Content.DocumentTone
+                {
+                    PrimaryTone = request.PrimaryTone ?? "Professional",
+                    FormalityLevel = request.FormalityLevel,
+                    WritingStyle = request.WritingStyle ?? "Standard"
+                }
+            },
+            RawContent = string.Join("\n\n", sections.Select(s => s.Content)),
+            ProcessingTime = TimeSpan.Zero
+        };
+    }
+
+    private Aura.Core.Models.Content.ConversionConfig MapToConversionConfig(ConvertDocumentRequestDto request)
+    {
+        return new Aura.Core.Models.Content.ConversionConfig
+        {
+            Preset = Enum.Parse<Aura.Core.Models.Content.ConversionPreset>(request.Preset),
+            TargetDuration = TimeSpan.FromMinutes(request.TargetDurationMinutes),
+            WordsPerMinute = request.WordsPerMinute,
+            EnableAudienceRetargeting = request.EnableAudienceRetargeting,
+            EnableVisualSuggestions = request.EnableVisualSuggestions,
+            PreserveOriginalStructure = request.PreserveOriginalStructure,
+            AddTransitions = request.AddTransitions,
+            AggressivenessLevel = request.AggressivenessLevel,
+            TargetAudienceProfileId = request.TargetAudienceProfileId
+        };
+    }
 }
 
 // Request models
@@ -270,3 +636,38 @@ public record SceneDto(
     string Script,
     string Start,
     string Duration);
+
+public record ConvertDocumentRequestDto(
+    string OriginalFileName,
+    string Format,
+    long FileSizeBytes,
+    DateTime ImportedAt,
+    int WordCount,
+    int CharacterCount,
+    string? DetectedLanguage,
+    string? Title,
+    string? Author,
+    List<DocumentSectionRequestDto> Sections,
+    List<string>? KeyConcepts,
+    double ReadingLevel,
+    double TechnicalDensity,
+    string? ComplexityDescription,
+    string? PrimaryTone,
+    double FormalityLevel,
+    string? WritingStyle,
+    string Preset,
+    double TargetDurationMinutes,
+    int WordsPerMinute,
+    bool EnableAudienceRetargeting,
+    bool EnableVisualSuggestions,
+    bool PreserveOriginalStructure,
+    bool AddTransitions,
+    double AggressivenessLevel,
+    string? TargetAudienceProfileId);
+
+public record DocumentSectionRequestDto(
+    int Level,
+    string Heading,
+    string Content,
+    int WordCount,
+    double EstimatedSpeechDurationSeconds);

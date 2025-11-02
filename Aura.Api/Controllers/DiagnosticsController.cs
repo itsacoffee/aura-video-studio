@@ -8,6 +8,7 @@ using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Providers;
 using Aura.Core.Services.HealthChecks;
+using Aura.Core.Services.Orchestration;
 using Aura.Core.Services.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -28,6 +29,7 @@ public class DiagnosticsController : ControllerBase
     private readonly IEnumerable<ILlmProvider>? _llmProviders;
     private readonly IntelligentContentAdvisor? _contentAdvisor;
     private readonly IHardwareDetector? _hardwareDetector;
+    private readonly PipelineHealthCheck? _pipelineHealthCheck;
 
     public DiagnosticsController(
         ILogger<DiagnosticsController> logger,
@@ -36,7 +38,8 @@ public class DiagnosticsController : ControllerBase
         PromptTemplateValidator? promptValidator = null,
         IEnumerable<ILlmProvider>? llmProviders = null,
         IntelligentContentAdvisor? contentAdvisor = null,
-        IHardwareDetector? hardwareDetector = null)
+        IHardwareDetector? hardwareDetector = null,
+        PipelineHealthCheck? pipelineHealthCheck = null)
     {
         _logger = logger;
         _healthService = healthService;
@@ -45,6 +48,7 @@ public class DiagnosticsController : ControllerBase
         _llmProviders = llmProviders;
         _contentAdvisor = contentAdvisor;
         _hardwareDetector = hardwareDetector;
+        _pipelineHealthCheck = pipelineHealthCheck;
     }
 
     /// <summary>
@@ -360,6 +364,52 @@ public class DiagnosticsController : ControllerBase
             {
                 Error = ex.Message,
                 Message = "Hardware detection failed"
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get pipeline orchestration status and health
+    /// </summary>
+    [HttpGet("pipeline-status")]
+    public async Task<ActionResult<object>> GetPipelineStatus(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Pipeline status requested");
+
+        if (_pipelineHealthCheck == null)
+        {
+            return Ok(new
+            {
+                Status = "NotConfigured",
+                Message = "Pipeline health check service not configured",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+
+        try
+        {
+            var healthResult = await _pipelineHealthCheck.CheckHealthAsync(ct);
+
+            return Ok(new
+            {
+                Status = healthResult.IsHealthy ? "Healthy" : "Degraded",
+                IsHealthy = healthResult.IsHealthy,
+                ServiceAvailability = healthResult.ServiceAvailability,
+                AvailableServices = healthResult.ServiceAvailability.Count(kvp => kvp.Value),
+                TotalServices = healthResult.ServiceAvailability.Count,
+                MissingRequiredServices = healthResult.MissingRequiredServices,
+                Warnings = healthResult.Warnings,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking pipeline status");
+            return StatusCode(500, new
+            {
+                Status = "Error",
+                Error = ex.Message,
+                Timestamp = DateTime.UtcNow
             });
         }
     }

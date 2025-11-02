@@ -4,10 +4,14 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Audio;
 using Aura.Core.Models.Generation;
 using Aura.Core.Providers;
 using Aura.Core.Services;
+using Aura.Core.Services.Audio;
 using Aura.Core.Services.Generation;
+using Aura.Core.Services.Orchestration;
+using Aura.Core.Services.PacingServices;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 
@@ -37,6 +41,8 @@ public class VideoOrchestrator
     private readonly Services.PacingServices.PacingApplicationService? _pacingApplicationService;
     private readonly Timeline.TimelineBuilder _timelineBuilder;
     private readonly Configuration.ProviderSettings _providerSettings;
+    private readonly NarrationOptimizationService? _narrationOptimizationService;
+    private readonly PipelineOrchestrationEngine? _pipelineEngine;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -56,7 +62,9 @@ public class VideoOrchestrator
         Configuration.ProviderSettings providerSettings,
         IImageProvider? imageProvider = null,
         Services.PacingServices.IntelligentPacingOptimizer? pacingOptimizer = null,
-        Services.PacingServices.PacingApplicationService? pacingApplicationService = null)
+        Services.PacingServices.PacingApplicationService? pacingApplicationService = null,
+        NarrationOptimizationService? narrationOptimizationService = null,
+        PipelineOrchestrationEngine? pipelineEngine = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(llmProvider);
@@ -92,6 +100,8 @@ public class VideoOrchestrator
         _pacingApplicationService = pacingApplicationService;
         _timelineBuilder = timelineBuilder;
         _providerSettings = providerSettings;
+        _narrationOptimizationService = narrationOptimizationService;
+        _pipelineEngine = pipelineEngine;
     }
 
     /// <summary>
@@ -210,6 +220,13 @@ public class VideoOrchestrator
             }
             _logger.LogInformation("Pre-generation validation passed");
 
+            // If pipeline orchestration engine is available, use intelligent orchestration
+            if (_pipelineEngine != null)
+            {
+                _logger.LogInformation("Using intelligent pipeline orchestration for generation");
+                return await GenerateVideoWithPipelineAsync(brief, planSpec, voiceSpec, renderSpec, progress, ct).ConfigureAwait(false);
+            }
+
             progress?.Report("Starting video generation pipeline...");
 
             // Stage 1: Script generation
@@ -259,7 +276,7 @@ public class VideoOrchestrator
 
                     var startTime = DateTime.UtcNow;
                     var pacingResult = await _pacingOptimizer.OptimizePacingAsync(
-                        scenes, brief, _llmProvider, ct).ConfigureAwait(false);
+                        scenes, brief, _llmProvider, true, PacingProfile.BalancedDocumentary, ct).ConfigureAwait(false);
                     
                     var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                     _logger.LogInformation(
@@ -311,6 +328,48 @@ public class VideoOrchestrator
             // Stage 3: Generate narration
             progress?.Report("Stage 3/5: Generating narration...");
             var scriptLines = ConvertScenesToScriptLines(scenes);
+            
+            // Optimize narration for TTS if service is available
+            if (_narrationOptimizationService != null)
+            {
+                try
+                {
+                    _logger.LogInformation("Optimizing narration for TTS synthesis");
+                    var optimizationConfig = new NarrationOptimizationConfig();
+                    var optimizationResult = await _narrationOptimizationService.OptimizeForTtsAsync(
+                        scriptLines,
+                        voiceSpec,
+                        null,
+                        optimizationConfig,
+                        ct
+                    ).ConfigureAwait(false);
+
+                    _logger.LogInformation(
+                        "Narration optimized. Score: {Score:F1}, Optimizations: {Count}",
+                        optimizationResult.OptimizationScore,
+                        optimizationResult.OptimizationsApplied
+                    );
+
+                    // Use optimized script lines for TTS
+                    scriptLines = optimizationResult.OptimizedLines
+                        .Select(ol => new ScriptLine(
+                            ol.SceneIndex,
+                            ol.OptimizedText,
+                            ol.Start,
+                            ol.Duration
+                        ))
+                        .ToList();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Narration optimization failed, using original text");
+                    // Continue with original script lines if optimization fails
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Narration optimization service not available");
+            }
             
             string narrationPath = await _retryWrapper.ExecuteWithRetryAsync(
                 async (ctRetry) =>
@@ -374,6 +433,131 @@ public class VideoOrchestrator
             // Clean up temporary resources on completion or failure
             _cleanupManager.CleanupAll();
         }
+    }
+
+    /// <summary>
+    /// Generates a complete video using the intelligent pipeline orchestration engine.
+    /// Uses dependency-aware service ordering, parallel execution, and smart caching.
+    /// </summary>
+    private async Task<string> GenerateVideoWithPipelineAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        VoiceSpec voiceSpec,
+        RenderSpec renderSpec,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        if (_pipelineEngine == null)
+            throw new InvalidOperationException("Pipeline engine not available");
+
+        progress?.Report("Initializing intelligent pipeline orchestration...");
+        _logger.LogInformation("Starting pipeline-based video generation for topic: {Topic}", brief.Topic);
+
+        var systemProfile = new SystemProfile
+        {
+            Tier = HardwareTier.B,
+            LogicalCores = Environment.ProcessorCount,
+            PhysicalCores = Math.Max(1, Environment.ProcessorCount / 2),
+            RamGB = (int)(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024.0 * 1024 * 1024))
+        };
+
+        var pipelineContext = new PipelineExecutionContext
+        {
+            Brief = brief,
+            PlanSpec = planSpec,
+            VoiceSpec = voiceSpec,
+            RenderSpec = renderSpec,
+            SystemProfile = systemProfile
+        };
+
+        var pipelineConfig = new PipelineConfiguration
+        {
+            MaxConcurrentLlmCalls = Math.Max(1, Environment.ProcessorCount / 2),
+            EnableCaching = true,
+            CacheTtl = TimeSpan.FromHours(1),
+            ContinueOnOptionalFailure = true,
+            EnableParallelExecution = true
+        };
+
+        var pipelineProgress = new Progress<PipelineProgress>(p =>
+        {
+            var stagePercent = p.PercentComplete;
+            progress?.Report($"{p.CurrentStage}: {stagePercent:F1}% ({p.CompletedServices}/{p.TotalServices} services)");
+        });
+
+        var result = await _pipelineEngine.ExecutePipelineAsync(
+            pipelineContext, pipelineConfig, pipelineProgress, ct
+        ).ConfigureAwait(false);
+
+        if (!result.Success)
+        {
+            var errors = string.Join("; ", result.Errors);
+            _logger.LogError("Pipeline orchestration failed: {Errors}", errors);
+            throw new InvalidOperationException($"Pipeline generation failed: {errors}");
+        }
+
+        _logger.LogInformation(
+            "Pipeline orchestration completed successfully. Duration: {Duration}s, Cache hits: {CacheHits}, Parallel executions: {ParallelExecutions}",
+            result.TotalExecutionTime.TotalSeconds,
+            result.CacheHits,
+            result.ParallelExecutions
+        );
+
+        if (result.Warnings.Count > 0)
+        {
+            _logger.LogWarning("Pipeline completed with warnings: {Warnings}", string.Join("; ", result.Warnings));
+        }
+
+        string script = pipelineContext.GeneratedScript 
+            ?? throw new InvalidOperationException("Pipeline did not generate script");
+
+        progress?.Report("Stage 3/5: Generating narration...");
+        var scenes = ParseScriptIntoScenes(script, planSpec.TargetDuration);
+        var scriptLines = ConvertScenesToScriptLines(scenes);
+
+        string narrationPath = await _retryWrapper.ExecuteWithRetryAsync(
+            async (ctRetry) =>
+            {
+                var audioPath = await _ttsProvider.SynthesizeAsync(scriptLines, voiceSpec, ctRetry).ConfigureAwait(false);
+                
+                var minDuration = TimeSpan.FromSeconds(Math.Max(5, planSpec.TargetDuration.TotalSeconds * 0.3));
+                var audioValidation = _ttsValidator.ValidateAudioFile(audioPath, minDuration);
+                
+                if (!audioValidation.IsValid)
+                {
+                    _logger.LogWarning("Audio validation failed: {Issues}", string.Join(", ", audioValidation.Issues));
+                    throw new ValidationException("Audio quality validation failed", audioValidation.Issues);
+                }
+                
+                _cleanupManager.RegisterTempFile(audioPath);
+                return audioPath;
+            },
+            "Audio Generation",
+            ct
+        ).ConfigureAwait(false);
+        
+        _logger.LogInformation("Narration generated at: {Path}", narrationPath);
+
+        progress?.Report("Stage 4/5: Building timeline...");
+        var timeline = new Providers.Timeline(
+            Scenes: scenes,
+            SceneAssets: new Dictionary<int, IReadOnlyList<Asset>>(),
+            NarrationPath: narrationPath,
+            MusicPath: string.Empty,
+            SubtitlesPath: null
+        );
+
+        progress?.Report("Stage 5/5: Rendering video...");
+        var renderProgress = new Progress<RenderProgress>(p =>
+        {
+            progress?.Report($"Rendering: {p.Percentage:F1}% - {p.CurrentStage}");
+        });
+
+        string outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
+        _logger.LogInformation("Video rendered to: {Path}", outputPath);
+
+        progress?.Report("Video generation complete!");
+        return outputPath;
     }
 
     /// <summary>
@@ -534,7 +718,7 @@ public class VideoOrchestrator
                             
                             var startTime = DateTime.UtcNow;
                             var pacingResult = await _pacingOptimizer.OptimizePacingAsync(
-                                parsedScenes, brief, _llmProvider, ct).ConfigureAwait(false);
+                                parsedScenes, brief, _llmProvider, true, PacingProfile.BalancedDocumentary, ct).ConfigureAwait(false);
                             
                             var elapsed = (DateTime.UtcNow - startTime).TotalSeconds;
                             _logger.LogInformation(

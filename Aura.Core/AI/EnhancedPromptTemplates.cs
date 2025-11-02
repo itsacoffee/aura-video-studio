@@ -1,5 +1,8 @@
 using System.Text;
+using System.Text.Json;
 using Aura.Core.Models;
+using Aura.Core.Models.Audience;
+using Aura.Core.Models.Visual;
 using PacingEnum = Aura.Core.Models.Pacing;
 using DensityEnum = Aura.Core.Models.Density;
 
@@ -101,7 +104,11 @@ AVOID AI DETECTION FLAGS:
         sb.AppendLine($"- Content Density: {GetDensityDescription(spec.Density)}");
         sb.AppendLine($"- Language: {brief.Language}");
         
-        if (!string.IsNullOrEmpty(brief.Audience))
+        if (brief.AudienceProfile != null)
+        {
+            sb.AppendLine($"- Target Audience: {FormatAudienceProfileForPrompt(brief.AudienceProfile)}");
+        }
+        else if (!string.IsNullOrEmpty(brief.Audience))
         {
             sb.AppendLine($"- Target Audience: {brief.Audience}");
         }
@@ -112,6 +119,13 @@ AVOID AI DETECTION FLAGS:
         }
 
         sb.AppendLine();
+
+        // Add detailed audience adaptation guidelines if profile available
+        if (brief.AudienceProfile != null)
+        {
+            sb.AppendLine(BuildAudienceAdaptationGuidelines(brief.AudienceProfile));
+            sb.AppendLine();
+        }
 
         // Content creation guidelines specific to this video
         sb.AppendLine($"SPECIFIC GUIDELINES FOR THIS VIDEO:");
@@ -299,6 +313,20 @@ Provide specific, actionable search terms or generation prompts that will yield 
     /// </summary>
     public static string BuildVisualSelectionPrompt(string sceneHeading, string sceneContent, string tone, int sceneIndex)
     {
+        return BuildVisualSelectionPrompt(sceneHeading, sceneContent, tone, sceneIndex, null);
+    }
+
+    /// <summary>
+    /// Build a visual selection prompt with visual-text synchronization metadata
+    /// Enhanced version that includes timing markers, cognitive load context, and synchronization requirements
+    /// </summary>
+    public static string BuildVisualSelectionPrompt(
+        string sceneHeading, 
+        string sceneContent, 
+        string tone, 
+        int sceneIndex,
+        NarrationSegment? syncData)
+    {
         var sb = new StringBuilder();
 
         sb.AppendLine($"SELECT VISUALS FOR SCENE {sceneIndex + 1}:");
@@ -309,14 +337,117 @@ Provide specific, actionable search terms or generation prompts that will yield 
         sb.AppendLine();
         sb.AppendLine($"Tone: {tone}");
         sb.AppendLine();
-        sb.AppendLine($"Provide 3-5 specific search terms or image prompts that would yield visuals for this scene.");
+
+        if (syncData != null)
+        {
+            sb.AppendLine($"VISUAL-TEXT SYNCHRONIZATION DATA:");
+            sb.AppendLine($"- Narration Complexity: {syncData.NarrationComplexity:F1}/100");
+            sb.AppendLine($"- Target Visual Complexity: {(100 - syncData.NarrationComplexity):F1}/100 (inversely balanced)");
+            sb.AppendLine($"- Cognitive Load Score: {syncData.CognitiveLoadScore:F1}/100 (target: <75)");
+            sb.AppendLine($"- Narration Rate: {syncData.NarrationRate:F0} WPM");
+            sb.AppendLine($"- Information Density: {syncData.InformationDensity}");
+            sb.AppendLine($"- Timing: {syncData.StartTime:hh\\:mm\\:ss\\.ff} - {syncData.EndTime:hh\\:mm\\:ss\\.ff} (Duration: {syncData.Duration.TotalSeconds:F1}s)");
+            
+            if (syncData.KeyConcepts.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"KEY CONCEPTS REQUIRING VISUAL SUPPORT:");
+                foreach (var concept in syncData.KeyConcepts)
+                {
+                    sb.AppendLine($"  • {concept.Text} ({concept.Type}) - Importance: {concept.Importance:F0}/100");
+                    sb.AppendLine($"    Time: +{concept.TimeOffset.TotalSeconds:F1}s");
+                    sb.AppendLine($"    Visualization: {concept.SuggestedVisualization}");
+                    if (concept.RequiresMetaphor)
+                        sb.AppendLine($"    Note: Abstract concept - requires concrete visual metaphor");
+                    if (concept.SuggestsMotion)
+                        sb.AppendLine($"    Note: Action verb - suggests motion/animation");
+                }
+            }
+
+            if (syncData.VisualRecommendations.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"RECOMMENDED VISUAL TREATMENTS:");
+                foreach (var rec in syncData.VisualRecommendations)
+                {
+                    sb.AppendLine($"  • {rec.ContentType}: {rec.Description}");
+                    sb.AppendLine($"    Timing: +{rec.StartTime.TotalSeconds:F1}s for {rec.Duration.TotalSeconds:F1}s");
+                    sb.AppendLine($"    Complexity: {rec.VisualComplexity:F0}/100");
+                    sb.AppendLine($"    Priority: {rec.Priority:F0}/100");
+                    
+                    if (rec.BRollKeywords.Count > 0)
+                    {
+                        sb.AppendLine($"    B-Roll Keywords: {string.Join(", ", rec.BRollKeywords)}");
+                    }
+
+                    if (rec.Metadata != null)
+                    {
+                        sb.AppendLine($"    Visual Metadata:");
+                        sb.AppendLine($"      - Camera: {rec.Metadata.CameraAngle}, {rec.Metadata.ShotType}");
+                        sb.AppendLine($"      - Composition: {rec.Metadata.CompositionRule}");
+                        sb.AppendLine($"      - Focus Point: {rec.Metadata.FocusPoint}");
+                        sb.AppendLine($"      - Lighting: {rec.Metadata.LightingMood}");
+                        if (rec.Metadata.ColorScheme.Count > 0)
+                        {
+                            sb.AppendLine($"      - Color Scheme: {string.Join(", ", rec.Metadata.ColorScheme)}");
+                        }
+                    }
+
+                    sb.AppendLine($"    Reasoning: {rec.Reasoning}");
+                }
+            }
+
+            sb.AppendLine();
+            sb.AppendLine($"COGNITIVE LOAD BALANCING RULES:");
+            sb.AppendLine($"- High narration complexity ({syncData.NarrationComplexity:F0}) → Use SIMPLE, CLEAN visuals");
+            sb.AppendLine($"- Low narration complexity → Can use DETAILED, BUSY visuals");
+            sb.AppendLine($"- Fast narration rate ({syncData.NarrationRate:F0} WPM) → FEWER visual changes");
+            sb.AppendLine($"- Slow narration rate → MORE visual variety");
+            sb.AppendLine($"- Ensure visuals SUPPORT, not CONTRADICT narration");
+            sb.AppendLine();
+        }
+
+        sb.AppendLine($"Provide 3-5 specific search terms or image generation prompts that would yield visuals for this scene.");
         sb.AppendLine($"Each should be:");
-        sb.AppendLine($"- Specific and descriptive (not generic)");
+        sb.AppendLine($"- Specific and descriptive (not generic stock footage)");
         sb.AppendLine($"- Professional quality");
-        sb.AppendLine($"- Emotionally appropriate");
-        sb.AppendLine($"- Visually interesting");
+        sb.AppendLine($"- Emotionally appropriate to the tone");
+        sb.AppendLine($"- Visually interesting and aligned with narration");
+        
+        if (syncData != null)
+        {
+            sb.AppendLine($"- Complexity level: {(100 - syncData.NarrationComplexity):F0}/100");
+            sb.AppendLine($"- Include timing precision markers (±0.5 second accuracy)");
+        }
+        
         sb.AppendLine();
-        sb.AppendLine($"Format: One search term per line, starting with 'VISUAL:'");
+        
+        if (syncData != null)
+        {
+            sb.AppendLine($"FORMAT: Return as structured JSON:");
+            sb.AppendLine($"{{");
+            sb.AppendLine($"  \"visuals\": [");
+            sb.AppendLine($"    {{");
+            sb.AppendLine($"      \"description\": \"Detailed visual description\",");
+            sb.AppendLine($"      \"searchTerms\": [\"specific\", \"contextual\", \"keywords\"],");
+            sb.AppendLine($"      \"timing\": {{ \"start\": 0.0, \"duration\": 3.0 }},");
+            sb.AppendLine($"      \"complexity\": 30,");
+            sb.AppendLine($"      \"metadata\": {{");
+            sb.AppendLine($"        \"cameraAngle\": \"eye-level\",");
+            sb.AppendLine($"        \"shotType\": \"medium-shot\",");
+            sb.AppendLine($"        \"composition\": \"rule-of-thirds\",");
+            sb.AppendLine($"        \"focusPoint\": \"subject\",");
+            sb.AppendLine($"        \"colorScheme\": [\"#hex1\", \"#hex2\"],");
+            sb.AppendLine($"        \"lighting\": \"soft\"");
+            sb.AppendLine($"      }}");
+            sb.AppendLine($"    }}");
+            sb.AppendLine($"  ]");
+            sb.AppendLine($"}}");
+        }
+        else
+        {
+            sb.AppendLine($"Format: One search term per line, starting with 'VISUAL:'");
+        }
 
         return sb.ToString();
     }
@@ -361,5 +492,528 @@ Provide specific, actionable feedback for improvement, focusing on making conten
         sb.AppendLine($"- What works well that should be preserved");
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Augment system prompt with tone profile constraints
+    /// </summary>
+    public static string AugmentSystemPromptWithTone(string baseSystemPrompt, Models.Quality.ToneProfile toneProfile)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(baseSystemPrompt);
+        sb.AppendLine();
+        sb.AppendLine("MANDATORY TONE CONSTRAINTS:");
+        sb.AppendLine($"- Vocabulary Level: {toneProfile.VocabularyLevel} (strictly maintain this complexity level)");
+        sb.AppendLine($"- Formality: {toneProfile.Formality} (all language must match this formality)");
+        sb.AppendLine($"- Humor Style: {toneProfile.Humor} (apply consistently throughout)");
+        sb.AppendLine($"- Energy Level: {toneProfile.Energy} (pace and intensity must match)");
+        sb.AppendLine($"- Perspective: {toneProfile.Perspective} (maintain consistent point of view)");
+        sb.AppendLine();
+        sb.AppendLine("TONE GUIDELINES:");
+        sb.AppendLine(toneProfile.Guidelines);
+        sb.AppendLine();
+        
+        if (toneProfile.ExamplePhrases.Length > 0)
+        {
+            sb.AppendLine("EXAMPLE PHRASES THAT MATCH THIS TONE:");
+            foreach (var phrase in toneProfile.ExamplePhrases)
+            {
+                sb.AppendLine($"  ✓ \"{phrase}\"");
+            }
+            sb.AppendLine();
+        }
+
+        if (toneProfile.PhrasesToAvoid.Length > 0)
+        {
+            sb.AppendLine("PHRASES TO AVOID:");
+            foreach (var phrase in toneProfile.PhrasesToAvoid)
+            {
+                sb.AppendLine($"  ✗ \"{phrase}\"");
+            }
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("TONE CONSISTENCY REQUIREMENT:");
+        sb.AppendLine("Every sentence, word choice, and stylistic element must align with these tone constraints.");
+        sb.AppendLine("Violations will be flagged and may require rewrites.");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Build script generation prompt with enhanced tone profile integration
+    /// </summary>
+    public static string BuildScriptGenerationPromptWithTone(
+        Brief brief, 
+        PlanSpec spec, 
+        Models.Quality.ToneProfile toneProfile,
+        string? additionalContext = null)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine($"CREATE A VIDEO SCRIPT:");
+        sb.AppendLine($"Topic: {brief.Topic}");
+        sb.AppendLine();
+
+        sb.AppendLine($"TARGET SPECIFICATIONS:");
+        sb.AppendLine($"- Duration: {spec.TargetDuration.TotalMinutes:F1} minutes ({EstimateWordCount(spec):N0} words)");
+        sb.AppendLine($"- Tone: {brief.Tone}");
+        sb.AppendLine($"- Pacing: {GetPacingDescription(spec.Pacing)}");
+        sb.AppendLine($"- Content Density: {GetDensityDescription(spec.Density)}");
+        sb.AppendLine($"- Language: {brief.Language}");
+        
+        if (brief.AudienceProfile != null)
+        {
+            sb.AppendLine($"- Target Audience: {FormatAudienceProfileForPrompt(brief.AudienceProfile)}");
+        }
+        else if (!string.IsNullOrEmpty(brief.Audience))
+        {
+            sb.AppendLine($"- Target Audience: {brief.Audience}");
+        }
+
+        if (!string.IsNullOrEmpty(brief.Goal))
+        {
+            sb.AppendLine($"- Content Goal: {brief.Goal}");
+        }
+
+        sb.AppendLine();
+
+        sb.AppendLine("TONE PROFILE (STRICT REQUIREMENTS):");
+        sb.AppendLine($"- Vocabulary Level: {toneProfile.VocabularyLevel}");
+        sb.AppendLine($"- Formality: {toneProfile.Formality}");
+        sb.AppendLine($"- Humor: {toneProfile.Humor}");
+        sb.AppendLine($"- Energy: {toneProfile.Energy}");
+        sb.AppendLine($"- Perspective: {toneProfile.Perspective}");
+        sb.AppendLine($"- Target WPM: {toneProfile.TargetWordsPerMinute}");
+        sb.AppendLine();
+
+        sb.AppendLine("TONE GUIDELINES:");
+        sb.AppendLine(toneProfile.Guidelines);
+        sb.AppendLine();
+
+        if (toneProfile.ExamplePhrases.Length > 0)
+        {
+            sb.AppendLine("USE LANGUAGE SIMILAR TO:");
+            foreach (var phrase in toneProfile.ExamplePhrases.Take(5))
+            {
+                sb.AppendLine($"  • \"{phrase}\"");
+            }
+            sb.AppendLine();
+        }
+
+        if (toneProfile.PhrasesToAvoid.Length > 0)
+        {
+            sb.AppendLine("AVOID LANGUAGE LIKE:");
+            foreach (var phrase in toneProfile.PhrasesToAvoid.Take(5))
+            {
+                sb.AppendLine($"  • \"{phrase}\"");
+            }
+            sb.AppendLine();
+        }
+
+        sb.AppendLine($"SPECIFIC GUIDELINES FOR THIS VIDEO:");
+        sb.AppendLine(GetToneSpecificGuidelines(brief.Tone));
+        sb.AppendLine();
+
+        if (!string.IsNullOrEmpty(additionalContext))
+        {
+            sb.AppendLine($"ADDITIONAL CONTEXT:");
+            sb.AppendLine(additionalContext);
+            sb.AppendLine();
+        }
+
+        sb.AppendLine($"REQUIRED STRUCTURE:");
+        sb.AppendLine($"# [Compelling, Specific Title - Not Generic]");
+        sb.AppendLine();
+        sb.AppendLine($"## Hook (First 3-5 seconds)");
+        sb.AppendLine($"[Immediately grab attention with intrigue, surprise, or promised value. Be specific, not vague.]");
+        sb.AppendLine();
+        sb.AppendLine($"## Introduction (Next 10-15 seconds)");
+        sb.AppendLine($"[Build context and preview the journey. Create anticipation.]");
+        sb.AppendLine();
+        sb.AppendLine($"## [3-5 Content Sections with Descriptive Headers]");
+        sb.AppendLine($"[Each section should:");
+        sb.AppendLine($" - Have a clear purpose and payoff");
+        sb.AppendLine($" - Include specific examples or demonstrations");
+        sb.AppendLine($" - Maintain momentum toward the conclusion");
+        sb.AppendLine($" - Suggest visual moments with [VISUAL: description]]");
+        sb.AppendLine();
+        sb.AppendLine($"## Conclusion");
+        sb.AppendLine($"[Powerful summary and clear call-to-action. Leave viewers with lasting value.]");
+        sb.AppendLine();
+
+        sb.AppendLine($"QUALITY REQUIREMENTS:");
+        sb.AppendLine($"- Every sentence must serve the story and add value");
+        sb.AppendLine($"- Use specific, memorable examples and analogies");
+        sb.AppendLine($"- Vary sentence length and structure naturally");
+        sb.AppendLine($"- Include 2-3 pattern interrupts or surprising turns");
+        sb.AppendLine($"- Mark key visual moments with [VISUAL: brief description]");
+        sb.AppendLine($"- Ensure the script sounds natural when read aloud");
+        sb.AppendLine($"- Build emotional resonance appropriate to the topic");
+        sb.AppendLine($"- MAINTAIN STRICT TONE CONSISTENCY THROUGHOUT (will be validated)");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Augment visual prompt with tone-aligned style keywords
+    /// </summary>
+    public static string AugmentVisualPromptWithTone(
+        string baseVisualPrompt,
+        Models.Quality.ToneProfile toneProfile)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(baseVisualPrompt);
+        sb.AppendLine();
+        sb.AppendLine("TONE-ALIGNED VISUAL STYLE:");
+        
+        if (toneProfile.VisualStyleKeywords.Length > 0)
+        {
+            sb.AppendLine("Required style keywords:");
+            foreach (var keyword in toneProfile.VisualStyleKeywords)
+            {
+                sb.AppendLine($"  • {keyword}");
+            }
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("Visual energy alignment:");
+        sb.AppendLine($"- Energy Level: {toneProfile.Energy}");
+        sb.AppendLine($"- Formality: {toneProfile.Formality}");
+        
+        var visualGuidance = toneProfile.Energy switch
+        {
+            Models.Quality.EnergyLevel.Calm => "Use calm, serene, stable visuals. Slow pans, gentle transitions, peaceful scenes.",
+            Models.Quality.EnergyLevel.Moderate => "Use balanced visuals with moderate motion. Natural movement, comfortable pacing.",
+            Models.Quality.EnergyLevel.Energetic => "Use dynamic, engaging visuals. Active scenes, purposeful movement, vibrant energy.",
+            Models.Quality.EnergyLevel.High => "Use high-energy visuals. Fast cuts when appropriate, bold compositions, intense scenes.",
+            _ => "Use appropriate visual energy matching the tone."
+        };
+
+        sb.AppendLine($"- Guidance: {visualGuidance}");
+        sb.AppendLine();
+        sb.AppendLine("Ensure all visual selections reinforce and never contradict the established tone.");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Format audience profile for prompt inclusion
+    /// </summary>
+    private static string FormatAudienceProfileForPrompt(AudienceProfile profile)
+    {
+        var sb = new StringBuilder();
+        sb.Append(profile.Name);
+
+        var details = new List<string>();
+
+        if (profile.AgeRange != null)
+        {
+            details.Add($"Age: {profile.AgeRange.DisplayName}");
+        }
+
+        if (profile.ExpertiseLevel.HasValue)
+        {
+            details.Add($"Expertise: {profile.ExpertiseLevel}");
+        }
+
+        if (profile.EducationLevel.HasValue)
+        {
+            details.Add($"Education: {profile.EducationLevel}");
+        }
+
+        if (!string.IsNullOrEmpty(profile.Profession))
+        {
+            details.Add($"Profession: {profile.Profession}");
+        }
+
+        if (profile.TechnicalComfort.HasValue)
+        {
+            details.Add($"Technical Level: {profile.TechnicalComfort}");
+        }
+
+        if (profile.PreferredLearningStyle.HasValue)
+        {
+            details.Add($"Learning Style: {profile.PreferredLearningStyle}");
+        }
+
+        if (profile.Interests.Count > 0)
+        {
+            details.Add($"Interests: {string.Join(", ", profile.Interests.Take(3))}");
+        }
+
+        if (profile.PainPoints.Count > 0)
+        {
+            details.Add($"Pain Points: {string.Join("; ", profile.PainPoints.Take(2))}");
+        }
+
+        if (profile.Motivations.Count > 0)
+        {
+            details.Add($"Motivations: {string.Join(", ", profile.Motivations.Take(2))}");
+        }
+
+        if (profile.AccessibilityNeeds != null)
+        {
+            var needs = new List<string>();
+            if (profile.AccessibilityNeeds.RequiresCaptions) needs.Add("Captions");
+            if (profile.AccessibilityNeeds.RequiresSimplifiedLanguage) needs.Add("Simple Language");
+            if (needs.Count > 0) details.Add($"Accessibility: {string.Join(", ", needs)}");
+        }
+
+        if (profile.CulturalBackground != null && profile.CulturalBackground.Sensitivities.Count > 0)
+        {
+            details.Add($"Cultural Sensitivities: {string.Join(", ", profile.CulturalBackground.Sensitivities.Take(2))}");
+        }
+
+        if (details.Count > 0)
+        {
+            sb.Append(" (");
+            sb.Append(string.Join("; ", details));
+            sb.Append(")");
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Build detailed audience-aware adaptation guidelines for LLM prompts
+    /// Automatically injects audience context for content adaptation
+    /// </summary>
+    public static string BuildAudienceAdaptationGuidelines(AudienceProfile profile)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine("AUDIENCE-AWARE CONTENT ADAPTATION:");
+        sb.AppendLine();
+
+        sb.AppendLine("VOCABULARY & COMPLEXITY:");
+        var targetReadingLevel = DetermineTargetReadingLevel(profile);
+        sb.AppendLine($"- Target Reading Level: {targetReadingLevel}");
+        
+        if (profile.ExpertiseLevel == ExpertiseLevel.Expert || profile.ExpertiseLevel == ExpertiseLevel.Professional)
+        {
+            sb.AppendLine("- Use technical terminology freely and precisely");
+            sb.AppendLine("- Assume advanced domain knowledge");
+            sb.AppendLine("- Skip basic explanations");
+        }
+        else if (profile.ExpertiseLevel == ExpertiseLevel.CompleteBeginner || profile.ExpertiseLevel == ExpertiseLevel.Novice)
+        {
+            sb.AppendLine("- Use plain language and avoid jargon");
+            sb.AppendLine("- Define technical terms when necessary");
+            sb.AppendLine("- Provide clear step-by-step explanations");
+        }
+        else
+        {
+            sb.AppendLine("- Balance technical accuracy with clarity");
+            sb.AppendLine("- Introduce technical terms with context");
+            sb.AppendLine("- Assume basic knowledge, explain intermediate concepts");
+        }
+        sb.AppendLine();
+
+        sb.AppendLine("EXAMPLES & ANALOGIES:");
+        if (!string.IsNullOrEmpty(profile.Profession))
+        {
+            sb.AppendLine($"- Draw from {profile.Profession.ToLowerInvariant()} domain experiences");
+        }
+        if (profile.Interests.Count > 0)
+        {
+            sb.AppendLine($"- Use examples related to: {string.Join(", ", profile.Interests.Take(3))}");
+        }
+        if (profile.GeographicRegion.HasValue)
+        {
+            sb.AppendLine($"- Use culturally relevant references for {profile.GeographicRegion}");
+        }
+        sb.AppendLine("- Provide 3-5 examples per key concept");
+        sb.AppendLine("- Make examples concrete and relatable");
+        sb.AppendLine();
+
+        sb.AppendLine("PACING & DENSITY:");
+        var pacingStrategy = DeterminePacingStrategy(profile);
+        sb.AppendLine(pacingStrategy);
+        sb.AppendLine();
+
+        sb.AppendLine("TONE & FORMALITY:");
+        var formalityLevel = DetermineFormalityLevel(profile);
+        sb.AppendLine($"- Formality Level: {formalityLevel}");
+        
+        if (profile.AgeRange != null)
+        {
+            if (profile.AgeRange.MinAge < 25)
+            {
+                sb.AppendLine("- Energy: High, dynamic, engaging");
+                sb.AppendLine("- Style: Contemporary, relatable");
+            }
+            else if (profile.AgeRange.MinAge >= 55)
+            {
+                sb.AppendLine("- Energy: Measured, deliberate");
+                sb.AppendLine("- Style: Clear, respectful");
+            }
+            else
+            {
+                sb.AppendLine("- Energy: Moderate, professional");
+                sb.AppendLine("- Style: Balanced, accessible");
+            }
+        }
+        sb.AppendLine();
+
+        if (profile.CulturalBackground != null)
+        {
+            if (profile.CulturalBackground.Sensitivities.Count > 0)
+            {
+                sb.AppendLine("CULTURAL SENSITIVITIES:");
+                foreach (var sensitivity in profile.CulturalBackground.Sensitivities.Take(3))
+                {
+                    sb.AppendLine($"- Avoid: {sensitivity}");
+                }
+                sb.AppendLine();
+            }
+
+            if (profile.CulturalBackground.TabooTopics.Count > 0)
+            {
+                sb.AppendLine("AVOID THESE TOPICS:");
+                foreach (var taboo in profile.CulturalBackground.TabooTopics.Take(3))
+                {
+                    sb.AppendLine($"- {taboo}");
+                }
+                sb.AppendLine();
+            }
+        }
+
+        if (profile.AccessibilityNeeds != null)
+        {
+            sb.AppendLine("ACCESSIBILITY REQUIREMENTS:");
+            if (profile.AccessibilityNeeds.RequiresSimplifiedLanguage)
+            {
+                sb.AppendLine("- Use simplified language (short sentences, common words)");
+            }
+            if (profile.AccessibilityNeeds.RequiresCaptions)
+            {
+                sb.AppendLine("- Script must be caption-friendly (clear speech, no overlaps)");
+            }
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("COGNITIVE LOAD MANAGEMENT:");
+        var cognitiveCapacity = CalculateCognitiveCapacity(profile);
+        sb.AppendLine($"- Audience Cognitive Capacity: {cognitiveCapacity:F0}/100");
+        sb.AppendLine("- Balance abstract concepts with concrete examples");
+        sb.AppendLine("- Insert breather moments for complex content");
+        sb.AppendLine("- Avoid overwhelming information density");
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Determine target reading level from profile
+    /// </summary>
+    private static string DetermineTargetReadingLevel(AudienceProfile profile)
+    {
+        if (profile.EducationLevel.HasValue)
+        {
+            return profile.EducationLevel.Value switch
+            {
+                EducationLevel.HighSchool => "Grade 9-10 (High School)",
+                EducationLevel.SomeCollege => "Grade 11-12 (College Prep)",
+                EducationLevel.AssociateDegree => "Grade 12-13 (Associate)",
+                EducationLevel.BachelorDegree => "Grade 13-14 (Undergraduate)",
+                EducationLevel.MasterDegree => "Grade 14-15 (Graduate)",
+                EducationLevel.Doctorate => "Grade 16+ (Advanced Academic)",
+                _ => "Grade 12 (General)"
+            };
+        }
+        return "Grade 12 (General)";
+    }
+
+    /// <summary>
+    /// Determine pacing strategy
+    /// </summary>
+    private static string DeterminePacingStrategy(AudienceProfile profile)
+    {
+        if (profile.ExpertiseLevel.HasValue)
+        {
+            return profile.ExpertiseLevel.Value switch
+            {
+                ExpertiseLevel.CompleteBeginner or ExpertiseLevel.Novice =>
+                    "- Pacing: Slower, more deliberate (20-30% longer content)\n" +
+                    "- Add explanations and context\n" +
+                    "- Repeat key concepts in different ways\n" +
+                    "- Include clear transitions",
+                
+                ExpertiseLevel.Expert or ExpertiseLevel.Professional =>
+                    "- Pacing: Faster, information-dense (20-25% shorter)\n" +
+                    "- Skip basic explanations\n" +
+                    "- Assume foundational knowledge\n" +
+                    "- Get to advanced concepts quickly",
+                
+                _ =>
+                    "- Pacing: Moderate, balanced\n" +
+                    "- Appropriate level of detail\n" +
+                    "- Clear but efficient explanations"
+            };
+        }
+        return "- Pacing: Moderate, balanced";
+    }
+
+    /// <summary>
+    /// Determine formality level
+    /// </summary>
+    private static string DetermineFormalityLevel(AudienceProfile profile)
+    {
+        if (profile.AgeRange != null && profile.AgeRange.MinAge < 25)
+        {
+            return "Casual";
+        }
+
+        if (!string.IsNullOrEmpty(profile.Profession))
+        {
+            var profession = profile.Profession.ToLowerInvariant();
+            if (profession.Contains("executive") || profession.Contains("business"))
+            {
+                return "Professional";
+            }
+        }
+
+        if (profile.EducationLevel >= EducationLevel.MasterDegree)
+        {
+            return "Academic";
+        }
+
+        return "Conversational";
+    }
+
+    /// <summary>
+    /// Calculate cognitive capacity from profile
+    /// </summary>
+    private static double CalculateCognitiveCapacity(AudienceProfile profile)
+    {
+        double capacity = 75.0;
+
+        if (profile.ExpertiseLevel.HasValue)
+        {
+            capacity += profile.ExpertiseLevel.Value switch
+            {
+                ExpertiseLevel.CompleteBeginner => -15,
+                ExpertiseLevel.Novice => -10,
+                ExpertiseLevel.Intermediate => 0,
+                ExpertiseLevel.Advanced => 10,
+                ExpertiseLevel.Expert => 15,
+                ExpertiseLevel.Professional => 20,
+                _ => 0
+            };
+        }
+
+        if (profile.EducationLevel.HasValue)
+        {
+            capacity += profile.EducationLevel.Value switch
+            {
+                EducationLevel.HighSchool => -5,
+                EducationLevel.BachelorDegree => 5,
+                EducationLevel.MasterDegree => 10,
+                EducationLevel.Doctorate => 15,
+                _ => 0
+            };
+        }
+
+        return Math.Clamp(capacity, 50.0, 100.0);
     }
 }

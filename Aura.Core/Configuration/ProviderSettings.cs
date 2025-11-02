@@ -159,6 +159,60 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Get Ollama model name
+    /// </summary>
+    public string GetOllamaModel()
+    {
+        LoadSettings();
+        return GetStringSetting("ollamaModel", "llama3.1:8b-q4_k_m");
+    }
+
+    /// <summary>
+    /// Set Ollama model name
+    /// </summary>
+    public void SetOllamaModel(string modelName)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["ollamaModel"] = modelName;
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Get Ollama executable path
+    /// </summary>
+    public string GetOllamaExecutablePath()
+    {
+        LoadSettings();
+        var path = GetStringSetting("ollamaExecutablePath", "");
+        
+        // If empty, try to find in common locations
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return Aura.Core.Services.OllamaService.FindOllamaExecutable() ?? "";
+        }
+        
+        return path;
+    }
+
+    /// <summary>
+    /// Set Ollama executable path
+    /// </summary>
+    public void SetOllamaExecutablePath(string path)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["ollamaExecutablePath"] = path;
+        SaveSettings();
+    }
+
+    /// <summary>
     /// Get FFmpeg executable path
     /// </summary>
     public string GetFfmpegPath()
@@ -465,6 +519,161 @@ public class ProviderSettings
         SaveSettings();
     }
 
+    /// <summary>
+    /// Check if provider recommendations are enabled (OFF by default - opt-in)
+    /// </summary>
+    public bool GetEnableRecommendations()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableRecommendations", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled (opt-in model)
+    }
+
+    /// <summary>
+    /// Get assistance level for recommendations
+    /// </summary>
+    public string GetAssistanceLevel()
+    {
+        LoadSettings();
+        return GetStringSetting("assistanceLevel", "Off");
+    }
+
+    /// <summary>
+    /// Check if health monitoring is enabled (OFF by default)
+    /// </summary>
+    public bool GetEnableHealthMonitoring()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableHealthMonitoring", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Check if cost tracking is enabled (OFF by default)
+    /// </summary>
+    public bool GetEnableCostTracking()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableCostTracking", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Check if preference learning is enabled (OFF by default)
+    /// </summary>
+    public bool GetEnableLearning()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableLearning", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Check if provider profiles are enabled (OFF by default)
+    /// </summary>
+    public bool GetEnableProfiles()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableProfiles", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Check if automatic fallback is enabled (OFF by default)
+    /// </summary>
+    public bool GetEnableAutoFallback()
+    {
+        LoadSettings();
+        if (_settings != null && _settings.TryGetValue("enableAutoFallback", out var value))
+        {
+            if (value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+        return false; // Default: disabled
+    }
+
+    /// <summary>
+    /// Set provider recommendation preferences
+    /// </summary>
+    public void SetRecommendationPreferences(
+        bool? enableRecommendations = null,
+        string? assistanceLevel = null,
+        bool? enableHealthMonitoring = null,
+        bool? enableCostTracking = null,
+        bool? enableLearning = null,
+        bool? enableProfiles = null,
+        bool? enableAutoFallback = null)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+
+        if (enableRecommendations.HasValue)
+        {
+            _settings["enableRecommendations"] = enableRecommendations.Value;
+        }
+        if (assistanceLevel != null)
+        {
+            _settings["assistanceLevel"] = assistanceLevel;
+        }
+        if (enableHealthMonitoring.HasValue)
+        {
+            _settings["enableHealthMonitoring"] = enableHealthMonitoring.Value;
+        }
+        if (enableCostTracking.HasValue)
+        {
+            _settings["enableCostTracking"] = enableCostTracking.Value;
+        }
+        if (enableLearning.HasValue)
+        {
+            _settings["enableLearning"] = enableLearning.Value;
+        }
+        if (enableProfiles.HasValue)
+        {
+            _settings["enableProfiles"] = enableProfiles.Value;
+        }
+        if (enableAutoFallback.HasValue)
+        {
+            _settings["enableAutoFallback"] = enableAutoFallback.Value;
+        }
+
+        SaveSettings();
+    }
+
     private void LoadSettings()
     {
         if (_settings != null)
@@ -599,6 +808,24 @@ public class ProviderSettings
         // Azure OpenAI endpoints should be HTTPS and contain openai.azure.com
         return endpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
                endpoint.Contains("openai.azure.com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Get Piper TTS executable path
+    /// </summary>
+    public string? GetPiperPath()
+    {
+        LoadSettings();
+        return GetStringSetting("piperPath", null);
+    }
+
+    /// <summary>
+    /// Get Mimic3 service URL
+    /// </summary>
+    public string? GetMimic3Url()
+    {
+        LoadSettings();
+        return GetStringSetting("mimic3Url", null);
     }
 
     private void SaveSettings()

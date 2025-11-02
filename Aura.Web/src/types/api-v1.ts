@@ -93,6 +93,7 @@ export interface ScriptRequest {
   density: Density;
   style: string;
   providerTier?: string | null;
+  audienceProfileId?: string | null;
 }
 
 export interface LineDto {
@@ -210,3 +211,646 @@ export const PacingValues = Object.values(Pacing);
 export const DensityValues = Object.values(Density);
 export const AspectValues = Object.values(Aspect);
 export const PauseStyleValues = Object.values(PauseStyle);
+
+// ============================================================================
+// OLLAMA TYPES
+// ============================================================================
+
+export interface OllamaModel {
+  name: string;
+  size: number;
+  sizeGB: number;
+  modifiedAt: string | null;
+  digest: string | null;
+}
+
+export interface OllamaModelsResponse {
+  models: OllamaModel[];
+  baseUrl: string;
+}
+
+// ============================================================================
+// AUDIENCE PROFILE TYPES
+// ============================================================================
+
+export interface AudienceProfileDto {
+  id: string | null;
+  name: string;
+  description: string | null;
+  ageRange: AgeRangeDto | null;
+  educationLevel: string | null;
+  profession: string | null;
+  industry: string | null;
+  expertiseLevel: string | null;
+  incomeBracket: string | null;
+  geographicRegion: string | null;
+  languageFluency: LanguageFluencyDto | null;
+  interests: string[] | null;
+  painPoints: string[] | null;
+  motivations: string[] | null;
+  culturalBackground: CulturalBackgroundDto | null;
+  preferredLearningStyle: string | null;
+  attentionSpan: AttentionSpanDto | null;
+  technicalComfort: string | null;
+  accessibilityNeeds: AccessibilityNeedsDto | null;
+  isTemplate: boolean;
+  tags: string[] | null;
+  version: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+  isFavorite: boolean;
+  folderPath: string | null;
+  usageCount: number;
+  lastUsedAt: string | null;
+}
+
+export interface AgeRangeDto {
+  minAge: number;
+  maxAge: number;
+  displayName: string;
+  contentRating: string;
+}
+
+export interface LanguageFluencyDto {
+  language: string;
+  level: string;
+}
+
+export interface CulturalBackgroundDto {
+  sensitivities: string[] | null;
+  tabooTopics: string[] | null;
+  preferredCommunicationStyle: string;
+}
+
+export interface AttentionSpanDto {
+  preferredDurationMinutes: number;
+  displayName: string;
+}
+
+export interface AccessibilityNeedsDto {
+  requiresCaptions: boolean;
+  requiresAudioDescriptions: boolean;
+  requiresHighContrast: boolean;
+  requiresSimplifiedLanguage: boolean;
+  requiresLargeText: boolean;
+}
+
+export interface CreateAudienceProfileRequest {
+  profile: AudienceProfileDto;
+}
+
+export interface UpdateAudienceProfileRequest {
+  profile: AudienceProfileDto;
+}
+
+export interface AudienceProfileResponse {
+  profile: AudienceProfileDto;
+  validation: ValidationResultDto | null;
+}
+
+export interface AudienceProfileListResponse {
+  profiles: AudienceProfileDto[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ValidationResultDto {
+  isValid: boolean;
+  errors: ValidationIssueDto[];
+  warnings: ValidationIssueDto[];
+  infos: ValidationIssueDto[];
+}
+
+export interface ValidationIssueDto {
+  severity: string;
+  field: string;
+  message: string;
+  suggestedFix: string | null;
+}
+
+export interface AnalyzeAudienceRequest {
+  scriptText: string;
+}
+
+export interface AnalyzeAudienceResponse {
+  inferredProfile: AudienceProfileDto;
+  confidenceScore: number;
+  reasoningFactors: string[];
+}
+
+export interface MoveToFolderRequest {
+  folderPath: string | null;
+}
+
+export interface FolderListResponse {
+  folders: string[];
+}
+
+export interface ExportProfileResponse {
+  json: string;
+}
+
+export interface ImportProfileRequest {
+  json: string;
+}
+
+export interface RecommendProfilesRequest {
+  topic: string;
+  goal?: string | null;
+  maxResults?: number;
+}
+
+// Enum values for audience profile fields
+export const EducationLevels = [
+  'HighSchool',
+  'SomeCollege',
+  'AssociateDegree',
+  'BachelorDegree',
+  'MasterDegree',
+  'Doctorate',
+  'Vocational',
+  'SelfTaught',
+  'InProgress',
+] as const;
+
+export const ExpertiseLevels = [
+  'CompleteBeginner',
+  'Novice',
+  'Intermediate',
+  'Advanced',
+  'Expert',
+  'Professional',
+] as const;
+
+export const IncomeBrackets = [
+  'NotSpecified',
+  'LowIncome',
+  'MiddleIncome',
+  'UpperMiddleIncome',
+  'HighIncome',
+] as const;
+
+export const GeographicRegions = [
+  'Global',
+  'NorthAmerica',
+  'Europe',
+  'Asia',
+  'LatinAmerica',
+  'MiddleEast',
+  'Africa',
+  'Oceania',
+] as const;
+
+export const FluencyLevels = ['Native', 'Fluent', 'Intermediate', 'Beginner'] as const;
+
+export const CommunicationStyles = [
+  'Direct',
+  'Indirect',
+  'Formal',
+  'Casual',
+  'Humorous',
+  'Professional',
+] as const;
+
+export const LearningStyles = [
+  'Visual',
+  'Auditory',
+  'Kinesthetic',
+  'ReadingWriting',
+  'Multimodal',
+] as const;
+
+export const TechnicalComfortLevels = [
+  'NonTechnical',
+  'BasicUser',
+  'Moderate',
+  'TechSavvy',
+  'Expert',
+] as const;
+
+export const ContentRatings = ['ChildSafe', 'TeenAppropriate', 'Adult'] as const;
+
+// ============================================================================
+// TRANSLATION AND LOCALIZATION TYPES
+// ============================================================================
+
+/**
+ * Translation mode selection
+ */
+export enum TranslationMode {
+  Literal = 'Literal',
+  Localized = 'Localized',
+  Transcreation = 'Transcreation',
+}
+
+/**
+ * Formality level for translation
+ */
+export enum FormalityLevel {
+  Informal = 'Informal',
+  Neutral = 'Neutral',
+  Formal = 'Formal',
+}
+
+/**
+ * Age rating for content
+ */
+export enum AgeRating {
+  ChildSafe = 'ChildSafe',
+  TeenAppropriate = 'TeenAppropriate',
+  Adult = 'Adult',
+}
+
+/**
+ * Script line for translation
+ */
+export interface ScriptLineDto {
+  text: string;
+  startSeconds: number;
+  durationSeconds: number;
+}
+
+/**
+ * Cultural context for translation
+ */
+export interface CulturalContextDto {
+  targetRegion: string;
+  targetFormality: string;
+  preferredStyle: string;
+  sensitivities: string[];
+  tabooTopics: string[];
+  contentRating: string;
+}
+
+/**
+ * Translation options
+ */
+export interface TranslationOptionsDto {
+  mode?: string;
+  enableBackTranslation?: boolean;
+  enableQualityScoring?: boolean;
+  adjustTimings?: boolean;
+  maxTimingVariance?: number;
+  preserveNames?: boolean;
+  preserveBrands?: boolean;
+  adaptMeasurements?: boolean;
+}
+
+/**
+ * Translation request
+ */
+export interface TranslateScriptRequest {
+  sourceLanguage: string;
+  targetLanguage: string;
+  sourceText?: string;
+  scriptLines?: ScriptLineDto[];
+  culturalContext?: CulturalContextDto;
+  options?: TranslationOptionsDto;
+  glossary?: Record<string, string>;
+  audienceProfileId?: string;
+}
+
+/**
+ * Translated script line with timing adjustments
+ */
+export interface TranslatedScriptLineDto {
+  sceneIndex: number;
+  sourceText: string;
+  translatedText: string;
+  originalStartSeconds: number;
+  originalDurationSeconds: number;
+  adjustedStartSeconds: number;
+  adjustedDurationSeconds: number;
+  timingVariance: number;
+  adaptationNotes: string[];
+}
+
+/**
+ * Quality issue
+ */
+export interface QualityIssueDto {
+  severity: string;
+  category: string;
+  description: string;
+  suggestion?: string;
+  lineNumber?: number;
+}
+
+/**
+ * Translation quality metrics
+ */
+export interface TranslationQualityDto {
+  overallScore: number;
+  fluencyScore: number;
+  accuracyScore: number;
+  culturalAppropriatenessScore: number;
+  terminologyConsistencyScore: number;
+  backTranslationScore: number;
+  backTranslatedText?: string;
+  issues: QualityIssueDto[];
+}
+
+/**
+ * Cultural adaptation
+ */
+export interface CulturalAdaptationDto {
+  category: string;
+  sourcePhrase: string;
+  adaptedPhrase: string;
+  reasoning: string;
+  lineNumber?: number;
+}
+
+/**
+ * Timing warning
+ */
+export interface TimingWarningDto {
+  severity: string;
+  message: string;
+  lineNumber?: number;
+}
+
+/**
+ * Timing adjustment information
+ */
+export interface TimingAdjustmentDto {
+  originalTotalDuration: number;
+  adjustedTotalDuration: number;
+  expansionFactor: number;
+  requiresCompression: boolean;
+  compressionSuggestions: string[];
+  warnings: TimingWarningDto[];
+}
+
+/**
+ * Visual localization recommendation
+ */
+export interface VisualLocalizationRecommendationDto {
+  elementType: string;
+  description: string;
+  recommendation: string;
+  priority: string;
+  sceneIndex?: number;
+}
+
+/**
+ * Translation result
+ */
+export interface TranslationResultDto {
+  sourceLanguage: string;
+  targetLanguage: string;
+  sourceText: string;
+  translatedText: string;
+  translatedLines: TranslatedScriptLineDto[];
+  quality: TranslationQualityDto;
+  culturalAdaptations: CulturalAdaptationDto[];
+  timingAdjustment: TimingAdjustmentDto;
+  visualRecommendations: VisualLocalizationRecommendationDto[];
+  translationTimeSeconds: number;
+}
+
+/**
+ * Batch translation request
+ */
+export interface BatchTranslateRequest {
+  sourceLanguage: string;
+  targetLanguages: string[];
+  sourceText?: string;
+  scriptLines?: ScriptLineDto[];
+  culturalContext?: CulturalContextDto;
+  options?: TranslationOptionsDto;
+  glossary?: Record<string, string>;
+}
+
+/**
+ * Batch translation result
+ */
+export interface BatchTranslationResultDto {
+  sourceLanguage: string;
+  translations: Record<string, TranslationResultDto>;
+  successfulLanguages: string[];
+  failedLanguages: string[];
+  totalTimeSeconds: number;
+}
+
+/**
+ * Cultural analysis request
+ */
+export interface CulturalAnalysisRequest {
+  targetLanguage: string;
+  targetRegion: string;
+  content: string;
+  audienceProfileId?: string;
+}
+
+/**
+ * Cultural issue
+ */
+export interface CulturalIssueDto {
+  severity: string;
+  category: string;
+  issue: string;
+  context: string;
+  suggestion?: string;
+}
+
+/**
+ * Cultural recommendation
+ */
+export interface CulturalRecommendationDto {
+  category: string;
+  recommendation: string;
+  reasoning: string;
+  priority: string;
+}
+
+/**
+ * Cultural analysis result
+ */
+export interface CulturalAnalysisResultDto {
+  targetLanguage: string;
+  targetRegion: string;
+  culturalSensitivityScore: number;
+  issues: CulturalIssueDto[];
+  recommendations: CulturalRecommendationDto[];
+}
+
+/**
+ * Language information
+ */
+export interface LanguageInfoDto {
+  code: string;
+  name: string;
+  nativeName: string;
+  region: string;
+  isRightToLeft: boolean;
+  defaultFormality: string;
+  typicalExpansionFactor: number;
+}
+
+/**
+ * Glossary entry
+ */
+export interface GlossaryEntryDto {
+  id: string;
+  term: string;
+  translations: Record<string, string>;
+  context?: string;
+  industry?: string;
+}
+
+/**
+ * Project glossary
+ */
+export interface ProjectGlossaryDto {
+  id: string;
+  name: string;
+  description?: string;
+  entries: GlossaryEntryDto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Create glossary request
+ */
+export interface CreateGlossaryRequest {
+  name: string;
+  description?: string;
+}
+
+/**
+ * Add glossary entry request
+ */
+export interface AddGlossaryEntryRequest {
+  term: string;
+  translations: Record<string, string>;
+  context?: string;
+  industry?: string;
+}
+
+// ============================================================================
+// HEALTH CHECK TYPES
+// ============================================================================
+
+/**
+ * High-level summary of system health status
+ */
+export interface HealthSummaryResponse {
+  overallStatus: string;
+  isReady: boolean;
+  totalChecks: number;
+  passedChecks: number;
+  warningChecks: number;
+  failedChecks: number;
+  timestamp: string;
+}
+
+/**
+ * Detailed health check information with per-check results
+ */
+export interface HealthDetailsResponse {
+  overallStatus: string;
+  isReady: boolean;
+  checks: HealthCheckDetail[];
+  timestamp: string;
+}
+
+/**
+ * Individual health check detail with remediation information
+ */
+export interface HealthCheckDetail {
+  id: string;
+  name: string;
+  category: string;
+  status: string;
+  isRequired: boolean;
+  message?: string;
+  data?: Record<string, unknown>;
+  remediationHint?: string;
+  remediationActions?: RemediationAction[];
+}
+
+/**
+ * Actionable remediation step for a failed health check
+ */
+export interface RemediationAction {
+  type: string;
+  label: string;
+  description: string;
+  navigateTo?: string;
+  externalUrl?: string;
+  parameters?: Record<string, string>;
+}
+
+/**
+ * Health check status values
+ */
+export const HealthCheckStatus = {
+  Pass: 'pass',
+  Warning: 'warning',
+  Fail: 'fail',
+} as const;
+
+/**
+ * Health check categories
+ */
+export const HealthCheckCategory = {
+  System: 'System',
+  Configuration: 'Configuration',
+  LLM: 'LLM',
+  TTS: 'TTS',
+  Image: 'Image',
+  Video: 'Video',
+} as const;
+
+/**
+ * Remediation action types
+ */
+export const RemediationActionType = {
+  OpenSettings: 'open_settings',
+  Install: 'install',
+  Configure: 'configure',
+  Start: 'start',
+  OpenHelp: 'open_help',
+  SwitchProvider: 'switch_provider',
+} as const;
+
+// Ollama Process Control Types
+
+/**
+ * Ollama service status response
+ */
+export interface OllamaStatusResponse {
+  running: boolean;
+  pid?: number;
+  managedByApp: boolean;
+  model?: string;
+  error?: string;
+}
+
+/**
+ * Ollama start operation response
+ */
+export interface OllamaStartResponse {
+  success: boolean;
+  message: string;
+  pid?: number;
+}
+
+/**
+ * Ollama stop operation response
+ */
+export interface OllamaStopResponse {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Ollama logs response
+ */
+export interface OllamaLogsResponse {
+  logs: string[];
+  totalLines: number;
+}

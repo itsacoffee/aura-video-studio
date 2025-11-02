@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 
 namespace Aura.E2E;
@@ -53,5 +54,24 @@ internal class FailingLlmProvider : ILlmProvider
         CancellationToken ct)
     {
         throw new System.Exception($"{_name} provider is not available");
+    }
+
+    public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoTone,
+        VisualStyle targetStyle,
+        CancellationToken ct)
+    {
+        throw new System.Exception($"{_name} provider is not available");
+    }
+
+    public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        return Task.FromResult<ContentComplexityAnalysisResult?>(null);
     }
 }

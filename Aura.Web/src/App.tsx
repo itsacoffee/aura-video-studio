@@ -14,7 +14,10 @@ import { NotificationsToaster } from './components/Notifications/Toasts';
 import { PlatformDashboard } from './components/Platform';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
 import { env } from './config/env';
+import { AestheticsPage } from './pages/Aesthetics/AestheticsPage';
+import { AIEditingPage } from './pages/AIEditing/AIEditingPage';
 import { AssetLibrary } from './pages/Assets/AssetLibrary';
+import AudienceManagementPage from './pages/Audience/AudienceManagementPage';
 import { CreatePage } from './pages/CreatePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { DownloadsPage } from './pages/DownloadsPage';
@@ -23,18 +26,28 @@ import { ExportHistoryPage } from './pages/Export/ExportHistoryPage';
 import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard';
 import { IdeationDashboard } from './pages/Ideation/IdeationDashboard';
 import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer';
+import LearningPage from './pages/Learning/LearningPage';
+import { TranslationPage } from './pages/Localization/TranslationPage';
+import { ModelsManagementPage } from './pages/Models/ModelsManagementPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
+import ABTestManagementPage from './pages/PerformanceAnalytics/ABTestManagementPage';
+import PerformanceAnalyticsPage from './pages/PerformanceAnalytics/PerformanceAnalyticsPage';
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
+import { PromptManagementPage } from './pages/PromptManagement/PromptManagementPage';
 import { PublishPage } from './pages/PublishPage';
+import QualityValidationPage from './pages/QualityValidation/QualityValidationPage';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { RenderPage } from './pages/RenderPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SetupWizard } from './pages/Setup/SetupWizard';
 import TemplatesLibrary from './pages/Templates/TemplatesLibrary';
 import { TimelinePage } from './pages/TimelinePage';
+import ValidationPage from './pages/Validation/ValidationPage';
+import VerificationPage from './pages/Verification/VerificationPage';
 import { VideoEditorPage } from './pages/VideoEditorPage';
+import VoiceEnhancementPage from './pages/VoiceEnhancement/VoiceEnhancementPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { CreateWizard } from './pages/Wizard/CreateWizard';
 import { errorReportingService } from './services/errorReportingService';
@@ -411,6 +424,19 @@ function App() {
                     <Route path="/jobs" element={<RecentJobsPage />} />
                     <Route path="/downloads" element={<DownloadsPage />} />
                     <Route path="/health" element={<ProviderHealthDashboard />} />
+                    <Route path="/ai-editing" element={<AIEditingPage />} />
+                    <Route path="/aesthetics" element={<AestheticsPage />} />
+                    <Route path="/models" element={<ModelsManagementPage />} />
+                    <Route path="/localization" element={<TranslationPage />} />
+                    <Route path="/prompt-management" element={<PromptManagementPage />} />
+                    <Route path="/voice-enhancement" element={<VoiceEnhancementPage />} />
+                    <Route path="/performance-analytics" element={<PerformanceAnalyticsPage />} />
+                    <Route path="/ab-tests" element={<ABTestManagementPage />} />
+                    <Route path="/audience" element={<AudienceManagementPage />} />
+                    <Route path="/learning" element={<LearningPage />} />
+                    <Route path="/quality-validation" element={<QualityValidationPage />} />
+                    <Route path="/validation" element={<ValidationPage />} />
+                    <Route path="/verification" element={<VerificationPage />} />
                     {/* Development-only routes - lazy loaded */}
                     {env.enableDevTools && (
                       <>

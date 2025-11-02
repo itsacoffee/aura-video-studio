@@ -21,6 +21,12 @@ import {
   AccordionItem,
   AccordionHeader,
   AccordionPanel,
+  Dialog,
+  DialogTrigger,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogContent,
 } from '@fluentui/react-components';
 import {
   Play24Regular,
@@ -30,11 +36,13 @@ import {
   Info24Regular,
   ArrowReset24Regular,
   Dismiss24Regular,
+  Sparkle24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useRef } from 'react';
 import { GenerationPanel } from '../../components/Generation/GenerationPanel';
 import { useNotifications } from '../../components/Notifications/Toasts';
 import { PreflightPanel } from '../../components/PreflightPanel';
+import { PromptCustomizationPanel } from '../../components/PromptCustomization/PromptCustomizationPanel';
 import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
 import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
 import { apiUrl } from '../../config/api';
@@ -193,6 +201,10 @@ export function CreateWizard() {
   // Generation panel state
   const [showGenerationPanel, setShowGenerationPanel] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+
+  // Prompt customization state
+  const [promptCustomizationOpen, setPromptCustomizationOpen] = useState(false);
+  const handleClosePromptCustomization = () => setPromptCustomizationOpen(false);
 
   // Request cancellation state
   const currentRequestRef = useRef<{ cancel: () => void } | null>(null);
@@ -1275,6 +1287,35 @@ export function CreateWizard() {
                           />
                         </Field>
                       )}
+
+                      {/* Prompt Customization Button */}
+                      <Dialog
+                        open={promptCustomizationOpen}
+                        onOpenChange={(_, data) => setPromptCustomizationOpen(data.open)}
+                      >
+                        <DialogTrigger disableButtonEnhancement>
+                          <Button
+                            icon={<Sparkle24Regular />}
+                            appearance="primary"
+                            style={{ marginTop: tokens.spacingVerticalM }}
+                          >
+                            Customize Prompts
+                          </Button>
+                        </DialogTrigger>
+                        <DialogSurface style={{ maxWidth: '900px', maxHeight: '90vh' }}>
+                          <DialogBody>
+                            <DialogTitle>Advanced Prompt Customization</DialogTitle>
+                            <DialogContent>
+                              <PromptCustomizationPanel
+                                brief={settings.brief}
+                                planSpec={settings.planSpec}
+                                onApply={handleClosePromptCustomization}
+                                onClose={handleClosePromptCustomization}
+                              />
+                            </DialogContent>
+                          </DialogBody>
+                        </DialogSurface>
+                      </Dialog>
 
                       <Button
                         appearance="secondary"

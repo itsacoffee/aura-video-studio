@@ -8,6 +8,7 @@ using Aura.Core.Artifacts;
 using Aura.Core.Configuration;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Core.Services.Generation;
@@ -516,6 +517,27 @@ internal class PipelineValidationFailingLlmProvider : ILlmProvider
     }
 
     public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogError("LLM provider is unavailable or misconfigured");
+        throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
+    }
+
+    public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoTone,
+        VisualStyle targetStyle,
+        CancellationToken ct)
+    {
+        _logger.LogError("LLM provider is unavailable or misconfigured");
+        throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
+    }
+
+    public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
         string sceneText,
         string? previousSceneText,
         string videoGoal,

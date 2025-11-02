@@ -10,9 +10,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Models;
 using Aura.Api.Services;
+using Aura.Core.Data;
 using Aura.Core.Services;
 using Aura.Core.Services.Setup;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Api.Controllers;
@@ -28,6 +30,7 @@ public class SetupController : ControllerBase
     private readonly HttpClient _httpClient;
     private readonly ApiKeyValidationService _validationService;
     private readonly ISecureStorageService _secureStorage;
+    private readonly AuraDbContext _dbContext;
 
     public SetupController(
         ILogger<SetupController> logger,
@@ -36,7 +39,8 @@ public class SetupController : ControllerBase
         SseService sseService,
         HttpClient httpClient,
         ApiKeyValidationService validationService,
-        ISecureStorageService secureStorage)
+        ISecureStorageService secureStorage,
+        AuraDbContext dbContext)
     {
         _logger = logger;
         _detector = detector;
@@ -45,6 +49,7 @@ public class SetupController : ControllerBase
         _httpClient = httpClient;
         _validationService = validationService;
         _secureStorage = secureStorage;
+        _dbContext = dbContext;
     }
 
     [HttpGet("detect")]
@@ -508,6 +513,180 @@ public class SetupController : ControllerBase
             return plainText; // Fallback to plaintext if encoding fails
         }
     }
+
+    /// <summary>
+    /// Get wizard completion status from database
+    /// </summary>
+    [HttpGet("wizard/status")]
+    public async Task<IActionResult> GetWizardStatus(CancellationToken ct)
+    {
+        try
+        {
+            const string userId = "default";
+            var setup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(s => s.UserId == userId, ct)
+                .ConfigureAwait(false);
+
+            if (setup == null)
+            {
+                return Ok(new WizardStatusResponse
+                {
+                    Completed = false,
+                    LastStep = 0,
+                    Version = null
+                });
+            }
+
+            return Ok(new WizardStatusResponse
+            {
+                Completed = setup.Completed,
+                CompletedAt = setup.CompletedAt,
+                Version = setup.Version,
+                LastStep = setup.LastStep,
+                SelectedTier = setup.SelectedTier
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting wizard status");
+            return StatusCode(500, new { error = "Failed to get wizard status" });
+        }
+    }
+
+    /// <summary>
+    /// Mark wizard as completed in database
+    /// </summary>
+    [HttpPost("wizard/complete")]
+    public async Task<IActionResult> CompleteWizard(
+        [FromBody] CompleteWizardRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            const string userId = "default";
+            var setup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(s => s.UserId == userId, ct)
+                .ConfigureAwait(false);
+
+            if (setup == null)
+            {
+                setup = new UserSetupEntity
+                {
+                    UserId = userId
+                };
+                _dbContext.UserSetups.Add(setup);
+            }
+
+            setup.Completed = true;
+            setup.CompletedAt = DateTime.UtcNow;
+            setup.Version = request.Version ?? "1.0.0";
+            setup.SelectedTier = request.SelectedTier;
+            setup.LastStep = request.LastStep ?? 0;
+            setup.UpdatedAt = DateTime.UtcNow;
+
+            if (!string.IsNullOrWhiteSpace(request.WizardState))
+            {
+                setup.WizardState = request.WizardState;
+            }
+
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "Wizard completed for user {UserId}, tier: {Tier}, version: {Version}",
+                userId,
+                request.SelectedTier,
+                setup.Version
+            );
+
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error completing wizard");
+            return StatusCode(500, new { error = "Failed to complete wizard" });
+        }
+    }
+
+    /// <summary>
+    /// Save wizard progress (for resume functionality)
+    /// </summary>
+    [HttpPost("wizard/save-progress")]
+    public async Task<IActionResult> SaveWizardProgress(
+        [FromBody] SaveWizardProgressRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            const string userId = "default";
+            var setup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(s => s.UserId == userId, ct)
+                .ConfigureAwait(false);
+
+            if (setup == null)
+            {
+                setup = new UserSetupEntity
+                {
+                    UserId = userId
+                };
+                _dbContext.UserSetups.Add(setup);
+            }
+
+            setup.LastStep = request.LastStep;
+            setup.SelectedTier = request.SelectedTier;
+            setup.WizardState = request.WizardState;
+            setup.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "Wizard progress saved for user {UserId}, step: {Step}",
+                userId,
+                request.LastStep
+            );
+
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving wizard progress");
+            return StatusCode(500, new { error = "Failed to save wizard progress" });
+        }
+    }
+
+    /// <summary>
+    /// Reset wizard status (for re-running wizard from settings)
+    /// </summary>
+    [HttpPost("wizard/reset")]
+    public async Task<IActionResult> ResetWizard(CancellationToken ct)
+    {
+        try
+        {
+            const string userId = "default";
+            var setup = await _dbContext.UserSetups
+                .FirstOrDefaultAsync(s => s.UserId == userId, ct)
+                .ConfigureAwait(false);
+
+            if (setup != null)
+            {
+                setup.Completed = false;
+                setup.CompletedAt = null;
+                setup.LastStep = 0;
+                setup.WizardState = null;
+                setup.UpdatedAt = DateTime.UtcNow;
+
+                await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+            }
+
+            _logger.LogInformation("Wizard reset for user {UserId}", userId);
+
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting wizard");
+            return StatusCode(500, new { error = "Failed to reset wizard" });
+        }
+    }
 }
 
 public class ValidateKeyRequest
@@ -545,4 +724,28 @@ public class ApiKeysConfig
     public string? Gemini { get; set; }
     public string? ElevenLabs { get; set; }
     public string? PlayHT { get; set; }
+}
+
+public class WizardStatusResponse
+{
+    public bool Completed { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public string? Version { get; set; }
+    public int LastStep { get; set; }
+    public string? SelectedTier { get; set; }
+}
+
+public class CompleteWizardRequest
+{
+    public string? Version { get; set; }
+    public string? SelectedTier { get; set; }
+    public int? LastStep { get; set; }
+    public string? WizardState { get; set; }
+}
+
+public class SaveWizardProgressRequest
+{
+    public int LastStep { get; set; }
+    public string? SelectedTier { get; set; }
+    public string? WizardState { get; set; }
 }

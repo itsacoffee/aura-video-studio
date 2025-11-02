@@ -1,11 +1,38 @@
 using System;
 using System.Collections.Generic;
+using Aura.Core.Models.Audience;
 
 namespace Aura.Core.Models;
 
-public record Brief(string Topic, string? Audience, string? Goal, string Tone, string Language, Aspect Aspect);
+/// <summary>
+/// Brief configuration for video generation with optional prompt customization
+/// Supports both simple string-based audience and rich structured AudienceProfile
+/// </summary>
+public record Brief(
+    string Topic, 
+    string? Audience, 
+    string? Goal, 
+    string Tone, 
+    string Language, 
+    Aspect Aspect,
+    PromptModifiers? PromptModifiers = null,
+    AudienceProfile? AudienceProfile = null);
 
-public record PlanSpec(TimeSpan TargetDuration, Pacing Pacing, Density Density, string Style);
+/// <summary>
+/// User customization options for prompt engineering
+/// </summary>
+public record PromptModifiers(
+    string? AdditionalInstructions = null,
+    string? ExampleStyle = null,
+    bool EnableChainOfThought = false,
+    string? PromptVersion = null);
+
+public record PlanSpec(
+    TimeSpan TargetDuration, 
+    Pacing Pacing, 
+    Density Density, 
+    string Style,
+    ScriptRefinementConfig? RefinementConfig = null);
 
 public record VoiceSpec(string VoiceName, double Rate, double Pitch, PauseStyle Pause);
 
@@ -25,7 +52,8 @@ public record RenderSpec(
     int Fps = 30,
     string Codec = "H264",
     int QualityLevel = 75,
-    bool EnableSceneCut = true);
+    bool EnableSceneCut = true,
+    ScriptRefinementConfig? RefinementConfig = null);
 
 public record RenderProgress(float Percentage, TimeSpan Elapsed, TimeSpan Remaining, string CurrentStage);
 

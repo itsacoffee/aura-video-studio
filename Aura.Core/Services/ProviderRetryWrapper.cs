@@ -2,9 +2,15 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Services.Health;
+using Aura.Core.Services.Performance;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services;
+
+/// <summary>
+/// Callback for retry notifications
+/// </summary>
+public delegate void RetryNotificationHandler(string operation, int attempt, int maxAttempts, string reason, int delayMs);
 
 /// <summary>
 /// Provides retry logic with exponential backoff for provider operations.
@@ -13,13 +19,15 @@ namespace Aura.Core.Services;
 public class ProviderRetryWrapper
 {
     private readonly ILogger<ProviderRetryWrapper> _logger;
+    private readonly LatencyTelemetry? _telemetry;
     private const int MaxRetries = 3;
     private const int InitialDelayMs = 1000;
     private const int MaxDelayMs = 30000;
 
-    public ProviderRetryWrapper(ILogger<ProviderRetryWrapper> logger)
+    public ProviderRetryWrapper(ILogger<ProviderRetryWrapper> logger, LatencyTelemetry? telemetry = null)
     {
         _logger = logger;
+        _telemetry = telemetry;
     }
 
     /// <summary>
@@ -30,12 +38,16 @@ public class ProviderRetryWrapper
     /// <param name="operationName">Name for logging</param>
     /// <param name="ct">Cancellation token</param>
     /// <param name="maxRetries">Maximum retry attempts (default: 3)</param>
+    /// <param name="onRetry">Optional callback for retry notifications</param>
+    /// <param name="providerName">Optional provider name for telemetry</param>
     /// <returns>Result of the operation</returns>
     public async Task<T> ExecuteWithRetryAsync<T>(
         Func<CancellationToken, Task<T>> operation,
         string operationName,
         CancellationToken ct,
-        int maxRetries = MaxRetries)
+        int maxRetries = MaxRetries,
+        RetryNotificationHandler? onRetry = null,
+        string? providerName = null)
     {
         int attempt = 0;
         Exception? lastException = null;
@@ -54,6 +66,8 @@ public class ProviderRetryWrapper
                 {
                     _logger.LogInformation("{Operation} succeeded after {Attempt} attempts", 
                         operationName, attempt);
+                    
+                    _telemetry?.LogRetrySuccess(providerName ?? "Unknown", operationName, attempt);
                 }
 
                 return result;
@@ -67,10 +81,15 @@ public class ProviderRetryWrapper
             {
                 lastException = ex;
                 int delayMs = CalculateBackoffDelay(attempt);
+                string reason = ClassifyErrorReason(ex);
 
                 _logger.LogWarning(ex,
                     "{Operation} failed (attempt {Attempt}/{MaxRetries}), retrying in {Delay}ms. Error: {Error}",
                     operationName, attempt, maxRetries, delayMs, ex.Message);
+
+                _telemetry?.LogRetryAttempt(providerName ?? "Unknown", operationName, attempt, maxRetries, reason, delayMs);
+                
+                onRetry?.Invoke(operationName, attempt, maxRetries, reason, delayMs);
 
                 await Task.Delay(delayMs, ct).ConfigureAwait(false);
             }
@@ -79,6 +98,12 @@ public class ProviderRetryWrapper
                 // Non-transient error or max retries exceeded
                 _logger.LogError(ex, "{Operation} failed permanently after {Attempt} attempts", 
                     operationName, attempt);
+                
+                if (attempt >= maxRetries)
+                {
+                    _telemetry?.LogRetryExhausted(providerName ?? "Unknown", operationName, attempt, ex.Message);
+                }
+                
                 throw;
             }
         }
@@ -89,6 +114,8 @@ public class ProviderRetryWrapper
             lastException);
         
         _logger.LogError(finalException, "{Operation} exhausted all retry attempts", operationName);
+        _telemetry?.LogRetryExhausted(providerName ?? "Unknown", operationName, maxRetries, lastException?.Message ?? "Unknown error");
+        
         throw finalException;
     }
 
@@ -111,12 +138,49 @@ public class ProviderRetryWrapper
             message.Contains("timeout") ||
             message.Contains("temporarily unavailable") ||
             message.Contains("service unavailable") ||
-            message.Contains("503"))
+            message.Contains("503") ||
+            message.Contains("502") ||
+            message.Contains("504"))
         {
             return true;
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Classify the error reason for user-friendly messaging
+    /// </summary>
+    private string ClassifyErrorReason(Exception ex)
+    {
+        var message = ex.Message.ToLowerInvariant();
+        
+        if (message.Contains("rate limit") || message.Contains("429") || message.Contains("too many requests"))
+        {
+            return "rate limit exceeded";
+        }
+        
+        if (message.Contains("timeout"))
+        {
+            return "request timeout";
+        }
+        
+        if (message.Contains("503") || message.Contains("service unavailable") || message.Contains("temporarily unavailable"))
+        {
+            return "service temporarily unavailable";
+        }
+        
+        if (message.Contains("502") || message.Contains("504"))
+        {
+            return "gateway error";
+        }
+        
+        if (ex is HttpRequestException)
+        {
+            return "network error";
+        }
+        
+        return "transient error";
     }
 
     /// <summary>

@@ -101,6 +101,160 @@ namespace Aura.Api.Migrations
 
                     b.ToTable("export_history");
                 });
+
+            modelBuilder.Entity("Aura.Core.Data.TemplateEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("author");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsCommunityTemplate")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_community_template");
+
+                    b.Property<bool>("IsSystemTemplate")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_system_template");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("PreviewImage")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preview_image");
+
+                    b.Property<string>("PreviewVideo")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("preview_video");
+
+                    b.Property<double>("Rating")
+                        .HasColumnType("REAL")
+                        .HasColumnName("rating");
+
+                    b.Property<int>("RatingCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("rating_count");
+
+                    b.Property<string>("SubCategory")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("sub_category");
+
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("tags");
+
+                    b.Property<string>("TemplateData")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("template_data");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("usage_count");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("IsCommunityTemplate");
+
+                    b.HasIndex("IsSystemTemplate");
+
+                    b.HasIndex("Category", "SubCategory");
+
+                    b.ToTable("templates");
+                });
+
+            modelBuilder.Entity("Aura.Core.Data.UserSetupEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Completed")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("completed");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("completed_at");
+
+                    b.Property<int>("LastStep")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("last_step");
+
+                    b.Property<string>("SelectedTier")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("selected_tier");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("version");
+
+                    b.Property<string>("WizardState")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("wizard_state");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Completed");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("user_setup");
+                });
 #pragma warning restore 612, 618
         }
     }

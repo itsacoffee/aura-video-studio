@@ -122,6 +122,17 @@ builder.Services.AddSingleton<IHardwareDetector>(sp => sp.GetRequiredService<Har
 builder.Services.AddSingleton<Aura.Core.Hardware.DiagnosticsHelper>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
 
+// Register Ollama service for process control
+builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.OllamaService>>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var logsDirectory = Path.Combine(providerSettings.GetLogsDirectory(), "ollama");
+    return new Aura.Core.Services.OllamaService(logger, httpClient, logsDirectory);
+});
+
 // Configure FFmpeg options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.FFmpegOptions>(
     builder.Configuration.GetSection("FFmpeg"));
@@ -154,6 +165,28 @@ builder.Services.AddSingleton(sp =>
 // Provider mixer
 builder.Services.AddSingleton<Aura.Core.Orchestrator.ProviderMixer>();
 
+// Provider recommendation, health monitoring, and cost tracking services
+builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
+builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
+builder.Services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommendationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.LlmProviderRecommendationService>>();
+    var healthMonitor = sp.GetRequiredService<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
+    var costTracker = sp.GetRequiredService<Aura.Core.Services.Providers.ProviderCostTrackingService>();
+    var settings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    
+    var providers = factory.CreateAvailableProviders(loggerFactory);
+    
+    return new Aura.Core.Services.Providers.LlmProviderRecommendationService(
+        logger,
+        healthMonitor,
+        costTracker,
+        settings,
+        providers);
+});
+
 // Script orchestrator with lazy provider creation
 builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
 {
@@ -185,6 +218,23 @@ builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationContex
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ProjectContextManager>();
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationalLlmService>();
 
+// Add Prompt Engineering services
+builder.Services.AddSingleton<Aura.Core.Services.AI.PromptCustomizationService>();
+builder.Services.AddScoped<Aura.Core.Services.AI.ChainOfThoughtOrchestrator>();
+
+// Add Prompt Management services
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.IPromptRepository, 
+    Aura.Core.Services.PromptManagement.InMemoryPromptRepository>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptVariableResolver>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptValidator>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptAnalyticsService>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptTestingService>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptABTestingService>();
+builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptManagementService>();
+
+// Initialize system prompt templates on startup
+builder.Services.AddHostedService<Aura.Api.HostedServices.SystemPromptInitializer>();
+
 // Register Profile Management services
 builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfilePersistence>(sp =>
 {
@@ -214,6 +264,24 @@ builder.Services.AddSingleton<Aura.Core.Services.Learning.LearningService>();
 builder.Services.AddMemoryCache(); // For trending topics caching and rate limiting
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.TrendingTopicsService>();
 builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>();
+
+// Register Audience Profile services
+builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileStore>();
+builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileValidator>();
+builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileConverter>();
+
+// Register User Preferences service
+builder.Services.AddSingleton<Aura.Core.Services.UserPreferences.UserPreferencesService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.UserPreferences.UserPreferencesService>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var dataDirectory = providerSettings.GetAuraDataDirectory();
+    return new Aura.Core.Services.UserPreferences.UserPreferencesService(logger, dataDirectory);
+});
+
+// Register Content Adaptation services
+builder.Services.AddScoped<Aura.Core.Services.Audience.ContentAdaptationEngine>();
+builder.Services.AddScoped<Aura.Core.Services.Audience.AdaptationPreviewService>();
 
 // Register Rate Limiting services
 builder.Services.Configure<AspNetCoreRateLimit.IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
@@ -246,9 +314,16 @@ builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.TopicGeneration
 builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.AudienceAnalysisService>();
 builder.Services.AddSingleton<Aura.Core.Services.ContentPlanning.ContentSchedulingService>();
 
+// Register Content Safety services
+builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.KeywordListManager>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.TopicFilterManager>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.ContentSafetyService>();
+builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.SafetyIntegrationService>();
+
 // Register Audio services
 builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
 builder.Services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
+builder.Services.AddSingleton<Aura.Core.Services.Audio.NarrationOptimizationService>();
 
 // Register TTS providers with safe DI resolution
 builder.Services.AddHttpClient();
@@ -314,6 +389,16 @@ builder.Services.AddSingleton<Aura.Core.Validation.LlmOutputValidator>();
 
 // Register pipeline reliability services
 builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
+
+// Register latency management services
+builder.Services.Configure<Aura.Core.Services.Performance.LlmTimeoutPolicy>(
+    builder.Configuration.GetSection("LlmTimeouts"));
+builder.Services.AddSingleton(sp => 
+    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Services.Performance.LlmTimeoutPolicy>>().Value);
+builder.Services.AddSingleton<Aura.Core.Services.Performance.LatencyTelemetry>();
+builder.Services.AddSingleton<Aura.Core.Services.Performance.LatencyManagementService>();
+builder.Services.AddSingleton<Aura.Core.Services.Performance.LlmOperationContext>();
+
 builder.Services.AddSingleton<Aura.Core.Services.ProviderRetryWrapper>();
 builder.Services.AddSingleton<Aura.Core.Services.ResourceCleanupManager>();
 
@@ -337,6 +422,7 @@ builder.Services.AddSingleton<Aura.Core.ML.Models.FrameImportanceModel>();
 builder.Services.AddSingleton<Aura.Core.Services.ML.ModelTrainingService>();
 
 // Register pacing services in dependency order
+builder.Services.AddSingleton<Aura.Core.Services.PacingServices.ContentComplexityAnalyzer>();
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.SceneImportanceAnalyzer>();
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.AttentionCurvePredictor>();
 builder.Services.AddSingleton<Aura.Core.Services.PacingServices.TransitionRecommender>();
@@ -347,6 +433,73 @@ builder.Services.AddSingleton<Aura.Core.Services.PacingServices.PacingApplicatio
 
 // Register pacing API services
 builder.Services.AddSingleton<Aura.Api.Services.PacingAnalysisCacheService>();
+
+// Register Pipeline Orchestration services (PR 21 intelligent pipeline)
+builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineCache>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Orchestration.PipelineCache>>();
+    return new Aura.Core.Services.Orchestration.PipelineCache(logger);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineHealthCheck>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Orchestration.PipelineHealthCheck>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var ttsProvider = sp.GetRequiredService<ITtsProvider>();
+    var narrationOptimizer = sp.GetService<Aura.Core.Services.Audio.NarrationOptimizationService>();
+    var pacingOptimizer = sp.GetService<Aura.Core.Services.PacingServices.IntelligentPacingOptimizer>();
+    
+    return new Aura.Core.Services.Orchestration.PipelineHealthCheck(
+        logger: logger,
+        llmProvider: llmProvider,
+        ttsProvider: ttsProvider,
+        contentAdvisor: null,
+        narrativeAnalyzer: null,
+        pacingOptimizer: pacingOptimizer,
+        toneEnforcer: null,
+        visualPromptService: null,
+        visualAlignmentService: null,
+        narrationOptimizer: narrationOptimizer,
+        scriptRefinement: null
+    );
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineOrchestrationEngine>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Orchestration.PipelineOrchestrationEngine>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var cache = sp.GetRequiredService<Aura.Core.Services.Orchestration.PipelineCache>();
+    var healthCheck = sp.GetRequiredService<Aura.Core.Services.Orchestration.PipelineHealthCheck>();
+    var ttsProvider = sp.GetRequiredService<ITtsProvider>();
+    var narrationOptimizer = sp.GetService<Aura.Core.Services.Audio.NarrationOptimizationService>();
+    var pacingOptimizer = sp.GetService<Aura.Core.Services.PacingServices.IntelligentPacingOptimizer>();
+    
+    var config = new Aura.Core.Services.Orchestration.PipelineConfiguration
+    {
+        MaxConcurrentLlmCalls = Math.Max(1, Environment.ProcessorCount / 2),
+        EnableCaching = true,
+        CacheTtl = TimeSpan.FromHours(1),
+        ContinueOnOptionalFailure = true,
+        EnableParallelExecution = true
+    };
+    
+    return new Aura.Core.Services.Orchestration.PipelineOrchestrationEngine(
+        logger: logger,
+        llmProvider: llmProvider,
+        cache: cache,
+        healthCheck: healthCheck,
+        config: config,
+        ttsProvider: ttsProvider,
+        contentAdvisor: null,
+        narrativeAnalyzer: null,
+        pacingOptimizer: pacingOptimizer,
+        toneEnforcer: null,
+        visualPromptService: null,
+        visualAlignmentService: null,
+        narrationOptimizer: narrationOptimizer,
+        scriptRefinement: null
+    );
+});
 
 builder.Services.AddSingleton<VideoOrchestrator>();
 
@@ -416,6 +569,24 @@ builder.Services.AddSingleton<Aura.Core.Services.Content.ScriptEnhancer>(sp =>
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.ScriptEnhancer>>();
     var llmProvider = sp.GetRequiredService<ILlmProvider>();
     return new Aura.Core.Services.Content.ScriptEnhancer(logger, llmProvider);
+});
+
+// Register Document Import services
+builder.Services.AddSingleton<Aura.Core.Services.Content.DocumentImportService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.DocumentImportService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    return new Aura.Core.Services.Content.DocumentImportService(logger, llmProvider, loggerFactory);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.Content.ScriptConverter>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Content.ScriptConverter>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var adaptationEngine = sp.GetService<Aura.Core.Services.Audience.ContentAdaptationEngine>();
+    var audienceProfileStore = sp.GetService<Aura.Core.Services.Audience.AudienceProfileStore>();
+    return new Aura.Core.Services.Content.ScriptConverter(logger, llmProvider, adaptationEngine, audienceProfileStore);
 });
 
 // Register Script Enhancement services (for AI Audio Intelligence integration)
@@ -519,6 +690,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Platform.SchedulingOptimization
 
 // Register health check and startup validation services
 builder.Services.AddSingleton<Aura.Api.Services.HealthCheckService>();
+builder.Services.AddSingleton<Aura.Api.Services.HealthDiagnosticsService>();
 builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
 builder.Services.AddSingleton<Aura.Api.Services.FirstRunDiagnostics>();
 builder.Services.AddSingleton<ConfigurationValidator>();
@@ -938,6 +1110,9 @@ app.UseCors();
 // Add routing BEFORE static files (API routes take precedence)
 app.UseRouting();
 
+// Add first-run wizard check middleware (checks if setup is completed)
+app.UseFirstRunCheck();
+
 // Add AspNetCoreRateLimit middleware after routing and before authorization
 app.UseIpRateLimiting();
 
@@ -1105,6 +1280,49 @@ apiGroup.MapGet("/health/ready", async (Aura.Api.Services.HealthCheckService hea
     return Results.Json(result, statusCode: statusCode);
 })
 .WithName("HealthReady")
+.WithOpenApi();
+
+// Health summary endpoint - high-level system status
+apiGroup.MapGet("/health/summary", async (Aura.Api.Services.HealthDiagnosticsService healthDiagnostics, CancellationToken ct) =>
+{
+    try
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        Log.Information("Health summary requested, CorrelationId: {CorrelationId}", correlationId);
+        
+        var result = await healthDiagnostics.GetHealthSummaryAsync(ct);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error retrieving health summary");
+        return Results.Problem("Error retrieving health summary", statusCode: 500);
+    }
+})
+.WithName("HealthSummary")
+.WithOpenApi();
+
+// Health details endpoint - per-check detailed diagnostics
+apiGroup.MapGet("/health/details", async (Aura.Api.Services.HealthDiagnosticsService healthDiagnostics, CancellationToken ct) =>
+{
+    try
+    {
+        var correlationId = Guid.NewGuid().ToString();
+        Log.Information("Health details requested, CorrelationId: {CorrelationId}", correlationId);
+        
+        var result = await healthDiagnostics.GetHealthDetailsAsync(ct);
+        
+        // Return 503 if system is not ready (has failed required checks)
+        var statusCode = result.IsReady ? 200 : 503;
+        return Results.Json(result, statusCode: statusCode);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error retrieving health details");
+        return Results.Problem("Error retrieving health details", statusCode: 500);
+    }
+})
+.WithName("HealthDetails")
 .WithOpenApi();
 
 // First-run diagnostics endpoint - comprehensive system check with actionable guidance

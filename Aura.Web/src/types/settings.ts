@@ -78,6 +78,7 @@ export interface AdvancedSettings {
   offlineMode: boolean;
   stableDiffusionUrl: string;
   ollamaUrl: string;
+  ollamaModel?: string;
   enableTelemetry: boolean;
   enableCrashReports: boolean;
 }
@@ -153,6 +154,7 @@ export const createDefaultSettings = (): UserSettings => ({
     offlineMode: false,
     stableDiffusionUrl: 'http://127.0.0.1:7860',
     ollamaUrl: 'http://127.0.0.1:11434',
+    ollamaModel: 'llama3.1:8b-q4_k_m',
     enableTelemetry: false,
     enableCrashReports: false,
   },

@@ -20,6 +20,15 @@ import {
   FlashFlow24Regular,
   VideoClipMultiple24Regular,
   AppGeneric24Regular,
+  Wand24Regular,
+  Eye24Regular,
+  Database24Regular,
+  LocalLanguage24Regular,
+  DocumentText24Regular,
+  Speaker224Regular,
+  DataUsage24Regular,
+  CheckmarkCircle24Regular,
+  ShieldCheckmark24Regular,
 } from '@fluentui/react-icons';
 
 export interface NavItem {
@@ -59,6 +68,51 @@ export const navItems: NavItem[] = [
     path: '/downloads',
   },
   { key: 'health', name: 'Provider Health', icon: HeartPulse24Regular, path: '/health' },
+  { key: 'ai-editing', name: 'AI Editing', icon: Wand24Regular, path: '/ai-editing' },
+  { key: 'aesthetics', name: 'Visual Aesthetics', icon: Eye24Regular, path: '/aesthetics' },
+  { key: 'models', name: 'AI Models', icon: Database24Regular, path: '/models' },
+  {
+    key: 'localization',
+    name: 'Localization',
+    icon: LocalLanguage24Regular,
+    path: '/localization',
+  },
+  {
+    key: 'prompt-management',
+    name: 'Prompt Management',
+    icon: DocumentText24Regular,
+    path: '/prompt-management',
+  },
+  {
+    key: 'voice-enhancement',
+    name: 'Voice Enhancement',
+    icon: Speaker224Regular,
+    path: '/voice-enhancement',
+  },
+  {
+    key: 'performance-analytics',
+    name: 'Performance Analytics',
+    icon: DataUsage24Regular,
+    path: '/performance-analytics',
+  },
+  {
+    key: 'quality-validation',
+    name: 'Quality Validation',
+    icon: CheckmarkCircle24Regular,
+    path: '/quality-validation',
+  },
+  {
+    key: 'validation',
+    name: 'Brief Validation',
+    icon: CheckmarkCircle24Regular,
+    path: '/validation',
+  },
+  {
+    key: 'verification',
+    name: 'Content Verification',
+    icon: ShieldCheckmark24Regular,
+    path: '/verification',
+  },
   { key: 'logs', name: 'Logs', icon: DocumentBulletList24Regular, path: '/logs' },
   { key: 'settings', name: 'Settings', icon: Settings24Regular, path: '/settings' },
 ];

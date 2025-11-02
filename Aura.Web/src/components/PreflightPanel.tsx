@@ -18,8 +18,11 @@ import {
   ArrowSwap24Regular,
   Open24Regular,
 } from '@fluentui/react-icons';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ollamaClient } from '../services/api/ollamaClient';
 import type { PreflightReport, StageCheck, CheckStatus, FixAction } from '../state/providers';
+import { parseApiError } from '../utils/apiErrorHandler';
 import { useNotifications } from './Notifications/Toasts';
 
 const useStyles = makeStyles({
@@ -92,7 +95,8 @@ export function PreflightPanel({
 }: PreflightPanelProps) {
   const styles = useStyles();
   const navigate = useNavigate();
-  const { showFailureToast } = useNotifications();
+  const { showFailureToast, showSuccessToast } = useNotifications();
+  const [startingOllama, setStartingOllama] = useState(false);
 
   const getStatusIcon = (status: CheckStatus) => {
     switch (status) {
@@ -145,35 +149,65 @@ export function PreflightPanel({
     }
   };
 
-  const handleFixAction = (action: FixAction) => {
+  const handleFixAction = async (action: FixAction) => {
     switch (action.type) {
       case 'Install':
-        // Navigate to downloads page
         navigate('/downloads');
         break;
       case 'OpenSettings':
-        // Navigate to settings with the specific tab
         navigate(`/settings${action.parameter ? `?tab=${action.parameter}` : ''}`);
         break;
       case 'Help':
-        // Open external URL
         if (action.parameter) {
           window.open(action.parameter, '_blank');
         }
         break;
       case 'SwitchToFree':
-        // Apply safe defaults if handler provided
         if (onApplySafeDefaults) {
           onApplySafeDefaults();
         }
         break;
       case 'Start':
-        // For now, just show a message - actual start requires backend support
-        showFailureToast({
-          title: 'Manual Start Required',
-          message: `Please start ${action.parameter} manually. Check the Downloads page for instructions.`,
-        });
+        if (action.parameter === 'Ollama') {
+          await handleStartOllama();
+        } else {
+          showFailureToast({
+            title: 'Manual Start Required',
+            message: `Please start ${action.parameter} manually. Check the Downloads page for instructions.`,
+          });
+        }
         break;
+    }
+  };
+
+  const handleStartOllama = async () => {
+    try {
+      setStartingOllama(true);
+      const result = await ollamaClient.start();
+
+      if (result.success) {
+        showSuccessToast({
+          title: 'Ollama Started',
+          message: result.message,
+        });
+
+        setTimeout(() => {
+          onRunPreflight();
+        }, 2000);
+      } else {
+        showFailureToast({
+          title: 'Failed to Start Ollama',
+          message: result.message,
+        });
+      }
+    } catch (error: unknown) {
+      const apiError = await parseApiError(error);
+      showFailureToast({
+        title: 'Error Starting Ollama',
+        message: apiError.message || 'An unexpected error occurred',
+      });
+    } finally {
+      setStartingOllama(false);
     }
   };
 
@@ -182,18 +216,24 @@ export function PreflightPanel({
 
     return (
       <div className={styles.fixActions}>
-        {fixActions.map((action, index) => (
-          <Button
-            key={index}
-            size="small"
-            appearance="primary"
-            icon={getFixActionIcon(action.type)}
-            onClick={() => handleFixAction(action)}
-            title={action.description}
-          >
-            {action.label}
-          </Button>
-        ))}
+        {fixActions.map((action, index) => {
+          const isStartingOllamaAction = action.type === 'Start' && action.parameter === 'Ollama';
+          const isDisabled = isStartingOllamaAction && startingOllama;
+
+          return (
+            <Button
+              key={index}
+              size="small"
+              appearance="primary"
+              icon={isDisabled ? <Spinner size="tiny" /> : getFixActionIcon(action.type)}
+              onClick={() => handleFixAction(action)}
+              disabled={isDisabled}
+              title={action.description}
+            >
+              {isDisabled ? 'Starting...' : action.label}
+            </Button>
+          );
+        })}
       </div>
     );
   };

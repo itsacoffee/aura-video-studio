@@ -95,6 +95,56 @@ export interface StockSourcesConfig {
   stableDiffusionUrl?: string;
 }
 
+export interface PromptModifiers {
+  additionalInstructions?: string;
+  exampleStyle?: string;
+  enableChainOfThought: boolean;
+  promptVersion?: string;
+}
+
+export interface PromptPreview {
+  systemPrompt: string;
+  userPrompt: string;
+  finalPrompt: string;
+  substitutedVariables: Record<string, string>;
+  promptVersion: string;
+  estimatedTokens: number;
+}
+
+export interface FewShotExample {
+  videoType: string;
+  exampleName: string;
+  description: string;
+  sampleBrief: string;
+  sampleOutput: string;
+  keyTechniques: string[];
+}
+
+export interface PromptVersion {
+  version: string;
+  name: string;
+  description: string;
+  isDefault: boolean;
+}
+
+export interface ChainOfThoughtStage {
+  stage: 'TopicAnalysis' | 'Outline' | 'FullScript';
+  content: string;
+  requiresUserReview: boolean;
+  suggestedEdits?: string;
+}
+
+export interface PromptPreset {
+  name: string;
+  description: string;
+  additionalInstructions?: string;
+  exampleStyle?: string;
+  enableChainOfThought: boolean;
+  promptVersion?: string;
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
 export interface WizardSettings {
   brief: Brief;
   planSpec: PlanSpec;

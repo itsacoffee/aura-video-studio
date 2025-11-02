@@ -68,7 +68,7 @@ public class ImprovementEngine
     /// <summary>
     /// Provides real-time feedback for content being created
     /// </summary>
-    public async Task<RealTimeFeedback> GetRealTimeFeedbackAsync(
+    public Task<RealTimeFeedback> GetRealTimeFeedbackAsync(
         string currentContent,
         int currentWordCount,
         TimeSpan currentDuration,
@@ -128,18 +128,18 @@ public class ImprovementEngine
             ));
         }
 
-        return new RealTimeFeedback(
+        return Task.FromResult(new RealTimeFeedback(
             Issues: issues,
             Strengths: strengths,
             CurrentQualityScore: CalculateQuickQualityScore(currentContent, issues),
             Suggestions: GenerateQuickSuggestions(issues, currentWordCount)
-        );
+        ));
     }
 
     /// <summary>
     /// Analyzes weak sections and provides specific improvements
     /// </summary>
-    public async Task<SectionAnalysis> AnalyzeWeakSectionsAsync(
+    public Task<SectionAnalysis> AnalyzeWeakSectionsAsync(
         string content,
         List<TimeSpan> weakPoints,
         CancellationToken ct = default)
@@ -155,11 +155,11 @@ public class ImprovementEngine
             analyses.Add(analysis);
         }
 
-        return new SectionAnalysis(
+        return Task.FromResult(new SectionAnalysis(
             WeakSections: analyses,
             OverallRecommendation: GenerateOverallRecommendation(analyses),
             PriorityFixes: analyses.OrderByDescending(a => a.Severity).Take(3).ToList()
-        );
+        ));
     }
 
     private List<ActionItem> GenerateActionItems(

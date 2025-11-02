@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Visual;
 
 namespace Aura.Core.Providers;
 
@@ -12,6 +14,32 @@ public interface ILlmProvider
     Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct);
+    Task<VisualPromptResult?> GenerateVisualPromptAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoTone,
+        VisualStyle targetStyle,
+        CancellationToken ct);
+    Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct);
+    Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct);
+    Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+        IReadOnlyList<string> sceneTexts,
+        string videoGoal,
+        string videoType,
+        CancellationToken ct);
+    Task<string?> GenerateTransitionTextAsync(
+        string fromSceneText,
+        string toSceneText,
         string videoGoal,
         CancellationToken ct);
 }
@@ -26,6 +54,63 @@ public record SceneAnalysisResult(
     string InformationDensity,
     double OptimalDurationSeconds,
     string TransitionType,
+    string Reasoning
+);
+
+/// <summary>
+/// Result of LLM-based visual prompt generation
+/// </summary>
+public record VisualPromptResult(
+    string DetailedDescription,
+    string CompositionGuidelines,
+    string LightingMood,
+    string LightingDirection,
+    string LightingQuality,
+    string TimeOfDay,
+    string[] ColorPalette,
+    string ShotType,
+    string CameraAngle,
+    string DepthOfField,
+    string[] StyleKeywords,
+    string[] NegativeElements,
+    string[] ContinuityElements,
+    string Reasoning
+);
+
+/// <summary>
+/// Result of LLM-based content complexity analysis for adaptive pacing
+/// </summary>
+public record ContentComplexityAnalysisResult(
+    double OverallComplexityScore,
+    double ConceptDifficulty,
+    double TerminologyDensity,
+    double PrerequisiteKnowledgeLevel,
+    double MultiStepReasoningRequired,
+    int NewConceptsIntroduced,
+    double CognitiveProcessingTimeSeconds,
+    double OptimalAttentionWindowSeconds,
+    string DetailedBreakdown
+);
+
+/// <summary>
+/// Result of LLM-based scene coherence analysis
+/// </summary>
+public record SceneCoherenceResult(
+    double CoherenceScore,
+    string[] ConnectionTypes,
+    double ConfidenceScore,
+    string Reasoning
+);
+
+/// <summary>
+/// Result of LLM-based narrative arc validation
+/// </summary>
+public record NarrativeArcResult(
+    bool IsValid,
+    string DetectedStructure,
+    string ExpectedStructure,
+    string[] StructuralIssues,
+    string[] Recommendations,
     string Reasoning
 );
 

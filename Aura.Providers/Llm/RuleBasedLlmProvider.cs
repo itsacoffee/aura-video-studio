@@ -1,27 +1,56 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Narrative;
+using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
+using Aura.Core.Services.AI;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Llm;
 
+/// <summary>
+/// Rule-based LLM provider for offline script generation.
+/// Supports prompt customization for additional instructions.
+/// </summary>
 public class RuleBasedLlmProvider : ILlmProvider
 {
     private readonly ILogger<RuleBasedLlmProvider> _logger;
     private readonly Random _random;
+    private readonly PromptCustomizationService _promptCustomizationService;
 
-    public RuleBasedLlmProvider(ILogger<RuleBasedLlmProvider> logger)
+    public RuleBasedLlmProvider(
+        ILogger<RuleBasedLlmProvider> logger,
+        PromptCustomizationService? promptCustomizationService = null)
     {
         _logger = logger;
         _random = new Random(42); // Fixed seed for deterministic output
+        
+        // Create PromptCustomizationService if not provided (using logger factory pattern)
+        if (promptCustomizationService == null)
+        {
+            var loggerFactory = LoggerFactory.Create(builder => builder.SetMinimumLevel(LogLevel.Warning));
+            var customizationLogger = loggerFactory.CreateLogger<PromptCustomizationService>();
+            _promptCustomizationService = new PromptCustomizationService(customizationLogger);
+        }
+        else
+        {
+            _promptCustomizationService = promptCustomizationService;
+        }
     }
 
     public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
         _logger.LogInformation("Generating rule-based script for topic: {Topic}", brief.Topic);
+        
+        // Log if user has provided custom instructions
+        if (brief.PromptModifiers?.AdditionalInstructions != null)
+        {
+            _logger.LogInformation("User provided additional instructions for script generation");
+        }
         
         // Calculate the target word count based on duration, pacing, and density
         int targetWordCount = CalculateWordCount(spec.TargetDuration, spec.Pacing, spec.Density);
@@ -35,7 +64,7 @@ public class RuleBasedLlmProvider : ILlmProvider
         _logger.LogDebug("Target word count: {WordCount}, Scenes: {SceneCount}, Words per scene: {WordsPerScene}",
             targetWordCount, sceneCount, wordsPerScene);
 
-        // Generate the script
+        // Generate the script (RuleBased provider uses templates, prompt modifiers logged but not directly applied)
         string script = GenerateScript(brief, spec, sceneCount, wordsPerScene);
         
         return Task.FromResult(script);
@@ -275,5 +304,299 @@ public class RuleBasedLlmProvider : ILlmProvider
             result.Importance, result.Complexity, result.OptimalDurationSeconds);
 
         return Task.FromResult<SceneAnalysisResult?>(result);
+    }
+
+    public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoTone,
+        VisualStyle targetStyle,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Generating visual prompt with rule-based heuristics");
+
+        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' }, 
+            StringSplitOptions.RemoveEmptyEntries).Length;
+
+        var detailedDescription = $"A {targetStyle.ToString().ToLowerInvariant()} visual representation of: {sceneText}";
+        
+        var compositionGuidelines = wordCount > 50 
+            ? "Rule of thirds, balanced framing, clear focal point" 
+            : "Centered composition, minimal elements, clean framing";
+
+        var lightingMood = videoTone.ToLowerInvariant() switch
+        {
+            var t when t.Contains("dramatic") => "dramatic",
+            var t when t.Contains("professional") => "neutral",
+            var t when t.Contains("warm") => "warm",
+            var t when t.Contains("playful") => "bright",
+            _ => "balanced"
+        };
+
+        var timeOfDay = lightingMood switch
+        {
+            "dramatic" => "golden hour",
+            "warm" => "golden hour",
+            "bright" => "day",
+            _ => "day"
+        };
+
+        var colorPalette = lightingMood switch
+        {
+            "dramatic" => new[] { "#1a1a1a", "#8b0000", "#ffd700" },
+            "professional" => new[] { "#2c3e50", "#ecf0f1", "#3498db" },
+            "warm" => new[] { "#ffa500", "#ff8c00", "#ffd700" },
+            "bright" => new[] { "#ff6b6b", "#4ecdc4", "#ffe66d" },
+            _ => new[] { "#34495e", "#ecf0f1", "#3498db" }
+        };
+
+        var shotType = wordCount switch
+        {
+            < 30 => "wide shot",
+            < 70 => "medium shot",
+            _ => "medium close-up"
+        };
+
+        var cameraAngle = lightingMood switch
+        {
+            "dramatic" => "low angle",
+            _ => "eye level"
+        };
+
+        var styleKeywords = targetStyle switch
+        {
+            VisualStyle.Cinematic => new[] { "cinematic", "film grain", "color graded", "atmospheric", "high quality" },
+            VisualStyle.Realistic => new[] { "photorealistic", "natural lighting", "authentic", "detailed", "professional" },
+            VisualStyle.Dramatic => new[] { "dramatic lighting", "high contrast", "moody", "intense", "powerful" },
+            VisualStyle.Documentary => new[] { "documentary style", "natural", "authentic", "realistic", "informative" },
+            _ => new[] { "high quality", "professional", "detailed", "clear", "engaging" }
+        };
+
+        var negativeElements = new[] 
+        { 
+            "blurry", "low quality", "distorted", "watermark", "text", "logo" 
+        };
+
+        var continuityElements = !string.IsNullOrEmpty(previousSceneText)
+            ? new[] { "consistent color grading", "same location style", "matching tone" }
+            : Array.Empty<string>();
+
+        var result = new VisualPromptResult(
+            DetailedDescription: detailedDescription,
+            CompositionGuidelines: compositionGuidelines,
+            LightingMood: lightingMood,
+            LightingDirection: "front",
+            LightingQuality: "soft",
+            TimeOfDay: timeOfDay,
+            ColorPalette: colorPalette,
+            ShotType: shotType,
+            CameraAngle: cameraAngle,
+            DepthOfField: "medium",
+            StyleKeywords: styleKeywords,
+            NegativeElements: negativeElements,
+            ContinuityElements: continuityElements,
+            Reasoning: "Rule-based visual prompt generation using heuristics for tone, word count, and style"
+        );
+
+        _logger.LogDebug("Visual prompt generated: ShotType={ShotType}, Lighting={Lighting}",
+            result.ShotType, result.LightingMood);
+
+        return Task.FromResult<VisualPromptResult?>(result);
+    }
+
+    public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+        string sceneText,
+        string? previousSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Analyzing content complexity with rule-based heuristics");
+
+        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' }, 
+            StringSplitOptions.RemoveEmptyEntries).Length;
+
+        var technicalTerms = new[] { 
+            "algorithm", "implementation", "architecture", "framework", "methodology", 
+            "optimization", "integration", "configuration", "deployment", "infrastructure",
+            "paradigm", "specification", "protocol", "authentication", "encryption"
+        };
+        var technicalCount = technicalTerms.Count(term => 
+            sceneText.Contains(term, StringComparison.OrdinalIgnoreCase));
+
+        var complexConcepts = new[] {
+            "quantum", "molecular", "theoretical", "hypothetical", "abstract",
+            "mathematical", "philosophical", "metaphysical", "paradox", "anomaly"
+        };
+        var complexConceptCount = complexConcepts.Count(term => 
+            sceneText.Contains(term, StringComparison.OrdinalIgnoreCase));
+
+        var conceptDifficulty = wordCount > 100 ? 60.0 : 40.0;
+        conceptDifficulty += Math.Min(technicalCount * 10, 30);
+        conceptDifficulty += Math.Min(complexConceptCount * 15, 20);
+
+        var terminologyDensity = technicalCount > 3 ? 70.0 : 40.0;
+        if (wordCount > 0)
+        {
+            var densityRatio = (double)technicalCount / wordCount * 100;
+            terminologyDensity = Math.Min(100, 30 + densityRatio * 50);
+        }
+
+        var prerequisiteKnowledge = technicalCount > 2 ? 60.0 : 30.0;
+        prerequisiteKnowledge += Math.Min(complexConceptCount * 10, 25);
+
+        var multiStepReasoning = wordCount > 80 ? 50.0 : 30.0;
+        var logicalConnectors = new[] { "therefore", "consequently", "however", "moreover", 
+                                        "furthermore", "nevertheless", "thus", "hence" };
+        var logicalConnectorCount = logicalConnectors.Count(conn => 
+            sceneText.Contains(conn, StringComparison.OrdinalIgnoreCase));
+        multiStepReasoning += Math.Min(logicalConnectorCount * 8, 30);
+
+        var overallScore = (conceptDifficulty + terminologyDensity + 
+            prerequisiteKnowledge + multiStepReasoning) / 4.0;
+
+        var newConceptsIntroduced = Math.Max(1, technicalCount + complexConceptCount + (wordCount / 50));
+
+        var cognitiveProcessingTime = wordCount / 2.0;
+        cognitiveProcessingTime *= (1.0 + (overallScore / 200.0)); // More complex = more time
+
+        var optimalAttentionWindow = Math.Min(15, Math.Max(5, wordCount / 15.0));
+        if (overallScore > 70)
+            optimalAttentionWindow = Math.Min(15, optimalAttentionWindow * 1.3);
+
+        var result = new ContentComplexityAnalysisResult(
+            OverallComplexityScore: Math.Clamp(overallScore, 0, 100),
+            ConceptDifficulty: Math.Clamp(conceptDifficulty, 0, 100),
+            TerminologyDensity: Math.Clamp(terminologyDensity, 0, 100),
+            PrerequisiteKnowledgeLevel: Math.Clamp(prerequisiteKnowledge, 0, 100),
+            MultiStepReasoningRequired: Math.Clamp(multiStepReasoning, 0, 100),
+            NewConceptsIntroduced: newConceptsIntroduced,
+            CognitiveProcessingTimeSeconds: cognitiveProcessingTime,
+            OptimalAttentionWindowSeconds: optimalAttentionWindow,
+            DetailedBreakdown: $"Rule-based complexity analysis: {technicalCount} technical terms, " +
+                $"{complexConceptCount} complex concepts, {logicalConnectorCount} logical connectors. " +
+                $"Word count: {wordCount}. Estimated as {(overallScore > 70 ? "high" : overallScore > 40 ? "medium" : "low")} complexity."
+        );
+
+        _logger.LogDebug("Content complexity analyzed: Overall={Overall:F0}, ConceptDifficulty={Concept:F0}, " +
+            "TerminologyDensity={Terminology:F0}, NewConcepts={NewConcepts}",
+            result.OverallComplexityScore, result.ConceptDifficulty, 
+            result.TerminologyDensity, result.NewConceptsIntroduced);
+
+        return Task.FromResult<ContentComplexityAnalysisResult?>(result);
+    }
+
+    public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogDebug("Analyzing scene coherence with rule-based approach");
+
+        var fromWords = GetSignificantWords(fromSceneText);
+        var toWords = GetSignificantWords(toSceneText);
+        var commonWords = fromWords.Intersect(toWords, StringComparer.OrdinalIgnoreCase).ToList();
+        var overlapRatio = commonWords.Count / (double)Math.Max(fromWords.Count, 1);
+        
+        var coherenceScore = Math.Clamp(overlapRatio * 100, 0, 100);
+        
+        var connectionTypes = new List<string> { ConnectionType.Sequential };
+        
+        var transitionWords = new[] { "however", "but", "although", "despite" };
+        if (transitionWords.Any(w => toSceneText.Contains(w, StringComparison.OrdinalIgnoreCase)))
+        {
+            connectionTypes.Add(ConnectionType.Contrast);
+        }
+        
+        var callbackWords = new[] { "remember", "earlier", "as mentioned", "like we said" };
+        if (callbackWords.Any(w => toSceneText.Contains(w, StringComparison.OrdinalIgnoreCase)))
+        {
+            connectionTypes.Add(ConnectionType.Callback);
+        }
+        
+        if (overlapRatio > 0.3)
+        {
+            connectionTypes.Add(ConnectionType.Thematic);
+        }
+
+        var result = new SceneCoherenceResult(
+            CoherenceScore: coherenceScore,
+            ConnectionTypes: connectionTypes.ToArray(),
+            ConfidenceScore: 0.6,
+            Reasoning: $"Rule-based analysis: {commonWords.Count} shared significant words out of {fromWords.Count} total"
+        );
+
+        return Task.FromResult<SceneCoherenceResult?>(result);
+    }
+
+    public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+        IReadOnlyList<string> sceneTexts,
+        string videoGoal,
+        string videoType,
+        CancellationToken ct)
+    {
+        _logger.LogDebug("Validating narrative arc with rule-based approach for {VideoType}", videoType);
+
+        var expectedStructures = new Dictionary<string, string>
+        {
+            { "educational", "problem → explanation → solution" },
+            { "entertainment", "setup → conflict → resolution" },
+            { "documentary", "introduction → evidence → conclusion" },
+            { "tutorial", "overview → steps → summary" },
+            { "general", "introduction → body → conclusion" }
+        };
+
+        var expectedStructure = expectedStructures.GetValueOrDefault(
+            videoType.ToLowerInvariant(), 
+            expectedStructures["general"]);
+
+        var result = new NarrativeArcResult(
+            IsValid: true,
+            DetectedStructure: "Rule-based: sequential structure detected",
+            ExpectedStructure: expectedStructure,
+            StructuralIssues: Array.Empty<string>(),
+            Recommendations: new[] { "LLM-based analysis recommended for detailed arc validation" },
+            Reasoning: "Rule-based provider provides basic validation only"
+        );
+
+        return Task.FromResult<NarrativeArcResult?>(result);
+    }
+
+    public Task<string?> GenerateTransitionTextAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogDebug("Generating transition text with rule-based approach");
+
+        var transitions = new[]
+        {
+            "Now, let's move on to the next point.",
+            "Building on that idea...",
+            "This leads us to...",
+            "Next, we'll explore...",
+            "Following from this..."
+        };
+
+        var randomIndex = _random.Next(transitions.Length);
+        var transitionText = transitions[randomIndex];
+
+        return Task.FromResult<string?>(transitionText);
+    }
+
+    private List<string> GetSignificantWords(string text)
+    {
+        var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
+            "of", "with", "by", "from", "is", "are", "was", "were", "be", "been",
+            "this", "that", "these", "those", "we", "you", "they", "it"
+        };
+
+        return text
+            .Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '!', '?', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length > 3 && !stopWords.Contains(w))
+            .ToList();
     }
 }

@@ -23,6 +23,7 @@ public class IntelligentPacingOptimizer
     private readonly TransitionRecommender _transitionRecommender;
     private readonly EmotionalBeatAnalyzer _emotionalBeatAnalyzer;
     private readonly SceneRelationshipMapper _relationshipMapper;
+    private readonly ContentComplexityAnalyzer _complexityAnalyzer;
     private readonly FrameImportanceModel? _frameModel;
 
     // Pacing calculation constants
@@ -39,6 +40,7 @@ public class IntelligentPacingOptimizer
         TransitionRecommender transitionRecommender,
         EmotionalBeatAnalyzer emotionalBeatAnalyzer,
         SceneRelationshipMapper relationshipMapper,
+        ContentComplexityAnalyzer complexityAnalyzer,
         FrameImportanceModel? frameModel = null)
     {
         _logger = logger;
@@ -47,6 +49,7 @@ public class IntelligentPacingOptimizer
         _transitionRecommender = transitionRecommender;
         _emotionalBeatAnalyzer = emotionalBeatAnalyzer;
         _relationshipMapper = relationshipMapper;
+        _complexityAnalyzer = complexityAnalyzer;
         _frameModel = frameModel;
     }
 
@@ -57,6 +60,8 @@ public class IntelligentPacingOptimizer
         IReadOnlyList<Scene> scenes,
         Brief brief,
         ILlmProvider? llmProvider = null,
+        bool useAdaptivePacing = true,
+        PacingProfile pacingProfile = PacingProfile.BalancedDocumentary,
         CancellationToken ct = default)
     {
         _logger.LogInformation("Starting intelligent pacing optimization for {SceneCount} scenes", scenes.Count);
@@ -69,13 +74,15 @@ public class IntelligentPacingOptimizer
         {
             // Step 1: Analyze scenes with LLM (if available)
             IReadOnlyList<SceneAnalysisData> sceneAnalyses;
+            IReadOnlyList<ContentComplexityResult> complexityResults;
             
             if (llmProvider != null)
             {
                 try
                 {
                     llmProviderUsed = llmProvider.GetType().Name;
-                    _logger.LogInformation("Using LLM provider: {Provider}", llmProviderUsed);
+                    _logger.LogInformation("Using LLM provider: {Provider}, AdaptivePacing: {Adaptive}, Profile: {Profile}", 
+                        llmProviderUsed, useAdaptivePacing, pacingProfile);
                     
                     sceneAnalyses = await _sceneAnalyzer.AnalyzeScenesAsync(
                         llmProvider, scenes, brief.Goal ?? "general video", ct);
@@ -83,22 +90,42 @@ public class IntelligentPacingOptimizer
                     llmAnalysisSucceeded = sceneAnalyses.Any(a => a.AnalyzedWithLlm);
                     _logger.LogInformation("LLM analysis: {SuccessCount}/{Total} scenes analyzed",
                         sceneAnalyses.Count(a => a.AnalyzedWithLlm), scenes.Count);
+
+                    // Step 1b: Deep complexity analysis (if adaptive pacing enabled)
+                    if (useAdaptivePacing)
+                    {
+                        _logger.LogInformation("Performing deep content complexity analysis");
+                        complexityResults = await _complexityAnalyzer.AnalyzeComplexityBatchAsync(
+                            llmProvider, scenes, brief.Goal ?? "general video", ct);
+                        
+                        var avgComplexity = complexityResults.Average(r => r.OverallComplexityScore);
+                        _logger.LogInformation("Complexity analysis complete. Average complexity: {AvgComplexity:F1}, " +
+                            "LLM-analyzed: {LlmCount}/{Total}",
+                            avgComplexity, complexityResults.Count(r => r.AnalyzedWithLlm), scenes.Count);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Adaptive pacing disabled, using standard analysis");
+                        complexityResults = new List<ContentComplexityResult>();
+                    }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "LLM analysis failed, falling back to heuristics");
                     sceneAnalyses = CreateFallbackAnalyses(scenes);
+                    complexityResults = new List<ContentComplexityResult>();
                 }
             }
             else
             {
                 _logger.LogInformation("No LLM provider available, using heuristic analysis");
                 sceneAnalyses = CreateFallbackAnalyses(scenes);
+                complexityResults = new List<ContentComplexityResult>();
             }
 
-            // Step 2: Calculate optimal timings using ML and LLM data
+            // Step 2: Calculate optimal timings using ML, LLM data, and complexity analysis
             var timingSuggestions = await CalculateOptimalTimingsAsync(
-                scenes, sceneAnalyses, brief, ct);
+                scenes, sceneAnalyses, complexityResults, brief, useAdaptivePacing, pacingProfile, ct);
 
             // Step 3: Generate attention curve predictions
             var attentionCurve = await _attentionPredictor.GenerateAttentionCurveAsync(
@@ -153,12 +180,15 @@ public class IntelligentPacingOptimizer
     }
 
     /// <summary>
-    /// Calculates optimal scene timings using pacing algorithm
+    /// Calculates optimal scene timings using pacing algorithm with adaptive complexity adjustments
     /// </summary>
     private async Task<IReadOnlyList<SceneTimingSuggestion>> CalculateOptimalTimingsAsync(
         IReadOnlyList<Scene> scenes,
         IReadOnlyList<SceneAnalysisData> analyses,
+        IReadOnlyList<ContentComplexityResult> complexityResults,
         Brief brief,
+        bool useAdaptivePacing,
+        PacingProfile pacingProfile,
         CancellationToken ct)
     {
         _logger.LogDebug("Calculating optimal timings for {SceneCount} scenes", scenes.Count);
@@ -182,12 +212,38 @@ public class IntelligentPacingOptimizer
                 analysis = CreateDefaultAnalysis(scene, scenes.Count);
             }
 
-            // Calculate optimal duration using the algorithm from spec
+            // Get complexity analysis if available
+            var complexityResult = complexityResults.FirstOrDefault(c => c.SceneIndex == i);
+            
+            // Calculate base optimal duration
             var optimal = await CalculateSceneOptimalDurationAsync(
                 scene, analysis, platformMultiplier, audienceMultiplier, ct);
 
+            // Apply adaptive duration adjustment based on complexity
+            double durationMultiplier = 1.0;
+            string adjustmentReasoning = string.Empty;
+            
+            if (useAdaptivePacing && complexityResult != null)
+            {
+                durationMultiplier = _complexityAnalyzer.CalculateDurationMultiplier(complexityResult, pacingProfile);
+                optimal = TimeSpan.FromSeconds(optimal.TotalSeconds * durationMultiplier);
+                
+                adjustmentReasoning = $"Adaptive pacing adjustment: {(durationMultiplier - 1.0) * 100:+0;-0}% " +
+                    $"based on complexity score {complexityResult.OverallComplexityScore:F0}";
+                
+                _logger.LogDebug("Scene {SceneIndex}: Complexity={Complexity:F0}, Multiplier={Multiplier:F2}, " +
+                    "Adjustment={Adjustment:+0;-0}%",
+                    i, complexityResult.OverallComplexityScore, durationMultiplier, (durationMultiplier - 1.0) * 100);
+            }
+
             var minDuration = TimeSpan.FromSeconds(optimal.TotalSeconds * MinDurationMultiplier);
             var maxDuration = TimeSpan.FromSeconds(optimal.TotalSeconds * MaxDurationMultiplier);
+
+            var reasoning = analysis.Reasoning;
+            if (!string.IsNullOrEmpty(adjustmentReasoning))
+            {
+                reasoning = $"{reasoning}. {adjustmentReasoning}";
+            }
 
             suggestions.Add(new SceneTimingSuggestion
             {
@@ -201,9 +257,13 @@ public class IntelligentPacingOptimizer
                 EmotionalIntensity = analysis.EmotionalIntensity,
                 InformationDensity = analysis.InformationDensity,
                 TransitionType = analysis.TransitionType,
-                Confidence = CalculateSuggestionConfidence(analysis),
-                Reasoning = analysis.Reasoning,
-                UsedLlmAnalysis = analysis.AnalyzedWithLlm
+                Confidence = CalculateSuggestionConfidence(analysis, complexityResult),
+                Reasoning = reasoning,
+                UsedLlmAnalysis = analysis.AnalyzedWithLlm,
+                ContentComplexityScore = complexityResult?.OverallComplexityScore ?? 0,
+                CognitiveProcessingTime = complexityResult?.CognitiveProcessingTime ?? TimeSpan.Zero,
+                DurationAdjustmentMultiplier = durationMultiplier,
+                ComplexityBreakdown = complexityResult?.DetailedBreakdown ?? string.Empty
             });
         }
 
@@ -343,13 +403,18 @@ public class IntelligentPacingOptimizer
         return Math.Clamp(baseConfidence, 0, 100);
     }
 
-    private double CalculateSuggestionConfidence(SceneAnalysisData analysis)
+    private double CalculateSuggestionConfidence(SceneAnalysisData analysis, ContentComplexityResult? complexity)
     {
         var confidence = 70.0;
 
         if (analysis.AnalyzedWithLlm)
         {
-            confidence += 20.0;
+            confidence += 15.0;
+        }
+
+        if (complexity?.AnalyzedWithLlm == true)
+        {
+            confidence += 15.0; // Additional confidence from deep complexity analysis
         }
 
         return Math.Clamp(confidence, 0, 100);
