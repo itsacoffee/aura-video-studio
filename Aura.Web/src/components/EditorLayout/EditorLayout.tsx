@@ -1,8 +1,10 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useCallback } from 'react';
 import { snapToBreakpoint } from '../../services/workspaceLayoutService';
+import { useWorkspaceLayoutStore } from '../../state/workspaceLayout';
 import { TopMenuBar } from '../Layout/TopMenuBar';
 import { MenuBar } from '../MenuBar/MenuBar';
+import { PanelHeader } from './PanelHeader';
 
 const useStyles = makeStyles({
   container: {
@@ -11,6 +13,23 @@ const useStyles = makeStyles({
     height: '100vh',
     overflow: 'hidden',
     backgroundColor: 'var(--color-background)',
+  },
+  fullscreenContainer: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    overflow: 'hidden',
+    backgroundColor: 'var(--color-background)',
+  },
+  panelCollapsed: {
+    width: '48px !important',
+    minWidth: '48px !important',
   },
   content: {
     display: 'flex',
@@ -181,25 +200,68 @@ export function EditorLayout({
   useTopMenuBar = false,
 }: EditorLayoutProps) {
   const styles = useStyles();
+  const { isFullscreen, exitFullscreen, collapsedPanels, togglePanelCollapsed, getCurrentLayout } =
+    useWorkspaceLayoutStore();
+
+  // Load current layout or use defaults
+  const currentLayout = getCurrentLayout();
+
   const [propertiesWidth, setPropertiesWidth] = useState(() =>
-    loadPanelSize(STORAGE_KEYS.propertiesWidth, 320)
+    loadPanelSize(STORAGE_KEYS.propertiesWidth, currentLayout?.panelSizes.propertiesWidth || 320)
   );
   const [mediaLibraryWidth, setMediaLibraryWidth] = useState(() =>
-    loadPanelSize(STORAGE_KEYS.mediaLibraryWidth, 280)
+    loadPanelSize(
+      STORAGE_KEYS.mediaLibraryWidth,
+      currentLayout?.panelSizes.mediaLibraryWidth || 280
+    )
   );
   const [effectsLibraryWidth, setEffectsLibraryWidth] = useState(() =>
-    loadPanelSize(STORAGE_KEYS.effectsLibraryWidth, 280)
+    loadPanelSize(
+      STORAGE_KEYS.effectsLibraryWidth,
+      currentLayout?.panelSizes.effectsLibraryWidth || 280
+    )
   );
   const [historyWidth, setHistoryWidth] = useState(() =>
-    loadPanelSize(STORAGE_KEYS.historyWidth, 320)
+    loadPanelSize(STORAGE_KEYS.historyWidth, currentLayout?.panelSizes.historyWidth || 320)
   );
   const [previewHeight, setPreviewHeight] = useState(() =>
-    loadPanelSize(STORAGE_KEYS.previewHeight, 60)
+    loadPanelSize(STORAGE_KEYS.previewHeight, currentLayout?.panelSizes.previewHeight || 60)
   ); // Percentage
 
   // Track dragging state for visual feedback
   const [isDraggingHorizontal, setIsDraggingHorizontal] = useState(false);
   const [isDraggingVertical, setIsDraggingVertical] = useState(false);
+
+  // Handle ESC key to exit fullscreen
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        exitFullscreen();
+      }
+    },
+    [isFullscreen, exitFullscreen]
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
+  // Listen for fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        exitFullscreen();
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [isFullscreen, exitFullscreen]);
 
   // Persist panel sizes to localStorage
   useEffect(() => {
@@ -361,7 +423,7 @@ export function EditorLayout({
   };
 
   return (
-    <div className={styles.container}>
+    <div className={isFullscreen ? styles.fullscreenContainer : styles.container}>
       {useTopMenuBar ? (
         <TopMenuBar
           onImportMedia={onImportMedia}
@@ -384,8 +446,18 @@ export function EditorLayout({
       <div className={styles.content}>
         {mediaLibrary && (
           <>
-            <div className={styles.mediaLibraryPanel} style={{ width: `${mediaLibraryWidth}px` }}>
-              {mediaLibrary}
+            <div
+              className={`${styles.mediaLibraryPanel} ${collapsedPanels.mediaLibrary ? styles.panelCollapsed : ''}`}
+              style={{
+                width: collapsedPanels.mediaLibrary ? '48px' : `${mediaLibraryWidth}px`,
+              }}
+            >
+              <PanelHeader
+                title="Media Library"
+                isCollapsed={collapsedPanels.mediaLibrary}
+                onToggleCollapse={() => togglePanelCollapsed('mediaLibrary')}
+              />
+              {!collapsedPanels.mediaLibrary && mediaLibrary}
             </div>
             {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
@@ -421,10 +493,17 @@ export function EditorLayout({
         {effects && (
           <>
             <div
-              className={styles.effectsLibraryPanel}
-              style={{ width: `${effectsLibraryWidth}px` }}
+              className={`${styles.effectsLibraryPanel} ${collapsedPanels.effects ? styles.panelCollapsed : ''}`}
+              style={{
+                width: collapsedPanels.effects ? '48px' : `${effectsLibraryWidth}px`,
+              }}
             >
-              {effects}
+              <PanelHeader
+                title="Effects"
+                isCollapsed={collapsedPanels.effects}
+                onToggleCollapse={() => togglePanelCollapsed('effects')}
+              />
+              {!collapsedPanels.effects && effects}
             </div>
             {/* Interactive resizer - intentionally uses mouse and keyboard events */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
@@ -513,8 +592,18 @@ export function EditorLayout({
                 }
               }}
             />
-            <div className={styles.propertiesPanel} style={{ width: `${propertiesWidth}px` }}>
-              {properties}
+            <div
+              className={`${styles.propertiesPanel} ${collapsedPanels.properties ? styles.panelCollapsed : ''}`}
+              style={{
+                width: collapsedPanels.properties ? '48px' : `${propertiesWidth}px`,
+              }}
+            >
+              <PanelHeader
+                title="Properties"
+                isCollapsed={collapsedPanels.properties}
+                onToggleCollapse={() => togglePanelCollapsed('properties')}
+              />
+              {!collapsedPanels.properties && properties}
             </div>
           </>
         )}
@@ -549,8 +638,18 @@ export function EditorLayout({
                 }
               }}
             />
-            <div className={styles.propertiesPanel} style={{ width: `${historyWidth}px` }}>
-              {history}
+            <div
+              className={`${styles.propertiesPanel} ${collapsedPanels.history ? styles.panelCollapsed : ''}`}
+              style={{
+                width: collapsedPanels.history ? '48px' : `${historyWidth}px`,
+              }}
+            >
+              <PanelHeader
+                title="History"
+                isCollapsed={collapsedPanels.history}
+                onToggleCollapse={() => togglePanelCollapsed('history')}
+              />
+              {!collapsedPanels.history && history}
             </div>
           </>
         )}
