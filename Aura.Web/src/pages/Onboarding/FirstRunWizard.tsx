@@ -616,11 +616,12 @@ export function FirstRunWizard() {
     };
 
     const handleManualSubmit = () => {
+      const DEFAULT_VRAM_FALLBACK = 4; // GB - Default fallback for manual GPU configuration
       const vramValue = parseInt(manualVram, 10);
       dispatch({
         type: 'SET_MANUAL_HARDWARE',
         payload: {
-          vram: hasGpu ? (isNaN(vramValue) ? 4 : vramValue) : 0,
+          vram: hasGpu ? (isNaN(vramValue) ? DEFAULT_VRAM_FALLBACK : vramValue) : 0,
           hasGpu,
         },
       });

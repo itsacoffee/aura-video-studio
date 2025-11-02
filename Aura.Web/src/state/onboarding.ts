@@ -3,6 +3,9 @@
 import { apiUrl } from '../config/api';
 import type { PreflightReport, StageCheck } from './providers';
 
+// Hardware configuration constants
+const MIN_VRAM_FOR_STABLE_DIFFUSION = 6; // GB - Minimum VRAM for SD 1.5
+
 /**
  * Wizard validation status - deterministic state machine
  * Idle → Validating → Valid/Invalid → Installing → Installed → Ready
@@ -389,20 +392,26 @@ export function onboardingReducer(
         showTutorial: false,
       };
 
-    case 'SET_MANUAL_HARDWARE':
+    case 'SET_MANUAL_HARDWARE': {
+      const vramAmount = action.payload.vram || 0;
+      const canRunSD = action.payload.hasGpu && vramAmount >= MIN_VRAM_FOR_STABLE_DIFFUSION;
+      const gpuDescription = action.payload.hasGpu
+        ? `GPU with ${vramAmount}GB VRAM (manually configured)`
+        : 'No dedicated GPU (integrated graphics)';
+      const recommendation = action.payload.hasGpu
+        ? `Manually configured GPU with ${vramAmount}GB VRAM. ${canRunSD ? 'Should be sufficient for local Stable Diffusion.' : 'We recommend using Stock images or Pro cloud providers.'}`
+        : 'No dedicated GPU detected. We recommend using Stock images or Pro cloud providers.';
+
       return {
         ...state,
         hardware: {
-          gpu: action.payload.hasGpu
-            ? `GPU with ${action.payload.vram || 0}GB VRAM (manually configured)`
-            : 'No dedicated GPU (integrated graphics)',
+          gpu: gpuDescription,
           vram: action.payload.vram,
-          canRunSD: action.payload.hasGpu && (action.payload.vram || 0) >= 6,
-          recommendation: action.payload.hasGpu
-            ? `Manually configured GPU with ${action.payload.vram || 0}GB VRAM. ${(action.payload.vram || 0) >= 6 ? 'Should be sufficient for local Stable Diffusion.' : 'We recommend using Stock images or Pro cloud providers.'}`
-            : 'No dedicated GPU detected. We recommend using Stock images or Pro cloud providers.',
+          canRunSD,
+          recommendation,
         },
       };
+    }
 
     case 'SKIP_HARDWARE_DETECTION':
       return {

@@ -2878,6 +2878,7 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
         var profile = await detector.DetectSystemAsync();
         
         // Format response to match frontend expectations
+        // Flat properties for easy frontend consumption + full profile for advanced use
         var gpuDisplay = profile.Gpu != null 
             ? $"{profile.Gpu.Vendor} {profile.Gpu.Model}" 
             : "Unable to detect GPU hardware";
@@ -2885,6 +2886,7 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
         var response = new
         {
             success = true,
+            // Flat properties for simple frontend access
             gpu = gpuDisplay,
             vramGB = profile.Gpu?.VramGB ?? 0,
             enableLocalDiffusion = profile.EnableSD,
@@ -2894,6 +2896,7 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
             physicalCores = profile.PhysicalCores,
             enableNVENC = profile.EnableNVENC,
             detectionSuccessful = profile.Gpu != null,
+            // Full profile object for advanced use cases
             profile = profile
         };
         
