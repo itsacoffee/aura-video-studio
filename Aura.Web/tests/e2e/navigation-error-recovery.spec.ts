@@ -149,7 +149,7 @@ test.describe('Navigation Error Recovery', () => {
 });
 
 test.describe('Error Boundary Retry Functionality', () => {
-  test('should show retry button when component errors occur', async ({ page, context }) => {
+  test('should show retry button when component errors occur', async ({ page }) => {
     // This test would require us to inject errors or mock API failures
     // For now, we test that the error boundary doesn't prevent navigation
 

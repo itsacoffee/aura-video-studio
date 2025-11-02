@@ -94,8 +94,9 @@ export function useAsyncData<T>(
         setLoading(false);
       }
     }
+    // Dependencies include fetchFn and options that affect the fetch behavior
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchFn, ...deps]);
+  }, [fetchFn, fallbackData, onSuccess, onError, ...deps]);
 
   const reset = useCallback(() => {
     setData(initialData);
@@ -116,8 +117,9 @@ export function useAsyncData<T>(
         abortControllerRef.current.abort();
       }
     };
+    // Dependencies include fetchData which contains all the fetch logic
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [immediate, ...deps]);
+  }, [immediate, fetchData, ...deps]);
 
   return {
     data,

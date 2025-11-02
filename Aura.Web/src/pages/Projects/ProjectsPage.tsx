@@ -451,13 +451,8 @@ function formatProjectDuration(seconds: number): string {
 
 // Main export with error boundary
 export function ProjectsPage() {
-  const loadData = useCallback(async () => {
-    // This will trigger a re-mount which will re-fetch data
-    window.location.reload();
-  }, []);
-
   return (
-    <RouteErrorBoundary onRetry={loadData}>
+    <RouteErrorBoundary>
       <ProjectsPageContent />
     </RouteErrorBoundary>
   );

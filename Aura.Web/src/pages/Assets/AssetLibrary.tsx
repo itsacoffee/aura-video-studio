@@ -418,12 +418,8 @@ const AssetLibraryContent: React.FC = () => {
 
 // Main export with error boundary
 export const AssetLibrary: React.FC = () => {
-  const loadData = useCallback(async () => {
-    window.location.reload();
-  }, []);
-
   return (
-    <RouteErrorBoundary onRetry={loadData}>
+    <RouteErrorBoundary>
       <AssetLibraryContent />
     </RouteErrorBoundary>
   );

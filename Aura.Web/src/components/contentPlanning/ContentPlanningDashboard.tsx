@@ -6,7 +6,7 @@ import {
   SelectTabData,
   SelectTabEvent,
 } from '@fluentui/react-components';
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { RouteErrorBoundary } from '../ErrorBoundary/RouteErrorBoundary';
 import { AudienceInsightPanel } from './AudienceInsightPanel';
 import { ContentCalendarView } from './ContentCalendarView';
@@ -76,12 +76,8 @@ const ContentPlanningDashboardContent: React.FC = () => {
 
 // Main export with error boundary
 export const ContentPlanningDashboard: React.FC = () => {
-  const loadData = useCallback(async () => {
-    window.location.reload();
-  }, []);
-
   return (
-    <RouteErrorBoundary onRetry={loadData}>
+    <RouteErrorBoundary>
       <ContentPlanningDashboardContent />
     </RouteErrorBoundary>
   );
