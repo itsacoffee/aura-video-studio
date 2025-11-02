@@ -25,7 +25,7 @@ public class TemplateService
     }
 
     /// <summary>
-    /// Get all templates with optional filtering
+    /// Get all templates with optional filtering (for backward compatibility)
     /// </summary>
     public async Task<List<TemplateListItem>> GetTemplatesAsync(
         TemplateCategory? category = null,
@@ -35,31 +35,12 @@ public class TemplateService
     {
         try
         {
-            var query = _context.Templates.AsQueryable();
-
-            if (category.HasValue)
-            {
-                query = query.Where(t => t.Category == category.Value.ToString());
-            }
-
-            if (!string.IsNullOrWhiteSpace(subCategory))
-            {
-                query = query.Where(t => t.SubCategory == subCategory);
-            }
-
-            if (systemOnly)
-            {
-                query = query.Where(t => t.IsSystemTemplate);
-            }
-
-            if (communityOnly)
-            {
-                query = query.Where(t => t.IsCommunityTemplate);
-            }
+            var query = BuildTemplateQuery(category, subCategory, systemOnly, communityOnly);
 
             var templates = await query
                 .OrderByDescending(t => t.UsageCount)
                 .ThenByDescending(t => t.Rating)
+                .ThenBy(t => t.Name)
                 .ToListAsync();
 
             return templates.Select(MapToListItem).ToList();
@@ -69,6 +50,92 @@ public class TemplateService
             _logger.LogError(ex, "Failed to get templates");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Get paginated templates with optional filtering
+    /// </summary>
+    public async Task<PaginatedTemplatesResponse> GetTemplatesPaginatedAsync(
+        int page = 1,
+        int pageSize = 50,
+        TemplateCategory? category = null,
+        string? subCategory = null,
+        bool systemOnly = false,
+        bool communityOnly = false)
+    {
+        try
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 50;
+            if (pageSize > 100) pageSize = 100; // Maximum page size
+
+            var query = BuildTemplateQuery(category, subCategory, systemOnly, communityOnly);
+
+            // Get total count for pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply stable sorting for consistent pagination
+            var orderedQuery = query
+                .OrderByDescending(t => t.UsageCount)
+                .ThenByDescending(t => t.Rating)
+                .ThenBy(t => t.Name)
+                .ThenBy(t => t.Id);
+
+            // Apply pagination
+            var templates = await orderedQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            return new PaginatedTemplatesResponse
+            {
+                Items = templates.Select(MapToListItem).ToList(),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages,
+                HasNextPage = page < totalPages,
+                HasPreviousPage = page > 1
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get paginated templates");
+            throw;
+        }
+    }
+
+    private IQueryable<TemplateEntity> BuildTemplateQuery(
+        TemplateCategory? category = null,
+        string? subCategory = null,
+        bool systemOnly = false,
+        bool communityOnly = false)
+    {
+        var query = _context.Templates.AsQueryable();
+
+        if (category.HasValue)
+        {
+            query = query.Where(t => t.Category == category.Value.ToString());
+        }
+
+        if (!string.IsNullOrWhiteSpace(subCategory))
+        {
+            query = query.Where(t => t.SubCategory == subCategory);
+        }
+
+        if (systemOnly)
+        {
+            query = query.Where(t => t.IsSystemTemplate);
+        }
+
+        if (communityOnly)
+        {
+            query = query.Where(t => t.IsCommunityTemplate);
+        }
+
+        return query;
     }
 
     /// <summary>

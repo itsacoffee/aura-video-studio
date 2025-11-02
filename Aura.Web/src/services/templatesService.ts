@@ -11,13 +11,14 @@ import {
   TransitionPreset,
   TitleTemplate,
   TemplateCategory,
+  PaginatedTemplatesResponse,
 } from '../types/templates';
 import { get, post, del } from './api/apiClient';
 
 const API_BASE_URL = '/api/templates';
 
 /**
- * Get all templates with optional filtering
+ * Get all templates with optional filtering (non-paginated for backward compatibility)
  */
 export async function getTemplates(
   category?: TemplateCategory,
@@ -35,6 +36,31 @@ export async function getTemplates(
   const url = queryString ? `${API_BASE_URL}?${queryString}` : API_BASE_URL;
 
   return get<TemplateListItem[]>(url);
+}
+
+/**
+ * Get paginated templates with optional filtering
+ */
+export async function getTemplatesPaginated(
+  page: number,
+  pageSize: number,
+  category?: TemplateCategory,
+  subCategory?: string,
+  systemOnly?: boolean,
+  communityOnly?: boolean,
+  signal?: AbortSignal
+): Promise<PaginatedTemplatesResponse> {
+  const params = new URLSearchParams();
+  params.append('page', page.toString());
+  params.append('pageSize', pageSize.toString());
+  if (category) params.append('category', category);
+  if (subCategory) params.append('subCategory', subCategory);
+  if (systemOnly) params.append('systemOnly', 'true');
+  if (communityOnly) params.append('communityOnly', 'true');
+
+  const url = `${API_BASE_URL}?${params.toString()}`;
+
+  return get<PaginatedTemplatesResponse>(url, { signal });
 }
 
 /**

@@ -164,3 +164,13 @@ export interface SaveAsTemplateRequest {
   projectData: string;
   previewImage: string;
 }
+
+export interface PaginatedTemplatesResponse {
+  items: TemplateListItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}

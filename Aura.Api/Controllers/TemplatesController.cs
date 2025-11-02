@@ -27,10 +27,12 @@ public class TemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Get all templates with optional filtering
+    /// Get all templates with optional filtering and pagination
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetTemplates(
+        [FromQuery] int? page = null,
+        [FromQuery] int? pageSize = null,
         [FromQuery] string? category = null,
         [FromQuery] string? subCategory = null,
         [FromQuery] bool systemOnly = false,
@@ -44,6 +46,21 @@ public class TemplatesController : ControllerBase
                 categoryEnum = parsed;
             }
 
+            // If page or pageSize is specified, return paginated results
+            if (page.HasValue || pageSize.HasValue)
+            {
+                var paginatedResult = await _templateService.GetTemplatesPaginatedAsync(
+                    page ?? 1,
+                    pageSize ?? 50,
+                    categoryEnum,
+                    subCategory,
+                    systemOnly,
+                    communityOnly);
+
+                return Ok(paginatedResult);
+            }
+
+            // Otherwise, return all templates (backward compatibility)
             var templates = await _templateService.GetTemplatesAsync(
                 categoryEnum,
                 subCategory,

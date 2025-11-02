@@ -2,6 +2,7 @@
  * Card component for displaying a template in the library
  */
 
+import React, { memo } from 'react';
 import {
   Card,
   CardHeader,
@@ -14,6 +15,7 @@ import {
 } from '@fluentui/react-components';
 import { Play24Regular, Star24Filled } from '@fluentui/react-icons';
 import { TemplateListItem } from '../../types/templates';
+import { LazyImage } from './LazyImage';
 
 const useStyles = makeStyles({
   card: {
@@ -113,7 +115,7 @@ export interface TemplateCardProps {
   onPreview?: (template: TemplateListItem) => void;
 }
 
-export function TemplateCard({ template, onClick, onPreview }: TemplateCardProps) {
+const TemplateCardComponent = ({ template, onClick, onPreview }: TemplateCardProps) => {
   const styles = useStyles();
 
   const handlePreviewClick = (e: React.MouseEvent) => {
@@ -125,10 +127,12 @@ export function TemplateCard({ template, onClick, onPreview }: TemplateCardProps
     <Card className={styles.card} onClick={() => onClick(template)}>
       <CardPreview className={styles.preview}>
         {template.previewImage ? (
-          <img
+          <LazyImage
             src={template.previewImage}
             alt={template.name}
             className={styles.previewImage}
+            width={280}
+            height={180}
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}
@@ -180,4 +184,7 @@ export function TemplateCard({ template, onClick, onPreview }: TemplateCardProps
       />
     </Card>
   );
-}
+};
+
+// Memoize the component to prevent unnecessary re-renders
+export const TemplateCard = memo(TemplateCardComponent);

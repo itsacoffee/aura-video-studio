@@ -23,23 +23,33 @@ import {
   DialogContent,
   Field,
 } from '@fluentui/react-components';
-import { Search24Regular, Add24Regular, VideoClip24Regular } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
+import {
+  Search24Regular,
+  Add24Regular,
+  VideoClip24Regular,
+  ChevronLeft24Regular,
+  ChevronRight24Regular,
+} from '@fluentui/react-icons';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Virtuoso } from 'react-virtuoso';
 import { TemplateCard } from '../../components/Templates/TemplateCard';
 import { TemplatePreview } from '../../components/Templates/TemplatePreview';
 import {
-  getTemplates,
   createFromTemplate,
   seedSampleTemplates,
 } from '../../services/templatesService';
 import { TemplateListItem, TemplateCategory } from '../../types/templates';
+import { usePaginatedTemplates } from '../../hooks/usePaginatedTemplates';
 
 const useStyles = makeStyles({
   container: {
     maxWidth: '1400px',
     margin: '0 auto',
     padding: tokens.spacingVerticalL,
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
   },
   header: {
     display: 'flex',
@@ -69,6 +79,11 @@ const useStyles = makeStyles({
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
     gap: tokens.spacingVerticalL,
+    padding: tokens.spacingVerticalM,
+  },
+  virtuosoContainer: {
+    flex: 1,
+    minHeight: 0,
   },
   emptyState: {
     display: 'flex',
@@ -89,16 +104,24 @@ const useStyles = makeStyles({
   messageBar: {
     marginBottom: tokens.spacingVerticalL,
   },
+  pagination: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
+    padding: tokens.spacingVerticalL,
+    marginTop: tokens.spacingVerticalL,
+  },
+  paginationInfo: {
+    color: tokens.colorNeutralForeground3,
+  },
 });
 
 export default function TemplatesLibrary() {
   const styles = useStyles();
   const navigate = useNavigate();
 
-  const [templates, setTemplates] = useState<TemplateListItem[]>([]);
-  const [filteredTemplates, setFilteredTemplates] = useState<TemplateListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [previewTemplate, setPreviewTemplate] = useState<TemplateListItem | null>(null);
@@ -107,58 +130,63 @@ export default function TemplatesLibrary() {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateListItem | null>(null);
   const [projectName, setProjectName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [seeded, setSeeded] = useState(false);
 
-  const loadTemplates = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getTemplates();
+  const pageSize = 50;
 
-      // If no templates, seed sample templates
-      if (data.length === 0) {
-        await seedSampleTemplates();
-        const seededData = await getTemplates();
-        setTemplates(seededData);
-      } else {
-        setTemplates(data);
+  // Use paginated templates hook with abort support
+  const {
+    templates,
+    totalCount,
+    totalPages,
+    hasNextPage,
+    hasPreviousPage,
+    loading,
+    error: hookError,
+    refetch,
+  } = usePaginatedTemplates({
+    page: currentPage,
+    pageSize,
+    category: selectedCategory as TemplateCategory | 'all',
+  });
+
+  const [error, setError] = useState<string | null>(null);
+
+  // Combine hook error with local error
+  useEffect(() => {
+    if (hookError) {
+      setError(hookError);
+    }
+  }, [hookError]);
+
+  // Seed templates if none exist
+  useEffect(() => {
+    const seedIfNeeded = async () => {
+      if (!loading && templates.length === 0 && totalCount === 0 && !seeded) {
+        try {
+          await seedSampleTemplates();
+          setSeeded(true);
+          refetch();
+        } catch (err) {
+          console.error('Error seeding templates:', err);
+        }
       }
-    } catch (err) {
-      setError('Failed to load templates');
-      console.error('Error loading templates:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    };
+    seedIfNeeded();
+  }, [loading, templates.length, totalCount, seeded, refetch]);
 
-  const filterTemplates = useCallback(() => {
-    let filtered = [...templates];
+  // Filter templates by search query (client-side filtering for current page)
+  const filteredTemplates = useMemo(() => {
+    if (!searchQuery) return templates;
 
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter((t) => t.category === selectedCategory);
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (t) =>
-          t.name.toLowerCase().includes(query) ||
-          t.description.toLowerCase().includes(query) ||
-          t.tags.some((tag) => tag.toLowerCase().includes(query))
-      );
-    }
-
-    setFilteredTemplates(filtered);
-  }, [templates, searchQuery, selectedCategory]);
-
-  useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
-
-  useEffect(() => {
-    filterTemplates();
-  }, [filterTemplates]);
+    const query = searchQuery.toLowerCase();
+    return templates.filter(
+      (t) =>
+        t.name.toLowerCase().includes(query) ||
+        t.description.toLowerCase().includes(query) ||
+        t.tags.some((tag) => tag.toLowerCase().includes(query))
+    );
+  }, [templates, searchQuery]);
 
   const handleTemplateClick = (template: TemplateListItem) => {
     setSelectedTemplate(template);
@@ -192,35 +220,29 @@ export default function TemplatesLibrary() {
     }
   };
 
-  // Group templates by subcategory
-  const groupedTemplates = filteredTemplates.reduce(
-    (acc, template) => {
-      const key = template.subCategory || 'Other';
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(template);
-      return acc;
-    },
-    {} as Record<string, TemplateListItem[]>
-  );
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
-  if (loading) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loadingContainer}>
-          <Spinner size="large" label="Loading templates..." />
-        </div>
-      </div>
-    );
-  }
+  // Group templates into rows for virtual grid (4 items per row)
+  const itemsPerRow = 4;
+  const rows = useMemo(() => {
+    const result: TemplateListItem[][] = [];
+    for (let i = 0; i < filteredTemplates.length; i += itemsPerRow) {
+      result.push(filteredTemplates.slice(i, i + itemsPerRow));
+    }
+    return result;
+  }, [filteredTemplates]);
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
           <Title1>Templates Library</Title1>
-          <Text>Get started quickly with pre-built project templates</Text>
+          <Text>
+            Get started quickly with pre-built project templates ({totalCount} total)
+          </Text>
         </div>
         <Button appearance="primary" icon={<Add24Regular />}>
           Save as Template
@@ -246,7 +268,10 @@ export default function TemplatesLibrary() {
       <TabList
         className={styles.categoryTabs}
         selectedValue={selectedCategory}
-        onTabSelect={(_, data) => setSelectedCategory(data.value as string)}
+        onTabSelect={(_, data) => {
+          setSelectedCategory(data.value as string);
+          setCurrentPage(1);
+        }}
       >
         <Tab value="all">All Templates</Tab>
         <Tab value={TemplateCategory.YouTube}>YouTube</Tab>
@@ -255,28 +280,62 @@ export default function TemplatesLibrary() {
         <Tab value={TemplateCategory.Creative}>Creative</Tab>
       </TabList>
 
-      {filteredTemplates.length === 0 ? (
+      {loading && currentPage === 1 ? (
+        <div className={styles.loadingContainer}>
+          <Spinner size="large" label="Loading templates..." />
+        </div>
+      ) : filteredTemplates.length === 0 ? (
         <div className={styles.emptyState}>
           <VideoClip24Regular style={{ fontSize: '48px' }} />
           <Title3>No templates found</Title3>
           <Text>Try adjusting your search or category filter</Text>
         </div>
       ) : (
-        Object.entries(groupedTemplates).map(([subcategory, items]) => (
-          <div key={subcategory} className={styles.section}>
-            <Title3 className={styles.sectionTitle}>{subcategory}</Title3>
-            <div className={styles.grid}>
-              {items.map((template) => (
-                <TemplateCard
-                  key={template.id}
-                  template={template}
-                  onClick={handleTemplateClick}
-                  onPreview={handlePreview}
-                />
-              ))}
-            </div>
+        <>
+          <div className={styles.virtuosoContainer}>
+            <Virtuoso
+              data={rows}
+              overscan={2}
+              itemContent={(index, row) => (
+                <div className={styles.grid}>
+                  {row.map((template) => (
+                    <TemplateCard
+                      key={template.id}
+                      template={template}
+                      onClick={handleTemplateClick}
+                      onPreview={handlePreview}
+                    />
+                  ))}
+                </div>
+              )}
+            />
           </div>
-        ))
+
+          {totalPages > 1 && (
+            <div className={styles.pagination}>
+              <Button
+                icon={<ChevronLeft24Regular />}
+                appearance="subtle"
+                disabled={!hasPreviousPage || loading}
+                onClick={() => handlePageChange(currentPage - 1)}
+              >
+                Previous
+              </Button>
+              <Text className={styles.paginationInfo}>
+                Page {currentPage} of {totalPages}
+              </Text>
+              <Button
+                icon={<ChevronRight24Regular />}
+                iconPosition="after"
+                appearance="subtle"
+                disabled={!hasNextPage || loading}
+                onClick={() => handlePageChange(currentPage + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       <TemplatePreview
