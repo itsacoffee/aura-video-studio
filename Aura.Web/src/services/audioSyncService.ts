@@ -64,23 +64,25 @@ export class AudioSyncService {
    */
   private initialize(): void {
     try {
-      // Create audio context for timing analysis
-      const AudioContextClass =
-        window.AudioContext ||
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (AudioContextClass) {
-        this.audioContext = new AudioContextClass();
+      // Use pooled AudioContext to prevent memory leaks
+      import('@/services/audioContextPool')
+        .then(({ audioContextPool }) => {
+          this.audioContext = audioContextPool.getContext();
 
-        // Create audio source from video element
-        if (!this.videoElement.srcObject && this.videoElement.src) {
-          this.audioSource = this.audioContext.createMediaElementSource(this.videoElement);
-          this.analyser = this.audioContext.createAnalyser();
+          // Create audio source from video element
+          if (this.audioContext && !this.videoElement.srcObject && this.videoElement.src) {
+            this.audioSource = this.audioContext.createMediaElementSource(this.videoElement);
+            this.analyser = this.audioContext.createAnalyser();
 
-          // Connect audio pipeline
-          this.audioSource.connect(this.analyser);
-          this.analyser.connect(this.audioContext.destination);
-        }
-      }
+            // Connect audio pipeline
+            this.audioSource.connect(this.analyser);
+            this.analyser.connect(this.audioContext.destination);
+          }
+        })
+        .catch((error) => {
+          console.warn('Failed to initialize audio context:', error);
+          // Continue without audio context - we can still monitor using video element timing
+        });
     } catch (error) {
       console.warn('Failed to initialize audio context:', error);
       // Continue without audio context - we can still monitor using video element timing
@@ -290,11 +292,15 @@ export class AudioSyncService {
       this.analyser.disconnect();
     }
 
-    // Close audio context
-    if (this.audioContext && this.audioContext.state !== 'closed') {
-      this.audioContext.close().catch((err) => {
-        console.warn('Failed to close audio context:', err);
-      });
+    // Release audio context back to pool instead of closing
+    if (this.audioContext) {
+      import('@/services/audioContextPool')
+        .then(({ audioContextPool }) => {
+          audioContextPool.releaseContext();
+        })
+        .catch((err) => {
+          console.warn('Failed to release audio context:', err);
+        });
     }
 
     this.audioContext = null;

@@ -88,12 +88,17 @@ public class FFmpegService : IFFmpegService
 {
     private readonly IFfmpegLocator _ffmpegLocator;
     private readonly ILogger<FFmpegService> _logger;
+    private readonly IProcessManager? _processManager;
     private string? _cachedFfmpegPath;
 
-    public FFmpegService(IFfmpegLocator ffmpegLocator, ILogger<FFmpegService> logger)
+    public FFmpegService(
+        IFfmpegLocator ffmpegLocator, 
+        ILogger<FFmpegService> logger,
+        IProcessManager? processManager = null)
     {
         _ffmpegLocator = ffmpegLocator ?? throw new ArgumentNullException(nameof(ffmpegLocator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _processManager = processManager;
     }
 
     public async Task<FFmpegResult> ExecuteAsync(
@@ -119,9 +124,10 @@ public class FFmpegService : IFFmpegService
             CreateNoWindow = true
         };
 
+        Process? process = null;
         try
         {
-            using var process = new Process { StartInfo = processStartInfo };
+            process = new Process { StartInfo = processStartInfo };
             
             process.OutputDataReceived += (sender, e) =>
             {
@@ -150,10 +156,38 @@ public class FFmpegService : IFFmpegService
             };
 
             process.Start();
+            
+            // Register with process manager for tracking and timeout enforcement
+            if (_processManager != null)
+            {
+                _processManager.RegisterProcess(process.Id, $"ffmpeg-{Guid.NewGuid():N}");
+            }
+            
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync(cancellationToken);
+            try
+            {
+                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Cancellation requested, kill the process
+                _logger.LogWarning("FFmpeg process cancelled, killing process {ProcessId}", process.Id);
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                throw;
+            }
+            finally
+            {
+                // Unregister from process manager
+                if (_processManager != null)
+                {
+                    _processManager.UnregisterProcess(process.Id);
+                }
+            }
             
             var duration = DateTime.UtcNow - startTime;
             var success = process.ExitCode == 0;
@@ -173,6 +207,10 @@ public class FFmpegService : IFFmpegService
                 ErrorMessage = success ? null : $"FFmpeg exited with code {process.ExitCode}"
             };
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error executing FFmpeg command");
@@ -186,6 +224,10 @@ public class FFmpegService : IFFmpegService
                 Duration = DateTime.UtcNow - startTime,
                 ErrorMessage = ex.Message
             };
+        }
+        finally
+        {
+            process?.Dispose();
         }
     }
 
