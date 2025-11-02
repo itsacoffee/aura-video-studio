@@ -24,6 +24,7 @@ import { DownloadsPage } from './pages/DownloadsPage';
 import { TimelineEditor } from './pages/Editor/TimelineEditor';
 import { ExportHistoryPage } from './pages/Export/ExportHistoryPage';
 import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard';
+import SystemHealthDashboard from './pages/Health/SystemHealthDashboard';
 import { IdeationDashboard } from './pages/Ideation/IdeationDashboard';
 import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer';
 import LearningPage from './pages/Learning/LearningPage';
@@ -426,7 +427,8 @@ function App() {
                     <Route path="/assets" element={<AssetLibrary />} />
                     <Route path="/jobs" element={<RecentJobsPage />} />
                     <Route path="/downloads" element={<DownloadsPage />} />
-                    <Route path="/health" element={<ProviderHealthDashboard />} />
+                    <Route path="/health" element={<SystemHealthDashboard />} />
+                    <Route path="/health/providers" element={<ProviderHealthDashboard />} />
                     <Route path="/ai-editing" element={<AIEditingPage />} />
                     <Route path="/aesthetics" element={<AestheticsPage />} />
                     <Route path="/models" element={<ModelsManagementPage />} />
