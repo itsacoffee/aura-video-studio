@@ -261,9 +261,8 @@ export function GenerationPanel({ jobId, onClose }: GenerationPanelProps) {
             <ProgressBar value={activeJob.percent / 100} />
             {activeJob.status === 'Running' && (
               <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                {activeJob.progressMessage || activeJob.eta
-                  ? `ETA: ${activeJob.eta}`
-                  : 'Processing...'}
+                {activeJob.progressMessage ||
+                  (activeJob.eta ? `ETA: ${activeJob.eta}` : 'Processing...')}
               </Text>
             )}
             {activeJob.status === 'Failed' && (

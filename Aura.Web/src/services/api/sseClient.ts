@@ -94,6 +94,7 @@ export class SseClient {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000; // Start with 1 second
+  private maxReconnectDelay = 30000; // Cap at 30 seconds
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private url: string;
   private isManualClose = false;
@@ -212,7 +213,8 @@ export class SseClient {
     }
 
     this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    const calculatedDelay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    const delay = Math.min(calculatedDelay, this.maxReconnectDelay);
 
     logger.debug(
       `Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,

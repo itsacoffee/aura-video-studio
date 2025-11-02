@@ -430,6 +430,7 @@ public class JobsController : ControllerBase
             var lastStage = job.Stage;
             var lastPercent = job.Percent;
             var lastProgressMessage = "";
+            var lastLogCount = job.Logs.Count;
             var lastPingTime = DateTime.UtcNow;
             var pingIntervalSeconds = 10;
             var pollIntervalMs = 500; // Poll every 500ms for responsiveness
@@ -487,19 +488,24 @@ public class JobsController : ControllerBase
                     lastProgressMessage = latestLog;
                 }
                 
-                // Check for warnings or errors in logs
-                if (job.Logs.Count > 0)
+                // Check for warnings or errors in new log entries only
+                if (job.Logs.Count > lastLogCount)
                 {
-                    var recentLog = job.Logs.LastOrDefault();
-                    if (recentLog != null && (recentLog.Contains("warning", StringComparison.OrdinalIgnoreCase) || 
-                                             recentLog.Contains("error", StringComparison.OrdinalIgnoreCase)))
+                    // Only check new log entries since last check
+                    for (int i = lastLogCount; i < job.Logs.Count; i++)
                     {
-                        await SendSseEvent("warning", new {
-                            message = recentLog,
-                            step = job.Stage,
-                            correlationId
-                        });
+                        var logEntry = job.Logs[i];
+                        if (logEntry.Contains("warning", StringComparison.OrdinalIgnoreCase) || 
+                            logEntry.Contains("error", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await SendSseEvent("warning", new {
+                                message = logEntry,
+                                step = job.Stage,
+                                correlationId
+                            });
+                        }
                     }
+                    lastLogCount = job.Logs.Count;
                 }
                 
                 await Response.Body.FlushAsync(ct);
