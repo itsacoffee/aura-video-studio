@@ -16,9 +16,11 @@ import {
   ImageAdd24Regular,
   Image24Regular,
 } from '@fluentui/react-icons';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { CollectionsPanel } from '../../components/Assets/CollectionsPanel';
 import { StockImageSearch } from '../../components/Assets/StockImageSearch';
+import { RouteErrorBoundary } from '../../components/ErrorBoundary/RouteErrorBoundary';
+import { useAssets } from '../../hooks/useAssets';
 import { assetService } from '../../services/assetService';
 import { Asset, AssetType } from '../../types/assets';
 
@@ -129,38 +131,23 @@ const useStyles = makeStyles({
   },
 });
 
-export const AssetLibrary: React.FC = () => {
+const AssetLibraryContent: React.FC = () => {
   const styles = useStyles();
-  const [assets, setAssets] = useState<Asset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterType, setFilterType] = useState<AssetType | undefined>();
   const [showStockSearch, setShowStockSearch] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | undefined>();
 
-  const loadAssets = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await assetService.getAssets(
-        searchQuery || undefined,
-        filterType,
-        undefined,
-        1,
-        50
-      );
-      setAssets(result.assets);
-    } catch (error) {
-      console.error('Failed to load assets:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchQuery, filterType]);
-
-  useEffect(() => {
-    loadAssets();
-  }, [loadAssets]);
+  const {
+    assets,
+    loading,
+    retry: loadAssets,
+  } = useAssets({
+    query: searchQuery,
+    type: filterType,
+  });
 
   const handleUpload = () => {
     const input = document.createElement('input');
@@ -411,6 +398,15 @@ export const AssetLibrary: React.FC = () => {
         onImageAdded={loadAssets}
       />
     </div>
+  );
+};
+
+// Wrap component with error boundary
+export const AssetLibrary: React.FC = () => {
+  return (
+    <RouteErrorBoundary>
+      <AssetLibraryContent />
+    </RouteErrorBoundary>
   );
 };
 

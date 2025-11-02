@@ -116,9 +116,16 @@ export const TopicSuggestionList: React.FC = () => {
         preferredPlatforms: platform ? [platform] : [],
         count,
       });
-      setTopics(response.suggestions);
+      // Handle both array and object with suggestions array
+      if (response && typeof response === 'object' && 'suggestions' in response) {
+        setTopics(Array.isArray(response.suggestions) ? response.suggestions : []);
+      } else {
+        setTopics([]);
+      }
     } catch (error) {
       console.error('Failed to generate topics:', error);
+      // Set empty array on error to show empty state
+      setTopics([]);
     } finally {
       setLoading(false);
     }

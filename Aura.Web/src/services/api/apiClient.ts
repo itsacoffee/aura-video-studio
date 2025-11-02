@@ -389,6 +389,25 @@ apiClient.interceptors.response.use(
       circuitBreaker.recordSuccess();
     }
 
+    // Handle 204 No Content - return empty array for list endpoints
+    if (response.status === 204) {
+      const method = response.config.method?.toUpperCase();
+      if (method === 'GET') {
+        // For GET requests returning 204, return empty array wrapped in expected format
+        response.data = [];
+        loggingService.debug(
+          `API Response: ${method} ${response.config.url} - 204 No Content, returning empty array`,
+          'apiClient',
+          'response',
+          {
+            method: response.config.method,
+            url: response.config.url,
+            status: response.status,
+          }
+        );
+      }
+    }
+
     // Log successful responses with performance metrics
     loggingService.debug(
       `API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`,

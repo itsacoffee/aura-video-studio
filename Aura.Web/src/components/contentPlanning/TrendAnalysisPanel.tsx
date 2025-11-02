@@ -109,9 +109,16 @@ export const TrendAnalysisPanel: React.FC = () => {
         platform,
         category || undefined
       );
-      setTrends(response.trends);
+      // Handle both array and object with trends array
+      if (response && typeof response === 'object' && 'trends' in response) {
+        setTrends(Array.isArray(response.trends) ? response.trends : []);
+      } else {
+        setTrends([]);
+      }
     } catch (error) {
       console.error('Failed to load trends:', error);
+      // Set empty array on error to show empty state
+      setTrends([]);
     } finally {
       setLoading(false);
     }
@@ -134,9 +141,16 @@ export const TrendAnalysisPanel: React.FC = () => {
         category: category || undefined,
         keywords: keywordList.length > 0 ? keywordList : ['trending'],
       });
-      setTrends(response.trends);
+      // Handle both array and object with trends array
+      if (response && typeof response === 'object' && 'trends' in response) {
+        setTrends(Array.isArray(response.trends) ? response.trends : []);
+      } else {
+        setTrends([]);
+      }
     } catch (error) {
       console.error('Failed to analyze trends:', error);
+      // Set empty array on error to show empty state
+      setTrends([]);
     } finally {
       setLoading(false);
     }

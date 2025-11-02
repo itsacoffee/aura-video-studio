@@ -32,10 +32,11 @@ import {
 } from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RouteErrorBoundary } from '../../components/ErrorBoundary/RouteErrorBoundary';
 import { SkeletonTable, ErrorState } from '../../components/Loading';
-import { getProjects, deleteProject, duplicateProject } from '../../services/projectService';
+import { useProjects } from '../../hooks/useProjects';
+import { deleteProject, duplicateProject } from '../../services/projectService';
 import { useJobsStore } from '../../state/jobs';
-import { ProjectListItem } from '../../types/project';
 
 const useStyles = makeStyles({
   container: {
@@ -81,33 +82,21 @@ const useStyles = makeStyles({
   },
 });
 
-export function ProjectsPage() {
+function ProjectsPageContent() {
   const styles = useStyles();
   const { jobs, loading, listJobs } = useJobsStore();
+  const {
+    projects: editorProjects,
+    loading: loadingProjects,
+    error: projectsError,
+    retry: retryProjects,
+  } = useProjects();
   const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState<'editor' | 'generated'>('editor');
-  const [editorProjects, setEditorProjects] = useState<ProjectListItem[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
-  const [projectsError, setProjectsError] = useState<string | null>(null);
 
   useEffect(() => {
     listJobs();
-    loadEditorProjects();
   }, [listJobs]);
-
-  const loadEditorProjects = async () => {
-    setLoadingProjects(true);
-    setProjectsError(null);
-    try {
-      const projects = await getProjects();
-      setEditorProjects(projects);
-    } catch (error) {
-      console.error('Failed to load editor projects:', error);
-      setProjectsError(error instanceof Error ? error.message : 'Failed to load projects');
-    } finally {
-      setLoadingProjects(false);
-    }
-  };
 
   const handleOpenProject = (projectId: string) => {
     navigate(`/editor?projectId=${projectId}`);
@@ -117,7 +106,7 @@ export function ProjectsPage() {
     if (window.confirm('Are you sure you want to delete this project?')) {
       try {
         await deleteProject(projectId);
-        await loadEditorProjects();
+        retryProjects();
       } catch (error) {
         console.error('Failed to delete project:', error);
       }
@@ -127,7 +116,7 @@ export function ProjectsPage() {
   const handleDuplicateProject = async (projectId: string) => {
     try {
       await duplicateProject(projectId);
-      await loadEditorProjects();
+      retryProjects();
     } catch (error) {
       console.error('Failed to duplicate project:', error);
     }
@@ -174,7 +163,7 @@ export function ProjectsPage() {
           icon={<ArrowClockwise24Regular />}
           onClick={() => {
             listJobs();
-            loadEditorProjects();
+            retryProjects();
           }}
           disabled={loading || loadingProjects}
         >
@@ -209,8 +198,8 @@ export function ProjectsPage() {
           {!loadingProjects && projectsError && (
             <ErrorState
               title="Failed to load projects"
-              message={projectsError}
-              onRetry={loadEditorProjects}
+              message={projectsError.message}
+              onRetry={retryProjects}
               withCard={true}
             />
           )}
@@ -445,4 +434,13 @@ function formatProjectDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Wrap component with error boundary
+export function ProjectsPage() {
+  return (
+    <RouteErrorBoundary>
+      <ProjectsPageContent />
+    </RouteErrorBoundary>
+  );
 }
