@@ -293,7 +293,7 @@ export function FirstRunDiagnostics({
         }
       />
 
-      {result && result.issues.length > 0 && (
+      {result && result.issues && result.issues.length > 0 && (
         <div className={styles.issuesList}>
           {result.issues.map((issue, index) => (
             <div key={index} className={getIssueCardStyle(issue.severity)}>
@@ -313,7 +313,7 @@ export function FirstRunDiagnostics({
               <div className={styles.issueContent}>
                 <Text>{issue.description}</Text>
 
-                {issue.causes.length > 0 && (
+                {issue.causes && issue.causes.length > 0 && (
                   <>
                     <Text weight="semibold">Possible causes:</Text>
                     <ul className={styles.causesList}>
@@ -326,7 +326,7 @@ export function FirstRunDiagnostics({
                   </>
                 )}
 
-                {issue.fixActions.length > 0 && (
+                {issue.fixActions && issue.fixActions.length > 0 && (
                   <div className={styles.fixActions}>
                     {issue.fixActions.map((action, actionIndex) => (
                       <Button
@@ -348,7 +348,7 @@ export function FirstRunDiagnostics({
         </div>
       )}
 
-      {result && result.recommendations.length > 0 && (
+      {result && result.recommendations && result.recommendations.length > 0 && (
         <div className={styles.recommendations}>
           <Text weight="semibold">Recommendations:</Text>
           <ul className={styles.recommendationsList}>
