@@ -1,6 +1,6 @@
-import { get } from './apiClient';
 import { apiUrl } from '../../config/api';
 import type { HealthSummaryResponse, HealthDetailsResponse } from '../../types/api-v1';
+import { get } from './apiClient';
 
 /**
  * Get high-level health summary

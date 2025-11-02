@@ -1382,3 +1382,52 @@ public record ExportPreferencesResponse(
     DateTime ExportDate,
     string Version);
 
+// Ollama Process Control DTOs
+
+/// <summary>
+/// Ollama service status response
+/// </summary>
+public record OllamaStatusResponse(
+    bool Running,
+    int? Pid,
+    bool ManagedByApp,
+    string? Model,
+    string? Error);
+
+/// <summary>
+/// Ollama start operation response
+/// </summary>
+public record OllamaStartResponse(
+    bool Success,
+    string Message,
+    int? Pid);
+
+/// <summary>
+/// Ollama stop operation response
+/// </summary>
+public record OllamaStopResponse(
+    bool Success,
+    string Message);
+
+/// <summary>
+/// Ollama logs response
+/// </summary>
+public record OllamaLogsResponse(
+    string[] Logs,
+    int TotalLines);
+
+/// <summary>
+/// Ollama models list response (simplified for process control API)
+/// </summary>
+public record OllamaModelsListResponse(
+    List<OllamaModelDto> Models,
+    int Count);
+
+/// <summary>
+/// Information about an Ollama model (simplified)
+/// </summary>
+public record OllamaModelDto(
+    string Name,
+    string? Size,
+    string? ModifiedAt);
+

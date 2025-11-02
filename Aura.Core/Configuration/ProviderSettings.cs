@@ -182,6 +182,37 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Get Ollama executable path
+    /// </summary>
+    public string GetOllamaExecutablePath()
+    {
+        LoadSettings();
+        var path = GetStringSetting("ollamaExecutablePath", "");
+        
+        // If empty, try to find in common locations
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return Aura.Core.Services.OllamaService.FindOllamaExecutable() ?? "";
+        }
+        
+        return path;
+    }
+
+    /// <summary>
+    /// Set Ollama executable path
+    /// </summary>
+    public void SetOllamaExecutablePath(string path)
+    {
+        LoadSettings();
+        if (_settings == null)
+        {
+            _settings = new Dictionary<string, object>();
+        }
+        _settings["ollamaExecutablePath"] = path;
+        SaveSettings();
+    }
+
+    /// <summary>
     /// Get FFmpeg executable path
     /// </summary>
     public string GetFfmpegPath()
