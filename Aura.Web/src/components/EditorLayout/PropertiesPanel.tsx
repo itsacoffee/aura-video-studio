@@ -28,6 +28,7 @@ import {
 import { useState } from 'react';
 import { AppliedEffect, EFFECT_DEFINITIONS } from '../../types/effects';
 import { TooltipContent, TooltipWithLink } from '../Tooltips';
+import { TextOverlaysPanel } from './TextOverlaysPanel';
 
 const useStyles = makeStyles({
   container: {
@@ -522,6 +523,8 @@ export function PropertiesPanel({
               </div>
             </AccordionPanel>
           </AccordionItem>
+
+          <TextOverlaysPanel />
         </Accordion>
 
         <Divider />

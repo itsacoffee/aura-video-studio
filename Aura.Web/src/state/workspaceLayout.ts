@@ -33,11 +33,12 @@ const loadCollapsedPanels = () => {
   } catch {
     // Ignore errors
   }
+  // Default to all panels collapsed (Adobe Premiere Pro style)
   return {
-    properties: false,
-    mediaLibrary: false,
-    effects: false,
-    history: false,
+    properties: true,
+    mediaLibrary: true,
+    effects: true,
+    history: true,
   };
 };
 
@@ -114,12 +115,12 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
       }
     });
 
-    // Reset collapsed panels
+    // Reset collapsed panels to default (all collapsed - Adobe Premiere Pro style)
     const defaultCollapsed = {
-      properties: false,
-      mediaLibrary: false,
-      effects: false,
-      history: false,
+      properties: true,
+      mediaLibrary: true,
+      effects: true,
+      history: true,
     };
     saveCollapsedPanels(defaultCollapsed);
 

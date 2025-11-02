@@ -137,7 +137,7 @@ export function MenuBar({
   const navigate = useNavigate();
   const [undoStack] = useState<string[]>([]);
   const [redoStack] = useState<string[]>([]);
-  const { isFullscreen, toggleFullscreen } = useWorkspaceLayoutStore();
+  const { isFullscreen, toggleFullscreen, resetLayout } = useWorkspaceLayoutStore();
 
   const handleUndo = () => {
     // Placeholder for undo functionality
@@ -249,9 +249,10 @@ export function MenuBar({
         </MenuTrigger>
         <MenuPopover>
           <MenuList>
-            <MenuItem onClick={() => navigate('/timeline')}>Timeline</MenuItem>
             <MenuItem onClick={() => navigate('/assets')}>Asset Library</MenuItem>
             <MenuItem onClick={() => navigate('/projects')}>Projects</MenuItem>
+            <MenuDivider />
+            <MenuItem onClick={resetLayout}>Reset Layout</MenuItem>
             <MenuDivider />
             <MenuItem>Zoom In</MenuItem>
             <MenuItem>Zoom Out</MenuItem>
