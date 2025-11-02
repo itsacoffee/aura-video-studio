@@ -546,6 +546,36 @@ internal class PipelineValidationFailingLlmProvider : ILlmProvider
         _logger.LogError("LLM provider is unavailable or misconfigured");
         throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
     }
+
+    public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogError("LLM provider is unavailable or misconfigured");
+        throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
+    }
+
+    public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+        IReadOnlyList<string> sceneTexts,
+        string videoGoal,
+        string videoType,
+        CancellationToken ct)
+    {
+        _logger.LogError("LLM provider is unavailable or misconfigured");
+        throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
+    }
+
+    public Task<string?> GenerateTransitionTextAsync(
+        string fromSceneText,
+        string toSceneText,
+        string videoGoal,
+        CancellationToken ct)
+    {
+        _logger.LogError("LLM provider is unavailable or misconfigured");
+        throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
+    }
 }
 
 /// <summary>
