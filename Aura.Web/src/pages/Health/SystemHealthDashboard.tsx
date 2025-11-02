@@ -21,13 +21,12 @@ import {
   Pulse24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
+import apiClient from '../../services/api/apiClient';
 import type {
   ProviderTypeHealthDto,
   SystemHealthDto,
   ProviderHealthCheckDto,
-  CircuitBreakerState,
 } from '../../types/api-v1';
-import { apiClient } from '../../services/api/apiClient';
 
 const useStyles = makeStyles({
   container: {
@@ -139,10 +138,22 @@ const SystemHealthDashboard = () => {
   const fetchHealthData = useCallback(async () => {
     try {
       const [llm, tts, images, system] = await Promise.all([
-        apiClient.get<ProviderTypeHealthDto>('/api/health/llm').then(r => r.data).catch(() => null),
-        apiClient.get<ProviderTypeHealthDto>('/api/health/tts').then(r => r.data).catch(() => null),
-        apiClient.get<ProviderTypeHealthDto>('/api/health/images').then(r => r.data).catch(() => null),
-        apiClient.get<SystemHealthDto>('/api/health/system').then(r => r.data).catch(() => null),
+        apiClient
+          .get<ProviderTypeHealthDto>('/api/health/llm')
+          .then((r) => r.data)
+          .catch(() => null),
+        apiClient
+          .get<ProviderTypeHealthDto>('/api/health/tts')
+          .then((r) => r.data)
+          .catch(() => null),
+        apiClient
+          .get<ProviderTypeHealthDto>('/api/health/images')
+          .then((r) => r.data)
+          .catch(() => null),
+        apiClient
+          .get<SystemHealthDto>('/api/health/system')
+          .then((r) => r.data)
+          .catch(() => null),
       ]);
 
       setLlmHealth(llm);
@@ -370,7 +381,9 @@ const SystemHealthDashboard = () => {
             <div>
               <Text weight="semibold">Critical Provider Warning</Text>
               <br />
-              <Text>One or more critical providers are unavailable. Video generation may fail.</Text>
+              <Text>
+                One or more critical providers are unavailable. Video generation may fail.
+              </Text>
             </div>
           </div>
         </Card>

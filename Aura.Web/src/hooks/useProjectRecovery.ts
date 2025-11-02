@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiClient } from '../services/api/apiClient';
+import apiClient from '../services/api/apiClient';
 import { loggingService as logger } from '../services/loggingService';
 
 export interface RecoverableProject {
@@ -64,8 +64,12 @@ export function useProjectRecovery(): UseProjectRecoveryReturn {
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      logger.debug('Checking for incomplete projects', 'useProjectRecovery', 'checkForIncompleteProjects');
-      
+      logger.debug(
+        'Checking for incomplete projects',
+        'useProjectRecovery',
+        'checkForIncompleteProjects'
+      );
+
       const response = await apiClient.get<{
         projects: RecoverableProject[];
         count: number;
@@ -103,59 +107,56 @@ export function useProjectRecovery(): UseProjectRecoveryReturn {
   /**
    * Get detailed information about a specific project
    */
-  const getProjectDetails = useCallback(async (projectId: string): Promise<ProjectDetails | null> => {
-    try {
-      logger.debug(
-        'Fetching project details',
-        'useProjectRecovery',
-        'getProjectDetails',
-        { projectId }
-      );
-
-      const response = await apiClient.get<ProjectDetails>(`/api/projects/${projectId}`);
-      return response.data;
-    } catch (error: unknown) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      logger.error(
-        'Failed to fetch project details',
-        errorObj,
-        'useProjectRecovery',
-        'getProjectDetails',
-        { projectId }
-      );
-      return null;
-    }
-  }, []);
-
-  /**
-   * Discard a project permanently
-   */
-  const discardProject = useCallback(
-    async (projectId: string) => {
+  const getProjectDetails = useCallback(
+    async (projectId: string): Promise<ProjectDetails | null> => {
       try {
-        logger.debug('Discarding project', 'useProjectRecovery', 'discardProject', { projectId });
-
-        await apiClient.delete(`/api/projects/${projectId}`);
-
-        // Remove from local state
-        setState((prev) => ({
-          ...prev,
-          projects: prev.projects.filter((p) => p.projectId !== projectId),
-        }));
-
-        logger.debug('Project discarded successfully', 'useProjectRecovery', 'discardProject', {
+        logger.debug('Fetching project details', 'useProjectRecovery', 'getProjectDetails', {
           projectId,
         });
+
+        const response = await apiClient.get<ProjectDetails>(`/api/projects/${projectId}`);
+        return response.data;
       } catch (error: unknown) {
         const errorObj = error instanceof Error ? error : new Error(String(error));
-        logger.error('Failed to discard project', errorObj, 'useProjectRecovery', 'discardProject', {
-          projectId,
-        });
-        throw errorObj;
+        logger.error(
+          'Failed to fetch project details',
+          errorObj,
+          'useProjectRecovery',
+          'getProjectDetails',
+          { projectId }
+        );
+        return null;
       }
     },
     []
   );
+
+  /**
+   * Discard a project permanently
+   */
+  const discardProject = useCallback(async (projectId: string) => {
+    try {
+      logger.debug('Discarding project', 'useProjectRecovery', 'discardProject', { projectId });
+
+      await apiClient.delete(`/api/projects/${projectId}`);
+
+      // Remove from local state
+      setState((prev) => ({
+        ...prev,
+        projects: prev.projects.filter((p) => p.projectId !== projectId),
+      }));
+
+      logger.debug('Project discarded successfully', 'useProjectRecovery', 'discardProject', {
+        projectId,
+      });
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Failed to discard project', errorObj, 'useProjectRecovery', 'discardProject', {
+        projectId,
+      });
+      throw errorObj;
+    }
+  }, []);
 
   // Check for incomplete projects on mount
   useEffect(() => {

@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
 import {
   Dialog,
-  DialogTrigger,
   DialogSurface,
   DialogTitle,
   DialogBody,
@@ -12,11 +10,8 @@ import {
   Badge,
   Spinner,
 } from '@fluentui/react-components';
-import {
-  ArrowClockwise24Regular,
-  Delete24Regular,
-  Info24Regular,
-} from '@fluentui/react-icons';
+import { ArrowClockwise24Regular, Delete24Regular, Info24Regular } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 import type { RecoverableProject, ProjectDetails } from '../hooks/useProjectRecovery';
 
 interface RecoveryModalProps {
@@ -54,7 +49,7 @@ export const RecoveryModal: React.FC<RecoveryModalProps> = ({
   const handleViewDetails = async (projectId: string) => {
     setLoadingDetails(true);
     setSelectedProject(projectId);
-    
+
     try {
       const details = await onViewDetails(projectId);
       setProjectDetails(details);
@@ -96,8 +91,15 @@ export const RecoveryModal: React.FC<RecoveryModalProps> = ({
                   We found {projects.length} unfinished project{projects.length > 1 ? 's' : ''}.
                   Would you like to resume where you left off?
                 </Text>
-                
-                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                <div
+                  style={{
+                    marginTop: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                  }}
+                >
                   {projects.map((project) => (
                     <div
                       key={project.projectId}
@@ -110,7 +112,13 @@ export const RecoveryModal: React.FC<RecoveryModalProps> = ({
                         gap: '8px',
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
                         <Text weight="semibold">{project.title}</Text>
                         {project.canRecover ? (
                           <Badge appearance="tint" color="success">
@@ -122,13 +130,20 @@ export const RecoveryModal: React.FC<RecoveryModalProps> = ({
                           </Badge>
                         )}
                       </div>
-                      
-                      <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: 'var(--colorNeutralForeground3)' }}>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '16px',
+                          fontSize: '12px',
+                          color: 'var(--colorNeutralForeground3)',
+                        }}
+                      >
                         <Text size={200}>Stage: {project.currentStage || 'Unknown'}</Text>
                         <Text size={200}>Progress: {project.progressPercent}%</Text>
                         <Text size={200}>Last saved: {formatTimeAgo(project.updatedAt)}</Text>
                       </div>
-                      
+
                       <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                         <Button
                           size="small"
@@ -175,29 +190,31 @@ export const RecoveryModal: React.FC<RecoveryModalProps> = ({
                 >
                   ← Back to projects
                 </Button>
-                
+
                 <Text weight="semibold" block style={{ marginBottom: '8px' }}>
                   {projectDetails.title}
                 </Text>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}
+                >
                   <div>
                     <Text weight="semibold">Current Stage: </Text>
                     <Text>{projectDetails.currentStage || 'Unknown'}</Text>
                   </div>
-                  
+
                   <div>
                     <Text weight="semibold">Progress: </Text>
                     <Text>{projectDetails.progressPercent}%</Text>
                   </div>
-                  
+
                   {projectDetails.latestCheckpoint && (
                     <>
                       <div>
                         <Text weight="semibold">Last Checkpoint: </Text>
                         <Text>{projectDetails.latestCheckpoint.stageName}</Text>
                       </div>
-                      
+
                       <div>
                         <Text weight="semibold">Completed Scenes: </Text>
                         <Text>
@@ -207,15 +224,23 @@ export const RecoveryModal: React.FC<RecoveryModalProps> = ({
                       </div>
                     </>
                   )}
-                  
+
                   {!projectDetails.filesExist && (
                     <div>
-                      <Text weight="semibold" style={{ color: 'var(--colorPaletteRedForeground1)' }}>
+                      <Text
+                        weight="semibold"
+                        style={{ color: 'var(--colorPaletteRedForeground1)' }}
+                      >
                         Warning: {projectDetails.missingFilesCount} file(s) missing
                       </Text>
                       <div style={{ marginTop: '4px', paddingLeft: '12px' }}>
                         {projectDetails.missingFiles.slice(0, 3).map((file, idx) => (
-                          <Text key={idx} size={200} block style={{ color: 'var(--colorNeutralForeground3)' }}>
+                          <Text
+                            key={idx}
+                            size={200}
+                            block
+                            style={{ color: 'var(--colorNeutralForeground3)' }}
+                          >
                             {file}
                           </Text>
                         ))}
@@ -228,7 +253,7 @@ export const RecoveryModal: React.FC<RecoveryModalProps> = ({
                     </div>
                   )}
                 </div>
-                
+
                 <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
                   <Button
                     appearance="primary"
