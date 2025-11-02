@@ -4,7 +4,6 @@ import {
   Sparkle24Regular,
   Clock24Regular,
   Play24Regular,
-  FolderOpen24Regular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -111,10 +110,9 @@ const useStyles = makeStyles({
 
 export interface WelcomeScreenProps {
   onGetStarted: () => void;
-  onImportProject?: () => void;
 }
 
-export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenProps) {
+export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
   const styles = useStyles();
 
   const valuePropositions = [
@@ -179,17 +177,6 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
         >
           Get Started
         </Button>
-        {onImportProject && (
-          <Button
-            appearance="secondary"
-            size="large"
-            className={styles.secondaryButton}
-            icon={<FolderOpen24Regular />}
-            onClick={onImportProject}
-          >
-            Import Existing Project
-          </Button>
-        )}
       </div>
 
       {/* Time Estimate */}

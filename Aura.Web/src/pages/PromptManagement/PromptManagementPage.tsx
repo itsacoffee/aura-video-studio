@@ -22,7 +22,6 @@ import {
   Add24Regular,
   Edit24Regular,
   Delete24Regular,
-  History24Regular,
   Eye24Regular,
   BookTemplateRegular,
 } from '@fluentui/react-icons';
@@ -112,7 +111,7 @@ const useStyles = makeStyles({
   },
 });
 
-type TabValue = 'templates' | 'editor' | 'versions' | 'preview' | 'examples';
+type TabValue = 'templates' | 'editor' | 'preview' | 'examples';
 
 interface PromptTemplate {
   id: string;
@@ -385,9 +384,6 @@ export const PromptManagementPage: React.FC = () => {
         <Tab value="examples" icon={<BookTemplateRegular />}>
           Examples
         </Tab>
-        <Tab value="versions" icon={<History24Regular />}>
-          Version History
-        </Tab>
       </TabList>
 
       {error && <ErrorState message={error} />}
@@ -592,13 +588,6 @@ export const PromptManagementPage: React.FC = () => {
                 ))}
               </div>
             )}
-          </Card>
-        )}
-
-        {activeTab === 'versions' && (
-          <Card className={styles.editorCard}>
-            <Title2>Version History</Title2>
-            <Text>Version history feature coming soon</Text>
           </Card>
         )}
       </div>

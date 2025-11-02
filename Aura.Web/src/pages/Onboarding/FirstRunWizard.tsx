@@ -525,15 +525,7 @@ export function FirstRunWizard() {
   };
 
   // Render step 0: Enhanced Welcome Screen
-  const renderStep0 = () => (
-    <WelcomeScreen
-      onGetStarted={handleNext}
-      onImportProject={() => {
-        // Future: implement project import
-        alert('Project import coming soon!');
-      }}
-    />
-  );
+  const renderStep0 = () => <WelcomeScreen onGetStarted={handleNext} />;
 
   // Render step 1: Tier Selection (unchanged)
   const renderStep1 = () => (

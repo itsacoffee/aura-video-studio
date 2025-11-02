@@ -13,12 +13,7 @@ import {
   Dropdown,
   Option,
 } from '@fluentui/react-components';
-import {
-  Color24Regular,
-  ImageEdit24Regular,
-  CheckmarkCircle24Regular,
-  Eye24Regular,
-} from '@fluentui/react-icons';
+import { Color24Regular, Eye24Regular } from '@fluentui/react-icons';
 import { useState, useCallback } from 'react';
 import { ErrorState } from '../../components/Loading';
 
@@ -67,7 +62,7 @@ const useStyles = makeStyles({
   },
 });
 
-type ToolTab = 'color-grading' | 'composition' | 'quality' | 'coherence';
+type ToolTab = 'color-grading';
 
 export const AestheticsPage: React.FC = () => {
   const styles = useStyles();
@@ -127,15 +122,6 @@ export const AestheticsPage: React.FC = () => {
       >
         <Tab value="color-grading" icon={<Color24Regular />}>
           Color Grading
-        </Tab>
-        <Tab value="composition" icon={<ImageEdit24Regular />}>
-          Composition
-        </Tab>
-        <Tab value="quality" icon={<CheckmarkCircle24Regular />}>
-          Quality Assessment
-        </Tab>
-        <Tab value="coherence" icon={<Eye24Regular />}>
-          Visual Coherence
         </Tab>
       </TabList>
 
@@ -203,30 +189,6 @@ export const AestheticsPage: React.FC = () => {
               <pre>{JSON.stringify(result, null, 2)}</pre>
             </div>
           )}
-        </Card>
-      )}
-
-      {activeTab === 'composition' && (
-        <Card className={styles.toolCard}>
-          <Title2>Composition Analysis</Title2>
-          <Text>Analyze image composition and suggest improvements</Text>
-          <Text>Composition analysis features coming soon</Text>
-        </Card>
-      )}
-
-      {activeTab === 'quality' && (
-        <Card className={styles.toolCard}>
-          <Title2>Quality Assessment</Title2>
-          <Text>Assess visual quality and provide enhancement suggestions</Text>
-          <Text>Quality assessment features coming soon</Text>
-        </Card>
-      )}
-
-      {activeTab === 'coherence' && (
-        <Card className={styles.toolCard}>
-          <Title2>Visual Coherence</Title2>
-          <Text>Ensure visual consistency across scenes</Text>
-          <Text>Visual coherence features coming soon</Text>
         </Card>
       )}
     </div>
