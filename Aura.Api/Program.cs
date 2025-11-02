@@ -1106,6 +1106,9 @@ catch (Exception ex)
 // Add correlation ID middleware early in the pipeline
 app.UseCorrelationId();
 
+// Add request validation middleware (after correlation ID)
+app.UseRequestValidation();
+
 // Add request logging middleware (after correlation ID)
 app.UseRequestLogging();
 

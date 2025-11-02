@@ -266,4 +266,257 @@ public static class InputSanitizer
 
         return email;
     }
+
+    /// <summary>
+    /// Sanitizes HTML content by stripping script tags and encoding entities
+    /// </summary>
+    public static string SanitizeHtml(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return input;
+        }
+
+        // HTML encode the input to prevent XSS
+        var sanitized = HttpUtility.HtmlEncode(input);
+
+        // Additional patterns to remove
+        var scriptPattern = new Regex(@"<script[^>]*>.*?</script>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        sanitized = scriptPattern.Replace(sanitized, string.Empty);
+
+        var eventHandlerPattern = new Regex(@"on\w+\s*=\s*[""'][^""']*[""']", RegexOptions.IgnoreCase);
+        sanitized = eventHandlerPattern.Replace(sanitized, string.Empty);
+
+        var javascriptPattern = new Regex(@"javascript\s*:", RegexOptions.IgnoreCase);
+        sanitized = javascriptPattern.Replace(sanitized, string.Empty);
+
+        return sanitized;
+    }
+
+    /// <summary>
+    /// Validates a file path to prevent directory traversal attacks
+    /// </summary>
+    public static string ValidateFilePath(string path, string allowedDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            throw new ArgumentException("Path cannot be empty", nameof(path));
+        }
+
+        if (string.IsNullOrWhiteSpace(allowedDirectory))
+        {
+            throw new ArgumentException("Allowed directory cannot be empty", nameof(allowedDirectory));
+        }
+
+        // Normalize paths
+        var normalizedAllowedDir = Path.GetFullPath(allowedDirectory);
+        
+        // Check for path traversal attempts
+        if (path.Contains("..", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Path contains directory traversal attempt", nameof(path));
+        }
+
+        // Combine and normalize the full path
+        var fullPath = Path.GetFullPath(Path.Combine(normalizedAllowedDir, path));
+
+        // Ensure the resolved path is within the allowed directory
+        if (!fullPath.StartsWith(normalizedAllowedDir, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException($"Path is outside allowed directory: {path}", nameof(path));
+        }
+
+        return fullPath;
+    }
+
+    /// <summary>
+    /// Sanitizes prompts to remove potential injection attempts
+    /// </summary>
+    public static string SanitizePrompt(string prompt, int maxLength = 10000)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            return prompt;
+        }
+
+        // Trim to max length
+        if (prompt.Length > maxLength)
+        {
+            prompt = prompt.Substring(0, maxLength);
+        }
+
+        // Patterns that indicate prompt injection attempts
+        var injectionPatterns = new[]
+        {
+            @"ignore\s+(all\s+)?(previous|prior|above)\s+(instructions?|commands?|rules?)",
+            @"disregard\s+(all\s+)?(previous|prior|above)\s+(instructions?|commands?|rules?)",
+            @"forget\s+(all\s+)?(previous|prior|above)\s+(instructions?|commands?|rules?)",
+            @"system\s*:\s*",
+            @"<\|im_start\|>",
+            @"<\|im_end\|>",
+            @"\[INST\]",
+            @"\[/INST\]",
+            @"<\|endoftext\|>",
+            @"human\s*:\s*.*?\bassistant\s*:",
+            @"you\s+are\s+now\s+(a|an)\s+",
+            @"act\s+as\s+(a|an)\s+"
+        };
+
+        var sanitized = prompt;
+        foreach (var pattern in injectionPatterns)
+        {
+            var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            sanitized = regex.Replace(sanitized, "[filtered]");
+        }
+
+        // Remove control characters except common whitespace
+        var cleaned = new StringBuilder();
+        foreach (var c in sanitized)
+        {
+            if (!char.IsControl(c) || c == '\n' || c == '\r' || c == '\t')
+            {
+                cleaned.Append(c);
+            }
+        }
+
+        return cleaned.ToString().Trim();
+    }
+
+    /// <summary>
+    /// Validates and sanitizes an API key format
+    /// </summary>
+    public static bool ValidateApiKeyFormat(string? apiKey, string provider)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return false;
+        }
+
+        return provider.ToLowerInvariant() switch
+        {
+            "openai" => apiKey.StartsWith("sk-") && apiKey.Length > 20,
+            "elevenlabs" => Regex.IsMatch(apiKey, @"^[a-fA-F0-9]{32}$"),
+            "anthropic" => apiKey.StartsWith("sk-ant-") && apiKey.Length > 20,
+            "stability" => apiKey.StartsWith("sk-") && apiKey.Length > 20,
+            _ => apiKey.Length >= 20 && Regex.IsMatch(apiKey, @"^[a-zA-Z0-9\-_]+$")
+        };
+    }
+
+    /// <summary>
+    /// Sanitizes FFmpeg command arguments by validating against whitelist
+    /// </summary>
+    public static string SanitizeFfmpegArgument(string argument)
+    {
+        if (string.IsNullOrWhiteSpace(argument))
+        {
+            throw new ArgumentException("Argument cannot be empty", nameof(argument));
+        }
+
+        // Whitelist of allowed FFmpeg options
+        var allowedOptions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "-i", "-c:v", "-c:a", "-b:v", "-b:a", "-r", "-s", "-pix_fmt",
+            "-vf", "-af", "-f", "-y", "-n", "-t", "-ss", "-to",
+            "-codec", "-acodec", "-vcodec", "-preset", "-crf", "-maxrate",
+            "-bufsize", "-g", "-keyint_min", "-sc_threshold", "-threads",
+            "-filter:v", "-filter:a", "-map", "-metadata", "-movflags",
+            "-shortest", "-vsync", "-async", "-fps_mode", "-an", "-vn",
+            "-hwaccel", "-hwaccel_device", "-hwaccel_output_format"
+        };
+
+        var arg = argument.Trim();
+
+        // Check if it's a flag
+        if (arg.StartsWith("-"))
+        {
+            var flagPart = arg.Split(' ', 2)[0];
+            if (!allowedOptions.Contains(flagPart))
+            {
+                throw new ArgumentException($"FFmpeg flag not in whitelist: {flagPart}", nameof(argument));
+            }
+        }
+
+        // Check for dangerous patterns
+        var dangerousPatterns = new[]
+        {
+            "file://",
+            "pipe:",
+            "concat:",
+            "|",
+            "&",
+            ";",
+            "`",
+            "$(",
+            "${"
+        };
+
+        foreach (var pattern in dangerousPatterns)
+        {
+            if (arg.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"FFmpeg argument contains dangerous pattern: {pattern}", nameof(argument));
+            }
+        }
+
+        return arg;
+    }
+
+    /// <summary>
+    /// Escapes special characters for FFmpeg text filters (drawtext, subtitles)
+    /// </summary>
+    public static string EscapeFfmpegText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return text;
+        }
+
+        // Escape special characters for FFmpeg drawtext filter
+        var escaped = text
+            .Replace("\\", "\\\\")  // Backslash must be first
+            .Replace(":", "\\:")
+            .Replace("'", "\\'")
+            .Replace("%", "\\%")
+            .Replace("\n", "\\n")
+            .Replace("\r", string.Empty);
+
+        // Remove control characters
+        var cleaned = new StringBuilder();
+        foreach (var c in escaped)
+        {
+            if (!char.IsControl(c) || c == '\\' || c == 'n')
+            {
+                cleaned.Append(c);
+            }
+        }
+
+        return cleaned.ToString();
+    }
+
+    /// <summary>
+    /// Validates file extension against whitelist
+    /// </summary>
+    public static bool IsAllowedFileExtension(string filePath, string[] allowedExtensions)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return false;
+        }
+
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        return allowedExtensions.Any(ext => ext.Equals(extension, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Validates that a GUID string is properly formatted
+    /// </summary>
+    public static bool IsValidGuid(string? guidString)
+    {
+        if (string.IsNullOrWhiteSpace(guidString))
+        {
+            return false;
+        }
+
+        return Guid.TryParse(guidString, out _);
+    }
 }
