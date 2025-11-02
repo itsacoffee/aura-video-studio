@@ -23,7 +23,6 @@ import {
   Edit24Regular,
   Delete24Regular,
   Shield24Regular,
-  Brain24Regular,
   Eye24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
@@ -392,18 +391,6 @@ export const UserPreferencesTab: FC = () => {
                     </div>
                   ))
                 )}
-              </Card>
-            </AccordionPanel>
-          </AccordionItem>
-
-          <AccordionItem value="ai-behavior">
-            <AccordionHeader icon={<Brain24Regular />}>AI Behavior Settings</AccordionHeader>
-            <AccordionPanel>
-              <Card className={styles.card}>
-                <Text>
-                  AI Behavior customization coming soon. This will allow you to control LLM
-                  parameters, prompts, and behavior for each pipeline stage.
-                </Text>
               </Card>
             </AccordionPanel>
           </AccordionItem>
