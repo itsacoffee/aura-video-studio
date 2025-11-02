@@ -25,6 +25,7 @@ import {
   VideoClip24Regular,
   Trophy24Regular,
   Sparkle24Regular,
+  Add24Regular,
 } from '@fluentui/react-icons';
 
 const useStyles = makeStyles({
@@ -156,6 +157,7 @@ export interface TemplateSelectionProps {
   onSelectTemplate: (templateId: string) => void;
   onSkip: () => void;
   onUseTemplate: (templateId: string) => void;
+  onCreateCustom?: () => void;
 }
 
 export function TemplateSelection({
@@ -164,6 +166,7 @@ export function TemplateSelection({
   onSelectTemplate,
   onSkip,
   onUseTemplate,
+  onCreateCustom,
 }: TemplateSelectionProps) {
   const styles = useStyles();
 
@@ -180,6 +183,46 @@ export function TemplateSelection({
       </div>
 
       <div className={styles.templatesGrid}>
+        {onCreateCustom && (
+          <Card className={styles.templateCard} onClick={onCreateCustom}>
+            <div className={styles.templatePreview}>
+              <Add24Regular style={{ fontSize: '72px', color: tokens.colorBrandForeground1 }} />
+            </div>
+
+            <div className={styles.templateHeader}>
+              <div className={styles.templateInfo}>
+                <Title3 className={styles.templateTitle}>Create Custom Template</Title3>
+              </div>
+            </div>
+
+            <Text className={styles.templateDescription} size={300}>
+              Build your own custom template with tailored script structure, LLM prompts, and visual
+              preferences
+            </Text>
+
+            <ul className={styles.featuresList}>
+              <li className={styles.featureItem}>
+                <Text size={200} className={styles.checkIcon}>
+                  ✓
+                </Text>
+                <Text size={200}>Custom script sections</Text>
+              </li>
+              <li className={styles.featureItem}>
+                <Text size={200} className={styles.checkIcon}>
+                  ✓
+                </Text>
+                <Text size={200}>Advanced LLM configuration</Text>
+              </li>
+              <li className={styles.featureItem}>
+                <Text size={200} className={styles.checkIcon}>
+                  ✓
+                </Text>
+                <Text size={200}>Visual style customization</Text>
+              </li>
+            </ul>
+          </Card>
+        )}
+
         {templates.map((template) => (
           <Card
             key={template.id}
