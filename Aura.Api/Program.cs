@@ -99,12 +99,19 @@ builder.Services.AddHealthChecks()
     .AddCheck<Aura.Api.HealthChecks.DependencyHealthCheck>("Dependencies")
     .AddCheck<Aura.Api.HealthChecks.DiskSpaceHealthCheck>("DiskSpace");
 
-// Configure database
+// Configure database with WAL mode for better concurrency
 const string MigrationsAssembly = "Aura.Api";
 var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
 builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}", 
-        sqliteOptions => sqliteOptions.MigrationsAssembly(MigrationsAssembly)));
+{
+    var connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;";
+    options.UseSqlite(connectionString, 
+        sqliteOptions => sqliteOptions.MigrationsAssembly(MigrationsAssembly));
+});
+
+// Register ProjectStateRepository for state persistence
+builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
+builder.Services.AddScoped<Aura.Core.Services.CheckpointManager>();
 
 builder.Services.AddCors(options =>
 {
@@ -719,6 +726,9 @@ builder.Services.AddHostedService<Aura.Api.HostedServices.ProviderWarmupService>
 // Register Health Check Background Service - runs scheduled health checks
 builder.Services.AddHostedService<Aura.Api.HostedServices.HealthCheckBackgroundService>();
 
+// Register OrphanedFileCleanupService for cleaning up old projects and temp files
+builder.Services.AddHostedService<Aura.Api.HostedServices.OrphanedFileCleanupService>();
+
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
 builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
@@ -969,6 +979,18 @@ try
     {
         var db = scope.ServiceProvider.GetRequiredService<Aura.Core.Data.AuraDbContext>();
         db.Database.Migrate();
+        
+        // Configure WAL mode for better concurrency during state persistence
+        try
+        {
+            db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+            db.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL;");
+            Log.Information("SQLite WAL mode configured successfully");
+        }
+        catch (Exception walEx)
+        {
+            Log.Warning(walEx, "Failed to configure SQLite WAL mode, using default journal mode");
+        }
     }
     Log.Information("Database migrations applied successfully");
 }
