@@ -122,6 +122,11 @@ export function FirstRunWizard() {
   const [stepStartTime, setStepStartTime] = useState<number>(Date.now());
   const [wizardStartTime] = useState<number>(Date.now());
 
+  // Hardware detection manual input state
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualVram, setManualVram] = useState<string>('');
+  const [hasGpu, setHasGpu] = useState<boolean>(true);
+
   // Enhanced step labels for the new wizard flow
   const totalSteps = 10;
   const stepLabels = [
@@ -589,47 +594,196 @@ export function FirstRunWizard() {
   );
 
   // Render step 6: Hardware Detection
-  const renderStep6 = () => (
-    <>
-      <Title2>Hardware Detection</Title2>
+  const renderStep6 = () => {
+    const handleDetectAgain = async () => {
+      await detectHardwareThunk(dispatch);
+    };
 
-      {state.isDetectingHardware ? (
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-            <Spinner size="small" />
-            <Text>Detecting your hardware capabilities...</Text>
-          </div>
-        </Card>
-      ) : state.hardware ? (
-        <div className={styles.hardwareInfo}>
+    const handleManualSubmit = () => {
+      const vramValue = parseInt(manualVram, 10);
+      dispatch({
+        type: 'SET_MANUAL_HARDWARE',
+        payload: {
+          vram: hasGpu ? (isNaN(vramValue) ? 4 : vramValue) : 0,
+          hasGpu,
+        },
+      });
+      setShowManualInput(false);
+    };
+
+    const handleSkip = () => {
+      dispatch({ type: 'SKIP_HARDWARE_DETECTION' });
+    };
+
+    return (
+      <>
+        <Title2>Hardware Detection (Optional)</Title2>
+        <Text style={{ marginBottom: tokens.spacingVerticalL }}>
+          We&apos;ll detect your GPU to optimize video generation settings. This is optional - you
+          can skip and configure later.
+        </Text>
+
+        {state.isDetectingHardware ? (
           <Card>
-            <Title2>System Information</Title2>
-            {state.hardware.gpu && <Text>GPU: {state.hardware.gpu}</Text>}
-            {state.hardware.vram && <Text>VRAM: {state.hardware.vram}GB</Text>}
-            <Text style={{ marginTop: tokens.spacingVerticalM }}>
-              <strong>Recommendation:</strong> {state.hardware.recommendation}
-            </Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+              <Spinner size="small" />
+              <Text>Detecting your hardware capabilities...</Text>
+            </div>
           </Card>
-
-          {!state.hardware.canRunSD && state.mode === 'local' && (
+        ) : state.hardware ? (
+          <div className={styles.hardwareInfo}>
             <Card>
-              <Badge appearance="filled" color="warning">
-                ⚠ Note
-              </Badge>
-              <Text style={{ marginTop: tokens.spacingVerticalS }}>
-                Your system doesn&apos;t meet the requirements for local Stable Diffusion.
-                We&apos;ll use Stock images as a fallback, or you can add cloud Pro providers later.
+              <Title2>System Information</Title2>
+              {state.hardware.gpu && (
+                <Text>
+                  <strong>GPU:</strong> {state.hardware.gpu}
+                </Text>
+              )}
+              {state.hardware.vram !== undefined && state.hardware.vram > 0 && (
+                <Text>
+                  <strong>VRAM:</strong> {state.hardware.vram}GB
+                </Text>
+              )}
+              <Text style={{ marginTop: tokens.spacingVerticalM }}>
+                <strong>Based on your hardware, we suggest:</strong> {state.hardware.recommendation}
               </Text>
+
+              <div
+                style={{
+                  marginTop: tokens.spacingVerticalL,
+                  display: 'flex',
+                  gap: tokens.spacingHorizontalM,
+                }}
+              >
+                <Button appearance="secondary" onClick={handleDetectAgain}>
+                  Detect Again
+                </Button>
+                <Button appearance="secondary" onClick={() => setShowManualInput(true)}>
+                  Manual Input
+                </Button>
+              </div>
             </Card>
-          )}
-        </div>
-      ) : (
-        <Card>
-          <Text>Click Next to detect your hardware...</Text>
+
+            {!state.hardware.canRunSD && (
+              <Card>
+                <Badge appearance="filled" color="informative">
+                  ℹ️ Info
+                </Badge>
+                <Text style={{ marginTop: tokens.spacingVerticalS }}>
+                  Your system may not support local Stable Diffusion image generation. No problem!
+                  You can use Stock images (free) or connect cloud providers later for AI image
+                  generation.
+                </Text>
+              </Card>
+            )}
+          </div>
+        ) : showManualInput ? (
+          <Card>
+            <Title2>Manual GPU Configuration</Title2>
+            <Text style={{ marginBottom: tokens.spacingVerticalM }}>
+              If automatic detection didn&apos;t work, you can manually specify your GPU details:
+            </Text>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+              <div>
+                <label>
+                  <input
+                    type="radio"
+                    checked={hasGpu}
+                    onChange={() => setHasGpu(true)}
+                    style={{ marginRight: tokens.spacingHorizontalS }}
+                  />
+                  I have a dedicated GPU
+                </label>
+              </div>
+
+              {hasGpu && (
+                <div>
+                  <label htmlFor="vram-input" style={{ display: 'block', marginBottom: '4px' }}>
+                    VRAM (GB):
+                  </label>
+                  <select
+                    id="vram-input"
+                    value={manualVram}
+                    onChange={(e) => setManualVram(e.target.value)}
+                    style={{
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: `1px solid ${tokens.colorNeutralStroke1}`,
+                      width: '200px',
+                    }}
+                  >
+                    <option value="">Select VRAM...</option>
+                    <option value="4">4 GB</option>
+                    <option value="6">6 GB</option>
+                    <option value="8">8 GB</option>
+                    <option value="10">10 GB</option>
+                    <option value="12">12 GB</option>
+                    <option value="16">16 GB</option>
+                    <option value="24">24 GB</option>
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label>
+                  <input
+                    type="radio"
+                    checked={!hasGpu}
+                    onChange={() => setHasGpu(false)}
+                    style={{ marginRight: tokens.spacingHorizontalS }}
+                  />
+                  I don&apos;t have a dedicated GPU (integrated graphics only)
+                </label>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: tokens.spacingHorizontalM,
+                  marginTop: tokens.spacingVerticalM,
+                }}
+              >
+                <Button appearance="primary" onClick={handleManualSubmit}>
+                  Save Configuration
+                </Button>
+                <Button appearance="secondary" onClick={() => setShowManualInput(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <Card>
+            <Text style={{ marginBottom: tokens.spacingVerticalL }}>
+              We haven&apos;t detected your hardware yet. You can:
+            </Text>
+            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
+              <Button appearance="primary" onClick={handleDetectAgain}>
+                Detect Hardware
+              </Button>
+              <Button appearance="secondary" onClick={() => setShowManualInput(true)}>
+                Manual Input
+              </Button>
+              <Button appearance="secondary" onClick={handleSkip}>
+                Skip for Now
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Always show prominent skip button */}
+        <Card style={{ marginTop: tokens.spacingVerticalL, textAlign: 'center' }}>
+          <Text style={{ marginBottom: tokens.spacingVerticalM }}>
+            Don&apos;t want to configure hardware now?
+          </Text>
+          <Button appearance="secondary" size="large" onClick={handleSkip}>
+            Continue Without Hardware Detection
+          </Button>
         </Card>
-      )}
-    </>
-  );
+      </>
+    );
+  };
 
   // Render step 7: Validation & Preflight Checks
   const renderStep7 = () => (

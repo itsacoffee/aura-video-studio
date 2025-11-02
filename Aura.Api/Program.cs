@@ -2876,12 +2876,48 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
     {
         await detector.RunHardwareProbeAsync();
         var profile = await detector.DetectSystemAsync();
-        return Results.Ok(new { success = true, profile });
+        
+        // Format response to match frontend expectations
+        var gpuDisplay = profile.Gpu != null 
+            ? $"{profile.Gpu.Vendor} {profile.Gpu.Model}" 
+            : "Unable to detect GPU hardware";
+        
+        var response = new
+        {
+            success = true,
+            gpu = gpuDisplay,
+            vramGB = profile.Gpu?.VramGB ?? 0,
+            enableLocalDiffusion = profile.EnableSD,
+            tier = profile.Tier.ToString(),
+            ramGB = profile.RamGB,
+            logicalCores = profile.LogicalCores,
+            physicalCores = profile.PhysicalCores,
+            enableNVENC = profile.EnableNVENC,
+            detectionSuccessful = profile.Gpu != null,
+            profile = profile
+        };
+        
+        return Results.Ok(response);
     }
     catch (Exception ex)
     {
         Log.Error(ex, "Error running probes");
-        return Results.Problem("Error running hardware probes", statusCode: 500);
+        
+        // Return graceful fallback response instead of 500 error
+        return Results.Ok(new
+        {
+            success = true,
+            gpu = "Unable to detect GPU hardware",
+            vramGB = 0,
+            enableLocalDiffusion = false,
+            tier = "D",
+            ramGB = 8,
+            logicalCores = Environment.ProcessorCount,
+            physicalCores = Environment.ProcessorCount / 2,
+            enableNVENC = false,
+            detectionSuccessful = false,
+            error = "Hardware detection failed. You can continue and manually configure settings later."
+        });
     }
 })
 .WithName("RunProbes")

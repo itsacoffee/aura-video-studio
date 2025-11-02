@@ -152,6 +152,8 @@ export type OnboardingAction =
   | { type: 'SET_TEMPLATE'; payload: string | null }
   | { type: 'TOGGLE_TUTORIAL' }
   | { type: 'COMPLETE_TUTORIAL' }
+  | { type: 'SET_MANUAL_HARDWARE'; payload: { vram?: number; hasGpu: boolean } }
+  | { type: 'SKIP_HARDWARE_DETECTION' }
   | { type: 'LOAD_FROM_STORAGE'; payload: Partial<OnboardingState> };
 
 // Reducer
@@ -385,6 +387,32 @@ export function onboardingReducer(
         ...state,
         tutorialCompleted: true,
         showTutorial: false,
+      };
+
+    case 'SET_MANUAL_HARDWARE':
+      return {
+        ...state,
+        hardware: {
+          gpu: action.payload.hasGpu
+            ? `GPU with ${action.payload.vram || 0}GB VRAM (manually configured)`
+            : 'No dedicated GPU (integrated graphics)',
+          vram: action.payload.vram,
+          canRunSD: action.payload.hasGpu && (action.payload.vram || 0) >= 6,
+          recommendation: action.payload.hasGpu
+            ? `Manually configured GPU with ${action.payload.vram || 0}GB VRAM. ${(action.payload.vram || 0) >= 6 ? 'Should be sufficient for local Stable Diffusion.' : 'We recommend using Stock images or Pro cloud providers.'}`
+            : 'No dedicated GPU detected. We recommend using Stock images or Pro cloud providers.',
+        },
+      };
+
+    case 'SKIP_HARDWARE_DETECTION':
+      return {
+        ...state,
+        isDetectingHardware: false,
+        hardware: {
+          canRunSD: false,
+          recommendation:
+            'Hardware detection skipped. You can configure hardware settings later in Settings.',
+        },
       };
 
     case 'LOAD_FROM_STORAGE':
