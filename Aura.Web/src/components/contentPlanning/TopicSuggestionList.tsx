@@ -12,8 +12,13 @@ import {
   Badge,
 } from '@fluentui/react-components';
 import { LightbulbRegular, SparkleRegular } from '@fluentui/react-icons';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { contentPlanningService, TopicSuggestion } from '../../services/contentPlanningService';
+import { settingsService } from '../../services/settingsService';
+import { parseApiError, type ParsedApiError } from '../../utils/apiErrorParser';
+import { checkApiKeys } from '../../utils/apiKeyChecker';
+import { ErrorState } from './ErrorState';
+import { MissingApiKeyState } from './MissingApiKeyState';
 
 const useStyles = makeStyles({
   container: {
@@ -98,11 +103,36 @@ export const TopicSuggestionList: React.FC = () => {
   const [platform, setPlatform] = useState<string>('YouTube');
   const [interests, setInterests] = useState<string>('');
   const [count] = useState<number>(10);
+  const [hasApiKeys, setHasApiKeys] = useState<boolean>(true);
+  const [checkingKeys, setCheckingKeys] = useState<boolean>(true);
+  const [error, setError] = useState<ParsedApiError | null>(null);
 
   const platforms = ['YouTube', 'TikTok', 'Instagram', 'Facebook', 'Twitter'];
 
+  // Check for API keys on mount
+  useEffect(() => {
+    const checkKeys = async () => {
+      setCheckingKeys(true);
+      try {
+        const settings = await settingsService.loadSettings();
+        const keyCheck = checkApiKeys(settings.apiKeys);
+        setHasApiKeys(keyCheck.hasAnyLlmKey);
+      } catch {
+        setHasApiKeys(false);
+      } finally {
+        setCheckingKeys(false);
+      }
+    };
+    checkKeys();
+  }, []);
+
   const handleGenerate = async () => {
+    if (!hasApiKeys) {
+      return;
+    }
+
     setLoading(true);
+    setError(null);
     try {
       const interestList = interests
         .split(',')
@@ -117,8 +147,10 @@ export const TopicSuggestionList: React.FC = () => {
         count,
       });
       setTopics(response.suggestions);
-    } catch (error) {
-      console.error('Failed to generate topics:', error);
+    } catch (err: unknown) {
+      const parsedError = parseApiError(err);
+      setError(parsedError);
+      setTopics([]);
     } finally {
       setLoading(false);
     }
@@ -129,6 +161,25 @@ export const TopicSuggestionList: React.FC = () => {
     if (score >= 60) return 'warning';
     return 'informative';
   };
+
+  // Show loading spinner while checking API keys
+  if (checkingKeys) {
+    return (
+      <div style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL }}>
+        <Spinner label="Loading..." />
+      </div>
+    );
+  }
+
+  // Show missing API key state
+  if (!hasApiKeys) {
+    return (
+      <MissingApiKeyState
+        featureName="Topic Generation"
+        description="Topic Generation uses AI to create engaging content ideas. Configure an API key to enable this feature."
+      />
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -187,7 +238,16 @@ export const TopicSuggestionList: React.FC = () => {
         </div>
       )}
 
-      {!loading && topics.length === 0 && (
+      {!loading && error && (
+        <ErrorState
+          errorType={error.type}
+          message={error.message}
+          details={error.details}
+          onRetry={error.retryable ? handleGenerate : undefined}
+        />
+      )}
+
+      {!loading && !error && topics.length === 0 && (
         <div className={styles.emptyState}>
           <LightbulbRegular style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }} />
           <Text size={400}>No topics generated yet. Fill in the form and click Generate.</Text>
