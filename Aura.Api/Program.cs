@@ -102,8 +102,8 @@ builder.Services.AddProblemDetails();
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 100L * 1024L * 1024L * 1024L; // 100GB max file size
-    options.ValueLengthLimit = int.MaxValue;
-    options.MultipartHeadersLengthLimit = int.MaxValue;
+    options.ValueLengthLimit = 100 * 1024 * 1024; // 100MB max form value
+    options.MultipartHeadersLengthLimit = 1024 * 1024; // 1MB max headers
 });
 
 // Add services to the container
