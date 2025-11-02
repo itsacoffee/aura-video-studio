@@ -2,6 +2,7 @@
  * Asset library API service
  */
 
+import { AssetSearchResultSchema, parseWithDefault } from '../schemas/apiSchemas';
 import {
   Asset,
   AssetSearchResult,
@@ -12,12 +13,13 @@ import {
   StockImageDownloadRequest,
 } from '../types/assets';
 import { get, post, del, uploadFile } from './api/apiClient';
+import { loggingService } from './loggingService';
 
 const API_BASE = '/api/assets';
 
 export const assetService = {
   /**
-   * Get all assets with optional search
+   * Get all assets with optional search - validates response and handles empty gracefully
    */
   async getAssets(
     query?: string,
@@ -37,7 +39,31 @@ export const assetService = {
     params.append('sortBy', sortBy);
     params.append('sortDescending', sortDescending.toString());
 
-    return get<AssetSearchResult>(`${API_BASE}?${params}`);
+    try {
+      const response = await get<AssetSearchResult>(`${API_BASE}?${params}`);
+      // Validate and provide defaults for invalid/empty responses
+      const validated = parseWithDefault(AssetSearchResultSchema, response);
+      return {
+        assets: Array.isArray(validated.assets) ? (validated.assets as Asset[]) : [],
+        totalCount: validated.totalCount ?? 0,
+        page: validated.page ?? 1,
+        pageSize: validated.pageSize ?? 50,
+      };
+    } catch (error: unknown) {
+      loggingService.error(
+        'Failed to fetch assets',
+        error instanceof Error ? error : new Error(String(error)),
+        'assetService',
+        'getAssets'
+      );
+      // Return empty result instead of throwing to prevent UI crashes
+      return {
+        assets: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 50,
+      };
+    }
   },
 
   /**

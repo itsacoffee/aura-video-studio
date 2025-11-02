@@ -2,6 +2,7 @@
  * Service for managing video editor projects
  */
 
+import { ProjectListSchema, parseWithDefault } from '../schemas/apiSchemas';
 import { ProjectFile, ProjectListItem, LoadProjectResponse } from '../types/project';
 import { get, post, del } from './api/apiClient';
 import { loggingService as logger } from './loggingService';
@@ -9,10 +10,24 @@ import { loggingService as logger } from './loggingService';
 const API_BASE_URL = '/api/project';
 
 /**
- * Get all projects
+ * Get all projects with validation and graceful empty handling
  */
 export async function getProjects(): Promise<ProjectListItem[]> {
-  return get<ProjectListItem[]>(API_BASE_URL);
+  try {
+    const response = await get<ProjectListItem[]>(API_BASE_URL);
+    // Validate and provide default empty array if response is invalid
+    const validated = parseWithDefault(ProjectListSchema, response);
+    return Array.isArray(validated) ? (validated as ProjectListItem[]) : [];
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to fetch projects',
+      error instanceof Error ? error : new Error(String(error)),
+      'projectService',
+      'getProjects'
+    );
+    // Return empty array instead of throwing to prevent UI crashes
+    return [];
+  }
 }
 
 /**
