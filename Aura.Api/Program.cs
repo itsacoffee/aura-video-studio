@@ -98,6 +98,14 @@ builder.Host.UseSerilog();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// Configure form options for large file uploads (100GB support)
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 100L * 1024L * 1024L * 1024L; // 100GB max file size
+    options.ValueLengthLimit = 100 * 1024 * 1024; // 100MB max form value
+    options.MultipartHeadersLengthLimit = 1024 * 1024; // 1MB max headers
+});
+
 // Add services to the container
 builder.Services.AddControllers(options =>
     {
@@ -1020,6 +1028,14 @@ var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL")
     ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") 
     ?? "http://127.0.0.1:5005";
 builder.WebHost.UseUrls(apiUrl);
+
+// Configure Kestrel for large file uploads
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 100L * 1024L * 1024L * 1024L; // 100GB max request size
+    serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(10); // Increased timeout for large uploads
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10);
+});
 
 var app = builder.Build();
 
@@ -2876,12 +2892,51 @@ apiGroup.MapPost("/probes/run", async (HardwareDetector detector) =>
     {
         await detector.RunHardwareProbeAsync();
         var profile = await detector.DetectSystemAsync();
-        return Results.Ok(new { success = true, profile });
+        
+        // Format response to match frontend expectations
+        // Flat properties for easy frontend consumption + full profile for advanced use
+        var gpuDisplay = profile.Gpu != null 
+            ? $"{profile.Gpu.Vendor} {profile.Gpu.Model}" 
+            : "Unable to detect GPU hardware";
+        
+        var response = new
+        {
+            success = true,
+            // Flat properties for simple frontend access
+            gpu = gpuDisplay,
+            vramGB = profile.Gpu?.VramGB ?? 0,
+            enableLocalDiffusion = profile.EnableSD,
+            tier = profile.Tier.ToString(),
+            ramGB = profile.RamGB,
+            logicalCores = profile.LogicalCores,
+            physicalCores = profile.PhysicalCores,
+            enableNVENC = profile.EnableNVENC,
+            detectionSuccessful = profile.Gpu != null,
+            // Full profile object for advanced use cases
+            profile = profile
+        };
+        
+        return Results.Ok(response);
     }
     catch (Exception ex)
     {
         Log.Error(ex, "Error running probes");
-        return Results.Problem("Error running hardware probes", statusCode: 500);
+        
+        // Return graceful fallback response instead of 500 error
+        return Results.Ok(new
+        {
+            success = true,
+            gpu = "Unable to detect GPU hardware",
+            vramGB = 0,
+            enableLocalDiffusion = false,
+            tier = "D",
+            ramGB = 8,
+            logicalCores = Environment.ProcessorCount,
+            physicalCores = Environment.ProcessorCount / 2,
+            enableNVENC = false,
+            detectionSuccessful = false,
+            error = "Hardware detection failed. You can continue and manually configure settings later."
+        });
     }
 })
 .WithName("RunProbes")

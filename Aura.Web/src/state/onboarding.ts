@@ -3,6 +3,9 @@
 import { apiUrl } from '../config/api';
 import type { PreflightReport, StageCheck } from './providers';
 
+// Hardware configuration constants
+const MIN_VRAM_FOR_STABLE_DIFFUSION = 6; // GB - Minimum VRAM for SD 1.5
+
 /**
  * Wizard validation status - deterministic state machine
  * Idle → Validating → Valid/Invalid → Installing → Installed → Ready
@@ -152,6 +155,8 @@ export type OnboardingAction =
   | { type: 'SET_TEMPLATE'; payload: string | null }
   | { type: 'TOGGLE_TUTORIAL' }
   | { type: 'COMPLETE_TUTORIAL' }
+  | { type: 'SET_MANUAL_HARDWARE'; payload: { vram?: number; hasGpu: boolean } }
+  | { type: 'SKIP_HARDWARE_DETECTION' }
   | { type: 'LOAD_FROM_STORAGE'; payload: Partial<OnboardingState> };
 
 // Reducer
@@ -385,6 +390,38 @@ export function onboardingReducer(
         ...state,
         tutorialCompleted: true,
         showTutorial: false,
+      };
+
+    case 'SET_MANUAL_HARDWARE': {
+      const vramAmount = action.payload.vram || 0;
+      const canRunSD = action.payload.hasGpu && vramAmount >= MIN_VRAM_FOR_STABLE_DIFFUSION;
+      const gpuDescription = action.payload.hasGpu
+        ? `GPU with ${vramAmount}GB VRAM (manually configured)`
+        : 'No dedicated GPU (integrated graphics)';
+      const recommendation = action.payload.hasGpu
+        ? `Manually configured GPU with ${vramAmount}GB VRAM. ${canRunSD ? 'Should be sufficient for local Stable Diffusion.' : 'We recommend using Stock images or Pro cloud providers.'}`
+        : 'No dedicated GPU detected. We recommend using Stock images or Pro cloud providers.';
+
+      return {
+        ...state,
+        hardware: {
+          gpu: gpuDescription,
+          vram: action.payload.vram,
+          canRunSD,
+          recommendation,
+        },
+      };
+    }
+
+    case 'SKIP_HARDWARE_DETECTION':
+      return {
+        ...state,
+        isDetectingHardware: false,
+        hardware: {
+          canRunSD: false,
+          recommendation:
+            'Hardware detection skipped. You can configure hardware settings later in Settings.',
+        },
       };
 
     case 'LOAD_FROM_STORAGE':

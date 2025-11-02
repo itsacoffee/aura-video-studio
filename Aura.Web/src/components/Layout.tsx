@@ -12,6 +12,7 @@ const useStyles = makeStyles({
     flexDirection: 'row',
     height: '100vh',
     width: '100%',
+    backgroundColor: tokens.colorNeutralBackground1,
   },
   sidebar: {
     width: '240px',

@@ -4,6 +4,8 @@ import {
   getCurrentLayoutId,
   getWorkspaceLayout,
   WorkspaceLayout,
+  saveWorkspaceLayout,
+  PanelSizes,
 } from '../services/workspaceLayoutService';
 
 interface WorkspaceLayoutState {
@@ -22,6 +24,7 @@ interface WorkspaceLayoutState {
   togglePanelCollapsed: (panel: keyof WorkspaceLayoutState['collapsedPanels']) => void;
   resetLayout: () => void;
   getCurrentLayout: () => WorkspaceLayout | null;
+  saveCurrentLayout: (name: string, description: string, panelSizes: PanelSizes) => WorkspaceLayout;
 }
 
 const loadCollapsedPanels = () => {
@@ -33,11 +36,12 @@ const loadCollapsedPanels = () => {
   } catch {
     // Ignore errors
   }
+  // Default to all panels collapsed (Adobe Premiere Pro style)
   return {
-    properties: false,
-    mediaLibrary: false,
-    effects: false,
-    history: false,
+    properties: true,
+    mediaLibrary: true,
+    effects: true,
+    history: true,
   };
 };
 
@@ -114,12 +118,12 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
       }
     });
 
-    // Reset collapsed panels
+    // Reset collapsed panels to default (all collapsed - Adobe Premiere Pro style)
     const defaultCollapsed = {
-      properties: false,
-      mediaLibrary: false,
-      effects: false,
-      history: false,
+      properties: true,
+      mediaLibrary: true,
+      effects: true,
+      history: true,
     };
     saveCollapsedPanels(defaultCollapsed);
 
@@ -132,5 +136,22 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
   getCurrentLayout: () => {
     const layoutId = get().currentLayoutId;
     return getWorkspaceLayout(layoutId);
+  },
+
+  saveCurrentLayout: (name: string, description: string, panelSizes: PanelSizes) => {
+    const currentCollapsed = get().collapsedPanels;
+    const newLayout = saveWorkspaceLayout({
+      name,
+      description,
+      panelSizes,
+      visiblePanels: {
+        properties: !currentCollapsed.properties,
+        mediaLibrary: !currentCollapsed.mediaLibrary,
+        effects: !currentCollapsed.effects,
+        history: !currentCollapsed.history,
+      },
+    });
+    set({ currentLayoutId: newLayout.id });
+    return newLayout;
   },
 }));

@@ -235,6 +235,17 @@ export function EditorLayout({
   const [isDraggingHorizontal, setIsDraggingHorizontal] = useState(false);
   const [isDraggingVertical, setIsDraggingVertical] = useState(false);
 
+  // Get current panel sizes for saving workspace
+  const getCurrentPanelSizes = useCallback(() => {
+    return {
+      propertiesWidth,
+      mediaLibraryWidth,
+      effectsLibraryWidth,
+      historyWidth,
+      previewHeight,
+    };
+  }, [propertiesWidth, mediaLibraryWidth, effectsLibraryWidth, historyWidth, previewHeight]);
+
   // Handle ESC key to exit fullscreen
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -437,6 +448,7 @@ export function EditorLayout({
           onExportVideo={onExportVideo}
           onSaveProject={onSaveProject}
           onShowKeyboardShortcuts={onShowKeyboardShortcuts}
+          getCurrentPanelSizes={getCurrentPanelSizes}
         />
       ) : (
         <MenuBar

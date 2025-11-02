@@ -122,6 +122,11 @@ export function FirstRunWizard() {
   const [stepStartTime, setStepStartTime] = useState<number>(Date.now());
   const [wizardStartTime] = useState<number>(Date.now());
 
+  // Hardware detection manual input state
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualVram, setManualVram] = useState<string>('');
+  const [hasGpu, setHasGpu] = useState<boolean>(true);
+
   // Enhanced step labels for the new wizard flow
   const totalSteps = 10;
   const stepLabels = [
@@ -204,7 +209,7 @@ export function FirstRunWizard() {
       return;
     }
 
-    // Step 1: Choose Tier -> Step 2: API Keys (or skip to Step 3 if Free tier)
+    // Step 1: Choose Tier -> Step 2: API Keys (or skip to Step 3: Dependencies if Free tier)
     if (state.step === 1) {
       if (!state.selectedTier) {
         alert('Please select a tier to continue');
@@ -214,7 +219,7 @@ export function FirstRunWizard() {
       // If Free tier, skip API keys step
       if (state.selectedTier === 'free') {
         dispatch({ type: 'SET_MODE', payload: 'free' });
-        dispatch({ type: 'SET_STEP', payload: 3 }); // Skip to hardware detection
+        dispatch({ type: 'SET_STEP', payload: 3 }); // Skip to dependencies
       } else {
         dispatch({ type: 'SET_MODE', payload: 'pro' });
         dispatch({ type: 'SET_STEP', payload: 2 }); // Go to API keys
@@ -222,59 +227,75 @@ export function FirstRunWizard() {
       return;
     }
 
-    // Step 2: API Keys -> Step 3: Hardware
+    // Step 2: API Keys -> Step 3: Dependencies
     if (state.step === 2) {
       dispatch({ type: 'SET_STEP', payload: 3 });
       return;
     }
 
-    // Step 3: Hardware -> Step 4: Dependencies
+    // Step 3: Dependencies -> Step 4: Workspace
     if (state.step === 3) {
-      if (!state.hardware) {
-        // Detect hardware before moving forward
-        await detectHardwareThunk(dispatch);
-      }
       dispatch({ type: 'SET_STEP', payload: 4 });
       return;
     }
 
-    // Step 4: Dependencies -> Step 5: Validation
+    // Step 4: Workspace -> Step 5: Templates
     if (state.step === 4) {
-      // Install required items
-      const requiredItems = state.installItems.filter((item) => item.required && !item.installed);
-      for (const item of requiredItems) {
-        await installItemThunk(item.id, dispatch);
-      }
       dispatch({ type: 'SET_STEP', payload: 5 });
       return;
     }
 
-    // Step 5: Validation -> Step 6: Complete
+    // Step 5: Templates -> Step 6: Hardware
     if (state.step === 5) {
+      dispatch({ type: 'SET_STEP', payload: 6 });
+      return;
+    }
+
+    // Step 6: Hardware -> Step 7: Validation
+    // Hardware detection is optional - always allow proceeding
+    if (state.step === 6) {
+      // Trigger detection if not done yet, but don't wait for it
+      if (!state.hardware && !state.isDetectingHardware) {
+        detectHardwareThunk(dispatch); // Fire and forget
+      }
+      dispatch({ type: 'SET_STEP', payload: 7 });
+      return;
+    }
+
+    // Step 7: Validation -> Step 8: Tutorial
+    if (state.step === 7) {
       // Run validation only if not already valid
       if (state.status === 'idle' || state.status === 'installed') {
         await runValidationThunk(state, dispatch);
         return; // Don't advance yet, wait for validation result
       } else if (state.status === 'valid' || state.status === 'ready') {
-        // Already validated, move to completion
-        dispatch({ type: 'SET_STEP', payload: 6 });
+        // Already validated, move to tutorial
+        dispatch({ type: 'SET_STEP', payload: 8 });
         return;
       } else if (state.status === 'invalid') {
-        // Show fix actions, don't advance
+        // Allow proceeding anyway - validation failures shouldn't block
+        dispatch({ type: 'SET_STEP', payload: 8 });
         return;
       }
     }
 
-    // Step 6: Completion - handled by completion step buttons
+    // Step 8: Tutorial -> Step 9: Completion
+    // Tutorial has its own buttons (handled by tutorial component)
+    if (state.step === 8) {
+      dispatch({ type: 'SET_STEP', payload: 9 });
+      return;
+    }
+
+    // Step 9: Completion - handled by completion step buttons
   };
 
   const handleBack = () => {
     if (state.step > 0) {
-      // If going back from hardware (step 3) and we came from Free tier, go back to tier selection (step 1)
+      // If going back from dependencies (step 3) and we came from Free tier, go back to tier selection (step 1)
       if (state.step === 3 && state.selectedTier === 'free') {
         dispatch({ type: 'SET_STEP', payload: 1 });
       }
-      // If going back from dependencies (step 4) and we're Pro tier, go to API keys (step 2)
+      // If going back from workspace (step 4) and we're Pro tier, go to API keys (step 2)
       else if (state.step === 4 && state.selectedTier === 'pro') {
         dispatch({ type: 'SET_STEP', payload: 2 });
       }
@@ -284,7 +305,7 @@ export function FirstRunWizard() {
       }
 
       // Reset validation when going back from validation step
-      if (state.step === 5) {
+      if (state.step === 7) {
         dispatch({ type: 'RESET_VALIDATION' });
       }
     }
@@ -589,47 +610,197 @@ export function FirstRunWizard() {
   );
 
   // Render step 6: Hardware Detection
-  const renderStep6 = () => (
-    <>
-      <Title2>Hardware Detection</Title2>
+  const renderStep6 = () => {
+    const handleDetectAgain = async () => {
+      await detectHardwareThunk(dispatch);
+    };
 
-      {state.isDetectingHardware ? (
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-            <Spinner size="small" />
-            <Text>Detecting your hardware capabilities...</Text>
-          </div>
-        </Card>
-      ) : state.hardware ? (
-        <div className={styles.hardwareInfo}>
+    const handleManualSubmit = () => {
+      const DEFAULT_VRAM_FALLBACK = 4; // GB - Default fallback for manual GPU configuration
+      const vramValue = parseInt(manualVram, 10);
+      dispatch({
+        type: 'SET_MANUAL_HARDWARE',
+        payload: {
+          vram: hasGpu ? (isNaN(vramValue) ? DEFAULT_VRAM_FALLBACK : vramValue) : 0,
+          hasGpu,
+        },
+      });
+      setShowManualInput(false);
+    };
+
+    const handleSkip = () => {
+      dispatch({ type: 'SKIP_HARDWARE_DETECTION' });
+    };
+
+    return (
+      <>
+        <Title2>Hardware Detection (Optional)</Title2>
+        <Text style={{ marginBottom: tokens.spacingVerticalL }}>
+          We&apos;ll detect your GPU to optimize video generation settings. This is optional - you
+          can skip and configure later.
+        </Text>
+
+        {state.isDetectingHardware ? (
           <Card>
-            <Title2>System Information</Title2>
-            {state.hardware.gpu && <Text>GPU: {state.hardware.gpu}</Text>}
-            {state.hardware.vram && <Text>VRAM: {state.hardware.vram}GB</Text>}
-            <Text style={{ marginTop: tokens.spacingVerticalM }}>
-              <strong>Recommendation:</strong> {state.hardware.recommendation}
-            </Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+              <Spinner size="small" />
+              <Text>Detecting your hardware capabilities...</Text>
+            </div>
           </Card>
-
-          {!state.hardware.canRunSD && state.mode === 'local' && (
+        ) : state.hardware ? (
+          <div className={styles.hardwareInfo}>
             <Card>
-              <Badge appearance="filled" color="warning">
-                ⚠ Note
-              </Badge>
-              <Text style={{ marginTop: tokens.spacingVerticalS }}>
-                Your system doesn&apos;t meet the requirements for local Stable Diffusion.
-                We&apos;ll use Stock images as a fallback, or you can add cloud Pro providers later.
+              <Title2>System Information</Title2>
+              {state.hardware.gpu && (
+                <Text>
+                  <strong>GPU:</strong> {state.hardware.gpu}
+                </Text>
+              )}
+              {state.hardware.vram !== undefined && state.hardware.vram > 0 && (
+                <Text>
+                  <strong>VRAM:</strong> {state.hardware.vram}GB
+                </Text>
+              )}
+              <Text style={{ marginTop: tokens.spacingVerticalM }}>
+                <strong>Based on your hardware, we suggest:</strong> {state.hardware.recommendation}
               </Text>
+
+              <div
+                style={{
+                  marginTop: tokens.spacingVerticalL,
+                  display: 'flex',
+                  gap: tokens.spacingHorizontalM,
+                }}
+              >
+                <Button appearance="secondary" onClick={handleDetectAgain}>
+                  Detect Again
+                </Button>
+                <Button appearance="secondary" onClick={() => setShowManualInput(true)}>
+                  Manual Input
+                </Button>
+              </div>
             </Card>
-          )}
-        </div>
-      ) : (
-        <Card>
-          <Text>Click Next to detect your hardware...</Text>
+
+            {!state.hardware.canRunSD && (
+              <Card>
+                <Badge appearance="filled" color="informative">
+                  ℹ️ Info
+                </Badge>
+                <Text style={{ marginTop: tokens.spacingVerticalS }}>
+                  Your system may not support local Stable Diffusion image generation. No problem!
+                  You can use Stock images (free) or connect cloud providers later for AI image
+                  generation.
+                </Text>
+              </Card>
+            )}
+          </div>
+        ) : showManualInput ? (
+          <Card>
+            <Title2>Manual GPU Configuration</Title2>
+            <Text style={{ marginBottom: tokens.spacingVerticalM }}>
+              If automatic detection didn&apos;t work, you can manually specify your GPU details:
+            </Text>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+              <div>
+                <label>
+                  <input
+                    type="radio"
+                    checked={hasGpu}
+                    onChange={() => setHasGpu(true)}
+                    style={{ marginRight: tokens.spacingHorizontalS }}
+                  />
+                  I have a dedicated GPU
+                </label>
+              </div>
+
+              {hasGpu && (
+                <div>
+                  <label htmlFor="vram-input" style={{ display: 'block', marginBottom: '4px' }}>
+                    VRAM (GB):
+                  </label>
+                  <select
+                    id="vram-input"
+                    value={manualVram}
+                    onChange={(e) => setManualVram(e.target.value)}
+                    style={{
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: `1px solid ${tokens.colorNeutralStroke1}`,
+                      width: '200px',
+                    }}
+                  >
+                    <option value="">Select VRAM...</option>
+                    <option value="4">4 GB</option>
+                    <option value="6">6 GB</option>
+                    <option value="8">8 GB</option>
+                    <option value="10">10 GB</option>
+                    <option value="12">12 GB</option>
+                    <option value="16">16 GB</option>
+                    <option value="24">24 GB</option>
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label>
+                  <input
+                    type="radio"
+                    checked={!hasGpu}
+                    onChange={() => setHasGpu(false)}
+                    style={{ marginRight: tokens.spacingHorizontalS }}
+                  />
+                  I don&apos;t have a dedicated GPU (integrated graphics only)
+                </label>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: tokens.spacingHorizontalM,
+                  marginTop: tokens.spacingVerticalM,
+                }}
+              >
+                <Button appearance="primary" onClick={handleManualSubmit}>
+                  Save Configuration
+                </Button>
+                <Button appearance="secondary" onClick={() => setShowManualInput(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <Card>
+            <Text style={{ marginBottom: tokens.spacingVerticalL }}>
+              We haven&apos;t detected your hardware yet. You can:
+            </Text>
+            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
+              <Button appearance="primary" onClick={handleDetectAgain}>
+                Detect Hardware
+              </Button>
+              <Button appearance="secondary" onClick={() => setShowManualInput(true)}>
+                Manual Input
+              </Button>
+              <Button appearance="secondary" onClick={handleSkip}>
+                Skip for Now
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Always show prominent skip button */}
+        <Card style={{ marginTop: tokens.spacingVerticalL, textAlign: 'center' }}>
+          <Text style={{ marginBottom: tokens.spacingVerticalM }}>
+            Don&apos;t want to configure hardware now?
+          </Text>
+          <Button appearance="secondary" size="large" onClick={handleSkip}>
+            Continue Without Hardware Detection
+          </Button>
         </Card>
-      )}
-    </>
-  );
+      </>
+    );
+  };
 
   // Render step 7: Validation & Preflight Checks
   const renderStep7 = () => (
@@ -838,7 +1009,7 @@ export function FirstRunWizard() {
   };
 
   const buttonLabel =
-    state.step === 5
+    state.step === 7
       ? state.status === 'idle' || state.status === 'installed'
         ? 'Validate'
         : state.status === 'invalid'

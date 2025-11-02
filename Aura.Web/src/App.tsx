@@ -44,7 +44,6 @@ import { SettingsPage } from './pages/SettingsPage';
 import { SetupWizard } from './pages/Setup/SetupWizard';
 import CustomTemplatesPage from './pages/Templates/CustomTemplatesPage';
 import TemplatesLibrary from './pages/Templates/TemplatesLibrary';
-import { TimelinePage } from './pages/TimelinePage';
 import ValidationPage from './pages/Validation/ValidationPage';
 import VerificationPage from './pages/Verification/VerificationPage';
 import { VideoEditorPage } from './pages/VideoEditorPage';
@@ -354,6 +353,12 @@ function App() {
     setIsDarkMode(!isDarkMode);
   };
 
+  // Apply theme background color to document body
+  useEffect(() => {
+    const theme = isDarkMode ? webDarkTheme : webLightTheme;
+    document.body.style.backgroundColor = theme.colorNeutralBackground1;
+  }, [isDarkMode]);
+
   // Show loading spinner while checking first-run status
   if (isCheckingFirstRun) {
     return (
@@ -415,7 +420,6 @@ function App() {
                     <Route path="/create/legacy" element={<CreatePage />} />
                     <Route path="/templates" element={<TemplatesLibrary />} />
                     <Route path="/templates/custom" element={<CustomTemplatesPage />} />
-                    <Route path="/timeline" element={<TimelinePage />} />
                     <Route path="/editor/:jobId" element={<TimelineEditor />} />
                     <Route path="/editor" element={<VideoEditorPage />} />
                     <Route path="/pacing" element={<PacingAnalyzerPage />} />
