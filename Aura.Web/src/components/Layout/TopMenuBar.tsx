@@ -59,6 +59,11 @@ const useStyles = makeStyles({
     width: '100%',
     gap: 'var(--space-4)',
   },
+  workspaceItemContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
 });
 
 interface TopMenuBarProps {
@@ -272,7 +277,7 @@ export function TopMenuBar({
               return (
                 <MenuItem key={layout.id} onClick={() => handleWorkspaceSelect(layout.id)}>
                   <div className={styles.menuItemContent}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className={styles.workspaceItemContent}>
                       {isActive && <Checkmark20Regular />}
                       {layout.name}
                     </span>
