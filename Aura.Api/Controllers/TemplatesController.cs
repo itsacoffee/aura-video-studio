@@ -27,14 +27,16 @@ public class TemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Get all templates with optional filtering
+    /// Get all templates with optional filtering and pagination
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetTemplates(
         [FromQuery] string? category = null,
         [FromQuery] string? subCategory = null,
         [FromQuery] bool systemOnly = false,
-        [FromQuery] bool communityOnly = false)
+        [FromQuery] bool communityOnly = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
         try
         {
@@ -44,13 +46,15 @@ public class TemplatesController : ControllerBase
                 categoryEnum = parsed;
             }
 
-            var templates = await _templateService.GetTemplatesAsync(
+            var response = await _templateService.GetTemplatesAsync(
                 categoryEnum,
                 subCategory,
                 systemOnly,
-                communityOnly);
+                communityOnly,
+                page,
+                pageSize);
 
-            return Ok(templates);
+            return Ok(response);
         }
         catch (Exception ex)
         {

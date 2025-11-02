@@ -13,7 +13,9 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { Play24Regular, Star24Filled } from '@fluentui/react-icons';
+import { memo } from 'react';
 import { TemplateListItem } from '../../types/templates';
+import { LazyImage } from '../common/LazyImage';
 
 const useStyles = makeStyles({
   card: {
@@ -113,7 +115,7 @@ export interface TemplateCardProps {
   onPreview?: (template: TemplateListItem) => void;
 }
 
-export function TemplateCard({ template, onClick, onPreview }: TemplateCardProps) {
+function TemplateCardComponent({ template, onClick, onPreview }: TemplateCardProps) {
   const styles = useStyles();
 
   const handlePreviewClick = (e: React.MouseEvent) => {
@@ -125,13 +127,13 @@ export function TemplateCard({ template, onClick, onPreview }: TemplateCardProps
     <Card className={styles.card} onClick={() => onClick(template)}>
       <CardPreview className={styles.preview}>
         {template.previewImage ? (
-          <img
+          <LazyImage
             src={template.previewImage}
             alt={template.name}
+            width="100%"
+            height="180px"
             className={styles.previewImage}
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
+            placeholderText="Loading preview..."
           />
         ) : (
           <Text>No preview available</Text>
@@ -181,3 +183,5 @@ export function TemplateCard({ template, onClick, onPreview }: TemplateCardProps
     </Card>
   );
 }
+
+export const TemplateCard = memo(TemplateCardComponent);
