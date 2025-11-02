@@ -13,6 +13,11 @@ import {
 import { ArrowTrendingRegular, SearchRegular } from '@fluentui/react-icons';
 import React, { useState, useEffect, useCallback } from 'react';
 import { contentPlanningService, TrendData } from '../../services/contentPlanningService';
+import { settingsService } from '../../services/settingsService';
+import { parseApiError, type ParsedApiError } from '../../utils/apiErrorParser';
+import { checkApiKeys } from '../../utils/apiKeyChecker';
+import { ErrorState } from './ErrorState';
+import { MissingApiKeyState } from './MissingApiKeyState';
 
 const useStyles = makeStyles({
   container: {
@@ -99,31 +104,62 @@ export const TrendAnalysisPanel: React.FC = () => {
   const [platform, setPlatform] = useState<string>('YouTube');
   const [category, setCategory] = useState<string>('');
   const [keywords, setKeywords] = useState<string>('');
+  const [hasApiKeys, setHasApiKeys] = useState<boolean>(true);
+  const [checkingKeys, setCheckingKeys] = useState<boolean>(true);
+  const [error, setError] = useState<ParsedApiError | null>(null);
 
   const platforms = ['YouTube', 'TikTok', 'Instagram'];
 
+  // Check for API keys on mount
+  useEffect(() => {
+    const checkKeys = async () => {
+      setCheckingKeys(true);
+      try {
+        const settings = await settingsService.loadSettings();
+        const keyCheck = checkApiKeys(settings.apiKeys);
+        setHasApiKeys(keyCheck.hasAnyLlmKey);
+      } catch {
+        setHasApiKeys(false);
+      } finally {
+        setCheckingKeys(false);
+      }
+    };
+    checkKeys();
+  }, []);
+
   const loadPlatformTrends = useCallback(async () => {
+    if (!hasApiKeys) {
+      return;
+    }
+
     setLoading(true);
+    setError(null);
     try {
       const response = await contentPlanningService.getPlatformTrends(
         platform,
         category || undefined
       );
       setTrends(Array.isArray(response.trends) ? response.trends : []);
-    } catch {
-      // Errors are logged by the service/API client
+    } catch (err: unknown) {
+      const parsedError = parseApiError(err);
+      setError(parsedError);
       setTrends([]);
     } finally {
       setLoading(false);
     }
-  }, [platform, category]);
+  }, [platform, category, hasApiKeys]);
 
   useEffect(() => {
     loadPlatformTrends();
   }, [loadPlatformTrends]);
 
   const handleAnalyze = async () => {
+    if (!hasApiKeys) {
+      return;
+    }
+
     setLoading(true);
+    setError(null);
     try {
       const keywordList = keywords
         .split(',')
@@ -136,8 +172,9 @@ export const TrendAnalysisPanel: React.FC = () => {
         keywords: keywordList.length > 0 ? keywordList : ['trending'],
       });
       setTrends(Array.isArray(response.trends) ? response.trends : []);
-    } catch {
-      // Errors are logged by the service/API client
+    } catch (err: unknown) {
+      const parsedError = parseApiError(err);
+      setError(parsedError);
       setTrends([]);
     } finally {
       setLoading(false);
@@ -154,6 +191,25 @@ export const TrendAnalysisPanel: React.FC = () => {
         return styles.stable;
     }
   };
+
+  // Show loading spinner while checking API keys
+  if (checkingKeys) {
+    return (
+      <div style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL }}>
+        <Spinner label="Loading..." />
+      </div>
+    );
+  }
+
+  // Show missing API key state
+  if (!hasApiKeys) {
+    return (
+      <MissingApiKeyState
+        featureName="Trend Analysis"
+        description="Trend Analysis uses AI to discover what's trending across platforms. Configure an API key to enable this feature."
+      />
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -206,7 +262,16 @@ export const TrendAnalysisPanel: React.FC = () => {
         </div>
       )}
 
-      {!loading && trends.length === 0 && (
+      {!loading && error && (
+        <ErrorState
+          errorType={error.type}
+          message={error.message}
+          details={error.details}
+          onRetry={error.retryable ? loadPlatformTrends : undefined}
+        />
+      )}
+
+      {!loading && !error && trends.length === 0 && (
         <div className={styles.emptyState}>
           <ArrowTrendingRegular
             style={{ fontSize: '48px', marginBottom: tokens.spacingVerticalM }}
