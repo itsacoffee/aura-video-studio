@@ -32,6 +32,9 @@ public class DiagnosticsController : ControllerBase
     private readonly IHardwareDetector? _hardwareDetector;
     private readonly PipelineHealthCheck? _pipelineHealthCheck;
     private readonly IResourceTracker? _resourceTracker;
+    private readonly ErrorAggregationService? _errorAggregation;
+    private readonly PerformanceTrackingService? _performanceTracking;
+    private readonly DiagnosticReportGenerator? _reportGenerator;
 
     public DiagnosticsController(
         ILogger<DiagnosticsController> logger,
@@ -42,7 +45,10 @@ public class DiagnosticsController : ControllerBase
         IntelligentContentAdvisor? contentAdvisor = null,
         IHardwareDetector? hardwareDetector = null,
         PipelineHealthCheck? pipelineHealthCheck = null,
-        IResourceTracker? resourceTracker = null)
+        IResourceTracker? resourceTracker = null,
+        ErrorAggregationService? errorAggregation = null,
+        PerformanceTrackingService? performanceTracking = null,
+        DiagnosticReportGenerator? reportGenerator = null)
     {
         _logger = logger;
         _healthService = healthService;
@@ -53,6 +59,9 @@ public class DiagnosticsController : ControllerBase
         _hardwareDetector = hardwareDetector;
         _pipelineHealthCheck = pipelineHealthCheck;
         _resourceTracker = resourceTracker;
+        _errorAggregation = errorAggregation;
+        _performanceTracking = performanceTracking;
+        _reportGenerator = reportGenerator;
     }
 
     /// <summary>
@@ -486,6 +495,176 @@ public class DiagnosticsController : ControllerBase
             _logger.LogError(ex, "Error during resource cleanup");
             return StatusCode(500, new { Error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Get aggregated error information
+    /// </summary>
+    [HttpGet("errors")]
+    public ActionResult<object> GetErrors([FromQuery] string? since = null)
+    {
+        _logger.LogInformation("Error aggregation requested with since: {Since}", since ?? "all time");
+
+        if (_errorAggregation == null)
+        {
+            return Ok(new
+            {
+                Message = "Error aggregation service not configured",
+                Errors = new List<object>()
+            });
+        }
+
+        try
+        {
+            TimeSpan? timeSpan = null;
+            if (!string.IsNullOrEmpty(since))
+            {
+                // Parse time span (e.g., "24h", "7d", "1h")
+                timeSpan = ParseTimeSpan(since);
+            }
+
+            var errors = _errorAggregation.GetAggregatedErrors(timeSpan, limit: 10);
+            var statistics = _errorAggregation.GetStatistics(timeSpan);
+
+            return Ok(new
+            {
+                Statistics = statistics,
+                TopErrors = errors,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting aggregated errors");
+            return StatusCode(500, new { Error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get performance metrics
+    /// </summary>
+    [HttpGet("performance")]
+    public ActionResult<object> GetPerformanceMetrics()
+    {
+        _logger.LogInformation("Performance metrics requested");
+
+        if (_performanceTracking == null)
+        {
+            return Ok(new
+            {
+                Message = "Performance tracking service not configured",
+                Metrics = new List<object>()
+            });
+        }
+
+        try
+        {
+            var metrics = _performanceTracking.GetMetrics();
+            var slowOps = _performanceTracking.GetSlowOperations(limit: 20);
+
+            return Ok(new
+            {
+                Metrics = metrics,
+                SlowOperations = slowOps,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting performance metrics");
+            return StatusCode(500, new { Error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Generate comprehensive diagnostic report as ZIP file
+    /// </summary>
+    [HttpPost("report")]
+    public async Task<ActionResult<object>> GenerateDiagnosticReport(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Diagnostic report generation requested");
+
+        if (_reportGenerator == null)
+        {
+            return BadRequest(new { Error = "Diagnostic report generator not configured" });
+        }
+
+        try
+        {
+            var result = await _reportGenerator.GenerateReportAsync(ct);
+
+            return Ok(new
+            {
+                ReportId = result.ReportId,
+                FileName = result.FileName,
+                GeneratedAt = result.GeneratedAt,
+                ExpiresAt = result.ExpiresAt,
+                SizeBytes = result.SizeBytes,
+                DownloadUrl = $"/api/diagnostics/report/{result.ReportId}/download"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating diagnostic report");
+            return StatusCode(500, new { Error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Download diagnostic report by ID
+    /// </summary>
+    [HttpGet("report/{reportId}/download")]
+    public ActionResult DownloadDiagnosticReport(string reportId)
+    {
+        _logger.LogInformation("Diagnostic report download requested: {ReportId}", reportId);
+
+        if (_reportGenerator == null)
+        {
+            return BadRequest(new { Error = "Diagnostic report generator not configured" });
+        }
+
+        try
+        {
+            var reportPath = _reportGenerator.GetReportPath(reportId);
+
+            if (reportPath == null || !System.IO.File.Exists(reportPath))
+            {
+                return NotFound(new { Error = "Report not found or has expired" });
+            }
+
+            var fileBytes = System.IO.File.ReadAllBytes(reportPath);
+            var fileName = Path.GetFileName(reportPath);
+
+            return File(fileBytes, "application/zip", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading diagnostic report");
+            return StatusCode(500, new { Error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Parse time span from string (e.g., "24h", "7d", "1h")
+    /// </summary>
+    private TimeSpan ParseTimeSpan(string value)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(value, @"^(\d+)([hdm])$");
+        if (!match.Success)
+        {
+            return TimeSpan.FromHours(24); // Default to 24 hours
+        }
+
+        var number = int.Parse(match.Groups[1].Value);
+        var unit = match.Groups[2].Value;
+
+        return unit switch
+        {
+            "h" => TimeSpan.FromHours(number),
+            "d" => TimeSpan.FromDays(number),
+            "m" => TimeSpan.FromMinutes(number),
+            _ => TimeSpan.FromHours(24)
+        };
     }
 }
 

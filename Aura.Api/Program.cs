@@ -58,15 +58,38 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     EnumJsonConverters.AddToOptions(options.SerializerOptions);
 });
 
-// Configure Serilog
+// Configure Serilog with structured logging and separate log files
+var outputTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{CorrelationId}] {Message:lj} {Properties:j}{NewLine}{Exception}";
+
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext() // Enable correlation ID enrichment
+    .Enrich.WithProperty("Application", "Aura.Api")
+    .Enrich.WithProperty("MachineName", Environment.MachineName)
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
     .WriteTo.File("logs/aura-api-.log", 
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 7,
-        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{CorrelationId}] {Message:lj} {Properties:j}{NewLine}{Exception}")
+        retainedFileCountLimit: 30, // 30 days retention
+        outputTemplate: outputTemplate)
+    .WriteTo.File("logs/errors-.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error,
+        outputTemplate: outputTemplate)
+    .WriteTo.File("logs/warnings-.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning,
+        outputTemplate: outputTemplate)
+    .WriteTo.File("logs/performance-.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        outputTemplate: outputTemplate,
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information)
+    .WriteTo.File("logs/audit-.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 90, // 90 days for audit logs
+        outputTemplate: outputTemplate)
     .CreateLogger();
 
 builder.Host.UseSerilog();
@@ -717,6 +740,11 @@ builder.Services.AddSingleton<Aura.Api.Services.StartupValidator>();
 builder.Services.AddSingleton<Aura.Api.Services.FirstRunDiagnostics>();
 builder.Services.AddSingleton<ConfigurationValidator>();
 
+// Register diagnostic and error aggregation services
+builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.ErrorAggregationService>();
+builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.PerformanceTrackingService>();
+builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.DiagnosticReportGenerator>();
+
 // Register Startup Initialization Service - runs first to ensure critical services are ready
 builder.Services.AddHostedService<Aura.Api.HostedServices.StartupInitializationService>();
 
@@ -1127,6 +1155,9 @@ catch (Exception ex)
 
 // Add correlation ID middleware early in the pipeline
 app.UseCorrelationId();
+
+// Add performance tracking middleware (after correlation ID)
+app.UsePerformanceTracking();
 
 // Add request validation middleware (after correlation ID)
 app.UseRequestValidation();

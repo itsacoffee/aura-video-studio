@@ -348,6 +348,15 @@ apiClient.interceptors.request.use(
     const extendedInternalConfig = config as ExtendedInternalAxiosRequestConfig;
     extendedInternalConfig._requestStartTime = startTime;
 
+    // Generate correlation ID for request tracking
+    const correlationId = crypto.randomUUID();
+    if (config.headers) {
+      config.headers['X-Correlation-ID'] = correlationId;
+    }
+
+    // Store correlation ID for error tracking
+    sessionStorage.setItem('lastCorrelationId', correlationId);
+
     loggingService.debug(
       `API Request: ${config.method?.toUpperCase()} ${config.url}`,
       'apiClient',
@@ -356,6 +365,7 @@ apiClient.interceptors.request.use(
         method: config.method,
         url: config.url,
         data: config.data,
+        correlationId,
       }
     );
 
@@ -389,6 +399,12 @@ apiClient.interceptors.response.use(
       circuitBreaker.recordSuccess();
     }
 
+    // Capture correlation ID from response header
+    const correlationId = response.headers['x-correlation-id'];
+    if (correlationId) {
+      sessionStorage.setItem('lastCorrelationId', correlationId);
+    }
+
     // Log successful responses with performance metrics
     loggingService.debug(
       `API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`,
@@ -399,6 +415,7 @@ apiClient.interceptors.response.use(
         url: response.config.url,
         status: response.status,
         data: response.data,
+        correlationId,
       }
     );
 

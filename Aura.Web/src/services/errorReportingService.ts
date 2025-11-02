@@ -296,14 +296,19 @@ class ErrorReportingService {
     }
 
     try {
+      // Get correlation ID from session storage
+      const correlationId = sessionStorage.getItem('lastCorrelationId');
+
       const response = await fetch('/api/error-report', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(correlationId && { 'X-Correlation-ID': correlationId }),
         },
         body: JSON.stringify({
           ...report,
           userDescription,
+          correlationId,
         }),
       });
 

@@ -1,3 +1,4 @@
+using Aura.Core.Services.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +11,14 @@ namespace Aura.Api.Middleware;
 public class GlobalExceptionHandler : IExceptionHandler
 {
     private readonly ILogger<GlobalExceptionHandler> _logger;
+    private readonly ErrorAggregationService? _errorAggregation;
 
-    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
+    public GlobalExceptionHandler(
+        ILogger<GlobalExceptionHandler> logger,
+        ErrorAggregationService? errorAggregation = null)
     {
         _logger = logger;
+        _errorAggregation = errorAggregation;
     }
 
     public async ValueTask<bool> TryHandleAsync(
@@ -35,6 +40,18 @@ public class GlobalExceptionHandler : IExceptionHandler
             correlationId,
             httpContext.Request.Path,
             httpContext.Request.Method);
+
+        // Record error in aggregation service
+        if (_errorAggregation != null)
+        {
+            var context = new Dictionary<string, object>
+            {
+                ["path"] = httpContext.Request.Path.ToString(),
+                ["method"] = httpContext.Request.Method,
+                ["statusCode"] = httpContext.Response.StatusCode
+            };
+            _errorAggregation.RecordError(exception, correlationId, context);
+        }
 
         // Create ProblemDetails response
         var problemDetails = new ProblemDetails
