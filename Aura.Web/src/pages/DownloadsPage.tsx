@@ -228,6 +228,52 @@ export function DownloadsPage() {
     fetchManifest();
   }, [fetchManifest]);
 
+  const showManualInstructions = useCallback(
+    async (componentName: string) => {
+      try {
+        const response = await fetch(apiUrl(`/api/downloads/${componentName}/manual`));
+        if (response.ok) {
+          const data: ManualInstructions = await response.json();
+
+          // Defensive check: ensure steps is an array
+          const steps = Array.isArray(data.steps) ? data.steps : [];
+
+          if (steps.length === 0) {
+            showFailureToast({
+              title: 'No Instructions Available',
+              message: `Manual installation instructions for ${componentName} are not available at this time.`,
+            });
+            return;
+          }
+
+          const instructionsText = [
+            `Manual Installation Instructions for ${data.componentName} v${data.version}`,
+            '',
+            `Install Path: ${data.installPath}`,
+            '',
+            ...steps,
+          ].join('\n');
+          showSuccessToast({
+            title: 'Manual Installation Instructions',
+            message: instructionsText,
+          });
+        } else {
+          showFailureToast({
+            title: 'Error',
+            message: 'Failed to get manual installation instructions',
+          });
+        }
+      } catch (error) {
+        console.error(`Error getting manual instructions for ${componentName}:`, error);
+        showFailureToast({
+          title: 'Error',
+          message: getErrorMessage(error, 'Failed to get manual instructions'),
+        });
+      }
+    },
+    [showSuccessToast, showFailureToast]
+  );
+
   // Handle ?item= query parameter to auto-show manual instructions
   useEffect(() => {
     const itemParam = searchParams.get('item');
@@ -235,7 +281,7 @@ export function DownloadsPage() {
       // Show manual instructions for the specified component
       showManualInstructions(itemParam);
     }
-  }, [searchParams, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchParams, loading, showManualInstructions]);
 
   const installComponent = async (componentName: string) => {
     try {
@@ -413,49 +459,6 @@ export function DownloadsPage() {
       showFailureToast({
         title: 'Error',
         message: getErrorMessage(error, 'Failed to get component folder'),
-      });
-    }
-  };
-
-  const showManualInstructions = async (componentName: string) => {
-    try {
-      const response = await fetch(apiUrl(`/api/downloads/${componentName}/manual`));
-      if (response.ok) {
-        const data: ManualInstructions = await response.json();
-
-        // Defensive check: ensure steps is an array
-        const steps = Array.isArray(data.steps) ? data.steps : [];
-
-        if (steps.length === 0) {
-          showFailureToast({
-            title: 'No Instructions Available',
-            message: `Manual installation instructions for ${componentName} are not available at this time.`,
-          });
-          return;
-        }
-
-        const instructionsText = [
-          `Manual Installation Instructions for ${data.componentName} v${data.version}`,
-          '',
-          `Install Path: ${data.installPath}`,
-          '',
-          ...steps,
-        ].join('\n');
-        showSuccessToast({
-          title: 'Manual Installation Instructions',
-          message: instructionsText,
-        });
-      } else {
-        showFailureToast({
-          title: 'Error',
-          message: 'Failed to get manual installation instructions',
-        });
-      }
-    } catch (error) {
-      console.error(`Error getting manual instructions for ${componentName}:`, error);
-      showFailureToast({
-        title: 'Error',
-        message: getErrorMessage(error, 'Failed to get manual instructions'),
       });
     }
   };

@@ -145,8 +145,12 @@ export function ErrorFallback({ error, errorInfo, onReset, onReport }: ErrorFall
     if (location.pathname.includes('/downloads') || location.pathname.includes('/onboarding')) {
       navigate('/onboarding', { replace: true });
     } else {
-      // Otherwise navigate back or to home
-      navigate(-1);
+      // Check if there's history to go back to, otherwise go home
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate('/', { replace: true });
+      }
     }
     onReset();
   };
