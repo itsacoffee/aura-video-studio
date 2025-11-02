@@ -1195,10 +1195,7 @@ app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline
 // Enable Swagger in all environments for contract testing
-app.UseSwagger(options =>
-{
-    options.SerializeAsV2 = false; // Use OpenAPI 3.0
-});
+app.UseSwagger();
 
 if (app.Environment.IsDevelopment())
 {
