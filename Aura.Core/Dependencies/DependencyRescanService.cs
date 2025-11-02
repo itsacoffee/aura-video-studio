@@ -290,10 +290,22 @@ public class DependencyRescanService
             // First, check if Ollama process is running
             var processes = System.Diagnostics.Process.GetProcessesByName("ollama");
             var isProcessRunning = processes.Length > 0;
+            int? processId = null;
             
             if (isProcessRunning)
             {
-                _logger.LogInformation("Ollama process detected (PID: {Pid})", processes[0].Id);
+                try
+                {
+                    // Get the process ID while the process is still valid
+                    processId = processes[0].Id;
+                    _logger.LogInformation("Ollama process detected (PID: {Pid})", processId);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Process may have exited between check and ID access
+                    _logger.LogDebug("Ollama process found but exited before we could get its ID");
+                    isProcessRunning = false;
+                }
             }
             else
             {
@@ -317,7 +329,7 @@ public class DependencyRescanService
                         Status = DependencyStatus.Installed,
                         Path = "http://127.0.0.1:11434",
                         Provenance = "Running service",
-                        ValidationOutput = $"API responding{(isProcessRunning ? $" (PID: {processes[0].Id})" : "")}"
+                        ValidationOutput = $"API responding{(processId.HasValue ? $" (PID: {processId.Value})" : "")}"
                     };
                 }
                 else
@@ -334,14 +346,14 @@ public class DependencyRescanService
             catch (System.Net.Http.HttpRequestException)
             {
                 // API not responding, check if process is running or if executable exists
-                if (isProcessRunning)
+                if (isProcessRunning && processId.HasValue)
                 {
                     return new DependencyReport
                     {
                         Id = "ollama",
                         DisplayName = "Ollama",
                         Status = DependencyStatus.PartiallyInstalled,
-                        Path = $"Process running (PID: {processes[0].Id})",
+                        Path = $"Process running (PID: {processId.Value})",
                         ErrorMessage = "Ollama process detected but API not responding. It may still be starting up."
                     };
                 }
@@ -435,10 +447,20 @@ public class DependencyRescanService
             {
                 try
                 {
+                    // Accessing MainModule can throw SecurityException or InvalidOperationException
+                    // for processes owned by other users or system processes
                     return p.MainModule?.FileName?.Contains("stable-diffusion-webui", StringComparison.OrdinalIgnoreCase) ?? false;
                 }
-                catch
+                catch (System.ComponentModel.Win32Exception ex)
                 {
+                    // Access denied - likely a process we don't have permission to inspect
+                    _logger.LogDebug("Cannot access process {PID} module: {Error}", p.Id, ex.Message);
+                    return false;
+                }
+                catch (InvalidOperationException ex)
+                {
+                    // Process has exited
+                    _logger.LogDebug("Process {PID} has exited: {Error}", p.Id, ex.Message);
                     return false;
                 }
             });

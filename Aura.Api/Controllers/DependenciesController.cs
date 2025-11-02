@@ -438,18 +438,31 @@ public class DependenciesController : ControllerBase
     private Task<IActionResult> AttachOllamaAsync(string path, CancellationToken ct)
     {
         // Check if path is a URL (Ollama API endpoint)
-        if (path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
-            path.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && 
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
         {
-            _logger.LogInformation("Ollama path is a URL, treating as API endpoint: {Path}", path);
-            
-            return Task.FromResult<IActionResult>(Ok(new
+            // For security, restrict to localhost addresses only
+            if (uri.Host == "localhost" || uri.Host == "127.0.0.1" || uri.Host == "[::1]")
             {
-                success = true,
-                installed = true,
-                path = path,
-                message = "Ollama API endpoint set. Ensure Ollama is running at this address."
-            }));
+                _logger.LogInformation("Ollama path is a localhost URL, treating as API endpoint: {Path}", path);
+                
+                return Task.FromResult<IActionResult>(Ok(new
+                {
+                    success = true,
+                    installed = true,
+                    path = path,
+                    message = "Ollama API endpoint set. Ensure Ollama is running at this address."
+                }));
+            }
+            else
+            {
+                _logger.LogWarning("Rejecting non-localhost Ollama URL: {Host}", uri.Host);
+                return Task.FromResult<IActionResult>(BadRequest(new
+                {
+                    success = false,
+                    error = "For security, only localhost URLs are allowed (localhost, 127.0.0.1)"
+                }));
+            }
         }
         
         // Check if path is a directory or executable
@@ -514,18 +527,31 @@ public class DependenciesController : ControllerBase
     private Task<IActionResult> AttachStableDiffusionAsync(string path, CancellationToken ct)
     {
         // Check if path is a URL (SD WebUI API endpoint)
-        if (path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
-            path.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && 
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
         {
-            _logger.LogInformation("Stable Diffusion path is a URL, treating as API endpoint: {Path}", path);
-            
-            return Task.FromResult<IActionResult>(Ok(new
+            // For security, restrict to localhost addresses only
+            if (uri.Host == "localhost" || uri.Host == "127.0.0.1" || uri.Host == "[::1]")
             {
-                success = true,
-                installed = true,
-                path = path,
-                message = "Stable Diffusion WebUI endpoint set. Ensure the WebUI is running at this address."
-            }));
+                _logger.LogInformation("Stable Diffusion path is a localhost URL, treating as API endpoint: {Path}", path);
+                
+                return Task.FromResult<IActionResult>(Ok(new
+                {
+                    success = true,
+                    installed = true,
+                    path = path,
+                    message = "Stable Diffusion WebUI endpoint set. Ensure the WebUI is running at this address."
+                }));
+            }
+            else
+            {
+                _logger.LogWarning("Rejecting non-localhost SD WebUI URL: {Host}", uri.Host);
+                return Task.FromResult<IActionResult>(BadRequest(new
+                {
+                    success = false,
+                    error = "For security, only localhost URLs are allowed (localhost, 127.0.0.1)"
+                }));
+            }
         }
         
         // Check if path is a directory

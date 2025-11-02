@@ -456,8 +456,9 @@ export function FirstRunWizard() {
 
   const handleDependencyAssignPath = async (dependencyId: string, path: string): Promise<void> => {
     try {
-      // Call the attach API endpoint
-      const response = await fetch(`/api/dependencies/${dependencyId}/attach`, {
+      // Call the attach API endpoint with URL-encoded component ID
+      const encodedDependencyId = encodeURIComponent(dependencyId);
+      const response = await fetch(`/api/dependencies/${encodedDependencyId}/attach`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
