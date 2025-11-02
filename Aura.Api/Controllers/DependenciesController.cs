@@ -340,15 +340,6 @@ public class DependenciesController : ControllerBase
         [FromBody] AttachComponentRequest request,
         CancellationToken ct)
     {
-        if (componentId != "ffmpeg" || _ffmpegInstaller == null || _ffmpegLocator == null)
-        {
-            return BadRequest(new
-            {
-                success = false,
-                error = $"Attach not supported for component: {componentId}"
-            });
-        }
-        
         if (string.IsNullOrEmpty(request.Path))
         {
             return BadRequest(new
@@ -362,41 +353,26 @@ public class DependenciesController : ControllerBase
         {
             _logger.LogInformation("Attaching {ComponentId} from path: {Path}", componentId, request.Path);
             
-            // Validate the path first
-            var validation = await _ffmpegLocator.ValidatePathAsync(request.Path, ct);
-            
-            if (!validation.Found || string.IsNullOrEmpty(validation.FfmpegPath))
+            // Handle different component types
+            switch (componentId.ToLowerInvariant())
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    error = validation.Reason ?? "FFmpeg not found at specified path",
-                    attemptedPaths = validation.AttemptedPaths
-                });
-            }
-            
-            // Attach using installer
-            var result = await _ffmpegInstaller.AttachExistingAsync(validation.FfmpegPath, ct);
-            
-            if (result.Success)
-            {
-                return Ok(new
-                {
-                    success = true,
-                    installed = true,
-                    path = result.FfmpegPath,
-                    version = validation.VersionString,
-                    installPath = result.InstallPath,
-                    source = result.SourceType.ToString()
-                });
-            }
-            else
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    error = result.ErrorMessage
-                });
+                case "ffmpeg":
+                    return await AttachFFmpegAsync(request.Path, ct);
+                
+                case "ollama":
+                    return await AttachOllamaAsync(request.Path, ct);
+                
+                case "stable-diffusion":
+                case "stable-diffusion-webui":
+                case "sd-webui":
+                    return await AttachStableDiffusionAsync(request.Path, ct);
+                
+                default:
+                    return BadRequest(new
+                    {
+                        success = false,
+                        error = $"Attach not supported for component: {componentId}. Please use the Download Center for installation."
+                    });
             }
         }
         catch (Exception ex)
@@ -405,8 +381,213 @@ public class DependenciesController : ControllerBase
             return StatusCode(500, new
             {
                 success = false,
-                error = ex.Message
+                error = $"An error occurred while attaching {componentId}: {ex.Message}"
             });
+        }
+    }
+    
+    private async Task<IActionResult> AttachFFmpegAsync(string path, CancellationToken ct)
+    {
+        if (_ffmpegInstaller == null || _ffmpegLocator == null)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = "FFmpeg installer not available"
+            });
+        }
+        
+        // Validate the path first
+        var validation = await _ffmpegLocator.ValidatePathAsync(path, ct);
+        
+        if (!validation.Found || string.IsNullOrEmpty(validation.FfmpegPath))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = validation.Reason ?? "FFmpeg not found at specified path",
+                attemptedPaths = validation.AttemptedPaths
+            });
+        }
+        
+        // Attach using installer
+        var result = await _ffmpegInstaller.AttachExistingAsync(validation.FfmpegPath, ct);
+        
+        if (result.Success)
+        {
+            return Ok(new
+            {
+                success = true,
+                installed = true,
+                path = result.FfmpegPath,
+                version = validation.VersionString,
+                installPath = result.InstallPath,
+                source = result.SourceType.ToString()
+            });
+        }
+        else
+        {
+            return BadRequest(new
+            {
+                success = false,
+                error = result.ErrorMessage
+            });
+        }
+    }
+    
+    private Task<IActionResult> AttachOllamaAsync(string path, CancellationToken ct)
+    {
+        // Check if path is a URL (Ollama API endpoint)
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && 
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            // For security, restrict to localhost addresses only
+            if (uri.Host == "localhost" || uri.Host == "127.0.0.1" || uri.Host == "[::1]")
+            {
+                _logger.LogInformation("Ollama path is a localhost URL, treating as API endpoint: {Path}", path);
+                
+                return Task.FromResult<IActionResult>(Ok(new
+                {
+                    success = true,
+                    installed = true,
+                    path = path,
+                    message = "Ollama API endpoint set. Ensure Ollama is running at this address."
+                }));
+            }
+            else
+            {
+                _logger.LogWarning("Rejecting non-localhost Ollama URL: {Host}", uri.Host);
+                return Task.FromResult<IActionResult>(BadRequest(new
+                {
+                    success = false,
+                    error = "For security, only localhost URLs are allowed (localhost, 127.0.0.1)"
+                }));
+            }
+        }
+        
+        // Check if path is a directory or executable
+        if (System.IO.Directory.Exists(path))
+        {
+            // Look for ollama.exe in the directory
+            var exePath = System.IO.Path.Combine(path, "ollama.exe");
+            if (System.IO.File.Exists(exePath))
+            {
+                _logger.LogInformation("Found Ollama executable at: {Path}", exePath);
+                return Task.FromResult<IActionResult>(Ok(new
+                {
+                    success = true,
+                    installed = true,
+                    path = exePath,
+                    message = "Ollama installation found. You can start it from the Engines page."
+                }));
+            }
+            else
+            {
+                return Task.FromResult<IActionResult>(BadRequest(new
+                {
+                    success = false,
+                    error = "Ollama executable (ollama.exe) not found in the specified directory"
+                }));
+            }
+        }
+        else if (System.IO.File.Exists(path))
+        {
+            // Verify it's the ollama executable
+            if (path.EndsWith("ollama.exe", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith("ollama", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation("Ollama executable found at: {Path}", path);
+                return Task.FromResult<IActionResult>(Ok(new
+                {
+                    success = true,
+                    installed = true,
+                    path = path,
+                    message = "Ollama installation found. You can start it from the Engines page."
+                }));
+            }
+            else
+            {
+                return Task.FromResult<IActionResult>(BadRequest(new
+                {
+                    success = false,
+                    error = "The specified file does not appear to be an Ollama executable"
+                }));
+            }
+        }
+        else
+        {
+            return Task.FromResult<IActionResult>(BadRequest(new
+            {
+                success = false,
+                error = "The specified path does not exist. Please provide a valid directory or file path."
+            }));
+        }
+    }
+    
+    private Task<IActionResult> AttachStableDiffusionAsync(string path, CancellationToken ct)
+    {
+        // Check if path is a URL (SD WebUI API endpoint)
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && 
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            // For security, restrict to localhost addresses only
+            if (uri.Host == "localhost" || uri.Host == "127.0.0.1" || uri.Host == "[::1]")
+            {
+                _logger.LogInformation("Stable Diffusion path is a localhost URL, treating as API endpoint: {Path}", path);
+                
+                return Task.FromResult<IActionResult>(Ok(new
+                {
+                    success = true,
+                    installed = true,
+                    path = path,
+                    message = "Stable Diffusion WebUI endpoint set. Ensure the WebUI is running at this address."
+                }));
+            }
+            else
+            {
+                _logger.LogWarning("Rejecting non-localhost SD WebUI URL: {Host}", uri.Host);
+                return Task.FromResult<IActionResult>(BadRequest(new
+                {
+                    success = false,
+                    error = "For security, only localhost URLs are allowed (localhost, 127.0.0.1)"
+                }));
+            }
+        }
+        
+        // Check if path is a directory
+        if (System.IO.Directory.Exists(path))
+        {
+            // Look for webui.py or webui-user.bat
+            var webUiPy = System.IO.Path.Combine(path, "webui.py");
+            var webUiBat = System.IO.Path.Combine(path, "webui-user.bat");
+            
+            if (System.IO.File.Exists(webUiPy) || System.IO.File.Exists(webUiBat))
+            {
+                _logger.LogInformation("Found Stable Diffusion WebUI at: {Path}", path);
+                return Task.FromResult<IActionResult>(Ok(new
+                {
+                    success = true,
+                    installed = true,
+                    path = path,
+                    message = "Stable Diffusion WebUI installation found. You can start it from the Engines page."
+                }));
+            }
+            else
+            {
+                return Task.FromResult<IActionResult>(BadRequest(new
+                {
+                    success = false,
+                    error = "Stable Diffusion WebUI files (webui.py or webui-user.bat) not found in the specified directory"
+                }));
+            }
+        }
+        else
+        {
+            return Task.FromResult<IActionResult>(BadRequest(new
+            {
+                success = false,
+                error = "The specified path does not exist. Please provide a valid directory path to Stable Diffusion WebUI."
+            }));
         }
     }
     
