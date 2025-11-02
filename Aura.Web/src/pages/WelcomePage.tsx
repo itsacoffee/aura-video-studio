@@ -3,6 +3,7 @@ import {
   tokens,
   Title1,
   Title2,
+  Title3,
   Text,
   Button,
   Card,
@@ -11,13 +12,14 @@ import {
   Badge,
   Tooltip,
 } from '@fluentui/react-components';
-import { Play24Regular, Settings24Regular } from '@fluentui/react-icons';
+import { Play24Regular, Settings24Regular, Rocket24Regular } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FirstRunDiagnostics } from '../components/FirstRunDiagnostics';
 import { SystemCheckCard } from '../components/SystemCheckCard';
 import { TooltipContent, TooltipWithLink } from '../components/Tooltips';
 import { apiUrl } from '../config/api';
+import { hasCompletedFirstRun } from '../services/firstRunService';
 import type { HardwareCapabilities } from '../types';
 
 const useStyles = makeStyles({
@@ -51,6 +53,36 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalM,
     justifyContent: 'center',
     marginTop: tokens.spacingVerticalXL,
+  },
+  firstTimeCallout: {
+    marginBottom: tokens.spacingVerticalXXXL,
+    padding: tokens.spacingVerticalXXL,
+    borderRadius: tokens.borderRadiusLarge,
+    background: `linear-gradient(135deg, ${tokens.colorNeutralBackground2} 0%, ${tokens.colorNeutralBackground1} 100%)`,
+    boxShadow: tokens.shadow16,
+    textAlign: 'center',
+    border: `2px solid ${tokens.colorBrandStroke1}`,
+  },
+  calloutTitle: {
+    marginBottom: tokens.spacingVerticalL,
+    fontSize: '28px',
+    fontWeight: tokens.fontWeightBold,
+    color: tokens.colorNeutralForeground1,
+  },
+  calloutText: {
+    fontSize: '16px',
+    color: tokens.colorNeutralForeground2,
+    maxWidth: '600px',
+    margin: '0 auto',
+    lineHeight: '1.6',
+    marginBottom: tokens.spacingVerticalXL,
+  },
+  primaryOnboardingButton: {
+    fontSize: '18px',
+    padding: '16px 48px',
+    height: 'auto',
+    minHeight: '56px',
+    fontWeight: tokens.fontWeightSemibold,
   },
   grid: {
     display: 'grid',
@@ -88,6 +120,25 @@ export function WelcomePage() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [capabilities, setCapabilities] = useState<HardwareCapabilities | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFirstRun, setIsFirstRun] = useState(false);
+  const [checkingFirstRun, setCheckingFirstRun] = useState(true);
+
+  useEffect(() => {
+    // Check first-run status
+    const checkFirstRunStatus = async () => {
+      try {
+        const completed = await hasCompletedFirstRun();
+        setIsFirstRun(!completed);
+      } catch (error) {
+        console.error('Error checking first-run status:', error);
+        setIsFirstRun(false);
+      } finally {
+        setCheckingFirstRun(false);
+      }
+    };
+
+    checkFirstRunStatus();
+  }, []);
 
   useEffect(() => {
     // Fetch system info on mount
@@ -144,6 +195,36 @@ export function WelcomePage() {
       {/* System Health Check */}
       <SystemCheckCard autoRetry={true} retryInterval={30000} />
 
+      {/* Prominent First-Time Setup Callout - only show if user hasn't completed onboarding */}
+      {!checkingFirstRun && isFirstRun && (
+        <div className={styles.firstTimeCallout}>
+          <Title3 className={styles.calloutTitle}>
+            <Rocket24Regular
+              style={{
+                fontSize: '32px',
+                marginRight: tokens.spacingHorizontalM,
+                verticalAlign: 'middle',
+              }}
+            />
+            Start Here: First-Time Setup
+          </Title3>
+          <Text className={styles.calloutText}>
+            Welcome! Before creating your first video, let&apos;s set up Aura Video Studio with a
+            quick 3-5 minute wizard. We&apos;ll configure your workspace, detect your hardware, and
+            ensure everything is ready to go.
+          </Text>
+          <Button
+            appearance="primary"
+            size="large"
+            className={styles.primaryOnboardingButton}
+            icon={<Rocket24Regular />}
+            onClick={() => navigate('/onboarding')}
+          >
+            Begin Setup Wizard
+          </Button>
+        </div>
+      )}
+
       <div className={styles.hero}>
         <Title1 className={styles.title}>Welcome to Aura Video Studio</Title1>
         <Text size={500} className={styles.subtitle}>
@@ -172,9 +253,12 @@ export function WelcomePage() {
               Settings
             </Button>
           </Tooltip>
-          <Button size="large" onClick={() => navigate('/onboarding')}>
-            Run Onboarding
-          </Button>
+          {/* Show smaller onboarding button for users who have completed setup (for re-running) */}
+          {!isFirstRun && (
+            <Button size="large" onClick={() => navigate('/onboarding')}>
+              Run Onboarding
+            </Button>
+          )}
         </div>
       </div>
 
