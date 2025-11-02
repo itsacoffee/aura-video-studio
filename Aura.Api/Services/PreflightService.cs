@@ -504,7 +504,7 @@ public class PreflightService
             "OpenAI" => "Check OpenAI service status and API key",
             "ElevenLabs" when details.Contains("API key") => "Configure your ElevenLabs API key in Settings",
             "ElevenLabs" => "Check ElevenLabs service status and API key",
-            "Ollama" => "Start Ollama service: ollama serve",
+            "Ollama" => "Click 'Start Ollama' button or run manually: ollama serve",
             "StableDiffusion" when details.Contains("--api") => "Start SD WebUI with --api flag. Requires NVIDIA GPU with 6GB+ VRAM",
             "StableDiffusion" when details.Contains("not running") => "Start SD WebUI at http://127.0.0.1:7860. Install from Downloads page if needed",
             "StableDiffusion" => "Ensure SD WebUI is running with --api flag. Requires NVIDIA GPU with 6GB+ VRAM",
@@ -530,8 +530,8 @@ public class PreflightService
             },
             "Ollama" when details.Contains("not running") => new[] 
             { 
-                "Install Ollama from https://ollama.ai",
-                "Run 'ollama serve' in terminal",
+                "Click the 'Start Ollama' button to start automatically (Windows)",
+                "Or install Ollama from https://ollama.ai and run 'ollama serve' manually",
                 "Ensure Ollama is listening on http://127.0.0.1:11434"
             },
             "Ollama" => new[] 
@@ -626,8 +626,8 @@ public class PreflightService
                 {
                     Type = FixActionType.Start,
                     Label = "Start Ollama",
-                    Parameter = "ollama",
-                    Description = "Start Ollama service (requires manual start)"
+                    Parameter = "Ollama",
+                    Description = "Start Ollama service automatically"
                 });
                 break;
                 

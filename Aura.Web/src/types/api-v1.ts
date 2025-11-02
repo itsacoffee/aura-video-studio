@@ -816,3 +816,41 @@ export const RemediationActionType = {
   OpenHelp: 'open_help',
   SwitchProvider: 'switch_provider',
 } as const;
+
+// Ollama Process Control Types
+
+/**
+ * Ollama service status response
+ */
+export interface OllamaStatusResponse {
+  running: boolean;
+  pid?: number;
+  managedByApp: boolean;
+  model?: string;
+  error?: string;
+}
+
+/**
+ * Ollama start operation response
+ */
+export interface OllamaStartResponse {
+  success: boolean;
+  message: string;
+  pid?: number;
+}
+
+/**
+ * Ollama stop operation response
+ */
+export interface OllamaStopResponse {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Ollama logs response
+ */
+export interface OllamaLogsResponse {
+  logs: string[];
+  totalLines: number;
+}

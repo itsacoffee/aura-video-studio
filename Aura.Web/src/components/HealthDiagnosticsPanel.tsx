@@ -1,4 +1,3 @@
-import React, { useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -19,6 +18,7 @@ import {
   Open24Regular,
   WrenchScrewdriver24Regular,
 } from '@fluentui/react-icons';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHealthDiagnostics } from '../state/healthDiagnostics';
 import type { HealthCheckDetail, RemediationAction } from '../types/api-v1';
@@ -100,14 +100,8 @@ export function HealthDiagnosticsPanel({
 }: HealthDiagnosticsPanelProps) {
   const styles = useStyles();
   const navigate = useNavigate();
-  const {
-    details,
-    isLoading,
-    error,
-    fetchHealthDetails,
-    isSystemReady,
-    getRequiredFailedChecks,
-  } = useHealthDiagnostics();
+  const { details, isLoading, error, fetchHealthDetails, isSystemReady, getRequiredFailedChecks } =
+    useHealthDiagnostics();
 
   useEffect(() => {
     if (onReady && details) {
@@ -273,9 +267,7 @@ export function HealthDiagnosticsPanel({
 
       {error && (
         <Card>
-          <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
-            Error: {error}
-          </Text>
+          <Text style={{ color: tokens.colorPaletteRedForeground1 }}>Error: {error}</Text>
         </Card>
       )}
 

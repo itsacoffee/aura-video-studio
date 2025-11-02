@@ -122,6 +122,17 @@ builder.Services.AddSingleton<IHardwareDetector>(sp => sp.GetRequiredService<Har
 builder.Services.AddSingleton<Aura.Core.Hardware.DiagnosticsHelper>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
 
+// Register Ollama service for process control
+builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.OllamaService>>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var logsDirectory = Path.Combine(providerSettings.GetLogsDirectory(), "ollama");
+    return new Aura.Core.Services.OllamaService(logger, httpClient, logsDirectory);
+});
+
 // Configure FFmpeg options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.FFmpegOptions>(
     builder.Configuration.GetSection("FFmpeg"));

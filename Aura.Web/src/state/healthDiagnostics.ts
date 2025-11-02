@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { getHealthSummary, getHealthDetails } from '../services/api/healthApi';
+import { loggingService as logger } from '../services/loggingService';
 import type {
   HealthSummaryResponse,
   HealthDetailsResponse,
   HealthCheckDetail,
 } from '../types/api-v1';
-import { getHealthSummary, getHealthDetails } from '../services/api/healthApi';
-import { loggingService as logger } from '../services/loggingService';
 
 interface HealthDiagnosticsState {
   summary: HealthSummaryResponse | null;
@@ -20,7 +20,7 @@ interface HealthDiagnosticsState {
   fetchHealthDetails: () => Promise<void>;
   refreshHealth: () => Promise<void>;
   clearError: () => void;
-  
+
   // Computed helpers
   isSystemReady: () => boolean;
   getRequiredFailedChecks: () => HealthCheckDetail[];
@@ -100,9 +100,7 @@ export const useHealthDiagnostics = create<HealthDiagnosticsState>()(
       getRequiredFailedChecks: () => {
         const { details } = get();
         if (!details) return [];
-        return details.checks.filter(
-          (check) => check.isRequired && check.status === 'fail'
-        );
+        return details.checks.filter((check) => check.isRequired && check.status === 'fail');
       },
 
       hasMinimalSetup: () => {
@@ -111,18 +109,10 @@ export const useHealthDiagnostics = create<HealthDiagnosticsState>()(
 
         // Check for minimal setup: Config + FFmpeg + at least one LLM and one TTS
         const checks = details.checks;
-        const configOk = checks.some(
-          (c) => c.id === 'config_present' && c.status === 'pass'
-        );
-        const ffmpegOk = checks.some(
-          (c) => c.id === 'ffmpeg_present' && c.status === 'pass'
-        );
-        const hasLlm = checks.some(
-          (c) => c.category === 'LLM' && c.status === 'pass'
-        );
-        const hasTts = checks.some(
-          (c) => c.category === 'TTS' && c.status === 'pass'
-        );
+        const configOk = checks.some((c) => c.id === 'config_present' && c.status === 'pass');
+        const ffmpegOk = checks.some((c) => c.id === 'ffmpeg_present' && c.status === 'pass');
+        const hasLlm = checks.some((c) => c.category === 'LLM' && c.status === 'pass');
+        const hasTts = checks.some((c) => c.category === 'TTS' && c.status === 'pass');
 
         return configOk && ffmpegOk && hasLlm && hasTts;
       },
