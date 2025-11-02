@@ -170,12 +170,9 @@ describe('useTemplatesPagination', () => {
         })
     );
 
-    const { result, rerender } = renderHook(
-      ({ category }) => useTemplatesPagination({ category }),
-      {
-        initialProps: { category: 'all' as const },
-      }
-    );
+    const { rerender } = renderHook(({ category }) => useTemplatesPagination({ category }), {
+      initialProps: { category: 'all' as const },
+    });
 
     // Change category to trigger new request
     rerender({ category: TemplateCategory.YouTube });
