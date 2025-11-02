@@ -115,7 +115,31 @@ builder.Services.AddValidatorsFromAssemblyContaining<ScriptRequestValidator>();
 builder.Services.AddScoped<ValidationFilter>();
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Aura Video Studio API",
+        Version = "v1",
+        Description = "API for AI-powered video generation and management",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "Aura Video Studio",
+            Url = new Uri("https://github.com/Saiyan9001/aura-video-studio")
+        }
+    });
+    
+    // Include XML comments for better API documentation
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+    
+    // Add correlation ID header to all operations
+    options.OperationFilter<Aura.Api.Filters.CorrelationIdOperationFilter>();
+});
 
 // Add health checks
 builder.Services.AddHealthChecks()
@@ -1170,10 +1194,19 @@ app.UseRequestLogging();
 app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline
+// Enable Swagger in all environments for contract testing
+app.UseSwagger(options =>
+{
+    options.SerializeAsV2 = false; // Use OpenAPI 3.0
+});
+
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Aura Video Studio API v1");
+        options.RoutePrefix = "swagger";
+    });
 }
 
 app.UseCors();

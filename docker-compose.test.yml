@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # API service
+  api:
+    build:
+      context: .
+      dockerfile: Aura.Api/Dockerfile.test
+    ports:
+      - "5005:5005"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Testing
+      - ASPNETCORE_URLS=http://+:5005
+      - ConnectionStrings__Default=Data Source=/app/data/aura-test.db
+      - OFFLINE_MODE=true
+      - FFmpeg__Path=/usr/bin/ffmpeg
+    volumes:
+      - ./test-data:/app/data
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5005/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - mock-providers
+
+  # Mock provider service (simulates LLM, TTS, etc.)
+  mock-providers:
+    image: mockserver/mockserver:latest
+    ports:
+      - "1080:1080"
+    environment:
+      - MOCKSERVER_INITIALIZATION_JSON_PATH=/config/mock-config.json
+    volumes:
+      - ./tests/mocks:/config
+
+  # Frontend dev server for E2E testing
+  web:
+    build:
+      context: ./Aura.Web
+      dockerfile: Dockerfile.test
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://api:5005
+    depends_on:
+      api:
+        condition: service_healthy
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  test-data:
+  logs:
