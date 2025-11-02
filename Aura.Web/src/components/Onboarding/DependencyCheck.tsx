@@ -134,15 +134,18 @@ export function DependencyCheck({
   isScanning = false,
 }: DependencyCheckProps) {
   const styles = useStyles();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Auto-expand first missing required dependency
-    const firstMissing = dependencies.find((dep) => dep.required && dep.status === 'missing');
-    if (firstMissing && !expandedId) {
-      setExpandedId(firstMissing.id);
+    // Auto-expand all "Not Found" (missing) items
+    const missingDepIds = dependencies
+      .filter((dep) => dep.status === 'missing')
+      .map((dep) => dep.id);
+
+    if (missingDepIds.length > 0) {
+      setExpandedIds(new Set(missingDepIds));
     }
-  }, [dependencies, expandedId]);
+  }, [dependencies]);
 
   const getStatusIcon = (status: Dependency['status']) => {
     switch (status) {
@@ -288,7 +291,7 @@ export function DependencyCheck({
             )}
 
             {/* Details Section */}
-            {expandedId === dep.id && dep.status !== 'checking' && (
+            {expandedIds.has(dep.id) && dep.status !== 'checking' && (
               <div className={styles.detailsSection}>
                 {dep.status === 'installed' && (
                   <>
@@ -361,10 +364,18 @@ export function DependencyCheck({
               <Button
                 appearance="subtle"
                 size="small"
-                onClick={() => setExpandedId(expandedId === dep.id ? null : dep.id)}
+                onClick={() => {
+                  const newExpandedIds = new Set(expandedIds);
+                  if (expandedIds.has(dep.id)) {
+                    newExpandedIds.delete(dep.id);
+                  } else {
+                    newExpandedIds.add(dep.id);
+                  }
+                  setExpandedIds(newExpandedIds);
+                }}
                 style={{ marginTop: tokens.spacingVerticalS }}
               >
-                {expandedId === dep.id ? 'Hide Details' : 'Show Details'}
+                {expandedIds.has(dep.id) ? 'Hide Details' : 'Show Details'}
               </Button>
             )}
           </Card>

@@ -287,89 +287,286 @@ public class DependencyRescanService
     {
         try
         {
-            using var httpClient = new System.Net.Http.HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(5);
+            // First, check if Ollama process is running
+            var processes = System.Diagnostics.Process.GetProcessesByName("ollama");
+            var isProcessRunning = processes.Length > 0;
             
-            var response = await httpClient.GetAsync("http://127.0.0.1:11434/api/tags", ct);
-            
-            if (response.IsSuccessStatusCode)
+            if (isProcessRunning)
             {
-                return new DependencyReport
-                {
-                    Id = "ollama",
-                    DisplayName = "Ollama",
-                    Status = DependencyStatus.Installed,
-                    Path = "http://127.0.0.1:11434",
-                    Provenance = "Running service",
-                    ValidationOutput = "API responding"
-                };
+                _logger.LogInformation("Ollama process detected (PID: {Pid})", processes[0].Id);
             }
             else
             {
+                _logger.LogDebug("No Ollama process found running");
+            }
+            
+            // Try to connect to Ollama API
+            using var httpClient = new System.Net.Http.HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(5);
+            
+            try
+            {
+                var response = await httpClient.GetAsync("http://127.0.0.1:11434/api/tags", ct);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    return new DependencyReport
+                    {
+                        Id = "ollama",
+                        DisplayName = "Ollama",
+                        Status = DependencyStatus.Installed,
+                        Path = "http://127.0.0.1:11434",
+                        Provenance = "Running service",
+                        ValidationOutput = $"API responding{(isProcessRunning ? $" (PID: {processes[0].Id})" : "")}"
+                    };
+                }
+                else
+                {
+                    return new DependencyReport
+                    {
+                        Id = "ollama",
+                        DisplayName = "Ollama",
+                        Status = DependencyStatus.PartiallyInstalled,
+                        ErrorMessage = $"Ollama API returned status {response.StatusCode}"
+                    };
+                }
+            }
+            catch (System.Net.Http.HttpRequestException)
+            {
+                // API not responding, check if process is running or if executable exists
+                if (isProcessRunning)
+                {
+                    return new DependencyReport
+                    {
+                        Id = "ollama",
+                        DisplayName = "Ollama",
+                        Status = DependencyStatus.PartiallyInstalled,
+                        Path = $"Process running (PID: {processes[0].Id})",
+                        ErrorMessage = "Ollama process detected but API not responding. It may still be starting up."
+                    };
+                }
+                
+                // Check for Ollama executable in default locations
+                var executablePath = FindOllamaExecutable();
+                if (!string.IsNullOrEmpty(executablePath))
+                {
+                    return new DependencyReport
+                    {
+                        Id = "ollama",
+                        DisplayName = "Ollama",
+                        Status = DependencyStatus.PartiallyInstalled,
+                        Path = executablePath,
+                        ErrorMessage = "Ollama installed but not running. Start Ollama to use local AI features."
+                    };
+                }
+                
                 return new DependencyReport
                 {
                     Id = "ollama",
                     DisplayName = "Ollama",
-                    Status = DependencyStatus.PartiallyInstalled,
-                    ErrorMessage = $"Ollama API returned status {response.StatusCode}"
+                    Status = DependencyStatus.Missing,
+                    ErrorMessage = "Ollama not found. Install Ollama to use local AI models."
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                return new DependencyReport
+                {
+                    Id = "ollama",
+                    DisplayName = "Ollama",
+                    Status = DependencyStatus.Missing,
+                    ErrorMessage = "Connection timeout while checking Ollama"
                 };
             }
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error during Ollama rescan");
             return new DependencyReport
             {
                 Id = "ollama",
                 DisplayName = "Ollama",
                 Status = DependencyStatus.Missing,
-                ErrorMessage = $"Cannot connect to Ollama: {ex.Message}"
+                ErrorMessage = $"Error checking Ollama: {ex.Message}"
             };
         }
+    }
+    
+    private string? FindOllamaExecutable()
+    {
+        try
+        {
+            if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            {
+                return null;
+            }
+
+            var searchPaths = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Ollama", "ollama.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Ollama", "ollama.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ollama", "ollama.exe"),
+            };
+
+            foreach (var path in searchPaths)
+            {
+                if (File.Exists(path))
+                {
+                    _logger.LogInformation("Found Ollama executable at {Path}", path);
+                    return path;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error searching for Ollama executable");
+        }
+
+        return null;
     }
 
     private async Task<DependencyReport> RescanStableDiffusionAsync(CancellationToken ct)
     {
         try
         {
+            // First check if SD WebUI process is running
+            var pythonProcesses = System.Diagnostics.Process.GetProcessesByName("python");
+            var isProbablyRunning = pythonProcesses.Any(p => 
+            {
+                try
+                {
+                    return p.MainModule?.FileName?.Contains("stable-diffusion-webui", StringComparison.OrdinalIgnoreCase) ?? false;
+                }
+                catch
+                {
+                    return false;
+                }
+            });
+            
             using var httpClient = new System.Net.Http.HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(5);
             
-            // Check if SD WebUI is running
-            var response = await httpClient.GetAsync("http://127.0.0.1:7860", ct);
-            
-            if (response.IsSuccessStatusCode)
+            try
             {
+                // Check if SD WebUI is running and accessible
+                var response = await httpClient.GetAsync("http://127.0.0.1:7860", ct);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    return new DependencyReport
+                    {
+                        Id = "stable-diffusion-webui",
+                        DisplayName = "Stable Diffusion WebUI",
+                        Status = DependencyStatus.Installed,
+                        Path = "http://127.0.0.1:7860",
+                        Provenance = "Running service",
+                        ValidationOutput = "Web interface responding"
+                    };
+                }
+                else
+                {
+                    return new DependencyReport
+                    {
+                        Id = "stable-diffusion-webui",
+                        DisplayName = "Stable Diffusion WebUI",
+                        Status = DependencyStatus.PartiallyInstalled,
+                        ErrorMessage = $"SD WebUI returned status {response.StatusCode}"
+                    };
+                }
+            }
+            catch (System.Net.Http.HttpRequestException)
+            {
+                // API not responding, check if we can find the installation
+                if (isProbablyRunning)
+                {
+                    return new DependencyReport
+                    {
+                        Id = "stable-diffusion-webui",
+                        DisplayName = "Stable Diffusion WebUI",
+                        Status = DependencyStatus.PartiallyInstalled,
+                        ErrorMessage = "SD WebUI process detected but web interface not responding. It may still be starting up."
+                    };
+                }
+                
+                // Check for SD WebUI in default locations
+                var installPath = FindStableDiffusionWebUI();
+                if (!string.IsNullOrEmpty(installPath))
+                {
+                    return new DependencyReport
+                    {
+                        Id = "stable-diffusion-webui",
+                        DisplayName = "Stable Diffusion WebUI",
+                        Status = DependencyStatus.PartiallyInstalled,
+                        Path = installPath,
+                        ErrorMessage = "Stable Diffusion WebUI installed but not running. Start the WebUI to generate images locally."
+                    };
+                }
+                
                 return new DependencyReport
                 {
                     Id = "stable-diffusion-webui",
                     DisplayName = "Stable Diffusion WebUI",
-                    Status = DependencyStatus.Installed,
-                    Path = "http://127.0.0.1:7860",
-                    Provenance = "Running service",
-                    ValidationOutput = "Web interface responding"
+                    Status = DependencyStatus.Missing,
+                    ErrorMessage = "Stable Diffusion WebUI not found. Install to generate images locally."
                 };
             }
-            else
+            catch (OperationCanceledException)
             {
                 return new DependencyReport
                 {
                     Id = "stable-diffusion-webui",
                     DisplayName = "Stable Diffusion WebUI",
-                    Status = DependencyStatus.PartiallyInstalled,
-                    ErrorMessage = $"SD WebUI returned status {response.StatusCode}"
+                    Status = DependencyStatus.Missing,
+                    ErrorMessage = "Connection timeout while checking Stable Diffusion WebUI"
                 };
             }
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error during Stable Diffusion WebUI rescan");
             return new DependencyReport
             {
                 Id = "stable-diffusion-webui",
                 DisplayName = "Stable Diffusion WebUI",
                 Status = DependencyStatus.Missing,
-                ErrorMessage = $"Cannot connect to SD WebUI: {ex.Message}"
+                ErrorMessage = $"Error checking SD WebUI: {ex.Message}"
             };
         }
+    }
+    
+    private string? FindStableDiffusionWebUI()
+    {
+        try
+        {
+            var searchPaths = new[]
+            {
+                Path.Combine(_appDataPath, "dependencies", "stable-diffusion-webui"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "stable-diffusion-webui"),
+                "C:\\stable-diffusion-webui",
+            };
+
+            foreach (var path in searchPaths)
+            {
+                if (Directory.Exists(path))
+                {
+                    // Check for webui.py or webui-user.bat
+                    var webUiPy = Path.Combine(path, "webui.py");
+                    var webUiBat = Path.Combine(path, "webui-user.bat");
+                    
+                    if (File.Exists(webUiPy) || File.Exists(webUiBat))
+                    {
+                        _logger.LogInformation("Found Stable Diffusion WebUI at {Path}", path);
+                        return path;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error searching for Stable Diffusion WebUI");
+        }
+
+        return null;
     }
 
     private async Task<DependencyReport> RescanPiperAsync(CancellationToken ct)

@@ -182,9 +182,9 @@ export function FirstRunWizard() {
     }
   }, [state, totalSteps]);
 
-  // Check installation status when entering dependencies step (step 4)
+  // Check installation status when entering dependencies step (step 3)
   useEffect(() => {
-    if (state.step === 4) {
+    if (state.step === 3) {
       checkAllInstallationStatusesThunk(dispatch);
     }
   }, [state.step]);
@@ -495,7 +495,13 @@ export function FirstRunWizard() {
       name: item.name,
       description: item.description || '',
       required: item.required,
-      status: item.installing ? 'checking' : item.installed ? 'installed' : 'missing',
+      status: state.isScanningDependencies
+        ? 'checking'
+        : item.installing
+          ? 'checking'
+          : item.installed
+            ? 'installed'
+            : 'missing',
       canAutoInstall: true,
       installing: item.installing,
       installProgress: item.installing ? 50 : undefined,
@@ -510,6 +516,7 @@ export function FirstRunWizard() {
         onRescan={async () => {
           await checkAllInstallationStatusesThunk(dispatch);
         }}
+        isScanning={state.isScanningDependencies}
       />
     );
   };
