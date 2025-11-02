@@ -209,7 +209,7 @@ export function FirstRunWizard() {
       return;
     }
 
-    // Step 1: Choose Tier -> Step 2: API Keys (or skip to Step 3 if Free tier)
+    // Step 1: Choose Tier -> Step 2: API Keys (or skip to Step 3: Dependencies if Free tier)
     if (state.step === 1) {
       if (!state.selectedTier) {
         alert('Please select a tier to continue');
@@ -219,7 +219,7 @@ export function FirstRunWizard() {
       // If Free tier, skip API keys step
       if (state.selectedTier === 'free') {
         dispatch({ type: 'SET_MODE', payload: 'free' });
-        dispatch({ type: 'SET_STEP', payload: 3 }); // Skip to hardware detection
+        dispatch({ type: 'SET_STEP', payload: 3 }); // Skip to dependencies
       } else {
         dispatch({ type: 'SET_MODE', payload: 'pro' });
         dispatch({ type: 'SET_STEP', payload: 2 }); // Go to API keys
@@ -227,59 +227,75 @@ export function FirstRunWizard() {
       return;
     }
 
-    // Step 2: API Keys -> Step 3: Hardware
+    // Step 2: API Keys -> Step 3: Dependencies
     if (state.step === 2) {
       dispatch({ type: 'SET_STEP', payload: 3 });
       return;
     }
 
-    // Step 3: Hardware -> Step 4: Dependencies
+    // Step 3: Dependencies -> Step 4: Workspace
     if (state.step === 3) {
-      if (!state.hardware) {
-        // Detect hardware before moving forward
-        await detectHardwareThunk(dispatch);
-      }
       dispatch({ type: 'SET_STEP', payload: 4 });
       return;
     }
 
-    // Step 4: Dependencies -> Step 5: Validation
+    // Step 4: Workspace -> Step 5: Templates
     if (state.step === 4) {
-      // Install required items
-      const requiredItems = state.installItems.filter((item) => item.required && !item.installed);
-      for (const item of requiredItems) {
-        await installItemThunk(item.id, dispatch);
-      }
       dispatch({ type: 'SET_STEP', payload: 5 });
       return;
     }
 
-    // Step 5: Validation -> Step 6: Complete
+    // Step 5: Templates -> Step 6: Hardware
     if (state.step === 5) {
+      dispatch({ type: 'SET_STEP', payload: 6 });
+      return;
+    }
+
+    // Step 6: Hardware -> Step 7: Validation
+    // Hardware detection is optional - always allow proceeding
+    if (state.step === 6) {
+      // Trigger detection if not done yet, but don't wait for it
+      if (!state.hardware && !state.isDetectingHardware) {
+        detectHardwareThunk(dispatch); // Fire and forget
+      }
+      dispatch({ type: 'SET_STEP', payload: 7 });
+      return;
+    }
+
+    // Step 7: Validation -> Step 8: Tutorial
+    if (state.step === 7) {
       // Run validation only if not already valid
       if (state.status === 'idle' || state.status === 'installed') {
         await runValidationThunk(state, dispatch);
         return; // Don't advance yet, wait for validation result
       } else if (state.status === 'valid' || state.status === 'ready') {
-        // Already validated, move to completion
-        dispatch({ type: 'SET_STEP', payload: 6 });
+        // Already validated, move to tutorial
+        dispatch({ type: 'SET_STEP', payload: 8 });
         return;
       } else if (state.status === 'invalid') {
-        // Show fix actions, don't advance
+        // Allow proceeding anyway - validation failures shouldn't block
+        dispatch({ type: 'SET_STEP', payload: 8 });
         return;
       }
     }
 
-    // Step 6: Completion - handled by completion step buttons
+    // Step 8: Tutorial -> Step 9: Completion
+    // Tutorial has its own buttons (handled by tutorial component)
+    if (state.step === 8) {
+      dispatch({ type: 'SET_STEP', payload: 9 });
+      return;
+    }
+
+    // Step 9: Completion - handled by completion step buttons
   };
 
   const handleBack = () => {
     if (state.step > 0) {
-      // If going back from hardware (step 3) and we came from Free tier, go back to tier selection (step 1)
+      // If going back from dependencies (step 3) and we came from Free tier, go back to tier selection (step 1)
       if (state.step === 3 && state.selectedTier === 'free') {
         dispatch({ type: 'SET_STEP', payload: 1 });
       }
-      // If going back from dependencies (step 4) and we're Pro tier, go to API keys (step 2)
+      // If going back from workspace (step 4) and we're Pro tier, go to API keys (step 2)
       else if (state.step === 4 && state.selectedTier === 'pro') {
         dispatch({ type: 'SET_STEP', payload: 2 });
       }
@@ -289,7 +305,7 @@ export function FirstRunWizard() {
       }
 
       // Reset validation when going back from validation step
-      if (state.step === 5) {
+      if (state.step === 7) {
         dispatch({ type: 'RESET_VALIDATION' });
       }
     }
@@ -992,7 +1008,7 @@ export function FirstRunWizard() {
   };
 
   const buttonLabel =
-    state.step === 5
+    state.step === 7
       ? state.status === 'idle' || state.status === 'installed'
         ? 'Validate'
         : state.status === 'invalid'
