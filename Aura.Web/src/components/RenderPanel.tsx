@@ -96,6 +96,7 @@ export function RenderPanel() {
   const styles = useStyles();
   const {
     settings,
+    selectedFile,
     queue,
     updateSettings,
     setPreset,
@@ -116,7 +117,7 @@ export function RenderPanel() {
   };
 
   const handleStartRender = () => {
-    addToQueue(settings);
+    addToQueue(settings, selectedFile || undefined);
   };
 
   const handleCancelRender = async (id: string) => {
