@@ -21,6 +21,13 @@ public class LogsController : ControllerBase
     private readonly string _logsDirectory;
     private const int MaxLinesDefault = 500;
     private const int MaxLinesLimit = 5000;
+    private const string LogFilePattern = "aura-api-*.log";
+    
+    // Compiled regex for better performance
+    private static readonly Regex LogPattern = new Regex(
+        @"^\[([\d\-: .+]+)\]\s+\[([A-Z]{3})\]\s+\[([^\]]*)\]\s+(.+)$",
+        RegexOptions.Compiled
+    );
 
     public LogsController(ILogger<LogsController> logger)
     {
@@ -250,7 +257,7 @@ public class LogsController : ControllerBase
             return null;
         }
 
-        var files = Directory.GetFiles(_logsDirectory, "aura-api-*.log", SearchOption.TopDirectoryOnly);
+        var files = Directory.GetFiles(_logsDirectory, LogFilePattern, SearchOption.TopDirectoryOnly);
         if (files.Length == 0)
         {
             return null;
@@ -265,24 +272,27 @@ public class LogsController : ControllerBase
 
     /// <summary>
     /// Read last N lines from a log file efficiently
+    /// Uses a circular buffer approach to avoid loading entire file into memory
     /// </summary>
     private async Task<List<string>> ReadLogFileLinesAsync(string filePath, int maxLines, CancellationToken ct)
     {
-        var lines = new List<string>();
+        var buffer = new Queue<string>(maxLines);
 
         using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using var reader = new StreamReader(fileStream);
 
-        // Read all lines (for simplicity - can optimize with reverse reading for huge files)
-        var allLines = new List<string>();
+        // Read lines using circular buffer to keep only last N lines in memory
         string? line;
         while ((line = await reader.ReadLineAsync()) != null && !ct.IsCancellationRequested)
         {
-            allLines.Add(line);
+            buffer.Enqueue(line);
+            if (buffer.Count > maxLines)
+            {
+                buffer.Dequeue();
+            }
         }
 
-        // Return last N lines
-        return allLines.TakeLast(maxLines).ToList();
+        return buffer.ToList();
     }
 
     /// <summary>
@@ -291,13 +301,10 @@ public class LogsController : ControllerBase
     private List<LogEntry> ParseLogEntries(List<string> lines)
     {
         var entries = new List<LogEntry>();
-        
-        // Serilog format: [2024-01-15 10:30:45.123 +00:00] [INF] [correlation-id] Message {Properties}
-        var logPattern = new Regex(@"^\[([\d\-: .+]+)\]\s+\[([A-Z]{3})\]\s+\[([^\]]*)\]\s+(.+)$");
 
         foreach (var line in lines)
         {
-            var match = logPattern.Match(line);
+            var match = LogPattern.Match(line);
             if (match.Success)
             {
                 entries.Add(new LogEntry

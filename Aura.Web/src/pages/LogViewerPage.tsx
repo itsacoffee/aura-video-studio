@@ -114,6 +114,12 @@ const useStyles = makeStyles({
   messageBar: {
     marginBottom: tokens.spacingVerticalL,
   },
+  autoRefreshLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    cursor: 'pointer',
+  },
 });
 
 interface LogEntry {
@@ -389,7 +395,7 @@ export function LogViewerPage() {
         <Button appearance="primary" onClick={handleFilter}>
           Apply Filters
         </Button>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+        <label className={styles.autoRefreshLabel}>
           <input
             type="checkbox"
             checked={autoRefresh}
