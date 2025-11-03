@@ -297,15 +297,11 @@ export function TimelineClip({
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onSelect();
-        } else if (e.key === 'ArrowLeft' && isSelected) {
+        } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && isSelected) {
           e.preventDefault();
           const step = e.shiftKey ? 1 : 1 / frameRate;
-          const newStartTime = Math.max(0, clip.startTime - step);
-          onMove(clip.id, snapping ? snapToFrame(newStartTime, frameRate) : newStartTime);
-        } else if (e.key === 'ArrowRight' && isSelected) {
-          e.preventDefault();
-          const step = e.shiftKey ? 1 : 1 / frameRate;
-          const newStartTime = clip.startTime + step;
+          const delta = e.key === 'ArrowLeft' ? -step : step;
+          const newStartTime = Math.max(0, clip.startTime + delta);
           onMove(clip.id, snapping ? snapToFrame(newStartTime, frameRate) : newStartTime);
         }
       }}

@@ -319,7 +319,8 @@ export function EditorLayout({
       setHistoryWidth(layout.panelSizes.historyWidth);
       setPreviewHeight(layout.panelSizes.previewHeight);
     }
-  }, [currentLayoutId, getCurrentLayout]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLayoutId]);
 
   // Handle resizing properties panel
   const handlePropertiesResize = (e: React.MouseEvent) => {
