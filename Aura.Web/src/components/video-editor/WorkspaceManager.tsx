@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableHeaderCell,
   Tooltip,
+  ToggleButton,
 } from '@fluentui/react-components';
 import {
   Copy20Regular,
@@ -23,6 +24,8 @@ import {
   Star20Filled,
   ArrowImport20Regular,
   ArrowDownload20Regular,
+  Grid20Regular,
+  Table20Regular,
 } from '@fluentui/react-icons';
 import { useState, useCallback } from 'react';
 import type { WorkspaceLayout } from '../../services/workspaceLayoutService';
@@ -36,6 +39,7 @@ import {
 import { useWorkspaceLayoutStore } from '../../state/workspaceLayout';
 import { ExportWorkspaceDialog } from './ExportWorkspaceDialog';
 import { ImportWorkspaceDialog } from './ImportWorkspaceDialog';
+import { WorkspaceGallery } from './WorkspaceGallery';
 
 const useStyles = makeStyles({
   content: {
@@ -48,8 +52,16 @@ const useStyles = makeStyles({
   toolbar: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     marginBottom: tokens.spacingVerticalM,
+  },
+  toolbarLeft: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+  },
+  toolbarRight: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalXS,
   },
   tableContainer: {
     flex: 1,
@@ -94,7 +106,8 @@ export function WorkspaceManager({ open, onClose }: WorkspaceManagerProps) {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceLayout | null>(null);
   const [exportMode, setExportMode] = useState<'single' | 'all'>('single');
-  const { setCurrentLayout } = useWorkspaceLayoutStore();
+  const [viewMode, setViewMode] = useState<'table' | 'gallery'>('gallery');
+  const { setCurrentLayout, currentLayoutId } = useWorkspaceLayoutStore();
 
   const refreshWorkspaces = useCallback(() => {
     setWorkspaces(getWorkspaceLayouts());
@@ -157,25 +170,47 @@ export function WorkspaceManager({ open, onClose }: WorkspaceManagerProps) {
             <DialogTitle>Workspace Manager</DialogTitle>
             <DialogContent className={styles.content}>
               <div className={styles.toolbar}>
-                <Button appearance="primary" icon={<ArrowImport20Regular />} onClick={handleImport}>
-                  Import
-                </Button>
-                <Button
-                  appearance="secondary"
-                  icon={<ArrowExport20Regular />}
-                  onClick={handleExportAll}
-                >
-                  Export All
-                </Button>
-                <Button
-                  appearance="secondary"
-                  icon={<ArrowDownload20Regular />}
-                  onClick={() => {
-                    /* Download templates functionality can be added here */
-                  }}
-                >
-                  Get Templates
-                </Button>
+                <div className={styles.toolbarLeft}>
+                  <Button
+                    appearance="primary"
+                    icon={<ArrowImport20Regular />}
+                    onClick={handleImport}
+                  >
+                    Import
+                  </Button>
+                  <Button
+                    appearance="secondary"
+                    icon={<ArrowExport20Regular />}
+                    onClick={handleExportAll}
+                  >
+                    Export All
+                  </Button>
+                  <Button
+                    appearance="secondary"
+                    icon={<ArrowDownload20Regular />}
+                    onClick={() => {
+                      /* Download templates functionality can be added here */
+                    }}
+                  >
+                    Get Templates
+                  </Button>
+                </div>
+                <div className={styles.toolbarRight}>
+                  <ToggleButton
+                    appearance="subtle"
+                    icon={<Grid20Regular />}
+                    checked={viewMode === 'gallery'}
+                    onClick={() => setViewMode('gallery')}
+                    aria-label="Gallery view"
+                  />
+                  <ToggleButton
+                    appearance="subtle"
+                    icon={<Table20Regular />}
+                    checked={viewMode === 'table'}
+                    onClick={() => setViewMode('table')}
+                    aria-label="Table view"
+                  />
+                </div>
               </div>
 
               <div className={styles.tableContainer}>
@@ -186,6 +221,18 @@ export function WorkspaceManager({ open, onClose }: WorkspaceManagerProps) {
                       Import Workspace
                     </Button>
                   </div>
+                ) : viewMode === 'gallery' ? (
+                  <WorkspaceGallery
+                    workspaces={workspaces}
+                    currentLayoutId={currentLayoutId}
+                    defaultLayoutId={defaultLayoutId}
+                    onWorkspaceClick={(workspace) => handleSetDefault(workspace.id)}
+                    onSetDefault={(workspace) => handleSetDefault(workspace.id)}
+                    onDuplicate={handleDuplicate}
+                    onExport={handleExportSingle}
+                    onDelete={(workspace) => handleDelete(workspace.id)}
+                    canDeleteWorkspace={(workspace) => !isPreset(workspace.id)}
+                  />
                 ) : (
                   <Table>
                     <TableHeader>
