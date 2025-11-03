@@ -100,6 +100,78 @@ jobs:
         cname: docs.aura-video-studio.example.com
         enable_jekyll: false
         
+  lint-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install markdownlint-cli
+      run: npm install -g markdownlint-cli
+      
+    - name: Lint markdown files
+      run: |
+        echo "Linting markdown files..."
+        markdownlint '**/*.md' --ignore node_modules --ignore dist --ignore _site --ignore bin --ignore obj || {
+          echo "Markdown linting failed. Please fix the issues above."
+          exit 1
+        }
+        
+    - name: Check for placeholders in docs
+      run: |
+        echo "Checking for TODO/FIXME/TBD in canonical documentation..."
+        # Check docs/ and root guides (exclude archive)
+        if find docs -type f -name "*.md" -not -path "*/archive/*" -exec grep -l "TODO\|FIXME\|TBD\|Coming Soon" {} \; | grep -v "DocsStyleGuide.md"; then
+          echo "Error: Found placeholder content in canonical documentation"
+          exit 1
+        fi
+        if find . -maxdepth 1 -name "*GUIDE.md" -o -name "README.md" -o -name "CONTRIBUTING.md" | xargs grep -l "TODO\|FIXME\|TBD" 2>/dev/null; then
+          echo "Error: Found placeholder content in root guides"
+          exit 1
+        fi
+        echo "No placeholders found in canonical docs"
+        
+    - name: Validate internal links
+      run: |
+        echo "Checking for localhost links in documentation..."
+        if find docs -name "*.md" -not -path "*/archive/*" -exec grep -H '\[.*\](http://localhost\|127.0.0.1)' {} \; 2>/dev/null; then
+          echo "Error: Found localhost links in canonical documentation"
+          exit 1
+        fi
+        echo "No localhost links found"
+        
+    - name: Check required directories
+      run: |
+        echo "Checking documentation organization..."
+        required_dirs=("getting-started" "features" "workflows" "troubleshooting" "api" "best-practices" "assets" "archive" "style")
+        for dir in "${required_dirs[@]}"; do
+          if [ ! -d "docs/$dir" ]; then
+            echo "Error: Required directory docs/$dir not found"
+            exit 1
+          fi
+        done
+        echo "All required directories present"
+        
+    - name: Validate required files
+      run: |
+        echo "Checking for required documentation files..."
+        required_files=("docs/DocsIndex.md" "docs/style/DocsStyleGuide.md" "docs/archive/README.md" ".markdownlint.json" ".markdown-link-check.json")
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "Error: Required file $file not found"
+            exit 1
+          fi
+        done
+        echo "All required files present"
+  
   validate-docs:
     runs-on: ubuntu-latest
     permissions:
@@ -122,34 +194,4 @@ jobs:
             fi
           fi
         done
-        
-    - name: Check documentation completeness
-      run: |
-        echo "Checking for TODO/FIXME in documentation..."
-        # Ensure no placeholder content
-        if grep -r "TODO\|FIXME\|TBD\|Coming Soon" docs/ --include="*.md" | grep -v "README.md" | grep -v "best-practices/README.md"; then
-          echo "Warning: Found placeholder content in documentation"
-          # Don't fail, just warn
-        fi
-        
-    - name: Validate links format
-      run: |
-        echo "Validating link formats..."
-        # Check for proper relative links
-        find docs -name "*.md" -exec grep -H '\[.*\](http://localhost\|127.0.0.1)' {} \; && {
-          echo "Error: Found localhost links in documentation"
-          exit 1
-        } || echo "No localhost links found"
-        
-    - name: Check file organization
-      run: |
-        echo "Checking documentation organization..."
-        # Verify required directories exist
-        required_dirs=("getting-started" "features" "workflows" "troubleshooting" "api" "best-practices" "assets")
-        for dir in "${required_dirs[@]}"; do
-          if [ ! -d "docs/$dir" ]; then
-            echo "Error: Required directory docs/$dir not found"
-            exit 1
-          fi
-        done
-        echo "All required directories present"
+        echo "Markdown structure validated"

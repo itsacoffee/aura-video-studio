@@ -1,31 +1,34 @@
 # Documentation Archive
 
-This directory contains historical documentation from the Aura Video Studio project. These files are preserved for reference but are not actively maintained.
+This directory contains **historical documentation** from the Aura Video Studio project. These files are preserved for reference and provenance but are **not canonical guides**.
+
+⚠️ **Important**: All files in this archive may contain outdated information, references to superseded implementations, or details specific to past pull requests.
 
 ## What's Archived Here
 
-### Implementation Notes (Agent & PR Summaries)
-Historical implementation summaries created during development by various agents and pull requests. These document:
-- Feature implementations
-- Bug fixes
-- Refactoring work
-- Integration work
+### root-summaries/
+Historical implementation summaries, PR summaries, and audit documents from the repository root. These documents described specific features, fixes, or changes at a point in time:
+- Feature implementations and enhancements
+- Bug fixes and validation summaries
+- PR-specific implementation details
+- Integration and orchestration work
+- Performance and optimization reports
 
-### Verification & Testing Documentation
-Checklists and test results from completed work:
-- Acceptance criteria
-- Verification checklists
-- Test results
-- Manual testing procedures
+### aura-web/
+Historical frontend implementation documentation, build reports, and feature-specific summaries from the Aura.Web project:
+- Build optimization results
+- Frontend feature implementations
+- Code quality reports
+- UI/UX implementation summaries
 
-### Before/After Comparisons
-Documentation showing changes made during various fixes and improvements.
+### docs-old/
+Previously current documentation that has been superseded by newer guides or consolidated into canonical documentation:
+- Old verification and testing documentation
+- Superseded implementation notes
+- Legacy troubleshooting guides
 
-### Completion Summaries
-Documentation marking completion of major features or milestones.
-
-### PR & Change Summaries
-Historical PR summaries documenting changes merged into the codebase.
+### (Existing archive files)
+Agent summaries, verification checklists, test results, and other historical documentation from previous development cycles.
 
 ## Why These Are Archived
 
@@ -36,10 +39,11 @@ These documents were created during active development to:
 4. Provide context for changes
 
 They are now archived because:
-- The work described is complete
+- The work described is complete and integrated
 - The features documented are now part of the main codebase
-- Current documentation in other sections supersedes these historical notes
-- They serve as historical reference rather than active documentation
+- Current canonical documentation supersedes these historical notes
+- They serve as historical reference and provenance only
+- They may not reflect Advanced Mode gating or current feature availability
 
 ## Finding Current Documentation
 

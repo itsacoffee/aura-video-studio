@@ -58,6 +58,39 @@
 - name: Best Practices
   href: docs/best-practices/README.md
 - name: Architecture
-  href: ARCHITECTURE.md
+  href: docs/architecture/README.md
+  items:
+  - name: Architecture Overview
+    href: docs/architecture/ARCHITECTURE.md
+  - name: Provider Selection
+    href: docs/architecture/PROVIDER_SELECTION_ARCHITECTURE.md
+  - name: SSE Event Flow
+    href: docs/architecture/SSE_EVENT_FLOW.md
+  - name: Service Initialization
+    href: docs/architecture/SERVICE_INITIALIZATION_ORDER.md
+- name: Developer Guide
+  href: docs/developer/README.md
+  items:
+  - name: Build and Run
+    href: docs/developer/BUILD_AND_RUN.md
+  - name: Installation
+    href: docs/developer/INSTALL.md
+  - name: Deployment
+    href: docs/developer/DEPLOYMENT.md
+- name: User Guide
+  href: docs/user-guide/README.md
+  items:
+  - name: Download Center
+    href: docs/user-guide/DOWNLOAD_CENTER.md
+  - name: Local Providers Setup
+    href: docs/user-guide/LOCAL_PROVIDERS_SETUP.md
+  - name: Timeline Editor UI
+    href: docs/user-guide/TIMELINE_EDITOR_UI_GUIDE.md
+- name: Documentation Standards
+  items:
+  - name: Documentation Index
+    href: docs/DocsIndex.md
+  - name: Style Guide
+    href: docs/style/DocsStyleGuide.md
 - name: Contributing
   href: CONTRIBUTING.md

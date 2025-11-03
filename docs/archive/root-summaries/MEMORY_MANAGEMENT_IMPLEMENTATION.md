@@ -1,3 +1,11 @@
+> **⚠️ ARCHIVED DOCUMENT**  
+> This document is retained for historical context only.  
+> It may contain outdated information, references to superseded implementations, or details specific to past pull requests.  
+> For current documentation, see the main docs/ directory and canonical guides in the repository root.
+
+---
+
+
 # Memory Management Implementation Summary
 
 This document summarizes the memory profiling, leak detection, and automated resource cleanup implementation completed to prevent OOM errors.
