@@ -1,11 +1,12 @@
+using System;
+using System.IO;
+using System.Threading.Tasks;
 using Aura.Api.Middleware;
 using Aura.Core.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.IO;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Aura.Tests;
@@ -39,7 +40,7 @@ public class FirstRunMiddlewareTests
 
         var serviceCollection = new ServiceCollection();
         var options = new DbContextOptionsBuilder<AuraDbContext>()
-            .UseInMemoryDatabase(databaseName: $"TestDb_{System.Guid.NewGuid()}")
+            .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
             .Options;
         serviceCollection.AddScoped<AuraDbContext>(_ => new AuraDbContext(options));
 
@@ -76,7 +77,7 @@ public class FirstRunMiddlewareTests
 
         var serviceCollection = new ServiceCollection();
         var options = new DbContextOptionsBuilder<AuraDbContext>()
-            .UseInMemoryDatabase(databaseName: $"TestDb_{System.Guid.NewGuid()}")
+            .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
             .Options;
         serviceCollection.AddScoped<AuraDbContext>(_ => new AuraDbContext(options));
 
@@ -113,21 +114,22 @@ public class FirstRunMiddlewareTests
 
         var serviceCollection = new ServiceCollection();
         var options = new DbContextOptionsBuilder<AuraDbContext>()
-            .UseInMemoryDatabase(databaseName: $"TestDb_{System.Guid.NewGuid()}")
+            .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
             .Options;
-        var dbContext = new AuraDbContext(options);
+
+        using var dbContext = new AuraDbContext(options);
         
         // Mark setup as completed
         dbContext.UserSetups.Add(new UserSetupEntity
         {
             UserId = "default",
             Completed = true,
-            CompletedAt = System.DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow,
             Version = "1.0.0"
         });
         await dbContext.SaveChangesAsync();
 
-        serviceCollection.AddScoped<AuraDbContext>(_ => dbContext);
+        serviceCollection.AddScoped<AuraDbContext>(_ => new AuraDbContext(options));
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
         context.RequestServices = serviceProvider;
@@ -157,7 +159,7 @@ public class FirstRunMiddlewareTests
 
         var serviceCollection = new ServiceCollection();
         var options = new DbContextOptionsBuilder<AuraDbContext>()
-            .UseInMemoryDatabase(databaseName: $"TestDb_{System.Guid.NewGuid()}")
+            .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
             .Options;
         serviceCollection.AddScoped<AuraDbContext>(_ => new AuraDbContext(options));
 
