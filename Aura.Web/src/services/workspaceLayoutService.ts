@@ -3,6 +3,9 @@
  * Manages panel arrangements and workspace presets for professional NLE workflow
  */
 
+import { generateWorkspaceThumbnail } from '../utils/workspaceThumbnailGenerator';
+import { saveWorkspaceThumbnail } from './workspaceThumbnailService';
+
 export interface PanelSizes {
   propertiesWidth: number;
   mediaLibraryWidth: number;
@@ -279,6 +282,15 @@ export function importWorkspaceLayout(layout: WorkspaceLayout): WorkspaceLayout 
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customLayouts));
+
+    // Generate thumbnail for imported workspace
+    try {
+      const thumbnailDataUrl = generateWorkspaceThumbnail(newLayout);
+      saveWorkspaceThumbnail(newLayout.id, thumbnailDataUrl, false);
+    } catch (thumbnailError) {
+      console.error('Failed to generate thumbnail for imported workspace:', thumbnailError);
+      // Don't fail the import if thumbnail generation fails
+    }
   } catch (error) {
     console.error('Error importing layout:', error);
     throw error;

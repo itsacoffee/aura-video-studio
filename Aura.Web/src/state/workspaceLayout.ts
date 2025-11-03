@@ -7,6 +7,8 @@ import {
   saveWorkspaceLayout,
   PanelSizes,
 } from '../services/workspaceLayoutService';
+import { saveWorkspaceThumbnail } from '../services/workspaceThumbnailService';
+import { generateWorkspaceThumbnail } from '../utils/workspaceThumbnailGenerator';
 
 interface WorkspaceLayoutState {
   currentLayoutId: string;
@@ -151,6 +153,16 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
         history: !currentCollapsed.history,
       },
     });
+
+    // Generate and save thumbnail for the new layout
+    try {
+      const thumbnailDataUrl = generateWorkspaceThumbnail(newLayout);
+      saveWorkspaceThumbnail(newLayout.id, thumbnailDataUrl, false);
+    } catch (error) {
+      console.error('Failed to generate thumbnail for workspace:', error);
+      // Don't fail the save operation if thumbnail generation fails
+    }
+
     set({ currentLayoutId: newLayout.id });
     return newLayout;
   },
