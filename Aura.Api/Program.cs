@@ -1030,6 +1030,12 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.QuickService>();
 builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.SmartProviderSelector>();
 
+// Register ML Training services
+builder.Services.AddSingleton<Aura.Core.Services.ML.AnnotationStorageService>();
+builder.Services.AddSingleton<Aura.Core.Services.ML.ModelTrainingService>();
+builder.Services.AddSingleton<Aura.Core.ML.ModelManager>();
+builder.Services.AddSingleton<Aura.Core.Services.ML.MlTrainingWorker>();
+
 // Configure Kestrel to listen on specific port with environment variable overrides
 var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL") 
     ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") 
