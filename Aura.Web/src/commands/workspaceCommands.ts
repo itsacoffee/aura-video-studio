@@ -4,6 +4,7 @@
 
 import { Command } from '../services/commandHistory';
 import { PanelSizes } from '../services/workspaceLayoutService';
+import { PersistableCommand } from '../state/undoManager';
 
 /**
  * Command to toggle panel collapsed state
@@ -146,5 +147,61 @@ export class ResizePanelCommand implements Command {
 
   getTimestamp(): Date {
     return this.timestamp;
+  }
+}
+
+/**
+ * Example of a persistable command that can be saved to server
+ * Used for operations that need to persist across sessions
+ */
+export class SaveWorkspaceCommand implements PersistableCommand {
+  private timestamp: Date;
+  isPersistent = true;
+  serverActionId?: string;
+
+  constructor(
+    private workspaceName: string,
+    private workspaceConfig: unknown,
+    private saveFunction: (name: string, config: unknown) => void,
+    private deleteFunction: (name: string) => void
+  ) {
+    this.timestamp = new Date();
+  }
+
+  execute(): void {
+    this.saveFunction(this.workspaceName, this.workspaceConfig);
+  }
+
+  undo(): void {
+    this.deleteFunction(this.workspaceName);
+  }
+
+  getDescription(): string {
+    return `Save workspace "${this.workspaceName}"`;
+  }
+
+  getTimestamp(): Date {
+    return this.timestamp;
+  }
+
+  getActionType(): string {
+    return 'SaveWorkspace';
+  }
+
+  getPayload(): string {
+    return JSON.stringify({
+      workspaceName: this.workspaceName,
+      workspaceConfig: this.workspaceConfig,
+    });
+  }
+
+  getInversePayload(): string {
+    return JSON.stringify({
+      workspaceName: this.workspaceName,
+    });
+  }
+
+  getAffectedResourceIds(): string {
+    return this.workspaceName;
   }
 }

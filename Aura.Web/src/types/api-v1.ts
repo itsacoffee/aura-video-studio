@@ -925,3 +925,108 @@ export interface OllamaLogsResponse {
   logs: string[];
   totalLines: number;
 }
+
+// ============================================================================
+// ACTION LOG / UNDO-REDO TYPES
+// ============================================================================
+
+/**
+ * Request to record a new action in the action log
+ */
+export interface RecordActionRequest {
+  userId?: string;
+  actionType: string;
+  description: string;
+  affectedResourceIds?: string;
+  payloadJson?: string;
+  inverseActionType?: string;
+  inversePayloadJson?: string;
+  canBatch?: boolean;
+  isPersistent?: boolean;
+  correlationId?: string;
+  retentionDays?: number;
+}
+
+/**
+ * Response after recording an action
+ */
+export interface RecordActionResponse {
+  actionId: string; // Guid as string
+  timestamp: string; // DateTime as ISO string
+  status: string;
+  expiresAt?: string; // DateTime as ISO string
+}
+
+/**
+ * Response for an undo operation
+ */
+export interface UndoActionResponse {
+  actionId: string;
+  success: boolean;
+  undoneAt: string;
+  errorMessage?: string;
+  status: string;
+}
+
+/**
+ * Query parameters for action history
+ */
+export interface ActionHistoryQuery {
+  userId?: string;
+  actionType?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/**
+ * Single action in history
+ */
+export interface ActionHistoryItem {
+  id: string;
+  userId: string;
+  actionType: string;
+  description: string;
+  timestamp: string;
+  status: string;
+  canUndo: boolean;
+  affectedResourceIds?: string;
+  undoneAt?: string;
+  undoneByUserId?: string;
+}
+
+/**
+ * Paginated action history response
+ */
+export interface ActionHistoryResponse {
+  actions: ActionHistoryItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+/**
+ * Detailed action information
+ */
+export interface ActionDetailResponse {
+  id: string;
+  userId: string;
+  actionType: string;
+  description: string;
+  timestamp: string;
+  status: string;
+  affectedResourceIds?: string;
+  payloadJson?: string;
+  inverseActionType?: string;
+  inversePayloadJson?: string;
+  canBatch: boolean;
+  isPersistent: boolean;
+  undoneAt?: string;
+  undoneByUserId?: string;
+  expiresAt?: string;
+  errorMessage?: string;
+  correlationId?: string;
+}

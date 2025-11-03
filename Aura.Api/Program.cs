@@ -168,6 +168,9 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
 builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
 builder.Services.AddScoped<Aura.Core.Services.CheckpointManager>();
 
+// Register ActionService for server-side undo/redo
+builder.Services.AddScoped<Aura.Core.Services.IActionService, Aura.Core.Services.ActionService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>

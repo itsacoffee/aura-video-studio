@@ -16,6 +16,21 @@ public class CustomTemplateEntity
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public string Author { get; set; } = "User";
     public bool IsDefault { get; set; } = false;
+
+    /// <summary>
+    /// Soft-delete support: indicates if this template has been deleted
+    /// </summary>
+    public bool IsDeleted { get; set; } = false;
+
+    /// <summary>
+    /// Soft-delete support: when the template was deleted (null if not deleted)
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
+    /// Soft-delete support: user who deleted the template
+    /// </summary>
+    public string? DeletedByUserId { get; set; }
     
     // JSON serialized configurations
     public string ScriptStructureJson { get; set; } = string.Empty;
