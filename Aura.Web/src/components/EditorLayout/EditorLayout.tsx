@@ -203,8 +203,14 @@ export function EditorLayout({
   useTopMenuBar = false,
 }: EditorLayoutProps) {
   const styles = useStyles();
-  const { isFullscreen, exitFullscreen, collapsedPanels, togglePanelCollapsed, getCurrentLayout } =
-    useWorkspaceLayoutStore();
+  const {
+    isFullscreen,
+    exitFullscreen,
+    collapsedPanels,
+    togglePanelCollapsed,
+    getCurrentLayout,
+    currentLayoutId,
+  } = useWorkspaceLayoutStore();
 
   // Load current layout or use defaults
   const currentLayout = getCurrentLayout();
@@ -301,6 +307,19 @@ export function EditorLayout({
   useEffect(() => {
     savePanelSize(STORAGE_KEYS.historyWidth, historyWidth);
   }, [historyWidth]);
+
+  // React to layout changes and apply panel sizes from the layout
+  useEffect(() => {
+    const layout = getCurrentLayout();
+    if (layout) {
+      // Update panel sizes based on the selected layout
+      setPropertiesWidth(layout.panelSizes.propertiesWidth);
+      setMediaLibraryWidth(layout.panelSizes.mediaLibraryWidth);
+      setEffectsLibraryWidth(layout.panelSizes.effectsLibraryWidth);
+      setHistoryWidth(layout.panelSizes.historyWidth);
+      setPreviewHeight(layout.panelSizes.previewHeight);
+    }
+  }, [currentLayoutId, getCurrentLayout]);
 
   // Handle resizing properties panel
   const handlePropertiesResize = (e: React.MouseEvent) => {

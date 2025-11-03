@@ -293,6 +293,22 @@ export function TimelineClip({
       role="button"
       tabIndex={0}
       aria-label={`${clip.label} clip`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        } else if (e.key === 'ArrowLeft' && isSelected) {
+          e.preventDefault();
+          const step = e.shiftKey ? 1 : 1 / frameRate;
+          const newStartTime = Math.max(0, clip.startTime - step);
+          onMove(clip.id, snapping ? snapToFrame(newStartTime, frameRate) : newStartTime);
+        } else if (e.key === 'ArrowRight' && isSelected) {
+          e.preventDefault();
+          const step = e.shiftKey ? 1 : 1 / frameRate;
+          const newStartTime = clip.startTime + step;
+          onMove(clip.id, snapping ? snapToFrame(newStartTime, frameRate) : newStartTime);
+        }
+      }}
     >
       {/* Thumbnails for video clips */}
       {clip.type === 'video' && clip.thumbnails && clip.thumbnails.length > 0 && (

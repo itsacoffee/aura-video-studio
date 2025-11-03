@@ -61,8 +61,21 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
   collapsedPanels: loadCollapsedPanels(),
 
   setCurrentLayout: (layoutId: string) => {
-    applyWorkspaceLayout(layoutId);
-    set({ currentLayoutId: layoutId });
+    const layout = applyWorkspaceLayout(layoutId);
+    if (layout) {
+      // Apply the layout's panel visibility to collapsed panels state
+      // A panel is collapsed if it's NOT visible in the layout
+      const newCollapsedPanels = {
+        properties: !layout.visiblePanels.properties,
+        mediaLibrary: !layout.visiblePanels.mediaLibrary,
+        effects: !layout.visiblePanels.effects,
+        history: !layout.visiblePanels.history,
+      };
+      saveCollapsedPanels(newCollapsedPanels);
+      set({ currentLayoutId: layoutId, collapsedPanels: newCollapsedPanels });
+    } else {
+      set({ currentLayoutId: layoutId });
+    }
   },
 
   toggleFullscreen: () => {
