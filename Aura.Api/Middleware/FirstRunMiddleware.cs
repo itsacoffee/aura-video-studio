@@ -31,6 +31,9 @@ public class FirstRunMiddleware
             path.StartsWith("/api/preflight", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/probes", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/downloads", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/dependencies", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/apikeys", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/providers", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/healthz", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/capabilities", StringComparison.OrdinalIgnoreCase) ||
