@@ -13,7 +13,9 @@ import { Layout } from './components/Layout';
 import { NotificationsToaster } from './components/Notifications/Toasts';
 import { PlatformDashboard } from './components/Platform';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
+import { ActionHistoryPanel } from './components/UndoRedo/ActionHistoryPanel';
 import { env } from './config/env';
+import { useGlobalUndoShortcuts } from './hooks/useGlobalUndoShortcuts';
 import { AestheticsPage } from './pages/Aesthetics/AestheticsPage';
 import { AIEditingPage } from './pages/AIEditing/AIEditingPage';
 import { AssetLibrary } from './pages/Assets/AssetLibrary';
@@ -97,6 +99,9 @@ function App() {
   const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const toasterId = 'notifications-toaster'; // Hardcoded to avoid hook context issues
+
+  // Initialize global undo/redo shortcuts
+  useGlobalUndoShortcuts();
 
   // First-run detection state
   const [isCheckingFirstRun, setIsCheckingFirstRun] = useState(true);
@@ -503,6 +508,9 @@ function App() {
                 onClose={() => setShowDrawer(false)}
                 jobId={currentJobId || ''}
               />
+
+              {/* Action history panel for undo/redo */}
+              <ActionHistoryPanel />
 
               {/* Global activity status footer */}
               <GlobalStatusFooter />
