@@ -10,14 +10,42 @@ import {
   DrawerHeaderTitle,
   Button,
   Text,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
+  Spinner,
 } from '@fluentui/react-components';
-import { Dismiss24Regular, History24Regular } from '@fluentui/react-icons';
+import { Dismiss24Regular, History24Regular, ArrowDownload24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
+import { exportActionHistory } from '../../services/api/actionsApi';
 import { useUndoManager } from '../../state/undoManager';
 
 export function ActionHistoryPanel() {
   const { showHistory, setHistoryVisible, getHistory } = useUndoManager();
+  const [isExporting, setIsExporting] = useState(false);
 
   const history = getHistory();
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    setIsExporting(true);
+    try {
+      const blob = await exportActionHistory({}, format);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `action-history-${new Date().toISOString().split('T')[0]}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Failed to export action history:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const formatTime = (date: Date) => {
     const now = new Date();
@@ -49,12 +77,31 @@ export function ActionHistoryPanel() {
       <DrawerHeader>
         <DrawerHeaderTitle
           action={
-            <Button
-              appearance="subtle"
-              aria-label="Close"
-              icon={<Dismiss24Regular />}
-              onClick={() => setHistoryVisible(false)}
-            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Menu>
+                <MenuTrigger disableButtonEnhancement>
+                  <Button
+                    appearance="subtle"
+                    icon={isExporting ? <Spinner size="tiny" /> : <ArrowDownload24Regular />}
+                    disabled={isExporting}
+                  >
+                    Export
+                  </Button>
+                </MenuTrigger>
+                <MenuPopover>
+                  <MenuList>
+                    <MenuItem onClick={() => handleExport('csv')}>Export as CSV</MenuItem>
+                    <MenuItem onClick={() => handleExport('json')}>Export as JSON</MenuItem>
+                  </MenuList>
+                </MenuPopover>
+              </Menu>
+              <Button
+                appearance="subtle"
+                aria-label="Close"
+                icon={<Dismiss24Regular />}
+                onClick={() => setHistoryVisible(false)}
+              />
+            </div>
           }
         >
           Action History

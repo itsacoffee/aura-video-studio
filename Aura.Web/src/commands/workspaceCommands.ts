@@ -3,7 +3,6 @@
  */
 
 import { Command } from '../services/commandHistory';
-import { PanelSizes } from '../services/workspaceLayoutService';
 import { PersistableCommand } from '../state/undoManager';
 
 /**
@@ -74,43 +73,6 @@ export class ChangeLayoutCommand implements Command {
 
   getDescription(): string {
     return `Change layout to ${this.newLayoutId}`;
-  }
-
-  getTimestamp(): Date {
-    return this.timestamp;
-  }
-}
-
-/**
- * Command to save a new workspace layout
- */
-export class SaveWorkspaceCommand implements Command {
-  private timestamp: Date;
-  private savedLayoutId: string | null = null;
-
-  constructor(
-    private name: string,
-    private description: string,
-    private panelSizes: PanelSizes,
-    private saveFunction: (name: string, desc: string, sizes: PanelSizes) => { id: string },
-    private deleteFunction: (layoutId: string) => void
-  ) {
-    this.timestamp = new Date();
-  }
-
-  execute(): void {
-    const result = this.saveFunction(this.name, this.description, this.panelSizes);
-    this.savedLayoutId = result.id;
-  }
-
-  undo(): void {
-    if (this.savedLayoutId) {
-      this.deleteFunction(this.savedLayoutId);
-    }
-  }
-
-  getDescription(): string {
-    return `Save workspace "${this.name}"`;
   }
 
   getTimestamp(): Date {
