@@ -3,6 +3,9 @@
  * Manages panel arrangements and workspace presets for professional NLE workflow
  */
 
+import { generateWorkspaceThumbnail } from '../utils/workspaceThumbnailGenerator';
+import { saveWorkspaceThumbnail } from './workspaceThumbnailService';
+
 export interface PanelSizes {
   propertiesWidth: number;
   mediaLibraryWidth: number;
@@ -252,4 +255,96 @@ export function snapToBreakpoint(value: number, min: number, max: number): numbe
   }
 
   return value;
+}
+
+/**
+ * Import a workspace layout
+ */
+export function importWorkspaceLayout(layout: WorkspaceLayout): WorkspaceLayout {
+  const customLayouts = getCustomLayouts();
+
+  const existingNames = [...Object.values(PRESET_LAYOUTS), ...customLayouts].map((l) => l.name);
+
+  let name = layout.name;
+  let counter = 1;
+  while (existingNames.includes(name)) {
+    name = `${layout.name} (${counter})`;
+    counter++;
+  }
+
+  const newLayout: WorkspaceLayout = {
+    ...layout,
+    id: `custom-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    name,
+  };
+
+  customLayouts.push(newLayout);
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(customLayouts));
+
+    // Generate thumbnail for imported workspace
+    try {
+      const thumbnailDataUrl = generateWorkspaceThumbnail(newLayout);
+      saveWorkspaceThumbnail(newLayout.id, thumbnailDataUrl, false);
+    } catch (thumbnailError) {
+      console.error('Failed to generate thumbnail for imported workspace:', thumbnailError);
+      // Don't fail the import if thumbnail generation fails
+    }
+  } catch (error) {
+    console.error('Error importing layout:', error);
+    throw error;
+  }
+
+  return newLayout;
+}
+
+/**
+ * Update an existing workspace layout
+ */
+export function updateWorkspaceLayout(
+  layoutId: string,
+  updates: Partial<Omit<WorkspaceLayout, 'id'>>
+): WorkspaceLayout | null {
+  if (PRESET_LAYOUTS[layoutId]) {
+    return null;
+  }
+
+  const customLayouts = getCustomLayouts();
+  const index = customLayouts.findIndex((l) => l.id === layoutId);
+
+  if (index === -1) {
+    return null;
+  }
+
+  customLayouts[index] = {
+    ...customLayouts[index],
+    ...updates,
+  };
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(customLayouts));
+  } catch (error) {
+    console.error('Error updating layout:', error);
+    return null;
+  }
+
+  return customLayouts[index];
+}
+
+/**
+ * Duplicate a workspace layout
+ */
+export function duplicateWorkspaceLayout(layoutId: string): WorkspaceLayout | null {
+  const layout = getWorkspaceLayout(layoutId);
+  if (!layout) {
+    return null;
+  }
+
+  return saveWorkspaceLayout({
+    name: `${layout.name} (Copy)`,
+    description: layout.description,
+    panelSizes: { ...layout.panelSizes },
+    visiblePanels: { ...layout.visiblePanels },
+  });
 }

@@ -7,6 +7,8 @@ import {
   saveWorkspaceLayout,
   PanelSizes,
 } from '../services/workspaceLayoutService';
+import { saveWorkspaceThumbnail } from '../services/workspaceThumbnailService';
+import { generateWorkspaceThumbnail } from '../utils/workspaceThumbnailGenerator';
 
 interface WorkspaceLayoutState {
   currentLayoutId: string;
@@ -59,8 +61,21 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
   collapsedPanels: loadCollapsedPanels(),
 
   setCurrentLayout: (layoutId: string) => {
-    applyWorkspaceLayout(layoutId);
-    set({ currentLayoutId: layoutId });
+    const layout = applyWorkspaceLayout(layoutId);
+    if (layout) {
+      // Apply the layout's panel visibility to collapsed panels state
+      // A panel is collapsed if it's NOT visible in the layout
+      const newCollapsedPanels = {
+        properties: !layout.visiblePanels.properties,
+        mediaLibrary: !layout.visiblePanels.mediaLibrary,
+        effects: !layout.visiblePanels.effects,
+        history: !layout.visiblePanels.history,
+      };
+      saveCollapsedPanels(newCollapsedPanels);
+      set({ currentLayoutId: layoutId, collapsedPanels: newCollapsedPanels });
+    } else {
+      set({ currentLayoutId: layoutId });
+    }
   },
 
   toggleFullscreen: () => {
@@ -151,6 +166,16 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
         history: !currentCollapsed.history,
       },
     });
+
+    // Generate and save thumbnail for the new layout
+    try {
+      const thumbnailDataUrl = generateWorkspaceThumbnail(newLayout);
+      saveWorkspaceThumbnail(newLayout.id, thumbnailDataUrl, false);
+    } catch (error) {
+      console.error('Failed to generate thumbnail for workspace:', error);
+      // Don't fail the save operation if thumbnail generation fails
+    }
+
     set({ currentLayoutId: newLayout.id });
     return newLayout;
   },

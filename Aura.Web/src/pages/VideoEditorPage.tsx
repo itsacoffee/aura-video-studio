@@ -17,12 +17,16 @@ import {
   VideoPreviewPanelHandle,
 } from '../components/EditorLayout/VideoPreviewPanel';
 import { ExportDialog, ExportOptions } from '../components/Export/ExportDialog';
+import { useNotifications } from '../components/Notifications/Toasts';
+import { KeyboardShortcutsHelp } from '../components/video-editor/KeyboardShortcutsHelp';
 import { useProjectState } from '../hooks/useProjectState';
 import { CommandHistory } from '../services/commandHistory';
 import { startExport, pollExportStatus } from '../services/exportService';
 import { getHardwareInfo, HardwareInfo } from '../services/hardwareService';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
+import { PRESET_LAYOUTS } from '../services/workspaceLayoutService';
 import { useActivity } from '../state/activityContext';
+import { useWorkspaceLayoutStore } from '../state/workspaceLayout';
 import { AppliedEffect, EffectPreset } from '../types/effects';
 import { ProjectFile, ProjectMediaItem } from '../types/project';
 
@@ -95,7 +99,7 @@ export function VideoEditorPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [clips, setClips] = useState<TimelineClip[]>([]);
-  const [, setShowKeyboardShortcuts] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [, setIsPlaying] = useState(false);
   const [, setPlaybackSpeed] = useState(1.0);
   const [, setInPoint] = useState<number | null>(null);
@@ -113,6 +117,13 @@ export function VideoEditorPage() {
 
   // Access activity context for progress tracking
   const { addActivity, updateActivity } = useActivity();
+
+  // Workspace layout management
+  const { setCurrentLayout, toggleFullscreen, resetLayout, getCurrentLayout } =
+    useWorkspaceLayoutStore();
+
+  // Toast notifications
+  const { showSuccessToast } = useNotifications();
 
   // Command history for undo/redo
   const commandHistory = useMemo(() => new CommandHistory(50), []);
@@ -456,6 +467,94 @@ export function VideoEditorPage() {
           handleSaveProject();
         },
       },
+      // Workspace switching
+      {
+        id: 'workspace-editing',
+        keys: 'Alt+1',
+        description: 'Switch to Editing workspace',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          handleWorkspaceSwitch('editing');
+        },
+      },
+      {
+        id: 'workspace-color',
+        keys: 'Alt+2',
+        description: 'Switch to Color workspace',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          handleWorkspaceSwitch('color');
+        },
+      },
+      {
+        id: 'workspace-effects',
+        keys: 'Alt+3',
+        description: 'Switch to Effects workspace',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          handleWorkspaceSwitch('effects');
+        },
+      },
+      {
+        id: 'workspace-audio',
+        keys: 'Alt+4',
+        description: 'Switch to Audio workspace',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          handleWorkspaceSwitch('audio');
+        },
+      },
+      {
+        id: 'workspace-assembly',
+        keys: 'Alt+5',
+        description: 'Switch to Assembly workspace',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          handleWorkspaceSwitch('assembly');
+        },
+      },
+      {
+        id: 'workspace-reset',
+        keys: 'Alt+0',
+        description: 'Reset to default layout',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          resetLayout();
+          const layout = getCurrentLayout();
+          if (layout) {
+            showSuccessToast({
+              title: 'Layout Reset',
+              message: `Workspace reset to ${layout.name}`,
+            });
+          }
+        },
+      },
+      {
+        id: 'fullscreen-toggle',
+        keys: 'F11',
+        description: 'Toggle fullscreen',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          toggleFullscreen();
+        },
+      },
+      {
+        id: 'show-shortcuts',
+        keys: '?',
+        description: 'Show keyboard shortcuts',
+        context: 'video-editor',
+        handler: (e) => {
+          e.preventDefault();
+          setShowKeyboardShortcuts(true);
+        },
+      },
     ]);
 
     // Clean up on unmount
@@ -505,6 +604,17 @@ export function VideoEditorPage() {
         track.id === trackId ? { ...track, locked: !track.locked } : track
       )
     );
+  };
+
+  const handleWorkspaceSwitch = (layoutId: string) => {
+    setCurrentLayout(layoutId);
+    const layout = PRESET_LAYOUTS[layoutId];
+    if (layout) {
+      showSuccessToast({
+        title: 'Workspace Changed',
+        message: `Switched to ${layout.name} workspace`,
+      });
+    }
   };
 
   const selectedClip = clips.find((clip) => clip.id === selectedClipId);
@@ -779,6 +889,10 @@ export function VideoEditorPage() {
           hardwareType={hardwareInfo?.hardwareType ?? 'None'}
         />
       )}
+      <KeyboardShortcutsHelp
+        open={showKeyboardShortcuts}
+        onClose={() => setShowKeyboardShortcuts(false)}
+      />
     </>
   );
 }

@@ -52,6 +52,11 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<CustomTemplateEntity> CustomTemplates { get; set; } = null!;
 
+    /// <summary>
+    /// Action log for server-side undo/redo operations
+    /// </summary>
+    public DbSet<ActionLogEntity> ActionLogs { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -92,6 +97,8 @@ public class AuraDbContext : DbContext
             entity.HasIndex(e => e.UpdatedAt);
             entity.HasIndex(e => new { e.Status, e.UpdatedAt });
             entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.IsDeleted);
+            entity.HasIndex(e => new { e.IsDeleted, e.DeletedAt });
         });
 
         // Configure SceneStateEntity
@@ -140,6 +147,22 @@ public class AuraDbContext : DbContext
             entity.HasIndex(e => e.IsDefault);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => new { e.Category, e.CreatedAt });
+            entity.HasIndex(e => e.IsDeleted);
+            entity.HasIndex(e => new { e.IsDeleted, e.DeletedAt });
+        });
+
+        // Configure ActionLogEntity
+        modelBuilder.Entity<ActionLogEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.ActionType);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.UserId, e.Timestamp });
+            entity.HasIndex(e => new { e.Status, e.Timestamp });
+            entity.HasIndex(e => e.CorrelationId);
+            entity.HasIndex(e => e.ExpiresAt);
         });
     }
 }

@@ -17,6 +17,93 @@ namespace Aura.Api.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.11");
 
+            modelBuilder.Entity("Aura.Core.Data.ActionLogEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AffectedResourceIds")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("CanBatch")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InverseActionType")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InversePayloadJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsPersistent")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UndoneAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UndoneByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActionType");
+
+                    b.HasIndex("CorrelationId");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Status", "Timestamp");
+
+                    b.HasIndex("UserId", "Timestamp");
+
+                    b.ToTable("ActionLogs");
+                });
+
             modelBuilder.Entity("Aura.Core.Data.AssetStateEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -58,6 +145,82 @@ namespace Aura.Api.Migrations
                     b.HasIndex("ProjectId", "AssetType");
 
                     b.ToTable("AssetStates");
+                });
+
+            modelBuilder.Entity("Aura.Core.Data.CustomTemplateEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Author")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LLMPipelineJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ScriptStructureJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VideoStructureJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("VisualPreferencesJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("IsDefault");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("Category", "CreatedAt");
+
+                    b.HasIndex("IsDeleted", "DeletedAt");
+
+                    b.ToTable("CustomTemplates");
                 });
 
             modelBuilder.Entity("Aura.Core.Data.ExportHistoryEntity", b =>
@@ -164,12 +327,22 @@ namespace Aura.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DeletedByUserId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("JobId")
                         .HasMaxLength(100)
@@ -201,11 +374,15 @@ namespace Aura.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsDeleted");
+
                     b.HasIndex("JobId");
 
                     b.HasIndex("Status");
 
                     b.HasIndex("UpdatedAt");
+
+                    b.HasIndex("IsDeleted", "DeletedAt");
 
                     b.HasIndex("Status", "UpdatedAt");
 

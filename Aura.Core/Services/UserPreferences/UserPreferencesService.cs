@@ -110,6 +110,84 @@ public class UserPreferencesService
         return await DeleteAsync<AIBehaviorSettings>("AIBehavior", id, ct);
     }
 
+    public async Task<AIBehaviorSettings> EnsureDefaultAIBehaviorSettingsAsync(CancellationToken ct = default)
+    {
+        var existingSettings = await GetAIBehaviorSettingsAsync(ct);
+        var defaultSetting = existingSettings.FirstOrDefault(s => s.IsDefault);
+
+        if (defaultSetting != null)
+        {
+            return defaultSetting;
+        }
+
+        _logger.LogInformation("Creating default AI behavior settings");
+
+        var newDefault = new AIBehaviorSettings
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = "Default AI Behavior",
+            Description = "Standard AI behavior settings for balanced performance",
+            IsDefault = true,
+            CreativityVsAdherence = 0.5,
+            EnableChainOfThought = false,
+            ShowPromptsBeforeSending = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            ScriptGeneration = new LLMStageParameters
+            {
+                StageName = "ScriptGeneration",
+                Temperature = 0.7,
+                TopP = 0.9,
+                FrequencyPenalty = 0.0,
+                PresencePenalty = 0.0,
+                MaxTokens = 2000,
+                StrictnessLevel = 0.5
+            },
+            SceneDescription = new LLMStageParameters
+            {
+                StageName = "SceneDescription",
+                Temperature = 0.7,
+                TopP = 0.9,
+                FrequencyPenalty = 0.0,
+                PresencePenalty = 0.0,
+                MaxTokens = 1500,
+                StrictnessLevel = 0.5
+            },
+            ContentOptimization = new LLMStageParameters
+            {
+                StageName = "ContentOptimization",
+                Temperature = 0.5,
+                TopP = 0.9,
+                FrequencyPenalty = 0.0,
+                PresencePenalty = 0.0,
+                MaxTokens = 2000,
+                StrictnessLevel = 0.7
+            },
+            Translation = new LLMStageParameters
+            {
+                StageName = "Translation",
+                Temperature = 0.3,
+                TopP = 0.9,
+                FrequencyPenalty = 0.0,
+                PresencePenalty = 0.0,
+                MaxTokens = 2000,
+                StrictnessLevel = 0.8
+            },
+            QualityAnalysis = new LLMStageParameters
+            {
+                StageName = "QualityAnalysis",
+                Temperature = 0.2,
+                TopP = 0.9,
+                FrequencyPenalty = 0.0,
+                PresencePenalty = 0.0,
+                MaxTokens = 1000,
+                StrictnessLevel = 0.9
+            }
+        };
+
+        return await SaveAIBehaviorSettingsAsync(newDefault, ct);
+    }
+
     // Custom Prompt Templates
     public async Task<List<CustomPromptTemplate>> GetCustomPromptTemplatesAsync(string? stage = null, CancellationToken ct = default)
     {

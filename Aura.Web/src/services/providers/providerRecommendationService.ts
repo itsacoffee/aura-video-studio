@@ -131,6 +131,130 @@ class ProviderRecommendationService {
   }
 
   /**
+   * Get enhanced cost tracking configuration
+   */
+  async getCostTrackingConfiguration(): Promise<CostTrackingConfiguration | null> {
+    try {
+      const response = await apiClient.get<CostTrackingConfiguration>(
+        '/api/cost-tracking/configuration'
+      );
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Failed to get cost tracking configuration:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Update cost tracking configuration
+   */
+  async updateCostTrackingConfiguration(
+    config: CostTrackingConfiguration
+  ): Promise<boolean> {
+    try {
+      await apiClient.put('/api/cost-tracking/configuration', config);
+      return true;
+    } catch (error: unknown) {
+      console.error('Failed to update cost tracking configuration:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get spending report for a date range
+   */
+  async getSpendingReport(
+    startDate?: Date,
+    endDate?: Date,
+    provider?: string
+  ): Promise<SpendingReport | null> {
+    try {
+      const params: Record<string, string> = {};
+      if (startDate) params.startDate = startDate.toISOString();
+      if (endDate) params.endDate = endDate.toISOString();
+      if (provider) params.provider = provider;
+
+      const response = await apiClient.get<SpendingReport>('/api/cost-tracking/spending', {
+        params,
+      });
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Failed to get spending report:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get current period spending
+   */
+  async getCurrentPeriodSpending(): Promise<CurrentPeriodSpending | null> {
+    try {
+      const response = await apiClient.get<CurrentPeriodSpending>(
+        '/api/cost-tracking/current-period'
+      );
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Failed to get current period spending:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get provider pricing information
+   */
+  async getProviderPricing(): Promise<ProviderPricing[]> {
+    try {
+      const response = await apiClient.get<ProviderPricing[]>('/api/cost-tracking/pricing');
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Failed to get provider pricing:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Update provider pricing
+   */
+  async updateProviderPricing(providerName: string, pricing: ProviderPricing): Promise<boolean> {
+    try {
+      await apiClient.put(`/api/cost-tracking/pricing/${providerName}`, pricing);
+      return true;
+    } catch (error: unknown) {
+      console.error('Failed to update provider pricing:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if an operation would exceed budget
+   */
+  async checkBudget(request: CostEstimateRequest): Promise<BudgetCheckResult | null> {
+    try {
+      const response = await apiClient.post<BudgetCheckResult>(
+        '/api/cost-tracking/check-budget',
+        request
+      );
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Failed to check budget:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Reset budget for current period
+   */
+  async resetBudget(): Promise<boolean> {
+    try {
+      await apiClient.post('/api/cost-tracking/reset-budget');
+      return true;
+    } catch (error: unknown) {
+      console.error('Failed to reset budget:', error);
+      return false;
+    }
+  }
+
+  /**
    * Get available provider profiles
    */
   async getProviderProfiles(): Promise<ProviderProfile[]> {
@@ -275,6 +399,97 @@ export interface ProviderPreferences {
   monthlyBudgetLimit?: number;
   perProviderBudgetLimits: Record<string, number>;
   hardBudgetLimit: boolean;
+}
+
+export interface CostTrackingConfiguration {
+  id?: string;
+  userId: string;
+  overallMonthlyBudget?: number;
+  budgetPeriodStart?: string;
+  budgetPeriodEnd?: string;
+  periodType: 'Monthly' | 'Weekly' | 'Custom';
+  currency: string;
+  alertThresholds: number[];
+  emailNotificationsEnabled: boolean;
+  notificationEmail?: string;
+  alertFrequency: 'Once' | 'Daily' | 'EveryTime';
+  providerBudgets: Record<string, number>;
+  hardBudgetLimit: boolean;
+  enableProjectTracking: boolean;
+}
+
+export interface SpendingReport {
+  startDate: string;
+  endDate: string;
+  totalCost: number;
+  currency: string;
+  costByProvider: Record<string, number>;
+  costByFeature: Record<string, number>;
+  costByProject: Record<string, number>;
+  recentTransactions: CostLogEntry[];
+  trend?: SpendingTrend;
+}
+
+export interface CostLogEntry {
+  id: string;
+  timestamp: string;
+  providerName: string;
+  feature: string;
+  cost: number;
+  projectId?: string;
+  projectName?: string;
+  tokensUsed?: number;
+  charactersUsed?: number;
+  computeTimeSeconds?: number;
+}
+
+export interface SpendingTrend {
+  averageDailyCost: number;
+  projectedMonthlyCost: number;
+  percentageChange: number;
+  trendDirection: string;
+}
+
+export interface CurrentPeriodSpending {
+  totalCost: number;
+  currency: string;
+  periodType: string;
+  budget?: number;
+  percentageUsed: number;
+}
+
+export interface ProviderPricing {
+  providerName: string;
+  providerType: string;
+  isFree: boolean;
+  costPer1KTokens?: number;
+  costPer1KInputTokens?: number;
+  costPer1KOutputTokens?: number;
+  costPerCharacter?: number;
+  costPer1KCharacters?: number;
+  costPerImage?: number;
+  costPerComputeSecond?: number;
+  isManualOverride: boolean;
+  lastUpdated: string;
+  currency: string;
+  notes?: string;
+}
+
+export interface BudgetCheckResult {
+  isWithinBudget: boolean;
+  shouldBlock: boolean;
+  warnings: string[];
+  currentMonthlyCost: number;
+  estimatedNewTotal: number;
+}
+
+export interface CostEstimateRequest {
+  providerName: string;
+  operationType: string;
+  estimatedInputTokens?: number;
+  estimatedOutputTokens?: number;
+  estimatedCharacters?: number;
+  estimatedComputeSeconds?: number;
 }
 
 export const providerRecommendationService = new ProviderRecommendationService();

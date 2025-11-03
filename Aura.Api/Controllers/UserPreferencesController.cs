@@ -271,6 +271,180 @@ public class UserPreferencesController : ControllerBase
         return NoContent();
     }
 
+    // AI Behavior Settings
+
+    /// <summary>
+    /// Get all AI behavior settings
+    /// </summary>
+    [HttpGet("ai-behavior")]
+    [ProducesResponseType(typeof(List<AIBehaviorSettingsDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<AIBehaviorSettingsDto>>> GetAIBehaviorSettings(CancellationToken ct)
+    {
+        _logger.LogInformation("Getting AI behavior settings");
+        var settings = await _preferencesService.GetAIBehaviorSettingsAsync(ct);
+        var dtos = settings.Select(MapToDto).ToList();
+        return Ok(dtos);
+    }
+
+    /// <summary>
+    /// Get an AI behavior setting by ID
+    /// </summary>
+    [HttpGet("ai-behavior/{id}")]
+    [ProducesResponseType(typeof(AIBehaviorSettingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AIBehaviorSettingsDto>> GetAIBehaviorSetting(string id, CancellationToken ct)
+    {
+        _logger.LogInformation("Getting AI behavior setting {SettingId}", id);
+        var setting = await _preferencesService.GetAIBehaviorSettingAsync(id, ct);
+        
+        if (setting == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Setting Not Found",
+                Status = StatusCodes.Status404NotFound,
+                Detail = $"AI behavior setting {id} does not exist"
+            });
+        }
+
+        return Ok(MapToDto(setting));
+    }
+
+    /// <summary>
+    /// Create a new AI behavior setting
+    /// </summary>
+    [HttpPost("ai-behavior")]
+    [ProducesResponseType(typeof(AIBehaviorSettingsDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<AIBehaviorSettingsDto>> CreateAIBehaviorSetting(
+        [FromBody] AIBehaviorSettingsDto dto,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Creating AI behavior setting: {SettingName}", dto.Name);
+        
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid Setting",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "Setting name is required"
+            });
+        }
+
+        var setting = MapFromDto(dto);
+        setting.Id = Guid.NewGuid().ToString();
+        setting.CreatedAt = DateTime.UtcNow;
+        setting.UpdatedAt = DateTime.UtcNow;
+
+        var saved = await _preferencesService.SaveAIBehaviorSettingsAsync(setting, ct);
+        return CreatedAtAction(nameof(GetAIBehaviorSetting), new { id = saved.Id }, MapToDto(saved));
+    }
+
+    /// <summary>
+    /// Update an AI behavior setting
+    /// </summary>
+    [HttpPut("ai-behavior/{id}")]
+    [ProducesResponseType(typeof(AIBehaviorSettingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AIBehaviorSettingsDto>> UpdateAIBehaviorSetting(
+        string id,
+        [FromBody] AIBehaviorSettingsDto dto,
+        CancellationToken ct)
+    {
+        _logger.LogInformation("Updating AI behavior setting {SettingId}", id);
+        
+        var existing = await _preferencesService.GetAIBehaviorSettingAsync(id, ct);
+        if (existing == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Setting Not Found",
+                Status = StatusCodes.Status404NotFound,
+                Detail = $"AI behavior setting {id} does not exist"
+            });
+        }
+
+        var setting = MapFromDto(dto);
+        setting.Id = id;
+        setting.CreatedAt = existing.CreatedAt;
+
+        var saved = await _preferencesService.SaveAIBehaviorSettingsAsync(setting, ct);
+        return Ok(MapToDto(saved));
+    }
+
+    /// <summary>
+    /// Delete an AI behavior setting
+    /// </summary>
+    [HttpDelete("ai-behavior/{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteAIBehaviorSetting(string id, CancellationToken ct)
+    {
+        _logger.LogInformation("Deleting AI behavior setting {SettingId}", id);
+        
+        var deleted = await _preferencesService.DeleteAIBehaviorSettingsAsync(id, ct);
+        if (!deleted)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Setting Not Found",
+                Status = StatusCodes.Status404NotFound,
+                Detail = $"AI behavior setting {id} does not exist"
+            });
+        }
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Reset AI behavior setting to defaults
+    /// </summary>
+    [HttpPost("ai-behavior/{id}/reset")]
+    [ProducesResponseType(typeof(AIBehaviorSettingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AIBehaviorSettingsDto>> ResetAIBehaviorSetting(string id, CancellationToken ct)
+    {
+        _logger.LogInformation("Resetting AI behavior setting {SettingId} to defaults", id);
+        
+        var existing = await _preferencesService.GetAIBehaviorSettingAsync(id, ct);
+        if (existing == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Setting Not Found",
+                Status = StatusCodes.Status404NotFound,
+                Detail = $"AI behavior setting {id} does not exist"
+            });
+        }
+
+        var defaultSettings = new AIBehaviorSettings
+        {
+            Id = id,
+            Name = existing.Name,
+            CreatedAt = existing.CreatedAt,
+            UpdatedAt = DateTime.UtcNow,
+            Description = existing.Description,
+            IsDefault = existing.IsDefault
+        };
+
+        var saved = await _preferencesService.SaveAIBehaviorSettingsAsync(defaultSettings, ct);
+        return Ok(MapToDto(saved));
+    }
+
+    /// <summary>
+    /// Get or create default AI behavior settings
+    /// </summary>
+    [HttpGet("ai-behavior/default")]
+    [ProducesResponseType(typeof(AIBehaviorSettingsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AIBehaviorSettingsDto>> GetOrCreateDefaultAIBehaviorSettings(CancellationToken ct)
+    {
+        _logger.LogInformation("Getting or creating default AI behavior settings");
+        
+        var defaultSettings = await _preferencesService.EnsureDefaultAIBehaviorSettingsAsync(ct);
+        return Ok(MapToDto(defaultSettings));
+    }
+
     // Export/Import
 
     /// <summary>
@@ -500,6 +674,80 @@ public class UserPreferencesController : ControllerBase
             IsDefault = dto.IsDefault,
             UsageCount = dto.UsageCount,
             LastUsedAt = dto.LastUsedAt
+        };
+    }
+
+    private static AIBehaviorSettingsDto MapToDto(AIBehaviorSettings settings)
+    {
+        return new AIBehaviorSettingsDto(
+            settings.Id,
+            settings.Name,
+            settings.CreatedAt,
+            settings.UpdatedAt,
+            MapToDto(settings.ScriptGeneration),
+            MapToDto(settings.SceneDescription),
+            MapToDto(settings.ContentOptimization),
+            MapToDto(settings.Translation),
+            MapToDto(settings.QualityAnalysis),
+            settings.CreativityVsAdherence,
+            settings.EnableChainOfThought,
+            settings.ShowPromptsBeforeSending,
+            settings.Description,
+            settings.IsDefault,
+            settings.UsageCount,
+            settings.LastUsedAt);
+    }
+
+    private static AIBehaviorSettings MapFromDto(AIBehaviorSettingsDto dto)
+    {
+        return new AIBehaviorSettings
+        {
+            Id = dto.Id,
+            Name = dto.Name,
+            CreatedAt = dto.CreatedAt,
+            UpdatedAt = dto.UpdatedAt,
+            ScriptGeneration = MapFromDto(dto.ScriptGeneration),
+            SceneDescription = MapFromDto(dto.SceneDescription),
+            ContentOptimization = MapFromDto(dto.ContentOptimization),
+            Translation = MapFromDto(dto.Translation),
+            QualityAnalysis = MapFromDto(dto.QualityAnalysis),
+            CreativityVsAdherence = dto.CreativityVsAdherence,
+            EnableChainOfThought = dto.EnableChainOfThought,
+            ShowPromptsBeforeSending = dto.ShowPromptsBeforeSending,
+            Description = dto.Description,
+            IsDefault = dto.IsDefault,
+            UsageCount = dto.UsageCount,
+            LastUsedAt = dto.LastUsedAt
+        };
+    }
+
+    private static LLMStageParametersDto MapToDto(LLMStageParameters parameters)
+    {
+        return new LLMStageParametersDto(
+            parameters.StageName,
+            parameters.Temperature,
+            parameters.TopP,
+            parameters.FrequencyPenalty,
+            parameters.PresencePenalty,
+            parameters.MaxTokens,
+            parameters.CustomSystemPrompt,
+            parameters.PreferredModel,
+            parameters.StrictnessLevel);
+    }
+
+    private static LLMStageParameters MapFromDto(LLMStageParametersDto dto)
+    {
+        return new LLMStageParameters
+        {
+            StageName = dto.StageName,
+            Temperature = dto.Temperature,
+            TopP = dto.TopP,
+            FrequencyPenalty = dto.FrequencyPenalty,
+            PresencePenalty = dto.PresencePenalty,
+            MaxTokens = dto.MaxTokens,
+            CustomSystemPrompt = dto.CustomSystemPrompt,
+            PreferredModel = dto.PreferredModel,
+            StrictnessLevel = dto.StrictnessLevel
         };
     }
 }

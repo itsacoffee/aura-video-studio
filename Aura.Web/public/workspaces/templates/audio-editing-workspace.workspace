@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "name": "Audio Editing Workspace",
+  "description": "Large timeline with audio tools for precise audio editing",
+  "author": "Aura Video Studio",
+  "created": "2025-11-03T00:00:00Z",
+  "modified": "2025-11-03T00:00:00Z",
+  "layout": {
+    "mediaLibrary": {
+      "visible": true,
+      "width": "280px",
+      "collapsed": false
+    },
+    "effectsLibrary": {
+      "visible": false,
+      "width": "0px",
+      "collapsed": true
+    },
+    "preview": {
+      "visible": true,
+      "width": "60%",
+      "collapsed": false
+    },
+    "properties": {
+      "visible": true,
+      "width": "320px",
+      "collapsed": false
+    },
+    "timeline": {
+      "visible": true,
+      "height": "50%",
+      "collapsed": false
+    },
+    "history": {
+      "visible": false,
+      "width": "0px",
+      "collapsed": true
+    }
+  },
+  "shortcuts": {}
+}

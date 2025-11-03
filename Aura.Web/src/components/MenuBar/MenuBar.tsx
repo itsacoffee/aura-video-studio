@@ -25,11 +25,13 @@ import {
   Keyboard24Regular,
   ArrowMaximize24Regular,
   ArrowMinimize24Regular,
+  Settings24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkspaceLayoutStore } from '../../state/workspaceLayout';
 import { WorkspaceLayoutSwitcher } from '../EditorLayout/WorkspaceLayoutSwitcher';
+import { WorkspaceManager } from '../video-editor/WorkspaceManager';
 
 const useStyles = makeStyles({
   menuBar: {
@@ -138,6 +140,7 @@ export function MenuBar({
   const [undoStack] = useState<string[]>([]);
   const [redoStack] = useState<string[]>([]);
   const { isFullscreen, toggleFullscreen, resetLayout } = useWorkspaceLayoutStore();
+  const [workspaceManagerOpen, setWorkspaceManagerOpen] = useState(false);
 
   const handleUndo = () => {
     // Placeholder for undo functionality
@@ -252,6 +255,9 @@ export function MenuBar({
             <MenuItem onClick={() => navigate('/assets')}>Asset Library</MenuItem>
             <MenuItem onClick={() => navigate('/projects')}>Projects</MenuItem>
             <MenuDivider />
+            <MenuItem icon={<Settings24Regular />} onClick={() => setWorkspaceManagerOpen(true)}>
+              Manage Workspaces...
+            </MenuItem>
             <MenuItem onClick={resetLayout}>Reset Layout</MenuItem>
             <MenuDivider />
             <MenuItem>Zoom In</MenuItem>
@@ -301,12 +307,24 @@ export function MenuBar({
         <div className={styles.divider} />
         <WorkspaceLayoutSwitcher />
         <ToolbarButton
+          aria-label="Manage Workspaces"
+          icon={<Settings24Regular />}
+          onClick={() => setWorkspaceManagerOpen(true)}
+          title="Manage Workspaces"
+        />
+        <ToolbarButton
           aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           icon={isFullscreen ? <ArrowMinimize24Regular /> : <ArrowMaximize24Regular />}
           onClick={toggleFullscreen}
           title={isFullscreen ? 'Exit Fullscreen (ESC)' : 'Enter Fullscreen (F11)'}
         />
       </div>
+
+      {/* Workspace Manager Modal */}
+      <WorkspaceManager
+        open={workspaceManagerOpen}
+        onClose={() => setWorkspaceManagerOpen(false)}
+      />
 
       {/* Project Status Section */}
       <div className={styles.statusSection}>

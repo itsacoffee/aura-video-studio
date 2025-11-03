@@ -32,6 +32,22 @@ public class ProjectStateEntity
     public DateTime? CompletedAt { get; set; }
 
     /// <summary>
+    /// Soft-delete support: indicates if this project has been deleted
+    /// </summary>
+    public bool IsDeleted { get; set; } = false;
+
+    /// <summary>
+    /// Soft-delete support: when the project was deleted (null if not deleted)
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
+    /// Soft-delete support: user who deleted the project
+    /// </summary>
+    [MaxLength(200)]
+    public string? DeletedByUserId { get; set; }
+
+    /// <summary>
     /// Current stage in pipeline (Script, TTS, Images, Composition, Render)
     /// </summary>
     [MaxLength(100)]

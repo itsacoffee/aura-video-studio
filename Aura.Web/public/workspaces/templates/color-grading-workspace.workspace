@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "name": "Color Grading Workspace",
+  "description": "Large preview with color tools and properties panel prominent",
+  "author": "Aura Video Studio",
+  "created": "2025-11-03T00:00:00Z",
+  "modified": "2025-11-03T00:00:00Z",
+  "layout": {
+    "mediaLibrary": {
+      "visible": false,
+      "width": "0px",
+      "collapsed": true
+    },
+    "effectsLibrary": {
+      "visible": false,
+      "width": "0px",
+      "collapsed": true
+    },
+    "preview": {
+      "visible": true,
+      "width": "60%",
+      "collapsed": false
+    },
+    "properties": {
+      "visible": true,
+      "width": "350px",
+      "collapsed": false
+    },
+    "timeline": {
+      "visible": true,
+      "height": "70%",
+      "collapsed": false
+    },
+    "history": {
+      "visible": false,
+      "width": "0px",
+      "collapsed": true
+    }
+  },
+  "shortcuts": {}
+}

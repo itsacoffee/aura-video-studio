@@ -168,6 +168,9 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
 builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
 builder.Services.AddScoped<Aura.Core.Services.CheckpointManager>();
 
+// Register ActionService for server-side undo/redo
+builder.Services.AddScoped<Aura.Core.Services.IActionService, Aura.Core.Services.ActionService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -235,6 +238,7 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ProviderMixer>();
 // Provider recommendation, health monitoring, and cost tracking services
 builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
+builder.Services.AddSingleton<Aura.Core.Services.CostTracking.EnhancedCostTrackingService>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommendationService>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.LlmProviderRecommendationService>>();
@@ -788,6 +792,9 @@ builder.Services.AddHostedService<Aura.Api.HostedServices.HealthCheckBackgroundS
 
 // Register OrphanedFileCleanupService for cleaning up old projects and temp files
 builder.Services.AddHostedService<Aura.Api.HostedServices.OrphanedFileCleanupService>();
+
+// Register ActionCleanupService for cleaning up expired actions
+builder.Services.AddHostedService<Aura.Api.HostedServices.ActionCleanupService>();
 
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();

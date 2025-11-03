@@ -29,6 +29,12 @@ import {
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useUserPreferencesStore } from '../../state/userPreferences';
+import type { CustomAudienceProfile, ContentFilteringPolicy } from '../../state/userPreferences';
+import { ConfirmationDialog } from '../Dialogs/ConfirmationDialog';
+import { CreatePolicyModal } from './CreatePolicyModal';
+import { CreateProfileModal } from './CreateProfileModal';
+import { EditPolicyModal } from './EditPolicyModal';
+import { EditProfileModal } from './EditProfileModal';
 
 const useStyles = makeStyles({
   container: {
@@ -98,6 +104,7 @@ export const UserPreferencesTab: FC = () => {
   const {
     customAudienceProfiles,
     contentFilteringPolicies,
+    aiBehaviorSettings,
     selectedAudienceProfileId,
     selectedFilteringPolicyId,
     advancedMode,
@@ -105,9 +112,14 @@ export const UserPreferencesTab: FC = () => {
     error,
     loadCustomAudienceProfiles,
     loadContentFilteringPolicies,
+    loadAIBehaviorSettings,
     selectAudienceProfile,
     selectFilteringPolicy,
+    createCustomAudienceProfile,
+    updateCustomAudienceProfile,
     deleteCustomAudienceProfile,
+    createContentFilteringPolicy,
+    updateContentFilteringPolicy,
     deleteContentFilteringPolicy,
     setAdvancedMode,
     exportPreferences,
@@ -117,10 +129,26 @@ export const UserPreferencesTab: FC = () => {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const [createProfileOpen, setCreateProfileOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<CustomAudienceProfile | null>(null);
+
+  const [createPolicyOpen, setCreatePolicyOpen] = useState(false);
+  const [editPolicyOpen, setEditPolicyOpen] = useState(false);
+  const [selectedPolicy, setSelectedPolicy] = useState<ContentFilteringPolicy | null>(null);
+
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{
+    type: 'profile' | 'policy';
+    id: string;
+    name: string;
+  } | null>(null);
+
   useEffect(() => {
     loadCustomAudienceProfiles();
     loadContentFilteringPolicies();
-  }, [loadCustomAudienceProfiles, loadContentFilteringPolicies]);
+    loadAIBehaviorSettings();
+  }, [loadCustomAudienceProfiles, loadContentFilteringPolicies, loadAIBehaviorSettings]);
 
   const handleExport = async () => {
     try {
@@ -162,28 +190,96 @@ export const UserPreferencesTab: FC = () => {
     }
   };
 
-  const handleDeleteProfile = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this profile?')) {
-      try {
-        await deleteCustomAudienceProfile(id);
-        setMessage({ type: 'success', text: 'Profile deleted successfully' });
-      } catch (err: unknown) {
-        const errorObj = err instanceof Error ? err : new Error(String(err));
-        setMessage({ type: 'error', text: `Delete failed: ${errorObj.message}` });
-      }
+  const handleCreateProfile = async (
+    profile: Omit<CustomAudienceProfile, 'id' | 'createdAt' | 'updatedAt'>
+  ) => {
+    try {
+      await createCustomAudienceProfile(profile);
+      setMessage({ type: 'success', text: 'Profile created successfully' });
+      await loadCustomAudienceProfiles();
+    } catch (err: unknown) {
+      const errorObj = err instanceof Error ? err : new Error(String(err));
+      setMessage({ type: 'error', text: `Create failed: ${errorObj.message}` });
+      throw errorObj;
     }
   };
 
-  const handleDeletePolicy = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this policy?')) {
-      try {
-        await deleteContentFilteringPolicy(id);
-        setMessage({ type: 'success', text: 'Policy deleted successfully' });
-      } catch (err: unknown) {
-        const errorObj = err instanceof Error ? err : new Error(String(err));
-        setMessage({ type: 'error', text: `Delete failed: ${errorObj.message}` });
-      }
+  const handleEditProfile = (profile: CustomAudienceProfile) => {
+    setSelectedProfile(profile);
+    setEditProfileOpen(true);
+  };
+
+  const handleSaveProfile = async (id: string, profile: Partial<CustomAudienceProfile>) => {
+    try {
+      await updateCustomAudienceProfile(id, profile);
+      setMessage({ type: 'success', text: 'Profile updated successfully' });
+      await loadCustomAudienceProfiles();
+    } catch (err: unknown) {
+      const errorObj = err instanceof Error ? err : new Error(String(err));
+      setMessage({ type: 'error', text: `Update failed: ${errorObj.message}` });
+      throw errorObj;
     }
+  };
+
+  const handleDeleteProfile = (id: string, name: string) => {
+    setItemToDelete({ type: 'profile', id, name });
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleCreatePolicy = async (
+    policy: Omit<ContentFilteringPolicy, 'id' | 'createdAt' | 'updatedAt'>
+  ) => {
+    try {
+      await createContentFilteringPolicy(policy);
+      setMessage({ type: 'success', text: 'Policy created successfully' });
+      await loadContentFilteringPolicies();
+    } catch (err: unknown) {
+      const errorObj = err instanceof Error ? err : new Error(String(err));
+      setMessage({ type: 'error', text: `Create failed: ${errorObj.message}` });
+      throw errorObj;
+    }
+  };
+
+  const handleEditPolicy = (policy: ContentFilteringPolicy) => {
+    setSelectedPolicy(policy);
+    setEditPolicyOpen(true);
+  };
+
+  const handleSavePolicy = async (id: string, policy: Partial<ContentFilteringPolicy>) => {
+    try {
+      await updateContentFilteringPolicy(id, policy);
+      setMessage({ type: 'success', text: 'Policy updated successfully' });
+      await loadContentFilteringPolicies();
+    } catch (err: unknown) {
+      const errorObj = err instanceof Error ? err : new Error(String(err));
+      setMessage({ type: 'error', text: `Update failed: ${errorObj.message}` });
+      throw errorObj;
+    }
+  };
+
+  const handleDeletePolicy = (id: string, name: string) => {
+    setItemToDelete({ type: 'policy', id, name });
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      if (itemToDelete.type === 'profile') {
+        await deleteCustomAudienceProfile(itemToDelete.id);
+        setMessage({ type: 'success', text: 'Profile deleted successfully' });
+      } else {
+        await deleteContentFilteringPolicy(itemToDelete.id);
+        setMessage({ type: 'success', text: 'Policy deleted successfully' });
+      }
+    } catch (err: unknown) {
+      const errorObj = err instanceof Error ? err : new Error(String(err));
+      setMessage({ type: 'error', text: `Delete failed: ${errorObj.message}` });
+    }
+
+    setItemToDelete(null);
+    setDeleteConfirmOpen(false);
   };
 
   return (
@@ -266,12 +362,7 @@ export const UserPreferencesTab: FC = () => {
                     icon={<Add24Regular />}
                     appearance="primary"
                     size="small"
-                    onClick={() => {
-                      setMessage({
-                        type: 'success',
-                        text: 'Create profile feature coming soon - use API for now',
-                      });
-                    }}
+                    onClick={() => setCreateProfileOpen(true)}
                   >
                     Create Profile
                   </Button>
@@ -305,17 +396,12 @@ export const UserPreferencesTab: FC = () => {
                         <Button
                           size="small"
                           icon={<Edit24Regular />}
-                          onClick={() => {
-                            setMessage({
-                              type: 'success',
-                              text: 'Edit profile feature coming soon - use API for now',
-                            });
-                          }}
+                          onClick={() => handleEditProfile(profile)}
                         />
                         <Button
                           size="small"
                           icon={<Delete24Regular />}
-                          onClick={() => handleDeleteProfile(profile.id)}
+                          onClick={() => handleDeleteProfile(profile.id, profile.name)}
                         />
                       </div>
                     </div>
@@ -337,12 +423,7 @@ export const UserPreferencesTab: FC = () => {
                     icon={<Add24Regular />}
                     appearance="primary"
                     size="small"
-                    onClick={() => {
-                      setMessage({
-                        type: 'success',
-                        text: 'Create policy feature coming soon - use API for now',
-                      });
-                    }}
+                    onClick={() => setCreatePolicyOpen(true)}
                   >
                     Create Policy
                   </Button>
@@ -376,17 +457,12 @@ export const UserPreferencesTab: FC = () => {
                         <Button
                           size="small"
                           icon={<Edit24Regular />}
-                          onClick={() => {
-                            setMessage({
-                              type: 'success',
-                              text: 'Edit policy feature coming soon - use API for now',
-                            });
-                          }}
+                          onClick={() => handleEditPolicy(policy)}
                         />
                         <Button
                           size="small"
                           icon={<Delete24Regular />}
-                          onClick={() => handleDeletePolicy(policy.id)}
+                          onClick={() => handleDeletePolicy(policy.id, policy.name)}
                         />
                       </div>
                     </div>
@@ -397,18 +473,53 @@ export const UserPreferencesTab: FC = () => {
           </AccordionItem>
 
           <AccordionItem value="ai-behavior">
-            <AccordionHeader icon={<Brain24Regular />}>AI Behavior Settings</AccordionHeader>
+            <AccordionHeader icon={<Brain24Regular />}>
+              AI Behavior Settings ({aiBehaviorSettings.length})
+            </AccordionHeader>
             <AccordionPanel>
-              <Card className={styles.card}>
-                <Text>
-                  AI Behavior customization coming soon. This will allow you to control LLM
-                  parameters, prompts, and behavior for each pipeline stage.
-                </Text>
-              </Card>
+              {/* AIBehaviorSettingsComponent not yet implemented */}
+              <p>AI Behavior settings coming soon...</p>
             </AccordionPanel>
           </AccordionItem>
         </Accordion>
       )}
+
+      <CreateProfileModal
+        open={createProfileOpen}
+        onOpenChange={setCreateProfileOpen}
+        onSave={handleCreateProfile}
+      />
+
+      <EditProfileModal
+        open={editProfileOpen}
+        onOpenChange={setEditProfileOpen}
+        profile={selectedProfile}
+        onSave={handleSaveProfile}
+      />
+
+      <CreatePolicyModal
+        open={createPolicyOpen}
+        onOpenChange={setCreatePolicyOpen}
+        onSave={handleCreatePolicy}
+      />
+
+      <EditPolicyModal
+        open={editPolicyOpen}
+        onOpenChange={setEditPolicyOpen}
+        policy={selectedPolicy}
+        onSave={handleSavePolicy}
+      />
+
+      <ConfirmationDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title={`Delete ${itemToDelete?.type === 'profile' ? 'Profile' : 'Policy'}`}
+        message={`Are you sure you want to delete "${itemToDelete?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 };
