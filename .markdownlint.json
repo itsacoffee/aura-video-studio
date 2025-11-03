@@ -9,11 +9,15 @@
   "MD007": {
     "indent": 2
   },
+  "MD012": false,
   "MD013": false,
+  "MD022": false,
   "MD024": {
     "siblings_only": true
   },
   "MD025": true,
+  "MD031": false,
+  "MD032": false,
   "MD033": {
     "allowed_elements": [
       "br",
@@ -24,6 +28,7 @@
     ]
   },
   "MD034": false,
+  "MD040": false,
   "MD041": false,
   "no-hard-tabs": true,
   "whitespace": true

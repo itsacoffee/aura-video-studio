@@ -17,13 +17,15 @@ New to Aura Video Studio? Start here:
 
 ### End Users
 
-**Getting Started**
+#### Getting Started
+
 - [Installation Guide](./getting-started/INSTALLATION.md)
 - [Quick Start Guide](./getting-started/QUICK_START.md)
 - [First Run Guide](./getting-started/FIRST_RUN_GUIDE.md) (also in root as [FIRST_RUN_GUIDE.md](../FIRST_RUN_GUIDE.md))
 - [First Run FAQ](./getting-started/FIRST_RUN_FAQ.md)
 
-**Feature Guides**
+#### Feature Guides
+
 - [Video Generation Engines](./features/ENGINES.md)
 - [Stable Diffusion Integration](./features/ENGINES_SD.md)
 - [Timeline Editor](./features/TIMELINE.md)
@@ -31,7 +33,8 @@ New to Aura Video Studio? Start here:
 - [Local TTS Providers](./features/TTS_LOCAL.md)
 - [Command Line Interface](./features/CLI.md)
 
-**User Guides**
+#### User Guides
+
 - [User Customization Guide](../USER_CUSTOMIZATION_GUIDE.md) - Personalize settings and preferences
 - [Translation User Guide](../TRANSLATION_USER_GUIDE.md) - Multi-language support
 - [Prompt Customization Guide](../PROMPT_CUSTOMIZATION_USER_GUIDE.md) - Customize AI prompts
@@ -58,13 +61,15 @@ New to Aura Video Studio? Start here:
 - [UI Improvements Visual Guide](./user-guide/UI_IMPROVEMENTS_VISUAL_GUIDE.md)
 - [Dependency Rescan UI Guide](./user-guide/DEPENDENCY_RESCAN_UI_GUIDE.md)
 
-**Workflows**
+#### Workflows
+
 - [Quick Demo Workflow](./workflows/QUICK_DEMO.md)
 - [Portable Mode Guide](./workflows/PORTABLE_MODE_GUIDE.md)
 - [Settings Schema](./workflows/SETTINGS_SCHEMA.md)
 - [UX Guide](./workflows/UX_GUIDE.md)
 
-**Advanced Features**
+#### Advanced Features
+
 - [Advanced Mode Guide](../ADVANCED_MODE_GUIDE.md)
 - [Advanced Mode Visual Guide](../ADVANCED_MODE_VISUAL_GUIDE.md)
 - [Advanced Features Audit](../ADVANCED_FEATURES_AUDIT.md)
@@ -73,14 +78,16 @@ New to Aura Video Studio? Start here:
 
 ### Developers
 
-**Setup and Building**
+#### Setup and Building
+
 - [Build Guide](../BUILD_GUIDE.md) - Build from source
 - [Contributing Guide](../CONTRIBUTING.md) - How to contribute
 - [Build and Run](./developer/BUILD_AND_RUN.md)
 - [Installation](./developer/INSTALL.md)
 - [Deployment](./developer/DEPLOYMENT.md)
 
-**Development Guides**
+#### Development Guides
+
 - [TypeScript Guidelines](./TYPESCRIPT_GUIDELINES.md)
 - [Configuration Guide](./CONFIGURATION_GUIDE.md)
 - [Testing Guide](./TESTING.md)
@@ -90,7 +97,8 @@ New to Aura Video Studio? Start here:
 - [Zero Placeholder Policy](../ZERO_PLACEHOLDER_POLICY.md)
 - [Dependency Path Selection](./dependency-path-selection.md)
 
-**Architecture**
+#### Architecture
+
 - [Architecture Overview](./architecture/ARCHITECTURE.md)
 - [Provider Selection Architecture](./architecture/PROVIDER_SELECTION_ARCHITECTURE.md)
 - [SSE Event Flow](./architecture/SSE_EVENT_FLOW.md)
@@ -103,7 +111,8 @@ New to Aura Video Studio? Start here:
 - [Error Modal UI Design](./architecture/ERROR_MODAL_UI_DESIGN.md)
 - [Brand Kit UI](./architecture/BRAND_KIT_UI.md)
 
-**API Reference**
+#### API Reference
+
 - [API Contract v1](./api/API_CONTRACT_V1.md)
 - [API Overview](./api/README.md)
 - [Error Handling](./api/errors.md)
@@ -113,7 +122,8 @@ New to Aura Video Studio? Start here:
 - [Rate Limits](./api/rate-limits.md)
 - [Aura.Api README](../Aura.Api/README.md) - Backend API documentation
 
-**Project-Specific Documentation**
+#### Project-Specific Documentation
+
 - [Aura.Api README](../Aura.Api/README.md) - Backend API project
 - [Aura.Web README](../Aura.Web/README.md) - Frontend web project
 - [Aura.Web Keyboard Shortcuts Guide](../Aura.Web/KEYBOARD_SHORTCUTS_GUIDE.md)
@@ -132,7 +142,8 @@ New to Aura Video Studio? Start here:
 - [Aura.Core AI Adapters](../Aura.Core/AI/Adapters/README.md)
 - [Aura.Core ML Pretrained Models](../Aura.Core/ML/PretrainedModels/README.md)
 
-**Implementation Guides**
+#### Implementation Guides
+
 - [LLM Implementation Guide](../LLM_IMPLEMENTATION_GUIDE.md)
 - [LLM Integration Audit](../LLM_INTEGRATION_AUDIT.md)
 - [LLM Latency Management](../LLM_LATENCY_MANAGEMENT.md)
@@ -144,35 +155,41 @@ New to Aura Video Studio? Start here:
 
 ### Operations
 
-**Production Readiness**
+#### Production Readiness
+
 - [Production Readiness Checklist](../PRODUCTION_READINESS_CHECKLIST.md)
 - [Security Guide](../SECURITY.md)
 - [Code Quality Audit Report](../CODE_QUALITY_AUDIT_REPORT.md)
 - [Performance Benchmarks](./PERFORMANCE_BENCHMARKS.md)
 - [Deployment Validation Checklist](./DEPLOYMENT_VALIDATION_CHECKLIST.md)
 
-**Operations Runbooks**
+#### Operations Runbooks
+
 - [Oncall Runbook](../OncallRunbook.md)
 - [Release Playbook](../ReleasePlaybook.md)
 - [Orchestration Runbook](./ORCHESTRATION_RUNBOOK.md)
 
-**Troubleshooting**
+#### Troubleshooting
+
 - [Troubleshooting Guide](./troubleshooting/Troubleshooting.md)
 - [FFmpeg Setup Guide](./FFmpeg_Setup_Guide.md)
 
-**CI/CD**
+#### CI/CD
+
 - [CI Documentation](./CI.md)
 - [Best Practices](./best-practices/README.md)
 
 ## Documentation by Topic
 
 ### Video Generation Pipeline
+
 - [Features: Video Generation Engines](./features/ENGINES.md)
 - [Workflows: Quick Demo](./workflows/QUICK_DEMO.md)
 - [Architecture: Provider Selection](./architecture/PROVIDER_SELECTION_ARCHITECTURE.md)
 - [User Guide: Pipeline Validation](./user-guide/PIPELINE_VALIDATION_GUIDE.md)
 
 ### LLM Integration
+
 - [LLM Implementation Guide](../LLM_IMPLEMENTATION_GUIDE.md)
 - [LLM Integration Audit](../LLM_INTEGRATION_AUDIT.md)
 - [LLM Latency Management](../LLM_LATENCY_MANAGEMENT.md)
@@ -180,11 +197,13 @@ New to Aura Video Studio? Start here:
 - [Prompt Customization Guide](../PROMPT_CUSTOMIZATION_USER_GUIDE.md)
 
 ### Text-to-Speech
+
 - [TTS and Captions Feature](./features/TTS-and-Captions.md)
 - [Local TTS Providers](./features/TTS_LOCAL.md)
 - [Provider Integration Guide](../PROVIDER_INTEGRATION_GUIDE.md)
 
 ### Timeline and Editing
+
 - [Timeline Editor Feature](./features/TIMELINE.md)
 - [Timeline Editor UI Guide](./user-guide/TIMELINE_EDITOR_UI_GUIDE.md)
 - [Aura.Web Timeline Features](../Aura.Web/TIMELINE_FEATURES.md)
@@ -193,11 +212,13 @@ New to Aura Video Studio? Start here:
 - [Undo/Redo Guide](../Aura.Web/UNDO_REDO_GUIDE.md)
 
 ### Advanced Features
+
 - [Advanced Mode Guide](../ADVANCED_MODE_GUIDE.md)
 - [Advanced Features Audit](../ADVANCED_FEATURES_AUDIT.md)
 - [Chroma Key Compositing](../Aura.Web/CHROMA_KEY_COMPOSITING.md)
 
 ### Testing
+
 - [Testing Guide](./TESTING.md)
 - [Integration Testing Guide](./INTEGRATION_TESTING_GUIDE.md)
 - [Aura.Web Testing](../Aura.Web/TESTING.md)
