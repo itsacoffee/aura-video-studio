@@ -308,4 +308,100 @@ public class ActionsController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// Exports action history in specified format (CSV or JSON)
+    /// </summary>
+    /// <param name="query">Query parameters for filtering</param>
+    /// <param name="format">Export format (csv or json)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Exported action history file</returns>
+    [HttpGet("export")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> ExportActionHistory(
+        [FromQuery] ActionHistoryQuery query,
+        [FromQuery] string format = "csv",
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Exporting action history in {Format} format, CorrelationId: {CorrelationId}",
+            format, HttpContext.TraceIdentifier);
+
+        try
+        {
+            var normalizedFormat = format.ToLowerInvariant();
+            if (normalizedFormat != "csv" && normalizedFormat != "json")
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid format",
+                    Detail = "Format must be 'csv' or 'json'",
+                    Status = 400,
+                    Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                });
+            }
+
+            var (actions, _) = await _actionService.GetActionHistoryAsync(
+                query.UserId,
+                query.ActionType,
+                query.Status,
+                query.StartDate,
+                query.EndDate,
+                1,
+                10000,
+                cancellationToken);
+
+            if (normalizedFormat == "csv")
+            {
+                var csv = GenerateCsv(actions);
+                var fileName = $"action-history-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+                return File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", fileName);
+            }
+            else
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(actions, new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+                var fileName = $"action-history-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
+                return File(System.Text.Encoding.UTF8.GetBytes(json), "application/json", fileName);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export action history");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Failed to export action history",
+                Detail = ex.Message,
+                Status = 500,
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+    }
+
+    private static string GenerateCsv(System.Collections.Generic.List<ActionLogEntity> actions)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Id,UserId,ActionType,Description,Timestamp,Status,AffectedResourceIds,UndoneAt,UndoneByUserId,ExpiresAt");
+
+        foreach (var action in actions)
+        {
+            sb.AppendLine($"\"{action.Id}\",\"{EscapeCsv(action.UserId)}\",\"{EscapeCsv(action.ActionType)}\"," +
+                         $"\"{EscapeCsv(action.Description)}\",\"{action.Timestamp:yyyy-MM-dd HH:mm:ss}\",\"{action.Status}\"," +
+                         $"\"{EscapeCsv(action.AffectedResourceIds ?? "")}\",\"{action.UndoneAt:yyyy-MM-dd HH:mm:ss}\"," +
+                         $"\"{EscapeCsv(action.UndoneByUserId ?? "")}\",\"{action.ExpiresAt:yyyy-MM-dd HH:mm:ss}\"");
+        }
+
+        return sb.ToString();
+    }
+
+    private static string EscapeCsv(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        return value.Replace("\"", "\"\"");
+    }
 }

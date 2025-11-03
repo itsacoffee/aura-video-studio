@@ -793,6 +793,9 @@ builder.Services.AddHostedService<Aura.Api.HostedServices.HealthCheckBackgroundS
 // Register OrphanedFileCleanupService for cleaning up old projects and temp files
 builder.Services.AddHostedService<Aura.Api.HostedServices.OrphanedFileCleanupService>();
 
+// Register ActionCleanupService for cleaning up expired actions
+builder.Services.AddHostedService<Aura.Api.HostedServices.ActionCleanupService>();
+
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
 builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
