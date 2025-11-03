@@ -18,6 +18,10 @@ import {
   Dropdown,
   Option,
   Textarea,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
+  Link,
 } from '@fluentui/react-components';
 import {
   LocalLanguage24Regular,
@@ -25,9 +29,11 @@ import {
   Info24Regular,
   DocumentMultiple24Regular,
   Database24Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
 import { useState, useCallback, useEffect } from 'react';
 import { ErrorState } from '../../components/Loading';
+import { fallbackLanguages } from '../../data/fallbackLanguages';
 import {
   translateScript,
   batchTranslate,
@@ -116,6 +122,9 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     fontStyle: 'italic',
   },
+  warningBanner: {
+    marginBottom: tokens.spacingVerticalL,
+  },
 });
 
 type TabValue = 'translate' | 'batch' | 'glossary';
@@ -140,8 +149,9 @@ export const TranslationPage: React.FC = () => {
   const [batchResults, setBatchResults] = useState<Record<string, TranslationResultDto>>({});
 
   // Languages
-  const [languages, setLanguages] = useState<LanguageInfoDto[]>([]);
+  const [languages, setLanguages] = useState<LanguageInfoDto[]>(fallbackLanguages);
   const [loadingLanguages, setLoadingLanguages] = useState(true);
+  const [languagesLoadFailed, setLanguagesLoadFailed] = useState(false);
 
   // Load supported languages on mount
   useEffect(() => {
@@ -149,14 +159,31 @@ export const TranslationPage: React.FC = () => {
       try {
         const langs = await getSupportedLanguages();
         setLanguages(langs);
+        setLanguagesLoadFailed(false);
       } catch (err) {
         console.error('Failed to load languages:', err);
-        setError('Failed to load supported languages');
+        setLanguagesLoadFailed(true);
+        setLanguages(fallbackLanguages);
       } finally {
         setLoadingLanguages(false);
       }
     }
     loadLanguages();
+  }, []);
+
+  const handleRetryLoadLanguages = useCallback(async () => {
+    setLoadingLanguages(true);
+    try {
+      const langs = await getSupportedLanguages();
+      setLanguages(langs);
+      setLanguagesLoadFailed(false);
+    } catch (err) {
+      console.error('Failed to load languages:', err);
+      setLanguagesLoadFailed(true);
+      setLanguages(fallbackLanguages);
+    } finally {
+      setLoadingLanguages(false);
+    }
   }, []);
 
   const handleTranslate = useCallback(async () => {
@@ -277,6 +304,21 @@ export const TranslationPage: React.FC = () => {
           Glossary Management
         </Tab>
       </TabList>
+
+      {languagesLoadFailed && (
+        <MessageBar intent="warning" className={styles.warningBanner}>
+          <MessageBarBody>
+            <MessageBarTitle>
+              <Warning24Regular /> Unable to load full language list from server
+            </MessageBarTitle>
+            Using {languages.length} offline languages. Translation features require an active
+            backend connection.{' '}
+            <Link onClick={handleRetryLoadLanguages}>
+              {loadingLanguages ? <Spinner size="tiny" /> : 'Retry'}
+            </Link>
+          </MessageBarBody>
+        </MessageBar>
+      )}
 
       {error && <ErrorState message={error} />}
 
