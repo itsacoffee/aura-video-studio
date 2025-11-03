@@ -235,6 +235,7 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ProviderMixer>();
 // Provider recommendation, health monitoring, and cost tracking services
 builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
+builder.Services.AddSingleton<Aura.Core.Services.CostTracking.EnhancedCostTrackingService>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommendationService>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.LlmProviderRecommendationService>>();
