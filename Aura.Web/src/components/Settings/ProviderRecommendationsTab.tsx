@@ -14,7 +14,15 @@ import {
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { providerRecommendationService } from '../../services/providers/providerRecommendationService';
-import type { ProviderPreferences } from '../../services/providers/providerRecommendationService';
+import type {
+  ProviderPreferences,
+  CostTrackingConfiguration,
+  CurrentPeriodSpending,
+  SpendingReport,
+  ProviderPricing,
+} from '../../services/providers/providerRecommendationService';
+import { BudgetConfiguration } from '../cost-tracking/BudgetConfiguration';
+import { CostDashboard } from '../cost-tracking/CostDashboard';
 
 const useStyles = makeStyles({
   section: {
@@ -61,9 +69,21 @@ export const ProviderRecommendationsTab: FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [costConfig, setCostConfig] = useState<CostTrackingConfiguration | null>(null);
+  const [currentSpending, setCurrentSpending] = useState<CurrentPeriodSpending | null>(null);
+  const [spendingReport, setSpendingReport] = useState<SpendingReport | null>(null);
+  const [providerPricing, setProviderPricing] = useState<ProviderPricing[]>([]);
+
   useEffect(() => {
     loadPreferences();
+    loadCostTrackingData();
   }, []);
+
+  useEffect(() => {
+    if (preferences.enableCostTracking) {
+      loadCostTrackingData();
+    }
+  }, [preferences.enableCostTracking]);
 
   const loadPreferences = async () => {
     try {
@@ -77,6 +97,27 @@ export const ProviderRecommendationsTab: FC = () => {
     }
   };
 
+  const loadCostTrackingData = async () => {
+    try {
+      const [config, spending, report, pricing] = await Promise.all([
+        providerRecommendationService.getCostTrackingConfiguration(),
+        providerRecommendationService.getCurrentPeriodSpending(),
+        providerRecommendationService.getSpendingReport(
+          new Date(new Date().setDate(1)),
+          new Date()
+        ),
+        providerRecommendationService.getProviderPricing(),
+      ]);
+
+      setCostConfig(config);
+      setCurrentSpending(spending);
+      setSpendingReport(report);
+      setProviderPricing(pricing);
+    } catch (error: unknown) {
+      console.error('Failed to load cost tracking data:', error);
+    }
+  };
+
   const updatePreference = async (updates: Partial<ProviderPreferences>) => {
     try {
       setSaving(true);
@@ -85,6 +126,21 @@ export const ProviderRecommendationsTab: FC = () => {
       await providerRecommendationService.updatePreferences(newPrefs);
     } catch (error: unknown) {
       console.error('Failed to update preferences:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveCostConfiguration = async (config: CostTrackingConfiguration) => {
+    try {
+      setSaving(true);
+      const success = await providerRecommendationService.updateCostTrackingConfiguration(config);
+      if (success) {
+        setCostConfig(config);
+        await loadCostTrackingData();
+      }
+    } catch (error: unknown) {
+      console.error('Failed to save cost configuration:', error);
     } finally {
       setSaving(false);
     }
@@ -356,15 +412,18 @@ export const ProviderRecommendationsTab: FC = () => {
             </Field>
           )}
 
-          {preferences.enableCostTracking && (
+          {preferences.enableCostTracking && costConfig && (
             <>
-              <Field
-                className={styles.field}
-                label="Monthly Budget Limit (USD)"
-                hint="Set a budget limit for provider costs. Leave empty for no limit."
-              >
-                <Text>Cost tracking and budget configuration coming soon</Text>
-              </Field>
+              <CostDashboard currentPeriod={currentSpending} spendingReport={spendingReport} />
+
+              <BudgetConfiguration
+                configuration={costConfig}
+                providerPricing={providerPricing}
+                onSave={handleSaveCostConfiguration}
+                currentSpending={
+                  spendingReport?.costByProvider || ({} as Record<string, number>)
+                }
+              />
             </>
           )}
         </Card>
