@@ -30,6 +30,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { EnginesTab } from '../components/Engines/EnginesTab';
 import { TroubleshootingPanel } from '../components/Engines/TroubleshootingPanel';
+import { RouteErrorBoundary } from '../components/ErrorBoundary/RouteErrorBoundary';
 import { useNotifications } from '../components/Notifications/Toasts';
 import { apiUrl } from '../config/api';
 import { RescanPanel } from './DownloadCenter/RescanPanel';
@@ -560,260 +561,266 @@ export function DownloadsPage() {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <Title1>Download Center</Title1>
-        <Text className={styles.subtitle}>
-          Manage dependencies, engines, and external tools required for video production
-        </Text>
-      </div>
+    <RouteErrorBoundary onRetry={fetchManifest}>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Title1>Download Center</Title1>
+          <Text className={styles.subtitle}>
+            Manage dependencies, engines, and external tools required for video production
+          </Text>
+        </div>
 
-      <TabList
-        selectedValue={selectedTab}
-        onTabSelect={onTabSelect}
-        style={{ marginBottom: tokens.spacingVerticalL }}
-      >
-        <Tab value="dependencies">Dependencies</Tab>
-        <Tab value="engines">Engines</Tab>
-        <Tab value="troubleshooting">Troubleshooting</Tab>
-      </TabList>
+        <TabList
+          selectedValue={selectedTab}
+          onTabSelect={onTabSelect}
+          style={{ marginBottom: tokens.spacingVerticalL }}
+        >
+          <Tab value="dependencies">Dependencies</Tab>
+          <Tab value="engines">Engines</Tab>
+          <Tab value="troubleshooting">Troubleshooting</Tab>
+        </TabList>
 
-      {selectedTab === 'dependencies' && (
-        <>
-          <Card
-            className={styles.card}
-            style={{
-              marginBottom: tokens.spacingVerticalL,
-              backgroundColor: tokens.colorNeutralBackground3,
-            }}
-          >
-            <div
-              style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'flex-start' }}
+        {selectedTab === 'dependencies' && (
+          <>
+            <Card
+              className={styles.card}
+              style={{
+                marginBottom: tokens.spacingVerticalL,
+                backgroundColor: tokens.colorNeutralBackground3,
+              }}
             >
-              <div style={{ flex: 1 }}>
-                <Title2>Download & Manage Dependencies</Title2>
-                <Text style={{ marginTop: tokens.spacingVerticalS }}>
-                  This page helps you download and manage all required components for video
-                  production. After downloading, configure their paths in{' '}
-                  <strong>Settings → Local Providers</strong>.
-                </Text>
-                <Text style={{ marginTop: tokens.spacingVerticalS }}>
-                  <strong>Features:</strong>
-                </Text>
-                <ul
-                  style={{
-                    marginTop: tokens.spacingVerticalXS,
-                    marginLeft: tokens.spacingHorizontalL,
-                  }}
-                >
-                  <li>✓ SHA-256 checksum verification for all downloads</li>
-                  <li>✓ Automatic resume support for interrupted downloads</li>
-                  <li>✓ Repair corrupted or incomplete installations</li>
-                  <li>✓ Post-install validation checks</li>
-                  <li>
-                    ✓ Offline mode: Click &quot;Manual&quot; for manual installation instructions
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </Card>
-
-          <RescanPanel />
-
-          {loading ? (
-            <Card className={styles.card}>
-              <Spinner label="Loading dependencies..." />
-            </Card>
-          ) : error ? (
-            <Card className={styles.card}>
-              <div className={styles.emptyState}>
-                <ErrorCircle24Filled className={styles.emptyStateIcon} />
-                <div>
-                  <Title2>Unable to Load Dependencies</Title2>
-                  <Text style={{ marginTop: tokens.spacingVerticalS }}>{error}</Text>
-                  <Text
-                    style={{
-                      marginTop: tokens.spacingVerticalM,
-                      color: tokens.colorNeutralForeground3,
-                    }}
-                  >
-                    The backend server may not be running. Please ensure the Aura.Api service is
-                    started.
-                  </Text>
-                </div>
-                <div className={styles.emptyStateActions}>
-                  <Button
-                    appearance="primary"
-                    icon={<ArrowSync24Regular />}
-                    onClick={() => {
-                      setLoading(true);
-                      fetchManifest();
-                    }}
-                  >
-                    Retry
-                  </Button>
-                  <Button
-                    appearance="subtle"
-                    icon={<Settings24Regular />}
-                    onClick={() => (window.location.href = '/settings')}
-                  >
-                    Go to Settings
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ) : manifest.length === 0 ? (
-            <Card className={styles.card}>
-              <div className={styles.emptyState}>
-                <CloudArrowDown24Regular className={styles.emptyStateIcon} />
-                <div>
-                  <Title2>No Dependencies Configured</Title2>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: tokens.spacingHorizontalM,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <Title2>Download & Manage Dependencies</Title2>
                   <Text style={{ marginTop: tokens.spacingVerticalS }}>
-                    Dependencies have not been configured yet.
+                    This page helps you download and manage all required components for video
+                    production. After downloading, configure their paths in{' '}
+                    <strong>Settings → Local Providers</strong>.
                   </Text>
-                  <Text
+                  <Text style={{ marginTop: tokens.spacingVerticalS }}>
+                    <strong>Features:</strong>
+                  </Text>
+                  <ul
                     style={{
-                      marginTop: tokens.spacingVerticalM,
-                      color: tokens.colorNeutralForeground3,
+                      marginTop: tokens.spacingVerticalXS,
+                      marginLeft: tokens.spacingHorizontalL,
                     }}
                   >
-                    Complete the onboarding wizard to set up dependencies, or configure them
-                    manually in Settings.
-                  </Text>
-                </div>
-                <div className={styles.emptyStateActions}>
-                  <Button
-                    appearance="primary"
-                    onClick={() => (window.location.href = '/onboarding')}
-                  >
-                    Launch Onboarding
-                  </Button>
-                  <Button
-                    appearance="subtle"
-                    icon={<Settings24Regular />}
-                    onClick={() => (window.location.href = '/settings')}
-                  >
-                    Go to Settings
-                  </Button>
+                    <li>✓ SHA-256 checksum verification for all downloads</li>
+                    <li>✓ Automatic resume support for interrupted downloads</li>
+                    <li>✓ Repair corrupted or incomplete installations</li>
+                    <li>✓ Post-install validation checks</li>
+                    <li>
+                      ✓ Offline mode: Click &quot;Manual&quot; for manual installation instructions
+                    </li>
+                  </ul>
                 </div>
               </div>
             </Card>
-          ) : (
-            <Card className={styles.card}>
-              <Title2>Available Components</Title2>
-              <div className={styles.tableContainer}>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHeaderCell>Component</TableHeaderCell>
-                      <TableHeaderCell>Version</TableHeaderCell>
-                      <TableHeaderCell>Size</TableHeaderCell>
-                      <TableHeaderCell>Status</TableHeaderCell>
-                      <TableHeaderCell>Actions</TableHeaderCell>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {manifest.map((component) => {
-                      const totalSize = component.files.reduce(
-                        (sum, file) => sum + file.sizeBytes,
-                        0
-                      );
-                      const status = componentStatus[component.name];
 
-                      return (
-                        <TableRow key={component.name}>
-                          <TableCell>
-                            <div className={styles.nameCell}>
-                              <Text weight="semibold">{component.name}</Text>
-                              {component.isRequired && (
-                                <Badge color="danger" appearance="outline" size="small">
-                                  Required
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Text>{component.version}</Text>
-                          </TableCell>
-                          <TableCell>
-                            <Text>{(totalSize / 1024 / 1024).toFixed(1)} MB</Text>
-                          </TableCell>
-                          <TableCell>{getStatusDisplay(component.name)}</TableCell>
-                          <TableCell>
-                            <div
-                              style={{
-                                display: 'flex',
-                                gap: tokens.spacingHorizontalXS,
-                                flexWrap: 'wrap',
-                              }}
-                            >
-                              {!status?.isInstalled ? (
-                                <>
-                                  <Button
-                                    size="small"
-                                    appearance="primary"
-                                    icon={<CloudArrowDown24Regular />}
-                                    onClick={() => installComponent(component.name)}
-                                    disabled={status?.isInstalling || status?.isRepairing}
-                                  >
-                                    {status?.isInstalling ? 'Installing...' : 'Install'}
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    appearance="subtle"
-                                    onClick={() => showManualInstructions(component.name)}
-                                  >
-                                    Manual
-                                  </Button>
-                                </>
-                              ) : (
-                                <>
-                                  {status?.needsRepair && (
+            <RescanPanel />
+
+            {loading ? (
+              <Card className={styles.card}>
+                <Spinner label="Loading dependencies..." />
+              </Card>
+            ) : error ? (
+              <Card className={styles.card}>
+                <div className={styles.emptyState}>
+                  <ErrorCircle24Filled className={styles.emptyStateIcon} />
+                  <div>
+                    <Title2>Unable to Load Dependencies</Title2>
+                    <Text style={{ marginTop: tokens.spacingVerticalS }}>{error}</Text>
+                    <Text
+                      style={{
+                        marginTop: tokens.spacingVerticalM,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      The backend server may not be running. Please ensure the Aura.Api service is
+                      started.
+                    </Text>
+                  </div>
+                  <div className={styles.emptyStateActions}>
+                    <Button
+                      appearance="primary"
+                      icon={<ArrowSync24Regular />}
+                      onClick={() => {
+                        setLoading(true);
+                        fetchManifest();
+                      }}
+                    >
+                      Retry
+                    </Button>
+                    <Button
+                      appearance="subtle"
+                      icon={<Settings24Regular />}
+                      onClick={() => (window.location.href = '/settings')}
+                    >
+                      Go to Settings
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ) : manifest.length === 0 ? (
+              <Card className={styles.card}>
+                <div className={styles.emptyState}>
+                  <CloudArrowDown24Regular className={styles.emptyStateIcon} />
+                  <div>
+                    <Title2>No Dependencies Configured</Title2>
+                    <Text style={{ marginTop: tokens.spacingVerticalS }}>
+                      Dependencies have not been configured yet.
+                    </Text>
+                    <Text
+                      style={{
+                        marginTop: tokens.spacingVerticalM,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      Complete the onboarding wizard to set up dependencies, or configure them
+                      manually in Settings.
+                    </Text>
+                  </div>
+                  <div className={styles.emptyStateActions}>
+                    <Button
+                      appearance="primary"
+                      onClick={() => (window.location.href = '/onboarding')}
+                    >
+                      Launch Onboarding
+                    </Button>
+                    <Button
+                      appearance="subtle"
+                      icon={<Settings24Regular />}
+                      onClick={() => (window.location.href = '/settings')}
+                    >
+                      Go to Settings
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <Card className={styles.card}>
+                <Title2>Available Components</Title2>
+                <div className={styles.tableContainer}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHeaderCell>Component</TableHeaderCell>
+                        <TableHeaderCell>Version</TableHeaderCell>
+                        <TableHeaderCell>Size</TableHeaderCell>
+                        <TableHeaderCell>Status</TableHeaderCell>
+                        <TableHeaderCell>Actions</TableHeaderCell>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {manifest.map((component) => {
+                        const totalSize = component.files.reduce(
+                          (sum, file) => sum + file.sizeBytes,
+                          0
+                        );
+                        const status = componentStatus[component.name];
+
+                        return (
+                          <TableRow key={component.name}>
+                            <TableCell>
+                              <div className={styles.nameCell}>
+                                <Text weight="semibold">{component.name}</Text>
+                                {component.isRequired && (
+                                  <Badge color="danger" appearance="outline" size="small">
+                                    Required
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Text>{component.version}</Text>
+                            </TableCell>
+                            <TableCell>
+                              <Text>{(totalSize / 1024 / 1024).toFixed(1)} MB</Text>
+                            </TableCell>
+                            <TableCell>{getStatusDisplay(component.name)}</TableCell>
+                            <TableCell>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  gap: tokens.spacingHorizontalXS,
+                                  flexWrap: 'wrap',
+                                }}
+                              >
+                                {!status?.isInstalled ? (
+                                  <>
                                     <Button
                                       size="small"
                                       appearance="primary"
-                                      onClick={() => repairComponent(component.name)}
-                                      disabled={status?.isRepairing}
+                                      icon={<CloudArrowDown24Regular />}
+                                      onClick={() => installComponent(component.name)}
+                                      disabled={status?.isInstalling || status?.isRepairing}
                                     >
-                                      {status?.isRepairing ? 'Repairing...' : 'Repair'}
+                                      {status?.isInstalling ? 'Installing...' : 'Install'}
                                     </Button>
-                                  )}
-                                  <Button
-                                    size="small"
-                                    appearance="subtle"
-                                    onClick={() => openComponentFolder(component.name)}
-                                  >
-                                    Open Folder
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    appearance="subtle"
-                                    onClick={() => removeComponent(component.name)}
-                                  >
-                                    Remove
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
-          )}
-        </>
-      )}
+                                    <Button
+                                      size="small"
+                                      appearance="subtle"
+                                      onClick={() => showManualInstructions(component.name)}
+                                    >
+                                      Manual
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    {status?.needsRepair && (
+                                      <Button
+                                        size="small"
+                                        appearance="primary"
+                                        onClick={() => repairComponent(component.name)}
+                                        disabled={status?.isRepairing}
+                                      >
+                                        {status?.isRepairing ? 'Repairing...' : 'Repair'}
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="small"
+                                      appearance="subtle"
+                                      onClick={() => openComponentFolder(component.name)}
+                                    >
+                                      Open Folder
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      appearance="subtle"
+                                      onClick={() => removeComponent(component.name)}
+                                    >
+                                      Remove
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            )}
+          </>
+        )}
 
-      {selectedTab === 'engines' && <EnginesTab />}
+        {selectedTab === 'engines' && <EnginesTab />}
 
-      {selectedTab === 'troubleshooting' && (
-        <Card className={styles.card}>
-          <TroubleshootingPanel />
-        </Card>
-      )}
-    </div>
+        {selectedTab === 'troubleshooting' && (
+          <Card className={styles.card}>
+            <TroubleshootingPanel />
+          </Card>
+        )}
+      </div>
+    </RouteErrorBoundary>
   );
 }
