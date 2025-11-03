@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../App';
 import { navItems } from '../navigation';
 import { ResultsTray } from './ResultsTray';
+import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
 
 const useStyles = makeStyles({
   container: {
@@ -60,9 +61,10 @@ const useStyles = makeStyles({
   },
   topBar: {
     display: 'flex',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     padding: tokens.spacingVerticalM,
+    paddingLeft: tokens.spacingHorizontalL,
     paddingRight: tokens.spacingHorizontalL,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
@@ -142,6 +144,7 @@ export function Layout({ children }: LayoutProps) {
       </nav>
       <div className={styles.mainContainer}>
         <div className={styles.topBar}>
+          <UndoRedoButtons />
           <ResultsTray />
         </div>
         <main className={styles.content}>{children}</main>
