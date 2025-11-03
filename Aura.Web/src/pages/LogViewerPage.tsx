@@ -11,8 +11,17 @@ import {
   Badge,
   Body1,
   Caption1,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
 } from '@fluentui/react-components';
-import { ArrowClockwise24Regular, Copy24Regular, Filter24Regular } from '@fluentui/react-icons';
+import {
+  ArrowClockwise24Regular,
+  Copy24Regular,
+  Filter24Regular,
+  ArrowDownload24Regular,
+  Delete24Regular,
+} from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 
 const useStyles = makeStyles({
@@ -98,6 +107,19 @@ const useStyles = makeStyles({
     flex: '1',
     minWidth: '150px',
   },
+  actionButtons: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+  },
+  messageBar: {
+    marginBottom: tokens.spacingVerticalL,
+  },
+  autoRefreshLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    cursor: 'pointer',
+  },
 });
 
 interface LogEntry {
@@ -125,6 +147,13 @@ export function LogViewerPage() {
   const [totalLines, setTotalLines] = useState<number>(0);
   const [logFile, setLogFile] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState<string>('');
+  const [exportLoading, setExportLoading] = useState(false);
+  const [clearLoading, setClearLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -151,12 +180,89 @@ export function LogViewerPage() {
     fetchLogs();
   }, [fetchLogs]);
 
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      fetchLogs();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchLogs]);
+
   const handleRefresh = () => {
     fetchLogs();
   };
 
   const handleFilter = () => {
     fetchLogs();
+  };
+
+  const handleExportLogs = async () => {
+    setExportLoading(true);
+    setStatusMessage(null);
+    try {
+      const params = new URLSearchParams();
+      if (levelFilter) params.append('level', levelFilter);
+      if (correlationIdFilter) params.append('correlationId', correlationIdFilter);
+      if (lines) params.append('lines', lines);
+
+      const response = await fetch(`/api/logs/export?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to export logs');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `aura-logs-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setStatusMessage({ type: 'success', text: 'Logs exported successfully!' });
+      setTimeout(() => setStatusMessage(null), 3000);
+    } catch (error) {
+      console.error('Error exporting logs:', error);
+      setStatusMessage({ type: 'error', text: 'Failed to export logs' });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleClearLogs = async () => {
+    if (
+      !window.confirm(
+        'Are you sure you want to clear old logs (older than 7 days)? This cannot be undone.'
+      )
+    ) {
+      return;
+    }
+
+    setClearLoading(true);
+    setStatusMessage(null);
+    try {
+      const response = await fetch('/api/logs/clear', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear logs');
+      }
+
+      const result = await response.json();
+      setStatusMessage({ type: 'success', text: result.message || 'Logs cleared successfully!' });
+      setTimeout(() => setStatusMessage(null), 3000);
+
+      fetchLogs();
+    } catch (error) {
+      console.error('Error clearing logs:', error);
+      setStatusMessage({ type: 'error', text: 'Failed to clear logs' });
+    } finally {
+      setClearLoading(false);
+    }
   };
 
   const handleCopyLog = (log: LogEntry) => {
@@ -202,10 +308,42 @@ export function LogViewerPage() {
             View and filter application logs for diagnostics and debugging
           </Text>
         </div>
-        <Button appearance="primary" icon={<ArrowClockwise24Regular />} onClick={handleRefresh}>
-          Refresh
-        </Button>
+        <div className={styles.actionButtons}>
+          <Button
+            appearance="secondary"
+            icon={<ArrowDownload24Regular />}
+            onClick={handleExportLogs}
+            disabled={exportLoading}
+          >
+            {exportLoading ? 'Exporting...' : 'Export'}
+          </Button>
+          <Button
+            appearance="secondary"
+            icon={<Delete24Regular />}
+            onClick={handleClearLogs}
+            disabled={clearLoading}
+          >
+            {clearLoading ? 'Clearing...' : 'Clear Old Logs'}
+          </Button>
+          <Button appearance="primary" icon={<ArrowClockwise24Regular />} onClick={handleRefresh}>
+            Refresh
+          </Button>
+        </div>
       </div>
+
+      {statusMessage && (
+        <MessageBar
+          intent={statusMessage.type === 'error' ? 'error' : 'success'}
+          className={styles.messageBar}
+        >
+          <MessageBarBody>
+            <MessageBarTitle>
+              {statusMessage.type === 'error' ? 'Error' : 'Success'}
+            </MessageBarTitle>
+            {statusMessage.text}
+          </MessageBarBody>
+        </MessageBar>
+      )}
 
       <div className={styles.stats}>
         <Card className={styles.statCard}>
@@ -257,6 +395,14 @@ export function LogViewerPage() {
         <Button appearance="primary" onClick={handleFilter}>
           Apply Filters
         </Button>
+        <label className={styles.autoRefreshLabel}>
+          <input
+            type="checkbox"
+            checked={autoRefresh}
+            onChange={(e) => setAutoRefresh(e.target.checked)}
+          />
+          <Text>Auto-refresh (5s)</Text>
+        </label>
       </div>
 
       {loading ? (

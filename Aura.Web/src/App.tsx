@@ -445,17 +445,18 @@ function App() {
                     <Route path="/quality-validation" element={<QualityValidationPage />} />
                     <Route path="/validation" element={<ValidationPage />} />
                     <Route path="/verification" element={<VerificationPage />} />
+                    {/* Logs page - always available for diagnostics */}
+                    <Route
+                      path="/logs"
+                      element={
+                        <Suspense fallback={<Spinner label="Loading..." />}>
+                          <LogViewerPage />
+                        </Suspense>
+                      }
+                    />
                     {/* Development-only routes - lazy loaded */}
                     {env.enableDevTools && (
                       <>
-                        <Route
-                          path="/logs"
-                          element={
-                            <Suspense fallback={<Spinner label="Loading..." />}>
-                              <LogViewerPage />
-                            </Suspense>
-                          }
-                        />
                         <Route
                           path="/activity-demo"
                           element={
