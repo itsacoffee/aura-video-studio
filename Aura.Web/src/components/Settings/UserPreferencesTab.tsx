@@ -477,7 +477,8 @@ export const UserPreferencesTab: FC = () => {
               AI Behavior Settings ({aiBehaviorSettings.length})
             </AccordionHeader>
             <AccordionPanel>
-              <AIBehaviorSettingsComponent />
+              {/* AIBehaviorSettingsComponent not yet implemented */}
+              <p>AI Behavior settings coming soon...</p>
             </AccordionPanel>
           </AccordionItem>
         </Accordion>

@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "name": "Editing Workspace",
+  "description": "Balanced layout optimized for video editing with timeline focus",
+  "author": "Aura Video Studio",
+  "created": "2025-11-03T00:00:00Z",
+  "modified": "2025-11-03T00:00:00Z",
+  "layout": {
+    "mediaLibrary": {
+      "visible": false,
+      "width": "280px",
+      "collapsed": true
+    },
+    "effectsLibrary": {
+      "visible": false,
+      "width": "280px",
+      "collapsed": true
+    },
+    "preview": {
+      "visible": true,
+      "width": "60%",
+      "collapsed": false
+    },
+    "properties": {
+      "visible": false,
+      "width": "320px",
+      "collapsed": true
+    },
+    "timeline": {
+      "visible": true,
+      "height": "70%",
+      "collapsed": false
+    },
+    "history": {
+      "visible": false,
+      "width": "320px",
+      "collapsed": true
+    }
+  },
+  "shortcuts": {}
+}

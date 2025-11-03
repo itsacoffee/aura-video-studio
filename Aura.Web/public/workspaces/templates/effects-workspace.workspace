@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "name": "Effects Workspace",
+  "description": "Effects library expanded for applying visual effects",
+  "author": "Aura Video Studio",
+  "created": "2025-11-03T00:00:00Z",
+  "modified": "2025-11-03T00:00:00Z",
+  "layout": {
+    "mediaLibrary": {
+      "visible": false,
+      "width": "0px",
+      "collapsed": true
+    },
+    "effectsLibrary": {
+      "visible": true,
+      "width": "300px",
+      "collapsed": false
+    },
+    "preview": {
+      "visible": true,
+      "width": "60%",
+      "collapsed": false
+    },
+    "properties": {
+      "visible": true,
+      "width": "320px",
+      "collapsed": false
+    },
+    "timeline": {
+      "visible": true,
+      "height": "60%",
+      "collapsed": false
+    },
+    "history": {
+      "visible": false,
+      "width": "0px",
+      "collapsed": true
+    }
+  },
+  "shortcuts": {}
+}
