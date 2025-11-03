@@ -55,19 +55,26 @@ interface CreatePolicyModalProps {
   onSave: (policy: Omit<ContentFilteringPolicy, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
 }
 
+const initialFormState = {
+  name: '',
+  description: '',
+  filteringEnabled: true,
+  profanityFilter: 'Moderate',
+  violenceThreshold: 5,
+  blockGraphicContent: false,
+};
+
 export const CreatePolicyModal: FC<CreatePolicyModalProps> = ({ open, onOpenChange, onSave }) => {
   const styles = useStyles();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    filteringEnabled: true,
-    profanityFilter: 'Moderate',
-    violenceThreshold: 5,
-    blockGraphicContent: false,
-  });
+  const [formData, setFormData] = useState(initialFormState);
+
+  const resetForm = () => {
+    setFormData(initialFormState);
+    setError(null);
+  };
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -85,15 +92,7 @@ export const CreatePolicyModal: FC<CreatePolicyModalProps> = ({ open, onOpenChan
 
       await onSave(policy);
       onOpenChange(false);
-
-      setFormData({
-        name: '',
-        description: '',
-        filteringEnabled: true,
-        profanityFilter: 'Moderate',
-        violenceThreshold: 5,
-        blockGraphicContent: false,
-      });
+      resetForm();
     } catch (err: unknown) {
       const errorObj = err instanceof Error ? err : new Error(String(err));
       setError(errorObj.message);
@@ -104,15 +103,7 @@ export const CreatePolicyModal: FC<CreatePolicyModalProps> = ({ open, onOpenChan
 
   const handleCancel = () => {
     onOpenChange(false);
-    setFormData({
-      name: '',
-      description: '',
-      filteringEnabled: true,
-      profanityFilter: 'Moderate',
-      violenceThreshold: 5,
-      blockGraphicContent: false,
-    });
-    setError(null);
+    resetForm();
   };
 
   const isValid = formData.name.trim().length > 0;

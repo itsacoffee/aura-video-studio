@@ -49,19 +49,26 @@ interface CreateProfileModalProps {
   onSave: (profile: Omit<CustomAudienceProfile, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
 }
 
+const initialFormState = {
+  name: '',
+  description: '',
+  minAge: 18,
+  maxAge: 65,
+  formalityLevel: 5,
+  educationLevel: 'College',
+};
+
 export const CreateProfileModal: FC<CreateProfileModalProps> = ({ open, onOpenChange, onSave }) => {
   const styles = useStyles();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    minAge: 18,
-    maxAge: 65,
-    formalityLevel: 5,
-    educationLevel: 'College',
-  });
+  const [formData, setFormData] = useState(initialFormState);
+
+  const resetForm = () => {
+    setFormData(initialFormState);
+    setError(null);
+  };
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -79,15 +86,7 @@ export const CreateProfileModal: FC<CreateProfileModalProps> = ({ open, onOpenCh
 
       await onSave(profile);
       onOpenChange(false);
-
-      setFormData({
-        name: '',
-        description: '',
-        minAge: 18,
-        maxAge: 65,
-        formalityLevel: 5,
-        educationLevel: 'College',
-      });
+      resetForm();
     } catch (err: unknown) {
       const errorObj = err instanceof Error ? err : new Error(String(err));
       setError(errorObj.message);
@@ -98,15 +97,7 @@ export const CreateProfileModal: FC<CreateProfileModalProps> = ({ open, onOpenCh
 
   const handleCancel = () => {
     onOpenChange(false);
-    setFormData({
-      name: '',
-      description: '',
-      minAge: 18,
-      maxAge: 65,
-      formalityLevel: 5,
-      educationLevel: 'College',
-    });
-    setError(null);
+    resetForm();
   };
 
   const isValid = formData.name.trim().length > 0 && formData.minAge < formData.maxAge;
