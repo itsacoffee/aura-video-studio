@@ -47,6 +47,7 @@ public class GeneralSettings
     public ThemeMode Theme { get; set; } = ThemeMode.Auto;
     public StartupBehavior StartupBehavior { get; set; } = StartupBehavior.ShowDashboard;
     public bool CheckForUpdatesOnStartup { get; set; } = true;
+    public bool AdvancedModeEnabled { get; set; } = false;
 }
 
 /// <summary>

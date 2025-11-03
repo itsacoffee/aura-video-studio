@@ -43,6 +43,7 @@ import {
   Star24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
+import { AdvancedModeBanner } from '../components/Settings/AdvancedModeBanner';
 import { AIModelsSettingsTab } from '../components/Settings/AIModelsSettingsTab';
 import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel';
 import { ApiKeysSettingsTab } from '../components/Settings/ApiKeysSettingsTab';
@@ -890,6 +891,19 @@ export function SettingsPage() {
           </Text>
         )}
       </div>
+
+      {/* Advanced Mode Banner */}
+      {userSettings.general.advancedModeEnabled && (
+        <AdvancedModeBanner
+          onRevert={async () => {
+            const updated = { ...userSettings };
+            updated.general.advancedModeEnabled = false;
+            setUserSettings(updated);
+            await settingsService.saveSettings(updated);
+            setOriginalSettings(updated);
+          }}
+        />
+      )}
 
       {/* Grid Navigation for Settings Categories */}
       <div className={styles.settingsGrid}>

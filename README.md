@@ -150,6 +150,9 @@ Aura Video Studio features a sophisticated prompt engineering framework that let
 
 ### Features
 
+- **Advanced Mode:** Global toggle for expert features (disabled by default for simplicity)
+  - Reveals ML retraining, deep prompt customization, low-level render flags, and more
+  - See [ADVANCED_MODE_GUIDE.md](ADVANCED_MODE_GUIDE.md) for details
 - **Custom Instructions:** Add your own guidelines to influence script generation
 - **Few-Shot Examples:** 15 curated examples across 5 video types (Educational, Entertainment, Tutorial, Documentary, Promotional)
 - **Prompt Versions:** Choose from multiple optimization strategies:

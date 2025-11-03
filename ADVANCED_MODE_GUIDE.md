@@ -1,0 +1,190 @@
+# Advanced Mode Guide
+
+## Overview
+
+**Advanced Mode** is a global feature toggle that reveals expert-level features in Aura Video Studio while keeping the default user experience simple and accessible. When disabled (the default state), only essential features are visible. When enabled, power users gain access to advanced controls and customization options.
+
+## When to Use Advanced Mode
+
+Consider enabling Advanced Mode if you:
+
+- Have technical knowledge of video processing and AI systems
+- Need fine-grained control over rendering and optimization
+- Want to customize AI prompts and behavior at a deep level
+- Are comfortable with advanced video editing techniques
+- Need access to experimental or specialized features
+
+**Do not enable Advanced Mode if you:**
+
+- Are new to video generation or AI tools
+- Prefer guided workflows and presets
+- Don't need low-level control over the generation process
+- Want the simplest, most streamlined experience
+
+## What's Included in Advanced Mode
+
+When Advanced Mode is enabled, you gain access to:
+
+### 1. ML Retraining Workflow
+- In-app on-device machine learning model retraining
+- Frame importance scoring and custom training data
+- Model evaluation and validation tools
+
+### 2. Deep Prompt Customization
+- Access to internal prompt templates and few-shot examples
+- Chain-of-thought reasoning controls
+- Custom system prompts for each AI stage
+- Temperature, top-p, and other LLM parameters
+
+### 3. Low-Level Render Flags
+- Direct FFmpeg command customization
+- Hardware encoder selection and tuning
+- Advanced compression settings
+- Custom filter chains
+
+### 4. Chroma Key & Compositing
+- Green screen and blue screen removal
+- Advanced keying controls (tolerance, edge feathering)
+- Multi-layer compositing
+- Mask and matte generation
+
+### 5. Motion Graphics Recipes
+- Procedural motion graphics templates
+- Particle systems and effects
+- Custom transition definitions
+- Animation curve editors
+
+### 6. Expert Provider Tuning
+- Provider-specific configuration
+- Fallback chain customization
+- Timeout and retry policies
+- Advanced API settings
+
+## How to Enable Advanced Mode
+
+1. Open **Settings** from the navigation menu
+2. Navigate to the **General** tab
+3. Scroll down to find the **Advanced Mode** setting
+4. Toggle the switch to **Enabled**
+5. Click **Save General Settings**
+
+Once enabled, you'll see a warning banner at the top of the Settings page and advanced features will appear throughout the application.
+
+## Warning Banner
+
+When Advanced Mode is active, a prominent warning banner appears at the top of the Settings page:
+
+> **Advanced Mode Active**  
+> You have enabled Advanced Mode, which reveals expert features that may require technical knowledge. These include ML retraining controls, deep prompt customization, low-level render flags, chroma key compositing, motion graphics recipes, and expert provider tuning.
+
+This banner includes a **Revert to Simple Mode** button for quick one-click deactivation.
+
+## Reverting to Simple Mode
+
+To disable Advanced Mode:
+
+**Method 1: Quick Revert**
+- Click the **Revert to Simple Mode** button in the warning banner
+
+**Method 2: Settings Toggle**
+1. Go to **Settings > General**
+2. Toggle **Advanced Mode** to **Disabled**
+3. Click **Save General Settings**
+
+Disabling Advanced Mode immediately hides all advanced features and returns the interface to the simplified view. Your data and settings are preserved.
+
+## Advanced Features Visibility
+
+The following UI sections are conditionally shown/hidden based on Advanced Mode:
+
+| Feature | Location | Visible When |
+|---------|----------|--------------|
+| ML Retraining | Navigation, AI Models | Advanced Mode ON |
+| Prompt Internals | Prompt Management | Advanced Mode ON |
+| Render Flags | Video Defaults, Editor | Advanced Mode ON |
+| Chroma Key | Editor, Effects | Advanced Mode ON |
+| Motion Graphics Recipes | Templates, Editor | Advanced Mode ON |
+| Expert Provider Tuning | Provider Settings | Advanced Mode ON |
+
+## API and Diagnostics
+
+The Advanced Mode state is reflected in the system diagnostics endpoints:
+
+### `/api/diagnostics/json`
+
+Returns:
+```json
+{
+  "advancedMode": true,
+  "advancedFeaturesNote": "Advanced features are enabled",
+  ...
+}
+```
+
+or:
+
+```json
+{
+  "advancedMode": false,
+  "advancedFeaturesNote": "Advanced features are disabled. Enable Advanced Mode in Settings > General to access expert features.",
+  ...
+}
+```
+
+This allows external monitoring tools and scripts to detect when Advanced Mode is active.
+
+## Persistence
+
+Advanced Mode state is persisted in your user settings file and synchronized across the application. The setting is stored in:
+
+- **Frontend**: Local storage and backend user settings
+- **Backend**: `user-settings.json` in the Aura data directory
+- **Scope**: Per-user (not per-project)
+
+The setting persists across application restarts and updates.
+
+## Best Practices
+
+1. **Start Simple**: Begin with Advanced Mode disabled until you're comfortable with basic workflows
+2. **Read Documentation**: Familiarize yourself with advanced features before enabling them
+3. **Test Safely**: Experiment with advanced settings on non-critical projects first
+4. **Revert if Overwhelmed**: Don't hesitate to disable Advanced Mode if the interface becomes confusing
+5. **Use Presets**: Even in Advanced Mode, prefer presets and templates over manual configuration when possible
+
+## Troubleshooting
+
+**Q: I enabled Advanced Mode but don't see new features**
+- Hard refresh your browser (Ctrl+Shift+R or Cmd+Shift+R)
+- Ensure settings were saved successfully
+- Check browser console for errors
+
+**Q: Advanced Mode is stuck on/off**
+- Clear browser cache and local storage
+- Reset settings via Settings > General > Reset to Defaults
+- Check that the backend API is responding correctly
+
+**Q: I accidentally broke something in Advanced Mode**
+- Click **Revert to Simple Mode** immediately
+- Or go to Settings > General and disable Advanced Mode
+- If needed, use Settings > Import/Export to restore a previous configuration
+
+## Related Documentation
+
+- [Prompt Customization User Guide](PROMPT_CUSTOMIZATION_USER_GUIDE.md)
+- [Provider Integration Guide](PROVIDER_INTEGRATION_GUIDE.md)
+- [README](README.md)
+- [First Run Wizard Implementation](FIRST_RUN_WIZARD_IMPLEMENTATION.md)
+
+## Support
+
+If you encounter issues with Advanced Mode:
+
+1. Check the application logs in `%LOCALAPPDATA%\Aura\logs`
+2. Review diagnostics at `/api/diagnostics/json`
+3. Submit a GitHub issue with your configuration and steps to reproduce
+4. Disable Advanced Mode temporarily if it blocks your workflow
+
+---
+
+**Last Updated**: 2024-11  
+**Version**: 1.0.0
