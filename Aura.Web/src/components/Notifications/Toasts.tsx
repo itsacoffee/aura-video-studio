@@ -8,7 +8,6 @@ import {
   ToastFooter,
   Toaster,
   useToastController,
-  useId,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Regular,
@@ -46,12 +45,17 @@ export interface FailureToastOptions {
 }
 
 /**
+ * Constant toaster ID used across the app
+ * Must match the toasterId in NotificationsToaster component
+ */
+const TOASTER_ID = 'notifications-toaster';
+
+/**
  * Hook to display success and failure toasts with action buttons
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function useNotifications() {
-  const toasterId = useId('notifications-toaster');
-  const { dispatchToast } = useToastController(toasterId);
+  const { dispatchToast } = useToastController(TOASTER_ID);
   const styles = useStyles();
 
   const showSuccessToast = (options: SuccessToastOptions) => {
@@ -161,7 +165,7 @@ export function useNotifications() {
     );
   };
 
-  return { showSuccessToast, showFailureToast, toasterId };
+  return { showSuccessToast, showFailureToast };
 }
 
 /**
