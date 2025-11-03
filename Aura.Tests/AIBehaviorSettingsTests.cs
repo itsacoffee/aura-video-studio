@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Aura.Tests;
 
-public class AIBehaviorSettingsTests
+public class AIBehaviorSettingsTests : IDisposable
 {
     private readonly UserPreferencesService _service;
     private readonly string _testDirectory;
