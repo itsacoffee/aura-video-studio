@@ -15,6 +15,7 @@ import {
 } from '@fluentui/react-components';
 import { Save24Regular, ArrowDownload24Regular, ArrowUpload24Regular } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
+import { AIModelsSettingsTab } from '../components/Settings/AIModelsSettingsTab';
 import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel';
 import { ApiKeysSettingsTab } from '../components/Settings/ApiKeysSettingsTab';
 import { ContentSafetyTab } from '../components/Settings/ContentSafetyTab';
@@ -663,6 +664,7 @@ export function SettingsPage() {
       >
         <Tab value="general">General</Tab>
         <Tab value="apikeys">API Keys</Tab>
+        <Tab value="aimodels">AI Models</Tab>
         <Tab value="filelocations">File Locations</Tab>
         <Tab value="videodefaults">Video Defaults</Tab>
         <Tab value="editorpreferences">Editor</Tab>
@@ -704,6 +706,8 @@ export function SettingsPage() {
           hasChanges={hasUnsavedChanges}
         />
       )}
+
+      {activeTab === 'aimodels' && <AIModelsSettingsTab />}
 
       {activeTab === 'filelocations' && (
         <FileLocationsSettingsTab
