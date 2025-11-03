@@ -142,6 +142,12 @@ function cleanupOldThumbnails(): void {
     entries.sort((a, b) => {
       const dateA = new Date(a[1].updatedAt).getTime();
       const dateB = new Date(b[1].updatedAt).getTime();
+
+      // Handle invalid dates
+      if (isNaN(dateA) && isNaN(dateB)) return 0;
+      if (isNaN(dateA)) return 1; // Move invalid dates to end
+      if (isNaN(dateB)) return -1;
+
       return dateB - dateA;
     });
 

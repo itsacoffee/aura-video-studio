@@ -231,7 +231,17 @@ function drawCollapsedPanel(ctx: CanvasRenderingContext2D, panel: PanelRect): vo
  * Adjust color brightness
  */
 function adjustColorBrightness(color: string, percent: number): string {
-  const num = parseInt(color.replace('#', ''), 16);
+  // Validate color format
+  if (!color || typeof color !== 'string' || !color.startsWith('#')) {
+    return '#000000'; // Fallback to black
+  }
+
+  const hexColor = color.replace('#', '');
+  if (!/^[0-9A-Fa-f]{6}$/.test(hexColor)) {
+    return color; // Return original if invalid hex
+  }
+
+  const num = parseInt(hexColor, 16);
   const amt = Math.round(2.55 * percent);
   const R = (num >> 16) + amt;
   const G = ((num >> 8) & 0x00ff) + amt;
@@ -267,6 +277,10 @@ export function getThumbnailSize(dataUrl: string): number {
     return 0;
   }
   // Approximate size based on base64 length
-  const base64 = dataUrl.split(',')[1] || '';
+  const parts = dataUrl.split(',');
+  if (parts.length < 2) {
+    return 0; // Invalid format
+  }
+  const base64 = parts[1];
   return Math.ceil((base64.length * 3) / 4);
 }

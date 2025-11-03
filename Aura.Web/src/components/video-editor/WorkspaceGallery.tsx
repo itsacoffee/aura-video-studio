@@ -224,34 +224,18 @@ export const WorkspaceGallery: FC<WorkspaceGalleryProps> = ({
       ) : (
         <div className={styles.listView}>
           {filteredWorkspaces.map((workspace) => (
-            <div
+            <WorkspaceCard
               key={workspace.id}
-              className={`${styles.listItem} ${
-                workspace.id === currentLayoutId ? styles.listItemActive : ''
-              }`}
+              workspace={workspace}
+              isActive={workspace.id === currentLayoutId}
+              isDefault={workspace.id === defaultLayoutId}
+              canDelete={canDeleteWorkspace ? canDeleteWorkspace(workspace) : true}
               onClick={() => onWorkspaceClick?.(workspace)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onWorkspaceClick?.(workspace);
-                }
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className={styles.listThumbnail}>
-                <WorkspaceCard
-                  workspace={workspace}
-                  isActive={workspace.id === currentLayoutId}
-                  isDefault={workspace.id === defaultLayoutId}
-                  canDelete={canDeleteWorkspace ? canDeleteWorkspace(workspace) : true}
-                  onSetDefault={() => onSetDefault?.(workspace)}
-                  onDuplicate={() => onDuplicate?.(workspace)}
-                  onExport={() => onExport?.(workspace)}
-                  onDelete={() => onDelete?.(workspace)}
-                />
-              </div>
-            </div>
+              onSetDefault={() => onSetDefault?.(workspace)}
+              onDuplicate={() => onDuplicate?.(workspace)}
+              onExport={() => onExport?.(workspace)}
+              onDelete={() => onDelete?.(workspace)}
+            />
           ))}
         </div>
       )}
