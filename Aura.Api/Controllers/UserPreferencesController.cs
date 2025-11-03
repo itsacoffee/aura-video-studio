@@ -432,6 +432,19 @@ public class UserPreferencesController : ControllerBase
         return Ok(MapToDto(saved));
     }
 
+    /// <summary>
+    /// Get or create default AI behavior settings
+    /// </summary>
+    [HttpGet("ai-behavior/default")]
+    [ProducesResponseType(typeof(AIBehaviorSettingsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AIBehaviorSettingsDto>> GetOrCreateDefaultAIBehaviorSettings(CancellationToken ct)
+    {
+        _logger.LogInformation("Getting or creating default AI behavior settings");
+        
+        var defaultSettings = await _preferencesService.EnsureDefaultAIBehaviorSettingsAsync(ct);
+        return Ok(MapToDto(defaultSettings));
+    }
+
     // Export/Import
 
     /// <summary>

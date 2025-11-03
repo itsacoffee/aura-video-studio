@@ -441,7 +441,17 @@ export const useUserPreferencesStore = create<UserPreferencesState>((set, get) =
     try {
       const response = await fetch('/api/user-preferences/ai-behavior');
       if (!response.ok) throw new Error('Failed to load AI behavior settings');
-      const settings = await response.json();
+      let settings = await response.json();
+
+      // Ensure default settings exist
+      if (settings.length === 0) {
+        const defaultResponse = await fetch('/api/user-preferences/ai-behavior/default');
+        if (defaultResponse.ok) {
+          const defaultSettings = await defaultResponse.json();
+          settings = [defaultSettings];
+        }
+      }
+
       set({ aiBehaviorSettings: settings, isLoading: false });
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
