@@ -29,6 +29,7 @@ import {
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { useUserPreferencesStore } from '../../state/userPreferences';
+import { AIBehaviorSettingsComponent } from '../user-preferences/AIBehaviorSettings';
 
 const useStyles = makeStyles({
   container: {
@@ -98,6 +99,7 @@ export const UserPreferencesTab: FC = () => {
   const {
     customAudienceProfiles,
     contentFilteringPolicies,
+    aiBehaviorSettings,
     selectedAudienceProfileId,
     selectedFilteringPolicyId,
     advancedMode,
@@ -105,6 +107,7 @@ export const UserPreferencesTab: FC = () => {
     error,
     loadCustomAudienceProfiles,
     loadContentFilteringPolicies,
+    loadAIBehaviorSettings,
     selectAudienceProfile,
     selectFilteringPolicy,
     deleteCustomAudienceProfile,
@@ -120,7 +123,8 @@ export const UserPreferencesTab: FC = () => {
   useEffect(() => {
     loadCustomAudienceProfiles();
     loadContentFilteringPolicies();
-  }, [loadCustomAudienceProfiles, loadContentFilteringPolicies]);
+    loadAIBehaviorSettings();
+  }, [loadCustomAudienceProfiles, loadContentFilteringPolicies, loadAIBehaviorSettings]);
 
   const handleExport = async () => {
     try {
@@ -397,14 +401,11 @@ export const UserPreferencesTab: FC = () => {
           </AccordionItem>
 
           <AccordionItem value="ai-behavior">
-            <AccordionHeader icon={<Brain24Regular />}>AI Behavior Settings</AccordionHeader>
+            <AccordionHeader icon={<Brain24Regular />}>
+              AI Behavior Settings ({aiBehaviorSettings.length})
+            </AccordionHeader>
             <AccordionPanel>
-              <Card className={styles.card}>
-                <Text>
-                  AI Behavior customization coming soon. This will allow you to control LLM
-                  parameters, prompts, and behavior for each pipeline stage.
-                </Text>
-              </Card>
+              <AIBehaviorSettingsComponent />
             </AccordionPanel>
           </AccordionItem>
         </Accordion>
