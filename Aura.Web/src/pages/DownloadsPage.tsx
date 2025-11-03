@@ -223,6 +223,7 @@ export function DownloadsPage() {
   const fetchManifest = useCallback(async () => {
     try {
       setError(null);
+      setLoading(true);
       const response = await fetch(apiUrl('/api/downloads/manifest'));
       if (response.ok) {
         const data = await response.json();
@@ -231,7 +232,6 @@ export function DownloadsPage() {
         await Promise.all(
           data.map((component: DependencyComponent) => checkComponentStatus(component.name))
         );
-        setError(null);
       } else {
         const errorMsg = `Server returned HTTP ${response.status} error. The backend may not be running.`;
         setError(errorMsg);
@@ -652,10 +652,7 @@ export function DownloadsPage() {
                     <Button
                       appearance="primary"
                       icon={<ArrowSync24Regular />}
-                      onClick={() => {
-                        setLoading(true);
-                        fetchManifest();
-                      }}
+                      onClick={fetchManifest}
                     >
                       Retry
                     </Button>
