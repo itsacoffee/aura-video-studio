@@ -99,13 +99,13 @@ export const ProviderRecommendationsTab: FC = () => {
 
   const loadCostTrackingData = async () => {
     try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      
       const [config, spending, report, pricing] = await Promise.all([
         providerRecommendationService.getCostTrackingConfiguration(),
         providerRecommendationService.getCurrentPeriodSpending(),
-        providerRecommendationService.getSpendingReport(
-          new Date(new Date().setDate(1)),
-          new Date()
-        ),
+        providerRecommendationService.getSpendingReport(startOfMonth, now),
         providerRecommendationService.getProviderPricing(),
       ]);
 

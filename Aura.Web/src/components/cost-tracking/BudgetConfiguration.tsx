@@ -106,6 +106,7 @@ export const BudgetConfiguration: FC<BudgetConfigurationProps> = ({
   };
 
   const paidProviders = providerPricing.filter((p) => !p.isFree);
+  const availableThresholds = [50, 75, 90, 100];
 
   return (
     <Card className={styles.card}>
@@ -185,7 +186,7 @@ export const BudgetConfiguration: FC<BudgetConfigurationProps> = ({
         <Title3>Budget Alerts</Title3>
         <Text>Select which thresholds trigger alerts</Text>
         <div className={styles.thresholdGroup}>
-          {[50, 75, 90, 100].map((threshold) => (
+          {availableThresholds.map((threshold) => (
             <Checkbox
               key={threshold}
               label={`${threshold}%`}

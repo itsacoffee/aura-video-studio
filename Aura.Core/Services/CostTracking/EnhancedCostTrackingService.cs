@@ -533,8 +533,9 @@ public class EnhancedCostTrackingService
                 var json = File.ReadAllText(_logsPath);
                 _costLogs = JsonSerializer.Deserialize<List<CostLog>>(json) ?? new List<CostLog>();
                 
+                const int retentionMonths = 3;
                 var (start, _) = GetCurrentPeriodDates();
-                _costLogs = _costLogs.Where(l => l.Timestamp >= start.AddMonths(-3)).ToList();
+                _costLogs = _costLogs.Where(l => l.Timestamp >= start.AddMonths(-retentionMonths)).ToList();
             }
         }
         catch (Exception ex)
