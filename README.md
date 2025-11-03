@@ -114,6 +114,21 @@ We welcome contributions! Please:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
+## Documentation
+
+Comprehensive documentation is available to help you get started and make the most of Aura Video Studio:
+
+- **[Documentation Index](docs/DocsIndex.md)** - Complete map of all documentation
+- **[Getting Started Guide](docs/getting-started/QUICK_START.md)** - Quick setup and first video
+- **[First Run Guide](FIRST_RUN_GUIDE.md)** - Initial configuration walkthrough
+- **[Build Guide](BUILD_GUIDE.md)** - Build from source
+- **[User Guides](docs/user-guide/)** - Feature-specific end-user documentation
+- **[API Reference](docs/api/)** - REST API and SSE event documentation
+- **[Architecture](docs/architecture/)** - System design and technical details
+- **[Style Guide](docs/style/DocsStyleGuide.md)** - Documentation standards
+
+For a complete list of guides organized by audience (end users, developers, operations) and topic, see [docs/DocsIndex.md](docs/DocsIndex.md).
+
 ## License
 
 See [LICENSE](LICENSE).
