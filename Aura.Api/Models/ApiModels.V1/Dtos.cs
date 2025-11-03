@@ -1431,3 +1431,104 @@ public record OllamaModelDto(
     string? Size,
     string? ModifiedAt);
 
+// ============================================================================
+// COST TRACKING DTOs
+// ============================================================================
+
+/// <summary>
+/// Cost tracking configuration request/response
+/// </summary>
+public record CostTrackingConfigurationDto(
+    string? Id,
+    string UserId,
+    decimal? OverallMonthlyBudget,
+    DateTime? BudgetPeriodStart,
+    DateTime? BudgetPeriodEnd,
+    string PeriodType,
+    string Currency,
+    List<int> AlertThresholds,
+    bool EmailNotificationsEnabled,
+    string? NotificationEmail,
+    string AlertFrequency,
+    Dictionary<string, decimal> ProviderBudgets,
+    bool HardBudgetLimit,
+    bool EnableProjectTracking);
+
+/// <summary>
+/// Cost log entry
+/// </summary>
+public record CostLogDto(
+    string Id,
+    DateTime Timestamp,
+    string ProviderName,
+    string Feature,
+    decimal Cost,
+    string? ProjectId,
+    string? ProjectName,
+    int? TokensUsed,
+    int? CharactersUsed,
+    double? ComputeTimeSeconds);
+
+/// <summary>
+/// Provider pricing information
+/// </summary>
+public record ProviderPricingDto(
+    string ProviderName,
+    string ProviderType,
+    bool IsFree,
+    decimal? CostPer1KTokens,
+    decimal? CostPer1KInputTokens,
+    decimal? CostPer1KOutputTokens,
+    decimal? CostPerCharacter,
+    decimal? CostPer1KCharacters,
+    decimal? CostPerImage,
+    decimal? CostPerComputeSecond,
+    bool IsManualOverride,
+    DateTime LastUpdated,
+    string Currency,
+    string? Notes);
+
+/// <summary>
+/// Spending report with detailed breakdown
+/// </summary>
+public record SpendingReportDto(
+    DateTime StartDate,
+    DateTime EndDate,
+    decimal TotalCost,
+    string Currency,
+    Dictionary<string, decimal> CostByProvider,
+    Dictionary<string, decimal> CostByFeature,
+    Dictionary<string, decimal> CostByProject,
+    List<CostLogDto> RecentTransactions,
+    SpendingTrendDto? Trend);
+
+/// <summary>
+/// Spending trend analysis
+/// </summary>
+public record SpendingTrendDto(
+    decimal AverageDailyCost,
+    decimal ProjectedMonthlyCost,
+    double PercentageChange,
+    string TrendDirection);
+
+/// <summary>
+/// Alert configuration
+/// </summary>
+public record BudgetAlertDto(
+    string AlertKey,
+    int Threshold,
+    DateTime? LastTriggered,
+    bool IsActive,
+    string Message);
+
+/// <summary>
+/// Request to estimate cost for an operation
+/// </summary>
+public record CostEstimateRequest(
+    string ProviderName,
+    string OperationType,
+    int? EstimatedInputTokens,
+    int? EstimatedOutputTokens,
+    int? EstimatedCharacters,
+    double? EstimatedComputeSeconds);
+
