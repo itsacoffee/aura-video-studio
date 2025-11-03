@@ -69,7 +69,7 @@ export function FileLocationsSettingsTab({
           fileTypes=".exe,.bat"
           placeholder="Leave empty to use system PATH or portable installation"
           helpText="Path to ffmpeg executable (leave empty to use system PATH or portable installation)"
-          examplePath="C:\ffmpeg\bin\ffmpeg.exe"
+          examplePath="C:/ffmpeg/bin/ffmpeg.exe"
           showOpenFolder={true}
           showClearButton={true}
           onValidate={async (path) => {
@@ -86,7 +86,7 @@ export function FileLocationsSettingsTab({
           fileTypes=".exe,.bat"
           placeholder="Leave empty to use system PATH or portable installation"
           helpText="Path to ffprobe executable (usually in same folder as FFmpeg)"
-          examplePath="C:\ffmpeg\bin\ffprobe.exe"
+          examplePath="C:/ffmpeg/bin/ffprobe.exe"
           showOpenFolder={true}
           showClearButton={true}
         />
@@ -98,7 +98,7 @@ export function FileLocationsSettingsTab({
           type="directory"
           placeholder="Leave empty to use default location"
           helpText="Default directory for rendered videos (leave empty for Documents\AuraVideoStudio)"
-          examplePath="C:\Users\YourName\Videos\AuraOutput"
+          examplePath="C:/Users/YourName/Videos/AuraOutput"
           showOpenFolder={true}
           showClearButton={true}
         />
@@ -110,7 +110,7 @@ export function FileLocationsSettingsTab({
           type="directory"
           placeholder="Leave empty to use system temp folder"
           helpText="Directory for temporary files during video generation"
-          examplePath="C:\Temp\AuraVideoStudio"
+          examplePath="C:/Temp/AuraVideoStudio"
           showOpenFolder={true}
           showClearButton={true}
         />
@@ -122,7 +122,7 @@ export function FileLocationsSettingsTab({
           type="directory"
           placeholder="Leave empty to use default location"
           helpText="Directory where media assets are stored"
-          examplePath="C:\Users\YourName\Documents\AuraVideoStudio\Media"
+          examplePath="C:/Users/YourName/Documents/AuraVideoStudio/Media"
           showOpenFolder={true}
           showClearButton={true}
         />
@@ -134,7 +134,7 @@ export function FileLocationsSettingsTab({
           type="directory"
           placeholder="Leave empty to use default location"
           helpText="Directory where project files are saved"
-          examplePath="C:\Users\YourName\Documents\AuraVideoStudio\Projects"
+          examplePath="C:/Users/YourName/Documents/AuraVideoStudio/Projects"
           showOpenFolder={true}
           showClearButton={true}
         />

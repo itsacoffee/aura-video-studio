@@ -300,7 +300,7 @@ const VoiceEnhancementPage: React.FC = () => {
                 fileTypes=".wav,.mp3,.flac,.aac,.ogg,.m4a"
                 placeholder="Select audio file to enhance"
                 helpText="Select the audio file you want to enhance with noise reduction and equalization"
-                examplePath="C:\Users\YourName\Music\recording.wav"
+                examplePath="C:/Users/YourName/Music/recording.wav"
                 showOpenFolder={true}
                 showClearButton={true}
               />
@@ -385,7 +385,7 @@ const VoiceEnhancementPage: React.FC = () => {
                 fileTypes=".wav,.mp3,.flac,.aac,.ogg,.m4a"
                 placeholder="Select audio file to analyze"
                 helpText="Select the audio file to analyze for quality metrics"
-                examplePath="C:\Users\YourName\Music\recording.wav"
+                examplePath="C:/Users/YourName/Music/recording.wav"
                 showOpenFolder={true}
                 showClearButton={true}
               />
@@ -425,7 +425,7 @@ const VoiceEnhancementPage: React.FC = () => {
                 fileTypes=".wav,.mp3,.flac,.aac,.ogg,.m4a"
                 placeholder="Select audio file for emotion detection"
                 helpText="Select the audio file to detect emotional tone"
-                examplePath="C:\Users\YourName\Music\recording.wav"
+                examplePath="C:/Users/YourName/Music/recording.wav"
                 showOpenFolder={true}
                 showClearButton={true}
               />

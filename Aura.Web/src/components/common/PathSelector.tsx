@@ -179,8 +179,9 @@ export const PathSelector: FC<PathSelectorProps> = ({
         const path = (file as unknown as { path?: string }).path;
         if (path) {
           if (type === 'directory') {
-            const dirPath = path.substring(0, path.lastIndexOf('/') || path.lastIndexOf('\\'));
-            onChange(dirPath || path);
+            const lastSeparator = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+            const dirPath = lastSeparator > 0 ? path.substring(0, lastSeparator) : path;
+            onChange(dirPath);
           } else {
             onChange(path);
           }
@@ -225,7 +226,13 @@ export const PathSelector: FC<PathSelectorProps> = ({
       });
 
       if (!response.ok) {
-        console.warn('Failed to open folder, path:', value);
+        console.warn(
+          'Failed to open folder:',
+          response.status,
+          response.statusText,
+          'path:',
+          value
+        );
       }
     } catch (error: unknown) {
       console.error('Failed to open folder:', error);
