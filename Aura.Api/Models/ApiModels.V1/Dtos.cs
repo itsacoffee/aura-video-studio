@@ -1532,3 +1532,73 @@ public record CostEstimateRequest(
     int? EstimatedCharacters,
     double? EstimatedComputeSeconds);
 
+// ===== ML Training and Annotation DTOs =====
+
+/// <summary>
+/// Single frame annotation with importance rating
+/// </summary>
+public record AnnotationItemDto(
+    string FramePath,
+    double Rating,
+    Dictionary<string, string>? Metadata = null);
+
+/// <summary>
+/// Batch of frame annotations for upload
+/// </summary>
+public record AnnotationBatchDto(
+    string UserId,
+    List<AnnotationItemDto> Annotations,
+    DateTime Timestamp);
+
+/// <summary>
+/// Statistics about stored annotations
+/// </summary>
+public record AnnotationStatsDto(
+    string UserId,
+    int TotalAnnotations,
+    double AverageRating,
+    DateTime? OldestAnnotation,
+    DateTime? NewestAnnotation);
+
+/// <summary>
+/// Metrics from a training job
+/// </summary>
+public record TrainingMetricsDto(
+    double Loss,
+    int Samples,
+    TimeSpan Duration,
+    Dictionary<string, double>? AdditionalMetrics = null);
+
+/// <summary>
+/// Status of a training job
+/// </summary>
+public record TrainingJobStatusDto(
+    string JobId,
+    string State,
+    double Progress,
+    TrainingMetricsDto? Metrics = null,
+    string? ModelPath = null,
+    string? Error = null,
+    DateTime CreatedAt = default,
+    DateTime? CompletedAt = null);
+
+/// <summary>
+/// Request to upload frame annotations
+/// </summary>
+public record UploadAnnotationsRequest(
+    List<AnnotationItemDto> Annotations);
+
+/// <summary>
+/// Request to start a training job
+/// </summary>
+public record StartTrainingRequest(
+    string? ModelName = null,
+    Dictionary<string, string>? PipelineConfig = null);
+
+/// <summary>
+/// Response after starting a training job
+/// </summary>
+public record StartTrainingResponse(
+    string JobId,
+    string Message);
+

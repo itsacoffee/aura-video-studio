@@ -33,7 +33,21 @@ This directory contains pre-trained ML.NET models for video pacing optimization.
 
 ## Training
 
-To train these models, use the scripts in `/Scripts/ModelTraining/`:
+### In-App Training (Recommended)
+
+The frame importance model can now be retrained directly through the API using user annotations:
+
+1. **Upload annotations**: POST `/api/ml/annotations/upload`
+2. **Check stats**: GET `/api/ml/annotations/stats`
+3. **Start training**: POST `/api/ml/train/frame-importance`
+4. **Monitor progress**: GET `/api/ml/train/{jobId}/status`
+5. **Revert if needed**: POST `/api/ml/model/revert`
+
+Trained models are automatically deployed with backup and rollback support.
+
+### Legacy Training Scripts
+
+For batch training, use the scripts in `/Scripts/ModelTraining/`:
 
 ```bash
 # Train frame importance model
@@ -54,8 +68,39 @@ Models are loaded automatically by the respective services:
 Current version: 1.0.0-placeholder
 Last updated: 2025-10-23
 
+## Model Management
+
+### Active vs Default Models
+
+- `frame-importance-model.zip`: Active model (user-trained or default)
+- `frame-importance-model-default.zip`: Factory default model
+- `frame-importance-model.zip.backup`: Previous version backup
+
+The `ModelManager` class automatically handles:
+- Atomic model deployment with backup
+- Validation before activation
+- Fallback to default if active model is invalid
+- Rollback to previous version
+
+### Model Storage Structure
+
+```
+Aura.Core/ML/PretrainedModels/
+├── frame-importance-model-default.zip  (factory default)
+├── frame-importance-model.zip          (active model)
+├── frame-importance-model.zip.backup   (rollback backup)
+└── engagement-prediction-model.zip     (other models)
+```
+
+User annotations are stored per-user:
+```
+%AppData%/Aura/ML/Annotations/{userId}/
+└── annotations.jsonl
+```
+
 ## Notes
 
 - These are placeholder files. In production, replace with actual trained models.
-- Models should be retrained periodically with new data to improve accuracy.
-- Consider A/B testing model versions before deployment.
+- Models are retrained with user annotations through the ML API endpoints.
+- Active models are validated before deployment with automatic fallback.
+- Consider A/B testing model versions before production deployment.
