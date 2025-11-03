@@ -951,10 +951,10 @@ export interface RecordActionRequest {
  * Response after recording an action
  */
 export interface RecordActionResponse {
-  actionId: string;
-  timestamp: string;
+  actionId: string; // Guid as string
+  timestamp: string; // DateTime as ISO string
   status: string;
-  expiresAt?: string;
+  expiresAt?: string; // DateTime as ISO string
 }
 
 /**
