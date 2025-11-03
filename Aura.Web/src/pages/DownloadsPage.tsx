@@ -23,6 +23,8 @@ import {
   CloudArrowDown24Regular,
   CheckmarkCircle24Filled,
   ErrorCircle24Filled,
+  ArrowSync24Regular,
+  Settings24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -102,6 +104,24 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: tokens.spacingVerticalXXS,
   },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: tokens.spacingVerticalXXXL,
+    gap: tokens.spacingVerticalL,
+    textAlign: 'center',
+  },
+  emptyStateIcon: {
+    fontSize: '48px',
+    color: tokens.colorNeutralForeground3,
+  },
+  emptyStateActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    marginTop: tokens.spacingVerticalM,
+  },
 });
 
 export function DownloadsPage() {
@@ -110,6 +130,7 @@ export function DownloadsPage() {
   const [searchParams] = useSearchParams();
   const [manifest, setManifest] = useState<DependencyComponent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [componentStatus, setComponentStatus] = useState<ComponentStatus>({});
   const [selectedTab, setSelectedTab] = useState<string>('dependencies');
 
@@ -199,6 +220,7 @@ export function DownloadsPage() {
 
   const fetchManifest = useCallback(async () => {
     try {
+      setError(null);
       const response = await fetch(apiUrl('/api/downloads/manifest'));
       if (response.ok) {
         const data = await response.json();
@@ -207,17 +229,23 @@ export function DownloadsPage() {
         await Promise.all(
           data.map((component: DependencyComponent) => checkComponentStatus(component.name))
         );
+        setError(null);
       } else {
+        const errorMsg = `Server returned HTTP ${response.status} error. The backend may not be running.`;
+        setError(errorMsg);
         showFailureToast({
           title: 'Failed to Load Manifest',
-          message: `Server returned HTTP ${response.status} error. The manifest endpoint may not be available.`,
+          message: errorMsg,
         });
       }
     } catch (error) {
       console.error('Error loading manifest:', error);
+      const errorMsg =
+        error instanceof Error ? error.message : 'Failed to connect to backend server';
+      setError(errorMsg);
       showFailureToast({
         title: 'Error Loading Manifest',
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        message: errorMsg,
       });
     } finally {
       setLoading(false);
@@ -595,6 +623,80 @@ export function DownloadsPage() {
           {loading ? (
             <Card className={styles.card}>
               <Spinner label="Loading dependencies..." />
+            </Card>
+          ) : error ? (
+            <Card className={styles.card}>
+              <div className={styles.emptyState}>
+                <ErrorCircle24Filled className={styles.emptyStateIcon} />
+                <div>
+                  <Title2>Unable to Load Dependencies</Title2>
+                  <Text style={{ marginTop: tokens.spacingVerticalS }}>{error}</Text>
+                  <Text
+                    style={{
+                      marginTop: tokens.spacingVerticalM,
+                      color: tokens.colorNeutralForeground3,
+                    }}
+                  >
+                    The backend server may not be running. Please ensure the Aura.Api service is
+                    started.
+                  </Text>
+                </div>
+                <div className={styles.emptyStateActions}>
+                  <Button
+                    appearance="primary"
+                    icon={<ArrowSync24Regular />}
+                    onClick={() => {
+                      setLoading(true);
+                      fetchManifest();
+                    }}
+                  >
+                    Retry
+                  </Button>
+                  <Button
+                    appearance="subtle"
+                    icon={<Settings24Regular />}
+                    onClick={() => (window.location.href = '/settings')}
+                  >
+                    Go to Settings
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ) : manifest.length === 0 ? (
+            <Card className={styles.card}>
+              <div className={styles.emptyState}>
+                <CloudArrowDown24Regular className={styles.emptyStateIcon} />
+                <div>
+                  <Title2>No Dependencies Configured</Title2>
+                  <Text style={{ marginTop: tokens.spacingVerticalS }}>
+                    Dependencies have not been configured yet.
+                  </Text>
+                  <Text
+                    style={{
+                      marginTop: tokens.spacingVerticalM,
+                      color: tokens.colorNeutralForeground3,
+                    }}
+                  >
+                    Complete the onboarding wizard to set up dependencies, or configure them
+                    manually in Settings.
+                  </Text>
+                </div>
+                <div className={styles.emptyStateActions}>
+                  <Button
+                    appearance="primary"
+                    onClick={() => (window.location.href = '/onboarding')}
+                  >
+                    Launch Onboarding
+                  </Button>
+                  <Button
+                    appearance="subtle"
+                    icon={<Settings24Regular />}
+                    onClick={() => (window.location.href = '/settings')}
+                  >
+                    Go to Settings
+                  </Button>
+                </div>
+              </div>
             </Card>
           ) : (
             <Card className={styles.card}>
