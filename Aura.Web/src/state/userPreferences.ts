@@ -237,6 +237,16 @@ interface UserPreferencesState {
   ) => Promise<void>;
   deleteContentFilteringPolicy: (id: string) => Promise<void>;
 
+  // AI Behavior Settings Actions
+  loadAIBehaviorSettings: () => Promise<void>;
+  selectAIBehaviorSetting: (id?: string) => void;
+  createAIBehaviorSetting: (
+    settings: Omit<AIBehaviorSettings, 'id' | 'createdAt' | 'updatedAt'>
+  ) => Promise<AIBehaviorSettings>;
+  updateAIBehaviorSetting: (id: string, settings: Partial<AIBehaviorSettings>) => Promise<void>;
+  deleteAIBehaviorSetting: (id: string) => Promise<void>;
+  resetAIBehaviorSetting: (id: string) => Promise<void>;
+
   // Export/Import
   exportPreferences: () => Promise<string>;
   importPreferences: (jsonData: string) => Promise<void>;
@@ -425,6 +435,107 @@ export const useUserPreferencesStore = create<UserPreferencesState>((set, get) =
     }
   },
 
+  // AI Behavior Settings Actions
+  loadAIBehaviorSettings: async () => {
+    set({ isLoading: true, error: undefined });
+    try {
+      const response = await fetch('/api/user-preferences/ai-behavior');
+      if (!response.ok) throw new Error('Failed to load AI behavior settings');
+      const settings = await response.json();
+      set({ aiBehaviorSettings: settings, isLoading: false });
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      set({ error: errorObj.message, isLoading: false });
+    }
+  },
+
+  selectAIBehaviorSetting: (id?: string) => set({ selectedAIBehaviorId: id }),
+
+  createAIBehaviorSetting: async (settings) => {
+    set({ isLoading: true, error: undefined });
+    try {
+      const response = await fetch('/api/user-preferences/ai-behavior', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      if (!response.ok) throw new Error('Failed to create AI behavior setting');
+      const newSetting = await response.json();
+      set((state) => ({
+        aiBehaviorSettings: [...state.aiBehaviorSettings, newSetting],
+        isLoading: false,
+      }));
+      return newSetting;
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      set({ error: errorObj.message, isLoading: false });
+      throw errorObj;
+    }
+  },
+
+  updateAIBehaviorSetting: async (id: string, settings: Partial<AIBehaviorSettings>) => {
+    set({ isLoading: true, error: undefined });
+    try {
+      const current = get().aiBehaviorSettings.find((s) => s.id === id);
+      if (!current) throw new Error('AI behavior setting not found');
+
+      const response = await fetch(`/api/user-preferences/ai-behavior/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...current, ...settings }),
+      });
+      if (!response.ok) throw new Error('Failed to update AI behavior setting');
+      const updated = await response.json();
+      set((state) => ({
+        aiBehaviorSettings: state.aiBehaviorSettings.map((s) => (s.id === id ? updated : s)),
+        isLoading: false,
+      }));
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      set({ error: errorObj.message, isLoading: false });
+      throw errorObj;
+    }
+  },
+
+  deleteAIBehaviorSetting: async (id: string) => {
+    set({ isLoading: true, error: undefined });
+    try {
+      const response = await fetch(`/api/user-preferences/ai-behavior/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete AI behavior setting');
+      set((state) => ({
+        aiBehaviorSettings: state.aiBehaviorSettings.filter((s) => s.id !== id),
+        selectedAIBehaviorId:
+          state.selectedAIBehaviorId === id ? undefined : state.selectedAIBehaviorId,
+        isLoading: false,
+      }));
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      set({ error: errorObj.message, isLoading: false });
+      throw errorObj;
+    }
+  },
+
+  resetAIBehaviorSetting: async (id: string) => {
+    set({ isLoading: true, error: undefined });
+    try {
+      const response = await fetch(`/api/user-preferences/ai-behavior/${id}/reset`, {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('Failed to reset AI behavior setting');
+      const updated = await response.json();
+      set((state) => ({
+        aiBehaviorSettings: state.aiBehaviorSettings.map((s) => (s.id === id ? updated : s)),
+        isLoading: false,
+      }));
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      set({ error: errorObj.message, isLoading: false });
+      throw errorObj;
+    }
+  },
+
   // Export/Import
   exportPreferences: async () => {
     try {
@@ -449,6 +560,7 @@ export const useUserPreferencesStore = create<UserPreferencesState>((set, get) =
 
       await get().loadCustomAudienceProfiles();
       await get().loadContentFilteringPolicies();
+      await get().loadAIBehaviorSettings();
       set({ isLoading: false });
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
