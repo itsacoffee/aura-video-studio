@@ -216,7 +216,7 @@ public class ActionsControllerTests : IDisposable
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<ActionDetailResponse>(okResult.Value);
         
-        Assert.Equal(action.Id.ToString(), response.Id);
+        Assert.Equal(action.Id, response.Id);
         Assert.Equal("test-user", response.UserId);
         Assert.Equal("CreateProject", response.ActionType);
         Assert.Equal("{\"name\":\"Test Project\"}", response.PayloadJson);
