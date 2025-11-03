@@ -9,10 +9,13 @@ import {
 } from '@fluentui/react-components';
 import {
   Folder24Regular,
+  FolderOpen24Regular,
+  Document24Regular,
   Checkmark24Filled,
   Dismiss24Filled,
   Info24Regular,
   ArrowClockwise24Regular,
+  DeleteDismiss24Regular,
 } from '@fluentui/react-icons';
 import { useState, useCallback, useEffect } from 'react';
 import type { FC } from 'react';
@@ -27,9 +30,16 @@ const useStyles = makeStyles({
     display: 'flex',
     gap: tokens.spacingHorizontalS,
     alignItems: 'flex-start',
+    flexWrap: 'wrap',
   },
   input: {
     flex: 1,
+    minWidth: '250px',
+  },
+  buttonGroup: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalXS,
+    flexWrap: 'wrap',
   },
   validationRow: {
     display: 'flex',
@@ -55,7 +65,14 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     fontSize: tokens.fontSizeBase200,
   },
+  exampleText: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
+    fontStyle: 'italic',
+  },
 });
+
+export type PathType = 'file' | 'directory';
 
 export interface PathSelectorProps {
   label: string;
@@ -65,22 +82,31 @@ export interface PathSelectorProps {
   onValidate?: (path: string) => Promise<{ isValid: boolean; message: string; version?: string }>;
   helpText?: string;
   defaultPath?: string;
-  fileFilter?: string;
+  examplePath?: string;
+  type?: PathType;
+  fileTypes?: string;
   dependencyId?: string;
   disabled?: boolean;
   autoDetect?: () => Promise<string | null>;
+  showOpenFolder?: boolean;
+  showClearButton?: boolean;
 }
 
 export const PathSelector: FC<PathSelectorProps> = ({
   label,
-  placeholder = 'Click Browse to select file',
+  placeholder,
   value,
   onChange,
   onValidate,
   helpText,
   defaultPath,
+  examplePath,
+  type = 'file',
+  fileTypes,
   disabled = false,
   autoDetect,
+  showOpenFolder = true,
+  showClearButton = true,
 }) => {
   const styles = useStyles();
   const [isValidating, setIsValidating] = useState(false);
@@ -90,6 +116,10 @@ export const PathSelector: FC<PathSelectorProps> = ({
     message: string;
     version?: string;
   } | null>(null);
+
+  const effectivePlaceholder =
+    placeholder ||
+    (type === 'directory' ? 'Click Browse to select folder' : 'Click Browse to select file');
 
   const handleValidate = useCallback(
     async (pathToValidate: string) => {
@@ -130,7 +160,17 @@ export const PathSelector: FC<PathSelectorProps> = ({
   const handleBrowse = useCallback(() => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.exe';
+
+    if (type === 'directory') {
+      input.setAttribute('webkitdirectory', '');
+      input.setAttribute('directory', '');
+    }
+
+    if (fileTypes) {
+      input.accept = fileTypes;
+    } else if (type === 'file') {
+      input.accept = '.exe,.bat,.sh,.cmd';
+    }
 
     input.onchange = (e) => {
       const target = e.target as HTMLInputElement;
@@ -138,7 +178,13 @@ export const PathSelector: FC<PathSelectorProps> = ({
       if (file) {
         const path = (file as unknown as { path?: string }).path;
         if (path) {
-          onChange(path);
+          if (type === 'directory') {
+            const lastSeparator = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+            const dirPath = lastSeparator > 0 ? path.substring(0, lastSeparator) : path;
+            onChange(dirPath);
+          } else {
+            onChange(path);
+          }
         } else if (file.name) {
           onChange(file.name);
         }
@@ -146,7 +192,7 @@ export const PathSelector: FC<PathSelectorProps> = ({
     };
 
     input.click();
-  }, [onChange]);
+  }, [onChange, type, fileTypes]);
 
   const handleAutoDetect = useCallback(async () => {
     if (!autoDetect) return;
@@ -164,10 +210,44 @@ export const PathSelector: FC<PathSelectorProps> = ({
     }
   }, [autoDetect, onChange]);
 
+  const handleClear = useCallback(() => {
+    onChange('');
+    setValidationResult(null);
+  }, [onChange]);
+
+  const handleOpenFolder = useCallback(async () => {
+    if (!value) return;
+
+    try {
+      const response = await fetch('/api/system/open-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: value }),
+      });
+
+      if (!response.ok) {
+        console.warn(
+          'Failed to open folder:',
+          response.status,
+          response.statusText,
+          'path:',
+          value
+        );
+      }
+    } catch (error: unknown) {
+      console.error('Failed to open folder:', error);
+    }
+  }, [value]);
+
   return (
     <div className={styles.container}>
       <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
         <Text weight="semibold">{label}</Text>
+        {type === 'directory' ? (
+          <Folder24Regular style={{ color: tokens.colorNeutralForeground3 }} />
+        ) : (
+          <Document24Regular style={{ color: tokens.colorNeutralForeground3 }} />
+        )}
         {helpText && (
           <Tooltip content={helpText} relationship="description">
             <Info24Regular style={{ cursor: 'help', color: tokens.colorNeutralForeground3 }} />
@@ -176,34 +256,61 @@ export const PathSelector: FC<PathSelectorProps> = ({
       </div>
 
       {defaultPath && <Text className={styles.defaultPath}>Default: {defaultPath}</Text>}
+      {examplePath && <Text className={styles.exampleText}>e.g., {examplePath}</Text>}
 
       <div className={styles.inputRow}>
         <Input
           className={styles.input}
-          placeholder={placeholder}
+          placeholder={effectivePlaceholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled || isValidating}
-          contentBefore={<Folder24Regular />}
+          contentBefore={type === 'directory' ? <Folder24Regular /> : <Document24Regular />}
         />
-        <Button
-          appearance="secondary"
-          onClick={handleBrowse}
-          disabled={disabled || isValidating}
-          icon={<Folder24Regular />}
-        >
-          Browse...
-        </Button>
-        {autoDetect && (
+        <div className={styles.buttonGroup}>
           <Button
             appearance="secondary"
-            onClick={handleAutoDetect}
-            disabled={disabled || isAutoDetecting}
-            icon={isAutoDetecting ? <Spinner size="tiny" /> : <ArrowClockwise24Regular />}
+            onClick={handleBrowse}
+            disabled={disabled || isValidating}
+            icon={type === 'directory' ? <Folder24Regular /> : <Document24Regular />}
+            title={type === 'directory' ? 'Browse for folder' : 'Browse for file'}
           >
-            {isAutoDetecting ? 'Detecting...' : 'Auto-Detect'}
+            Browse...
           </Button>
-        )}
+          {autoDetect && (
+            <Button
+              appearance="secondary"
+              onClick={handleAutoDetect}
+              disabled={disabled || isAutoDetecting}
+              icon={isAutoDetecting ? <Spinner size="tiny" /> : <ArrowClockwise24Regular />}
+              title="Automatically detect path"
+            >
+              {isAutoDetecting ? 'Detecting...' : 'Auto-Detect'}
+            </Button>
+          )}
+          {showOpenFolder && value && (
+            <Button
+              appearance="subtle"
+              onClick={handleOpenFolder}
+              disabled={disabled}
+              icon={<FolderOpen24Regular />}
+              title="Open in file explorer"
+            >
+              Open
+            </Button>
+          )}
+          {showClearButton && value && (
+            <Button
+              appearance="subtle"
+              onClick={handleClear}
+              disabled={disabled}
+              icon={<DeleteDismiss24Regular />}
+              title="Clear selection"
+            >
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       {isValidating && (
