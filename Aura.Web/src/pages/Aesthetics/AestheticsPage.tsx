@@ -20,6 +20,9 @@ import {
   Eye24Regular,
 } from '@fluentui/react-icons';
 import { useState, useCallback } from 'react';
+import CompositionAnalysis from '../../components/aesthetics/CompositionAnalysis';
+import QualityAssessment from '../../components/aesthetics/QualityAssessment';
+import VisualCoherence from '../../components/aesthetics/VisualCoherence';
 import { ErrorState } from '../../components/Loading';
 
 const useStyles = makeStyles({
@@ -206,29 +209,11 @@ export const AestheticsPage: React.FC = () => {
         </Card>
       )}
 
-      {activeTab === 'composition' && (
-        <Card className={styles.toolCard}>
-          <Title2>Composition Analysis</Title2>
-          <Text>Analyze image composition and suggest improvements</Text>
-          <Text>Composition analysis features coming soon</Text>
-        </Card>
-      )}
+      {activeTab === 'composition' && <CompositionAnalysis />}
 
-      {activeTab === 'quality' && (
-        <Card className={styles.toolCard}>
-          <Title2>Quality Assessment</Title2>
-          <Text>Assess visual quality and provide enhancement suggestions</Text>
-          <Text>Quality assessment features coming soon</Text>
-        </Card>
-      )}
+      {activeTab === 'quality' && <QualityAssessment />}
 
-      {activeTab === 'coherence' && (
-        <Card className={styles.toolCard}>
-          <Title2>Visual Coherence</Title2>
-          <Text>Ensure visual consistency across scenes</Text>
-          <Text>Visual coherence features coming soon</Text>
-        </Card>
-      )}
+      {activeTab === 'coherence' && <VisualCoherence />}
     </div>
   );
 };
