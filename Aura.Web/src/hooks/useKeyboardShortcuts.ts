@@ -11,15 +11,13 @@ import { keyboardShortcutManager, ShortcutHandler } from '../services/keyboardSh
 /**
  * Hook to register keyboard shortcuts for a component
  *
- * @param shortcuts - Array of shortcut handlers to register
+ * @param shortcuts - Array of shortcut handlers to register (should be memoized or stable)
  * @param enabled - Whether shortcuts are enabled (default: true)
- * @param dependencies - Additional dependencies to trigger re-registration
+ *
+ * Note: The shortcuts array should be stable (e.g., defined outside component or memoized with useMemo)
+ * to avoid unnecessary re-registration. If shortcuts need to change dynamically, memoize them first.
  */
-export function useKeyboardShortcuts(
-  shortcuts: ShortcutHandler[],
-  enabled = true,
-  dependencies: unknown[] = []
-): void {
+export function useKeyboardShortcuts(shortcuts: ShortcutHandler[], enabled = true): void {
   useEffect(() => {
     if (!enabled) return;
 
@@ -32,7 +30,5 @@ export function useKeyboardShortcuts(
         keyboardShortcutManager.unregister(shortcut.id, shortcut.context);
       });
     };
-    // Dependencies include shortcuts array and any additional deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, ...dependencies]);
+  }, [shortcuts, enabled]);
 }
