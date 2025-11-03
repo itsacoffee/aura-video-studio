@@ -4,7 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Aura.Core.Configuration;
 using Aura.Core.Models;
+using Aura.Core.Models.Settings;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Hardware;
@@ -16,11 +18,16 @@ public class DiagnosticsHelper
 {
     private readonly ILogger<DiagnosticsHelper> _logger;
     private readonly HardwareDetector _hardwareDetector;
+    private readonly ProviderSettings _providerSettings;
 
-    public DiagnosticsHelper(ILogger<DiagnosticsHelper> logger, HardwareDetector hardwareDetector)
+    public DiagnosticsHelper(
+        ILogger<DiagnosticsHelper> logger, 
+        HardwareDetector hardwareDetector,
+        ProviderSettings providerSettings)
     {
         _logger = logger;
         _hardwareDetector = hardwareDetector;
+        _providerSettings = providerSettings;
     }
 
     /// <summary>
@@ -137,9 +144,35 @@ public class DiagnosticsHelper
             profileError = ex;
         }
 
+        // Load user settings to check advanced mode
+        bool advancedModeEnabled = false;
+        try
+        {
+            var auraDataDir = _providerSettings.GetAuraDataDirectory();
+            var userSettingsPath = Path.Combine(auraDataDir, "user-settings.json");
+            
+            if (File.Exists(userSettingsPath))
+            {
+                var json = await File.ReadAllTextAsync(userSettingsPath);
+                var settings = JsonSerializer.Deserialize<UserSettings>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+                advancedModeEnabled = settings?.General?.AdvancedModeEnabled ?? false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not read advanced mode setting");
+        }
+
         var diagnostics = new
         {
             timestamp = DateTime.UtcNow,
+            advancedMode = advancedModeEnabled,
+            advancedFeaturesNote = advancedModeEnabled 
+                ? "Advanced features are enabled" 
+                : "Advanced features are disabled. Enable Advanced Mode in Settings > General to access expert features.",
             systemProfile = profile != null ? new
             {
                 tier = profile.Tier.ToString(),

@@ -12,7 +12,11 @@ import {
   Dropdown,
   Option,
   Divider,
+  Popover,
+  PopoverTrigger,
+  PopoverSurface,
 } from '@fluentui/react-components';
+import { Info24Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
 import { resetFirstRunStatus } from '../../services/firstRunService';
 import type { GeneralSettings, ThemeMode, StartupBehavior } from '../../types/settings';
@@ -170,6 +174,60 @@ export function GeneralSettingsTab({
                 ? 'Automatically check for updates'
                 : 'Manual updates only'
             }
+          />
+        </Field>
+
+        <Divider style={{ marginTop: tokens.spacingVerticalL }} />
+
+        <Field
+          label={
+            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+              <span>Advanced Mode</span>
+              <Popover>
+                <PopoverTrigger disableButtonEnhancement>
+                  <Button
+                    appearance="transparent"
+                    icon={<Info24Regular />}
+                    size="small"
+                    aria-label="What's included in Advanced Mode"
+                  />
+                </PopoverTrigger>
+                <PopoverSurface>
+                  <div style={{ maxWidth: '300px', padding: tokens.spacingVerticalS }}>
+                    <Title3 style={{ marginBottom: tokens.spacingVerticalS }}>
+                      Advanced Mode Features
+                    </Title3>
+                    <ul style={{ paddingLeft: tokens.spacingHorizontalM }}>
+                      <li>
+                        <Text size={200}>In-app on-device ML retraining for frame importance</Text>
+                      </li>
+                      <li>
+                        <Text size={200}>Deep prompt customization and internals</Text>
+                      </li>
+                      <li>
+                        <Text size={200}>Low-level render flags and optimization</Text>
+                      </li>
+                      <li>
+                        <Text size={200}>Chroma key compositing controls</Text>
+                      </li>
+                      <li>
+                        <Text size={200}>Motion graphics recipes and templates</Text>
+                      </li>
+                      <li>
+                        <Text size={200}>Expert provider tuning and configuration</Text>
+                      </li>
+                    </ul>
+                  </div>
+                </PopoverSurface>
+              </Popover>
+            </div>
+          }
+          hint="Enable expert features for advanced users. These features require technical knowledge."
+        >
+          <Switch
+            checked={settings.advancedModeEnabled}
+            onChange={(_, data) => updateSetting('advancedModeEnabled', data.checked)}
+            label={settings.advancedModeEnabled ? 'Enabled' : 'Disabled'}
           />
         </Field>
 

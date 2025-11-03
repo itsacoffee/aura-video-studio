@@ -24,6 +24,7 @@ export interface GeneralSettings {
   theme: ThemeMode;
   startupBehavior: StartupBehavior;
   checkForUpdatesOnStartup: boolean;
+  advancedModeEnabled: boolean;
 }
 
 export interface ApiKeysSettings {
@@ -106,6 +107,7 @@ export const createDefaultSettings = (): UserSettings => ({
     theme: ThemeMode.Auto,
     startupBehavior: StartupBehavior.ShowDashboard,
     checkForUpdatesOnStartup: true,
+    advancedModeEnabled: false,
   },
   apiKeys: {
     openAI: '',

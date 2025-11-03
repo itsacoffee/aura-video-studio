@@ -1,8 +1,9 @@
 import { makeStyles, tokens, Title3, Button, Tooltip } from '@fluentui/react-components';
 import { WeatherMoon24Regular, WeatherSunny24Regular } from '@fluentui/react-icons';
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../App';
+import { useAdvancedMode } from '../hooks/useAdvancedMode';
 import { navItems } from '../navigation';
 import { ResultsTray } from './ResultsTray';
 import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
@@ -101,6 +102,11 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDarkMode, toggleTheme } = useTheme();
+  const [advancedMode] = useAdvancedMode();
+
+  const visibleNavItems = useMemo(() => {
+    return navItems.filter((item) => !item.advancedOnly || advancedMode);
+  }, [advancedMode]);
 
   return (
     <div className={styles.container}>
@@ -109,7 +115,7 @@ export function Layout({ children }: LayoutProps) {
           <Title3>🎬 Aura Studio</Title3>
         </div>
         <div className={styles.nav}>
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (

@@ -34,6 +34,7 @@ export interface NavItem {
   name: string;
   icon: React.ComponentType;
   path: string;
+  advancedOnly?: boolean;
 }
 
 export const navItems: NavItem[] = [
@@ -52,7 +53,13 @@ export const navItems: NavItem[] = [
   { key: 'projects', name: 'Projects', icon: Folder24Regular, path: '/projects' },
   { key: 'assets', name: 'Asset Library', icon: Image24Regular, path: '/assets' },
   { key: 'editor', name: 'Video Editor', icon: VideoClipMultiple24Regular, path: '/editor' },
-  { key: 'pacing', name: 'Pacing Analyzer', icon: FlashFlow24Regular, path: '/pacing' },
+  {
+    key: 'pacing',
+    name: 'Pacing Analyzer',
+    icon: FlashFlow24Regular,
+    path: '/pacing',
+    advancedOnly: true,
+  },
   { key: 'render', name: 'Render', icon: Play24Regular, path: '/render' },
   { key: 'platform', name: 'Platform Optimizer', icon: ChannelShare24Regular, path: '/platform' },
   { key: 'quality', name: 'Quality Dashboard', icon: ChartMultiple24Regular, path: '/quality' },
@@ -65,8 +72,20 @@ export const navItems: NavItem[] = [
     path: '/downloads',
   },
   { key: 'health', name: 'Provider Health', icon: HeartPulse24Regular, path: '/health' },
-  { key: 'ai-editing', name: 'AI Editing', icon: Wand24Regular, path: '/ai-editing' },
-  { key: 'aesthetics', name: 'Visual Aesthetics', icon: Eye24Regular, path: '/aesthetics' },
+  {
+    key: 'ai-editing',
+    name: 'AI Editing',
+    icon: Wand24Regular,
+    path: '/ai-editing',
+    advancedOnly: true,
+  },
+  {
+    key: 'aesthetics',
+    name: 'Visual Aesthetics',
+    icon: Eye24Regular,
+    path: '/aesthetics',
+    advancedOnly: true,
+  },
   { key: 'models', name: 'AI Models', icon: Database24Regular, path: '/models' },
   {
     key: 'localization',
@@ -79,6 +98,7 @@ export const navItems: NavItem[] = [
     name: 'Prompt Management',
     icon: DocumentText24Regular,
     path: '/prompt-management',
+    advancedOnly: true,
   },
   {
     key: 'voice-enhancement',
@@ -91,6 +111,7 @@ export const navItems: NavItem[] = [
     name: 'Performance Analytics',
     icon: DataUsage24Regular,
     path: '/performance-analytics',
+    advancedOnly: true,
   },
   {
     key: 'quality-validation',
