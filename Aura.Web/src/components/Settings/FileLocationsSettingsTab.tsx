@@ -1,15 +1,6 @@
-import {
-  makeStyles,
-  tokens,
-  Title2,
-  Text,
-  Button,
-  Input,
-  Card,
-  Field,
-} from '@fluentui/react-components';
-import { Folder24Regular } from '@fluentui/react-icons';
+import { makeStyles, tokens, Title2, Text, Button, Card } from '@fluentui/react-components';
 import type { FileLocationsSettings } from '../../types/settings';
+import { PathSelector } from '../common/PathSelector';
 
 const useStyles = makeStyles({
   section: {
@@ -25,11 +16,6 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground3,
     borderRadius: tokens.borderRadiusMedium,
     marginBottom: tokens.spacingVerticalL,
-  },
-  inputWithButton: {
-    display: 'flex',
-    gap: tokens.spacingHorizontalS,
-    alignItems: 'flex-start',
   },
 });
 
@@ -57,21 +43,6 @@ export function FileLocationsSettingsTab({
     onChange({ ...settings, [key]: value });
   };
 
-  const handleBrowse = async (_key: keyof FileLocationsSettings) => {
-    // Note: File browser dialogs would need to be implemented via backend API
-    // For now, this is a placeholder
-    alert('File browser dialog would open here. Please enter path manually for now.');
-  };
-
-  const handleValidate = async (path: string, label: string) => {
-    if (!path) {
-      alert(`${label} is empty`);
-      return;
-    }
-    const result = await onValidatePath(path);
-    alert(result.message);
-  };
-
   return (
     <Card className={styles.section}>
       <Title2>File Locations</Title2>
@@ -90,119 +61,83 @@ export function FileLocationsSettingsTab({
       </div>
 
       <div className={styles.form}>
-        <Field
+        <PathSelector
           label="FFmpeg Path"
-          hint="Path to ffmpeg executable (leave empty to use system PATH or portable installation)"
-        >
-          <div className={styles.inputWithButton}>
-            <Input
-              style={{ flex: 1 }}
-              value={settings.ffmpegPath}
-              onChange={(e) => updateSetting('ffmpegPath', e.target.value)}
-              placeholder="C:\path\to\ffmpeg.exe or leave empty"
-            />
-            <Button
-              icon={<Folder24Regular />}
-              onClick={() => handleBrowse('ffmpegPath')}
-              title="Browse for file"
-            />
-            <Button
-              onClick={() => handleValidate(settings.ffmpegPath, 'FFmpeg path')}
-              disabled={!settings.ffmpegPath}
-            >
-              Test
-            </Button>
-          </div>
-        </Field>
+          value={settings.ffmpegPath}
+          onChange={(value) => updateSetting('ffmpegPath', value)}
+          type="file"
+          fileTypes=".exe,.bat"
+          placeholder="Leave empty to use system PATH or portable installation"
+          helpText="Path to ffmpeg executable (leave empty to use system PATH or portable installation)"
+          examplePath="C:\ffmpeg\bin\ffmpeg.exe"
+          showOpenFolder={true}
+          showClearButton={true}
+          onValidate={async (path) => {
+            const result = await onValidatePath(path);
+            return { isValid: result.valid, message: result.message };
+          }}
+        />
 
-        <Field
+        <PathSelector
           label="FFprobe Path"
-          hint="Path to ffprobe executable (usually in same folder as FFmpeg)"
-        >
-          <div className={styles.inputWithButton}>
-            <Input
-              style={{ flex: 1 }}
-              value={settings.ffprobePath}
-              onChange={(e) => updateSetting('ffprobePath', e.target.value)}
-              placeholder="C:\path\to\ffprobe.exe or leave empty"
-            />
-            <Button
-              icon={<Folder24Regular />}
-              onClick={() => handleBrowse('ffprobePath')}
-              title="Browse for file"
-            />
-          </div>
-        </Field>
+          value={settings.ffprobePath}
+          onChange={(value) => updateSetting('ffprobePath', value)}
+          type="file"
+          fileTypes=".exe,.bat"
+          placeholder="Leave empty to use system PATH or portable installation"
+          helpText="Path to ffprobe executable (usually in same folder as FFmpeg)"
+          examplePath="C:\ffmpeg\bin\ffprobe.exe"
+          showOpenFolder={true}
+          showClearButton={true}
+        />
 
-        <Field
+        <PathSelector
           label="Output Directory"
-          hint="Default directory for rendered videos (leave empty for Documents\AuraVideoStudio)"
-        >
-          <div className={styles.inputWithButton}>
-            <Input
-              style={{ flex: 1 }}
-              value={settings.outputDirectory}
-              onChange={(e) => updateSetting('outputDirectory', e.target.value)}
-              placeholder="C:\Users\YourName\Videos\AuraOutput"
-            />
-            <Button
-              icon={<Folder24Regular />}
-              onClick={() => handleBrowse('outputDirectory')}
-              title="Browse for folder"
-            />
-          </div>
-        </Field>
+          value={settings.outputDirectory}
+          onChange={(value) => updateSetting('outputDirectory', value)}
+          type="directory"
+          placeholder="Leave empty to use default location"
+          helpText="Default directory for rendered videos (leave empty for Documents\AuraVideoStudio)"
+          examplePath="C:\Users\YourName\Videos\AuraOutput"
+          showOpenFolder={true}
+          showClearButton={true}
+        />
 
-        <Field
+        <PathSelector
           label="Temporary Directory"
-          hint="Directory for temporary files during video generation"
-        >
-          <div className={styles.inputWithButton}>
-            <Input
-              style={{ flex: 1 }}
-              value={settings.tempDirectory}
-              onChange={(e) => updateSetting('tempDirectory', e.target.value)}
-              placeholder="Leave empty to use system temp folder"
-            />
-            <Button
-              icon={<Folder24Regular />}
-              onClick={() => handleBrowse('tempDirectory')}
-              title="Browse for folder"
-            />
-          </div>
-        </Field>
+          value={settings.tempDirectory}
+          onChange={(value) => updateSetting('tempDirectory', value)}
+          type="directory"
+          placeholder="Leave empty to use system temp folder"
+          helpText="Directory for temporary files during video generation"
+          examplePath="C:\Temp\AuraVideoStudio"
+          showOpenFolder={true}
+          showClearButton={true}
+        />
 
-        <Field label="Media Library Location" hint="Directory where media assets are stored">
-          <div className={styles.inputWithButton}>
-            <Input
-              style={{ flex: 1 }}
-              value={settings.mediaLibraryLocation}
-              onChange={(e) => updateSetting('mediaLibraryLocation', e.target.value)}
-              placeholder="Leave empty to use default location"
-            />
-            <Button
-              icon={<Folder24Regular />}
-              onClick={() => handleBrowse('mediaLibraryLocation')}
-              title="Browse for folder"
-            />
-          </div>
-        </Field>
+        <PathSelector
+          label="Media Library Location"
+          value={settings.mediaLibraryLocation}
+          onChange={(value) => updateSetting('mediaLibraryLocation', value)}
+          type="directory"
+          placeholder="Leave empty to use default location"
+          helpText="Directory where media assets are stored"
+          examplePath="C:\Users\YourName\Documents\AuraVideoStudio\Media"
+          showOpenFolder={true}
+          showClearButton={true}
+        />
 
-        <Field label="Projects Directory" hint="Directory where project files are saved">
-          <div className={styles.inputWithButton}>
-            <Input
-              style={{ flex: 1 }}
-              value={settings.projectsDirectory}
-              onChange={(e) => updateSetting('projectsDirectory', e.target.value)}
-              placeholder="Leave empty to use default location"
-            />
-            <Button
-              icon={<Folder24Regular />}
-              onClick={() => handleBrowse('projectsDirectory')}
-              title="Browse for folder"
-            />
-          </div>
-        </Field>
+        <PathSelector
+          label="Projects Directory"
+          value={settings.projectsDirectory}
+          onChange={(value) => updateSetting('projectsDirectory', value)}
+          type="directory"
+          placeholder="Leave empty to use default location"
+          helpText="Directory where project files are saved"
+          examplePath="C:\Users\YourName\Documents\AuraVideoStudio\Projects"
+          showOpenFolder={true}
+          showClearButton={true}
+        />
 
         {hasChanges && (
           <div className={styles.infoBox}>
