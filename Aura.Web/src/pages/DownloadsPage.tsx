@@ -27,7 +27,7 @@ import {
   Settings24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { EnginesTab } from '../components/Engines/EnginesTab';
 import { TroubleshootingPanel } from '../components/Engines/TroubleshootingPanel';
 import { RouteErrorBoundary } from '../components/ErrorBoundary/RouteErrorBoundary';
@@ -129,6 +129,7 @@ export function DownloadsPage() {
   const styles = useStyles();
   const { showSuccessToast, showFailureToast } = useNotifications();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [manifest, setManifest] = useState<DependencyComponent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -661,7 +662,7 @@ export function DownloadsPage() {
                     <Button
                       appearance="subtle"
                       icon={<Settings24Regular />}
-                      onClick={() => (window.location.href = '/settings')}
+                      onClick={() => navigate('/settings')}
                     >
                       Go to Settings
                     </Button>
@@ -688,16 +689,13 @@ export function DownloadsPage() {
                     </Text>
                   </div>
                   <div className={styles.emptyStateActions}>
-                    <Button
-                      appearance="primary"
-                      onClick={() => (window.location.href = '/onboarding')}
-                    >
+                    <Button appearance="primary" onClick={() => navigate('/onboarding')}>
                       Launch Onboarding
                     </Button>
                     <Button
                       appearance="subtle"
                       icon={<Settings24Regular />}
-                      onClick={() => (window.location.href = '/settings')}
+                      onClick={() => navigate('/settings')}
                     >
                       Go to Settings
                     </Button>
