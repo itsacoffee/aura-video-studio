@@ -18,6 +18,7 @@ import { Add24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
 import type { FC } from 'react';
 import type { ContentFilteringPolicy } from '../../state/userPreferences';
+import { createDefaultPolicy } from '../../utils/userPreferencesDefaults';
 
 const useStyles = makeStyles({
   content: {
@@ -73,38 +74,14 @@ export const CreatePolicyModal: FC<CreatePolicyModalProps> = ({ open, onOpenChan
     setError(null);
 
     try {
-      const policy: Omit<ContentFilteringPolicy, 'id' | 'createdAt' | 'updatedAt'> = {
-        name: formData.name,
-        description: formData.description,
-        filteringEnabled: formData.filteringEnabled,
-        allowOverrideAll: false,
-        profanityFilter: formData.profanityFilter,
-        customBannedWords: [],
-        customAllowedWords: [],
-        violenceThreshold: formData.violenceThreshold,
-        blockGraphicContent: formData.blockGraphicContent,
-        sexualContentThreshold: 5,
-        blockExplicitContent: false,
-        bannedTopics: [],
-        allowedControversialTopics: [],
-        politicalContent: 'Allow',
-        politicalContentGuidelines: undefined,
-        religiousContent: 'Allow',
-        religiousContentGuidelines: undefined,
-        substanceReferences: 'Allow',
-        blockHateSpeech: true,
-        hateSpeechExceptions: [],
-        copyrightPolicy: 'Strict',
-        blockedConcepts: [],
-        allowedConcepts: [],
-        blockedPeople: [],
-        allowedPeople: [],
-        blockedBrands: [],
-        allowedBrands: [],
-        isDefault: false,
-        usageCount: 0,
-        lastUsedAt: undefined,
-      };
+      const policy = createDefaultPolicy(
+        formData.name,
+        formData.description,
+        formData.filteringEnabled,
+        formData.profanityFilter,
+        formData.violenceThreshold,
+        formData.blockGraphicContent
+      );
 
       await onSave(policy);
       onOpenChange(false);

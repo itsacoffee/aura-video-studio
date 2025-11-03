@@ -17,6 +17,7 @@ import { Add24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
 import type { FC } from 'react';
 import type { CustomAudienceProfile } from '../../state/userPreferences';
+import { createDefaultProfile } from '../../utils/userPreferencesDefaults';
 
 const useStyles = makeStyles({
   content: {
@@ -67,48 +68,14 @@ export const CreateProfileModal: FC<CreateProfileModalProps> = ({ open, onOpenCh
     setError(null);
 
     try {
-      const profile: Omit<CustomAudienceProfile, 'id' | 'createdAt' | 'updatedAt'> = {
-        name: formData.name,
-        description: formData.description,
-        baseProfileId: undefined,
-        isCustom: true,
-        minAge: formData.minAge,
-        maxAge: formData.maxAge,
-        educationLevel: formData.educationLevel,
-        educationLevelDescription: undefined,
-        culturalSensitivities: [],
-        topicsToAvoid: [],
-        topicsToEmphasize: [],
-        vocabularyLevel: 5,
-        sentenceStructurePreference: 'Balanced',
-        readingLevel: 10,
-        violenceThreshold: 5,
-        profanityThreshold: 5,
-        sexualContentThreshold: 5,
-        controversialTopicsThreshold: 5,
-        humorStyle: 'Neutral',
-        sarcasmLevel: 3,
-        jokeTypes: [],
-        culturalHumorPreferences: [],
-        formalityLevel: formData.formalityLevel,
-        attentionSpanSeconds: 120,
-        pacingPreference: 'Medium',
-        informationDensity: 5,
-        technicalDepthTolerance: 5,
-        jargonAcceptability: 5,
-        familiarTechnicalTerms: [],
-        emotionalTone: 'Neutral',
-        emotionalIntensity: 5,
-        ctaAggressiveness: 5,
-        ctaStyle: 'Encouraging',
-        brandVoiceGuidelines: undefined,
-        brandToneKeywords: [],
-        brandPersonality: undefined,
-        tags: [],
-        isFavorite: false,
-        usageCount: 0,
-        lastUsedAt: undefined,
-      };
+      const profile = createDefaultProfile(
+        formData.name,
+        formData.description,
+        formData.minAge,
+        formData.maxAge,
+        formData.formalityLevel,
+        formData.educationLevel
+      );
 
       await onSave(profile);
       onOpenChange(false);

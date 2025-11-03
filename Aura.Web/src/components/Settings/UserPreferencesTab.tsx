@@ -273,9 +273,10 @@ export const UserPreferencesTab: FC = () => {
     } catch (err: unknown) {
       const errorObj = err instanceof Error ? err : new Error(String(err));
       setMessage({ type: 'error', text: `Delete failed: ${errorObj.message}` });
-    } finally {
-      setItemToDelete(null);
     }
+
+    setItemToDelete(null);
+    setDeleteConfirmOpen(false);
   };
 
   return (
