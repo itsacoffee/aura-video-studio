@@ -13,7 +13,35 @@ import {
   TabList,
   Slider,
 } from '@fluentui/react-components';
-import { Save24Regular, ArrowDownload24Regular, ArrowUpload24Regular } from '@fluentui/react-icons';
+import {
+  Save24Regular,
+  ArrowDownload24Regular,
+  ArrowUpload24Regular,
+  Settings24Regular,
+  Key24Regular,
+  Brain24Regular,
+  Folder24Regular,
+  Video24Regular,
+  DocumentEdit24Regular,
+  Desktop24Regular,
+  BoxMultiple24Regular,
+  Gauge24Regular,
+  DeveloperBoard24Regular,
+  ArrowExport24Regular,
+  PaintBrush24Regular,
+  Color24Regular,
+  Keyboard24Regular,
+  ClipboardTask24Regular,
+  ShieldTask24Regular,
+  Info24Regular,
+  Cloud24Regular,
+  Server24Regular,
+  Database24Regular,
+  Lightbulb24Regular,
+  ArrowUpload24Regular as DocumentArrowUp24Regular,
+  LockClosed24Regular,
+  Star24Regular,
+} from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import { AIModelsSettingsTab } from '../components/Settings/AIModelsSettingsTab';
 import { AIOptimizationPanel } from '../components/Settings/AIOptimizationPanel';
@@ -47,10 +75,170 @@ import { RescanPanel } from './DownloadCenter/RescanPanel';
 // Default Ollama model constant
 const DEFAULT_OLLAMA_MODEL = 'llama3.1:8b-q4_k_m';
 
+// Settings categories for grid navigation
+interface SettingsCategory {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactElement;
+}
+
+const settingsCategories: SettingsCategory[] = [
+  {
+    id: 'general',
+    title: 'General',
+    description: 'Basic application behavior and preferences',
+    icon: <Settings24Regular />,
+  },
+  {
+    id: 'apikeys',
+    title: 'API Keys',
+    description: 'Configure API keys for cloud services',
+    icon: <Key24Regular />,
+  },
+  {
+    id: 'aimodels',
+    title: 'AI Models',
+    description: 'Configure AI model preferences',
+    icon: <Brain24Regular />,
+  },
+  {
+    id: 'filelocations',
+    title: 'File Locations',
+    description: 'Default directories and file paths',
+    icon: <Folder24Regular />,
+  },
+  {
+    id: 'videodefaults',
+    title: 'Video Defaults',
+    description: 'Default video settings and formats',
+    icon: <Video24Regular />,
+  },
+  {
+    id: 'editorpreferences',
+    title: 'Editor',
+    description: 'Editor preferences and behavior',
+    icon: <DocumentEdit24Regular />,
+  },
+  {
+    id: 'system',
+    title: 'System',
+    description: 'System profile and offline mode',
+    icon: <Desktop24Regular />,
+  },
+  {
+    id: 'output',
+    title: 'Output',
+    description: 'Output settings and rendering',
+    icon: <BoxMultiple24Regular />,
+  },
+  {
+    id: 'performance',
+    title: 'Performance',
+    description: 'Performance and optimization settings',
+    icon: <Gauge24Regular />,
+  },
+  {
+    id: 'hardware',
+    title: 'Hardware',
+    description: 'Hardware detection and configuration',
+    icon: <DeveloperBoard24Regular />,
+  },
+  {
+    id: 'exportpresets',
+    title: 'Export Presets',
+    description: 'Manage export presets',
+    icon: <ArrowExport24Regular />,
+  },
+  {
+    id: 'ui',
+    title: 'UI',
+    description: 'UI scale and compact mode',
+    icon: <PaintBrush24Regular />,
+  },
+  {
+    id: 'theme',
+    title: 'Theme',
+    description: 'Theme customization',
+    icon: <Color24Regular />,
+  },
+  {
+    id: 'shortcuts',
+    title: 'Shortcuts',
+    description: 'Keyboard shortcuts',
+    icon: <Keyboard24Regular />,
+  },
+  {
+    id: 'logging',
+    title: 'Logging',
+    description: 'Logging and diagnostics',
+    icon: <ClipboardTask24Regular />,
+  },
+  {
+    id: 'contentsafety',
+    title: 'Content Safety',
+    description: 'Content safety and moderation',
+    icon: <ShieldTask24Regular />,
+  },
+  {
+    id: 'portable',
+    title: 'Portable Info',
+    description: 'Portable installation information',
+    icon: <Info24Regular />,
+  },
+  {
+    id: 'providers',
+    title: 'Providers',
+    description: 'Provider capabilities and validation',
+    icon: <Cloud24Regular />,
+  },
+  {
+    id: 'localproviders',
+    title: 'Local Providers',
+    description: 'Local AI providers configuration',
+    icon: <Server24Regular />,
+  },
+  {
+    id: 'localengines',
+    title: 'Local Engines',
+    description: 'Manage local AI engines',
+    icon: <Database24Regular />,
+  },
+  {
+    id: 'aioptimization',
+    title: 'AI Optimization',
+    description: 'AI optimization settings',
+    icon: <Lightbulb24Regular />,
+  },
+  {
+    id: 'importexport',
+    title: 'Import/Export',
+    description: 'Backup and restore settings',
+    icon: <DocumentArrowUp24Regular />,
+  },
+  {
+    id: 'privacy',
+    title: 'Privacy',
+    description: 'Privacy and telemetry settings',
+    icon: <LockClosed24Regular />,
+  },
+  {
+    id: 'recommendations',
+    title: 'Recommendations',
+    description: 'Provider recommendations',
+    icon: <Star24Regular />,
+  },
+];
+
 const useStyles = makeStyles({
   container: {
-    maxWidth: '900px',
+    maxWidth: '100%',
+    width: '100%',
     margin: '0 auto',
+    padding: `0 ${tokens.spacingHorizontalXL}`,
+    '@media (max-width: 768px)': {
+      padding: `0 ${tokens.spacingHorizontalM}`,
+    },
   },
   header: {
     marginBottom: tokens.spacingVerticalXXL,
@@ -63,6 +251,51 @@ const useStyles = makeStyles({
   },
   tabs: {
     marginBottom: tokens.spacingVerticalL,
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    display: 'none', // Hide default tabs, use grid navigation instead
+  },
+  settingsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gap: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalXXL,
+    '@media (min-width: 768px) and (max-width: 1200px)': {
+      gridTemplateColumns: 'repeat(2, 1fr)',
+    },
+    '@media (min-width: 1200px) and (max-width: 1600px)': {
+      gridTemplateColumns: 'repeat(3, 1fr)',
+    },
+    '@media (min-width: 1600px)': {
+      gridTemplateColumns: 'repeat(4, 1fr)',
+    },
+    '@media (max-width: 768px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  settingsCard: {
+    padding: tokens.spacingVerticalL,
+    cursor: 'pointer',
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    minHeight: '120px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground3,
+      transform: 'translateY(-2px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    },
+  },
+  settingsCardActive: {
+    backgroundColor: tokens.colorBrandBackground,
+    border: `1px solid ${tokens.colorBrandStroke1}`,
+  },
+  contentArea: {
+    marginTop: tokens.spacingVerticalXL,
   },
   section: {
     padding: tokens.spacingVerticalXL,
@@ -77,6 +310,7 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalM,
     justifyContent: 'flex-end',
     marginTop: tokens.spacingVerticalXL,
+    flexWrap: 'wrap',
   },
   profileCard: {
     padding: tokens.spacingVerticalL,
@@ -657,6 +891,58 @@ export function SettingsPage() {
         )}
       </div>
 
+      {/* Grid Navigation for Settings Categories */}
+      <div className={styles.settingsGrid}>
+        {settingsCategories.map((category) => (
+          <Card
+            key={category.id}
+            className={`${styles.settingsCard} ${activeTab === category.id ? styles.settingsCardActive : ''}`}
+            onClick={() => setActiveTab(category.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setActiveTab(category.id);
+              }
+            }}
+          >
+            <div
+              style={{
+                fontSize: '32px',
+                color:
+                  activeTab === category.id
+                    ? tokens.colorNeutralForegroundOnBrand
+                    : tokens.colorBrandForeground1,
+              }}
+            >
+              {category.icon}
+            </div>
+            <Text
+              weight="semibold"
+              size={400}
+              style={{
+                color: activeTab === category.id ? tokens.colorNeutralForegroundOnBrand : undefined,
+              }}
+            >
+              {category.title}
+            </Text>
+            <Text
+              size={200}
+              style={{
+                color:
+                  activeTab === category.id
+                    ? tokens.colorNeutralForegroundOnBrand
+                    : tokens.colorNeutralForeground3,
+              }}
+            >
+              {category.description}
+            </Text>
+          </Card>
+        ))}
+      </div>
+
+      {/* Original TabList - hidden but kept for accessibility and deep linking */}
       <TabList
         className={styles.tabs}
         selectedValue={activeTab}
@@ -688,620 +974,706 @@ export function SettingsPage() {
         <Tab value="recommendations">Recommendations</Tab>
       </TabList>
 
-      {activeTab === 'general' && (
-        <GeneralSettingsTab
-          settings={userSettings.general}
-          onChange={(general) => setUserSettings({ ...userSettings, general })}
-          onSave={saveUserSettings}
-          hasChanges={hasUnsavedChanges}
-        />
-      )}
+      {/* Settings Content Area */}
+      <div className={styles.contentArea}>
+        {activeTab === 'general' && (
+          <GeneralSettingsTab
+            settings={userSettings.general}
+            onChange={(general) => setUserSettings({ ...userSettings, general })}
+            onSave={saveUserSettings}
+            hasChanges={hasUnsavedChanges}
+          />
+        )}
 
-      {activeTab === 'apikeys' && (
-        <ApiKeysSettingsTab
-          settings={userSettings.apiKeys}
-          onChange={(apiKeys) => setUserSettings({ ...userSettings, apiKeys })}
-          onSave={saveUserSettings}
-          onTestApiKey={async (provider, apiKey) => settingsService.testApiKey(provider, apiKey)}
-          hasChanges={hasUnsavedChanges}
-        />
-      )}
+        {activeTab === 'apikeys' && (
+          <ApiKeysSettingsTab
+            settings={userSettings.apiKeys}
+            onChange={(apiKeys) => setUserSettings({ ...userSettings, apiKeys })}
+            onSave={saveUserSettings}
+            onTestApiKey={async (provider, apiKey) => settingsService.testApiKey(provider, apiKey)}
+            hasChanges={hasUnsavedChanges}
+          />
+        )}
 
-      {activeTab === 'aimodels' && <AIModelsSettingsTab />}
+        {activeTab === 'aimodels' && <AIModelsSettingsTab />}
 
-      {activeTab === 'filelocations' && (
-        <FileLocationsSettingsTab
-          settings={userSettings.fileLocations}
-          onChange={(fileLocations) => setUserSettings({ ...userSettings, fileLocations })}
-          onSave={saveUserSettings}
-          onValidatePath={async (path) => settingsService.validatePath(path)}
-          hasChanges={hasUnsavedChanges}
-        />
-      )}
+        {activeTab === 'filelocations' && (
+          <FileLocationsSettingsTab
+            settings={userSettings.fileLocations}
+            onChange={(fileLocations) => setUserSettings({ ...userSettings, fileLocations })}
+            onSave={saveUserSettings}
+            onValidatePath={async (path) => settingsService.validatePath(path)}
+            hasChanges={hasUnsavedChanges}
+          />
+        )}
 
-      {activeTab === 'videodefaults' && (
-        <VideoDefaultsSettingsTab
-          settings={userSettings.videoDefaults}
-          onChange={(videoDefaults) => setUserSettings({ ...userSettings, videoDefaults })}
-          onSave={saveUserSettings}
-          hasChanges={hasUnsavedChanges}
-        />
-      )}
+        {activeTab === 'videodefaults' && (
+          <VideoDefaultsSettingsTab
+            settings={userSettings.videoDefaults}
+            onChange={(videoDefaults) => setUserSettings({ ...userSettings, videoDefaults })}
+            onSave={saveUserSettings}
+            hasChanges={hasUnsavedChanges}
+          />
+        )}
 
-      {activeTab === 'editorpreferences' && (
-        <EditorPreferencesSettingsTab
-          settings={userSettings.editorPreferences}
-          onChange={(editorPreferences) => setUserSettings({ ...userSettings, editorPreferences })}
-          onSave={saveUserSettings}
-          hasChanges={hasUnsavedChanges}
-        />
-      )}
+        {activeTab === 'editorpreferences' && (
+          <EditorPreferencesSettingsTab
+            settings={userSettings.editorPreferences}
+            onChange={(editorPreferences) =>
+              setUserSettings({ ...userSettings, editorPreferences })
+            }
+            onSave={saveUserSettings}
+            hasChanges={hasUnsavedChanges}
+          />
+        )}
 
-      {activeTab === 'system' && (
-        <Card className={styles.section}>
-          <Title2>System Profile</Title2>
-          <div className={styles.form}>
-            <Field label="Offline Mode">
-              <Switch checked={offlineMode} onChange={(_, data) => setOfflineMode(data.checked)} />
-              <Text size={200}>
-                {offlineMode ? 'Enabled' : 'Disabled'} - Blocks all cloud providers. Only local and
-                stock assets are used.
-              </Text>
-            </Field>
-
-            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
-              <Button appearance="primary" onClick={saveSettings}>
-                Save Settings
-              </Button>
-              <Button
-                onClick={async () => {
-                  try {
-                    const response = await fetch('/api/probes/run', { method: 'POST' });
-                    if (response.ok) {
-                      alert('Hardware probes completed successfully');
-                    }
-                  } catch (error) {
-                    console.error('Error running probes:', error);
-                  }
-                }}
-              >
-                Run Hardware Probes
-              </Button>
-              <Button
-                onClick={() => {
-                  if (
-                    confirm(
-                      'This will guide you through setup again. Current settings will be preserved. Continue?'
-                    )
-                  ) {
-                    window.location.href = '/setup?rerun=true';
-                  }
-                }}
-              >
-                Re-run Setup Wizard
-              </Button>
-              <Button
-                onClick={async () => {
-                  if (
-                    confirm(
-                      'This will reset the first-run wizard and restart onboarding. You will be redirected to the onboarding wizard. Continue?'
-                    )
-                  ) {
-                    try {
-                      await resetFirstRunStatus();
-                      window.location.href = '/onboarding';
-                    } catch (error) {
-                      console.error('Error resetting first-run status:', error);
-                      alert('Failed to reset first-run status. Check console for details.');
-                    }
-                  }
-                }}
-              >
-                Reset First-Run Wizard
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {activeTab === 'output' && <OutputSettingsTab />}
-
-      {activeTab === 'performance' && <PerformanceSettingsTab />}
-
-      {activeTab === 'hardware' && <HardwareConfigurationTab />}
-
-      {activeTab === 'exportpresets' && <ExportPresetsTab />}
-
-      {activeTab === 'shortcuts' && <KeyboardShortcutsTab />}
-
-      {activeTab === 'logging' && <LoggingSettingsTab />}
-
-      {activeTab === 'contentsafety' && <ContentSafetyTab />}
-
-      {activeTab === 'theme' && <ThemeCustomizationTab />}
-
-      {activeTab === 'ui' && (
-        <Card className={styles.section}>
-          <Title2>UI Customization</Title2>
-          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-            Customize the appearance and scale of the user interface
-          </Text>
-          <div className={styles.form}>
-            <Field label={`UI Scale: ${uiScale}%`} hint="Adjust the overall size of the interface">
-              <Slider
-                min={75}
-                max={150}
-                step={5}
-                value={uiScale}
-                onChange={(_, data) => setUiScale(data.value)}
-              />
-            </Field>
-            <Field label="Compact Mode">
-              <Switch checked={compactMode} onChange={(_, data) => setCompactMode(data.checked)} />
-              <Text size={200}>
-                {compactMode ? 'Enabled' : 'Disabled'} - Reduces spacing and padding for a more
-                compact layout
-              </Text>
-            </Field>
-            <Text size={200} style={{ fontStyle: 'italic', color: tokens.colorNeutralForeground3 }}>
-              Note: Changes take effect after saving and refreshing the page
-            </Text>
-          </div>
-        </Card>
-      )}
-
-      {activeTab === 'portable' && (
-        <Card className={styles.section}>
-          <Title2>Portable Installation</Title2>
-          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-            Aura Video Studio is portable-only. All application data, tools, and dependencies are
-            stored relative to the application root.
-          </Text>
-
-          <Card
-            style={{
-              marginBottom: tokens.spacingVerticalL,
-              padding: tokens.spacingVerticalM,
-              backgroundColor: tokens.colorNeutralBackground3,
-            }}
-          >
-            <Text weight="semibold" size={300}>
-              ℹ️ About Portable Mode
-            </Text>
-            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
-              All data is stored in the application folder, making it easy to:
-            </Text>
-            <ul
-              style={{ marginTop: tokens.spacingVerticalS, marginLeft: tokens.spacingHorizontalL }}
-            >
-              <li>
-                <Text size={200}>
-                  Move the entire application to another machine by copying the folder
-                </Text>
-              </li>
-              <li>
-                <Text size={200}>Keep multiple installations without conflicts</Text>
-              </li>
-              <li>
-                <Text size={200}>No registry entries or AppData dependencies</Text>
-              </li>
-              <li>
-                <Text size={200}>Clean uninstall by simply deleting the folder</Text>
-              </li>
-            </ul>
-            <Text
-              size={200}
-              style={{
-                marginTop: tokens.spacingVerticalS,
-                fontStyle: 'italic',
-                color: tokens.colorNeutralForeground3,
-              }}
-            >
-              Note: System dependencies (like GPU drivers, .NET runtime) must still be installed on
-              each machine.
-            </Text>
-          </Card>
-
-          <div className={styles.form}>
-            <Card
-              style={{
-                padding: tokens.spacingVerticalM,
-                backgroundColor: tokens.colorNeutralBackground2,
-              }}
-            >
-              <Text weight="semibold" size={300}>
-                Portable Directory Structure
-              </Text>
-              <div
-                style={{
-                  marginTop: tokens.spacingVerticalS,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: tokens.spacingVerticalXS,
-                  fontFamily: 'monospace',
-                  fontSize: '0.9em',
-                }}
-              >
-                <Text size={200}>
-                  <strong>Root:</strong> {portableRootPath || 'Loading...'}
-                </Text>
-                <div style={{ marginLeft: tokens.spacingHorizontalM }}>
-                  <Text size={200}>
-                    ├─ <strong>Tools/</strong> - {toolsDirectory || 'Loading...'}
-                  </Text>
-                  <Text
-                    size={200}
-                    style={{
-                      marginLeft: tokens.spacingHorizontalM,
-                      color: tokens.colorNeutralForeground3,
-                    }}
-                  >
-                    Downloaded dependencies (FFmpeg, Ollama, etc.)
-                  </Text>
-                  <Text size={200}>
-                    ├─ <strong>AuraData/</strong> - {auraDataDirectory || 'Loading...'}
-                  </Text>
-                  <Text
-                    size={200}
-                    style={{
-                      marginLeft: tokens.spacingHorizontalM,
-                      color: tokens.colorNeutralForeground3,
-                    }}
-                  >
-                    Settings, manifests, and configuration files
-                  </Text>
-                  <Text size={200}>
-                    ├─ <strong>Logs/</strong> - {logsDirectory || 'Loading...'}
-                  </Text>
-                  <Text
-                    size={200}
-                    style={{
-                      marginLeft: tokens.spacingHorizontalM,
-                      color: tokens.colorNeutralForeground3,
-                    }}
-                  >
-                    Application and tool logs
-                  </Text>
-                  <Text size={200}>
-                    ├─ <strong>Projects/</strong> - {projectsDirectory || 'Loading...'}
-                  </Text>
-                  <Text
-                    size={200}
-                    style={{
-                      marginLeft: tokens.spacingHorizontalM,
-                      color: tokens.colorNeutralForeground3,
-                    }}
-                  >
-                    Generated videos and project files
-                  </Text>
-                  <Text size={200}>
-                    ├─ <strong>Downloads/</strong> - {downloadsDirectory || 'Loading...'}
-                  </Text>
-                  <Text
-                    size={200}
-                    style={{
-                      marginLeft: tokens.spacingHorizontalM,
-                      color: tokens.colorNeutralForeground3,
-                    }}
-                  >
-                    Temporary download storage
-                  </Text>
-                </div>
-              </div>
-            </Card>
-
-            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
-              <Button appearance="primary" onClick={openToolsFolder}>
-                Open Tools Folder
-              </Button>
-              <Button
-                appearance="secondary"
-                onClick={() => navigator.clipboard.writeText(portableRootPath)}
-              >
-                Copy Root Path
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {activeTab === 'providers' && (
-        <>
+        {activeTab === 'system' && (
           <Card className={styles.section}>
-            <Title2>Provider Capabilities</Title2>
-            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-              View which providers are available on your system based on hardware, API keys, and OS.
-            </Text>
-            <ProvidersTable />
-          </Card>
+            <Title2>System Profile</Title2>
+            <div className={styles.form}>
+              <Field label="Offline Mode">
+                <Switch
+                  checked={offlineMode}
+                  onChange={(_, data) => setOfflineMode(data.checked)}
+                />
+                <Text size={200}>
+                  {offlineMode ? 'Enabled' : 'Disabled'} - Blocks all cloud providers. Only local
+                  and stock assets are used.
+                </Text>
+              </Field>
 
-          <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
-            <Title2>Provider Profiles</Title2>
-            <Text>Select a provider profile to configure which services are used</Text>
-            <div style={{ marginTop: tokens.spacingVerticalL }}>
-              {profiles.map((profile) => (
-                <div
-                  key={profile.name}
-                  className={styles.profileCard}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => applyProfile(profile.name)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      applyProfile(profile.name);
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+                <Button appearance="primary" onClick={saveSettings}>
+                  Save Settings
+                </Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/probes/run', { method: 'POST' });
+                      if (response.ok) {
+                        alert('Hardware probes completed successfully');
+                      }
+                    } catch (error) {
+                      console.error('Error running probes:', error);
                     }
                   }}
                 >
-                  <Text weight="semibold">{profile.name}</Text>
-                  <br />
-                  <Text size={200}>{profile.description}</Text>
-                </div>
-              ))}
+                  Run Hardware Probes
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (
+                      confirm(
+                        'This will guide you through setup again. Current settings will be preserved. Continue?'
+                      )
+                    ) {
+                      window.location.href = '/setup?rerun=true';
+                    }
+                  }}
+                >
+                  Re-run Setup Wizard
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (
+                      confirm(
+                        'This will reset the first-run wizard and restart onboarding. You will be redirected to the onboarding wizard. Continue?'
+                      )
+                    ) {
+                      try {
+                        await resetFirstRunStatus();
+                        window.location.href = '/onboarding';
+                      } catch (error) {
+                        console.error('Error resetting first-run status:', error);
+                        alert('Failed to reset first-run status. Check console for details.');
+                      }
+                    }
+                  }}
+                >
+                  Reset First-Run Wizard
+                </Button>
+              </div>
             </div>
           </Card>
+        )}
 
-          <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
-            <Title2>Provider Validation</Title2>
+        {activeTab === 'output' && <OutputSettingsTab />}
+
+        {activeTab === 'performance' && <PerformanceSettingsTab />}
+
+        {activeTab === 'hardware' && <HardwareConfigurationTab />}
+
+        {activeTab === 'exportpresets' && <ExportPresetsTab />}
+
+        {activeTab === 'shortcuts' && <KeyboardShortcutsTab />}
+
+        {activeTab === 'logging' && <LoggingSettingsTab />}
+
+        {activeTab === 'contentsafety' && <ContentSafetyTab />}
+
+        {activeTab === 'theme' && <ThemeCustomizationTab />}
+
+        {activeTab === 'ui' && (
+          <Card className={styles.section}>
+            <Title2>UI Customization</Title2>
             <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-              Test connectivity and API keys for all configured providers
+              Customize the appearance and scale of the user interface
             </Text>
             <div className={styles.form}>
-              <div
-                style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}
+              <Field
+                label={`UI Scale: ${uiScale}%`}
+                hint="Adjust the overall size of the interface"
               >
-                <Button appearance="primary" onClick={validateProviders} disabled={validating}>
-                  {validating ? 'Validating...' : 'Validate Providers'}
-                </Button>
-                {validationResults && (
-                  <Button appearance="subtle" onClick={copyValidationResults}>
-                    Copy to Clipboard
-                  </Button>
-                )}
-              </div>
+                <Slider
+                  min={75}
+                  max={150}
+                  step={5}
+                  value={uiScale}
+                  onChange={(_, data) => setUiScale(data.value)}
+                />
+              </Field>
+              <Field label="Compact Mode">
+                <Switch
+                  checked={compactMode}
+                  onChange={(_, data) => setCompactMode(data.checked)}
+                />
+                <Text size={200}>
+                  {compactMode ? 'Enabled' : 'Disabled'} - Reduces spacing and padding for a more
+                  compact layout
+                </Text>
+              </Field>
+              <Text
+                size={200}
+                style={{ fontStyle: 'italic', color: tokens.colorNeutralForeground3 }}
+              >
+                Note: Changes take effect after saving and refreshing the page
+              </Text>
+            </div>
+          </Card>
+        )}
 
-              {validationResults && (
-                <div style={{ marginTop: tokens.spacingVerticalL }}>
-                  <Text
-                    weight="semibold"
-                    style={{ marginBottom: tokens.spacingVerticalS, display: 'block' }}
-                  >
-                    Validation Results:
+        {activeTab === 'portable' && (
+          <Card className={styles.section}>
+            <Title2>Portable Installation</Title2>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              Aura Video Studio is portable-only. All application data, tools, and dependencies are
+              stored relative to the application root.
+            </Text>
+
+            <Card
+              style={{
+                marginBottom: tokens.spacingVerticalL,
+                padding: tokens.spacingVerticalM,
+                backgroundColor: tokens.colorNeutralBackground3,
+              }}
+            >
+              <Text weight="semibold" size={300}>
+                ℹ️ About Portable Mode
+              </Text>
+              <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
+                All data is stored in the application folder, making it easy to:
+              </Text>
+              <ul
+                style={{
+                  marginTop: tokens.spacingVerticalS,
+                  marginLeft: tokens.spacingHorizontalL,
+                }}
+              >
+                <li>
+                  <Text size={200}>
+                    Move the entire application to another machine by copying the folder
                   </Text>
+                </li>
+                <li>
+                  <Text size={200}>Keep multiple installations without conflicts</Text>
+                </li>
+                <li>
+                  <Text size={200}>No registry entries or AppData dependencies</Text>
+                </li>
+                <li>
+                  <Text size={200}>Clean uninstall by simply deleting the folder</Text>
+                </li>
+              </ul>
+              <Text
+                size={200}
+                style={{
+                  marginTop: tokens.spacingVerticalS,
+                  fontStyle: 'italic',
+                  color: tokens.colorNeutralForeground3,
+                }}
+              >
+                Note: System dependencies (like GPU drivers, .NET runtime) must still be installed
+                on each machine.
+              </Text>
+            </Card>
+
+            <div className={styles.form}>
+              <Card
+                style={{
+                  padding: tokens.spacingVerticalM,
+                  backgroundColor: tokens.colorNeutralBackground2,
+                }}
+              >
+                <Text weight="semibold" size={300}>
+                  Portable Directory Structure
+                </Text>
+                <div
+                  style={{
+                    marginTop: tokens.spacingVerticalS,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: tokens.spacingVerticalXS,
+                    fontFamily: 'monospace',
+                    fontSize: '0.9em',
+                  }}
+                >
+                  <Text size={200}>
+                    <strong>Root:</strong> {portableRootPath || 'Loading...'}
+                  </Text>
+                  <div style={{ marginLeft: tokens.spacingHorizontalM }}>
+                    <Text size={200}>
+                      ├─ <strong>Tools/</strong> - {toolsDirectory || 'Loading...'}
+                    </Text>
+                    <Text
+                      size={200}
+                      style={{
+                        marginLeft: tokens.spacingHorizontalM,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      Downloaded dependencies (FFmpeg, Ollama, etc.)
+                    </Text>
+                    <Text size={200}>
+                      ├─ <strong>AuraData/</strong> - {auraDataDirectory || 'Loading...'}
+                    </Text>
+                    <Text
+                      size={200}
+                      style={{
+                        marginLeft: tokens.spacingHorizontalM,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      Settings, manifests, and configuration files
+                    </Text>
+                    <Text size={200}>
+                      ├─ <strong>Logs/</strong> - {logsDirectory || 'Loading...'}
+                    </Text>
+                    <Text
+                      size={200}
+                      style={{
+                        marginLeft: tokens.spacingHorizontalM,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      Application and tool logs
+                    </Text>
+                    <Text size={200}>
+                      ├─ <strong>Projects/</strong> - {projectsDirectory || 'Loading...'}
+                    </Text>
+                    <Text
+                      size={200}
+                      style={{
+                        marginLeft: tokens.spacingHorizontalM,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      Generated videos and project files
+                    </Text>
+                    <Text size={200}>
+                      ├─ <strong>Downloads/</strong> - {downloadsDirectory || 'Loading...'}
+                    </Text>
+                    <Text
+                      size={200}
+                      style={{
+                        marginLeft: tokens.spacingHorizontalM,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      Temporary download storage
+                    </Text>
+                  </div>
+                </div>
+              </Card>
+
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
+                <Button appearance="primary" onClick={openToolsFolder}>
+                  Open Tools Folder
+                </Button>
+                <Button
+                  appearance="secondary"
+                  onClick={() => navigator.clipboard.writeText(portableRootPath)}
+                >
+                  Copy Root Path
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {activeTab === 'providers' && (
+          <>
+            <Card className={styles.section}>
+              <Title2>Provider Capabilities</Title2>
+              <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+                View which providers are available on your system based on hardware, API keys, and
+                OS.
+              </Text>
+              <ProvidersTable />
+            </Card>
+
+            <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
+              <Title2>Provider Profiles</Title2>
+              <Text>Select a provider profile to configure which services are used</Text>
+              <div style={{ marginTop: tokens.spacingVerticalL }}>
+                {profiles.map((profile) => (
                   <div
-                    style={{
-                      border: `1px solid ${tokens.colorNeutralStroke1}`,
-                      borderRadius: tokens.borderRadiusMedium,
-                      overflow: 'hidden',
+                    key={profile.name}
+                    className={styles.profileCard}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => applyProfile(profile.name)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        applyProfile(profile.name);
+                      }
                     }}
                   >
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ backgroundColor: tokens.colorNeutralBackground2 }}>
-                        <tr>
-                          <th
-                            style={{
-                              padding: tokens.spacingVerticalS,
-                              textAlign: 'left',
-                              borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-                            }}
-                          >
-                            Provider
-                          </th>
-                          <th
-                            style={{
-                              padding: tokens.spacingVerticalS,
-                              textAlign: 'left',
-                              borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-                            }}
-                          >
-                            Status
-                          </th>
-                          <th
-                            style={{
-                              padding: tokens.spacingVerticalS,
-                              textAlign: 'left',
-                              borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-                            }}
-                          >
-                            Details
-                          </th>
-                          <th
-                            style={{
-                              padding: tokens.spacingVerticalS,
-                              textAlign: 'right',
-                              borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
-                            }}
-                          >
-                            Time (ms)
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {validationResults.results.map((result: ValidationResult) => (
-                          <tr key={result.name}>
-                            <td
+                    <Text weight="semibold">{profile.name}</Text>
+                    <br />
+                    <Text size={200}>{profile.description}</Text>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
+              <Title2>Provider Validation</Title2>
+              <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+                Test connectivity and API keys for all configured providers
+              </Text>
+              <div className={styles.form}>
+                <div
+                  style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}
+                >
+                  <Button appearance="primary" onClick={validateProviders} disabled={validating}>
+                    {validating ? 'Validating...' : 'Validate Providers'}
+                  </Button>
+                  {validationResults && (
+                    <Button appearance="subtle" onClick={copyValidationResults}>
+                      Copy to Clipboard
+                    </Button>
+                  )}
+                </div>
+
+                {validationResults && (
+                  <div style={{ marginTop: tokens.spacingVerticalL }}>
+                    <Text
+                      weight="semibold"
+                      style={{ marginBottom: tokens.spacingVerticalS, display: 'block' }}
+                    >
+                      Validation Results:
+                    </Text>
+                    <div
+                      style={{
+                        border: `1px solid ${tokens.colorNeutralStroke1}`,
+                        borderRadius: tokens.borderRadiusMedium,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead style={{ backgroundColor: tokens.colorNeutralBackground2 }}>
+                          <tr>
+                            <th
                               style={{
                                 padding: tokens.spacingVerticalS,
+                                textAlign: 'left',
                                 borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
                               }}
                             >
-                              <Text weight="semibold">{result.name}</Text>
-                            </td>
-                            <td
+                              Provider
+                            </th>
+                            <th
                               style={{
                                 padding: tokens.spacingVerticalS,
+                                textAlign: 'left',
                                 borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
                               }}
                             >
-                              <Text
-                                style={{
-                                  color: result.ok
-                                    ? tokens.colorPaletteGreenForeground1
-                                    : tokens.colorPaletteRedForeground1,
-                                }}
-                              >
-                                {result.ok ? '✓ OK' : '✗ Failed'}
-                              </Text>
-                            </td>
-                            <td
+                              Status
+                            </th>
+                            <th
                               style={{
                                 padding: tokens.spacingVerticalS,
+                                textAlign: 'left',
                                 borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
                               }}
                             >
-                              <Text size={200}>{result.details}</Text>
-                            </td>
-                            <td
+                              Details
+                            </th>
+                            <th
                               style={{
                                 padding: tokens.spacingVerticalS,
                                 textAlign: 'right',
                                 borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
                               }}
                             >
-                              <Text size={200}>{result.elapsedMs}</Text>
-                            </td>
+                              Time (ms)
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {validationResults.results.map((result: ValidationResult) => (
+                            <tr key={result.name}>
+                              <td
+                                style={{
+                                  padding: tokens.spacingVerticalS,
+                                  borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                                }}
+                              >
+                                <Text weight="semibold">{result.name}</Text>
+                              </td>
+                              <td
+                                style={{
+                                  padding: tokens.spacingVerticalS,
+                                  borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    color: result.ok
+                                      ? tokens.colorPaletteGreenForeground1
+                                      : tokens.colorPaletteRedForeground1,
+                                  }}
+                                >
+                                  {result.ok ? '✓ OK' : '✗ Failed'}
+                                </Text>
+                              </td>
+                              <td
+                                style={{
+                                  padding: tokens.spacingVerticalS,
+                                  borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                                }}
+                              >
+                                <Text size={200}>{result.details}</Text>
+                              </td>
+                              <td
+                                style={{
+                                  padding: tokens.spacingVerticalS,
+                                  textAlign: 'right',
+                                  borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
+                                }}
+                              >
+                                <Text size={200}>{result.elapsedMs}</Text>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <Text
+                      size={200}
+                      style={{
+                        marginTop: tokens.spacingVerticalS,
+                        display: 'block',
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      Overall:{' '}
+                      {validationResults.ok
+                        ? '✓ All providers validated successfully'
+                        : '✗ Some providers failed validation'}
+                    </Text>
                   </div>
+                )}
+              </div>
+            </Card>
+          </>
+        )}
+
+        {activeTab === 'localproviders' && (
+          <Card className={styles.section}>
+            <Title2>Local AI Providers Configuration</Title2>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+              Configure paths and URLs for locally-installed AI tools. These tools run on your
+              machine and don&apos;t require API keys.
+            </Text>
+
+            <Card
+              style={{
+                marginBottom: tokens.spacingVerticalL,
+                padding: tokens.spacingVerticalM,
+                backgroundColor: tokens.colorNeutralBackground3,
+              }}
+            >
+              <Text weight="semibold" size={300}>
+                📖 Need Help?
+              </Text>
+              <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
+                See the <strong>LOCAL_PROVIDERS_SETUP.md</strong> guide in the repository for
+                detailed setup instructions for Stable Diffusion, Ollama, and FFmpeg. Visit the{' '}
+                <strong>Downloads</strong> page to install components automatically.
+              </Text>
+            </Card>
+
+            <div className={styles.form}>
+              <div>
+                <Field
+                  label="Stable Diffusion WebUI URL"
+                  hint="URL where Stable Diffusion WebUI is running (requires NVIDIA GPU with 6GB+ VRAM). Format: http://host:port"
+                  validationMessage={
+                    providerPathErrors.stableDiffusionUrl?.error
+                      ? providerPathErrors.stableDiffusionUrl.error
+                      : undefined
+                  }
+                  validationState={
+                    providerPathErrors.stableDiffusionUrl?.error ? 'error' : undefined
+                  }
+                >
+                  <Input
+                    placeholder="http://127.0.0.1:7860"
+                    value={providerPathValues.stableDiffusionUrl || ''}
+                    onChange={(e) => {
+                      setProviderPathValue('stableDiffusionUrl', e.target.value);
+                      updateProviderPath('stableDiffusionUrl', e.target.value);
+                    }}
+                  />
+                </Field>
+                <Button
+                  size="small"
+                  onClick={() =>
+                    testProvider('stablediffusion', providerPathValues.stableDiffusionUrl || '')
+                  }
+                  style={{ marginTop: tokens.spacingVerticalXS }}
+                >
+                  Test Connection
+                </Button>
+                {testResults.stablediffusion && (
                   <Text
                     size={200}
                     style={{
-                      marginTop: tokens.spacingVerticalS,
-                      display: 'block',
-                      fontStyle: 'italic',
+                      marginTop: tokens.spacingVerticalXS,
+                      color: testResults.stablediffusion.success
+                        ? tokens.colorPaletteGreenForeground1
+                        : tokens.colorPaletteRedForeground1,
                     }}
                   >
-                    Overall:{' '}
-                    {validationResults.ok
-                      ? '✓ All providers validated successfully'
-                      : '✗ Some providers failed validation'}
+                    {testResults.stablediffusion.success ? '✓' : '✗'}{' '}
+                    {testResults.stablediffusion.message}
                   </Text>
-                </div>
-              )}
-            </div>
-          </Card>
-        </>
-      )}
+                )}
+              </div>
 
-      {activeTab === 'localproviders' && (
-        <Card className={styles.section}>
-          <Title2>Local AI Providers Configuration</Title2>
-          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-            Configure paths and URLs for locally-installed AI tools. These tools run on your machine
-            and don&apos;t require API keys.
-          </Text>
-
-          <Card
-            style={{
-              marginBottom: tokens.spacingVerticalL,
-              padding: tokens.spacingVerticalM,
-              backgroundColor: tokens.colorNeutralBackground3,
-            }}
-          >
-            <Text weight="semibold" size={300}>
-              📖 Need Help?
-            </Text>
-            <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
-              See the <strong>LOCAL_PROVIDERS_SETUP.md</strong> guide in the repository for detailed
-              setup instructions for Stable Diffusion, Ollama, and FFmpeg. Visit the{' '}
-              <strong>Downloads</strong> page to install components automatically.
-            </Text>
-          </Card>
-
-          <div className={styles.form}>
-            <div>
-              <Field
-                label="Stable Diffusion WebUI URL"
-                hint="URL where Stable Diffusion WebUI is running (requires NVIDIA GPU with 6GB+ VRAM). Format: http://host:port"
-                validationMessage={
-                  providerPathErrors.stableDiffusionUrl?.error
-                    ? providerPathErrors.stableDiffusionUrl.error
-                    : undefined
-                }
-                validationState={providerPathErrors.stableDiffusionUrl?.error ? 'error' : undefined}
-              >
-                <Input
-                  placeholder="http://127.0.0.1:7860"
-                  value={providerPathValues.stableDiffusionUrl || ''}
-                  onChange={(e) => {
-                    setProviderPathValue('stableDiffusionUrl', e.target.value);
-                    updateProviderPath('stableDiffusionUrl', e.target.value);
-                  }}
-                />
-              </Field>
-              <Button
-                size="small"
-                onClick={() =>
-                  testProvider('stablediffusion', providerPathValues.stableDiffusionUrl || '')
-                }
-                style={{ marginTop: tokens.spacingVerticalXS }}
-              >
-                Test Connection
-              </Button>
-              {testResults.stablediffusion && (
-                <Text
-                  size={200}
-                  style={{
-                    marginTop: tokens.spacingVerticalXS,
-                    color: testResults.stablediffusion.success
-                      ? tokens.colorPaletteGreenForeground1
-                      : tokens.colorPaletteRedForeground1,
-                  }}
+              <div>
+                <Field
+                  label="Ollama URL"
+                  hint="URL where Ollama is running for local LLM generation. Format: http://host:port"
+                  validationMessage={
+                    providerPathErrors.ollamaUrl?.error
+                      ? providerPathErrors.ollamaUrl.error
+                      : undefined
+                  }
+                  validationState={providerPathErrors.ollamaUrl?.error ? 'error' : undefined}
                 >
-                  {testResults.stablediffusion.success ? '✓' : '✗'}{' '}
-                  {testResults.stablediffusion.message}
-                </Text>
-              )}
-            </div>
-
-            <div>
-              <Field
-                label="Ollama URL"
-                hint="URL where Ollama is running for local LLM generation. Format: http://host:port"
-                validationMessage={
-                  providerPathErrors.ollamaUrl?.error
-                    ? providerPathErrors.ollamaUrl.error
-                    : undefined
-                }
-                validationState={providerPathErrors.ollamaUrl?.error ? 'error' : undefined}
-              >
-                <Input
-                  placeholder="http://127.0.0.1:11434"
-                  value={providerPathValues.ollamaUrl || ''}
-                  onChange={(e) => {
-                    setProviderPathValue('ollamaUrl', e.target.value);
-                    updateProviderPath('ollamaUrl', e.target.value);
-                  }}
-                />
-              </Field>
-              <Button
-                size="small"
-                onClick={() => testProvider('ollama', providerPathValues.ollamaUrl || '')}
-                style={{ marginTop: tokens.spacingVerticalXS }}
-              >
-                Test Connection
-              </Button>
-              {testResults.ollama && (
-                <Text
-                  size={200}
-                  style={{
-                    marginTop: tokens.spacingVerticalXS,
-                    color: testResults.ollama.success
-                      ? tokens.colorPaletteGreenForeground1
-                      : tokens.colorPaletteRedForeground1,
-                  }}
+                  <Input
+                    placeholder="http://127.0.0.1:11434"
+                    value={providerPathValues.ollamaUrl || ''}
+                    onChange={(e) => {
+                      setProviderPathValue('ollamaUrl', e.target.value);
+                      updateProviderPath('ollamaUrl', e.target.value);
+                    }}
+                  />
+                </Field>
+                <Button
+                  size="small"
+                  onClick={() => testProvider('ollama', providerPathValues.ollamaUrl || '')}
+                  style={{ marginTop: tokens.spacingVerticalXS }}
                 >
-                  {testResults.ollama.success ? '✓' : '✗'} {testResults.ollama.message}
-                </Text>
-              )}
-            </div>
+                  Test Connection
+                </Button>
+                {testResults.ollama && (
+                  <Text
+                    size={200}
+                    style={{
+                      marginTop: tokens.spacingVerticalXS,
+                      color: testResults.ollama.success
+                        ? tokens.colorPaletteGreenForeground1
+                        : tokens.colorPaletteRedForeground1,
+                    }}
+                  >
+                    {testResults.ollama.success ? '✓' : '✗'} {testResults.ollama.message}
+                  </Text>
+                )}
+              </div>
 
-            <div>
+              <div>
+                <Field
+                  label="Ollama Model"
+                  hint="Select which Ollama model to use for script generation. Make sure the model is pulled in Ollama first."
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: tokens.spacingHorizontalS,
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <select
+                      value={selectedOllamaModel}
+                      onChange={(e) => saveOllamaModel(e.target.value)}
+                      disabled={loadingOllamaModels || ollamaModels.length === 0}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: tokens.borderRadiusMedium,
+                        border: `1px solid ${tokens.colorNeutralStroke1}`,
+                        backgroundColor: tokens.colorNeutralBackground1,
+                        color: tokens.colorNeutralForeground1,
+                        fontSize: tokens.fontSizeBase300,
+                      }}
+                    >
+                      {ollamaModels.length === 0 && !loadingOllamaModels && (
+                        <option value={selectedOllamaModel}>{selectedOllamaModel}</option>
+                      )}
+                      {ollamaModels.map((model) => (
+                        <option key={model.name} value={model.name}>
+                          {model.name} ({model.sizeGB.toFixed(2)} GB)
+                        </option>
+                      ))}
+                    </select>
+                    <Button size="small" onClick={fetchOllamaModels} disabled={loadingOllamaModels}>
+                      {loadingOllamaModels ? 'Loading...' : 'Refresh Models'}
+                    </Button>
+                  </div>
+                  {ollamaModels.length === 0 && !loadingOllamaModels && (
+                    <Text
+                      size={200}
+                      style={{
+                        marginTop: tokens.spacingVerticalXS,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      Click &quot;Refresh Models&quot; to load available models from Ollama
+                    </Text>
+                  )}
+                  {ollamaModels.length > 0 && (
+                    <Text
+                      size={200}
+                      style={{
+                        marginTop: tokens.spacingVerticalXS,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      Found {ollamaModels.length} model{ollamaModels.length !== 1 ? 's' : ''} in
+                      Ollama
+                    </Text>
+                  )}
+                </Field>
+              </div>
+
               <Field
-                label="Ollama Model"
-                hint="Select which Ollama model to use for script generation. Make sure the model is pulled in Ollama first."
+                label="FFmpeg Executable Path"
+                hint="Path to ffmpeg.exe (leave empty to use system PATH or download from Downloads page)"
               >
                 <div
                   style={{
@@ -1310,476 +1682,416 @@ export function SettingsPage() {
                     alignItems: 'flex-start',
                   }}
                 >
-                  <select
-                    value={selectedOllamaModel}
-                    onChange={(e) => saveOllamaModel(e.target.value)}
-                    disabled={loadingOllamaModels || ollamaModels.length === 0}
-                    style={{
-                      flex: 1,
-                      padding: '8px',
-                      borderRadius: tokens.borderRadiusMedium,
-                      border: `1px solid ${tokens.colorNeutralStroke1}`,
-                      backgroundColor: tokens.colorNeutralBackground1,
-                      color: tokens.colorNeutralForeground1,
-                      fontSize: tokens.fontSizeBase300,
-                    }}
+                  <Input
+                    style={{ flex: 1 }}
+                    placeholder="C:\path\to\ffmpeg.exe or leave empty for system PATH"
+                    value={providerPaths.ffmpegPath}
+                    onChange={(e) => updateProviderPath('ffmpegPath', e.target.value)}
+                  />
+                  <Button
+                    size="small"
+                    onClick={() =>
+                      testProvider('ffmpeg', undefined, providerPaths.ffmpegPath || 'ffmpeg')
+                    }
                   >
-                    {ollamaModels.length === 0 && !loadingOllamaModels && (
-                      <option value={selectedOllamaModel}>{selectedOllamaModel}</option>
-                    )}
-                    {ollamaModels.map((model) => (
-                      <option key={model.name} value={model.name}>
-                        {model.name} ({model.sizeGB.toFixed(2)} GB)
-                      </option>
-                    ))}
-                  </select>
-                  <Button size="small" onClick={fetchOllamaModels} disabled={loadingOllamaModels}>
-                    {loadingOllamaModels ? 'Loading...' : 'Refresh Models'}
+                    Test
                   </Button>
                 </div>
-                {ollamaModels.length === 0 && !loadingOllamaModels && (
+                {testResults.ffmpeg && (
                   <Text
                     size={200}
                     style={{
                       marginTop: tokens.spacingVerticalXS,
-                      color: tokens.colorNeutralForeground3,
+                      color: testResults.ffmpeg.success
+                        ? tokens.colorPaletteGreenForeground1
+                        : tokens.colorPaletteRedForeground1,
                     }}
                   >
-                    Click &quot;Refresh Models&quot; to load available models from Ollama
-                  </Text>
-                )}
-                {ollamaModels.length > 0 && (
-                  <Text
-                    size={200}
-                    style={{
-                      marginTop: tokens.spacingVerticalXS,
-                      color: tokens.colorNeutralForeground3,
-                    }}
-                  >
-                    Found {ollamaModels.length} model{ollamaModels.length !== 1 ? 's' : ''} in
-                    Ollama
+                    {testResults.ffmpeg.success ? '✓' : '✗'} {testResults.ffmpeg.message}
                   </Text>
                 )}
               </Field>
-            </div>
 
-            <Field
-              label="FFmpeg Executable Path"
-              hint="Path to ffmpeg.exe (leave empty to use system PATH or download from Downloads page)"
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  gap: tokens.spacingHorizontalS,
-                  alignItems: 'flex-start',
-                }}
+              <Field
+                label="FFprobe Executable Path"
+                hint="Path to ffprobe.exe (usually in the same folder as FFmpeg)"
               >
                 <Input
-                  style={{ flex: 1 }}
-                  placeholder="C:\path\to\ffmpeg.exe or leave empty for system PATH"
-                  value={providerPaths.ffmpegPath}
-                  onChange={(e) => updateProviderPath('ffmpegPath', e.target.value)}
+                  placeholder="C:\path\to\ffprobe.exe or leave empty for system PATH"
+                  value={providerPaths.ffprobePath}
+                  onChange={(e) => updateProviderPath('ffprobePath', e.target.value)}
                 />
-                <Button
-                  size="small"
-                  onClick={() =>
-                    testProvider('ffmpeg', undefined, providerPaths.ffmpegPath || 'ffmpeg')
-                  }
-                >
-                  Test
-                </Button>
-              </div>
-              {testResults.ffmpeg && (
-                <Text
-                  size={200}
-                  style={{
-                    marginTop: tokens.spacingVerticalXS,
-                    color: testResults.ffmpeg.success
-                      ? tokens.colorPaletteGreenForeground1
-                      : tokens.colorPaletteRedForeground1,
-                  }}
-                >
-                  {testResults.ffmpeg.success ? '✓' : '✗'} {testResults.ffmpeg.message}
+              </Field>
+
+              <Field
+                label="Output Directory"
+                hint="Default directory for rendered videos (leave empty for Documents\AuraVideoStudio)"
+              >
+                <Input
+                  placeholder="C:\Users\YourName\Videos\AuraOutput"
+                  value={providerPaths.outputDirectory}
+                  onChange={(e) => updateProviderPath('outputDirectory', e.target.value)}
+                />
+              </Field>
+
+              {pathsModified && (
+                <Text size={200} style={{ color: tokens.colorPaletteYellowForeground1 }}>
+                  ⚠️ You have unsaved changes
                 </Text>
               )}
-            </Field>
-
-            <Field
-              label="FFprobe Executable Path"
-              hint="Path to ffprobe.exe (usually in the same folder as FFmpeg)"
-            >
-              <Input
-                placeholder="C:\path\to\ffprobe.exe or leave empty for system PATH"
-                value={providerPaths.ffprobePath}
-                onChange={(e) => updateProviderPath('ffprobePath', e.target.value)}
-              />
-            </Field>
-
-            <Field
-              label="Output Directory"
-              hint="Default directory for rendered videos (leave empty for Documents\AuraVideoStudio)"
-            >
-              <Input
-                placeholder="C:\Users\YourName\Videos\AuraOutput"
-                value={providerPaths.outputDirectory}
-                onChange={(e) => updateProviderPath('outputDirectory', e.target.value)}
-              />
-            </Field>
-
-            {pathsModified && (
-              <Text size={200} style={{ color: tokens.colorPaletteYellowForeground1 }}>
-                ⚠️ You have unsaved changes
-              </Text>
-            )}
-            <Button
-              appearance="primary"
-              onClick={saveProviderPaths}
-              disabled={!pathsModified || savingPaths}
-            >
-              {savingPaths ? 'Saving...' : 'Save Provider Paths'}
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {activeTab === 'localengines' && (
-        <>
-          <Card className={styles.section} style={{ marginBottom: tokens.spacingVerticalL }}>
-            <Title2>Local Engines</Title2>
-            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-              Manage local AI engines (Stable Diffusion, ComfyUI, Piper, Mimic3) with automatic
-              installation and configuration.
-            </Text>
-            <LocalEngines />
+              <Button
+                appearance="primary"
+                onClick={saveProviderPaths}
+                disabled={!pathsModified || savingPaths}
+              >
+                {savingPaths ? 'Saving...' : 'Save Provider Paths'}
+              </Button>
+            </div>
           </Card>
+        )}
 
-          <RescanPanel />
-        </>
-      )}
+        {activeTab === 'localengines' && (
+          <>
+            <Card className={styles.section} style={{ marginBottom: tokens.spacingVerticalL }}>
+              <Title2>Local Engines</Title2>
+              <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+                Manage local AI engines (Stable Diffusion, ComfyUI, Piper, Mimic3) with automatic
+                installation and configuration.
+              </Text>
+              <LocalEngines />
+            </Card>
 
-      {activeTab === 'aioptimization' && <AIOptimizationPanel />}
+            <RescanPanel />
+          </>
+        )}
 
-      {activeTab === 'templates' && (
-        <>
-          <Card className={styles.section}>
-            <Title2>Settings Export/Import</Title2>
-            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-              Export all your settings to a JSON file, or import settings from a previously saved
-              file
-            </Text>
-            <div className={styles.form}>
-              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
-                <Button appearance="primary" onClick={exportUserSettings}>
-                  Export Settings to JSON
-                </Button>
-                <Button appearance="secondary" onClick={importUserSettings}>
-                  Import Settings from JSON
-                </Button>
+        {activeTab === 'aioptimization' && <AIOptimizationPanel />}
+
+        {activeTab === 'templates' && (
+          <>
+            <Card className={styles.section}>
+              <Title2>Settings Export/Import</Title2>
+              <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+                Export all your settings to a JSON file, or import settings from a previously saved
+                file
+              </Text>
+              <div className={styles.form}>
+                <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
+                  <Button appearance="primary" onClick={exportUserSettings}>
+                    Export Settings to JSON
+                  </Button>
+                  <Button appearance="secondary" onClick={importUserSettings}>
+                    Import Settings from JSON
+                  </Button>
+                </div>
+                <Text
+                  size={200}
+                  style={{ fontStyle: 'italic', color: tokens.colorNeutralForeground3 }}
+                >
+                  Exported settings include API keys, provider paths, UI preferences, and more. Keep
+                  your exported files secure as they may contain sensitive information.
+                </Text>
+              </div>
+            </Card>
+
+            <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
+              <Title2>Profile Templates</Title2>
+              <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+                Quick-start templates with pre-configured provider settings for common use cases
+              </Text>
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}
+              >
+                <div
+                  className={styles.profileCard}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => applyProfileTemplate('free-only')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      applyProfileTemplate('free-only');
+                    }
+                  }}
+                >
+                  <Text weight="semibold">Free-Only</Text>
+                  <br />
+                  <Text size={200}>
+                    No API keys required. Uses template-based script generation, Windows TTS, and
+                    free stock sources (Pexels, Pixabay, Unsplash).
+                  </Text>
+                </div>
+                <div
+                  className={styles.profileCard}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => applyProfileTemplate('balanced-mix')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      applyProfileTemplate('balanced-mix');
+                    }
+                  }}
+                >
+                  <Text weight="semibold">Balanced Mix</Text>
+                  <br />
+                  <Text size={200}>
+                    Combines free and paid services. Uses GPT-4 for scripts (requires OpenAI key),
+                    ElevenLabs for voice (requires key), and free stock sources.
+                  </Text>
+                </div>
+                <div
+                  className={styles.profileCard}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => applyProfileTemplate('pro-max')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      applyProfileTemplate('pro-max');
+                    }
+                  }}
+                >
+                  <Text weight="semibold">Pro-Max</Text>
+                  <br />
+                  <Text size={200}>
+                    Maximum quality with all premium providers. Uses GPT-4, ElevenLabs, Stability AI
+                    for images, and premium stock sources. Requires all API keys.
+                  </Text>
+                </div>
               </div>
               <Text
                 size={200}
-                style={{ fontStyle: 'italic', color: tokens.colorNeutralForeground3 }}
+                style={{
+                  marginTop: tokens.spacingVerticalM,
+                  fontStyle: 'italic',
+                  color: tokens.colorNeutralForeground3,
+                }}
               >
-                Exported settings include API keys, provider paths, UI preferences, and more. Keep
-                your exported files secure as they may contain sensitive information.
+                Applying a template will update your provider selections but won&apos;t overwrite
+                your API keys.
               </Text>
+            </Card>
+
+            <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
+              <Title2>Custom Profile Management</Title2>
+              <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
+                Save your current configuration as a custom profile or load a previously saved
+                profile
+              </Text>
+              <div className={styles.form}>
+                <Field label="Profile Name">
+                  <Input
+                    placeholder="Enter profile name (e.g., My YouTube Setup)"
+                    value={customProfileName}
+                    onChange={(e) => setCustomProfileName(e.target.value)}
+                  />
+                </Field>
+                <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+                  <Button
+                    appearance="primary"
+                    onClick={saveCustomProfile}
+                    disabled={!customProfileName.trim()}
+                  >
+                    Save Current Settings as Profile
+                  </Button>
+                  <Button appearance="secondary" onClick={loadCustomProfiles}>
+                    Load Saved Profiles
+                  </Button>
+                </div>
+                {savedProfiles.length > 0 && (
+                  <div style={{ marginTop: tokens.spacingVerticalM }}>
+                    <Text
+                      weight="semibold"
+                      style={{ marginBottom: tokens.spacingVerticalS, display: 'block' }}
+                    >
+                      Saved Profiles:
+                    </Text>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: tokens.spacingVerticalS,
+                      }}
+                    >
+                      {savedProfiles.map((profile: CustomProfile, index: number) => (
+                        <div
+                          key={index}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: tokens.spacingVerticalS,
+                            backgroundColor: tokens.colorNeutralBackground2,
+                            borderRadius: tokens.borderRadiusMedium,
+                          }}
+                        >
+                          <Text>{profile.name}</Text>
+                          <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
+                            <Button
+                              size="small"
+                              appearance="subtle"
+                              onClick={() => loadCustomProfile(profile)}
+                            >
+                              Load
+                            </Button>
+                            <Button
+                              size="small"
+                              appearance="subtle"
+                              onClick={() => deleteCustomProfile(profile.name)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </>
+        )}
+
+        {activeTab === 'privacy' && (
+          <Card className={styles.section}>
+            <Title2>Privacy Settings</Title2>
+            <div className={styles.form}>
+              <Field label="Telemetry">
+                <Switch
+                  checked={userSettings.advanced.enableTelemetry}
+                  onChange={(_, data) =>
+                    setUserSettings({
+                      ...userSettings,
+                      advanced: { ...userSettings.advanced, enableTelemetry: data.checked },
+                    })
+                  }
+                />
+                <Text size={200}>
+                  Send anonymous usage data to improve the app (disabled by default)
+                </Text>
+              </Field>
+              <Field label="Crash Reports">
+                <Switch
+                  checked={userSettings.advanced.enableCrashReports}
+                  onChange={(_, data) =>
+                    setUserSettings({
+                      ...userSettings,
+                      advanced: { ...userSettings.advanced, enableCrashReports: data.checked },
+                    })
+                  }
+                />
+                <Text size={200}>
+                  Send crash reports to help diagnose issues (disabled by default)
+                </Text>
+              </Field>
             </div>
           </Card>
+        )}
 
-          <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
-            <Title2>Profile Templates</Title2>
-            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-              Quick-start templates with pre-configured provider settings for common use cases
-            </Text>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
-              <div
-                className={styles.profileCard}
-                role="button"
-                tabIndex={0}
-                onClick={() => applyProfileTemplate('free-only')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    applyProfileTemplate('free-only');
-                  }
-                }}
-              >
-                <Text weight="semibold">Free-Only</Text>
-                <br />
-                <Text size={200}>
-                  No API keys required. Uses template-based script generation, Windows TTS, and free
-                  stock sources (Pexels, Pixabay, Unsplash).
-                </Text>
-              </div>
-              <div
-                className={styles.profileCard}
-                role="button"
-                tabIndex={0}
-                onClick={() => applyProfileTemplate('balanced-mix')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    applyProfileTemplate('balanced-mix');
-                  }
-                }}
-              >
-                <Text weight="semibold">Balanced Mix</Text>
-                <br />
-                <Text size={200}>
-                  Combines free and paid services. Uses GPT-4 for scripts (requires OpenAI key),
-                  ElevenLabs for voice (requires key), and free stock sources.
-                </Text>
-              </div>
-              <div
-                className={styles.profileCard}
-                role="button"
-                tabIndex={0}
-                onClick={() => applyProfileTemplate('pro-max')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    applyProfileTemplate('pro-max');
-                  }
-                }}
-              >
-                <Text weight="semibold">Pro-Max</Text>
-                <br />
-                <Text size={200}>
-                  Maximum quality with all premium providers. Uses GPT-4, ElevenLabs, Stability AI
-                  for images, and premium stock sources. Requires all API keys.
-                </Text>
-              </div>
-            </div>
-            <Text
-              size={200}
-              style={{
-                marginTop: tokens.spacingVerticalM,
-                fontStyle: 'italic',
-                color: tokens.colorNeutralForeground3,
-              }}
-            >
-              Applying a template will update your provider selections but won&apos;t overwrite your
-              API keys.
-            </Text>
-          </Card>
+        {activeTab === 'recommendations' && <ProviderRecommendationsTab />}
 
-          <Card className={styles.section} style={{ marginTop: tokens.spacingVerticalL }}>
-            <Title2>Custom Profile Management</Title2>
+        {activeTab === 'importexport' && (
+          <Card className={styles.section}>
+            <Title2>Import/Export Settings</Title2>
             <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-              Save your current configuration as a custom profile or load a previously saved profile
+              Backup and restore all your settings as a JSON file
             </Text>
             <div className={styles.form}>
-              <Field label="Profile Name">
-                <Input
-                  placeholder="Enter profile name (e.g., My YouTube Setup)"
-                  value={customProfileName}
-                  onChange={(e) => setCustomProfileName(e.target.value)}
-                />
-              </Field>
-              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
                 <Button
                   appearance="primary"
-                  onClick={saveCustomProfile}
-                  disabled={!customProfileName.trim()}
+                  icon={<ArrowDownload24Regular />}
+                  onClick={exportUserSettings}
                 >
-                  Save Current Settings as Profile
+                  Export All Settings
                 </Button>
-                <Button appearance="secondary" onClick={loadCustomProfiles}>
-                  Load Saved Profiles
+                <Button
+                  appearance="secondary"
+                  icon={<ArrowUpload24Regular />}
+                  onClick={importUserSettings}
+                >
+                  Import Settings
+                </Button>
+                <Button appearance="subtle" onClick={resetUserSettings}>
+                  Reset to Defaults
                 </Button>
               </div>
-              {savedProfiles.length > 0 && (
-                <div style={{ marginTop: tokens.spacingVerticalM }}>
-                  <Text
-                    weight="semibold"
-                    style={{ marginBottom: tokens.spacingVerticalS, display: 'block' }}
-                  >
-                    Saved Profiles:
-                  </Text>
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: tokens.spacingVerticalS,
-                    }}
-                  >
-                    {savedProfiles.map((profile: CustomProfile, index: number) => (
-                      <div
-                        key={index}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: tokens.spacingVerticalS,
-                          backgroundColor: tokens.colorNeutralBackground2,
-                          borderRadius: tokens.borderRadiusMedium,
-                        }}
-                      >
-                        <Text>{profile.name}</Text>
-                        <div style={{ display: 'flex', gap: tokens.spacingHorizontalS }}>
-                          <Button
-                            size="small"
-                            appearance="subtle"
-                            onClick={() => loadCustomProfile(profile)}
-                          >
-                            Load
-                          </Button>
-                          <Button
-                            size="small"
-                            appearance="subtle"
-                            onClick={() => deleteCustomProfile(profile.name)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <Card
+                style={{
+                  marginTop: tokens.spacingVerticalL,
+                  padding: tokens.spacingVerticalM,
+                  backgroundColor: tokens.colorNeutralBackground3,
+                }}
+              >
+                <Text weight="semibold" size={300}>
+                  ⚠️ Important
+                </Text>
+                <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
+                  Exported settings include API keys and sensitive information. Keep your exported
+                  files secure and never share them publicly.
+                </Text>
+              </Card>
+              <Card
+                style={{
+                  marginTop: tokens.spacingVerticalM,
+                  padding: tokens.spacingVerticalM,
+                  backgroundColor: tokens.colorNeutralBackground2,
+                }}
+              >
+                <Text weight="semibold" size={300}>
+                  📋 What&apos;s Included
+                </Text>
+                <ul style={{ marginTop: tokens.spacingVerticalS, paddingLeft: '20px' }}>
+                  <li>
+                    <Text size={200}>General settings (theme, language, autosave, etc.)</Text>
+                  </li>
+                  <li>
+                    <Text size={200}>API keys for all services</Text>
+                  </li>
+                  <li>
+                    <Text size={200}>File locations and paths</Text>
+                  </li>
+                  <li>
+                    <Text size={200}>Video defaults (resolution, codec, etc.)</Text>
+                  </li>
+                  <li>
+                    <Text size={200}>Editor preferences</Text>
+                  </li>
+                  <li>
+                    <Text size={200}>UI customization</Text>
+                  </li>
+                  <li>
+                    <Text size={200}>Advanced settings</Text>
+                  </li>
+                </ul>
+              </Card>
             </div>
           </Card>
-        </>
-      )}
-
-      {activeTab === 'privacy' && (
-        <Card className={styles.section}>
-          <Title2>Privacy Settings</Title2>
-          <div className={styles.form}>
-            <Field label="Telemetry">
-              <Switch
-                checked={userSettings.advanced.enableTelemetry}
-                onChange={(_, data) =>
-                  setUserSettings({
-                    ...userSettings,
-                    advanced: { ...userSettings.advanced, enableTelemetry: data.checked },
-                  })
-                }
-              />
-              <Text size={200}>
-                Send anonymous usage data to improve the app (disabled by default)
-              </Text>
-            </Field>
-            <Field label="Crash Reports">
-              <Switch
-                checked={userSettings.advanced.enableCrashReports}
-                onChange={(_, data) =>
-                  setUserSettings({
-                    ...userSettings,
-                    advanced: { ...userSettings.advanced, enableCrashReports: data.checked },
-                  })
-                }
-              />
-              <Text size={200}>
-                Send crash reports to help diagnose issues (disabled by default)
-              </Text>
-            </Field>
-          </div>
-        </Card>
-      )}
-
-      {activeTab === 'recommendations' && <ProviderRecommendationsTab />}
-
-      {activeTab === 'importexport' && (
-        <Card className={styles.section}>
-          <Title2>Import/Export Settings</Title2>
-          <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-            Backup and restore all your settings as a JSON file
-          </Text>
-          <div className={styles.form}>
-            <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
-              <Button
-                appearance="primary"
-                icon={<ArrowDownload24Regular />}
-                onClick={exportUserSettings}
-              >
-                Export All Settings
-              </Button>
-              <Button
-                appearance="secondary"
-                icon={<ArrowUpload24Regular />}
-                onClick={importUserSettings}
-              >
-                Import Settings
-              </Button>
-              <Button appearance="subtle" onClick={resetUserSettings}>
-                Reset to Defaults
-              </Button>
-            </div>
-            <Card
-              style={{
-                marginTop: tokens.spacingVerticalL,
-                padding: tokens.spacingVerticalM,
-                backgroundColor: tokens.colorNeutralBackground3,
-              }}
-            >
-              <Text weight="semibold" size={300}>
-                ⚠️ Important
-              </Text>
-              <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
-                Exported settings include API keys and sensitive information. Keep your exported
-                files secure and never share them publicly.
-              </Text>
-            </Card>
-            <Card
-              style={{
-                marginTop: tokens.spacingVerticalM,
-                padding: tokens.spacingVerticalM,
-                backgroundColor: tokens.colorNeutralBackground2,
-              }}
-            >
-              <Text weight="semibold" size={300}>
-                📋 What&apos;s Included
-              </Text>
-              <ul style={{ marginTop: tokens.spacingVerticalS, paddingLeft: '20px' }}>
-                <li>
-                  <Text size={200}>General settings (theme, language, autosave, etc.)</Text>
-                </li>
-                <li>
-                  <Text size={200}>API keys for all services</Text>
-                </li>
-                <li>
-                  <Text size={200}>File locations and paths</Text>
-                </li>
-                <li>
-                  <Text size={200}>Video defaults (resolution, codec, etc.)</Text>
-                </li>
-                <li>
-                  <Text size={200}>Editor preferences</Text>
-                </li>
-                <li>
-                  <Text size={200}>UI customization</Text>
-                </li>
-                <li>
-                  <Text size={200}>Advanced settings</Text>
-                </li>
-              </ul>
-            </Card>
-          </div>
-        </Card>
-      )}
-
-      <div className={styles.actions}>
-        <Button
-          appearance="primary"
-          icon={<Save24Regular />}
-          onClick={saveUserSettings}
-          disabled={!hasUnsavedChanges}
-        >
-          Save All Settings
-        </Button>
-        {hasUnsavedChanges && (
-          <Button
-            appearance="subtle"
-            onClick={() => {
-              if (confirm('Discard all unsaved changes?')) {
-                setUserSettings({ ...originalSettings });
-              }
-            }}
-          >
-            Discard Changes
-          </Button>
         )}
+
+        <div className={styles.actions}>
+          <Button
+            appearance="primary"
+            icon={<Save24Regular />}
+            onClick={saveUserSettings}
+            disabled={!hasUnsavedChanges}
+          >
+            Save All Settings
+          </Button>
+          {hasUnsavedChanges && (
+            <Button
+              appearance="subtle"
+              onClick={() => {
+                if (confirm('Discard all unsaved changes?')) {
+                  setUserSettings({ ...originalSettings });
+                }
+              }}
+            >
+              Discard Changes
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
