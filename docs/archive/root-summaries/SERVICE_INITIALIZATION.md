@@ -1,3 +1,11 @@
+> **⚠️ ARCHIVED DOCUMENT**  
+> This document is retained for historical context only.  
+> It may contain outdated information, references to superseded implementations, or details specific to past pull requests.  
+> For current documentation, see the main docs/ directory and canonical guides in the repository root.
+
+---
+
+
 # Service Initialization and Dependency Management
 
 This document describes the service initialization order, dependency relationships, and startup behavior of the Aura Video Studio API.

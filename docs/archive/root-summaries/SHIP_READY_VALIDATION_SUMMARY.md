@@ -1,3 +1,11 @@
+> **⚠️ ARCHIVED DOCUMENT**  
+> This document is retained for historical context only.  
+> It may contain outdated information, references to superseded implementations, or details specific to past pull requests.  
+> For current documentation, see the main docs/ directory and canonical guides in the repository root.
+
+---
+
+
 # Ship-Ready Validation Summary
 
 **Date**: 2025-10-27  

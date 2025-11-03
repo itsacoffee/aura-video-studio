@@ -1,3 +1,11 @@
+> **⚠️ ARCHIVED DOCUMENT**  
+> This document is retained for historical context only.  
+> It may contain outdated information, references to superseded implementations, or details specific to past pull requests.  
+> For current documentation, see the main docs/ directory and canonical guides in the repository root.
+
+---
+
+
 # Health Diagnostics & Preflight Checks Implementation
 
 This document describes the implementation of the comprehensive health diagnostics and preflight checks system.
