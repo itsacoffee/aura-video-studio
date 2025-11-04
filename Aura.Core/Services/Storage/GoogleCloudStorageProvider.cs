@@ -39,7 +39,7 @@ public class GoogleCloudStorageProvider : ICloudStorageProvider
 
         try
         {
-            return await Task.FromResult(true);
+            return await Task.FromResult(false);
         }
         catch (Exception ex)
         {

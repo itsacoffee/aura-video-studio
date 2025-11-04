@@ -46,7 +46,7 @@ public class AwsS3StorageProvider : ICloudStorageProvider
                 return false;
             }
 
-            return await Task.FromResult(true);
+            return await Task.FromResult(false);
         }
         catch (Exception ex)
         {

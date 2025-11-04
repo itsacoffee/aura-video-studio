@@ -88,7 +88,7 @@ public class CloudStorageProviderTests
         // Act
         var isAvailable = await provider.IsAvailableAsync();
 
-        // Assert
+        // Assert - Placeholder providers always return false as they need SDK integration
         Assert.False(isAvailable);
     }
 
@@ -107,7 +107,26 @@ public class CloudStorageProviderTests
         // Act
         var isAvailable = await provider.IsAvailableAsync();
 
-        // Assert
+        // Assert - Placeholder providers always return false as they need SDK integration
+        Assert.False(isAvailable);
+    }
+
+    [Fact]
+    public async Task GoogleCloudProvider_IsAvailable_ReturnsFalseWithoutSDK()
+    {
+        // Arrange
+        var config = new CloudStorageConfig
+        {
+            ProviderName = "Google Cloud Storage",
+            BucketName = "test-bucket",
+            Region = "us-central1"
+        };
+        var provider = new GoogleCloudStorageProvider(_gcsLoggerMock.Object, config);
+
+        // Act
+        var isAvailable = await provider.IsAvailableAsync();
+
+        // Assert - Placeholder providers always return false as they need SDK integration
         Assert.False(isAvailable);
     }
 
