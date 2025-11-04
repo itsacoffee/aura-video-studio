@@ -48,6 +48,7 @@ public class ModelSelectionService
         {
             Provider = provider,
             Stage = stage,
+            Reasoning = string.Empty,
             ResolutionTimestamp = DateTime.UtcNow,
             JobId = jobId
         };
