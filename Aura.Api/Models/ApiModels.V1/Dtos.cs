@@ -1602,3 +1602,191 @@ public record StartTrainingResponse(
     string JobId,
     string Message);
 
+/// <summary>
+/// Request to generate proxy media
+/// </summary>
+public record GenerateProxyRequest(
+    string SourcePath,
+    string Quality = "Preview",
+    bool BackgroundGeneration = true,
+    int Priority = 0,
+    bool Overwrite = false);
+
+/// <summary>
+/// Response with proxy media metadata
+/// </summary>
+public record ProxyMediaResponse(
+    string Id,
+    string SourcePath,
+    string ProxyPath,
+    string Quality,
+    string Status,
+    DateTime CreatedAt,
+    DateTime LastAccessedAt,
+    long FileSizeBytes,
+    long SourceFileSizeBytes,
+    int Width,
+    int Height,
+    int BitrateKbps,
+    string? ErrorMessage,
+    double ProgressPercent);
+
+/// <summary>
+/// Proxy cache statistics
+/// </summary>
+public record ProxyCacheStatsResponse(
+    int TotalProxies,
+    long TotalCacheSizeBytes,
+    long TotalSourceSizeBytes,
+    double CompressionRatio);
+
+/// <summary>
+/// Request to generate waveform data
+/// </summary>
+public record GenerateWaveformRequest(
+    string AudioPath,
+    int TargetSamples = 1000,
+    double StartTime = 0,
+    double EndTime = 0);
+
+/// <summary>
+/// Response with waveform data
+/// </summary>
+public record WaveformDataResponse(
+    float[] Data,
+    int SampleRate,
+    double Duration);
+
+/// <summary>
+/// Performance telemetry data
+/// </summary>
+public record PerformanceTelemetryDto(
+    double PlaybackFps,
+    double ScrubLatencyMs,
+    double CacheHitRate,
+    int FramesCached,
+    long CacheSizeBytes);
+
+/// <summary>
+/// Request to get video thumbnail
+/// </summary>
+public record GetThumbnailRequest(
+    string VideoPath,
+    double Timestamp,
+    int Width = 320,
+    int Height = 180);
+
+/// <summary>
+/// Response with thumbnail data
+/// </summary>
+public record ThumbnailResponse(
+    string Base64Image,
+    int Width,
+    int Height,
+    double Timestamp);
+
+/// <summary>
+/// Request to explain an artifact (script, plan, brief)
+/// </summary>
+public record ExplainArtifactRequest(
+    string ArtifactType,
+    string ArtifactContent,
+    string? SpecificQuestion = null);
+
+/// <summary>
+/// Response with AI explanation of an artifact
+/// </summary>
+public record ExplainArtifactResponse(
+    bool Success,
+    string? Explanation,
+    List<string>? KeyPoints,
+    string? ErrorMessage = null);
+
+/// <summary>
+/// Request to improve an artifact with specific action
+/// </summary>
+public record ImproveArtifactRequest(
+    string ArtifactType,
+    string ArtifactContent,
+    string ImprovementAction,
+    string? TargetAudience = null,
+    LockedSectionDto[]? LockedSections = null);
+
+/// <summary>
+/// Response with improved artifact
+/// </summary>
+public record ImproveArtifactResponse(
+    bool Success,
+    string? ImprovedContent,
+    string? ChangesSummary,
+    PromptDiffDto? PromptDiff,
+    string? ErrorMessage = null);
+
+/// <summary>
+/// Locked section to preserve during regeneration
+/// </summary>
+public record LockedSectionDto(
+    int StartIndex,
+    int EndIndex,
+    string Content,
+    string Reason);
+
+/// <summary>
+/// Prompt diff preview showing changes
+/// </summary>
+public record PromptDiffDto(
+    string OriginalPrompt,
+    string ModifiedPrompt,
+    string IntendedOutcome,
+    List<PromptChangeDto> Changes);
+
+/// <summary>
+/// Individual prompt change detail
+/// </summary>
+public record PromptChangeDto(
+    string Type,
+    string Description,
+    string? OldValue = null,
+    string? NewValue = null);
+
+/// <summary>
+/// Request for constrained regeneration
+/// </summary>
+public record ConstrainedRegenerateRequest(
+    string ArtifactType,
+    string CurrentContent,
+    string RegenerationType,
+    LockedSectionDto[]? LockedSections = null,
+    PromptModifiersDto? PromptModifiers = null);
+
+/// <summary>
+/// Response with regenerated content
+/// </summary>
+public record ConstrainedRegenerateResponse(
+    bool Success,
+    string? RegeneratedContent,
+    PromptDiffDto? PromptDiff,
+    bool RequiresConfirmation,
+    string? ErrorMessage = null);
+
+/// <summary>
+/// Guided mode configuration
+/// </summary>
+public record GuidedModeConfigDto(
+    bool Enabled,
+    string ExperienceLevel,
+    bool ShowTooltips,
+    bool ShowWhyLinks,
+    bool RequirePromptDiffConfirmation);
+
+/// <summary>
+/// Telemetry for guided mode feature usage
+/// </summary>
+public record GuidedModeTelemetryDto(
+    string FeatureUsed,
+    string ArtifactType,
+    long DurationMs,
+    bool Success,
+    string? FeedbackRating = null,
+    Dictionary<string, string>? Metadata = null);
+

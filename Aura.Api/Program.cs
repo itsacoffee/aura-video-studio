@@ -1021,6 +1021,21 @@ builder.Services.AddSingleton<Aura.Core.Services.Export.IBitrateOptimizationServ
 // Changed from Singleton to Scoped because ExportOrchestrationService depends on scoped AuraDbContext
 builder.Services.AddScoped<Aura.Core.Services.Export.IExportOrchestrationService, Aura.Core.Services.Export.ExportOrchestrationService>();
 
+// Proxy media and caching services
+builder.Services.AddSingleton<Aura.Core.Services.Media.IProxyMediaService>(sp =>
+{
+    var ffmpegService = sp.GetRequiredService<Aura.Core.Services.FFmpeg.IFFmpegService>();
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Media.ProxyMediaService>>();
+    return new Aura.Core.Services.Media.ProxyMediaService(ffmpegService, logger);
+});
+builder.Services.AddSingleton<Aura.Core.Services.Media.WaveformGenerator>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Media.WaveformGenerator>>();
+    var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
+    var ffmpegPath = ffmpegLocator.GetEffectiveFfmpegPathAsync().GetAwaiter().GetResult();
+    return new Aura.Core.Services.Media.WaveformGenerator(logger, ffmpegPath);
+});
+
 // Register Job Runner and Artifact Manager
 builder.Services.AddSingleton<Aura.Core.Artifacts.ArtifactManager>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.JobRunner>();

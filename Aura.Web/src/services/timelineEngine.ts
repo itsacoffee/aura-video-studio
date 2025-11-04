@@ -63,9 +63,19 @@ export function formatSeconds(seconds: number): string {
  */
 export interface SnapPoint {
   time: number;
-  type: 'clip-start' | 'clip-end' | 'playhead' | 'marker' | 'in-point' | 'out-point';
+  type:
+    | 'clip-start'
+    | 'clip-end'
+    | 'playhead'
+    | 'marker'
+    | 'in-point'
+    | 'out-point'
+    | 'caption'
+    | 'audio-peak'
+    | 'scene-boundary';
   clipId?: string;
   label?: string;
+  intensity?: number;
 }
 
 /**
@@ -88,6 +98,22 @@ export function findNearestSnapPoint(
   }
 
   return nearest;
+}
+
+export interface SnapPointsOptions {
+  clips?: Array<{ id: string; startTime: number; duration: number }>;
+  playheadTime?: number;
+  markers?: Array<{ time: number; label?: string }>;
+  inPoint?: number;
+  outPoint?: number;
+  captions?: Array<{ startTime: number; endTime: number; text: string }>;
+  audioPeaks?: Array<{ time: number; intensity: number }>;
+  sceneBoundaries?: Array<{ time: number }>;
+  enableClips?: boolean;
+  enableMarkers?: boolean;
+  enableCaptions?: boolean;
+  enableAudioPeaks?: boolean;
+  enableSceneBoundaries?: boolean;
 }
 
 /**
@@ -130,6 +156,116 @@ export function calculateSnapPoints(
       label: marker.label,
     });
   });
+
+  // Add in/out points
+  if (inPoint !== undefined) {
+    points.push({
+      time: inPoint,
+      type: 'in-point',
+    });
+  }
+  if (outPoint !== undefined) {
+    points.push({
+      time: outPoint,
+      type: 'out-point',
+    });
+  }
+
+  return points;
+}
+
+/**
+ * Calculate enhanced snap points with captions, audio peaks, and scene boundaries
+ */
+export function calculateEnhancedSnapPoints(options: SnapPointsOptions): SnapPoint[] {
+  const points: SnapPoint[] = [];
+  const {
+    clips = [],
+    playheadTime,
+    markers = [],
+    inPoint,
+    outPoint,
+    captions = [],
+    audioPeaks = [],
+    sceneBoundaries = [],
+    enableClips = true,
+    enableMarkers = true,
+    enableCaptions = true,
+    enableAudioPeaks = true,
+    enableSceneBoundaries = true,
+  } = options;
+
+  // Add clip boundaries
+  if (enableClips) {
+    clips.forEach((clip) => {
+      points.push({
+        time: clip.startTime,
+        type: 'clip-start',
+        clipId: clip.id,
+      });
+      points.push({
+        time: clip.startTime + clip.duration,
+        type: 'clip-end',
+        clipId: clip.id,
+      });
+    });
+  }
+
+  // Add playhead
+  if (playheadTime !== undefined) {
+    points.push({
+      time: playheadTime,
+      type: 'playhead',
+    });
+  }
+
+  // Add markers
+  if (enableMarkers) {
+    markers.forEach((marker) => {
+      points.push({
+        time: marker.time,
+        type: 'marker',
+        label: marker.label,
+      });
+    });
+  }
+
+  // Add captions
+  if (enableCaptions) {
+    captions.forEach((caption) => {
+      points.push({
+        time: caption.startTime,
+        type: 'caption',
+        label: caption.text.substring(0, 20),
+      });
+      points.push({
+        time: caption.endTime,
+        type: 'caption',
+        label: caption.text.substring(0, 20),
+      });
+    });
+  }
+
+  // Add audio peaks
+  if (enableAudioPeaks) {
+    audioPeaks.forEach((peak) => {
+      points.push({
+        time: peak.time,
+        type: 'audio-peak',
+        intensity: peak.intensity,
+      });
+    });
+  }
+
+  // Add scene boundaries
+  if (enableSceneBoundaries) {
+    sceneBoundaries.forEach((boundary) => {
+      points.push({
+        time: boundary.time,
+        type: 'scene-boundary',
+      });
+    });
+  }
 
   // Add in/out points
   if (inPoint !== undefined) {

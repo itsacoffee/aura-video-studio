@@ -14,7 +14,7 @@ public class ExportPresetsTests
 
         // Assert
         Assert.NotNull(presets);
-        Assert.Equal(11, presets.Count); // We have 11 presets
+        Assert.Equal(14, presets.Count); // We have 14 presets
     }
 
     [Fact]

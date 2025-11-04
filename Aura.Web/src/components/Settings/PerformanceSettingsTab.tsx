@@ -500,21 +500,70 @@ export function PerformanceSettingsTab() {
         </Field>
 
         {enablePreviewCache && (
-          <Field
-            label={`Cache Size: ${(cacheSize / 1024).toFixed(1)} GB`}
-            hint="Maximum disk space for preview cache"
-          >
-            <Slider
-              min={1000}
-              max={20000}
-              step={1000}
-              value={cacheSize}
-              onChange={(_, data) => {
-                setCacheSize(data.value);
-                setModified(true);
-              }}
-            />
-          </Field>
+          <>
+            <Field
+              label={`Cache Size: ${(cacheSize / 1024).toFixed(1)} GB`}
+              hint="Maximum disk space for preview cache"
+            >
+              <Slider
+                min={1000}
+                max={20000}
+                step={1000}
+                value={cacheSize}
+                onChange={(_, data) => {
+                  setCacheSize(data.value);
+                  setModified(true);
+                }}
+              />
+            </Field>
+            <Field label="Cache Management">
+              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+                <Button
+                  appearance="secondary"
+                  size="small"
+                  onClick={async () => {
+                    if (confirm('Clear all proxy media cache? This cannot be undone.')) {
+                      try {
+                        const response = await fetch('/api/proxy/clear', { method: 'POST' });
+                        if (response.ok) {
+                          alert('Proxy cache cleared successfully');
+                        }
+                      } catch (error) {
+                        console.error('Error clearing cache:', error);
+                        alert('Failed to clear cache');
+                      }
+                    }
+                  }}
+                >
+                  Clear Proxy Cache
+                </Button>
+                <Button
+                  appearance="secondary"
+                  size="small"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/proxy/stats');
+                      if (response.ok) {
+                        const stats = await response.json();
+                        const sizeMB = (stats.totalCacheSizeBytes / (1024 * 1024)).toFixed(2);
+                        const compressionPct = (stats.compressionRatio * 100).toFixed(1);
+                        alert(
+                          `Cache Stats:\n` +
+                            `Total Proxies: ${stats.totalProxies}\n` +
+                            `Cache Size: ${sizeMB} MB\n` +
+                            `Space Saved: ${compressionPct}%`
+                        );
+                      }
+                    } catch (error) {
+                      console.error('Error fetching stats:', error);
+                    }
+                  }}
+                >
+                  View Cache Stats
+                </Button>
+              </div>
+            </Field>
+          </>
         )}
 
         {/* Benchmark */}
