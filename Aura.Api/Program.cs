@@ -339,6 +339,11 @@ builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationalLlmS
 builder.Services.AddSingleton<Aura.Core.Services.AI.PromptCustomizationService>();
 builder.Services.AddScoped<Aura.Core.Services.AI.ChainOfThoughtOrchestrator>();
 
+// Add LLM Orchestration services with schema validation
+builder.Services.AddSingleton<Aura.Core.AI.Validation.SchemaValidator>();
+builder.Services.AddSingleton<Aura.Core.AI.Orchestration.LlmOrchestrationService>();
+builder.Services.AddScoped<Aura.Core.AI.Orchestration.StructuredLlmProviderAdapter>();
+
 // Add Prompt Management services
 builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.IPromptRepository, 
     Aura.Core.Services.PromptManagement.InMemoryPromptRepository>();
