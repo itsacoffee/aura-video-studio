@@ -21,6 +21,7 @@ public class FFmpegCommandBuilder
     private int? _threads;
     private string? _hwaccel;
     private Dictionary<string, string> _metadata = new();
+    private string? _videoCodec;
 
     /// <summary>
     /// Add an input file
@@ -54,6 +55,7 @@ public class FFmpegCommandBuilder
     /// </summary>
     public FFmpegCommandBuilder SetVideoCodec(string codec)
     {
+        _videoCodec = codec;
         _outputOptions.Add($"-c:v {codec}");
         return this;
     }
@@ -269,13 +271,17 @@ public class FFmpegCommandBuilder
     }
 
     /// <summary>
-    /// Set HDR metadata (MaxCLL and MaxFALL) for x265
+    /// Set HDR metadata (MaxCLL and MaxFALL) for x265/hevc encoders
     /// </summary>
     public FFmpegCommandBuilder SetHdrMetadata(int? maxCll, int? maxFall)
     {
         if (maxCll.HasValue && maxFall.HasValue)
         {
-            _outputOptions.Add($"-x265-params \"max-cll={maxCll.Value},{maxFall.Value}\"");
+            if (_videoCodec?.Contains("x265", StringComparison.OrdinalIgnoreCase) == true ||
+                _videoCodec?.Contains("libx265", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _outputOptions.Add($"-x265-params \"max-cll={maxCll.Value},{maxFall.Value}\"");
+            }
         }
         return this;
     }

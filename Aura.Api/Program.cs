@@ -1029,18 +1029,14 @@ builder.Services.AddSingleton(sp =>
     return settings;
 });
 builder.Services.AddSingleton<Aura.Core.Services.Storage.CloudStorageProviderFactory>();
-builder.Services.AddSingleton<Aura.Core.Services.Export.ICloudExportService>(sp =>
+
+// Register CloudExportService conditionally based on configuration
+var cloudStorageConfig = new Aura.Core.Models.Settings.CloudStorageSettings();
+builder.Configuration.GetSection("CloudStorage").Bind(cloudStorageConfig);
+if (cloudStorageConfig.Enabled)
 {
-    var settings = sp.GetRequiredService<Aura.Core.Models.Settings.CloudStorageSettings>();
-    if (!settings.Enabled)
-    {
-        return null!;
-    }
-    
-    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Export.CloudExportService>>();
-    var factory = sp.GetRequiredService<Aura.Core.Services.Storage.CloudStorageProviderFactory>();
-    return new Aura.Core.Services.Export.CloudExportService(logger, settings, factory);
-});
+    builder.Services.AddSingleton<Aura.Core.Services.Export.ICloudExportService, Aura.Core.Services.Export.CloudExportService>();
+}
 
 // Proxy media and caching services
 builder.Services.AddSingleton<Aura.Core.Services.Media.IProxyMediaService>(sp =>
