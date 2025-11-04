@@ -1,0 +1,351 @@
+{
+  "circuitBreaker": {
+    "failureThreshold": 5,
+    "openDurationSeconds": 60,
+    "successRateThreshold": 80.0,
+    "minimumThroughput": 10
+  },
+  "healthCheck": {
+    "intervalSeconds": 300,
+    "timeoutSeconds": 10,
+    "enableBackgroundChecks": true
+  },
+  "costTracking": {
+    "maxCostPerRequest": 0.50,
+    "maxCostPerHour": 10.00,
+    "maxCostPerDay": 50.00,
+    "enforceBudgetLimits": true
+  },
+  "enableFailover": true,
+  "enableCostTracking": true,
+  "policies": [
+    {
+      "taskType": "Planning",
+      "preferredProviders": [
+        {
+          "providerName": "OpenAI",
+          "modelName": "gpt-4o-mini",
+          "priority": 1,
+          "qualityScore": 0.9,
+          "costPerRequest": 0.02,
+          "expectedLatencyMs": 3000,
+          "contextLength": 8192
+        },
+        {
+          "providerName": "Anthropic",
+          "modelName": "claude-3-haiku",
+          "priority": 2,
+          "qualityScore": 0.85,
+          "costPerRequest": 0.015,
+          "expectedLatencyMs": 3500,
+          "contextLength": 8192
+        },
+        {
+          "providerName": "Ollama",
+          "modelName": "llama3.1:8b-q4_k_m",
+          "priority": 3,
+          "qualityScore": 0.75,
+          "costPerRequest": 0.0,
+          "expectedLatencyMs": 5000,
+          "contextLength": 8192
+        }
+      ],
+      "defaultConstraints": {
+        "requiredContextLength": 8192,
+        "maxLatencyMs": 10000,
+        "maxCostPerRequest": 0.10,
+        "requireDeterminism": false,
+        "minQualityScore": 0.7
+      },
+      "enableFailover": true,
+      "maxFailoverAttempts": 3
+    },
+    {
+      "taskType": "Rewriting",
+      "preferredProviders": [
+        {
+          "providerName": "OpenAI",
+          "modelName": "gpt-4o-mini",
+          "priority": 1,
+          "qualityScore": 0.9,
+          "costPerRequest": 0.02,
+          "expectedLatencyMs": 3000,
+          "contextLength": 8192
+        },
+        {
+          "providerName": "Anthropic",
+          "modelName": "claude-3-haiku",
+          "priority": 2,
+          "qualityScore": 0.85,
+          "costPerRequest": 0.015,
+          "expectedLatencyMs": 3500,
+          "contextLength": 8192
+        },
+        {
+          "providerName": "Ollama",
+          "modelName": "llama3.1:8b-q4_k_m",
+          "priority": 3,
+          "qualityScore": 0.7,
+          "costPerRequest": 0.0,
+          "expectedLatencyMs": 6000,
+          "contextLength": 8192
+        }
+      ],
+      "defaultConstraints": {
+        "requiredContextLength": 8192,
+        "maxLatencyMs": 15000,
+        "maxCostPerRequest": 0.10,
+        "requireDeterminism": false,
+        "minQualityScore": 0.7
+      },
+      "enableFailover": true,
+      "maxFailoverAttempts": 3
+    },
+    {
+      "taskType": "SsmlGeneration",
+      "preferredProviders": [
+        {
+          "providerName": "OpenAI",
+          "modelName": "gpt-4o-mini",
+          "priority": 1,
+          "qualityScore": 0.95,
+          "costPerRequest": 0.01,
+          "expectedLatencyMs": 2000,
+          "contextLength": 4096
+        },
+        {
+          "providerName": "Anthropic",
+          "modelName": "claude-3-haiku",
+          "priority": 2,
+          "qualityScore": 0.9,
+          "costPerRequest": 0.01,
+          "expectedLatencyMs": 2500,
+          "contextLength": 4096
+        },
+        {
+          "providerName": "Ollama",
+          "modelName": "llama3.1:8b-q4_k_m",
+          "priority": 3,
+          "qualityScore": 0.75,
+          "costPerRequest": 0.0,
+          "expectedLatencyMs": 4000,
+          "contextLength": 4096
+        }
+      ],
+      "defaultConstraints": {
+        "requiredContextLength": 4096,
+        "maxLatencyMs": 8000,
+        "maxCostPerRequest": 0.05,
+        "requireDeterminism": true,
+        "minQualityScore": 0.8
+      },
+      "enableFailover": true,
+      "maxFailoverAttempts": 3
+    },
+    {
+      "taskType": "PromptGeneration",
+      "preferredProviders": [
+        {
+          "providerName": "OpenAI",
+          "modelName": "gpt-4o-mini",
+          "priority": 1,
+          "qualityScore": 0.9,
+          "costPerRequest": 0.02,
+          "expectedLatencyMs": 3000,
+          "contextLength": 4096
+        },
+        {
+          "providerName": "Anthropic",
+          "modelName": "claude-3-haiku",
+          "priority": 2,
+          "qualityScore": 0.85,
+          "costPerRequest": 0.015,
+          "expectedLatencyMs": 3500,
+          "contextLength": 4096
+        },
+        {
+          "providerName": "Ollama",
+          "modelName": "llama3.1:8b-q4_k_m",
+          "priority": 3,
+          "qualityScore": 0.75,
+          "costPerRequest": 0.0,
+          "expectedLatencyMs": 5000,
+          "contextLength": 4096
+        }
+      ],
+      "defaultConstraints": {
+        "requiredContextLength": 4096,
+        "maxLatencyMs": 12000,
+        "maxCostPerRequest": 0.10,
+        "requireDeterminism": false,
+        "minQualityScore": 0.7
+      },
+      "enableFailover": true,
+      "maxFailoverAttempts": 3
+    },
+    {
+      "taskType": "SafetyCritique",
+      "preferredProviders": [
+        {
+          "providerName": "OpenAI",
+          "modelName": "gpt-4o-mini",
+          "priority": 1,
+          "qualityScore": 0.95,
+          "costPerRequest": 0.01,
+          "expectedLatencyMs": 2000,
+          "contextLength": 4096
+        },
+        {
+          "providerName": "Anthropic",
+          "modelName": "claude-3-haiku",
+          "priority": 2,
+          "qualityScore": 0.9,
+          "costPerRequest": 0.01,
+          "expectedLatencyMs": 2500,
+          "contextLength": 4096
+        },
+        {
+          "providerName": "RuleBased",
+          "modelName": "default",
+          "priority": 3,
+          "qualityScore": 0.6,
+          "costPerRequest": 0.0,
+          "expectedLatencyMs": 100,
+          "contextLength": 4096
+        }
+      ],
+      "defaultConstraints": {
+        "requiredContextLength": 4096,
+        "maxLatencyMs": 5000,
+        "maxCostPerRequest": 0.05,
+        "requireDeterminism": true,
+        "minQualityScore": 0.8
+      },
+      "enableFailover": true,
+      "maxFailoverAttempts": 3
+    },
+    {
+      "taskType": "SceneAnalysis",
+      "preferredProviders": [
+        {
+          "providerName": "OpenAI",
+          "modelName": "gpt-4o-mini",
+          "priority": 1,
+          "qualityScore": 0.9,
+          "costPerRequest": 0.015,
+          "expectedLatencyMs": 2500,
+          "contextLength": 4096
+        },
+        {
+          "providerName": "Anthropic",
+          "modelName": "claude-3-haiku",
+          "priority": 2,
+          "qualityScore": 0.85,
+          "costPerRequest": 0.01,
+          "expectedLatencyMs": 3000,
+          "contextLength": 4096
+        },
+        {
+          "providerName": "Ollama",
+          "modelName": "llama3.1:8b-q4_k_m",
+          "priority": 3,
+          "qualityScore": 0.7,
+          "costPerRequest": 0.0,
+          "expectedLatencyMs": 4000,
+          "contextLength": 4096
+        }
+      ],
+      "defaultConstraints": {
+        "requiredContextLength": 4096,
+        "maxLatencyMs": 10000,
+        "maxCostPerRequest": 0.08,
+        "requireDeterminism": false,
+        "minQualityScore": 0.7
+      },
+      "enableFailover": true,
+      "maxFailoverAttempts": 3
+    },
+    {
+      "taskType": "NarrativeAnalysis",
+      "preferredProviders": [
+        {
+          "providerName": "OpenAI",
+          "modelName": "gpt-4o-mini",
+          "priority": 1,
+          "qualityScore": 0.9,
+          "costPerRequest": 0.02,
+          "expectedLatencyMs": 3000,
+          "contextLength": 8192
+        },
+        {
+          "providerName": "Anthropic",
+          "modelName": "claude-3-haiku",
+          "priority": 2,
+          "qualityScore": 0.85,
+          "costPerRequest": 0.015,
+          "expectedLatencyMs": 3500,
+          "contextLength": 8192
+        },
+        {
+          "providerName": "Ollama",
+          "modelName": "llama3.1:8b-q4_k_m",
+          "priority": 3,
+          "qualityScore": 0.7,
+          "costPerRequest": 0.0,
+          "expectedLatencyMs": 5000,
+          "contextLength": 8192
+        }
+      ],
+      "defaultConstraints": {
+        "requiredContextLength": 8192,
+        "maxLatencyMs": 15000,
+        "maxCostPerRequest": 0.10,
+        "requireDeterminism": false,
+        "minQualityScore": 0.7
+      },
+      "enableFailover": true,
+      "maxFailoverAttempts": 3
+    },
+    {
+      "taskType": "General",
+      "preferredProviders": [
+        {
+          "providerName": "OpenAI",
+          "modelName": "gpt-4o-mini",
+          "priority": 1,
+          "qualityScore": 0.85,
+          "costPerRequest": 0.015,
+          "expectedLatencyMs": 3000,
+          "contextLength": 4096
+        },
+        {
+          "providerName": "Ollama",
+          "modelName": "llama3.1:8b-q4_k_m",
+          "priority": 2,
+          "qualityScore": 0.7,
+          "costPerRequest": 0.0,
+          "expectedLatencyMs": 5000,
+          "contextLength": 4096
+        },
+        {
+          "providerName": "RuleBased",
+          "modelName": "default",
+          "priority": 3,
+          "qualityScore": 0.5,
+          "costPerRequest": 0.0,
+          "expectedLatencyMs": 100,
+          "contextLength": 4096
+        }
+      ],
+      "defaultConstraints": {
+        "requiredContextLength": 4096,
+        "maxLatencyMs": 30000,
+        "maxCostPerRequest": 0.10,
+        "requireDeterminism": false,
+        "minQualityScore": 0.5
+      },
+      "enableFailover": true,
+      "maxFailoverAttempts": 3
+    }
+  ]
+}
