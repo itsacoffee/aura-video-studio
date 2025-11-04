@@ -19,6 +19,7 @@ import { env } from '@/config/env';
 import { getHttpErrorMessage, isTransientError } from '@/services/api/apiErrorMessages';
 import { PersistentCircuitBreaker } from '@/services/api/circuitBreakerPersistence';
 import { loggingService } from '@/services/loggingService';
+import { toError } from '@/utils/errorUtils';
 
 /**
  * Circuit breaker states
@@ -210,7 +211,11 @@ export class TypedApiClient {
     // Request interceptor: Add correlation ID
     this.axiosInstance.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        const correlationId = crypto.randomUUID();
+        // Generate correlation ID (fallback for environments without crypto.randomUUID)
+        const correlationId =
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
         config.headers['X-Correlation-ID'] = correlationId;
 
         loggingService.debug('API request', 'typedClient', 'request', {
@@ -222,12 +227,7 @@ export class TypedApiClient {
         return config;
       },
       (error: AxiosError) => {
-        loggingService.error(
-          'Request interceptor error',
-          error instanceof Error ? error : new Error(String(error)),
-          'typedClient',
-          'request'
-        );
+        loggingService.error('Request interceptor error', toError(error), 'typedClient', 'request');
         return Promise.reject(error);
       }
     );

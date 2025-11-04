@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { z } from 'zod';
 import { loggingService } from '@/services/loggingService';
+import { toError } from '@/utils/errorUtils';
 
 /**
  * Connection state enum
@@ -209,12 +210,7 @@ export function useSse<T = unknown>(options: UseSseOptions<T>): UseSseReturn<T> 
 
         return parsed;
       } catch (err) {
-        loggingService.error(
-          'Failed to parse SSE event data',
-          err instanceof Error ? err : new Error(String(err)),
-          'useSse',
-          'parse'
-        );
+        loggingService.error('Failed to parse SSE event data', toError(err), 'useSse', 'parse');
         return null;
       }
     },
@@ -348,7 +344,7 @@ export function useSse<T = unknown>(options: UseSseOptions<T>): UseSseReturn<T> 
         };
       }
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to connect');
+      const error = toError(err);
       loggingService.error('Failed to create SSE connection', error, 'useSse', 'connect');
       setError(error);
       setState(SseConnectionState.ERROR);

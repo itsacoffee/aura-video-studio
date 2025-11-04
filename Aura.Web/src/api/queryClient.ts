@@ -10,6 +10,7 @@
 
 import { QueryClient, DefaultOptions } from '@tanstack/react-query';
 import { loggingService } from '@/services/loggingService';
+import { toError, isRetryableStatus } from '@/utils/errorUtils';
 
 /**
  * Default options for all queries and mutations
@@ -24,15 +25,18 @@ const defaultOptions: DefaultOptions = {
 
     // Retry configuration for idempotent GET requests
     retry: (failureCount, error) => {
-      // Don't retry on 4xx errors (client errors)
-      if (error && typeof error === 'object' && 'status' in error) {
-        const status = (error as { status?: number }).status;
-        if (status && status >= 400 && status < 500) {
-          return false;
-        }
+      // Extract status from error if available
+      const status =
+        error && typeof error === 'object' && 'status' in error
+          ? (error as { status?: number }).status
+          : undefined;
+
+      // Don't retry non-retryable errors
+      if (!isRetryableStatus(status)) {
+        return false;
       }
 
-      // Retry up to 3 times for transient errors
+      // Retry up to 3 times for retryable errors
       return failureCount < 3;
     },
 
@@ -56,12 +60,7 @@ const defaultOptions: DefaultOptions = {
 
     // Error handling for mutations
     onError: (error) => {
-      loggingService.error(
-        'Mutation failed',
-        error instanceof Error ? error : new Error(String(error)),
-        'queryClient',
-        'mutation'
-      );
+      loggingService.error('Mutation failed', toError(error), 'queryClient', 'mutation');
     },
   },
 };

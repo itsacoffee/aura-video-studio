@@ -40,6 +40,12 @@ if (!existsSync(OUTPUT_DIR)) {
 // Step 1: Download swagger.json
 console.log(`📥 Downloading OpenAPI spec from: ${swaggerUrl}`);
 try {
+  // Validate URL format to prevent command injection
+  const urlPattern = /^https?:\/\/.+/i;
+  if (!urlPattern.test(swaggerUrl)) {
+    throw new Error('Invalid URL format. URL must start with http:// or https://');
+  }
+
   const curlCommand = `curl -s -f "${swaggerUrl}" -o "${TEMP_SWAGGER_FILE}"`;
   execSync(curlCommand, { stdio: 'inherit' });
   
