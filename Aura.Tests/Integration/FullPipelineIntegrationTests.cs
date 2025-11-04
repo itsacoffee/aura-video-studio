@@ -402,6 +402,11 @@ internal class FailingLlmProvider : ILlmProvider
         throw new InvalidOperationException("Provider unavailable");
     }
 
+        public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+        {
+            return Task.FromResult("Mock response");
+        }
+
     public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,

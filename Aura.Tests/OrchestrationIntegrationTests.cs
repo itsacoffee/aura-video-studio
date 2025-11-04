@@ -74,9 +74,8 @@ public class OrchestrationIntegrationTests
         }";
 
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(
-                It.IsAny<Brief>(),
-                It.IsAny<PlanSpec>(),
+            .Setup(p => p.CompleteAsync(
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(validPlanJson);
 
@@ -164,9 +163,8 @@ public class OrchestrationIntegrationTests
         }";
 
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(
-                It.IsAny<Brief>(),
-                It.IsAny<PlanSpec>(),
+            .Setup(p => p.CompleteAsync(
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(validPlanJson);
 
@@ -177,9 +175,8 @@ public class OrchestrationIntegrationTests
         // Setup for scene generation
         _mockProvider.Reset();
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(
-                It.IsAny<Brief>(),
-                It.IsAny<PlanSpec>(),
+            .Setup(p => p.CompleteAsync(
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(validScenesJson);
 
@@ -234,9 +231,8 @@ public class OrchestrationIntegrationTests
 
         var attempt = 0;
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(
-                It.IsAny<Brief>(),
-                It.IsAny<PlanSpec>(),
+            .Setup(p => p.CompleteAsync(
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => 
             {
@@ -277,9 +273,8 @@ public class OrchestrationIntegrationTests
         }";
 
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(
-                It.IsAny<Brief>(),
-                It.IsAny<PlanSpec>(),
+            .Setup(p => p.CompleteAsync(
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(invalidJson);
 
@@ -316,7 +311,7 @@ public class OrchestrationIntegrationTests
         }";
 
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.CompleteAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(validJson);
 
         // Act

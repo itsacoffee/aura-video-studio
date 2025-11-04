@@ -228,6 +228,11 @@ Artificial intelligence is transforming our world. From self-driving cars to sma
 Today AI is used in healthcare finance education and entertainment. Machine learning analyzes data to make predictions recognize patterns and automate processes. The future is exciting.");
         }
 
+        public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+        {
+            return Task.FromResult("Mock response");
+        }
+
         public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
             string sceneText,
             string? previousSceneText,

@@ -202,6 +202,11 @@ public class PipelineOrchestrationEngineTests
             return Task.FromResult($"## Scene 1\nTest script content for {brief.Topic}\n\n## Scene 2\nMore content");
         }
 
+        public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+        {
+            return Task.FromResult("Mock response");
+        }
+
         public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(string sceneText, string? previousSceneText, string videoGoal, CancellationToken ct)
         {
             return Task.FromResult<SceneAnalysisResult?>(new SceneAnalysisResult(

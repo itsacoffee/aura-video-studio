@@ -319,6 +319,11 @@ public class VisualPromptGenerationServiceTests
             return Task.FromResult("Mock script");
         }
 
+        public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+        {
+            return Task.FromResult("Mock response");
+        }
+
         public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
             string sceneText,
             string? previousSceneText,
