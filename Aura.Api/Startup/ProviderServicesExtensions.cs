@@ -23,6 +23,9 @@ public static class ProviderServicesExtensions
         // HTTP client for provider communication
         services.AddHttpClient();
 
+        // Model catalog for dynamic model discovery
+        services.AddSingleton<Aura.Core.AI.Adapters.ModelCatalog>();
+
         // LLM providers
         services.AddSingleton<LlmProviderFactory>();
         services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
