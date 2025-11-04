@@ -53,8 +53,8 @@ public class OrchestrationIntegrationTests
         
         var planSpec = new PlanSpec(
             TimeSpan.FromMinutes(2),
-            Pacing.Moderate,
-            Density.Moderate,
+            Pacing.Conversational,
+            Density.Balanced,
             "Educational"
         );
 
@@ -74,9 +74,8 @@ public class OrchestrationIntegrationTests
         }";
 
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(
-                It.IsAny<Brief>(),
-                It.IsAny<PlanSpec>(),
+            .Setup(p => p.CompleteAsync(
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(validPlanJson);
 
@@ -84,6 +83,7 @@ public class OrchestrationIntegrationTests
         var result = await _adapter.GeneratePlanAsync(brief, planSpec);
 
         // Assert
+        _mockProvider.Verify(p => p.CompleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         Assert.True(result.Success, result.ErrorMessage);
         Assert.NotNull(result.Data);
         Assert.Equal(5, result.Data.SceneCount);
@@ -164,9 +164,8 @@ public class OrchestrationIntegrationTests
         }";
 
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(
-                It.IsAny<Brief>(),
-                It.IsAny<PlanSpec>(),
+            .Setup(p => p.CompleteAsync(
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(validPlanJson);
 
@@ -177,9 +176,8 @@ public class OrchestrationIntegrationTests
         // Setup for scene generation
         _mockProvider.Reset();
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(
-                It.IsAny<Brief>(),
-                It.IsAny<PlanSpec>(),
+            .Setup(p => p.CompleteAsync(
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(validScenesJson);
 
@@ -208,7 +206,7 @@ public class OrchestrationIntegrationTests
     {
         // Arrange
         var brief = new Brief("Test", "General", "Test", "Neutral", "English", Aspect.Widescreen16x9);
-        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Moderate, Density.Moderate, "Test");
+        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Conversational, Density.Balanced, "Test");
 
         var invalidJson = @"{
             ""outline"": ""Too short"",
@@ -234,9 +232,8 @@ public class OrchestrationIntegrationTests
 
         var attempt = 0;
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(
-                It.IsAny<Brief>(),
-                It.IsAny<PlanSpec>(),
+            .Setup(p => p.CompleteAsync(
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => 
             {
@@ -263,7 +260,7 @@ public class OrchestrationIntegrationTests
     {
         // Arrange
         var brief = new Brief("Test", "General", "Test", "Neutral", "English", Aspect.Widescreen16x9);
-        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Moderate, Density.Moderate, "Test");
+        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Conversational, Density.Balanced, "Test");
 
         var invalidJson = @"{
             ""outline"": ""Short"",
@@ -277,9 +274,8 @@ public class OrchestrationIntegrationTests
         }";
 
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(
-                It.IsAny<Brief>(),
-                It.IsAny<PlanSpec>(),
+            .Setup(p => p.CompleteAsync(
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(invalidJson);
 
@@ -302,7 +298,7 @@ public class OrchestrationIntegrationTests
     {
         // Arrange
         var brief = new Brief("Test", "General", "Test", "Neutral", "English", Aspect.Widescreen16x9);
-        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Moderate, Density.Moderate, "Test");
+        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Conversational, Density.Balanced, "Test");
 
         var validJson = @"{
             ""outline"": ""A comprehensive outline that provides detailed information about the topic"",
@@ -316,7 +312,7 @@ public class OrchestrationIntegrationTests
         }";
 
         _mockProvider
-            .Setup(p => p.DraftScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.CompleteAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(validJson);
 
         // Act

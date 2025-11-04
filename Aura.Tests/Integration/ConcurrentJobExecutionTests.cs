@@ -488,6 +488,11 @@ internal class ConcurrentFailingLlmProvider : ILlmProvider
         throw new InvalidOperationException("Simulated provider failure");
     }
 
+        public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+        {
+            return Task.FromResult("Mock response");
+        }
+
     public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,

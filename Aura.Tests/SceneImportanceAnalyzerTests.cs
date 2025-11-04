@@ -237,6 +237,11 @@ public class SceneImportanceAnalyzerTests
             return Task.FromResult("Mock script");
         }
 
+        public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+        {
+            return Task.FromResult("Mock response");
+        }
+
         public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
             string sceneText,
             string? previousSceneText,
@@ -299,6 +304,11 @@ public class SceneImportanceAnalyzerTests
         public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
         {
             return Task.FromResult("Mock script");
+        }
+
+        public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+        {
+            return Task.FromResult("Mock response");
         }
 
         public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
@@ -374,6 +384,11 @@ public class SceneImportanceAnalyzerTests
         public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
         {
             return Task.FromResult("Mock script");
+        }
+
+        public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+        {
+            return Task.FromResult("Mock response");
         }
 
         public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(

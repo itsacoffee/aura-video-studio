@@ -133,6 +133,15 @@ SUGGESTIONS:
             return Task.FromResult(_response);
         }
 
+        public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+        {
+            if (ShouldThrowError)
+            {
+                throw new InvalidOperationException("Mock error");
+            }
+            return Task.FromResult(_response);
+        }
+
         public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
             string sceneText,
             string? previousSceneText,

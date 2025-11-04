@@ -53,7 +53,7 @@ public class StructuredLlmProviderAdapter
                     finalPrompt = _adapter.OptimizeUserPrompt(finalPrompt, LlmOperationType.Creative);
                 }
                 
-                var response = await _provider.DraftScriptAsync(brief, planSpec, token);
+                var response = await _provider.CompleteAsync(finalPrompt, token);
                 return ExtractJsonFromResponse(response);
             },
             config,
@@ -89,7 +89,7 @@ public class StructuredLlmProviderAdapter
                     finalPrompt = _adapter.OptimizeUserPrompt(finalPrompt, LlmOperationType.Creative);
                 }
                 
-                var response = await _provider.DraftScriptAsync(brief, planSpec, token);
+                var response = await _provider.CompleteAsync(finalPrompt, token);
                 return ExtractJsonFromResponse(response);
             },
             config,
@@ -159,7 +159,7 @@ Return a JSON object with this structure:
     {
         if (string.IsNullOrWhiteSpace(response))
         {
-            return "{}";
+            return string.Empty;
         }
         
         var trimmed = response.Trim();

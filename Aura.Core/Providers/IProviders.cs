@@ -11,6 +11,12 @@ namespace Aura.Core.Providers;
 public interface ILlmProvider
 {
     Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct);
+    
+    /// <summary>
+    /// Executes a raw prompt completion for structured output generation (used by orchestration layer)
+    /// </summary>
+    Task<string> CompleteAsync(string prompt, CancellationToken ct);
+    
     Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,
