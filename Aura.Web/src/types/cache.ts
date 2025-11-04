@@ -13,6 +13,8 @@ export interface CacheStatistics {
   totalSizeBytes: number;
   totalEvictions: number;
   totalExpirations: number;
+  memoryUsageMB?: number;
+  gcMemoryMB?: number;
 }
 
 /**

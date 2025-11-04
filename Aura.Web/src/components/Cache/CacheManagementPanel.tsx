@@ -190,6 +190,20 @@ const CacheManagementPanel: React.FC = () => {
               <div className={styles.statValue}>{stats.totalEvictions}</div>
               <Caption1 className={styles.statLabel}>Evictions</Caption1>
             </Card>
+
+            {stats.memoryUsageMB !== undefined && (
+              <Card className={styles.statCard}>
+                <div className={styles.statValue}>{stats.memoryUsageMB.toFixed(1)} MB</div>
+                <Caption1 className={styles.statLabel}>Process Memory</Caption1>
+              </Card>
+            )}
+
+            {stats.gcMemoryMB !== undefined && (
+              <Card className={styles.statCard}>
+                <div className={styles.statValue}>{stats.gcMemoryMB.toFixed(1)} MB</div>
+                <Caption1 className={styles.statLabel}>GC Memory</Caption1>
+              </Card>
+            )}
           </div>
 
           <div className={styles.actions}>

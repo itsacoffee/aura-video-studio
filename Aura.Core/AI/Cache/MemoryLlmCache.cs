@@ -42,7 +42,7 @@ public class MemoryLlmCache : ILlmCache
     
     public Task<CachedEntry?> GetAsync(string key, CancellationToken ct = default)
     {
-        if (!_options.Enabled)
+        if (!_options.Enabled || IsMemoryThresholdExceeded())
         {
             return Task.FromResult<CachedEntry?>(null);
         }
@@ -105,8 +105,14 @@ public class MemoryLlmCache : ILlmCache
     
     public Task SetAsync(string key, string response, CacheMetadata metadata, CancellationToken ct = default)
     {
-        if (!_options.Enabled)
+        if (!_options.Enabled || IsMemoryThresholdExceeded())
         {
+            if (IsMemoryThresholdExceeded())
+            {
+                _logger.LogWarning(
+                    "Cache disabled due to memory threshold exceeded: {Threshold}%",
+                    _options.MemoryThresholdPercent);
+            }
             return Task.CompletedTask;
         }
         
@@ -253,6 +259,34 @@ public class MemoryLlmCache : ILlmCache
                 "Evicted LRU entry for key {KeyHash} (lastAccessed={LastAccessed})",
                 GetKeyHash(lruEntry.Key),
                 entry.LastAccessedAt);
+        }
+    }
+    
+    private bool IsMemoryThresholdExceeded()
+    {
+        if (_options.MemoryThresholdPercent <= 0 || _options.MemoryThresholdPercent >= 100)
+        {
+            return false;
+        }
+        
+        try
+        {
+            var gcInfo = GC.GetGCMemoryInfo();
+            var totalMemory = gcInfo.TotalAvailableMemoryBytes;
+            var usedMemory = GC.GetTotalMemory(false);
+            
+            if (totalMemory > 0)
+            {
+                var usagePercent = (usedMemory * 100.0) / totalMemory;
+                return usagePercent >= _options.MemoryThresholdPercent;
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check memory threshold");
+            return false;
         }
     }
     

@@ -27,7 +27,7 @@ public class CacheController : ControllerBase
     }
     
     /// <summary>
-    /// Gets cache statistics
+    /// Gets cache statistics including memory usage
     /// </summary>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Cache statistics</returns>
@@ -39,6 +39,10 @@ public class CacheController : ControllerBase
         {
             var stats = await _cache.GetStatisticsAsync(ct);
             
+            var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+            var workingSetMB = currentProcess.WorkingSet64 / (1024.0 * 1024.0);
+            var gcMemoryMB = GC.GetTotalMemory(false) / (1024.0 * 1024.0);
+            
             var response = new CacheStatisticsResponse
             {
                 TotalEntries = stats.TotalEntries,
@@ -47,7 +51,9 @@ public class CacheController : ControllerBase
                 HitRate = stats.HitRate,
                 TotalSizeBytes = stats.TotalSizeBytes,
                 TotalEvictions = stats.TotalEvictions,
-                TotalExpirations = stats.TotalExpirations
+                TotalExpirations = stats.TotalExpirations,
+                MemoryUsageMB = workingSetMB,
+                GcMemoryMB = gcMemoryMB
             };
             
             return Ok(response);
@@ -243,6 +249,8 @@ public record CacheStatisticsResponse
     public long TotalSizeBytes { get; init; }
     public long TotalEvictions { get; init; }
     public long TotalExpirations { get; init; }
+    public double MemoryUsageMB { get; init; }
+    public double GcMemoryMB { get; init; }
 }
 
 /// <summary>

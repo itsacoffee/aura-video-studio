@@ -297,7 +297,27 @@ builder.Services.Configure<Aura.Core.AI.Cache.LlmCacheOptions>(
     builder.Configuration.GetSection("LlmCache"));
 builder.Services.Configure<Aura.Core.AI.Cache.LlmPrewarmOptions>(
     builder.Configuration.GetSection("LlmPrewarm"));
-builder.Services.AddSingleton<Aura.Core.AI.Cache.ILlmCache, Aura.Core.AI.Cache.MemoryLlmCache>();
+
+// Register cache implementation based on configuration
+builder.Services.AddSingleton<Aura.Core.AI.Cache.ILlmCache>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.ILlmCache>>();
+    var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.AI.Cache.LlmCacheOptions>>();
+    
+    if (options.Value.UseDiskStorage)
+    {
+        var diskLogger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.DiskLlmCache>>();
+        logger.LogInformation("Using DiskLlmCache (disk storage enabled)");
+        return new Aura.Core.AI.Cache.DiskLlmCache(diskLogger, options);
+    }
+    else
+    {
+        var memoryLogger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.MemoryLlmCache>>();
+        logger.LogInformation("Using MemoryLlmCache (disk storage disabled)");
+        return new Aura.Core.AI.Cache.MemoryLlmCache(memoryLogger, options);
+    }
+});
+
 builder.Services.AddSingleton<Aura.Core.AI.Cache.CachedLlmProviderService>();
 builder.Services.AddHostedService<Aura.Api.HostedServices.LlmCacheMaintenanceService>();
 builder.Services.AddHostedService<Aura.Api.HostedServices.LlmPrewarmService>();
