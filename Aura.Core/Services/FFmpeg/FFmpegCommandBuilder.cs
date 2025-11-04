@@ -242,6 +242,68 @@ public class FFmpegCommandBuilder
     }
 
     /// <summary>
+    /// Set color space for HDR/advanced encoding
+    /// </summary>
+    public FFmpegCommandBuilder SetColorSpace(string colorSpace)
+    {
+        _outputOptions.Add($"-colorspace {colorSpace}");
+        return this;
+    }
+
+    /// <summary>
+    /// Set color transfer function for HDR
+    /// </summary>
+    public FFmpegCommandBuilder SetColorTransfer(string colorTransfer)
+    {
+        _outputOptions.Add($"-color_trc {colorTransfer}");
+        return this;
+    }
+
+    /// <summary>
+    /// Set color primaries for HDR
+    /// </summary>
+    public FFmpegCommandBuilder SetColorPrimaries(string colorPrimaries)
+    {
+        _outputOptions.Add($"-color_primaries {colorPrimaries}");
+        return this;
+    }
+
+    /// <summary>
+    /// Set HDR metadata (MaxCLL and MaxFALL) for x265
+    /// </summary>
+    public FFmpegCommandBuilder SetHdrMetadata(int? maxCll, int? maxFall)
+    {
+        if (maxCll.HasValue && maxFall.HasValue)
+        {
+            _outputOptions.Add($"-x265-params \"max-cll={maxCll.Value},{maxFall.Value}\"");
+        }
+        return this;
+    }
+
+    /// <summary>
+    /// Apply advanced codec options from AdvancedCodecOptions model
+    /// </summary>
+    public FFmpegCommandBuilder ApplyAdvancedCodecOptions(AdvancedCodecOptions options)
+    {
+        SetPixelFormat(options.GetPixelFormat());
+        SetColorSpace(options.GetColorSpace());
+        SetColorPrimaries(options.GetColorPrimaries());
+        
+        var colorTransfer = options.GetColorTransfer();
+        if (!string.IsNullOrEmpty(colorTransfer))
+        {
+            SetColorTransfer(colorTransfer);
+        }
+        
+        if (options.IsHdr && options.MaxContentLightLevel.HasValue && options.MaxFrameAverageLightLevel.HasValue)
+        {
+            SetHdrMetadata(options.MaxContentLightLevel.Value, options.MaxFrameAverageLightLevel.Value);
+        }
+        
+        return this;
+    }
+
+    /// <summary>
     /// Build the complete FFmpeg command
     /// </summary>
     public string Build()
