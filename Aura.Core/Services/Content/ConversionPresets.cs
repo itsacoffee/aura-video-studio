@@ -154,11 +154,11 @@ public static class ConversionPresets
     /// <summary>
     /// Suggests the best preset for a given document format
     /// </summary>
-    public static PresetDefinition SuggestPresetForFormat(string fileName, DocumentFormat format)
+    public static PresetDefinition SuggestPresetForFormat(string fileName, DocFormat format)
     {
         var extension = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
         
-        if (format == DocumentFormat.AuraScript || format == DocumentFormat.Json)
+        if (format == DocFormat.AuraScript || format == DocFormat.Json)
         {
             return GetPreset(ConversionPreset.Generic);
         }

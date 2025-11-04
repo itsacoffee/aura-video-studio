@@ -25,7 +25,7 @@ public enum DocumentFormat
 public record DocumentMetadata
 {
     public string OriginalFileName { get; init; } = string.Empty;
-    public DocumentFormat Format { get; init; }
+    public DocFormat Format { get; init; }
     public long FileSizeBytes { get; init; }
     public DateTime ImportedAt { get; init; } = DateTime.UtcNow;
     public int WordCount { get; init; }

@@ -53,7 +53,7 @@ Machine learning powers recommendation systems, fraud detection, and autonomous 
         Assert.True(result.Success);
         Assert.NotNull(result.Metadata);
         Assert.Equal("test.txt", result.Metadata.OriginalFileName);
-        Assert.Equal(DocumentFormat.PlainText, result.Metadata.Format);
+        Assert.Equal(DocFormat.PlainText, result.Metadata.Format);
         Assert.True(result.Metadata.WordCount > 0);
         
         Assert.NotNull(result.Structure);
@@ -84,7 +84,7 @@ Machine learning is transforming technology.";
         var result = await _service.ImportDocumentAsync(stream, "tutorial.md", CancellationToken.None);
 
         Assert.True(result.Success);
-        Assert.Equal(DocumentFormat.Markdown, result.Metadata.Format);
+        Assert.Equal(DocFormat.Markdown, result.Metadata.Format);
         Assert.NotEmpty(result.Structure.Sections);
         Assert.True(result.Structure.HeadingLevels >= 1);
     }
@@ -112,7 +112,7 @@ Machine learning is transforming technology.";
         var result = await _service.ImportDocumentAsync(stream, "article.html", CancellationToken.None);
 
         Assert.True(result.Success);
-        Assert.Equal(DocumentFormat.Html, result.Metadata.Format);
+        Assert.Equal(DocFormat.Html, result.Metadata.Format);
         Assert.NotEmpty(result.Structure.Sections);
     }
 

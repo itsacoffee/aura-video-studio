@@ -20,7 +20,7 @@ public class PlainTextParser : IDocumentParser
     private readonly ILogger<PlainTextParser> _logger;
     private const double DefaultWordsPerSecond = 2.5; // 150 words per minute
 
-    public DocumentFormat SupportedFormat => DocumentFormat.PlainText;
+    public DocFormat SupportedFormat => DocFormat.PlainText;
     public string[] SupportedExtensions => new[] { ".txt" };
 
     public PlainTextParser(ILogger<PlainTextParser> logger)
@@ -80,7 +80,7 @@ public class PlainTextParser : IDocumentParser
         return new DocumentMetadata
         {
             OriginalFileName = fileName,
-            Format = DocumentFormat.PlainText,
+            Format = DocFormat.PlainText,
             FileSizeBytes = fileSize,
             ImportedAt = DateTime.UtcNow,
             WordCount = wordCount,

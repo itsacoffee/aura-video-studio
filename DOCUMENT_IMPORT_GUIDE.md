@@ -12,10 +12,34 @@ The system supports **8+ document formats**:
 2. **Markdown** (`.md`, `.markdown`) - Structured markdown with headings and formatting
 3. **HTML** (`.html`, `.htm`) - Web pages and articles
 4. **JSON** (`.json`) - Structured content and Aura scripts
-5. **Microsoft Word** (`.docx`, `.doc`) - Office documents (basic support)
-6. **PDF** (`.pdf`) - PDF documents (basic support)
+5. **Microsoft Word** (`.docx`) - OpenXML Word documents with full metadata, headings, and table extraction
+6. **PDF** (`.pdf`) - PDF documents with full text extraction, metadata, and structure detection
 7. **Google Docs** - Via export to supported formats
 8. **Aura Scripts** - Re-import and adapt existing scripts
+
+### Enhanced PDF Support
+
+The PDF parser now provides comprehensive extraction capabilities:
+
+- **Full Text Extraction**: Extracts all readable text from PDF pages
+- **Metadata Parsing**: Author, title, subject, keywords, creation/modification dates
+- **Structure Detection**: Automatically identifies section headings
+- **Multi-page Support**: Handles PDFs with any number of pages
+- **Advanced Analysis**: Word count, reading complexity, tone analysis, key phrase extraction
+- **Library**: Uses iText 8.0.5 with BouncyCastle cryptography for secure PDF processing
+- **Limitations**: 50MB file size limit; encrypted or image-only PDFs may have limited text extraction
+
+### Enhanced Word Document Support
+
+The Word parser provides comprehensive .docx file processing:
+
+- **Full Text Extraction**: Extracts all text content including paragraphs and formatting
+- **Heading Detection**: Preserves document structure with automatic heading level recognition
+- **Table Extraction**: Extracts table content while maintaining cell relationships
+- **Metadata Parsing**: Author, title, subject, keywords, creation/modification dates from document properties
+- **Advanced Analysis**: Word count, reading complexity, tone analysis, key phrase extraction
+- **Library**: Uses DocumentFormat.OpenXml 3.1.1 for native OpenXML processing
+- **Limitations**: 50MB file size limit; legacy .doc format NOT supported (use .docx or convert first)
 
 ## Quick Start
 
@@ -207,9 +231,11 @@ Every modification is documented:
 
 ## File Limits
 
-- **Max File Size:** 10MB (configurable)
+- **Max File Size:** 50MB for PDF and Word documents, 10MB for other formats (configurable)
 - **Max Word Count:** 50,000 words (configurable)
 - **Recommended Range:** 500-5000 words for best results
+- **PDF Requirements:** Must contain extractable text (not image-only or encrypted)
+- **Word Requirements:** Must be .docx format (OpenXML); legacy .doc format not supported
 
 ## Advanced Usage
 
@@ -460,6 +486,53 @@ curl -X POST http://localhost:5005/api/content/convert \
     "addTransitions": false
   }'
 ```
+
+## Troubleshooting
+
+### PDF Import Issues
+
+**Problem**: PDF shows "no text content could be extracted"
+- **Cause**: PDF may be image-only or encrypted
+- **Solution**: Use OCR software to convert to searchable PDF, or export as plain text
+- **Alternative**: Take screenshots and use image-to-text conversion
+
+**Problem**: PDF extraction is slow
+- **Cause**: Large file size or complex formatting
+- **Solution**: Reduce file size by removing images, or split into smaller files
+- **Note**: Processing time increases with page count
+
+**Problem**: PDF metadata not extracted
+- **Cause**: PDF was created without proper metadata
+- **Solution**: Metadata is optional; core text extraction will still work
+
+### Word Document Issues
+
+**Problem**: "Legacy .doc format is not supported"
+- **Cause**: File is in old binary .doc format, not OpenXML .docx
+- **Solution**: Open in Word and save as .docx format, or use online converter
+- **Alternative**: Export as .txt or .md for simple text extraction
+
+**Problem**: Table formatting lost
+- **Cause**: Complex table structures may not preserve all formatting
+- **Solution**: Tables are extracted as text with `|` delimiters; manually adjust if needed
+
+**Problem**: Missing document properties
+- **Cause**: Document was created without author/title metadata
+- **Solution**: Properties are optional; text extraction will still work
+
+### General Import Issues
+
+**Problem**: "File size exceeds maximum allowed size"
+- **Cause**: File is larger than 50MB (PDF/Word) or 10MB (other formats)
+- **Solution**: Compress file, split into smaller parts, or extract relevant sections manually
+
+**Problem**: Low reading complexity score
+- **Cause**: Document uses simple language or short sentences
+- **Solution**: This is informational only; doesn't affect conversion quality
+
+**Problem**: Language detection shows "unknown"
+- **Cause**: Document is in non-English language or too short
+- **Solution**: Language detection is best-effort; specify language in conversion settings
 
 ## Further Reading
 

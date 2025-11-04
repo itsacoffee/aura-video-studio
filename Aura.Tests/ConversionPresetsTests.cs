@@ -100,7 +100,7 @@ public class ConversionPresetsTests
     [Fact]
     public void SuggestPresetForFormat_Markdown_SuggestsAppropriatePreset()
     {
-        var preset = ConversionPresets.SuggestPresetForFormat("article.md", DocumentFormat.Markdown);
+        var preset = ConversionPresets.SuggestPresetForFormat("article.md", DocFormat.Markdown);
 
         Assert.NotNull(preset);
         Assert.Contains(".md", preset.BestForFormats);
@@ -109,7 +109,7 @@ public class ConversionPresetsTests
     [Fact]
     public void SuggestPresetForFormat_Html_SuggestsAppropriatePreset()
     {
-        var preset = ConversionPresets.SuggestPresetForFormat("blog.html", DocumentFormat.Html);
+        var preset = ConversionPresets.SuggestPresetForFormat("blog.html", DocFormat.Html);
 
         Assert.NotNull(preset);
         Assert.Contains(".html", preset.BestForFormats);
@@ -118,7 +118,7 @@ public class ConversionPresetsTests
     [Fact]
     public void SuggestPresetForFormat_UnknownFormat_ReturnsGeneric()
     {
-        var preset = ConversionPresets.SuggestPresetForFormat("file.xyz", DocumentFormat.PlainText);
+        var preset = ConversionPresets.SuggestPresetForFormat("file.xyz", DocFormat.PlainText);
 
         Assert.NotNull(preset);
         Assert.Equal(ConversionPreset.Generic, preset.Type);

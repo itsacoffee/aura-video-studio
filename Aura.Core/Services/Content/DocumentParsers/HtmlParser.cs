@@ -19,7 +19,7 @@ public class HtmlParser : IDocumentParser
 {
     private readonly ILogger<HtmlParser> _logger;
 
-    public DocumentFormat SupportedFormat => DocumentFormat.Html;
+    public DocFormat SupportedFormat => DocFormat.Html;
     public string[] SupportedExtensions => new[] { ".html", ".htm" };
 
     public HtmlParser(ILogger<HtmlParser> logger)
@@ -103,7 +103,7 @@ public class HtmlParser : IDocumentParser
         return new DocumentMetadata
         {
             OriginalFileName = fileName,
-            Format = DocumentFormat.Html,
+            Format = DocFormat.Html,
             FileSizeBytes = fileSize,
             ImportedAt = DateTime.UtcNow,
             WordCount = wordCount,
