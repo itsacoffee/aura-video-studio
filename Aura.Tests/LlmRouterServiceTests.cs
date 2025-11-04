@@ -72,7 +72,9 @@ public class LlmRouterServiceTests
 
         var providerKey = "OpenAI:gpt-4o-mini";
         
-        for (int i = 0; i < 5; i++)
+        // Exceed the circuit breaker threshold
+        var failureThreshold = _config.CircuitBreaker.FailureThreshold;
+        for (int i = 0; i < failureThreshold; i++)
         {
             await router.RecordRequestAsync(providerKey, TaskType.Planning, success: false, latencyMs: 1000, cost: 0.01m);
         }

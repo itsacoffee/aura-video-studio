@@ -239,6 +239,7 @@ public class LlmRouterService : ILlmRouterService
         double qualityScore,
         int priority)
     {
+        // Default weights can be overridden via configuration in future versions
         const double healthWeight = 0.4;
         const double latencyWeight = 0.2;
         const double costWeight = 0.2;
@@ -405,9 +406,12 @@ public class LlmRouterService : ILlmRouterService
 
             history.Add(latencyMs);
             
-            if (history.Count > 100)
+            // Keep only the last 100 entries for performance
+            const int maxHistorySize = 100;
+            if (history.Count > maxHistorySize)
             {
-                history.RemoveAt(0);
+                // Remove oldest entries to maintain fixed size
+                history.RemoveRange(0, history.Count - maxHistorySize);
             }
 
             metrics.AverageLatencyMs = history.Average();
