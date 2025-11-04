@@ -276,13 +276,17 @@ export const useMLLabStore = create<MLLabState>((set, get) => ({
 
   updateTrainingJobStatus: (status) =>
     set((state) => {
-      const isNewJob = !state.activeTrainingJob || state.activeTrainingJob.jobId !== status.jobId;
-
       // If job is completed/failed/cancelled, move to history
       if (['Completed', 'Failed', 'Cancelled'].includes(status.state)) {
-        const updatedHistory = isNewJob
-          ? [...state.trainingHistory, status]
-          : state.trainingHistory.map((job) => (job.jobId === status.jobId ? status : job));
+        // Check if job is already in history (update) or needs to be added (from active job)
+        const existingHistoryIndex = state.trainingHistory.findIndex(
+          (job) => job.jobId === status.jobId
+        );
+
+        const updatedHistory =
+          existingHistoryIndex >= 0
+            ? state.trainingHistory.map((job) => (job.jobId === status.jobId ? status : job))
+            : [...state.trainingHistory, status];
 
         return {
           activeTrainingJob: undefined,
