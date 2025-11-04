@@ -154,6 +154,7 @@ public class UnifiedStockMediaService
 
             var results = await provider.SearchAsync(request, ct);
             
+            var updatedResults = new List<StockMediaResult>();
             foreach (var result in results)
             {
                 if (string.IsNullOrEmpty(result.PerceptualHash))
@@ -162,11 +163,15 @@ public class UnifiedStockMediaService
                         result.FullSizeUrl,
                         result.Width,
                         result.Height);
-                    results[results.IndexOf(result)] = result with { PerceptualHash = hash };
+                    updatedResults.Add(result with { PerceptualHash = hash });
+                }
+                else
+                {
+                    updatedResults.Add(result);
                 }
             }
 
-            return (provider.ProviderName, results);
+            return (provider.ProviderName, updatedResults);
         }
         catch (Exception ex)
         {

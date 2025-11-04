@@ -289,15 +289,24 @@ Respond with ONLY the JSON, no additional text.";
     {
         var keywords = request.Keywords.Take(3).ToList();
         var primaryQuery = string.Join(" ", keywords);
+        
+        var alternatives = new List<string>();
+        
+        if (keywords.Count >= 2)
+        {
+            alternatives.Add(string.Join(" ", keywords.Take(2)));
+        }
+        
+        var sceneWords = request.SceneDescription.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (sceneWords.Length >= 2)
+        {
+            alternatives.Add(string.Join(" ", sceneWords.Take(Math.Min(3, sceneWords.Length))));
+        }
 
         return new QueryCompositionResult
         {
             PrimaryQuery = primaryQuery,
-            AlternativeQueries = new List<string>
-            {
-                string.Join(" ", keywords.Take(2)),
-                request.SceneDescription.Split(' ').Take(3).Aggregate((a, b) => $"{a} {b}")
-            },
+            AlternativeQueries = alternatives,
             NegativeFilters = new List<string>(),
             Reasoning = "Fallback query composition using basic keywords",
             Confidence = 0.5

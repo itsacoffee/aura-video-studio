@@ -20,6 +20,8 @@ namespace Aura.Providers.Images;
 /// </summary>
 public class EnhancedPixabayProvider : IEnhancedStockProvider
 {
+    private const string VIMEO_THUMBNAIL_URL_TEMPLATE = "https://i.vimeocdn.com/video/{0}_295x166.jpg";
+
     private readonly ILogger<EnhancedPixabayProvider> _logger;
     private readonly HttpClient _httpClient;
     private readonly string? _apiKey;
@@ -230,7 +232,7 @@ public class EnhancedPixabayProvider : IEnhancedStockProvider
         if (video.TryGetProperty("picture_id", out var pictureId))
         {
             var picId = pictureId.GetString();
-            thumbnailUrl = $"https://i.vimeocdn.com/video/{picId}_295x166.jpg";
+            thumbnailUrl = string.Format(VIMEO_THUMBNAIL_URL_TEMPLATE, picId);
         }
 
         var width = 0;

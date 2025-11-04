@@ -286,9 +286,8 @@ public class StockMediaController : ControllerBase
         }
 
         var providers = dto.Providers
-            .Select(p => Enum.TryParse<StockMediaProvider>(p, true, out var provider) ? provider : (StockMediaProvider?)null)
-            .Where(p => p.HasValue)
-            .Select(p => p!.Value)
+            .Select(p => Enum.TryParse<StockMediaProvider>(p, true, out var provider) ? (StockMediaProvider?)provider : null)
+            .OfType<StockMediaProvider>()
             .ToList();
 
         return new StockMediaSearchRequest

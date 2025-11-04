@@ -11,6 +11,7 @@ namespace Aura.Core.Services.StockMedia;
 /// </summary>
 public class PerceptualHashService
 {
+    private const int HASH_LENGTH = 16;
     /// <summary>
     /// Generates a perceptual hash for media based on URL and dimensions
     /// </summary>
@@ -21,7 +22,7 @@ public class PerceptualHashService
         
         using var sha256 = SHA256.Create();
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(hashBytes)[..16];
+        return Convert.ToHexString(hashBytes)[..HASH_LENGTH];
     }
 
     /// <summary>
