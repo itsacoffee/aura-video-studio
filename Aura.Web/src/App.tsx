@@ -31,6 +31,7 @@ import { IdeationDashboard } from './pages/Ideation/IdeationDashboard';
 import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer';
 import LearningPage from './pages/Learning/LearningPage';
 import { TranslationPage } from './pages/Localization/TranslationPage';
+import { MLLabPage } from './pages/MLLab/MLLabPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
@@ -444,6 +445,7 @@ function App() {
                     <Route path="/prompt-management" element={<PromptManagementPage />} />
                     <Route path="/voice-enhancement" element={<VoiceEnhancementPage />} />
                     <Route path="/performance-analytics" element={<PerformanceAnalyticsPage />} />
+                    <Route path="/ml-lab" element={<MLLabPage />} />
                     <Route path="/ab-tests" element={<ABTestManagementPage />} />
                     <Route path="/audience" element={<AudienceManagementPage />} />
                     <Route path="/learning" element={<LearningPage />} />
