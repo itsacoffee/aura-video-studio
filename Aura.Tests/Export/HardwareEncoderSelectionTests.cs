@@ -174,4 +174,97 @@ public class HardwareEncoderSelectionTests
         // Assert
         Assert.Equal("libx265", encoder);
     }
+
+    [Theory]
+    [InlineData("NVIDIA", HardwareTier.A, true)]
+    [InlineData("NVIDIA", HardwareTier.B, true)]
+    [InlineData("NVIDIA", HardwareTier.C, false)]
+    [InlineData("AMD", HardwareTier.A, true)]
+    [InlineData("AMD", HardwareTier.B, true)]
+    [InlineData("AMD", HardwareTier.C, false)]
+    [InlineData("Intel", HardwareTier.A, true)]
+    [InlineData("Intel", HardwareTier.B, false)]
+    public void SupportsHardware10Bit_ReturnsCorrectValue(string vendor, HardwareTier tier, bool expected)
+    {
+        // Act
+        var supports10Bit = HardwareEncoderSelection.SupportsHardware10Bit(vendor, tier);
+
+        // Assert
+        Assert.Equal(expected, supports10Bit);
+    }
+
+    [Fact]
+    public void GetRecommendedEncoderWithAdvancedOptions_WithHdr10Bit_SelectsCorrectEncoder()
+    {
+        // Arrange
+        var preset = HdrPresets.YouTube4KHdr10;
+        var advancedOptions = preset.AdvancedOptions;
+
+        // Act - High-end NVIDIA card should support 10-bit
+        var encoder = HardwareEncoderSelection.GetRecommendedEncoderWithAdvancedOptions(
+            preset,
+            HardwareTier.A,
+            "NVIDIA",
+            hardwareAccelerationEnabled: true,
+            advancedOptions);
+
+        // Assert - Should use hardware encoder for 10-bit on tier A
+        Assert.Equal("hevc_nvenc", encoder);
+    }
+
+    [Fact]
+    public void GetRecommendedEncoderWithAdvancedOptions_WithHdr10BitLowTier_FallsBackToSoftware()
+    {
+        // Arrange
+        var preset = HdrPresets.YouTube4KHdr10;
+        var advancedOptions = preset.AdvancedOptions;
+
+        // Act - Low-end hardware doesn't support 10-bit
+        var encoder = HardwareEncoderSelection.GetRecommendedEncoderWithAdvancedOptions(
+            preset,
+            HardwareTier.C,
+            "NVIDIA",
+            hardwareAccelerationEnabled: true,
+            advancedOptions);
+
+        // Assert - Should fall back to software encoder
+        Assert.Equal("libx265", encoder);
+    }
+
+    [Fact]
+    public void GetRecommendedEncoderWithAdvancedOptions_WithoutAdvancedOptions_UsesStandardLogic()
+    {
+        // Arrange
+        var preset = ExportPresets.YouTube1080p;
+
+        // Act
+        var encoder = HardwareEncoderSelection.GetRecommendedEncoderWithAdvancedOptions(
+            preset,
+            HardwareTier.A,
+            "NVIDIA",
+            hardwareAccelerationEnabled: true,
+            advancedOptions: null);
+
+        // Assert - Should use standard encoder selection
+        Assert.Equal("h264_nvenc", encoder);
+    }
+
+    [Fact]
+    public void GetRecommendedEncoderWithAdvancedOptions_With8BitOptions_UsesHardwareEncoder()
+    {
+        // Arrange
+        var preset = ExportPresets.YouTube1080p;
+        var advancedOptions = new AdvancedCodecOptions { ColorDepth = ColorDepth.EightBit };
+
+        // Act
+        var encoder = HardwareEncoderSelection.GetRecommendedEncoderWithAdvancedOptions(
+            preset,
+            HardwareTier.A,
+            "NVIDIA",
+            hardwareAccelerationEnabled: true,
+            advancedOptions);
+
+        // Assert
+        Assert.Equal("h264_nvenc", encoder);
+    }
 }
