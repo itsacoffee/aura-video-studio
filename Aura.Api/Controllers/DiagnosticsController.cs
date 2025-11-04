@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
+using Aura.Core.AI.Adapters;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Providers;
@@ -35,6 +36,7 @@ public class DiagnosticsController : ControllerBase
     private readonly ErrorAggregationService? _errorAggregation;
     private readonly PerformanceTrackingService? _performanceTracking;
     private readonly DiagnosticReportGenerator? _reportGenerator;
+    private readonly ModelCatalog? _modelCatalog;
 
     public DiagnosticsController(
         ILogger<DiagnosticsController> logger,
@@ -48,7 +50,8 @@ public class DiagnosticsController : ControllerBase
         IResourceTracker? resourceTracker = null,
         ErrorAggregationService? errorAggregation = null,
         PerformanceTrackingService? performanceTracking = null,
-        DiagnosticReportGenerator? reportGenerator = null)
+        DiagnosticReportGenerator? reportGenerator = null,
+        ModelCatalog? modelCatalog = null)
     {
         _logger = logger;
         _healthService = healthService;
@@ -62,6 +65,7 @@ public class DiagnosticsController : ControllerBase
         _errorAggregation = errorAggregation;
         _performanceTracking = performanceTracking;
         _reportGenerator = reportGenerator;
+        _modelCatalog = modelCatalog;
     }
 
     /// <summary>
@@ -641,6 +645,65 @@ public class DiagnosticsController : ControllerBase
         {
             _logger.LogError(ex, "Error downloading diagnostic report");
             return StatusCode(500, new { Error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get model catalog diagnostics including available models and refresh status
+    /// </summary>
+    [HttpGet("models")]
+    public ActionResult<object> GetModelDiagnostics()
+    {
+        _logger.LogInformation("Model diagnostics requested");
+
+        try
+        {
+            if (_modelCatalog == null)
+            {
+                return Ok(new
+                {
+                    Status = "NotConfigured",
+                    Message = "Model catalog service not configured",
+                    UsingStaticRegistry = true,
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+
+            var providers = new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama" };
+            var modelsByProvider = providers.ToDictionary(
+                p => p,
+                p => _modelCatalog.GetAllModels(p).Select(m => new
+                {
+                    modelId = m.ModelId,
+                    maxTokens = m.MaxTokens,
+                    contextWindow = m.ContextWindow,
+                    aliases = m.Aliases ?? Array.Empty<string>(),
+                    isDeprecated = m.DeprecationDate.HasValue && m.DeprecationDate.Value <= DateTime.UtcNow,
+                    deprecationDate = m.DeprecationDate,
+                    replacementModel = m.ReplacementModel
+                }).ToList()
+            );
+
+            var totalModels = modelsByProvider.Values.Sum(list => list.Count);
+
+            return Ok(new
+            {
+                Status = "Configured",
+                TotalModels = totalModels,
+                ModelsByProvider = modelsByProvider,
+                NeedsRefresh = _modelCatalog.NeedsRefresh(),
+                Timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting model diagnostics");
+            return StatusCode(500, new
+            {
+                Status = "Error",
+                Error = ex.Message,
+                Timestamp = DateTime.UtcNow
+            });
         }
     }
 

@@ -1116,6 +1116,58 @@ else
     Log.Information("Startup validation completed successfully");
 }
 
+// Perform model catalog preflight check
+Log.Information("Initialization Phase 3.1: Model Catalog Preflight Check");
+try
+{
+    using var scope = app.Services.CreateScope();
+    var modelCatalog = scope.ServiceProvider.GetService<Aura.Core.AI.Adapters.ModelCatalog>();
+    var providerSettings = scope.ServiceProvider.GetService<Aura.Core.Configuration.ProviderSettings>();
+    
+    if (modelCatalog != null && providerSettings != null)
+    {
+        Log.Information("Starting model catalog preflight validation...");
+        
+        var apiKeys = new Dictionary<string, string>();
+        var openAiKey = providerSettings.GetOpenAiApiKey();
+        if (!string.IsNullOrWhiteSpace(openAiKey))
+            apiKeys["openai"] = openAiKey;
+            
+        var geminiKey = providerSettings.GetGeminiApiKey();
+        if (!string.IsNullOrWhiteSpace(geminiKey))
+            apiKeys["gemini"] = geminiKey;
+        
+        var ollamaUrl = providerSettings.GetOllamaUrl();
+        
+        var providersToCheck = new Dictionary<string, string>
+        {
+            ["OpenAI"] = "gpt-4o-mini",
+            ["Anthropic"] = "claude-3-5-sonnet-20241022",
+            ["Gemini"] = "gemini-1.5-pro",
+            ["Ollama"] = "llama3.1"
+        };
+        
+        var results = await modelCatalog.PreflightCheckAsync(providersToCheck, apiKeys, ollamaUrl);
+        
+        var availableCount = results.Count(r => r.Value);
+        Log.Information("Model catalog preflight completed: {Available}/{Total} providers available",
+            availableCount, results.Count);
+        
+        if (availableCount == 0)
+        {
+            Log.Warning("No LLM providers are available. The application will use RuleBased fallback provider.");
+        }
+    }
+    else
+    {
+        Log.Debug("Model catalog or provider settings not available - skipping preflight check");
+    }
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Model catalog preflight check failed. Application will continue with static registry.");
+}
+
 // Perform FFmpeg detection and validation
 Log.Information("Initialization Phase 3.5: FFmpeg Detection and Validation");
 try
