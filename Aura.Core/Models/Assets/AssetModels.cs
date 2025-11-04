@@ -69,6 +69,7 @@ public record Asset
     public int UsageCount { get; init; }
     public List<string> Collections { get; init; } = new();
     public string? DominantColor { get; init; }
+    public AssetLicensingInfo? Licensing { get; init; }
 }
 
 /// <summary>
@@ -143,4 +144,19 @@ public record AIImageGenerationRequest
     public int Steps { get; init; } = 30;
     public double CfgScale { get; init; } = 7.5;
     public int? Seed { get; init; }
+}
+
+/// <summary>
+/// Licensing information for an asset
+/// </summary>
+public record AssetLicensingInfo
+{
+    public string LicenseType { get; init; } = string.Empty;
+    public string? Attribution { get; init; }
+    public string? LicenseUrl { get; init; }
+    public bool CommercialUseAllowed { get; init; }
+    public bool AttributionRequired { get; init; }
+    public string? CreatorName { get; init; }
+    public string? CreatorUrl { get; init; }
+    public string SourcePlatform { get; init; } = string.Empty;
 }

@@ -77,6 +77,21 @@ public record VisualPrompt
     /// Reasoning/explanation for prompt choices
     /// </summary>
     public string Reasoning { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Subject of the visual (person, object, scene)
+    /// </summary>
+    public string Subject { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Framing instructions (tight framing, wide framing, etc.)
+    /// </summary>
+    public string Framing { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Narrative keywords for matching assets to scene content
+    /// </summary>
+    public IReadOnlyList<string> NarrativeKeywords { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>
