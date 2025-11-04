@@ -1602,3 +1602,86 @@ public record StartTrainingResponse(
     string JobId,
     string Message);
 
+/// <summary>
+/// Request to generate proxy media
+/// </summary>
+public record GenerateProxyRequest(
+    string SourcePath,
+    string Quality = "Preview",
+    bool BackgroundGeneration = true,
+    int Priority = 0,
+    bool Overwrite = false);
+
+/// <summary>
+/// Response with proxy media metadata
+/// </summary>
+public record ProxyMediaResponse(
+    string Id,
+    string SourcePath,
+    string ProxyPath,
+    string Quality,
+    string Status,
+    DateTime CreatedAt,
+    DateTime LastAccessedAt,
+    long FileSizeBytes,
+    long SourceFileSizeBytes,
+    int Width,
+    int Height,
+    int BitrateKbps,
+    string? ErrorMessage,
+    double ProgressPercent);
+
+/// <summary>
+/// Proxy cache statistics
+/// </summary>
+public record ProxyCacheStatsResponse(
+    int TotalProxies,
+    long TotalCacheSizeBytes,
+    long TotalSourceSizeBytes,
+    double CompressionRatio);
+
+/// <summary>
+/// Request to generate waveform data
+/// </summary>
+public record GenerateWaveformRequest(
+    string AudioPath,
+    int TargetSamples = 1000,
+    double StartTime = 0,
+    double EndTime = 0);
+
+/// <summary>
+/// Response with waveform data
+/// </summary>
+public record WaveformDataResponse(
+    float[] Data,
+    int SampleRate,
+    double Duration);
+
+/// <summary>
+/// Performance telemetry data
+/// </summary>
+public record PerformanceTelemetryDto(
+    double PlaybackFps,
+    double ScrubLatencyMs,
+    double CacheHitRate,
+    int FramesCached,
+    long CacheSizeBytes);
+
+/// <summary>
+/// Request to get video thumbnail
+/// </summary>
+public record GetThumbnailRequest(
+    string VideoPath,
+    double Timestamp,
+    int Width = 320,
+    int Height = 180);
+
+/// <summary>
+/// Response with thumbnail data
+/// </summary>
+public record ThumbnailResponse(
+    string Base64Image,
+    int Width,
+    int Height,
+    double Timestamp);
+

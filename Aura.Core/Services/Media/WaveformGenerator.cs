@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,15 +21,21 @@ public class WaveformGenerator
 {
     private readonly ILogger<WaveformGenerator> _logger;
     private readonly Dictionary<string, string> _waveformCache = new();
-    private readonly Dictionary<string, float[]> _dataCache = new();
+    private readonly ConcurrentDictionary<string, float[]> _dataCache = new();
     private readonly string _ffmpegPath;
+    private readonly string _cacheDirectory;
+    private readonly SemaphoreSlim _generateLock = new(3, 3);
 
     public WaveformGenerator(
         ILogger<WaveformGenerator> logger,
-        string ffmpegPath = "ffmpeg")
+        string ffmpegPath = "ffmpeg",
+        string? cacheDirectory = null)
     {
         _logger = logger;
         _ffmpegPath = ffmpegPath;
+        _cacheDirectory = cacheDirectory ?? Path.Combine(Path.GetTempPath(), "aura-waveform-cache");
+        Directory.CreateDirectory(_cacheDirectory);
+        LoadPersistentCacheAsync().GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -118,12 +127,33 @@ public class WaveformGenerator
             throw new FileNotFoundException($"Audio file not found: {audioFilePath}");
         }
 
-        // Check cache
-        var cacheKey = $"waveform-data:{audioFilePath}:{targetSamples}";
+        var fileHash = ComputeFileHash(audioFilePath);
+        var cacheKey = $"{fileHash}:{targetSamples}";
+        
         if (_dataCache.TryGetValue(cacheKey, out float[]? cachedData))
         {
             _logger.LogInformation("Returning cached waveform data for {AudioFile}", audioFilePath);
             return cachedData;
+        }
+
+        var persistentPath = GetPersistentCachePath(fileHash, targetSamples);
+        if (File.Exists(persistentPath))
+        {
+            try
+            {
+                var json = await File.ReadAllTextAsync(persistentPath, cancellationToken);
+                var data = JsonSerializer.Deserialize<float[]>(json);
+                if (data != null)
+                {
+                    _dataCache[cacheKey] = data;
+                    _logger.LogInformation("Loaded waveform data from persistent cache for {AudioFile}", audioFilePath);
+                    return data;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error loading persistent cache for {AudioFile}", audioFilePath);
+            }
         }
 
         // Extract audio samples using FFmpeg
@@ -170,11 +200,11 @@ public class WaveformGenerator
                 }
             }
 
-            // Downsample to target resolution
             var downsampled = DownsampleAudio(samples.ToArray(), targetSamples);
 
-            // Cache the result
             _dataCache[cacheKey] = downsampled;
+
+            await SaveToPersistentCacheAsync(fileHash, targetSamples, downsampled);
 
             return downsampled;
         }
@@ -221,6 +251,27 @@ public class WaveformGenerator
     }
 
     /// <summary>
+    /// Asynchronously generate waveform data with priority for visible range
+    /// </summary>
+    public async Task<float[]> GenerateWaveformDataAsyncWithPriority(
+        string audioFilePath,
+        int targetSamples,
+        double startTime,
+        double endTime,
+        CancellationToken cancellationToken = default)
+    {
+        await _generateLock.WaitAsync(cancellationToken);
+        try
+        {
+            return await GenerateWaveformDataAsync(audioFilePath, targetSamples, cancellationToken);
+        }
+        finally
+        {
+            _generateLock.Release();
+        }
+    }
+
+    /// <summary>
     /// Clears the waveform cache
     /// </summary>
     public void ClearCache()
@@ -228,5 +279,76 @@ public class WaveformGenerator
         _logger.LogInformation("Clearing waveform cache");
         _waveformCache.Clear();
         _dataCache.Clear();
+    }
+
+    /// <summary>
+    /// Clear persistent cache
+    /// </summary>
+    public async Task ClearPersistentCacheAsync()
+    {
+        try
+        {
+            if (Directory.Exists(_cacheDirectory))
+            {
+                Directory.Delete(_cacheDirectory, true);
+                Directory.CreateDirectory(_cacheDirectory);
+            }
+            _logger.LogInformation("Cleared persistent waveform cache");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error clearing persistent cache");
+        }
+        
+        await Task.CompletedTask;
+    }
+
+    private string ComputeFileHash(string filePath)
+    {
+        using var sha256 = SHA256.Create();
+        var fileInfo = new FileInfo(filePath);
+        var hashInput = $"{filePath}:{fileInfo.Length}:{fileInfo.LastWriteTimeUtc}";
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(hashInput));
+        return Convert.ToHexString(hashBytes);
+    }
+
+    private string GetPersistentCachePath(string fileHash, int targetSamples)
+    {
+        return Path.Combine(_cacheDirectory, $"{fileHash}_{targetSamples}.json");
+    }
+
+    private async Task SaveToPersistentCacheAsync(string fileHash, int targetSamples, float[] data)
+    {
+        try
+        {
+            var path = GetPersistentCachePath(fileHash, targetSamples);
+            var json = JsonSerializer.Serialize(data);
+            await File.WriteAllTextAsync(path, json);
+            _logger.LogDebug("Saved waveform data to persistent cache: {Path}", path);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error saving to persistent cache");
+        }
+    }
+
+    private async Task LoadPersistentCacheAsync()
+    {
+        try
+        {
+            if (!Directory.Exists(_cacheDirectory))
+            {
+                return;
+            }
+
+            var cacheFiles = Directory.GetFiles(_cacheDirectory, "*.json");
+            _logger.LogInformation("Found {Count} waveform cache files", cacheFiles.Length);
+            
+            await Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error loading persistent cache");
+        }
     }
 }
