@@ -76,14 +76,14 @@ public class LlmPrewarmService : IHostedService
                 
                 try
                 {
-                    await PrewarmSinglePromptAsync(prompt, ct);
+                    await PrewarmSinglePromptWithRetryAsync(prompt, ct);
                     Interlocked.Increment(ref successCount);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(
                         ex,
-                        "Failed to prewarm prompt: provider={Provider}, model={Model}, op={Operation}",
+                        "Failed to prewarm prompt after retries: provider={Provider}, model={Model}, op={Operation}",
                         prompt.ProviderName,
                         prompt.ModelName,
                         prompt.OperationType);
@@ -100,11 +100,16 @@ public class LlmPrewarmService : IHostedService
             
             var elapsed = DateTime.UtcNow - startTime;
             
+            var prewarmSuccessRate = _prewarmOptions.PrewarmPrompts.Count > 0
+                ? (successCount * 100.0) / _prewarmOptions.PrewarmPrompts.Count
+                : 0.0;
+            
             _logger.LogInformation(
-                "Cache prewarming completed: {Success} succeeded, {Failed} failed, elapsed {Elapsed:0.00}s",
+                "Cache prewarming completed: {Success} succeeded, {Failed} failed, elapsed {Elapsed:0.00}s, success_rate={SuccessRate:F1}%",
                 successCount,
                 failureCount,
-                elapsed.TotalSeconds);
+                elapsed.TotalSeconds,
+                prewarmSuccessRate);
         }
         catch (OperationCanceledException)
         {
@@ -113,6 +118,36 @@ public class LlmPrewarmService : IHostedService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during cache prewarming");
+        }
+    }
+    
+    private async Task PrewarmSinglePromptWithRetryAsync(PrewarmPrompt prompt, CancellationToken ct)
+    {
+        const int maxRetries = 3;
+        var retryDelayMs = 1000;
+        
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                await PrewarmSinglePromptAsync(prompt, ct);
+                return;
+            }
+            catch (Exception ex) when (attempt < maxRetries)
+            {
+                _logger.LogDebug(
+                    ex,
+                    "Prewarm attempt {Attempt}/{MaxRetries} failed for {Provider}/{Model}/{Operation}, retrying after {Delay}ms",
+                    attempt,
+                    maxRetries,
+                    prompt.ProviderName,
+                    prompt.ModelName,
+                    prompt.OperationType,
+                    retryDelayMs);
+                
+                await Task.Delay(retryDelayMs, ct);
+                retryDelayMs *= 2;
+            }
         }
     }
     
