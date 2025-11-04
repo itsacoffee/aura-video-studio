@@ -83,6 +83,7 @@ public class OrchestrationIntegrationTests
         var result = await _adapter.GeneratePlanAsync(brief, planSpec);
 
         // Assert
+        _mockProvider.Verify(p => p.CompleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         Assert.True(result.Success, result.ErrorMessage);
         Assert.NotNull(result.Data);
         Assert.Equal(5, result.Data.SceneCount);
