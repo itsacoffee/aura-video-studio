@@ -101,8 +101,6 @@ public class StructuredLlmProviderAdapter
         return result;
     }
 
-
-
     private string BuildPlanPrompt(Models.Brief brief, Models.PlanSpec planSpec)
     {
         return $@"Generate a detailed plan for a video based on the following brief:
@@ -185,11 +183,6 @@ Return a JSON object with this structure:
         }
         
         return trimmed;
-    }
-
-    private string ConvertToJson<T>(T obj)
-    {
-        return System.Text.Json.JsonSerializer.Serialize(obj);
     }
 
     private string GetProviderName()
