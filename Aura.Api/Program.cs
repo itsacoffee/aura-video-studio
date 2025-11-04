@@ -292,6 +292,16 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
 builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 
+// Register LLM Cache services
+builder.Services.Configure<Aura.Core.AI.Cache.LlmCacheOptions>(
+    builder.Configuration.GetSection("LlmCache"));
+builder.Services.Configure<Aura.Core.AI.Cache.LlmPrewarmOptions>(
+    builder.Configuration.GetSection("LlmPrewarm"));
+builder.Services.AddSingleton<Aura.Core.AI.Cache.ILlmCache, Aura.Core.AI.Cache.MemoryLlmCache>();
+builder.Services.AddSingleton<Aura.Core.AI.Cache.CachedLlmProviderService>();
+builder.Services.AddSingleton<Aura.Core.AI.Cache.LlmPrewarmService>();
+builder.Services.AddHostedService<Aura.Api.HostedServices.LlmCacheMaintenanceService>();
+
 // Register Conversation/Context Management services
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ContextPersistence>(sp =>
 {
