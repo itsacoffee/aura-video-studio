@@ -149,7 +149,7 @@ public static class RefinementRubricBuilder
                     ScoringGuideline = "100: Within 5% of target. 75: Within 15%. 50: Within 25%. 0: More than 25% off.",
                     ExcellentExamples = new List<string>
                     {
-                        "2-minute video has 280-320 words",
+                        "2-minute video has approximately 300 words (150 words/minute)",
                         "Pacing matches intended delivery speed",
                         "Natural breaks for visual elements"
                     },
