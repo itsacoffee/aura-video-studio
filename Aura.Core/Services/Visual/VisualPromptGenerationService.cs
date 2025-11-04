@@ -214,6 +214,10 @@ public class VisualPromptGenerationService
             reasoning += $". Visual-text synchronization applied (narration complexity: {avgComplexity:F0}, visual complexity inversely balanced).";
         }
 
+        var subject = ExtractSubject(scene.Script, llmResult);
+        var framing = DetermineFraming(shotType, cameraAngle);
+        var narrativeKeywords = ExtractNarrativeKeywords(scene.Script, llmResult);
+
         var prompt = new VisualPrompt
         {
             SceneIndex = scene.Index,
@@ -228,7 +232,10 @@ public class VisualPromptGenerationService
             ImportanceScore = importance,
             NegativeElements = negativeElements,
             Continuity = continuity,
-            Reasoning = reasoning
+            Reasoning = reasoning,
+            Subject = subject,
+            Framing = framing,
+            NarrativeKeywords = narrativeKeywords
         };
 
         var providerPrompts = _promptOptimizer.OptimizeForProviders(prompt);
@@ -433,5 +440,92 @@ public class VisualPromptGenerationService
             return CameraAngle.OverTheShoulder;
         else
             return CameraAngle.EyeLevel;
+    }
+
+    private static string ExtractSubject(string sceneScript, VisualPromptResult? llmResult)
+    {
+        if (!string.IsNullOrEmpty(llmResult?.DetailedDescription))
+        {
+            var words = llmResult.DetailedDescription.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var nouns = words.Where(w => w.Length > 3 && !IsCommonWord(w)).Take(3);
+            var subjectCandidate = string.Join(" ", nouns);
+            if (!string.IsNullOrEmpty(subjectCandidate))
+            {
+                return subjectCandidate;
+            }
+        }
+
+        var scriptWords = sceneScript.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var significantWords = scriptWords.Where(w => w.Length > 4 && !IsCommonWord(w)).Take(3);
+        return string.Join(" ", significantWords);
+    }
+
+    private static string DetermineFraming(ShotType shotType, CameraAngle angle)
+    {
+        var framingParts = new List<string>();
+
+        var shotTypeName = shotType switch
+        {
+            ShotType.ExtremeCloseUp => "extreme tight framing",
+            ShotType.CloseUp => "tight framing",
+            ShotType.MediumCloseUp => "medium-tight framing",
+            ShotType.MediumShot => "medium framing",
+            ShotType.WideShot => "wide framing",
+            ShotType.ExtremeWideShot => "very wide framing",
+            _ => "balanced framing"
+        };
+        framingParts.Add(shotTypeName);
+
+        var angleName = angle switch
+        {
+            CameraAngle.HighAngle => "high angle",
+            CameraAngle.LowAngle => "low angle",
+            CameraAngle.BirdsEye => "overhead",
+            CameraAngle.WormsEye => "ground level",
+            _ => "eye level"
+        };
+        framingParts.Add(angleName);
+
+        return string.Join(", ", framingParts);
+    }
+
+    private static IReadOnlyList<string> ExtractNarrativeKeywords(string sceneScript, VisualPromptResult? llmResult)
+    {
+        var keywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (llmResult?.StyleKeywords != null)
+        {
+            foreach (var keyword in llmResult.StyleKeywords.Take(5))
+            {
+                if (!IsCommonWord(keyword) && keyword.Length > 3)
+                {
+                    keywords.Add(keyword.ToLowerInvariant());
+                }
+            }
+        }
+
+        var scriptWords = sceneScript.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var word in scriptWords)
+        {
+            var cleanWord = word.Trim('.', ',', '!', '?', ';', ':').ToLowerInvariant();
+            if (cleanWord.Length > 4 && !IsCommonWord(cleanWord) && keywords.Count < 10)
+            {
+                keywords.Add(cleanWord);
+            }
+        }
+
+        return keywords.Take(8).ToArray();
+    }
+
+    private static readonly HashSet<string> CommonWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "the", "and", "with", "that", "this", "from", "have", "they", "what", "about",
+        "which", "when", "where", "there", "their", "would", "could", "should", "being",
+        "professional", "high", "quality", "detailed", "good", "nice", "great", "best"
+    };
+
+    private static bool IsCommonWord(string word)
+    {
+        return CommonWords.Contains(word.ToLowerInvariant());
     }
 }
