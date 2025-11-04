@@ -171,14 +171,16 @@ public class SchemaValidator
             errors.Add($"EmotionalIntensity must be between 0.0 and 1.0, got {schema.EmotionalIntensity}");
         
         var validDensities = new[] { "low", "medium", "high" };
-        if (!validDensities.Contains(schema.InformationDensity.ToLowerInvariant()))
+        if (string.IsNullOrWhiteSpace(schema.InformationDensity) || 
+            !validDensities.Contains(schema.InformationDensity.ToLowerInvariant()))
             errors.Add($"InformationDensity must be one of: {string.Join(", ", validDensities)}");
         
         if (schema.OptimalDurationSeconds < 0.5 || schema.OptimalDurationSeconds > 120.0)
             errors.Add($"OptimalDurationSeconds must be between 0.5 and 120.0, got {schema.OptimalDurationSeconds}");
         
         var validTransitions = new[] { "cut", "fade", "dissolve", "wipe" };
-        if (!validTransitions.Contains(schema.TransitionType.ToLowerInvariant()))
+        if (string.IsNullOrWhiteSpace(schema.TransitionType) ||
+            !validTransitions.Contains(schema.TransitionType.ToLowerInvariant()))
             errors.Add($"TransitionType must be one of: {string.Join(", ", validTransitions)}");
         
         if (string.IsNullOrWhiteSpace(schema.Reasoning) || schema.Reasoning.Length < 10)
