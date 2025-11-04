@@ -5,8 +5,8 @@
  */
 
 import { create } from 'zustand';
-import { Command, CommandHistory } from '../services/commandHistory';
 import { recordAction, undoAction } from '../services/api/actionsApi';
+import { Command, CommandHistory } from '../services/commandHistory';
 import type { RecordActionRequest } from '../types/api-v1';
 
 /**
@@ -105,14 +105,10 @@ export const useUndoManager = create<UndoManagerState>((set, get) => {
 
     execute: async (command: PersistableCommand) => {
       const { commandHistory, serverPersistenceEnabled } = get();
-      
+
       commandHistory.execute(command);
 
-      if (
-        serverPersistenceEnabled &&
-        command.isPersistent &&
-        command.getActionType
-      ) {
+      if (serverPersistenceEnabled && command.isPersistent && command.getActionType) {
         try {
           const request: RecordActionRequest = {
             userId: 'anonymous',
@@ -140,10 +136,10 @@ export const useUndoManager = create<UndoManagerState>((set, get) => {
 
     undo: async () => {
       const { commandHistory, serverPersistenceEnabled } = get();
-      
-      const lastCommand = commandHistory['undoStack'][
-        commandHistory['undoStack'].length - 1
-      ] as PersistableCommand | undefined;
+
+      const lastCommand = commandHistory['undoStack'][commandHistory['undoStack'].length - 1] as
+        | PersistableCommand
+        | undefined;
 
       const success = commandHistory.undo();
       if (!success) {
@@ -151,21 +147,13 @@ export const useUndoManager = create<UndoManagerState>((set, get) => {
         return;
       }
 
-      if (
-        serverPersistenceEnabled &&
-        lastCommand?.isPersistent &&
-        lastCommand?.serverActionId
-      ) {
+      if (serverPersistenceEnabled && lastCommand?.isPersistent && lastCommand?.serverActionId) {
         try {
           const response = await undoAction(lastCommand.serverActionId);
           if (response.success) {
-            console.log(
-              `Server action ${lastCommand.serverActionId} undone successfully`
-            );
+            console.log(`Server action ${lastCommand.serverActionId} undone successfully`);
           } else {
-            console.error(
-              `Failed to undo server action: ${response.errorMessage}`
-            );
+            console.error(`Failed to undo server action: ${response.errorMessage}`);
           }
         } catch (error: unknown) {
           const errorObj = error instanceof Error ? error : new Error(String(error));

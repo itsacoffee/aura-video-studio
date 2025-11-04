@@ -1030,3 +1030,83 @@ export interface ActionDetailResponse {
   errorMessage?: string;
   correlationId?: string;
 }
+
+// ============================================================================
+// ML TRAINING TYPES
+// ============================================================================
+
+/**
+ * Single frame annotation with rating
+ */
+export interface AnnotationItemDto {
+  framePath: string;
+  rating: number;
+  metadata?: Record<string, string>;
+}
+
+/**
+ * Batch of annotations for upload
+ */
+export interface AnnotationBatchDto {
+  userId: string;
+  annotations: AnnotationItemDto[];
+  timestamp: Date;
+}
+
+/**
+ * Statistics about stored annotations
+ */
+export interface AnnotationStatsDto {
+  userId: string;
+  totalAnnotations: number;
+  averageRating: number;
+  oldestAnnotation?: string;
+  newestAnnotation?: string;
+}
+
+/**
+ * Metrics from a training job
+ */
+export interface TrainingMetricsDto {
+  loss: number;
+  samples: number;
+  duration: string;
+  additionalMetrics?: Record<string, number>;
+}
+
+/**
+ * Status of a training job
+ */
+export interface TrainingJobStatusDto {
+  jobId: string;
+  state: 'Queued' | 'Running' | 'Completed' | 'Failed' | 'Cancelled';
+  progress: number;
+  metrics?: TrainingMetricsDto;
+  modelPath?: string;
+  error?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+/**
+ * Request to upload frame annotations
+ */
+export interface UploadAnnotationsRequest {
+  annotations: AnnotationItemDto[];
+}
+
+/**
+ * Request to start a training job
+ */
+export interface StartTrainingRequest {
+  modelName?: string;
+  pipelineConfig?: Record<string, string>;
+}
+
+/**
+ * Response after starting a training job
+ */
+export interface StartTrainingResponse {
+  jobId: string;
+  message: string;
+}

@@ -27,6 +27,7 @@ import {
   DataUsage24Regular,
   CheckmarkCircle24Regular,
   ShieldCheckmark24Regular,
+  SlideSettings24Regular,
 } from '@fluentui/react-icons';
 
 export interface NavItem {
@@ -111,6 +112,13 @@ export const navItems: NavItem[] = [
     name: 'Performance Analytics',
     icon: DataUsage24Regular,
     path: '/performance-analytics',
+    advancedOnly: true,
+  },
+  {
+    key: 'ml-lab',
+    name: 'ML Lab (Advanced)',
+    icon: SlideSettings24Regular,
+    path: '/ml-lab',
     advancedOnly: true,
   },
   {
