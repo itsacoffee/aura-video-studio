@@ -33,3 +33,22 @@ export interface CacheEvictResponse {
   entriesRemoved: number;
   entriesRemaining: number;
 }
+
+/**
+ * Response from cache remove operation
+ */
+export interface CacheRemoveResponse {
+  success: boolean;
+  message: string;
+  key: string;
+}
+
+/**
+ * Cache metadata for response
+ */
+export interface CacheMetadata {
+  fromCache: boolean;
+  cacheAge?: number;
+  accessCount?: number;
+  cacheKey?: string;
+}

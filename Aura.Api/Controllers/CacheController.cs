@@ -153,6 +153,82 @@ public class CacheController : ControllerBase
             });
         }
     }
+    
+    /// <summary>
+    /// Removes a specific cache entry by key
+    /// </summary>
+    /// <param name="key">Cache key to remove</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Success message</returns>
+    [HttpDelete("{key}")]
+    [ProducesResponseType(typeof(CacheRemoveResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CacheRemoveResponse>> RemoveEntry(string key, CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid cache key",
+                    Status = StatusCodes.Status400BadRequest,
+                    Detail = "Cache key cannot be null or empty",
+                    Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                });
+            }
+            
+            var removed = await _cache.RemoveAsync(key, ct);
+            
+            if (!removed)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Cache entry not found",
+                    Status = StatusCodes.Status404NotFound,
+                    Detail = $"No cache entry found with key: {key}",
+                    Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                });
+            }
+            
+            _logger.LogInformation(
+                "Cache entry removed: key={Key} (CorrelationId: {CorrelationId})",
+                key,
+                HttpContext.TraceIdentifier);
+            
+            var response = new CacheRemoveResponse
+            {
+                Success = true,
+                Message = $"Cache entry with key '{key}' removed successfully.",
+                Key = key
+            };
+            
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove cache entry");
+            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
+                Title = "Failed to remove cache entry",
+                Status = StatusCodes.Status500InternalServerError,
+                Detail = ex.Message,
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+    }
+    
+    /// <summary>
+    /// Forces a refresh by clearing the cache (alias for backwards compatibility)
+    /// </summary>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Success message</returns>
+    [HttpPost("refresh")]
+    [ProducesResponseType(typeof(CacheClearResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<CacheClearResponse>> ForceRefresh(CancellationToken ct)
+    {
+        return await Clear(ct);
+    }
 }
 
 /// <summary>
@@ -188,4 +264,14 @@ public record CacheEvictResponse
     public string Message { get; init; } = string.Empty;
     public int EntriesRemoved { get; init; }
     public int EntriesRemaining { get; init; }
+}
+
+/// <summary>
+/// Response model for cache remove operation
+/// </summary>
+public record CacheRemoveResponse
+{
+    public bool Success { get; init; }
+    public string Message { get; init; } = string.Empty;
+    public string Key { get; init; } = string.Empty;
 }
