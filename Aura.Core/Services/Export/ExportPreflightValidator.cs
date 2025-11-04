@@ -44,6 +44,9 @@ public class ExportPreflightValidator
     private readonly ILogger<ExportPreflightValidator> _logger;
     private readonly IHardwareDetector _hardwareDetector;
 
+    private const double DiskSpaceBufferMultiplier = 2.5;
+    private const double LowDiskSpaceThreshold = 1.5;
+
     public ExportPreflightValidator(
         ILogger<ExportPreflightValidator> logger,
         IHardwareDetector hardwareDetector)
@@ -86,7 +89,7 @@ public class ExportPreflightValidator
         // Check disk space
         var diskSpaceInfo = GetDiskSpaceInfo(outputDirectory);
         var estimatedFileSizeMB = ExportPresets.EstimateFileSizeMB(preset, videoDuration);
-        var requiredSpaceMB = estimatedFileSizeMB * 2.5; // Add 150% buffer for temporary files
+        var requiredSpaceMB = estimatedFileSizeMB * DiskSpaceBufferMultiplier;
 
         if (diskSpaceInfo.AvailableGB * 1024 < requiredSpaceMB)
         {
@@ -95,7 +98,7 @@ public class ExportPreflightValidator
                 $"Available: {diskSpaceInfo.AvailableGB * 1024:F2} MB"
             );
         }
-        else if (diskSpaceInfo.AvailableGB * 1024 < requiredSpaceMB * 1.5)
+        else if (diskSpaceInfo.AvailableGB * 1024 < requiredSpaceMB * LowDiskSpaceThreshold)
         {
             warnings.Add(
                 $"Low disk space. Required: {requiredSpaceMB:F2} MB, " +

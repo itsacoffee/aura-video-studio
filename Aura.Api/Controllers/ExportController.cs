@@ -408,6 +408,9 @@ public class ExportController : ControllerBase
                 ? Path.GetTempPath()
                 : request.OutputDirectory;
 
+            const double diskSpaceBufferMultiplier = 2.5;
+            var estimatedFileSizeMB = ExportPresets.EstimateFileSizeMB(preset, request.VideoDuration);
+            
             var result = new
             {
                 canProceed = true,
@@ -416,9 +419,9 @@ public class ExportController : ControllerBase
                 recommendations = new List<string>(),
                 estimates = new
                 {
-                    estimatedFileSizeMB = ExportPresets.EstimateFileSizeMB(preset, request.VideoDuration),
+                    estimatedFileSizeMB,
                     estimatedDurationMinutes = 1.0,
-                    requiredDiskSpaceMB = ExportPresets.EstimateFileSizeMB(preset, request.VideoDuration) * 2.5
+                    requiredDiskSpaceMB = estimatedFileSizeMB * diskSpaceBufferMultiplier
                 }
             };
 

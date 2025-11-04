@@ -144,9 +144,13 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   const runPreflightValidation = async () => {
     setLoading(true);
     try {
+      const minutes = Math.floor(videoDuration / 60);
+      const seconds = videoDuration % 60;
+      const formattedDuration = `00:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
       const response = await apiClient.post('/api/export/preflight', {
         presetName: selectedPreset,
-        videoDuration: `00:${Math.floor(videoDuration / 60)}:${videoDuration % 60}`,
+        videoDuration: formattedDuration,
         outputDirectory: '', // Use default
       });
       setPreflightResult(response.data);

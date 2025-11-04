@@ -138,6 +138,8 @@ public static class ExportMetadataExtensions
                $"{sizeMB:F2}MB, {durationStr}, {metadata.VideoCodec}/{metadata.AudioCodec}";
     }
 
+    private const double FrameRateTolerance = 0.1;
+
     /// <summary>
     /// Checks if the export matches expected preset parameters
     /// </summary>
@@ -154,8 +156,7 @@ public static class ExportMetadataExtensions
             );
         }
 
-        var fpsTolerance = 0.1;
-        if (Math.Abs(metadata.FrameRate - preset.FrameRate) > fpsTolerance)
+        if (Math.Abs(metadata.FrameRate - preset.FrameRate) > FrameRateTolerance)
         {
             issues.Add(
                 $"Frame rate mismatch: expected {preset.FrameRate}fps, " +

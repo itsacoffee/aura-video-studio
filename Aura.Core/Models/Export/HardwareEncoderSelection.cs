@@ -8,6 +8,14 @@ namespace Aura.Core.Models.Export;
 /// </summary>
 public static class HardwareEncoderSelection
 {
+    private const string PresetFast = "fast";
+    private const string PresetMedium = "medium";
+    private const string PresetSlow = "slow";
+    private const string PresetUltrafast = "ultrafast";
+    private const string PresetVeryfast = "veryfast";
+    private const string PresetSlower = "slower";
+    private const string PresetVeryslow = "veryslow";
+
     /// <summary>
     /// Gets the recommended encoder for a preset based on hardware capabilities
     /// </summary>
@@ -135,11 +143,11 @@ public static class HardwareEncoderSelection
     {
         return quality switch
         {
-            QualityLevel.Draft => "fast",
-            QualityLevel.Good => "medium",
-            QualityLevel.High => "slow",
-            QualityLevel.Maximum => "slow",
-            _ => "medium"
+            QualityLevel.Draft => PresetFast,
+            QualityLevel.Good => PresetMedium,
+            QualityLevel.High => PresetSlow,
+            QualityLevel.Maximum => PresetSlow,
+            _ => PresetMedium
         };
     }
 
@@ -147,20 +155,20 @@ public static class HardwareEncoderSelection
     {
         return (tier, quality) switch
         {
-            (HardwareTier.D, QualityLevel.Draft) => "ultrafast",
-            (HardwareTier.D, _) => "veryfast",
-            (HardwareTier.C, QualityLevel.Draft) => "veryfast",
-            (HardwareTier.C, QualityLevel.Good) => "fast",
-            (HardwareTier.C, _) => "medium",
-            (HardwareTier.B, QualityLevel.Draft) => "fast",
-            (HardwareTier.B, QualityLevel.Good) => "medium",
-            (HardwareTier.B, QualityLevel.High) => "slow",
-            (HardwareTier.B, QualityLevel.Maximum) => "slower",
-            (HardwareTier.A, QualityLevel.Draft) => "medium",
-            (HardwareTier.A, QualityLevel.Good) => "slow",
-            (HardwareTier.A, QualityLevel.High) => "slower",
-            (HardwareTier.A, QualityLevel.Maximum) => "veryslow",
-            _ => "medium"
+            (HardwareTier.D, QualityLevel.Draft) => PresetUltrafast,
+            (HardwareTier.D, _) => PresetVeryfast,
+            (HardwareTier.C, QualityLevel.Draft) => PresetVeryfast,
+            (HardwareTier.C, QualityLevel.Good) => PresetFast,
+            (HardwareTier.C, _) => PresetMedium,
+            (HardwareTier.B, QualityLevel.Draft) => PresetFast,
+            (HardwareTier.B, QualityLevel.Good) => PresetMedium,
+            (HardwareTier.B, QualityLevel.High) => PresetSlow,
+            (HardwareTier.B, QualityLevel.Maximum) => PresetSlower,
+            (HardwareTier.A, QualityLevel.Draft) => PresetMedium,
+            (HardwareTier.A, QualityLevel.Good) => PresetSlow,
+            (HardwareTier.A, QualityLevel.High) => PresetSlower,
+            (HardwareTier.A, QualityLevel.Maximum) => PresetVeryslow,
+            _ => PresetMedium
         };
     }
 

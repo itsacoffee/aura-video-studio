@@ -395,6 +395,7 @@ public class ExportValidator
             var fileHash = await ComputeFileHashAsync(filePath);
             var validationResult = await ValidateExportAsync(filePath, preset, probeResult.Duration ?? TimeSpan.Zero);
 
+            const int hashDisplayLength = 8;
             var metadata = new ExportMetadata
             {
                 FileHash = fileHash,
@@ -422,7 +423,7 @@ public class ExportValidator
                                           preset.VideoCodec.Contains("qsv")
             };
 
-            _logger.LogInformation("Metadata captured successfully. Hash: {Hash}", fileHash[..8]);
+            _logger.LogInformation("Metadata captured successfully. Hash: {Hash}", fileHash[..hashDisplayLength]);
             return metadata;
         }
         catch (Exception ex)
