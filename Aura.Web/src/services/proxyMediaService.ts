@@ -236,6 +236,13 @@ export class ProxyMediaService {
     return this.useProxyMode;
   }
 
+  /**
+   * Clear internal cache (for testing)
+   */
+  public clearInternalCache(): void {
+    this.proxies.clear();
+  }
+
   private getProxyKey(sourcePath: string, quality: string): string {
     return `${sourcePath}:${quality}`;
   }
