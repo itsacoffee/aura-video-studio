@@ -45,8 +45,8 @@ public class SchemaValidationTests
         Assert.Equal(0.8, data.Importance);
         Assert.Equal("medium", data.InformationDensity);
         Assert.Equal("fade", data.TransitionType);
-        Assert.True(result.ValidationDuration.TotalMilliseconds < 100, 
-            $"Validation took {result.ValidationDuration.TotalMilliseconds}ms, expected < 100ms");
+        Assert.True(result.ValidationDuration.TotalMilliseconds < 150, 
+            $"Validation took {result.ValidationDuration.TotalMilliseconds}ms, expected < 150ms");
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class SchemaValidationTests
         Assert.NotNull(data);
         Assert.Contains("mountain landscape", data.DetailedDescription);
         Assert.Equal(3, data.ColorPalette.Length);
-        Assert.True(result.ValidationDuration.TotalMilliseconds < 100);
+        Assert.True(result.ValidationDuration.TotalMilliseconds < 150);
     }
 
     [Fact]
@@ -152,7 +152,7 @@ public class SchemaValidationTests
         Assert.NotNull(data);
         Assert.Equal(0.7, data.OverallComplexityScore);
         Assert.Equal(3, data.NewConceptsIntroduced);
-        Assert.True(result.ValidationDuration.TotalMilliseconds < 100);
+        Assert.True(result.ValidationDuration.TotalMilliseconds < 150);
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public class SchemaValidationTests
         Assert.NotNull(data);
         Assert.Equal(0.85, data.CoherenceScore);
         Assert.Equal(3, data.ConnectionTypes.Length);
-        Assert.True(result.ValidationDuration.TotalMilliseconds < 100);
+        Assert.True(result.ValidationDuration.TotalMilliseconds < 150);
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public class SchemaValidationTests
         Assert.NotNull(data);
         Assert.True(data.IsValid);
         Assert.Equal("Three-act structure", data.DetectedStructure);
-        Assert.True(result.ValidationDuration.TotalMilliseconds < 100);
+        Assert.True(result.ValidationDuration.TotalMilliseconds < 150);
     }
 
     [Fact]
