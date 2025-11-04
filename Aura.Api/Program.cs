@@ -711,6 +711,63 @@ builder.Services.AddSingleton<Aura.Core.Services.Content.ScriptConverter>(sp =>
     return new Aura.Core.Services.Content.ScriptConverter(logger, llmProvider, adaptationEngine, audienceProfileStore);
 });
 
+// Register RAG services for Retrieval-Augmented Generation
+builder.Services.AddSingleton<Aura.Core.Services.RAG.EmbeddingConfig>(sp =>
+{
+    var config = builder.Configuration.GetSection("RAG:Embedding");
+    return new Aura.Core.Services.RAG.EmbeddingConfig
+    {
+        Provider = config.GetValue("Provider", Aura.Core.Services.RAG.EmbeddingProvider.Local),
+        ApiKey = config.GetValue<string>("ApiKey"),
+        BaseUrl = config.GetValue<string>("BaseUrl"),
+        ModelName = config.GetValue<string>("ModelName"),
+        DimensionSize = config.GetValue("DimensionSize", 384)
+    };
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.RAG.EmbeddingService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.RAG.EmbeddingService>>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var config = sp.GetRequiredService<Aura.Core.Services.RAG.EmbeddingConfig>();
+    return new Aura.Core.Services.RAG.EmbeddingService(logger, httpClientFactory, config);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.RAG.VectorIndex>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.RAG.VectorIndex>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var dataDir = Path.Combine(providerSettings.GetAuraDataDirectory(), "rag");
+    Directory.CreateDirectory(dataDir);
+    var indexPath = Path.Combine(dataDir, "vector_index.json");
+    return new Aura.Core.Services.RAG.VectorIndex(logger, indexPath);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.RAG.DocumentChunkingService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.RAG.DocumentChunkingService>>();
+    return new Aura.Core.Services.RAG.DocumentChunkingService(logger);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.RAG.RagContextBuilder>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.RAG.RagContextBuilder>>();
+    var vectorIndex = sp.GetRequiredService<Aura.Core.Services.RAG.VectorIndex>();
+    var embeddingService = sp.GetRequiredService<Aura.Core.Services.RAG.EmbeddingService>();
+    return new Aura.Core.Services.RAG.RagContextBuilder(logger, vectorIndex, embeddingService);
+});
+
+builder.Services.AddSingleton<Aura.Core.Services.RAG.DocumentIngestService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.RAG.DocumentIngestService>>();
+    var importService = sp.GetRequiredService<Aura.Core.Services.Content.DocumentImportService>();
+    var chunkingService = sp.GetRequiredService<Aura.Core.Services.RAG.DocumentChunkingService>();
+    var embeddingService = sp.GetRequiredService<Aura.Core.Services.RAG.EmbeddingService>();
+    var vectorIndex = sp.GetRequiredService<Aura.Core.Services.RAG.VectorIndex>();
+    return new Aura.Core.Services.RAG.DocumentIngestService(
+        logger, importService, chunkingService, embeddingService, vectorIndex);
+});
+
 // Register Script Enhancement services (for AI Audio Intelligence integration)
 builder.Services.AddSingleton<Aura.Core.Services.ScriptEnhancement.ScriptAnalysisService>(sp =>
 {
