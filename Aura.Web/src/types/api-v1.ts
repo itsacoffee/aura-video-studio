@@ -1240,3 +1240,115 @@ export interface PromptModifiersDto {
   enableChainOfThought?: boolean;
   promptVersion?: string | null;
 }
+
+// ============================================================================
+// PROJECT VERSIONING TYPES
+// ============================================================================
+
+/**
+ * Version type enum
+ */
+export type VersionType = 'Manual' | 'Autosave' | 'RestorePoint';
+
+/**
+ * Request to create a manual snapshot
+ */
+export interface CreateSnapshotRequest {
+  projectId: string;
+  name?: string | null;
+  description?: string | null;
+}
+
+/**
+ * Request to restore a version
+ */
+export interface RestoreVersionRequest {
+  projectId: string;
+  versionId: string;
+}
+
+/**
+ * Request to update version metadata
+ */
+export interface UpdateVersionRequest {
+  name?: string | null;
+  description?: string | null;
+  isMarkedImportant?: boolean | null;
+}
+
+/**
+ * Version response
+ */
+export interface VersionResponse {
+  id: string;
+  projectId: string;
+  versionNumber: number;
+  name?: string | null;
+  description?: string | null;
+  versionType: VersionType;
+  trigger?: string | null;
+  createdAt: string;
+  createdByUserId?: string | null;
+  storageSizeBytes: number;
+  isMarkedImportant: boolean;
+}
+
+/**
+ * Detailed version response
+ */
+export interface VersionDetailResponse extends VersionResponse {
+  briefJson?: string | null;
+  planSpecJson?: string | null;
+  voiceSpecJson?: string | null;
+  renderSpecJson?: string | null;
+  timelineJson?: string | null;
+}
+
+/**
+ * Version list response
+ */
+export interface VersionListResponse {
+  versions: VersionResponse[];
+  totalCount: number;
+  totalStorageBytes: number;
+}
+
+/**
+ * Version comparison response
+ */
+export interface VersionComparisonResponse {
+  version1Id: string;
+  version2Id: string;
+  version1Number: number;
+  version2Number: number;
+  briefChanged: boolean;
+  planChanged: boolean;
+  voiceChanged: boolean;
+  renderChanged: boolean;
+  timelineChanged: boolean;
+  version1Data: VersionDataDto;
+  version2Data: VersionDataDto;
+}
+
+/**
+ * Version data for comparison
+ */
+export interface VersionDataDto {
+  briefJson?: string | null;
+  planSpecJson?: string | null;
+  voiceSpecJson?: string | null;
+  renderSpecJson?: string | null;
+  timelineJson?: string | null;
+}
+
+/**
+ * Storage usage response
+ */
+export interface StorageUsageResponse {
+  totalBytes: number;
+  versionCount: number;
+  autosaveCount: number;
+  manualCount: number;
+  restorePointCount: number;
+  formattedSize: string;
+}

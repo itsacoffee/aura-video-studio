@@ -1790,3 +1790,110 @@ public record GuidedModeTelemetryDto(
     string? FeedbackRating = null,
     Dictionary<string, string>? Metadata = null);
 
+// Project Versioning DTOs
+
+/// <summary>
+/// Request to create a manual snapshot
+/// </summary>
+public record CreateSnapshotRequest(
+    Guid ProjectId,
+    string? Name = null,
+    string? Description = null);
+
+/// <summary>
+/// Request to restore a version
+/// </summary>
+public record RestoreVersionRequest(
+    Guid ProjectId,
+    Guid VersionId);
+
+/// <summary>
+/// Request to update version metadata
+/// </summary>
+public record UpdateVersionRequest(
+    string? Name = null,
+    string? Description = null,
+    bool? IsMarkedImportant = null);
+
+/// <summary>
+/// Response with version information
+/// </summary>
+public record VersionResponse(
+    Guid Id,
+    Guid ProjectId,
+    int VersionNumber,
+    string? Name,
+    string? Description,
+    string VersionType,
+    string? Trigger,
+    DateTime CreatedAt,
+    string? CreatedByUserId,
+    long StorageSizeBytes,
+    bool IsMarkedImportant);
+
+/// <summary>
+/// Response with detailed version data
+/// </summary>
+public record VersionDetailResponse(
+    Guid Id,
+    Guid ProjectId,
+    int VersionNumber,
+    string? Name,
+    string? Description,
+    string VersionType,
+    string? Trigger,
+    DateTime CreatedAt,
+    string? CreatedByUserId,
+    string? BriefJson,
+    string? PlanSpecJson,
+    string? VoiceSpecJson,
+    string? RenderSpecJson,
+    string? TimelineJson,
+    long StorageSizeBytes,
+    bool IsMarkedImportant);
+
+/// <summary>
+/// Response with list of versions
+/// </summary>
+public record VersionListResponse(
+    List<VersionResponse> Versions,
+    int TotalCount,
+    long TotalStorageBytes);
+
+/// <summary>
+/// Response with version comparison
+/// </summary>
+public record VersionComparisonResponse(
+    Guid Version1Id,
+    Guid Version2Id,
+    int Version1Number,
+    int Version2Number,
+    bool BriefChanged,
+    bool PlanChanged,
+    bool VoiceChanged,
+    bool RenderChanged,
+    bool TimelineChanged,
+    VersionDataDto Version1Data,
+    VersionDataDto Version2Data);
+
+/// <summary>
+/// Version data for comparison
+/// </summary>
+public record VersionDataDto(
+    string? BriefJson = null,
+    string? PlanSpecJson = null,
+    string? VoiceSpecJson = null,
+    string? RenderSpecJson = null,
+    string? TimelineJson = null);
+
+/// <summary>
+/// Storage usage information
+/// </summary>
+public record StorageUsageResponse(
+    long TotalBytes,
+    int VersionCount,
+    int AutosaveCount,
+    int ManualCount,
+    int RestorePointCount,
+    string FormattedSize);
+

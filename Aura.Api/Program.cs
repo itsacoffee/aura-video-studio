@@ -168,6 +168,12 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
 builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
 builder.Services.AddScoped<Aura.Core.Services.CheckpointManager>();
 
+// Register project versioning services
+builder.Services.AddScoped<Aura.Core.Data.ProjectVersionRepository>();
+builder.Services.AddScoped<Aura.Core.Services.ProjectVersionService>();
+builder.Services.AddSingleton<Aura.Api.HostedServices.ProjectAutosaveService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Api.HostedServices.ProjectAutosaveService>());
+
 // Register ActionService for server-side undo/redo
 builder.Services.AddScoped<Aura.Core.Services.IActionService, Aura.Core.Services.ActionService>();
 
