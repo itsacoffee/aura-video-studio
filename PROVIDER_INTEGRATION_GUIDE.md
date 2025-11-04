@@ -940,6 +940,383 @@ Images: SD WebUI (if available) > Solid Color
 9. **Clean up resources**: Delete temp files after use
 10. **Document changes**: Note provider version and config
 
+## Music and Sound Effects Providers
+
+### Overview
+
+Aura Video Studio provides intelligent music and sound effects selection with full licensing tracking. The system supports both stock libraries and optional generative providers.
+
+### Music Providers
+
+#### LocalStock Music Provider
+
+**Location**: `Aura.Providers/Music/LocalStockMusicProvider.cs`
+
+**Description**: Uses pre-downloaded royalty-free music from local library.
+
+**Configuration**:
+```json
+{
+  "Music": {
+    "LocalLibraryPath": "C:/ProgramData/Aura/Music"
+  }
+}
+```
+
+**Features**:
+- Automatic metadata inference from filenames
+- Genre, mood, energy level, and BPM detection
+- Supports MP3, WAV, and OGG formats
+- Mock library fallback when no files present
+- Zero API costs
+
+**File Naming Convention**:
+- Include descriptors in filename: `upbeat_corporate_128bpm.mp3`
+- Supported keywords: energetic, calm, dramatic, ambient, corporate, cinematic
+- BPM inferred from energy level if not in filename
+
+**Advantages**:
+- Completely offline
+- No API keys required
+- Instant search and access
+- Perfect for development and testing
+
+**Limitations**:
+- Manual library management
+- Limited selection without downloaded content
+- No automatic content discovery
+
+#### Freesound (SFX)
+
+**Location**: `Aura.Providers/Sfx/FreesoundSfxProvider.cs`
+
+**Description**: Freesound.org API integration for community-sourced sound effects.
+
+**Configuration**:
+```json
+{
+  "Providers": {
+    "Sfx": {
+      "Freesound": {
+        "ApiKey": "your-freesound-api-key"
+      }
+    }
+  }
+}
+```
+
+**Getting API Key**:
+1. Register at https://freesound.org
+2. Apply for API key at https://freesound.org/apiv2/apply/
+3. Wait for approval (usually instant)
+
+**Features**:
+- 500,000+ sound effects
+- Tag-based search
+- Duration filtering
+- License tracking (CC0, CC-BY, CC-BY-NC, etc.)
+- HQ preview MP3s
+- Commercial use filtering
+
+**Advantages**:
+- Massive library of sounds
+- High-quality recordings
+- Free with API key
+- Active community
+- Clear licensing information
+
+**Rate Limits**:
+- 60 requests per minute (authenticated)
+- 2000 requests per day
+
+**Licensing**:
+- Multiple Creative Commons licenses
+- License info included in metadata
+- Attribution text automatically generated
+- Commercial use flag per asset
+
+### Audio Intelligence Services
+
+#### Music Recommendation Service
+
+**Location**: `Aura.Core/Services/AudioIntelligence/MusicRecommendationService.cs`
+
+**Features**:
+- LLM-assisted genre/BPM/intensity recommendations
+- Mood-based search (Happy, Calm, Energetic, Dramatic, etc.)
+- Energy level matching (VeryLow to VeryHigh)
+- Scene-specific recommendations with emotional arc
+- Relevance scoring and ranking
+
+**Usage**:
+```csharp
+var recommendations = await musicService.RecommendMusicAsync(
+    mood: MusicMood.Uplifting,
+    preferredGenre: MusicGenre.Corporate,
+    energy: EnergyLevel.High,
+    duration: TimeSpan.FromMinutes(3),
+    context: "product launch video",
+    maxResults: 10
+);
+```
+
+#### Sound Effect Service
+
+**Location**: `Aura.Core/Services/AudioIntelligence/SoundEffectService.cs`
+
+**Features**:
+- Script-based SFX suggestions
+- Keyword detection (click, reveal, whoosh, impact, etc.)
+- Precise timing cues from scene analysis
+- Transition effects between scenes
+- Type classification (UI, Impact, Ambient, etc.)
+
+**Automatic Detection**:
+- Technology/UI: "click", "button", "select"
+- Reveals: "unveil", "present", "introduce"
+- Motion: "move", "fly", "zoom", "slide"
+- Completion: "done", "success", "achieve"
+- Action: "hit", "strike", "impact"
+
+**Usage**:
+```csharp
+var suggestions = await sfxService.SuggestSoundEffectsAsync(
+    script: scriptText,
+    sceneDurations: sceneDurations,
+    contentType: "tutorial"
+);
+```
+
+#### Audio Normalization Service
+
+**Location**: `Aura.Core/Services/AudioIntelligence/AudioNormalizationService.cs`
+
+**Features**:
+- EBU R128 loudness normalization (target LUFS)
+- Intelligent ducking with configurable attack/release
+- Audio compression for dynamic range control
+- Voice EQ with high-pass, presence boost, de-esser
+- Multi-track mixing with volume control
+- Complete processing pipeline
+
+**Normalization Example**:
+```csharp
+await normalizationService.NormalizeToLUFSAsync(
+    inputPath: "audio.wav",
+    outputPath: "normalized.wav",
+    targetLUFS: -14.0  // YouTube standard
+);
+```
+
+**Ducking Example**:
+```csharp
+var duckingSettings = new DuckingSettings(
+    DuckDepthDb: -12.0,
+    AttackTime: TimeSpan.FromMilliseconds(100),
+    ReleaseTime: TimeSpan.FromMilliseconds(500),
+    Threshold: 0.02
+);
+
+await normalizationService.ApplyDuckingAsync(
+    musicPath: "music.wav",
+    narrationPath: "voice.wav",
+    outputPath: "ducked.wav",
+    settings: duckingSettings
+);
+```
+
+**LUFS Targets**:
+- YouTube: -14 LUFS
+- Spotify: -14 LUFS
+- Apple Music: -16 LUFS
+- Podcasts: -16 to -19 LUFS
+- Broadcast TV: -23 to -24 LUFS
+
+#### Licensing Service
+
+**Location**: `Aura.Core/Services/AudioIntelligence/LicensingService.cs`
+
+**Features**:
+- Asset usage tracking per job
+- Commercial use validation
+- Attribution requirement identification
+- Multiple export formats (CSV, JSON, HTML, Text)
+- License URL collection
+- Per-scene asset tracking
+
+**Tracking Usage**:
+```csharp
+licensingService.TrackAssetUsage(
+    jobId: "job-123",
+    asset: musicAsset,
+    sceneIndex: 0,
+    startTime: TimeSpan.Zero,
+    duration: TimeSpan.FromSeconds(30),
+    isSelected: true
+);
+```
+
+**Export Formats**:
+- **CSV**: Spreadsheet-compatible for record keeping
+- **JSON**: Structured data for programmatic access
+- **HTML**: Formatted report for video credits
+- **Text**: Human-readable licensing summary
+
+**Validation**:
+```csharp
+var (isValid, issues) = await licensingService.ValidateForCommercialUseAsync(jobId);
+
+if (!isValid)
+{
+    // Handle licensing restrictions
+    foreach (var issue in issues)
+    {
+        Console.WriteLine(issue);
+    }
+}
+```
+
+### Audio Mixing Service
+
+**Location**: `Aura.Core/Services/AudioIntelligence/AudioMixingService.cs`
+
+**Features**:
+- Content-type aware mixing suggestions
+- Automatic volume level calculation
+- Ducking configuration for narration clarity
+- EQ settings for voice clarity
+- Compression settings by content type
+- Frequency conflict detection
+
+**Content Types**:
+- Educational/Tutorial: Voice-forward (narration 100%, music 25%)
+- Corporate/Promotional: Balanced (narration 95%, music 40%)
+- Gaming/Action: Effects-heavy (narration 90%, music 60%, SFX 70%)
+- Music Video: Music-forward (narration 70%, music 90%)
+
+**Usage**:
+```csharp
+var mixing = await mixingService.GenerateMixingSuggestionsAsync(
+    contentType: "educational",
+    hasNarration: true,
+    hasMusic: true,
+    hasSoundEffects: true,
+    targetLUFS: -14.0
+);
+```
+
+### API Endpoints
+
+#### Music Library
+
+```bash
+# Search for music
+POST /api/music-library/music/search
+{
+  "mood": "Uplifting",
+  "genre": "Corporate",
+  "energy": "High",
+  "minBPM": 120,
+  "maxBPM": 140,
+  "commercialUseOnly": true,
+  "pageSize": 20
+}
+
+# Get specific track
+GET /api/music-library/music/{provider}/{assetId}
+
+# Get preview URL
+GET /api/music-library/music/{provider}/{assetId}/preview
+
+# Search SFX
+POST /api/music-library/sfx/search
+{
+  "type": "Impact",
+  "tags": ["click", "ui"],
+  "maxDuration": "00:00:02",
+  "commercialUseOnly": true
+}
+
+# Find SFX by tags
+POST /api/music-library/sfx/find-by-tags
+["whoosh", "transition"]
+
+# Get licensing summary
+GET /api/music-library/licensing/{jobId}
+
+# Export licensing
+POST /api/music-library/licensing/export
+{
+  "jobId": "job-123",
+  "format": "HTML",
+  "includeUnused": false
+}
+
+# Validate for commercial use
+GET /api/music-library/licensing/{jobId}/validate
+
+# List providers
+GET /api/music-library/providers/music
+GET /api/music-library/providers/sfx
+```
+
+### Best Practices for Music and SFX
+
+1. **Always Track Licensing**: Use `LicensingService.TrackAssetUsage()` for every asset
+2. **Validate Before Export**: Check commercial use permissions before finalizing
+3. **Export Licensing Info**: Include licensing report with every video delivery
+4. **Use Appropriate LUFS**: Match target platform standards (-14 for YouTube/Spotify)
+5. **Apply Ducking**: Music should duck -10 to -15 dB when narration plays
+6. **Test Preview URLs**: Verify previews work before showing to users
+7. **Handle Freesound Rate Limits**: Implement exponential backoff
+8. **Cache Search Results**: Avoid repeated API calls for same searches
+9. **Provide Attribution**: Always include required attributions in video credits
+10. **Filter by Commercial Use**: When producing commercial content, filter assets upfront
+
+### Troubleshooting Music and SFX
+
+#### No Music Providers Available
+
+**Solutions**:
+- Check LocalStock library path exists
+- Verify Freesound API key is configured
+- Check provider availability via `/api/music-library/providers/music`
+- Review logs for provider initialization errors
+
+#### Freesound API Errors
+
+**Solutions**:
+- Verify API key is valid at https://freesound.org/apiv2/
+- Check rate limits (60 req/min, 2000 req/day)
+- Ensure network connectivity to freesound.org
+- Review Freesound API status page
+
+#### Licensing Validation Failures
+
+**Solutions**:
+- Review licensing summary to identify non-commercial assets
+- Replace restricted assets with commercial-friendly alternatives
+- Consider upgrading to premium providers (if available)
+- Export licensing report to verify all attributions
+
+#### Audio Normalization Issues
+
+**Solutions**:
+- Ensure FFmpeg is installed and in PATH
+- Verify input files exist and are valid audio formats
+- Check disk space for temporary processing files
+- Review FFmpeg logs for specific error messages
+- Validate target LUFS is reasonable (-24 to -10)
+
+#### Ducking Not Working
+
+**Solutions**:
+- Verify both music and narration files exist
+- Check ducking settings (attack/release times)
+- Ensure duck depth is negative (-10 to -15 dB typical)
+- Test with shorter audio clips first
+- Check FFmpeg sidechain compression support
+
 ## Additional Resources
 
 - OpenAI Documentation: https://platform.openai.com/docs
@@ -950,6 +1327,9 @@ Images: SD WebUI (if available) > Solid Color
 - Azure TTS Documentation: https://learn.microsoft.com/azure/ai-services/speech-service/
 - Piper TTS: https://github.com/rhasspy/piper
 - AUTOMATIC1111 WebUI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
+- Freesound API Documentation: https://freesound.org/docs/api/
+- EBU R128 Loudness Standard: https://tech.ebu.ch/docs/r/r128.pdf
+- FFmpeg Audio Filters: https://ffmpeg.org/ffmpeg-filters.html#Audio-Filters
 
 ## Support
 
