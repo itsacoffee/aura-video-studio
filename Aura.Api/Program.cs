@@ -292,6 +292,11 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
 builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
 builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
 
+// Register provider profile and validation services
+builder.Services.AddSingleton<Aura.Core.Services.ProviderProfileService>();
+builder.Services.AddSingleton<Aura.Core.Services.PreflightValidationService>();
+builder.Services.AddHttpClient<Aura.Core.Services.PreflightValidationService>();
+
 // Register LLM Cache services
 builder.Services.Configure<Aura.Core.AI.Cache.LlmCacheOptions>(
     builder.Configuration.GetSection("LlmCache"));

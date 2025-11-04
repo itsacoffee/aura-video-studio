@@ -50,7 +50,7 @@ public class StructuredLlmProviderAdapter
                 
                 if (_adapter != null)
                 {
-                    finalPrompt = _adapter.OptimizeUserPrompt(finalPrompt, LlmOperationType.Creative);
+                    finalPrompt = _adapter.OptimizeUserPrompt(finalPrompt, Adapters.LlmOperationType.Creative);
                 }
                 
                 var response = await _provider.CompleteAsync(finalPrompt, token);
@@ -86,7 +86,7 @@ public class StructuredLlmProviderAdapter
                 
                 if (_adapter != null)
                 {
-                    finalPrompt = _adapter.OptimizeUserPrompt(finalPrompt, LlmOperationType.Creative);
+                    finalPrompt = _adapter.OptimizeUserPrompt(finalPrompt, Adapters.LlmOperationType.Creative);
                 }
                 
                 var response = await _provider.CompleteAsync(finalPrompt, token);

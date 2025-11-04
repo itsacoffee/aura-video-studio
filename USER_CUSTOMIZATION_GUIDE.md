@@ -6,6 +6,7 @@ This guide explains how to use the comprehensive user customization framework in
 
 Aura Video Studio now provides granular control over:
 
+- **Model Selection and Pinning**: Explicit control over which AI models are used at every pipeline stage
 - **Custom Audience Profiles**: Define audience characteristics beyond preset profiles
 - **Content Filtering**: Control what content is acceptable with custom policies
 - **AI Behavior**: Customize LLM parameters and prompts for each pipeline stage
@@ -558,3 +559,289 @@ For questions or suggestions about the customization framework:
 | `/api/user-preferences/filtering-policies/{id}` | DELETE | Delete policy |
 | `/api/user-preferences/export` | GET | Export all preferences |
 | `/api/user-preferences/import` | POST | Import preferences |
+
+## Model Selection and Pinning
+
+### Overview
+
+Aura Video Studio provides explicit, always-manual control over which AI models are used at every decision point in the video generation pipeline. You maintain complete control - the system never silently swaps or auto-chooses a model that overrides your explicit selections.
+
+### Key Principles
+
+1. **User Control First**: No silent model swaps - all changes require explicit user action
+2. **Pin to Lock**: Pin models to prevent any automatic changes, even when a model becomes unavailable
+3. **Graceful Degradation**: When a pinned model is unavailable, the system blocks and presents options rather than auto-switching
+4. **Full Auditability**: All model selections and resolutions are logged with who/when/why/source
+
+### Model Selection Precedence
+
+The system follows this strict precedence order when resolving which model to use:
+
+| Priority | Source | Behavior if Unavailable | Use Case |
+|----------|--------|------------------------|----------|
+| 1 | **Run Override (Pinned)** | ❌ Blocks - requires user decision | CLI/API with `--pin-model` for critical runs |
+| 2 | **Run Override** | ✓ Falls back to next priority | CLI/API for one-off model testing |
+| 3 | **Stage Pinned** | ❌ Blocks - requires user decision | Lock specific stages to specific models |
+| 4 | **Project Override** | ✓ Falls back to next priority | Per-project model preferences |
+| 5 | **Global Default** | ✓ Falls back to next priority | Application-wide defaults |
+| 6 | **Automatic Fallback** | Only if explicitly enabled (OFF by default) | Safe fallback when no explicit selection exists |
+
+### Using the UI
+
+#### Setting a Model for a Pipeline Stage
+
+1. Navigate to **Settings → Model Selection**
+2. Find the pipeline stage (e.g., "Script Generation Model")
+3. Select your preferred model from the dropdown
+4. Optionally click **Pin** to prevent any automatic changes
+5. Changes are saved immediately
+
+#### Understanding the Pin/Lock Feature
+
+- **Unpinned (default)**: If the model becomes unavailable, the system will fall back to the next priority level
+- **Pinned**: If the model becomes unavailable, the pipeline will **block** and show a modal with options:
+  - Apply recommended alternative
+  - Retry with original model later
+  - Continue with global defaults
+  - Cancel the run
+
+#### Testing a Model
+
+1. Select a model in the picker
+2. Click the **Test** button
+3. The system runs a lightweight probe to verify:
+   - Model is accessible with your API key
+   - Model capabilities (context window, max tokens)
+   - Deprecation status
+   - Response time
+
+#### Handling Deprecated Models
+
+When you select a deprecated model, you'll see:
+- A **Deprecated** badge on the picker
+- A confirmation dialog explaining the deprecation
+- The recommended replacement model
+- Option to "Use Anyway" if you explicitly need the deprecated model
+
+### Using the API
+
+#### Get Available Models
+
+```bash
+GET /api/models/available?provider=OpenAI
+
+Response:
+{
+  "providers": {
+    "OpenAI": [
+      {
+        "provider": "OpenAI",
+        "modelId": "gpt-4o",
+        "maxTokens": 128000,
+        "contextWindow": 128000,
+        "aliases": ["gpt-4o-latest"],
+        "isDeprecated": false
+      },
+      ...
+    ]
+  },
+  "totalCount": 15,
+  "correlationId": "xyz789"
+}
+```
+
+#### Get Current Selections
+
+```bash
+GET /api/models/selection
+
+Response:
+{
+  "globalDefaults": [
+    {
+      "provider": "OpenAI",
+      "stage": "",
+      "modelId": "gpt-4o-mini",
+      "scope": "Global",
+      "isPinned": false,
+      "setBy": "user",
+      "setAt": "2025-11-04T19:30:00Z",
+      "reason": "User selection"
+    }
+  ],
+  "stageSelections": [
+    {
+      "provider": "OpenAI",
+      "stage": "script",
+      "modelId": "gpt-4o",
+      "scope": "Stage",
+      "isPinned": true,
+      "setBy": "user",
+      "setAt": "2025-11-04T19:35:00Z",
+      "reason": "User pinned for consistency"
+    }
+  ],
+  "allowAutomaticFallback": false,
+  "correlationId": "abc123"
+}
+```
+
+#### Set Model Selection
+
+```bash
+POST /api/models/selection
+Content-Type: application/json
+
+{
+  "provider": "OpenAI",
+  "stage": "script",
+  "modelId": "gpt-4o",
+  "scope": "Stage",
+  "pin": true,
+  "reason": "Need consistent script quality"
+}
+
+Response:
+{
+  "applied": true,
+  "reason": "Model selection saved successfully",
+  "deprecationWarning": null,
+  "correlationId": "def456"
+}
+```
+
+#### Clear Selections
+
+```bash
+POST /api/models/selection/clear
+Content-Type: application/json
+
+{
+  "provider": "OpenAI",
+  "stage": "script",
+  "scope": "Stage"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Selections cleared successfully",
+  "correlationId": "ghi789"
+}
+```
+
+#### Test a Model
+
+```bash
+POST /api/models/test
+Content-Type: application/json
+
+{
+  "provider": "OpenAI",
+  "modelId": "gpt-4o",
+  "apiKey": "sk-..."
+}
+
+Response:
+{
+  "provider": "OpenAI",
+  "modelId": "gpt-4o",
+  "isAvailable": true,
+  "isDeprecated": false,
+  "contextWindow": 128000,
+  "maxTokens": 128000,
+  "errorMessage": null,
+  "testedAt": "2025-11-04T19:40:00Z",
+  "correlationId": "jkl012"
+}
+```
+
+### Using the CLI
+
+#### Set Model Override for a Run
+
+```bash
+# One-time override (not pinned)
+aura generate --model gpt-4o --brief "..."
+
+# Pinned override (blocks if unavailable)
+aura generate --model gpt-4o --pin-model --brief "..."
+
+# Per-stage override
+aura generate --script-model gpt-4o --visual-model claude-3-opus --brief "..."
+```
+
+#### Allow Automatic Fallback
+
+```bash
+# For CI/CD scenarios where automatic fallback is acceptable
+aura generate --allow-auto-fallback --brief "..."
+```
+
+### Settings: Allow Automatic Fallback
+
+By default, automatic fallback is **disabled**. This means:
+- If no explicit model selection exists and no fallback is configured, operations will block
+- You must either set a model selection or enable automatic fallback
+
+To enable automatic fallback:
+1. Go to **Settings → Model Selection**
+2. Toggle **Allow Automatic Fallback** to ON
+3. When enabled, the system may automatically select a safe fallback model from the catalog if no explicit selection exists
+4. All automatic fallback usages are logged in the audit trail and shown in notifications
+
+**Important**: Pinned models always override the automatic fallback setting. If a pinned model is unavailable, the operation will block regardless of this setting.
+
+### Audit Trail
+
+All model selection resolutions are logged with full context:
+- Which model was selected
+- Source of the selection (run override, stage pinned, global default, etc.)
+- Whether it was pinned
+- Timestamp and correlation ID for traceability
+- Job ID if part of a video generation job
+
+Access the audit log via:
+- Settings page: View recent model selections
+- API: `GET /api/models/audit-log?limit=100`
+- Logs directory: `AuraData/model-selections.json`
+
+### Best Practices
+
+1. **Pin critical stages**: Pin models for script generation and other stages where consistency is paramount
+2. **Leave non-critical stages unpinned**: Allow fallback for less critical stages to avoid blocking
+3. **Test before pinning**: Always test a model before pinning it to ensure it works with your API key
+4. **Monitor deprecations**: Regularly check for deprecated models and plan migrations
+5. **Use project overrides sparingly**: Reserve project overrides for special cases where project needs differ from global defaults
+6. **Enable audit logging**: Review the audit log periodically to understand model usage patterns
+
+### Troubleshooting
+
+#### "Model unavailable" blocking modal appears
+
+**Cause**: A pinned model is unavailable (API key issue, model deprecated, network error)
+
+**Solution**:
+1. Click "Apply recommended model" to use the suggested alternative
+2. Or click "Retry with original later" and fix the underlying issue
+3. Or unpin the model in settings to allow fallback
+
+#### Models not appearing in picker
+
+**Cause**: Models haven't been loaded from the catalog
+
+**Solution**:
+1. Check API key is configured for the provider
+2. Refresh the models list (Settings → Model Selection → Reload button)
+3. Check network connectivity
+4. Review logs for API errors
+
+#### Automatic fallback not working
+
+**Cause**: Automatic fallback is disabled by default
+
+**Solution**:
+1. Enable "Allow Automatic Fallback" in Settings → Model Selection
+2. Or set an explicit model selection for the provider/stage
+3. Note that pinned models override automatic fallback
+

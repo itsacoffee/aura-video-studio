@@ -46,7 +46,11 @@ If you discover a security vulnerability, please report it by:
 
 ### 5. Authentication & Authorization
 - API key validation for external service providers
-- Secure storage recommendations for credentials
+- **DPAPI Encryption**: Windows users benefit from Data Protection API (DPAPI) encryption for API keys at rest
+- **Secure Key Storage**: API keys stored in user-specific encrypted storage (Windows LocalApplicationData)
+- **Secret Masking**: All API keys automatically masked in logs, diagnostics, and error messages
+- **Development Mode**: Non-Windows platforms use plaintext storage with file system permissions for development
+- Preflight validation with secure API key testing
 - No hardcoded credentials or secrets in source code
 
 ### 6. Error Handling
@@ -98,3 +102,72 @@ All security audits and implementation-specific security reviews are documented 
 ## Contact
 
 For security concerns or questions, please open an issue on our GitHub repository with the `security` label.
+
+## Model Selection Security
+
+### Model ID Sanitization
+
+Model IDs and provider names are sanitized in logs to prevent injection attacks:
+- All model IDs validated against catalog before use
+- Provider names restricted to known values (OpenAI, Anthropic, Gemini, Azure, Ollama)
+- No user-controlled strings used in API URLs without validation
+- Structured logging used to prevent log injection
+
+### API Key Protection
+
+API keys used for model testing are:
+- Never logged or persisted
+- Passed only in memory
+- Used only for the duration of the test request
+- Not included in audit trail or selection records
+
+Note: Model IDs themselves are **not secrets** and may appear in:
+- Audit logs (sanitized)
+- Error messages (sanitized)
+- Settings files (plain text)
+- UI displays
+
+### Selection Persistence Security
+
+Model selections are stored in `AuraData/model-selections.json`:
+- File permissions: Read/Write by application only
+- No sensitive data (API keys, secrets) stored
+- Audit log limited to last 1000 entries to prevent unbounded growth
+- Regular cleanup of old audit entries
+
+### Precedence Enforcement
+
+Model selection precedence is enforced server-side:
+- Client cannot bypass precedence rules
+- Pinned selections validated on every resolution
+- Audit trail records all resolutions for compliance
+- No client-side override of pinned selections
+
+### Model Testing Security
+
+The model test endpoint (`POST /api/models/test`):
+- Requires API key (not stored, used only for test)
+- Rate-limited to prevent abuse
+- Timeout enforced (15 seconds max)
+- Results not cached with API key
+- Test prompts are minimal and safe (no user-controlled content)
+
+### Model Selection Precedence Table
+
+For security and governance, the precedence rules are:
+
+| Priority | Source | Security Level | Override Capability |
+|----------|--------|----------------|---------------------|
+| 1 | Run Override (Pinned) | User explicit | None - blocks if unavailable |
+| 2 | Run Override | User explicit | Auto-fallback if configured |
+| 3 | Stage Pinned | User explicit | None - blocks if unavailable |
+| 4 | Project Override | User/Admin | Auto-fallback if configured |
+| 5 | Global Default | Admin | Auto-fallback if configured |
+| 6 | Automatic Fallback | System | Only if explicitly enabled |
+
+**Security Implications**:
+- Pinned selections (priority 1, 3) cannot be overridden by system
+- All selections require authentication
+- Audit trail provides non-repudiation
+- System fallback disabled by default for predictability
+
