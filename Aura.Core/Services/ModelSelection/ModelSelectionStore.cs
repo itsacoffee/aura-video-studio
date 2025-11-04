@@ -82,7 +82,7 @@ public class ModelSelectionStore
     /// <summary>
     /// Get all selections for a specific scope
     /// </summary>
-    public async Task<List<ModelSelection>> GetAllSelectionsAsync(
+    public Task<List<ModelSelection>> GetAllSelectionsAsync(
         ModelSelectionScope scope,
         CancellationToken ct = default)
     {
@@ -92,7 +92,7 @@ public class ModelSelectionStore
                 .Where(s => s.Scope == scope)
                 .ToList();
             
-            return await Task.FromResult(selections);
+            return Task.FromResult(selections);
         }
     }
 
@@ -160,7 +160,7 @@ public class ModelSelectionStore
     /// <summary>
     /// Get audit log entries
     /// </summary>
-    public async Task<List<ModelSelectionAudit>> GetAuditLogAsync(
+    public Task<List<ModelSelectionAudit>> GetAuditLogAsync(
         int? limit = null,
         CancellationToken ct = default)
     {
@@ -175,18 +175,18 @@ public class ModelSelectionStore
                 log = log.Take(limit.Value).ToList();
             }
             
-            return await Task.FromResult(log);
+            return Task.FromResult(log);
         }
     }
 
     /// <summary>
     /// Get the automatic fallback setting
     /// </summary>
-    public async Task<bool> GetAutoFallbackSettingAsync(CancellationToken ct = default)
+    public Task<bool> GetAutoFallbackSettingAsync(CancellationToken ct = default)
     {
         lock (_lock)
         {
-            return await Task.FromResult(_data.AllowAutomaticFallback);
+            return Task.FromResult(_data.AllowAutomaticFallback);
         }
     }
 

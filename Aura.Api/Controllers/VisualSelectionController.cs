@@ -22,15 +22,24 @@ public class VisualSelectionController : ControllerBase
     private readonly ILogger<VisualSelectionController> _logger;
     private readonly ImageSelectionService _selectionService;
     private readonly AestheticScoringService _scoringService;
+    private readonly VisualSelectionService? _visualSelectionService;
+    private readonly VisualPromptRefinementService? _refinementService;
+    private readonly LicensingExportService? _exportService;
 
     public VisualSelectionController(
         ILogger<VisualSelectionController> logger,
         ImageSelectionService selectionService,
-        AestheticScoringService scoringService)
+        AestheticScoringService scoringService,
+        VisualSelectionService? visualSelectionService = null,
+        VisualPromptRefinementService? refinementService = null,
+        LicensingExportService? exportService = null)
     {
         _logger = logger;
         _selectionService = selectionService;
         _scoringService = scoringService;
+        _visualSelectionService = visualSelectionService;
+        _refinementService = refinementService;
+        _exportService = exportService;
     }
 
     /// <summary>
@@ -309,6 +318,87 @@ public class VisualSelectionController : ControllerBase
             "premium" => VisualQualityTier.Premium,
             _ => VisualQualityTier.Standard
         };
+    }
+
+    /// <summary>
+    /// Export licensing information to CSV
+    /// </summary>
+    [HttpGet("{jobId}/export/licensing/csv")]
+    public async Task<IActionResult> ExportLicensingCsv(
+        string jobId,
+        CancellationToken cancellationToken)
+    {
+        if (_visualSelectionService == null || _exportService == null)
+        {
+            return StatusCode(501, new { error = "Licensing export not configured" });
+        }
+
+        try
+        {
+            var selections = await _visualSelectionService.GetSelectionsForJobAsync(jobId, cancellationToken);
+            var csv = await _exportService.ExportToCsvAsync(selections, jobId, cancellationToken);
+
+            return Content(csv, "text/csv", System.Text.Encoding.UTF8);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export licensing CSV for job {JobId}", jobId);
+            return StatusCode(500, new { error = "Failed to export licensing information" });
+        }
+    }
+
+    /// <summary>
+    /// Export licensing information to JSON
+    /// </summary>
+    [HttpGet("{jobId}/export/licensing/json")]
+    public async Task<IActionResult> ExportLicensingJson(
+        string jobId,
+        CancellationToken cancellationToken)
+    {
+        if (_visualSelectionService == null || _exportService == null)
+        {
+            return StatusCode(501, new { error = "Licensing export not configured" });
+        }
+
+        try
+        {
+            var selections = await _visualSelectionService.GetSelectionsForJobAsync(jobId, cancellationToken);
+            var json = await _exportService.ExportToJsonAsync(selections, jobId, cancellationToken);
+
+            return Content(json, "application/json", System.Text.Encoding.UTF8);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export licensing JSON for job {JobId}", jobId);
+            return StatusCode(500, new { error = "Failed to export licensing information" });
+        }
+    }
+
+    /// <summary>
+    /// Get licensing summary for a job
+    /// </summary>
+    [HttpGet("{jobId}/licensing/summary")]
+    public async Task<IActionResult> GetLicensingSummary(
+        string jobId,
+        CancellationToken cancellationToken)
+    {
+        if (_visualSelectionService == null || _exportService == null)
+        {
+            return StatusCode(501, new { error = "Licensing export not configured" });
+        }
+
+        try
+        {
+            var selections = await _visualSelectionService.GetSelectionsForJobAsync(jobId, cancellationToken);
+            var summary = await _exportService.GenerateSummaryAsync(selections, cancellationToken);
+
+            return Ok(summary);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get licensing summary for job {JobId}", jobId);
+            return StatusCode(500, new { error = "Failed to get licensing summary" });
+        }
     }
 }
 

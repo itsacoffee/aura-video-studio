@@ -641,6 +641,125 @@ Response indicates:
 - Large library
 - No attribution required (check license)
 
+### Visual Asset Selection Workflow
+
+**Overview**: After image generation, Aura provides a comprehensive selection UI for choosing and managing visual assets with licensing tracking.
+
+**Components**:
+- **VisualCandidateGallery**: Displays multiple candidates per scene with scoring
+- **LicensingInfoPanel**: Summarizes licensing requirements and provides exports
+- **VisualSelectionService**: Manages selection state and persistence
+
+**Selection Process**:
+1. Generate 3-5 candidates per scene with different providers/prompts
+2. Score each candidate on:
+   - Aesthetic quality (40% weight)
+   - Keyword coverage (40% weight)
+   - Technical quality (20% weight)
+3. Display candidates in responsive grid with scores
+4. User can:
+   - **Accept**: Mark candidate as selected
+   - **Reject**: Provide reason for rejection (tracked for analytics)
+   - **Regenerate**: Generate new candidates
+   - **Suggest Better**: Use LLM to refine prompt for better results
+5. Track selection metadata:
+   - Timestamp and user ID
+   - Regeneration count
+   - Auto-selection confidence
+   - LLM-assisted refinement flag
+
+**Auto-Selection Logic**:
+```
+Confidence = min(topScore, topScore + (gap × 0.1))
+ShouldAutoSelect = confidence >= 85% AND topScore >= 75% AND gap >= 15 points
+```
+
+**LLM-Assisted Refinement**:
+- Analyzes current candidates and scores
+- Suggests improvements to:
+  - Subject clarity and framing
+  - Composition guidelines
+  - Lighting and mood
+  - Style keywords
+  - Narrative keyword coverage
+- Returns refined prompt with confidence score
+
+**Licensing Capture**:
+Each selected candidate includes:
+- License type (e.g., "Pexels License", "CC0", "Commercial")
+- Commercial use allowed (boolean)
+- Attribution required (boolean)
+- Creator name and profile URL
+- Source platform
+- License URL
+- Generated attribution text
+
+**Export Options**:
+1. **CSV Export**: All licensing fields in spreadsheet format
+2. **JSON Export**: Structured data with scene and image details
+3. **Attribution Text**: Formatted credits for video end screen
+4. **Licensing Summary**: Statistics and warnings for review
+
+**Commercial Use Validation**:
+- Checks all selections for commercial compatibility
+- Identifies scenes requiring attribution
+- Warns about missing licensing information
+- Provides actionable recommendations
+
+**API Endpoints**:
+```
+GET  /api/visual-selection/{jobId}/scene/{sceneIndex}
+POST /api/visual-selection/{jobId}/scene/{sceneIndex}/accept
+POST /api/visual-selection/{jobId}/scene/{sceneIndex}/reject
+POST /api/visual-selection/{jobId}/scene/{sceneIndex}/regenerate
+POST /api/visual-selection/{jobId}/scene/{sceneIndex}/suggest-refinement
+GET  /api/visual-selection/{jobId}/licensing/summary
+GET  /api/visual-selection/{jobId}/export/licensing/csv
+GET  /api/visual-selection/{jobId}/export/licensing/json
+```
+
+**Integration Example**:
+```typescript
+import { visualSelectionService } from '@/services/visualSelectionService';
+import VisualCandidateGallery from '@/components/VisualCandidateGallery';
+
+// In your video creation workflow
+const selection = await visualSelectionService.getSelection(jobId, sceneIndex);
+
+<VisualCandidateGallery
+  selection={selection}
+  onAccept={(candidate) => {
+    await visualSelectionService.acceptCandidate(jobId, sceneIndex, candidate);
+  }}
+  onReject={(reason) => {
+    await visualSelectionService.rejectSelection(jobId, sceneIndex, reason);
+  }}
+  onRegenerate={async () => {
+    await visualSelectionService.regenerateCandidates(jobId, sceneIndex);
+  }}
+  onSuggestRefinement={async () => {
+    const refinement = await visualSelectionService.suggestRefinement(
+      jobId, sceneIndex, { currentPrompt, currentCandidates, issuesDetected }
+    );
+    // Apply refined prompt
+  }}
+/>
+
+// Export licensing before final render
+const summary = await visualSelectionService.getLicensingSummary(jobId);
+const csvBlob = await visualSelectionService.exportLicensingCsv(jobId);
+visualSelectionService.downloadFile(csvBlob, `${jobId}-licensing.csv`);
+```
+
+**Best Practices**:
+1. Always capture licensing information during generation
+2. Validate commercial use before finalizing video
+3. Export licensing report with each video delivery
+4. Track rejection reasons to improve generation quality
+5. Use LLM refinement for scenes with low scores (<60)
+6. Set auto-selection threshold based on project requirements
+7. Preserve selection history for auditing
+
 ## Fallback Strategies
 
 ### LLM Fallback Chain
