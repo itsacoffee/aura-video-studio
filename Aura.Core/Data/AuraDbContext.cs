@@ -57,6 +57,16 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<ActionLogEntity> ActionLogs { get; set; } = null!;
 
+    /// <summary>
+    /// Project versions for snapshots and restore points
+    /// </summary>
+    public DbSet<ProjectVersionEntity> ProjectVersions { get; set; } = null!;
+
+    /// <summary>
+    /// Content blobs for deduplicated storage
+    /// </summary>
+    public DbSet<ContentBlobEntity> ContentBlobs { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -163,6 +173,33 @@ public class AuraDbContext : DbContext
             entity.HasIndex(e => new { e.Status, e.Timestamp });
             entity.HasIndex(e => e.CorrelationId);
             entity.HasIndex(e => e.ExpiresAt);
+        });
+
+        // Configure ProjectVersionEntity
+        modelBuilder.Entity<ProjectVersionEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ProjectId);
+            entity.HasIndex(e => new { e.ProjectId, e.VersionNumber }).IsUnique();
+            entity.HasIndex(e => e.VersionType);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.ProjectId, e.CreatedAt });
+            entity.HasIndex(e => e.IsDeleted);
+            entity.HasIndex(e => new { e.IsDeleted, e.DeletedAt });
+            entity.HasIndex(e => e.IsMarkedImportant);
+            entity.HasOne(e => e.Project)
+                .WithMany()
+                .HasForeignKey(e => e.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure ContentBlobEntity
+        modelBuilder.Entity<ContentBlobEntity>(entity =>
+        {
+            entity.HasKey(e => e.ContentHash);
+            entity.HasIndex(e => e.ContentType);
+            entity.HasIndex(e => e.LastReferencedAt);
+            entity.HasIndex(e => e.ReferenceCount);
         });
     }
 }
