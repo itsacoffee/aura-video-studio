@@ -22,15 +22,18 @@ public class ExportController : ControllerBase
     private readonly IExportOrchestrationService _exportService;
     private readonly ILogger<ExportController> _logger;
     private readonly TimelineRenderer _timelineRenderer;
+    private readonly ICloudExportService? _cloudExportService;
 
     public ExportController(
         IExportOrchestrationService exportService,
         ILogger<ExportController> logger,
-        TimelineRenderer timelineRenderer)
+        TimelineRenderer timelineRenderer,
+        ICloudExportService? cloudExportService = null)
     {
         _exportService = exportService ?? throw new ArgumentNullException(nameof(exportService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _timelineRenderer = timelineRenderer ?? throw new ArgumentNullException(nameof(timelineRenderer));
+        _cloudExportService = cloudExportService;
     }
 
     /// <summary>
@@ -433,6 +436,100 @@ public class ExportController : ControllerBase
             return StatusCode(500, new { error = "Failed to run preflight validation", details = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Check if cloud storage is available
+    /// </summary>
+    [HttpGet("cloud/status")]
+    public async Task<IActionResult> GetCloudStorageStatus()
+    {
+        try
+        {
+            if (_cloudExportService == null)
+            {
+                return Ok(new { available = false, message = "Cloud storage service not configured" });
+            }
+
+            var isAvailable = await _cloudExportService.IsCloudStorageAvailableAsync();
+            return Ok(new { available = isAvailable });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check cloud storage status");
+            return StatusCode(500, new { error = "Failed to check cloud storage status", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Upload an exported file to cloud storage
+    /// </summary>
+    [HttpPost("cloud/upload")]
+    public async Task<IActionResult> UploadToCloud([FromBody] CloudUploadRequest request)
+    {
+        try
+        {
+            if (_cloudExportService == null)
+            {
+                return BadRequest(new { error = "Cloud storage service not configured" });
+            }
+
+            _logger.LogInformation("Uploading file {FilePath} to cloud", request.FilePath);
+
+            var progress = new Progress<Aura.Core.Services.Storage.UploadProgress>(p =>
+            {
+                _logger.LogDebug("Upload progress: {Percent:F2}%", p.PercentComplete);
+            });
+
+            var result = await _cloudExportService.UploadExportAsync(
+                request.FilePath,
+                request.DestinationKey,
+                progress,
+                HttpContext.RequestAborted
+            );
+
+            if (result.Success)
+            {
+                return Ok(new
+                {
+                    success = true,
+                    url = result.Url,
+                    key = result.Key,
+                    fileSize = result.FileSize,
+                    metadata = result.Metadata
+                });
+            }
+
+            return BadRequest(new { success = false, error = result.ErrorMessage });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload to cloud storage");
+            return StatusCode(500, new { error = "Failed to upload to cloud storage", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Generate a shareable link for a cloud-stored export
+    /// </summary>
+    [HttpPost("cloud/share")]
+    public async Task<IActionResult> GetShareableLink([FromBody] ShareLinkRequest request)
+    {
+        try
+        {
+            if (_cloudExportService == null)
+            {
+                return BadRequest(new { error = "Cloud storage service not configured" });
+            }
+
+            var url = await _cloudExportService.GetShareableLinkAsync(request.Key, HttpContext.RequestAborted);
+            return Ok(new { url });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate shareable link");
+            return StatusCode(500, new { error = "Failed to generate shareable link", details = ex.Message });
+        }
+    }
 }
 
 /// <summary>
@@ -493,4 +590,21 @@ public record ExportPresetDto
     public int AudioBitrate { get; init; }
     public required string AspectRatio { get; init; }
     public required string Quality { get; init; }
+}
+
+/// <summary>
+/// DTO for cloud upload request
+/// </summary>
+public record CloudUploadRequest
+{
+    public required string FilePath { get; init; }
+    public string? DestinationKey { get; init; }
+}
+
+/// <summary>
+/// DTO for shareable link request
+/// </summary>
+public record ShareLinkRequest
+{
+    public required string Key { get; init; }
 }
