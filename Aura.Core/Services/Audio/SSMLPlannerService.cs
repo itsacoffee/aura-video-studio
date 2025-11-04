@@ -270,6 +270,9 @@ public class SSMLPlannerService
 
         var pauses = new Dictionary<int, int>(current.Pauses);
         
+        // Positive deviation: audio too short, add pauses
+        // Negative deviation: audio too long, reduce/remove pauses
+        
         if (deviationMs > 0)
         {
             var sentences = text.Split(new[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);

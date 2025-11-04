@@ -112,20 +112,63 @@ public abstract class BaseSSMLMapper : ISSMLMapper
             return text;
         }
 
-        var alreadyEscaped = text.Contains("&amp;") || text.Contains("&lt;") || 
-                            text.Contains("&gt;") || text.Contains("&quot;") || text.Contains("&apos;");
+        var sb = new StringBuilder(text.Length + (text.Length / 10));
         
-        if (alreadyEscaped)
+        for (int i = 0; i < text.Length; i++)
         {
-            return text;
+            var c = text[i];
+            
+            if (c == '&')
+            {
+                if (i + 1 < text.Length && IsStartOfXmlEntity(text, i))
+                {
+                    sb.Append(c);
+                }
+                else
+                {
+                    sb.Append("&amp;");
+                }
+            }
+            else if (c == '<')
+            {
+                sb.Append("&lt;");
+            }
+            else if (c == '>')
+            {
+                sb.Append("&gt;");
+            }
+            else if (c == '"')
+            {
+                sb.Append("&quot;");
+            }
+            else if (c == '\'')
+            {
+                sb.Append("&apos;");
+            }
+            else
+            {
+                sb.Append(c);
+            }
+        }
+        
+        return sb.ToString();
+    }
+
+    private static bool IsStartOfXmlEntity(string text, int ampersandIndex)
+    {
+        var remainingLength = text.Length - ampersandIndex;
+        if (remainingLength < 4)
+        {
+            return false;
         }
 
-        return text
-            .Replace("&", "&amp;")
-            .Replace("<", "&lt;")
-            .Replace(">", "&gt;")
-            .Replace("\"", "&quot;")
-            .Replace("'", "&apos;");
+        var slice = text.Substring(ampersandIndex, Math.Min(10, remainingLength));
+        
+        return slice.StartsWith("&amp;", StringComparison.Ordinal) ||
+               slice.StartsWith("&lt;", StringComparison.Ordinal) ||
+               slice.StartsWith("&gt;", StringComparison.Ordinal) ||
+               slice.StartsWith("&quot;", StringComparison.Ordinal) ||
+               slice.StartsWith("&apos;", StringComparison.Ordinal);
     }
 
     protected string InsertPauses(string text, IReadOnlyDictionary<int, int> pauses, int maxPauseMs)
