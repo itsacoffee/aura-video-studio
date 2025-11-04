@@ -2,14 +2,26 @@
 
 ## Overview
 
-The Aura Video Studio application implements a comprehensive keyboard shortcuts system that provides:
+The Aura Video Studio application implements TWO comprehensive keyboard shortcuts systems:
+
+### System 1: Legacy Context-Aware System
 
 - **Context-aware shortcuts**: Different shortcuts for different pages (Video Editor, Timeline, Create, etc.)
 - **No conflicts**: Shortcuts are scoped to their context, preventing conflicts
 - **Discoverable**: Users can press `Ctrl+K` or `?` to see all available shortcuts
 - **Searchable**: The shortcuts panel includes search/filter functionality
-- **Customizable**: Users can customize key bindings in Settings
 - **Visual feedback**: Tooltips can display keyboard shortcuts for buttons
+
+### System 2: OpenCut-Inspired Timeline System (NEW)
+
+- **Industry-standard shortcuts**: Premiere Pro style (JKL shuttle, frame navigation, etc.)
+- **Cross-platform**: Automatic adaptation for macOS/Windows/Linux
+- **Persistent configuration**: Keybindings saved to localStorage
+- **Type-safe actions**: Full TypeScript support
+- **Searchable help dialog**: Built-in shortcuts reference
+- **Import/export**: Share and backup configurations
+
+**Recommendation**: Use System 2 (OpenCut-inspired) for new timeline-related features. This guide documents both systems.
 
 ## Architecture
 
@@ -92,6 +104,7 @@ import { Button } from '@fluentui/react-components';
 ### Opening the Shortcuts Panel
 
 Users can open the shortcuts panel by:
+
 - Pressing `Ctrl+K`
 - Pressing `?`
 
@@ -208,3 +221,83 @@ Potential improvements:
 - Conflict detection UI
 - Shortcut suggestions based on user behavior
 - Per-project shortcut overrides
+
+---
+
+## OpenCut-Inspired Timeline Shortcuts System (New)
+
+### Quick Start
+
+The new shortcuts system uses React hooks and Zustand for state management:
+
+```tsx
+import { useKeybindings } from '@/hooks/useKeybindings';
+
+function TimelineEditor() {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useKeybindings({
+    'toggle-play': () => setIsPlaying(!isPlaying),
+    'split-element': () => splitClipAtPlayhead(),
+    'delete-selected': () => deleteSelectedElements(),
+  });
+
+  return <div>Timeline content...</div>;
+}
+```
+
+### Default Shortcuts (Industry Standard)
+
+**Playback**: Space (play/pause), J (reverse), K (pause), L (forward)  
+**Navigation**: Arrow keys (frame step), Shift+Arrow (jump 10 frames)  
+**Editing**: S (split), Delete (delete), N (snapping), R (ripple edit)  
+**Clipboard**: Ctrl+C/X/V (copy/cut/paste), Ctrl+A (select all)  
+**In/Out Points**: I/O (set), Ctrl+Shift+I/O (clear)  
+**Markers**: M (add), Shift+M (next), Ctrl+Shift+M (previous)  
+**Zoom**: Ctrl+=/- (zoom), Ctrl+0 (fit)
+
+### Features
+
+- **Cross-platform keys**: ⌘ on macOS, Ctrl on Windows
+- **Persistent storage**: Saves to localStorage
+- **Searchable help**: `<KeyboardShortcutsHelp />` component
+- **Type-safe**: Full TypeScript support
+- **No conflicts**: Smart detection of typing context
+
+### Implementation Files
+
+- `/src/types/keybinding.ts` - Type definitions
+- `/src/state/keybindings.ts` - Zustand store
+- `/src/hooks/useKeybindings.ts` - React hooks
+- `/src/utils/keybinding-utils.ts` - Utilities
+- `/src/components/KeyboardShortcutsHelp/` - Help dialog
+
+### Integration Example
+
+```tsx
+import { useKeybindings } from '@/hooks/useKeybindings';
+import { useTimelineStore } from '@/state/timeline';
+import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp';
+import { useState } from 'react';
+
+function Timeline() {
+  const [showHelp, setShowHelp] = useState(false);
+  const { splitClip, removeClips, currentTime } = useTimelineStore();
+
+  useKeybindings({
+    'split-element': () => splitClip(selectedId, currentTime),
+    'delete-selected': () => removeClips(selectedIds),
+    'toggle-snapping': () => toggleSnapping(),
+  });
+
+  return (
+    <>
+      <button onClick={() => setShowHelp(true)}>Help (?)</button>
+      <div>Timeline UI...</div>
+      <KeyboardShortcutsHelp open={showHelp} onClose={() => setShowHelp(false)} />
+    </>
+  );
+}
+```
+
+For full documentation, see the inline comments in the implementation files.
