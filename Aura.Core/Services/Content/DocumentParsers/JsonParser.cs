@@ -20,7 +20,7 @@ public class JsonParser : IDocumentParser
 {
     private readonly ILogger<JsonParser> _logger;
 
-    public DocumentFormat SupportedFormat => DocumentFormat.Json;
+    public DocFormat SupportedFormat => DocFormat.Json;
     public string[] SupportedExtensions => new[] { ".json" };
 
     public JsonParser(ILogger<JsonParser> logger)
@@ -110,7 +110,7 @@ public class JsonParser : IDocumentParser
         var metadata = new DocumentMetadata
         {
             OriginalFileName = fileName,
-            Format = DocumentFormat.AuraScript,
+            Format = DocFormat.AuraScript,
             FileSizeBytes = 0,
             ImportedAt = DateTime.UtcNow,
             WordCount = CountWords(plainText),
@@ -149,7 +149,7 @@ public class JsonParser : IDocumentParser
         var metadata = new DocumentMetadata
         {
             OriginalFileName = fileName,
-            Format = DocumentFormat.Json,
+            Format = DocFormat.Json,
             FileSizeBytes = jsonContent.Length,
             ImportedAt = DateTime.UtcNow,
             WordCount = CountWords(plainText),

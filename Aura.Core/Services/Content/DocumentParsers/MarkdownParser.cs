@@ -20,7 +20,7 @@ public class MarkdownParser : IDocumentParser
     private readonly ILogger<MarkdownParser> _logger;
     private const double DefaultWordsPerSecond = 2.5; // 150 words per minute
 
-    public DocumentFormat SupportedFormat => DocumentFormat.Markdown;
+    public DocFormat SupportedFormat => DocFormat.Markdown;
     public string[] SupportedExtensions => new[] { ".md", ".markdown" };
 
     public MarkdownParser(ILogger<MarkdownParser> logger)
@@ -81,7 +81,7 @@ public class MarkdownParser : IDocumentParser
         var metadata = new DocumentMetadata
         {
             OriginalFileName = fileName,
-            Format = DocumentFormat.Markdown,
+            Format = DocFormat.Markdown,
             FileSizeBytes = fileSize,
             ImportedAt = DateTime.UtcNow,
             WordCount = wordCount,

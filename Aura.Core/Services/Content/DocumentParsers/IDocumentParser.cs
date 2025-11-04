@@ -13,7 +13,7 @@ public interface IDocumentParser
     /// <summary>
     /// Gets the document format supported by this parser
     /// </summary>
-    DocumentFormat SupportedFormat { get; }
+    DocFormat SupportedFormat { get; }
     
     /// <summary>
     /// Gets the file extensions supported by this parser (e.g., ".txt", ".md")
