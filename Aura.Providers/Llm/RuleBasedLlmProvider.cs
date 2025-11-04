@@ -229,6 +229,15 @@ public class RuleBasedLlmProvider : ILlmProvider
         return text.Split(new[] { ' ', '\t', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
     }
 
+    public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+    {
+        _logger.LogWarning("RuleBasedLlmProvider.CompleteAsync: Raw prompt completion not supported for rule-based provider");
+        
+        // For rule-based provider, we can't meaningfully process arbitrary prompts
+        // Return an error response that will trigger the orchestration layer to handle appropriately
+        return Task.FromResult("{}");
+    }
+
     public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,

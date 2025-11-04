@@ -188,6 +188,56 @@ public class OllamaLlmProvider : ILlmProvider
             lastException);
     }
 
+    public async Task<string> CompleteAsync(string prompt, CancellationToken ct)
+    {
+        _logger.LogInformation("Executing raw prompt completion with Ollama at {BaseUrl}", _baseUrl);
+
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
+                }
+
+                var requestBody = new
+                {
+                    model = _model,
+                    prompt = prompt,
+                    stream = false,
+                    options = new
+                    {
+                        temperature = 0.7,
+                        num_predict = 2048
+                    }
+                };
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/generate", content, ct);
+                response.EnsureSuccessStatusCode();
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("response", out var responseProp))
+                {
+                    return responseProp.GetString() ?? string.Empty;
+                }
+
+                throw new InvalidOperationException("Invalid response structure from Ollama API");
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                _logger.LogWarning(ex, "Error completing prompt with Ollama (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+            }
+        }
+
+        throw new InvalidOperationException($"Failed to complete prompt with Ollama after {_maxRetries + 1} attempts.");
+    }
+
     public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,

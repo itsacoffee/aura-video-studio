@@ -263,6 +263,69 @@ public class AzureOpenAiLlmProvider : ILlmProvider
             $"Failed to generate script with Azure OpenAI after {_maxRetries + 1} attempts. Please try again later.", lastException);
     }
 
+    public async Task<string> CompleteAsync(string prompt, CancellationToken ct)
+    {
+        _logger.LogInformation("Executing raw prompt completion with Azure OpenAI");
+
+        // Use similar implementation to DraftScriptAsync but with raw prompt
+        var systemPrompt = "You are a helpful assistant that generates structured JSON responses. Follow the instructions precisely and return only valid JSON.";
+        
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
+                }
+
+                var requestBody = new
+                {
+                    messages = new[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = prompt }
+                    },
+                    temperature = 0.7,
+                    max_tokens = 2048
+                };
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_timeout);
+
+                var response = await _httpClient.PostAsync(_endpoint, content, cts.Token);
+                response.EnsureSuccessStatusCode();
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                {
+                    var firstChoice = choices[0];
+                    if (firstChoice.TryGetProperty("message", out var message) &&
+                        message.TryGetProperty("content", out var contentProp))
+                    {
+                        return contentProp.GetString() ?? string.Empty;
+                    }
+                }
+
+                throw new InvalidOperationException("Invalid response structure from Azure OpenAI API");
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                _logger.LogWarning(ex, "Error completing prompt with Azure OpenAI (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+            }
+        }
+
+        throw new InvalidOperationException($"Failed to complete prompt with Azure OpenAI after {_maxRetries + 1} attempts.");
+    }
+
     public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,

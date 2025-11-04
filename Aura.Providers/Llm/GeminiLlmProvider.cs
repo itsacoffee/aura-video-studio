@@ -253,6 +253,73 @@ public class GeminiLlmProvider : ILlmProvider
             $"Failed to generate script with Gemini after {_maxRetries + 1} attempts. Please try again later.", lastException);
     }
 
+    public async Task<string> CompleteAsync(string prompt, CancellationToken ct)
+    {
+        _logger.LogInformation("Executing raw prompt completion with Gemini");
+
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
+                }
+
+                var requestBody = new
+                {
+                    contents = new[]
+                    {
+                        new
+                        {
+                            parts = new[]
+                            {
+                                new { text = prompt }
+                            }
+                        }
+                    },
+                    generationConfig = new
+                    {
+                        temperature = 0.7,
+                        maxOutputTokens = 2048
+                    }
+                };
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
+                var response = await _httpClient.PostAsync(url, content, ct);
+                response.EnsureSuccessStatusCode();
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
+                {
+                    var firstCandidate = candidates[0];
+                    if (firstCandidate.TryGetProperty("content", out var contentObj) &&
+                        contentObj.TryGetProperty("parts", out var parts) && parts.GetArrayLength() > 0)
+                    {
+                        var firstPart = parts[0];
+                        if (firstPart.TryGetProperty("text", out var textProp))
+                        {
+                            return textProp.GetString() ?? string.Empty;
+                        }
+                    }
+                }
+
+                throw new InvalidOperationException("Invalid response structure from Gemini API");
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                _logger.LogWarning(ex, "Error completing prompt with Gemini (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+            }
+        }
+
+        throw new InvalidOperationException($"Failed to complete prompt with Gemini after {_maxRetries + 1} attempts.");
+    }
+
     public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,

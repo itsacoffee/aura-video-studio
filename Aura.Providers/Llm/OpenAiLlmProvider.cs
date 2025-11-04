@@ -267,6 +267,154 @@ public class OpenAiLlmProvider : ILlmProvider
             $"Failed to generate script with OpenAI after {_maxRetries + 1} attempts. Please try again later.", lastException);
     }
 
+    public async Task<string> CompleteAsync(string prompt, CancellationToken ct)
+    {
+        _logger.LogInformation("Executing raw prompt completion with OpenAI (model: {Model})", _model);
+
+        var startTime = DateTime.UtcNow;
+        Exception? lastException = null;
+        
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
+            {
+                if (attempt > 0)
+                {
+                    var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                    _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} after {Delay}s delay", 
+                        attempt, _maxRetries, backoffDelay.TotalSeconds);
+                    await Task.Delay(backoffDelay, ct);
+                }
+
+                // Use prompt as user message with a generic system prompt for structured output
+                var systemPrompt = "You are a helpful assistant that generates structured JSON responses. Follow the instructions precisely and return only valid JSON.";
+                
+                var requestBody = new
+                {
+                    model = _model,
+                    messages = new[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = prompt }
+                    },
+                    temperature = 0.7,
+                    max_tokens = 2048
+                };
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_timeout);
+
+                var response = await _httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, cts.Token);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        throw new InvalidOperationException(
+                            "OpenAI API key is invalid or has been revoked. Please check your API key in Settings → Providers → OpenAI");
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        _logger.LogWarning("OpenAI rate limit exceeded (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                "OpenAI rate limit exceeded. Please wait a moment and try again, or upgrade your OpenAI plan.");
+                        }
+                        lastException = new Exception($"Rate limit exceeded: {errorContent}");
+                        continue;
+                    }
+                    else if ((int)response.StatusCode >= 500)
+                    {
+                        _logger.LogWarning("OpenAI server error (attempt {Attempt}/{MaxRetries}): {StatusCode}", 
+                            attempt + 1, _maxRetries + 1, response.StatusCode);
+                        if (attempt >= _maxRetries)
+                        {
+                            throw new InvalidOperationException(
+                                $"OpenAI service is experiencing issues (HTTP {response.StatusCode}). Please try again later.");
+                        }
+                        lastException = new Exception($"Server error: {errorContent}");
+                        continue;
+                    }
+                    
+                    response.EnsureSuccessStatusCode();
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                var responseDoc = JsonDocument.Parse(responseJson);
+
+                if (responseDoc.RootElement.TryGetProperty("choices", out var choices) &&
+                    choices.GetArrayLength() > 0)
+                {
+                    var firstChoice = choices[0];
+                    if (firstChoice.TryGetProperty("message", out var message) &&
+                        message.TryGetProperty("content", out var contentProp))
+                    {
+                        string result = contentProp.GetString() ?? string.Empty;
+                        
+                        if (string.IsNullOrWhiteSpace(result))
+                        {
+                            throw new InvalidOperationException("OpenAI returned an empty response");
+                        }
+                        
+                        var duration = DateTime.UtcNow - startTime;
+                        _logger.LogInformation("Completion generated successfully ({Length} characters) in {Duration}s", 
+                            result.Length, duration.TotalSeconds);
+                        
+                        return result;
+                    }
+                }
+
+                _logger.LogWarning("OpenAI response did not contain expected structure");
+                throw new InvalidOperationException("Invalid response structure from OpenAI API");
+            }
+            catch (TaskCanceledException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "OpenAI request timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        $"OpenAI request timed out after {_timeout.TotalSeconds}s. Please check your internet connection or try again later.", ex);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Failed to connect to OpenAI API (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+                if (attempt >= _maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        "Cannot connect to OpenAI API. Please check your internet connection and try again.", ex);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (Exception ex) when (attempt < _maxRetries)
+            {
+                lastException = ex;
+                _logger.LogWarning(ex, "Error completing prompt with OpenAI (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing prompt with OpenAI after all retries");
+                throw;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Failed to complete prompt with OpenAI after {_maxRetries + 1} attempts. Please try again later.", lastException);
+    }
+
     public async Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,
