@@ -879,6 +879,9 @@ builder.Services.AddSingleton<Aura.Core.Services.Assets.StockImageService>(sp =>
     return new Aura.Core.Services.Assets.StockImageService(logger, httpClient, pexelsKey, pixabayKey);
 });
 
+builder.Services.AddSingleton<Aura.Core.Services.Visual.AestheticScoringService>();
+builder.Services.AddSingleton<Aura.Core.Services.Visual.ImageSelectionService>();
+
 builder.Services.AddSingleton<Aura.Core.Services.Assets.AIImageGenerator>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Assets.AIImageGenerator>>();
