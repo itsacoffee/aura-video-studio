@@ -1110,3 +1110,133 @@ export interface StartTrainingResponse {
   jobId: string;
   message: string;
 }
+
+// ============================================================================
+// GUIDED MODE AND EXPLAIN/ITERATE TYPES
+// ============================================================================
+
+/**
+ * Request to explain an artifact (script, plan, brief)
+ */
+export interface ExplainArtifactRequest {
+  artifactType: string;
+  artifactContent: string;
+  specificQuestion?: string | null;
+}
+
+/**
+ * Response with AI explanation of an artifact
+ */
+export interface ExplainArtifactResponse {
+  success: boolean;
+  explanation?: string | null;
+  keyPoints?: string[] | null;
+  errorMessage?: string | null;
+}
+
+/**
+ * Request to improve an artifact with specific action
+ */
+export interface ImproveArtifactRequest {
+  artifactType: string;
+  artifactContent: string;
+  improvementAction: string;
+  targetAudience?: string | null;
+  lockedSections?: LockedSectionDto[] | null;
+}
+
+/**
+ * Response with improved artifact
+ */
+export interface ImproveArtifactResponse {
+  success: boolean;
+  improvedContent?: string | null;
+  changesSummary?: string | null;
+  promptDiff?: PromptDiffDto | null;
+  errorMessage?: string | null;
+}
+
+/**
+ * Locked section to preserve during regeneration
+ */
+export interface LockedSectionDto {
+  startIndex: number;
+  endIndex: number;
+  content: string;
+  reason: string;
+}
+
+/**
+ * Prompt diff preview showing changes
+ */
+export interface PromptDiffDto {
+  originalPrompt: string;
+  modifiedPrompt: string;
+  intendedOutcome: string;
+  changes: PromptChangeDto[];
+}
+
+/**
+ * Individual prompt change detail
+ */
+export interface PromptChangeDto {
+  type: string;
+  description: string;
+  oldValue?: string | null;
+  newValue?: string | null;
+}
+
+/**
+ * Request for constrained regeneration
+ */
+export interface ConstrainedRegenerateRequest {
+  artifactType: string;
+  currentContent: string;
+  regenerationType: string;
+  lockedSections?: LockedSectionDto[] | null;
+  promptModifiers?: PromptModifiersDto | null;
+}
+
+/**
+ * Response with regenerated content
+ */
+export interface ConstrainedRegenerateResponse {
+  success: boolean;
+  regeneratedContent?: string | null;
+  promptDiff?: PromptDiffDto | null;
+  requiresConfirmation: boolean;
+  errorMessage?: string | null;
+}
+
+/**
+ * Guided mode configuration
+ */
+export interface GuidedModeConfigDto {
+  enabled: boolean;
+  experienceLevel: string;
+  showTooltips: boolean;
+  showWhyLinks: boolean;
+  requirePromptDiffConfirmation: boolean;
+}
+
+/**
+ * Telemetry for guided mode feature usage
+ */
+export interface GuidedModeTelemetryDto {
+  featureUsed: string;
+  artifactType: string;
+  durationMs: number;
+  success: boolean;
+  feedbackRating?: string | null;
+  metadata?: Record<string, string> | null;
+}
+
+/**
+ * Prompt modifiers DTO
+ */
+export interface PromptModifiersDto {
+  additionalInstructions?: string | null;
+  exampleStyle?: string | null;
+  enableChainOfThought?: boolean;
+  promptVersion?: string | null;
+}

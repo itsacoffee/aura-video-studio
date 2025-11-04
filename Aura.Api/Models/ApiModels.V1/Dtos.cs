@@ -1685,3 +1685,108 @@ public record ThumbnailResponse(
     int Height,
     double Timestamp);
 
+/// <summary>
+/// Request to explain an artifact (script, plan, brief)
+/// </summary>
+public record ExplainArtifactRequest(
+    string ArtifactType,
+    string ArtifactContent,
+    string? SpecificQuestion = null);
+
+/// <summary>
+/// Response with AI explanation of an artifact
+/// </summary>
+public record ExplainArtifactResponse(
+    bool Success,
+    string? Explanation,
+    List<string>? KeyPoints,
+    string? ErrorMessage = null);
+
+/// <summary>
+/// Request to improve an artifact with specific action
+/// </summary>
+public record ImproveArtifactRequest(
+    string ArtifactType,
+    string ArtifactContent,
+    string ImprovementAction,
+    string? TargetAudience = null,
+    LockedSectionDto[]? LockedSections = null);
+
+/// <summary>
+/// Response with improved artifact
+/// </summary>
+public record ImproveArtifactResponse(
+    bool Success,
+    string? ImprovedContent,
+    string? ChangesSummary,
+    PromptDiffDto? PromptDiff,
+    string? ErrorMessage = null);
+
+/// <summary>
+/// Locked section to preserve during regeneration
+/// </summary>
+public record LockedSectionDto(
+    int StartIndex,
+    int EndIndex,
+    string Content,
+    string Reason);
+
+/// <summary>
+/// Prompt diff preview showing changes
+/// </summary>
+public record PromptDiffDto(
+    string OriginalPrompt,
+    string ModifiedPrompt,
+    string IntendedOutcome,
+    List<PromptChangeDto> Changes);
+
+/// <summary>
+/// Individual prompt change detail
+/// </summary>
+public record PromptChangeDto(
+    string Type,
+    string Description,
+    string? OldValue = null,
+    string? NewValue = null);
+
+/// <summary>
+/// Request for constrained regeneration
+/// </summary>
+public record ConstrainedRegenerateRequest(
+    string ArtifactType,
+    string CurrentContent,
+    string RegenerationType,
+    LockedSectionDto[]? LockedSections = null,
+    PromptModifiersDto? PromptModifiers = null);
+
+/// <summary>
+/// Response with regenerated content
+/// </summary>
+public record ConstrainedRegenerateResponse(
+    bool Success,
+    string? RegeneratedContent,
+    PromptDiffDto? PromptDiff,
+    bool RequiresConfirmation,
+    string? ErrorMessage = null);
+
+/// <summary>
+/// Guided mode configuration
+/// </summary>
+public record GuidedModeConfigDto(
+    bool Enabled,
+    string ExperienceLevel,
+    bool ShowTooltips,
+    bool ShowWhyLinks,
+    bool RequirePromptDiffConfirmation);
+
+/// <summary>
+/// Telemetry for guided mode feature usage
+/// </summary>
+public record GuidedModeTelemetryDto(
+    string FeatureUsed,
+    string ArtifactType,
+    long DurationMs,
+    bool Success,
+    string? FeedbackRating = null,
+    Dictionary<string, string>? Metadata = null);
+
