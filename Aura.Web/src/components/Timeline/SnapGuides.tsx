@@ -79,6 +79,12 @@ export function SnapGuides({
         return 'In Point';
       case 'out-point':
         return 'Out Point';
+      case 'caption':
+        return point.label ? `Caption: ${point.label}` : 'Caption';
+      case 'audio-peak':
+        return `Audio Peak ${point.intensity ? `(${Math.round(point.intensity * 100)}%)` : ''}`;
+      case 'scene-boundary':
+        return 'Scene Boundary';
       default:
         return 'Snap';
     }
