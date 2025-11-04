@@ -299,8 +299,8 @@ builder.Services.Configure<Aura.Core.AI.Cache.LlmPrewarmOptions>(
     builder.Configuration.GetSection("LlmPrewarm"));
 builder.Services.AddSingleton<Aura.Core.AI.Cache.ILlmCache, Aura.Core.AI.Cache.MemoryLlmCache>();
 builder.Services.AddSingleton<Aura.Core.AI.Cache.CachedLlmProviderService>();
-builder.Services.AddSingleton<Aura.Core.AI.Cache.LlmPrewarmService>();
 builder.Services.AddHostedService<Aura.Api.HostedServices.LlmCacheMaintenanceService>();
+builder.Services.AddHostedService<Aura.Api.HostedServices.LlmPrewarmService>();
 
 // Register Conversation/Context Management services
 builder.Services.AddSingleton<Aura.Core.Services.Conversation.ContextPersistence>(sp =>
