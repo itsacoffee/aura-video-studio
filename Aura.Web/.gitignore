@@ -37,3 +37,6 @@ test-results/
 .env.production.local
 .env.development.local
 .env.test.local
+
+# Generated API types (regenerate with npm run generate:api-types)
+src/api/generated/swagger.json

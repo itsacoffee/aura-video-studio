@@ -41,6 +41,7 @@
     "playwright:install": "playwright install --with-deps chromium",
     "docs": "typedoc",
     "docs:watch": "typedoc --watch",
+    "generate:api-types": "node scripts/generate-api-types.js",
     "prepare": "node scripts/setup-git-hooks.cjs"
   },
   "dependencies": {
@@ -48,6 +49,8 @@
     "@ffmpeg/util": "^0.12.1",
     "@fluentui/react-components": "^9.47.0",
     "@fluentui/react-icons": "^2.0.239",
+    "@tanstack/react-query": "5.90.6",
+    "@tanstack/react-query-devtools": "5.90.2",
     "axios": "^1.6.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -85,6 +88,8 @@
     "husky": "^9.1.7",
     "jsdom": "^27.0.0",
     "lint-staged": "^16.2.6",
+    "openapi-fetch": "0.15.0",
+    "openapi-typescript": "7.10.1",
     "postcss": "^8.4.33",
     "prettier": "^3.1.1",
     "rollup-plugin-visualizer": "^6.0.5",
