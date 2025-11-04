@@ -110,7 +110,7 @@ public class WindowsSSMLMapper : BaseSSMLMapper
         return sb.ToString();
     }
 
-    public SSMLValidationResult Validate(string ssml)
+    public override SSMLValidationResult Validate(string ssml)
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -147,7 +147,7 @@ public class WindowsSSMLMapper : BaseSSMLMapper
         };
     }
 
-    public string AutoRepair(string ssml)
+    public override string AutoRepair(string ssml)
     {
         if (string.IsNullOrWhiteSpace(ssml))
         {
@@ -169,7 +169,7 @@ public class WindowsSSMLMapper : BaseSSMLMapper
         return ssml;
     }
 
-    public Task<int> EstimateDurationAsync(string ssml, VoiceSpec voiceSpec, CancellationToken ct = default)
+    public override Task<int> EstimateDurationAsync(string ssml, VoiceSpec voiceSpec, CancellationToken ct = default)
     {
         var textContent = Regex.Replace(ssml, @"<[^>]+>", "");
         var wordCount = textContent.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
