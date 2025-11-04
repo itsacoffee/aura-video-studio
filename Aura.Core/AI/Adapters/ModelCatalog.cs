@@ -507,4 +507,221 @@ public class ModelCatalog
         
         return results;
     }
+
+    /// <summary>
+    /// Test a specific model with a lightweight probe to verify availability and capabilities
+    /// </summary>
+    public async Task<ModelTestResult> TestModelAsync(
+        string provider,
+        string modelId,
+        string apiKey,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Testing model {Provider}:{ModelId}", provider, modelId);
+
+        var result = new ModelTestResult
+        {
+            Provider = provider,
+            ModelId = modelId,
+            TestedAt = DateTime.UtcNow
+        };
+
+        try
+        {
+            // Validate model exists in catalog
+            var (model, reasoning) = FindOrDefault(provider, modelId);
+            if (model == null)
+            {
+                result.IsAvailable = false;
+                result.ErrorMessage = $"Model not found: {reasoning}";
+                return result;
+            }
+
+            result.ContextWindow = model.ContextWindow;
+            result.MaxTokens = model.MaxTokens;
+            result.IsDeprecated = model.DeprecationDate.HasValue && 
+                                 model.DeprecationDate.Value <= DateTime.UtcNow;
+            result.ReplacementModel = model.ReplacementModel;
+
+            // Perform lightweight API test based on provider
+            var testPrompt = "Reply with exactly one word: OK";
+            var testSuccess = false;
+
+            switch (provider.ToLowerInvariant())
+            {
+                case "openai":
+                    testSuccess = await TestOpenAiModelAsync(modelId, apiKey, testPrompt, ct);
+                    break;
+                case "anthropic":
+                    testSuccess = await TestAnthropicModelAsync(modelId, apiKey, testPrompt, ct);
+                    break;
+                case "gemini":
+                    testSuccess = await TestGeminiModelAsync(modelId, apiKey, testPrompt, ct);
+                    break;
+                case "ollama":
+                    testSuccess = await TestOllamaModelAsync(modelId, apiKey, testPrompt, ct);
+                    break;
+                default:
+                    result.IsAvailable = false;
+                    result.ErrorMessage = $"Testing not implemented for provider: {provider}";
+                    return result;
+            }
+
+            result.IsAvailable = testSuccess;
+            if (!testSuccess)
+            {
+                result.ErrorMessage = "Model test failed - API returned error or timeout";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Model test failed for {Provider}:{ModelId}", provider, modelId);
+            result.IsAvailable = false;
+            result.ErrorMessage = $"Test error: {ex.Message}";
+        }
+
+        return result;
+    }
+
+    private async Task<bool> TestOpenAiModelAsync(string modelId, string apiKey, string prompt, CancellationToken ct)
+    {
+        try
+        {
+            using var httpClient = _httpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+            httpClient.Timeout = TimeSpan.FromSeconds(15);
+
+            var requestBody = new
+            {
+                model = modelId,
+                messages = new[]
+                {
+                    new { role = "user", content = prompt }
+                },
+                max_tokens = 10
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            
+            var response = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "OpenAI model test failed for {ModelId}", modelId);
+            return false;
+        }
+    }
+
+    private async Task<bool> TestAnthropicModelAsync(string modelId, string apiKey, string prompt, CancellationToken ct)
+    {
+        try
+        {
+            using var httpClient = _httpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
+            httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+            httpClient.Timeout = TimeSpan.FromSeconds(15);
+
+            var requestBody = new
+            {
+                model = modelId,
+                messages = new[]
+                {
+                    new { role = "user", content = prompt }
+                },
+                max_tokens = 10
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            
+            var response = await httpClient.PostAsync("https://api.anthropic.com/v1/messages", content, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Anthropic model test failed for {ModelId}", modelId);
+            return false;
+        }
+    }
+
+    private async Task<bool> TestGeminiModelAsync(string modelId, string apiKey, string prompt, CancellationToken ct)
+    {
+        try
+        {
+            using var httpClient = _httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(15);
+
+            var requestBody = new
+            {
+                contents = new[]
+                {
+                    new
+                    {
+                        parts = new[]
+                        {
+                            new { text = prompt }
+                        }
+                    }
+                }
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{modelId}:generateContent?key={apiKey}";
+            var response = await httpClient.PostAsync(url, content, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Gemini model test failed for {ModelId}", modelId);
+            return false;
+        }
+    }
+
+    private async Task<bool> TestOllamaModelAsync(string modelId, string baseUrl, string prompt, CancellationToken ct)
+    {
+        try
+        {
+            using var httpClient = _httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(15);
+
+            var requestBody = new
+            {
+                model = modelId,
+                prompt,
+                stream = false
+            };
+
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            
+            var url = $"{baseUrl}/api/generate";
+            var response = await httpClient.PostAsync(url, content, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Ollama model test failed for {ModelId}", modelId);
+            return false;
+        }
+    }
+}
+
+/// <summary>
+/// Result of testing a specific model
+/// </summary>
+public class ModelTestResult
+{
+    public required string Provider { get; set; }
+    public required string ModelId { get; set; }
+    public bool IsAvailable { get; set; }
+    public bool IsDeprecated { get; set; }
+    public string? ReplacementModel { get; set; }
+    public int ContextWindow { get; set; }
+    public int MaxTokens { get; set; }
+    public string? ErrorMessage { get; set; }
+    public DateTime TestedAt { get; set; }
 }
