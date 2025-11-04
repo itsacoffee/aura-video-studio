@@ -70,7 +70,7 @@ public class SSMLController : ControllerBase
                 request.VoiceSpec.VoiceName,
                 request.VoiceSpec.Rate,
                 request.VoiceSpec.Pitch,
-                PauseStyle.Natural
+                Aura.Core.Models.PauseStyle.Natural
             );
 
             var planningRequest = new SSMLPlanningRequest
@@ -325,10 +325,10 @@ public class SSMLController : ControllerBase
                 constraints.SupportedProsodyAttributes.ToList(),
                 constraints.RateRange.Min,
                 constraints.RateRange.Max,
-                constraints.MinPitch: constraints.PitchRange.Min,
-                constraints.MaxPitch: constraints.PitchRange.Max,
-                constraints.MinVolume: constraints.VolumeRange.Min,
-                constraints.MaxVolume: constraints.VolumeRange.Max,
+                constraints.PitchRange.Min,
+                constraints.PitchRange.Max,
+                constraints.VolumeRange.Min,
+                constraints.VolumeRange.Max,
                 constraints.MaxPauseDurationMs,
                 constraints.SupportsTimingMarkers,
                 constraints.MaxTextLength
