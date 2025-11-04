@@ -186,7 +186,7 @@ public class ModelSelectionServiceTests
 
         // Mock catalog to return null (model unavailable)
         _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4"))
-            .Returns<ModelRegistry.ModelInfo?, string>((null, "Model not found"));
+            .Returns(((ModelRegistry.ModelInfo?)null, "Model not found"));
         
         _mockCatalog.Setup(c => c.GetAllModels("OpenAI"))
             .Returns(new System.Collections.Generic.List<ModelRegistry.ModelInfo>
@@ -216,7 +216,7 @@ public class ModelSelectionServiceTests
     {
         // Arrange: Mock catalog to return null (model not found)
         _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "nonexistent"))
-            .Returns<ModelRegistry.ModelInfo?, string>((null, "Not found"));
+            .Returns(((ModelRegistry.ModelInfo?)null, "Not found"));
 
         // Act
         var result = await _service.SetModelSelectionAsync(
