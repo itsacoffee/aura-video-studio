@@ -1,5 +1,5 @@
-import { apiClient } from './apiClient';
 import type { CacheStatistics, CacheClearResponse, CacheEvictResponse } from '../../types/cache';
+import apiClient from './apiClient';
 
 /**
  * API client for LLM cache management
@@ -32,8 +32,12 @@ export async function evictExpiredEntries(): Promise<CacheEvictResponse> {
 /**
  * Removes a specific cache entry by key
  */
-export async function removeCacheEntry(key: string): Promise<import('../../types/cache').CacheRemoveResponse> {
-  const response = await apiClient.delete<import('../../types/cache').CacheRemoveResponse>(`/api/cache/${key}`);
+export async function removeCacheEntry(
+  key: string
+): Promise<import('../../types/cache').CacheRemoveResponse> {
+  const response = await apiClient.delete<import('../../types/cache').CacheRemoveResponse>(
+    `/api/cache/${key}`
+  );
   return response.data;
 }
 
