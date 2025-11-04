@@ -179,4 +179,130 @@ public class RenderPresetsTests
         Assert.Equal(30, preset.Fps);
         Assert.Equal("H264", preset.Codec);
     }
+
+    [Fact]
+    public void InstagramReel_Should_BeVerticalWithCorrectSettings()
+    {
+        // Arrange & Act
+        var preset = RenderPresets.InstagramReel;
+
+        // Assert
+        Assert.Equal(1080, preset.Res.Width);
+        Assert.Equal(1920, preset.Res.Height);
+        Assert.True(preset.Res.Height > preset.Res.Width, "Reels should be vertical");
+        Assert.Equal("mp4", preset.Container);
+        Assert.Equal(10000, preset.VideoBitrateK);
+    }
+
+    [Fact]
+    public void TikTok_Should_BeVerticalFormat()
+    {
+        // Arrange & Act
+        var preset = RenderPresets.TikTok;
+
+        // Assert
+        Assert.Equal(1080, preset.Res.Width);
+        Assert.Equal(1920, preset.Res.Height);
+        Assert.True(preset.Res.Height > preset.Res.Width, "TikTok should be vertical");
+    }
+
+    [Fact]
+    public void ArchivalProRes_Should_HaveHighBitrateAndQuality()
+    {
+        // Arrange & Act
+        var preset = RenderPresets.ArchivalProRes;
+
+        // Assert
+        Assert.Equal("mov", preset.Container);
+        Assert.Equal("ProRes422HQ", preset.Codec);
+        Assert.Equal(120000, preset.VideoBitrateK);
+        Assert.Equal(100, preset.QualityLevel);
+    }
+
+    [Fact]
+    public void ArchivalH265_Should_UseH265Codec()
+    {
+        // Arrange & Act
+        var preset = RenderPresets.ArchivalH265;
+
+        // Assert
+        Assert.Equal("H265", preset.Codec);
+        Assert.Equal(15000, preset.VideoBitrateK);
+        Assert.Equal(90, preset.QualityLevel);
+    }
+
+    [Theory]
+    [InlineData("TikTok")]
+    [InlineData("tiktok")]
+    public void GetPresetByName_Should_FindTikTok(string name)
+    {
+        // Act
+        var preset = RenderPresets.GetPresetByName(name);
+
+        // Assert
+        Assert.NotNull(preset);
+        Assert.Equal(1080, preset.Res.Width);
+        Assert.Equal(1920, preset.Res.Height);
+    }
+
+    [Theory]
+    [InlineData("Instagram Reel")]
+    [InlineData("instagramreel")]
+    [InlineData("reel")]
+    public void GetPresetByName_Should_FindInstagramReel(string name)
+    {
+        // Act
+        var preset = RenderPresets.GetPresetByName(name);
+
+        // Assert
+        Assert.NotNull(preset);
+        Assert.Equal(1080, preset.Res.Width);
+        Assert.Equal(1920, preset.Res.Height);
+    }
+
+    [Theory]
+    [InlineData("Archival ProRes")]
+    [InlineData("archivalprores")]
+    [InlineData("prores")]
+    public void GetPresetByName_Should_FindArchivalProRes(string name)
+    {
+        // Act
+        var preset = RenderPresets.GetPresetByName(name);
+
+        // Assert
+        Assert.NotNull(preset);
+        Assert.Equal("ProRes422HQ", preset.Codec);
+    }
+
+    [Fact]
+    public void GetPresetsByPlatform_Should_GroupPresetsCorrectly()
+    {
+        // Act
+        var grouped = RenderPresets.GetPresetsByPlatform();
+
+        // Assert
+        Assert.NotEmpty(grouped);
+        Assert.True(grouped.ContainsKey("YouTube"));
+        Assert.True(grouped.ContainsKey("Instagram"));
+        Assert.True(grouped.ContainsKey("TikTok"));
+        Assert.True(grouped.ContainsKey("Archival"));
+        
+        Assert.Equal(5, grouped["YouTube"].Count);
+        Assert.Equal(2, grouped["Instagram"].Count);
+        Assert.Equal(1, grouped["TikTok"].Count);
+        Assert.Equal(2, grouped["Archival"].Count);
+    }
+
+    [Fact]
+    public void GetPresetNames_Should_IncludeAllNewPresets()
+    {
+        // Act
+        var names = RenderPresets.GetPresetNames();
+
+        // Assert
+        Assert.Contains("Instagram Reel", names);
+        Assert.Contains("TikTok", names);
+        Assert.Contains("Archival ProRes", names);
+        Assert.Contains("Archival H.265", names);
+    }
 }
