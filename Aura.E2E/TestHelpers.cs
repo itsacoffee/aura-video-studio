@@ -106,9 +106,4 @@ internal class FailingLlmProvider : ILlmProvider
     {
         throw new System.Exception($"{_name} provider is not available");
     }
-
-    public Task<string> CompleteAsync(string prompt, CancellationToken ct)
-    {
-        throw new System.Exception($"{_name} provider is not available");
-    }
 }
