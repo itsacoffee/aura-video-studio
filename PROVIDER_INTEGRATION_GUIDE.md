@@ -4,12 +4,13 @@ Comprehensive guide for integrating and using providers in Aura Video Studio's v
 
 ## Table of Contents
 1. [Overview](#overview)
-2. [LLM Providers](#llm-providers)
-3. [TTS Providers](#tts-providers)
-4. [Image Providers](#image-providers)
-5. [Fallback Strategies](#fallback-strategies)
-6. [Error Handling](#error-handling)
-7. [Performance Considerations](#performance-considerations)
+2. [Provider Profiles](#provider-profiles)
+3. [LLM Providers](#llm-providers)
+4. [TTS Providers](#tts-providers)
+5. [Image Providers](#image-providers)
+6. [Fallback Strategies](#fallback-strategies)
+7. [Error Handling](#error-handling)
+8. [Performance Considerations](#performance-considerations)
 
 ## Overview
 
@@ -20,6 +21,164 @@ Aura Video Studio uses a modular provider system for:
 - **Stock Images**: Ready-made visual assets
 
 Each provider implements a common interface, enabling fallback chains and easy swapping.
+
+## Provider Profiles
+
+Aura Video Studio includes three pre-configured provider profiles that balance cost, quality, and API requirements.
+
+### Free-Only Profile
+
+**Description**: Uses only free and offline providers. No API keys required.
+
+**Ideal for**:
+- Testing and development
+- Offline environments
+- Learning the platform
+- Personal projects with no budget
+
+**Providers**:
+- **LLM**: Ollama (local, free) with fallback to rule-based
+- **TTS**: Windows SAPI or Piper TTS (local, free)
+- **Images**: Local stock images
+- **Video**: Software encoding with hardware acceleration when available
+
+**Quality**: Acceptable for internal videos and prototypes
+
+**Cost**: $0
+
+### Balanced Mix Profile
+
+**Description**: Combines free and premium providers for good quality at reasonable cost.
+
+**Ideal for**:
+- Small businesses
+- Content creators on budget
+- Regular video production
+- Testing premium features
+
+**Providers**:
+- **LLM**: OpenAI GPT-3.5-turbo with Ollama fallback
+- **TTS**: ElevenLabs (if configured) with SAPI fallback
+- **Images**: Pexels/Pixabay (free API) with local stock fallback
+- **Video**: Hardware-accelerated encoding when available
+
+**Required API Keys**: OpenAI (GPT-3.5 is cost-effective)
+
+**Quality**: Professional quality for most use cases
+
+**Cost**: ~$0.10 - $0.50 per video
+
+### Pro-Max Profile
+
+**Description**: Premium providers for highest quality. Multiple paid API keys required.
+
+**Ideal for**:
+- Production environments
+- Marketing teams
+- High-quality content requirements
+- Client-facing videos
+
+**Providers**:
+- **LLM**: OpenAI GPT-4-turbo with Anthropic Claude fallback
+- **TTS**: ElevenLabs premium voices with PlayHT fallback
+- **Images**: Stable Diffusion WebUI or Stability AI with Pexels fallback
+- **Video**: Hardware-accelerated encoding (NVENC preferred)
+
+**Required API Keys**: OpenAI, ElevenLabs, Stability AI or SD WebUI URL
+
+**Quality**: Maximum quality, suitable for professional production
+
+**Cost**: ~$1 - $5 per video (varies with length and complexity)
+
+### Managing Profiles
+
+#### Via Settings UI
+
+1. Navigate to **Settings** → **Provider Profiles**
+2. View available profiles with tier badges and descriptions
+3. Click **Validate** to check if all required API keys are configured
+4. Select desired profile and click **Apply Profile**
+5. View **Smart Recommendation** for AI-suggested profile based on your setup
+
+#### Via API
+
+```bash
+# Get all profiles
+GET /api/provider-profiles
+
+# Get active profile
+GET /api/provider-profiles/active
+
+# Set active profile
+POST /api/provider-profiles/active
+{
+  "profileId": "balanced-mix"
+}
+
+# Validate a profile
+POST /api/provider-profiles/{profileId}/validate
+
+# Get recommended profile
+GET /api/provider-profiles/recommend
+```
+
+#### Validation
+
+Each profile can be validated to check if:
+- All required API keys are present
+- Keys are properly formatted
+- Providers are accessible (optional connectivity test)
+
+Validation results show:
+- ✅ Valid: All requirements met
+- ❌ Invalid: Missing keys or configuration issues
+- Specific missing keys listed for easy troubleshooting
+
+### API Key Management
+
+#### Secure Storage
+
+- **Windows**: API keys encrypted using Data Protection API (DPAPI)
+- **Linux/macOS**: Keys stored in user directory with file system permissions
+- All keys masked in logs and diagnostics
+- Never exposed in error messages or telemetry
+
+#### Adding API Keys
+
+```bash
+# Via API
+POST /api/provider-profiles/keys
+{
+  "keys": {
+    "openai": "sk-...",
+    "elevenlabs": "...",
+    "stabilityai": "sk-..."
+  }
+}
+
+# Via Settings UI
+1. Navigate to Settings → API Keys
+2. Enter API key for desired provider
+3. Click "Test" to validate connectivity
+4. Click "Save API Keys"
+```
+
+#### Testing API Keys
+
+Individual provider API keys can be tested before saving:
+
+```bash
+POST /api/provider-profiles/test
+{
+  "provider": "openai",
+  "apiKey": "sk-..."
+}
+```
+
+Response indicates:
+- Success: Key is valid and provider is accessible
+- Failure: Key invalid or provider unreachable
+- Error message with troubleshooting guidance
 
 ## LLM Providers
 

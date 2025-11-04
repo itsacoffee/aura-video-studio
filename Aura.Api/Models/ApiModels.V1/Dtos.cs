@@ -1897,3 +1897,64 @@ public record StorageUsageResponse(
     int RestorePointCount,
     string FormattedSize);
 
+/// <summary>
+/// Provider profile DTO
+/// </summary>
+public record ProviderProfileDto(
+    string Id,
+    string Name,
+    string Description,
+    string Tier,
+    Dictionary<string, string> Stages,
+    List<string> RequiredApiKeys,
+    string UsageNotes,
+    DateTime? LastValidatedAt);
+
+/// <summary>
+/// Profile validation result DTO
+/// </summary>
+public record ProfileValidationResultDto(
+    bool IsValid,
+    string Message,
+    List<string> Errors,
+    List<string> MissingKeys,
+    List<string> Warnings);
+
+/// <summary>
+/// Provider test result DTO
+/// </summary>
+public record ProviderTestResultDto(
+    string Provider,
+    bool Success,
+    string Message,
+    DateTime TestedAt);
+
+/// <summary>
+/// Request to test a provider API key
+/// </summary>
+public record TestProviderRequest(
+    string Provider,
+    string? ApiKey = null);
+
+/// <summary>
+/// Request to save API keys
+/// </summary>
+public record SaveApiKeysRequest(
+    Dictionary<string, string> Keys);
+
+/// <summary>
+/// Request to set active profile
+/// </summary>
+public record SetActiveProfileRequest(
+    string ProfileId);
+
+/// <summary>
+/// Provider profile recommendation response
+/// </summary>
+public record ProfileRecommendationDto(
+    string RecommendedProfileId,
+    string RecommendedProfileName,
+    string Reason,
+    List<string> AvailableKeys,
+    List<string> MissingKeysForProMax);
+

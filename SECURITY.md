@@ -46,7 +46,11 @@ If you discover a security vulnerability, please report it by:
 
 ### 5. Authentication & Authorization
 - API key validation for external service providers
-- Secure storage recommendations for credentials
+- **DPAPI Encryption**: Windows users benefit from Data Protection API (DPAPI) encryption for API keys at rest
+- **Secure Key Storage**: API keys stored in user-specific encrypted storage (Windows LocalApplicationData)
+- **Secret Masking**: All API keys automatically masked in logs, diagnostics, and error messages
+- **Development Mode**: Non-Windows platforms use plaintext storage with file system permissions for development
+- Preflight validation with secure API key testing
 - No hardcoded credentials or secrets in source code
 
 ### 6. Error Handling
