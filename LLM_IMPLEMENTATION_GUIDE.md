@@ -511,3 +511,152 @@ public interface ILlmProvider
 
 **Last Updated**: After completing Anthropic and Ollama providers
 **Status**: Ready for Gemini and Azure OpenAI completion
+
+## Model Selection and Recommendations
+
+### Always-Manual Model Control
+
+As of the Model Selection implementation, all LLM provider selection follows explicit user control with no silent model swaps. The system enforces these rules:
+
+1. **User Selections Take Precedence**: Explicit user choices (global defaults, project overrides, stage pinned) always win
+2. **No Silent Substitutions**: The system never automatically changes a user-selected model without explicit consent
+3. **Recommendations Are Advisory Only**: When models are deprecated or unavailable, the system provides recommendations but requires user action
+
+### Model Recommendation Flow
+
+When generating model recommendations for users:
+
+1. **Query ModelCatalog** for available models for the provider
+2. **Filter out deprecated models** unless user explicitly confirmed
+3. **Sort by capabilities**:
+   - Context window size (descending)
+   - Max tokens (descending)
+   - Recency (prefer newer models)
+4. **Present top 3 alternatives** with reasoning
+5. **Wait for explicit user action** (Apply / Retry / Cancel)
+
+### LLM-Assisted Recommendations
+
+Providers can optionally offer "Explain model" functionality:
+- Calls orchestrator LLM to generate pros/cons summary
+- Compares selected model vs recommended alternatives
+- Provides context about task requirements (e.g., "long scripts need large context windows")
+- **Read-only and advisory** - never auto-applies
+
+Example implementation:
+
+```csharp
+public async Task<ModelExplanation> ExplainModelChoiceAsync(
+    string currentModel,
+    string[] alternativeModels,
+    string taskDescription,
+    CancellationToken ct)
+{
+    var prompt = $@"Compare the following AI models for this task:
+Task: {taskDescription}
+
+Current model: {currentModel}
+Alternatives: {string.Join(", ", alternativeModels)}
+
+Provide a concise comparison highlighting:
+1. Best fit for the task
+2. Pros and cons of each model
+3. Cost/performance tradeoffs
+4. Any deprecation concerns
+
+Keep the response under 200 words.";
+
+    // Call LLM to generate explanation (advisory only)
+    var explanation = await _orchestratorLlm.CompleteAsync(prompt, ct);
+    
+    return new ModelExplanation
+    {
+        Summary = explanation,
+        RecommendedModel = alternativeModels[0], // Best alternative
+        Reasoning = "Based on task requirements"
+    };
+}
+```
+
+**Important**: This explanation is displayed in UI but **never** used to automatically change the user's model selection.
+
+### Preflight Model Validation
+
+Before pipeline execution, validate selected models:
+
+```csharp
+public async Task<PreflightResult> ValidateModelsAsync(PipelineSpec spec, CancellationToken ct)
+{
+    var results = new List<ModelValidationResult>();
+    
+    // Check each stage's model
+    foreach (var stage in spec.Stages)
+    {
+        var (model, reasoning) = _modelCatalog.FindOrDefault(stage.Provider, stage.ModelId);
+        
+        results.Add(new ModelValidationResult
+        {
+            Stage = stage.Name,
+            ModelId = stage.ModelId,
+            IsAvailable = model != null,
+            IsDeprecated = model?.DeprecationDate <= DateTime.UtcNow,
+            Reasoning = reasoning,
+            RecommendedAlternatives = model == null 
+                ? await GetAlternativesAsync(stage.Provider, stage.ModelId, ct) 
+                : new List<string>()
+        });
+    }
+    
+    return new PreflightResult
+    {
+        AllModelsAvailable = results.All(r => r.IsAvailable),
+        ValidationResults = results
+    };
+}
+```
+
+If preflight fails:
+1. Show blocking modal with validation results
+2. Present recommended alternatives
+3. Provide "Apply recommendations" button (explicit consent)
+4. Allow "Continue anyway" only if no pinned models are unavailable
+
+### Audit Trail Integration
+
+All model resolution decisions are logged:
+
+```csharp
+_logger.LogInformation(
+    "Model resolved: Provider={Provider}, Stage={Stage}, Selected={Selected}, Source={Source}, Pinned={Pinned}, JobId={JobId}",
+    provider, stage, resolvedModelId, source, isPinned, jobId);
+```
+
+This creates a complete audit trail of which model was used and why, enabling:
+- Debugging unexpected behavior
+- Compliance and governance
+- Understanding cost implications
+- Identifying patterns for optimization
+
+### Testing Model Availability
+
+Providers should implement lightweight model testing:
+
+```csharp
+public async Task<bool> TestModelAsync(string modelId, string apiKey, CancellationToken ct)
+{
+    try
+    {
+        // Send minimal test request (1-2 tokens)
+        var response = await SendTestRequestAsync(modelId, apiKey, ct);
+        return response.IsSuccessStatusCode;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogWarning(ex, "Model test failed for {ModelId}", modelId);
+        return false;
+    }
+}
+```
+
+Test results are cached to avoid repeated API calls and shown in UI.
+

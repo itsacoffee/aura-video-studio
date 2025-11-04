@@ -539,3 +539,159 @@ Manual verification needed for:
 - This checklist should be reviewed and updated as tests are executed
 - Any discovered issues should be documented in the Critical Bugs section
 - Sign-off requires 100% completion of Must Pass criteria
+
+---
+
+## PHASE 9: Model Selection and Control Verification
+
+### 9.1 Model Selection Precedence Validation
+- [ ] Set global default model for OpenAI
+- [ ] Override with project-specific model
+- [ ] Pin a stage-specific model
+- [ ] Verify pinned model takes precedence over project override
+- [ ] Test run-level override with CLI flag
+- [ ] Confirm run override (pinned) takes highest precedence
+- [ ] **Validation**: Check audit log shows correct resolution source
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.2 Pin/Unpin Functionality
+- [ ] Select a model in settings
+- [ ] Click "Pin" button
+- [ ] Verify lock icon appears
+- [ ] Verify "Pinned" badge displays
+- [ ] Attempt to change model selection
+- [ ] Confirm pinned selection persists
+- [ ] Unpin model
+- [ ] Verify lock icon and badge disappear
+- [ ] **Validation**: Check `AuraData/model-selections.json` for isPinned flag
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.3 Model Unavailability Blocking
+- [ ] Pin a model for a stage
+- [ ] Temporarily make model unavailable (wrong API key or disconnect)
+- [ ] Attempt to run video generation
+- [ ] Verify blocking modal appears
+- [ ] Confirm modal shows recommended alternatives
+- [ ] Test "Apply recommended model" action
+- [ ] Test "Retry with original" action
+- [ ] Test "Cancel run" action
+- [ ] **Validation**: Pipeline must not proceed without user action
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.4 Automatic Fallback Settings
+- [ ] Navigate to Settings → Model Selection
+- [ ] Verify "Allow Automatic Fallback" toggle is OFF by default
+- [ ] Attempt run with no model selection configured
+- [ ] Confirm operation blocks (fallback disabled)
+- [ ] Enable "Allow Automatic Fallback"
+- [ ] Attempt same run
+- [ ] Verify fallback model is used
+- [ ] Check audit log for fallback notification
+- [ ] **Validation**: Check `allowAutomaticFallback` in settings
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.5 Deprecation Warning Flow
+- [ ] Add a deprecated model to ModelRegistry with DeprecationDate
+- [ ] Attempt to select deprecated model in UI
+- [ ] Verify deprecation warning badge appears
+- [ ] Confirm deprecation dialog shows on selection
+- [ ] Review replacement model suggestion
+- [ ] Test "Use Anyway" action
+- [ ] Verify deprecation warning persists after selection
+- [ ] **Validation**: API should return deprecationWarning in response
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.6 Model Testing Feature
+- [ ] Select a model in picker
+- [ ] Click "Test" button
+- [ ] Verify test runs (spinner shows)
+- [ ] Confirm test result displays (success/failure)
+- [ ] Check capability information (context window, max tokens)
+- [ ] Test with invalid API key
+- [ ] Verify appropriate error message
+- [ ] **Validation**: Check `/api/models/test` endpoint response
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.7 Model Selection Persistence
+- [ ] Set multiple model selections (global, project, stage)
+- [ ] Restart application
+- [ ] Verify all selections persisted
+- [ ] Check isPinned flags survived restart
+- [ ] Verify selections load on startup
+- [ ] Confirm no data loss
+- [ ] **Validation**: Inspect `AuraData/model-selections.json` file
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.8 Audit Trail Verification
+- [ ] Perform several model resolutions (various precedence levels)
+- [ ] Check audit log in settings
+- [ ] Verify each entry shows:
+  - Provider and stage
+  - Selected model ID
+  - Resolution source (e.g., "StagePinned", "GlobalDefault")
+  - Timestamp
+  - Job ID (if applicable)
+  - Reasoning
+- [ ] Confirm audit entries are in chronological order
+- [ ] Verify last 1000 entries limit
+- [ ] **Validation**: Review logs via UI or `AuraData/model-selections.json`
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.9 CLI Model Override Testing
+- [ ] Run video generation with `--model gpt-4o` flag
+- [ ] Verify specified model is used
+- [ ] Check audit log shows "RunOverride" source
+- [ ] Run with `--model gpt-4o --pin-model` flag
+- [ ] Verify pinned override takes precedence
+- [ ] Test with unavailable model (should block)
+- [ ] Test `--allow-auto-fallback` flag
+- [ ] **Validation**: CLI flags properly passed to ModelResolutionService
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.10 Per-Stage Model Selection
+- [ ] Navigate to Settings → Model Selection
+- [ ] Configure different models for:
+  - Script generation stage
+  - Visual prompts stage
+  - Content analysis stage
+- [ ] Run video generation
+- [ ] Verify each stage uses its configured model
+- [ ] Check audit log confirms per-stage usage
+- [ ] Test with one stage pinned, others not
+- [ ] **Validation**: Pipeline uses correct model per stage
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.11 Clear Selections Functionality
+- [ ] Set multiple model selections
+- [ ] Use "Clear All" button
+- [ ] Verify all selections removed
+- [ ] Test "Clear Global Defaults" button
+- [ ] Confirm only global selections cleared
+- [ ] Test "Clear Project Overrides" button
+- [ ] Confirm only project overrides cleared
+- [ ] **Validation**: Check settings state after each clear action
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.12 Preflight Model Validation
+- [ ] Configure models for all stages
+- [ ] Make one model unavailable (wrong API key)
+- [ ] Run preflight check
+- [ ] Verify preflight detects unavailable model
+- [ ] Confirm warning or error displayed
+- [ ] Test with all models available
+- [ ] Verify preflight passes
+- [ ] **Validation**: Preflight service correctly validates all models
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
