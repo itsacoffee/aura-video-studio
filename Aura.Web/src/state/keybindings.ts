@@ -20,9 +20,10 @@ import { generateKeybindingString } from '../utils/keybinding-utils';
  */
 export const defaultKeybindings: KeybindingConfig = {
   // Playback controls (JKL shuttle)
+  // Note: Both Space and K trigger toggle-play (industry standard in Premiere/Avid)
   space: 'toggle-play',
   j: 'seek-backward',
-  k: 'toggle-play',
+  k: 'toggle-play', // K is pause in JKL shuttle (same as Space)
   l: 'seek-forward',
 
   // Frame navigation
@@ -37,7 +38,6 @@ export const defaultKeybindings: KeybindingConfig = {
 
   // Editing operations
   s: 'split-element',
-  c: 'add-marker',
 
   // Toggle features
   n: 'toggle-snapping',

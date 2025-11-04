@@ -69,8 +69,8 @@ function getPressedKey(ev: KeyboardEvent): string | null {
 
   // Function keys
   if (key.startsWith('f') && key.length >= 2 && key.length <= 3) {
-    const num = key.slice(1);
-    if (num >= '1' && num <= '12') {
+    const num = parseInt(key.slice(1), 10);
+    if (!isNaN(num) && num >= 1 && num <= 12) {
       return key; // f1-f12
     }
   }
@@ -83,16 +83,14 @@ function getPressedKey(ev: KeyboardEvent): string | null {
     }
   }
 
-  // Number keys (using code for AZERTY support)
+  // Number keys (using code for AZERTY support, with fallback)
   if (code.startsWith('Digit')) {
     const digit = code.slice(5);
     if (digit.length === 1 && digit >= '0' && digit <= '9') {
       return digit;
     }
-  }
-
-  // Fallback for other layouts
-  if (key.length === 1 && key >= '0' && key <= '9') {
+  } else if (key.length === 1 && key >= '0' && key <= '9') {
+    // Fallback for other layouts where code is not available
     return key;
   }
 

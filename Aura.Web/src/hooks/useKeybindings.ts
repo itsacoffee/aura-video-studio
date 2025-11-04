@@ -200,11 +200,11 @@ export function useScopedKeybindings(
     const element = ref.current;
 
     // Add event listener to the element
-    element.addEventListener('keydown', handleKeyDown as EventListener);
+    element.addEventListener('keydown', handleKeyDown);
 
     // Cleanup
     return () => {
-      element.removeEventListener('keydown', handleKeyDown as EventListener);
+      element.removeEventListener('keydown', handleKeyDown);
     };
   }, [enabled, keybindingsEnabled, ref, handleKeyDown]);
 }

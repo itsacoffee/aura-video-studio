@@ -18,7 +18,7 @@ import {
 import { Dismiss24Regular, Search24Regular } from '@fluentui/react-icons';
 import React, { useMemo, useState } from 'react';
 import { useKeybindingsStore, shortcutMetadata } from '../../state/keybindings';
-import type { ShortcutMetadata } from '../../types/keybinding';
+import type { ShortcutMetadata, ShortcutKey } from '../../types/keybinding';
 import { formatShortcutForDisplay, getCategoryDescription } from '../../utils/keybinding-utils';
 
 const useStyles = makeStyles({
@@ -166,15 +166,17 @@ export const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({ op
                   <div className={styles.categoryTitle}>{getCategoryDescription(category)}</div>
                   <div className={styles.shortcutList}>
                     {shortcuts.map((shortcut) => {
-                      const assignedKey = keybindings[shortcut.key];
-                      const currentKey = assignedKey === shortcut.action ? shortcut.key : null;
+                      // Find all keys assigned to this action
+                      const assignedKeys = Object.keys(keybindings).filter(
+                        (key) => keybindings[key as ShortcutKey] === shortcut.action
+                      ) as ShortcutKey[];
 
                       return (
                         <div key={shortcut.action} className={styles.shortcutItem}>
                           <div className={styles.shortcutDescription}>{shortcut.description}</div>
-                          {currentKey && (
+                          {assignedKeys.length > 0 && (
                             <div className={styles.shortcutKey}>
-                              {formatShortcutForDisplay(currentKey)}
+                              {assignedKeys.map((k) => formatShortcutForDisplay(k)).join(', ')}
                             </div>
                           )}
                         </div>
