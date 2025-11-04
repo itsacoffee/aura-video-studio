@@ -53,8 +53,8 @@ public class OrchestrationIntegrationTests
         
         var planSpec = new PlanSpec(
             TimeSpan.FromMinutes(2),
-            Pacing.Moderate,
-            Density.Moderate,
+            Pacing.Conversational,
+            Density.Balanced,
             "Educational"
         );
 
@@ -208,7 +208,7 @@ public class OrchestrationIntegrationTests
     {
         // Arrange
         var brief = new Brief("Test", "General", "Test", "Neutral", "English", Aspect.Widescreen16x9);
-        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Moderate, Density.Moderate, "Test");
+        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Conversational, Density.Balanced, "Test");
 
         var invalidJson = @"{
             ""outline"": ""Too short"",
@@ -263,7 +263,7 @@ public class OrchestrationIntegrationTests
     {
         // Arrange
         var brief = new Brief("Test", "General", "Test", "Neutral", "English", Aspect.Widescreen16x9);
-        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Moderate, Density.Moderate, "Test");
+        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Conversational, Density.Balanced, "Test");
 
         var invalidJson = @"{
             ""outline"": ""Short"",
@@ -302,7 +302,7 @@ public class OrchestrationIntegrationTests
     {
         // Arrange
         var brief = new Brief("Test", "General", "Test", "Neutral", "English", Aspect.Widescreen16x9);
-        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Moderate, Density.Moderate, "Test");
+        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Conversational, Density.Balanced, "Test");
 
         var validJson = @"{
             ""outline"": ""A comprehensive outline that provides detailed information about the topic"",
