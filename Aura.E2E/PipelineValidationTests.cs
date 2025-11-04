@@ -516,6 +516,12 @@ internal class PipelineValidationFailingLlmProvider : ILlmProvider
         throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
     }
 
+    public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+    {
+        _logger.LogError("LLM provider is unavailable or misconfigured");
+        throw new InvalidOperationException("LLM provider is unavailable or misconfigured");
+    }
+
     public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
         string sceneText,
         string? previousSceneText,

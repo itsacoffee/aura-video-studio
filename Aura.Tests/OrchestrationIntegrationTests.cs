@@ -312,7 +312,7 @@ public class OrchestrationIntegrationTests
         }";
 
         _mockProvider
-            .Setup(p => p.CompleteAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.CompleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(validJson);
 
         // Act
