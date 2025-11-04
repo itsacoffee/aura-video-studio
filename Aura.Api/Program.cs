@@ -304,15 +304,15 @@ builder.Services.AddSingleton<Aura.Core.AI.Cache.ILlmCache>(sp =>
     var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.ILlmCache>>();
     var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.AI.Cache.LlmCacheOptions>>();
     
+    // Note: DiskLlmCache implementation is pending - using MemoryLlmCache for now
+    var memoryLogger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.MemoryLlmCache>>();
     if (options.Value.UseDiskStorage)
     {
-        var diskLogger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.DiskLlmCache>>();
-        logger.LogInformation("Using DiskLlmCache (disk storage enabled)");
-        return new Aura.Core.AI.Cache.DiskLlmCache(diskLogger, options);
+        logger.LogWarning("DiskLlmCache requested but not yet implemented - falling back to MemoryLlmCache");
+        return new Aura.Core.AI.Cache.MemoryLlmCache(memoryLogger, options);
     }
     else
     {
-        var memoryLogger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.MemoryLlmCache>>();
         logger.LogInformation("Using MemoryLlmCache (disk storage disabled)");
         return new Aura.Core.AI.Cache.MemoryLlmCache(memoryLogger, options);
     }
