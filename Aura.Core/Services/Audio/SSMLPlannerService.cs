@@ -256,45 +256,79 @@ public class SSMLPlannerService
     }
 
     /// <summary>
-    /// Adjust with pauses for fine-tuning (less than 10 percent deviation)
+    /// Adjust with pauses for fine-tuning (less than 10% deviation)
     /// </summary>
     private ProsodyAdjustments AdjustWithPauses(
         ProsodyAdjustments current,
         int deviationMs,
         string text)
     {
-        if (deviationMs <= 0)
+        if (deviationMs == 0)
         {
             return current;
         }
 
         var pauses = new Dictionary<int, int>(current.Pauses);
         
-        var sentences = text.Split(new[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
-        if (sentences.Length > 1)
+        // Positive deviation: audio too short, add pauses
+        // Negative deviation: audio too long, reduce/remove pauses
+        
+        if (deviationMs > 0)
         {
-            var pausePerSentence = deviationMs / sentences.Length;
-            var position = 0;
-            
-            foreach (var sentence in sentences.Take(sentences.Length - 1))
+            var sentences = text.Split(new[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
+            if (sentences.Length > 1)
             {
-                position += sentence.Length + 1;
-                pauses[position] = Math.Min(pausePerSentence, 2000);
+                var pausePerSentence = deviationMs / sentences.Length;
+                var position = 0;
+                
+                foreach (var sentence in sentences.Take(sentences.Length - 1))
+                {
+                    position += sentence.Length + 1;
+                    pauses[position] = Math.Min(pausePerSentence, 2000);
+                }
+            }
+            else
+            {
+                var commas = text.Split(',');
+                if (commas.Length > 1)
+                {
+                    var pausePerComma = deviationMs / (commas.Length - 1);
+                    var position = 0;
+                    
+                    foreach (var part in commas.Take(commas.Length - 1))
+                    {
+                        position += part.Length + 1;
+                        pauses[position] = Math.Min(pausePerComma, 1000);
+                    }
+                }
             }
         }
         else
         {
-            var commas = text.Split(',');
-            if (commas.Length > 1)
+            var pausePositions = pauses.Keys.OrderBy(p => p).ToList();
+            var remainingToReduce = -deviationMs;
+            
+            foreach (var pos in pausePositions)
             {
-                var pausePerComma = deviationMs / (commas.Length - 1);
-                var position = 0;
-                
-                foreach (var part in commas.Take(commas.Length - 1))
+                if (remainingToReduce <= 0)
                 {
-                    position += part.Length + 1;
-                    pauses[position] = Math.Min(pausePerComma, 1000);
+                    break;
                 }
+                
+                var currentPause = pauses[pos];
+                var reduction = Math.Min(currentPause, remainingToReduce);
+                var newPause = currentPause - reduction;
+                
+                if (newPause > 0)
+                {
+                    pauses[pos] = newPause;
+                }
+                else
+                {
+                    pauses.Remove(pos);
+                }
+                
+                remainingToReduce -= reduction;
             }
         }
 
