@@ -12,9 +12,9 @@ namespace Aura.Providers.Tts.validators;
 /// </summary>
 public class PlayHTSSMLMapper : ElevenLabsSSMLMapper
 {
-    public new VoiceProvider Provider => VoiceProvider.PlayHT;
+    public override VoiceProvider Provider => VoiceProvider.PlayHT;
 
-    public new ProviderSSMLConstraints GetConstraints()
+    public override ProviderSSMLConstraints GetConstraints()
     {
         return new ProviderSSMLConstraints
         {

@@ -15,11 +15,11 @@ namespace Aura.Providers.Tts.validators;
 /// <summary>
 /// SSML mapper for Windows SAPI TTS provider
 /// </summary>
-public class WindowsSSMLMapper : ISSMLMapper
+public class WindowsSSMLMapper : BaseSSMLMapper
 {
-    public VoiceProvider Provider => VoiceProvider.WindowsSAPI;
+    public override VoiceProvider Provider => VoiceProvider.WindowsSAPI;
 
-    public ProviderSSMLConstraints GetConstraints()
+    public override ProviderSSMLConstraints GetConstraints()
     {
         return new ProviderSSMLConstraints
         {
@@ -34,7 +34,7 @@ public class WindowsSSMLMapper : ISSMLMapper
         };
     }
 
-    public string MapToSSML(string text, ProsodyAdjustments adjustments, VoiceSpec voiceSpec)
+    public override string MapToSSML(string text, ProsodyAdjustments adjustments, VoiceSpec voiceSpec)
     {
         var sb = new StringBuilder();
         sb.Append("<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\">");
@@ -94,10 +94,11 @@ public class WindowsSSMLMapper : ISSMLMapper
             sb.Append('>');
         }
 
-        var textWithPauses = InsertPauses(text, adjustments.Pauses, constraints.MaxPauseDurationMs);
+        var escapedText = EscapeXml(text);
+        var textWithPauses = InsertPauses(escapedText, adjustments.Pauses, constraints.MaxPauseDurationMs);
         var textWithEmphasis = ApplyEmphasis(textWithPauses, adjustments.Emphasis);
         
-        sb.Append(EscapeXml(textWithEmphasis));
+        sb.Append(textWithEmphasis);
 
         if (hasProsody)
         {

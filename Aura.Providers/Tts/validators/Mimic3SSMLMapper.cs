@@ -12,9 +12,9 @@ namespace Aura.Providers.Tts.validators;
 /// </summary>
 public class Mimic3SSMLMapper : PiperSSMLMapper
 {
-    public new VoiceProvider Provider => VoiceProvider.Mimic3;
+    public override VoiceProvider Provider => VoiceProvider.Mimic3;
 
-    public new ProviderSSMLConstraints GetConstraints()
+    public override ProviderSSMLConstraints GetConstraints()
     {
         return new ProviderSSMLConstraints
         {

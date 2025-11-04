@@ -15,11 +15,11 @@ namespace Aura.Providers.Tts.validators;
 /// <summary>
 /// SSML mapper for Piper TTS provider (limited SSML support)
 /// </summary>
-public class PiperSSMLMapper : ISSMLMapper
+public class PiperSSMLMapper : BaseSSMLMapper
 {
-    public VoiceProvider Provider => VoiceProvider.Piper;
+    public override VoiceProvider Provider => VoiceProvider.Piper;
 
-    public ProviderSSMLConstraints GetConstraints()
+    public override ProviderSSMLConstraints GetConstraints()
     {
         return new ProviderSSMLConstraints
         {
@@ -34,13 +34,14 @@ public class PiperSSMLMapper : ISSMLMapper
         };
     }
 
-    public string MapToSSML(string text, ProsodyAdjustments adjustments, VoiceSpec voiceSpec)
+    public override string MapToSSML(string text, ProsodyAdjustments adjustments, VoiceSpec voiceSpec)
     {
         var sb = new StringBuilder();
         sb.Append("<speak>");
 
-        var textWithPauses = InsertPauses(text, adjustments.Pauses);
-        sb.Append(EscapeXml(textWithPauses));
+        var escapedText = EscapeXml(text);
+        var textWithPauses = InsertPauses(escapedText, adjustments.Pauses);
+        sb.Append(textWithPauses);
 
         sb.Append("</speak>");
 

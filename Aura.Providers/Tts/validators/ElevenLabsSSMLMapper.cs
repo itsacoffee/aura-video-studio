@@ -15,11 +15,11 @@ namespace Aura.Providers.Tts.validators;
 /// <summary>
 /// SSML mapper for ElevenLabs TTS provider
 /// </summary>
-public class ElevenLabsSSMLMapper : ISSMLMapper
+public class ElevenLabsSSMLMapper : BaseSSMLMapper
 {
-    public VoiceProvider Provider => VoiceProvider.ElevenLabs;
+    public override VoiceProvider Provider => VoiceProvider.ElevenLabs;
 
-    public ProviderSSMLConstraints GetConstraints()
+    public override ProviderSSMLConstraints GetConstraints()
     {
         return new ProviderSSMLConstraints
         {
@@ -34,7 +34,7 @@ public class ElevenLabsSSMLMapper : ISSMLMapper
         };
     }
 
-    public string MapToSSML(string text, ProsodyAdjustments adjustments, VoiceSpec voiceSpec)
+    public override string MapToSSML(string text, ProsodyAdjustments adjustments, VoiceSpec voiceSpec)
     {
         var sb = new StringBuilder();
         sb.Append("<speak>");
@@ -72,10 +72,11 @@ public class ElevenLabsSSMLMapper : ISSMLMapper
             sb.Append('>');
         }
 
-        var textWithPauses = InsertPauses(text, adjustments.Pauses, constraints.MaxPauseDurationMs);
+        var escapedText = EscapeXml(text);
+        var textWithPauses = InsertPauses(escapedText, adjustments.Pauses, constraints.MaxPauseDurationMs);
         var textWithEmphasis = ApplyEmphasis(textWithPauses, adjustments.Emphasis);
         
-        sb.Append(EscapeXml(textWithEmphasis));
+        sb.Append(textWithEmphasis);
 
         if (hasProsody)
         {
