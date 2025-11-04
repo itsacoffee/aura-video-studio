@@ -517,14 +517,15 @@ public class VisualPromptGenerationService
         return keywords.Take(8).ToArray();
     }
 
+    private static readonly HashSet<string> CommonWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "the", "and", "with", "that", "this", "from", "have", "they", "what", "about",
+        "which", "when", "where", "there", "their", "would", "could", "should", "being",
+        "professional", "high", "quality", "detailed", "good", "nice", "great", "best"
+    };
+
     private static bool IsCommonWord(string word)
     {
-        var commonWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "the", "and", "with", "that", "this", "from", "have", "they", "what", "about",
-            "which", "when", "where", "there", "their", "would", "could", "should", "being",
-            "professional", "high", "quality", "detailed", "good", "nice", "great", "best"
-        };
-        return commonWords.Contains(word.ToLowerInvariant());
+        return CommonWords.Contains(word.ToLowerInvariant());
     }
 }

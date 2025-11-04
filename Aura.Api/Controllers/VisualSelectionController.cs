@@ -21,13 +21,16 @@ public class VisualSelectionController : ControllerBase
 {
     private readonly ILogger<VisualSelectionController> _logger;
     private readonly ImageSelectionService _selectionService;
+    private readonly AestheticScoringService _scoringService;
 
     public VisualSelectionController(
         ILogger<VisualSelectionController> logger,
-        ImageSelectionService selectionService)
+        ImageSelectionService selectionService,
+        AestheticScoringService scoringService)
     {
         _logger = logger;
         _selectionService = selectionService;
+        _scoringService = scoringService;
     }
 
     /// <summary>
@@ -167,13 +170,7 @@ public class VisualSelectionController : ControllerBase
                 Style = ParseVisualStyle(request.Style ?? "Cinematic")
             };
 
-            var scoringService = HttpContext.RequestServices.GetService(typeof(AestheticScoringService)) as AestheticScoringService;
-            if (scoringService == null)
-            {
-                return StatusCode(500, new { error = "Scoring service not available" });
-            }
-
-            var score = await scoringService.ScoreImageAsync(candidate, prompt, cancellationToken);
+            var score = await _scoringService.ScoreImageAsync(candidate, prompt, cancellationToken);
 
             var dto = new ImageCandidateDto
             {

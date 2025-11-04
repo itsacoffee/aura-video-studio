@@ -173,7 +173,7 @@ public class ImageSelectionService
             }
         }
 
-        if (prompt.Lighting.TimeOfDay != "day")
+        if (prompt.Lighting != null && prompt.Lighting.TimeOfDay != "day")
         {
             queryParts.Add(prompt.Lighting.TimeOfDay);
         }
