@@ -106,8 +106,9 @@ public class CriticService : ICriticProvider
         sb.AppendLine("You are an expert script critic. Evaluate the following video script using the provided rubrics.");
         sb.AppendLine();
         sb.AppendLine("## SCRIPT TO EVALUATE");
-        sb.AppendLine("```");
-        sb.AppendLine(script);
+        sb.AppendLine("```text");
+        var sanitizedScript = script.Replace("```", "'''");
+        sb.AppendLine(sanitizedScript);
         sb.AppendLine("```");
         sb.AppendLine();
         sb.AppendLine("## CONTEXT");
@@ -193,8 +194,9 @@ public class CriticService : ICriticProvider
                 }
             }
 
+            var rubricWeightLookup = rubrics.ToDictionary(r => r.Name, r => r.Weight);
             var overallScore = rubrics.Any() 
-                ? rubricScores.Sum(kvp => kvp.Value * rubrics.First(r => r.Name == kvp.Key).Weight) / rubrics.Sum(r => r.Weight)
+                ? rubricScores.Sum(kvp => kvp.Value * (rubricWeightLookup.ContainsKey(kvp.Key) ? rubricWeightLookup[kvp.Key] : 0)) / rubrics.Sum(r => r.Weight)
                 : 75.0;
 
             issues = ExtractIssues(response);
@@ -240,17 +242,33 @@ public class CriticService : ICriticProvider
             return issues;
         }
 
-        var pattern = @"[-•*]\s*\[?([^\]]+)\]?\s*-\s*\[?Severity:\s*([^\]]+)\]?\s*-\s*([^-]+?)(?:\s*-\s*\[?Location:\s*([^\]]+)\]?)?(?=\n[-•*]|\n\n|$)";
-        var matches = Regex.Matches(issuesSection, pattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        var bulletPattern = @"[-•*]\s*(.+?)(?=\n[-•*]|\n\n|$)";
+        var bulletMatches = Regex.Matches(issuesSection, bulletPattern, RegexOptions.Singleline);
 
-        foreach (Match match in matches)
+        foreach (Match bulletMatch in bulletMatches)
         {
+            var line = bulletMatch.Groups[1].Value.Trim();
+            
+            var categoryMatch = Regex.Match(line, @"^\[?([^\]]+)\]?\s*-", RegexOptions.IgnoreCase);
+            var severityMatch = Regex.Match(line, @"Severity:\s*([^\]-]+)", RegexOptions.IgnoreCase);
+            var locationMatch = Regex.Match(line, @"Location:\s*([^\]-]+)", RegexOptions.IgnoreCase);
+            
+            var category = categoryMatch.Success ? categoryMatch.Groups[1].Value.Trim() : "General";
+            var severity = severityMatch.Success ? severityMatch.Groups[1].Value.Trim() : "Medium";
+            
+            var description = line;
+            if (categoryMatch.Success)
+            {
+                description = line.Substring(categoryMatch.Length).Trim();
+            }
+            description = Regex.Replace(description, @"(Severity|Location):\s*[^\-]+\s*-?\s*", "", RegexOptions.IgnoreCase).Trim();
+
             issues.Add(new CritiqueIssue
             {
-                Category = match.Groups[1].Value.Trim(),
-                Severity = match.Groups[2].Value.Trim(),
-                Description = match.Groups[3].Value.Trim(),
-                Location = match.Groups.Count > 4 ? match.Groups[4].Value.Trim() : null
+                Category = category,
+                Severity = severity,
+                Description = description,
+                Location = locationMatch.Success ? locationMatch.Groups[1].Value.Trim() : null
             });
         }
 

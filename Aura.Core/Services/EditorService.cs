@@ -183,8 +183,9 @@ public class EditorService : IEditorProvider
         sb.AppendLine("You are an expert script editor. Apply the critique feedback to improve the following script.");
         sb.AppendLine();
         sb.AppendLine("## ORIGINAL SCRIPT");
-        sb.AppendLine("```");
-        sb.AppendLine(script);
+        sb.AppendLine("```text");
+        var sanitizedScript = script.Replace("```", "'''");
+        sb.AppendLine(sanitizedScript);
         sb.AppendLine("```");
         sb.AppendLine();
         sb.AppendLine("## CRITIQUE FEEDBACK");
@@ -273,10 +274,11 @@ public class EditorService : IEditorProvider
 
         if (wordCount > targetWordCount)
         {
+            var sanitizedScript = script.Replace("```", "'''");
             var adjustmentPrompt = $@"Condense the following script from {wordCount} to approximately {targetWordCount} words while preserving key points:
 
-```
-{script}
+```text
+{sanitizedScript}
 ```
 
 Provide only the condensed script, no explanations.";

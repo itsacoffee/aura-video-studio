@@ -188,13 +188,13 @@ public class EnhancedRefinementOrchestrator
                             string.Join(", ", editResult.ValidationResult.Errors));
                     }
 
-                    if (!withinDuration)
+                    if (!withinDuration && editResult.ValidationResult.EstimatedDuration.HasValue && editResult.ValidationResult.TargetDuration.HasValue)
                     {
                         _logger.LogWarning(
                             "Round {Round} duration constraint violated: {Estimated} vs {Target}",
                             pass,
-                            editResult.ValidationResult.EstimatedDuration,
-                            editResult.ValidationResult.TargetDuration);
+                            editResult.ValidationResult.EstimatedDuration.Value,
+                            editResult.ValidationResult.TargetDuration.Value);
                     }
                 }
 
