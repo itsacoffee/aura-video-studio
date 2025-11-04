@@ -1,6 +1,8 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.AI.Adapters;
@@ -276,5 +278,51 @@ public class AnthropicAdapter : LlmProviderAdapter
         };
         
         return Math.Min(Math.Max(availableTokens, 512), desiredTokens);
+    }
+    
+    public override async Task<ProviderHealthResult> HealthCheckAsync(CancellationToken ct)
+    {
+        var startTime = DateTime.UtcNow;
+        
+        try
+        {
+            Logger.LogDebug("Performing health check for Anthropic provider with model {Model}", _model);
+            
+            var modelExists = ModelRegistry.FindModel("Anthropic", _model) != null;
+            
+            var elapsed = DateTime.UtcNow - startTime;
+            
+            if (!modelExists)
+            {
+                Logger.LogWarning("Model {Model} not found in registry during health check", _model);
+                return new ProviderHealthResult
+                {
+                    IsHealthy = false,
+                    ResponseTimeMs = elapsed.TotalMilliseconds,
+                    ErrorMessage = $"Model {_model} not found in registry",
+                    Details = "Model may not be available or configured correctly"
+                };
+            }
+            
+            return new ProviderHealthResult
+            {
+                IsHealthy = true,
+                ResponseTimeMs = elapsed.TotalMilliseconds,
+                Details = $"Model {_model} is available. Context window: {GetContextWindowForModel(_model)} tokens"
+            };
+        }
+        catch (Exception ex)
+        {
+            var elapsed = DateTime.UtcNow - startTime;
+            Logger.LogError(ex, "Health check failed for Anthropic provider");
+            
+            return new ProviderHealthResult
+            {
+                IsHealthy = false,
+                ResponseTimeMs = elapsed.TotalMilliseconds,
+                ErrorMessage = ex.Message,
+                Details = "Health check exception occurred"
+            };
+        }
     }
 }

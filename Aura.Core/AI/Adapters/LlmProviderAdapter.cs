@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Services.Health;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.AI.Adapters;
@@ -12,10 +13,20 @@ namespace Aura.Core.AI.Adapters;
 public abstract class LlmProviderAdapter
 {
     protected readonly ILogger Logger;
+    private CircuitBreaker? _circuitBreaker;
     
     protected LlmProviderAdapter(ILogger logger)
     {
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+    
+    /// <summary>
+    /// Gets or sets the circuit breaker for this adapter
+    /// </summary>
+    public CircuitBreaker? CircuitBreaker
+    {
+        get => _circuitBreaker;
+        set => _circuitBreaker = value;
     }
     
     /// <summary>
@@ -78,6 +89,13 @@ public abstract class LlmProviderAdapter
     public abstract ErrorRecoveryStrategy HandleError(Exception error, int attemptNumber);
     
     /// <summary>
+    /// Performs a health check to verify provider availability
+    /// </summary>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Health check result with status and details</returns>
+    public abstract Task<ProviderHealthResult> HealthCheckAsync(CancellationToken ct);
+    
+    /// <summary>
     /// Estimates the number of tokens in a text string
     /// Uses a simple heuristic: ~4 characters per token for English text
     /// </summary>
@@ -138,4 +156,40 @@ public record ErrorRecoveryStrategy
     /// Whether this is a permanent failure (don't retry)
     /// </summary>
     public bool IsPermanentFailure { get; init; }
+    
+    /// <summary>
+    /// Whether this failure was due to schema validation
+    /// </summary>
+    public bool IsValidationFailure { get; init; }
+}
+
+/// <summary>
+/// Result of a provider health check
+/// </summary>
+public record ProviderHealthResult
+{
+    /// <summary>
+    /// Whether the provider is healthy and available
+    /// </summary>
+    public bool IsHealthy { get; init; }
+    
+    /// <summary>
+    /// Response time in milliseconds
+    /// </summary>
+    public double ResponseTimeMs { get; init; }
+    
+    /// <summary>
+    /// Optional error message if unhealthy
+    /// </summary>
+    public string? ErrorMessage { get; init; }
+    
+    /// <summary>
+    /// Additional diagnostic details
+    /// </summary>
+    public string? Details { get; init; }
+    
+    /// <summary>
+    /// Timestamp of the health check
+    /// </summary>
+    public DateTime Timestamp { get; init; } = DateTime.UtcNow;
 }

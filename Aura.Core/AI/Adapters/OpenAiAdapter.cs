@@ -230,6 +230,52 @@ public class OpenAiAdapter : LlmProviderAdapter
         return strategy;
     }
     
+    public override async Task<ProviderHealthResult> HealthCheckAsync(CancellationToken ct)
+    {
+        var startTime = DateTime.UtcNow;
+        
+        try
+        {
+            Logger.LogDebug("Performing health check for OpenAI provider with model {Model}", _model);
+            
+            var modelExists = ModelRegistry.FindModel("OpenAI", _model) != null;
+            
+            var elapsed = DateTime.UtcNow - startTime;
+            
+            if (!modelExists)
+            {
+                Logger.LogWarning("Model {Model} not found in registry during health check", _model);
+                return new ProviderHealthResult
+                {
+                    IsHealthy = false,
+                    ResponseTimeMs = elapsed.TotalMilliseconds,
+                    ErrorMessage = $"Model {_model} not found in registry",
+                    Details = "Model may not be available or configured correctly"
+                };
+            }
+            
+            return new ProviderHealthResult
+            {
+                IsHealthy = true,
+                ResponseTimeMs = elapsed.TotalMilliseconds,
+                Details = $"Model {_model} is available. Context window: {GetContextWindowForModel(_model)} tokens"
+            };
+        }
+        catch (Exception ex)
+        {
+            var elapsed = DateTime.UtcNow - startTime;
+            Logger.LogError(ex, "Health check failed for OpenAI provider");
+            
+            return new ProviderHealthResult
+            {
+                IsHealthy = false,
+                ResponseTimeMs = elapsed.TotalMilliseconds,
+                ErrorMessage = ex.Message,
+                Details = "Health check exception occurred"
+            };
+        }
+    }
+    
     private int GetMaxTokensForModel(string model)
     {
         var modelInfo = ModelRegistry.FindModel("OpenAI", model);
