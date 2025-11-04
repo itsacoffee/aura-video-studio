@@ -15,9 +15,10 @@ Aura.Web is the React-based frontend for Aura Video Studio. It provides a modern
 
 ### State & Data
 
-- **Zustand** - Lightweight state management
+- **React Query (TanStack Query)** - Server state management with caching and deduplication
+- **Zustand** - Client state management
 - **React Router 6** - Client-side routing
-- **Axios** - HTTP client with interceptors
+- **TypedApiClient** - Type-safe API client with circuit breaker and retry logic
 - **React Hook Form** - Form state management
 - **Zod** - Schema validation
 
@@ -789,12 +790,71 @@ When adding new features:
 4. Test API integration thoroughly
 5. Update this README with new features
 
+## API Client & Data Layer
+
+The frontend now uses a modern, type-safe data layer:
+
+### Documentation
+
+- **[API Client Guide](./docs/API_CLIENT_GUIDE.md)** - Comprehensive guide to TypedApiClient, React Query, and SSE hook
+- **[Type Generation](./docs/TYPE_GENERATION.md)** - How to generate TypeScript types from OpenAPI specs
+
+### Key Features
+
+- **Typed API Client**: Type-safe HTTP requests with circuit breaker and retry logic
+- **React Query**: Automatic caching, deduplication, and background refetching
+- **Enhanced SSE Hook**: Auto-reconnecting Server-Sent Events with Zod validation
+- **Correlation IDs**: Request tracking for debugging
+- **Error Handling**: Structured error responses with user-friendly messages
+
+### Quick Example
+
+```typescript
+// Using React Query with typed client
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/api/queryClient';
+import { typedApiClient } from '@/api/typedClient';
+
+function JobStatus({ jobId }: { jobId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: queryKeys.jobs.detail(jobId),
+    queryFn: () => typedApiClient.get(`/api/jobs/${jobId}`),
+  });
+
+  if (isLoading) return <Spinner />;
+  return <div>Status: {data?.status}</div>;
+}
+
+// Using SSE hook for real-time updates
+import { useSse } from '@/hooks/useSse';
+
+function JobProgress({ jobId }: { jobId: string }) {
+  const { lastEvent } = useSse({
+    url: `/api/jobs/${jobId}/events`,
+    onMessage: (event) => console.log('Progress:', event.data),
+  });
+
+  return <div>Progress: {lastEvent?.data.progress}%</div>;
+}
+```
+
+### Generating API Types
+
+```bash
+# Start the API server first
+cd ../Aura.Api && dotnet run
+
+# Then generate types
+npm run generate:api-types
+```
+
 ## Resources
 
 - [React Documentation](https://react.dev/)
 - [Vite Documentation](https://vitejs.dev/)
 - [Fluent UI React](https://react.fluentui.dev/)
 - [TypeScript Documentation](https://www.typescriptlang.org/)
+- [React Query Documentation](https://tanstack.com/query/latest)
 
 ## License
 
