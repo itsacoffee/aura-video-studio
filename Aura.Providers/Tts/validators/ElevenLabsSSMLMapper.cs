@@ -100,12 +100,23 @@ public class ElevenLabsSSMLMapper : BaseSSMLMapper
             return new SSMLValidationResult { IsValid = false, Errors = errors };
         }
 
-        if (!ssml.Contains("<speak>") || !ssml.Contains("</speak>"))
+        var speakOpenIndex = ssml.IndexOf("<speak", StringComparison.Ordinal);
+        var speakCloseIndex = ssml.LastIndexOf("</speak>", StringComparison.Ordinal);
+        
+        if (speakOpenIndex < 0 || speakCloseIndex < 0)
         {
             errors.Add("SSML must be wrapped in <speak> tags");
             suggestions.Add(new SSMLRepairSuggestion(
                 "Missing <speak> wrapper",
                 "Wrap content in <speak></speak> tags",
+                true));
+        }
+        else if (speakOpenIndex >= speakCloseIndex)
+        {
+            errors.Add("SSML has malformed <speak> tag structure (closing tag before opening tag)");
+            suggestions.Add(new SSMLRepairSuggestion(
+                "Malformed tag structure",
+                "Ensure <speak> tag comes before </speak>",
                 true));
         }
 
@@ -324,15 +335,5 @@ public class ElevenLabsSSMLMapper : BaseSSMLMapper
         }
 
         return true;
-    }
-
-    private string EscapeXml(string text)
-    {
-        return text
-            .Replace("&", "&amp;")
-            .Replace("<", "&lt;")
-            .Replace(">", "&gt;")
-            .Replace("\"", "&quot;")
-            .Replace("'", "&apos;");
     }
 }

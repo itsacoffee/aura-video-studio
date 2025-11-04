@@ -161,14 +161,4 @@ public class PiperSSMLMapper : BaseSSMLMapper
 
         return sb.ToString();
     }
-
-    private string EscapeXml(string text)
-    {
-        return text
-            .Replace("&", "&amp;")
-            .Replace("<", "&lt;")
-            .Replace(">", "&gt;")
-            .Replace("\"", "&quot;")
-            .Replace("'", "&apos;");
-    }
 }

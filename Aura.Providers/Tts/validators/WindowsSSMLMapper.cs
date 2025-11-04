@@ -291,14 +291,4 @@ public class WindowsSSMLMapper : BaseSSMLMapper
 
         return unsupported;
     }
-
-    private string EscapeXml(string text)
-    {
-        return text
-            .Replace("&", "&amp;")
-            .Replace("<", "&lt;")
-            .Replace(">", "&gt;")
-            .Replace("\"", "&quot;")
-            .Replace("'", "&apos;");
-    }
 }

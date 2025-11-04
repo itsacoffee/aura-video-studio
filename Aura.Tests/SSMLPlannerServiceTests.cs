@@ -160,7 +160,7 @@ public class SSMLPlannerServiceTests
     }
 
     [Fact]
-    public async Task PlanSSMLAsync_InvalidProvider_ThrowsException()
+    public async Task PlanSSMLAsync_UnsupportedProvider_ThrowsException()
     {
         var scriptLines = new List<ScriptLine>
         {
@@ -175,9 +175,11 @@ public class SSMLPlannerServiceTests
             TargetDurations = new Dictionary<int, double> { { 0, 1.0 } }
         };
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
             async () => await _service.PlanSSMLAsync(request, CancellationToken.None)
         );
+        
+        Assert.Contains("No SSML mapper found", exception.Message);
     }
 
     [Fact]

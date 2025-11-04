@@ -107,6 +107,19 @@ public abstract class BaseSSMLMapper : ISSMLMapper
 
     protected string EscapeXml(string text)
     {
+        if (string.IsNullOrEmpty(text))
+        {
+            return text;
+        }
+
+        var alreadyEscaped = text.Contains("&amp;") || text.Contains("&lt;") || 
+                            text.Contains("&gt;") || text.Contains("&quot;") || text.Contains("&apos;");
+        
+        if (alreadyEscaped)
+        {
+            return text;
+        }
+
         return text
             .Replace("&", "&amp;")
             .Replace("<", "&lt;")
