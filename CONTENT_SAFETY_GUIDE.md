@@ -359,6 +359,185 @@ Each stage can use the same or different policies depending on your needs.
 - Automatically created on first use
 - JSON format for easy inspection and backup
 
+## Stock Media Safety Filtering
+
+### Overview
+
+Aura Video Studio includes built-in content safety filtering for stock media (Pexels, Unsplash, Pixabay) to ensure brand-safe content selection.
+
+### Features
+
+#### Safe Search Filters
+
+All stock media providers support safe search filtering:
+
+```json
+{
+  "query": "nature landscape",
+  "safeSearchEnabled": true,
+  "providers": ["Pexels", "Unsplash", "Pixabay"]
+}
+```
+
+When enabled, the system:
+- Filters explicit content
+- Blocks violent imagery
+- Removes sensitive topics
+- Sanitizes search queries
+- Validates licensing metadata
+
+#### Content Safety Service
+
+**Location**: `Aura.Core/Services/StockMedia/ContentSafetyFilterService.cs`
+
+The content safety filter service provides:
+
+1. **Query Validation**: Checks if search query is appropriate
+2. **Query Sanitization**: Removes blocked keywords from queries
+3. **Content Filtering**: Filters results based on text analysis
+4. **Custom Keyword Lists**: User-defined blocked/allowed terms
+
+#### Safety Levels
+
+Configure safety level (0-10 scale):
+
+```json
+{
+  "safetyFilters": {
+    "enabledFilters": true,
+    "blockExplicitContent": true,
+    "blockViolentContent": true,
+    "blockSensitiveTopics": true,
+    "safetyLevel": 5,
+    "blockedKeywords": ["keyword1", "keyword2"],
+    "allowedKeywords": ["keyword3"]
+  }
+}
+```
+
+**Safety Levels**:
+- **0-3**: Minimal filtering (only extreme content)
+- **4-6**: Moderate filtering (platform-safe, default)
+- **7-9**: Strict filtering (family-friendly)
+- **10**: Maximum filtering (educational only)
+
+#### Blocked Content Categories
+
+The service blocks content containing:
+- Explicit or adult content
+- Violent imagery
+- Hate speech or discrimination
+- Drug/alcohol references
+- Weapons or dangerous items
+- Controversial political content
+- Self-harm or dangerous activities
+
+#### API Integration
+
+```bash
+# Search with safety filters
+POST /api/stock-media/search
+{
+  "query": "beautiful sunset",
+  "safeSearchEnabled": true
+}
+
+# Validate query before search
+POST /api/content-safety/validate-query
+{
+  "query": "proposed search term"
+}
+
+# Sanitize query
+POST /api/content-safety/sanitize-query
+{
+  "query": "query with potentially unsafe terms"
+}
+```
+
+### Usage Examples
+
+#### Basic Safe Search
+
+```typescript
+const request = {
+  query: "nature photography",
+  mediaType: "Image",
+  providers: ["Pexels", "Unsplash"],
+  safeSearchEnabled: true,
+  count: 20
+};
+
+const results = await stockMediaService.search(request);
+```
+
+#### Custom Safety Filters
+
+```typescript
+const safetyConfig = {
+  enabledFilters: true,
+  blockExplicitContent: true,
+  blockViolentContent: true,
+  blockSensitiveTopics: true,
+  safetyLevel: 7,
+  blockedKeywords: ["controversial", "political"],
+  allowedKeywords: ["nature", "landscape", "education"]
+};
+
+const safetyService = new ContentSafetyFilterService(safetyConfig);
+const isSafe = await safetyService.isContentSafe(text);
+```
+
+#### Query Sanitization
+
+```typescript
+const originalQuery = "beautiful sunset with violence";
+const sanitized = safetyService.sanitizeQuery(originalQuery);
+// Result: "beautiful sunset"
+```
+
+### Best Practices
+
+1. **Always enable safe search** for client-facing content
+2. **Validate queries** before submitting to stock providers
+3. **Review safety logs** regularly for improvement
+4. **Customize keyword lists** for your brand requirements
+5. **Test safety filters** with edge cases
+6. **Export safety reports** for compliance audits
+7. **Update blocked lists** based on feedback
+
+### Provider-Specific Guidelines
+
+#### Pexels
+- Safe search built-in
+- Content moderation by Pexels team
+- Reports inappropriate content automatically
+
+#### Unsplash
+- Curated high-quality content
+- Artistic content may need review
+- Community reporting system
+
+#### Pixabay
+- Safe search filter supported
+- Family-friendly content focus
+- Strict content moderation
+
+### Licensing and Compliance
+
+All stock media includes licensing metadata:
+- Commercial use permissions
+- Attribution requirements
+- Creator information
+- License URLs
+- Source platform
+
+Export licensing reports for compliance:
+```bash
+GET /api/stock-media/licensing/export?format=csv
+GET /api/stock-media/licensing/summary
+```
+
 ## Future Enhancements
 
 Potential features for future releases:
@@ -371,6 +550,8 @@ Potential features for future releases:
 - Policy templates for specific industries
 - Bulk content scanning tools
 - Export safety reports (PDF)
+- AI-powered content moderation for stock media
+- Automatic NSFW detection with computer vision
 
 ## Support
 

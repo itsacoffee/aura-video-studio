@@ -592,9 +592,15 @@ Response indicates:
 
 **Cost**: ~$0.02 per image
 
-### Stock Image Providers
+### Stock Media Providers (Images and Videos)
 
-**Pexels** (Free):
+Aura Video Studio integrates with leading stock media platforms to provide high-quality images and videos alongside AI-generated content.
+
+#### Pexels (Images + Videos)
+
+**Location**: `Aura.Providers/Images/EnhancedPexelsProvider.cs`
+
+**Configuration**:
 ```json
 {
   "Providers": {
@@ -607,20 +613,22 @@ Response indicates:
 }
 ```
 
-**Pixabay** (Free):
-```json
-{
-  "Providers": {
-    "Images": {
-      "Pixabay": {
-        "ApiKey": "..."
-      }
-    }
-  }
-}
-```
+**Features**:
+- Free API with 200 requests/hour
+- Images and videos supported
+- Commercial use allowed, no attribution required
+- High-resolution downloads
+- Orientation and color filters
 
-**Unsplash** (Free):
+**Get API Key**: https://www.pexels.com/api/
+
+**Licensing**: Pexels License - Free for commercial use, attribution appreciated but not required
+
+#### Unsplash (Images Only)
+
+**Location**: `Aura.Providers/Images/EnhancedUnsplashProvider.cs`
+
+**Configuration**:
 ```json
 {
   "Providers": {
@@ -633,13 +641,203 @@ Response indicates:
 }
 ```
 
-**Rate Limits**: 5000 requests/hour (Pexels), varies by service
+**Features**:
+- Free API with 50 requests/hour
+- Images only (no video)
+- Commercial use allowed, attribution required
+- High-quality curated content
+- Download tracking required per API guidelines
 
-**Advantages**:
-- Free
-- High quality
-- Large library
-- No attribution required (check license)
+**Get API Key**: https://unsplash.com/developers
+
+**Licensing**: Unsplash License - Free for commercial use, attribution required
+
+**Important**: Unsplash requires download tracking per their API guidelines. The provider automatically handles this.
+
+#### Pixabay (Images + Videos)
+
+**Location**: `Aura.Providers/Images/EnhancedPixabayProvider.cs`
+
+**Configuration**:
+```json
+{
+  "Providers": {
+    "Images": {
+      "Pixabay": {
+        "ApiKey": "..."
+      }
+    }
+  }
+}
+```
+
+**Features**:
+- Free API with generous limits
+- Images and videos supported
+- Commercial use allowed, no attribution required
+- Large content library
+- Safe search filters
+
+**Get API Key**: https://pixabay.com/api/docs/
+
+**Licensing**: Pixabay License - Free for commercial use, attribution not required
+
+### Unified Stock Media Search
+
+**Location**: `Aura.Core/Services/StockMedia/UnifiedStockMediaService.cs`
+
+The unified stock media service searches across multiple providers simultaneously, merges results, removes duplicates, and applies content safety filters.
+
+**Features**:
+- Multi-provider search with unified results
+- Perceptual hashing for duplicate detection
+- Content safety filtering
+- Relevance scoring
+- Rate limit monitoring
+- Licensing metadata capture
+
+**API Endpoints**:
+
+```bash
+# Search across multiple providers
+POST /api/stock-media/search
+{
+  "query": "mountain landscape",
+  "mediaType": "Image",  # or "Video"
+  "providers": ["Pexels", "Unsplash", "Pixabay"],
+  "count": 20,
+  "safeSearchEnabled": true,
+  "orientation": "landscape"
+}
+
+# Compose optimized query using LLM
+POST /api/stock-media/compose-query
+{
+  "sceneDescription": "Serene mountain vista at sunrise",
+  "keywords": ["mountain", "sunrise", "landscape"],
+  "targetProvider": "Pexels",
+  "mediaType": "Image",
+  "style": "cinematic",
+  "mood": "peaceful"
+}
+
+# Get blend recommendation (stock vs generative)
+POST /api/stock-media/recommend-blend
+{
+  "sceneDescriptions": ["Mountain landscape", "City skyline"],
+  "videoGoal": "Travel documentary",
+  "videoStyle": "cinematic",
+  "budget": 50,
+  "allowGenerative": true,
+  "allowStock": true
+}
+
+# Check rate limits
+GET /api/stock-media/rate-limits
+
+# Validate API keys
+POST /api/stock-media/validate-providers
+```
+
+### LLM-Assisted Query Composition
+
+**Location**: `Aura.Core/Services/StockMedia/QueryCompositionService.cs`
+
+The LLM-assisted query composition service uses AI to generate optimized search queries for each provider based on scene descriptions and context.
+
+**Features**:
+- Provider-specific query optimization
+- Alternative query suggestions
+- Negative filter recommendations
+- Confidence scoring
+- Fallback query generation
+
+**Example**:
+```
+Input: "A person walking through a busy city street at sunset"
+Pexels Query: "urban sunset pedestrian street"
+Unsplash Query: "city sunset walking"
+Pixabay Query: "busy street golden hour"
+```
+
+### Blend Set Recommendations
+
+The system can recommend an optimal mix of stock media vs AI-generated content for each scene based on:
+- Budget constraints
+- Content availability
+- Scene requirements
+- Narrative coverage
+- Visual consistency
+
+**Strategy Examples**:
+- Generic scenes (landscapes, objects) → prefer stock (cheaper, faster)
+- Unique/specific concepts → prefer generative (more control)
+- Mixed approach for optimal cost/quality balance
+
+### Content Safety Filtering
+
+**Location**: `Aura.Core/Services/StockMedia/ContentSafetyFilterService.cs`
+
+Stock media results can be filtered for inappropriate content:
+
+**Features**:
+- Keyword-based filtering
+- Sensitive content detection
+- Custom blocked/allowed lists
+- Query sanitization
+- Safety level configuration
+
+**Safety Levels**:
+- 0-3: Minimal filtering
+- 4-6: Moderate filtering (default)
+- 7-9: Strict filtering
+- 10: Maximum filtering
+
+### Licensing Metadata
+
+All stock media results include comprehensive licensing information:
+
+```json
+{
+  "licenseType": "Pexels License",
+  "attribution": "Photo by John Doe on Pexels",
+  "licenseUrl": "https://www.pexels.com/license/",
+  "commercialUseAllowed": true,
+  "attributionRequired": false,
+  "creatorName": "John Doe",
+  "creatorUrl": "https://www.pexels.com/@john",
+  "sourcePlatform": "Pexels"
+}
+```
+
+**Export Options**:
+- CSV export for spreadsheet tracking
+- JSON export for programmatic access
+- Formatted attribution text for video credits
+- Licensing summary with warnings
+
+### Perceptual Hashing and Deduplication
+
+**Location**: `Aura.Core/Services/StockMedia/PerceptualHashService.cs`
+
+The service automatically detects and removes duplicate images across providers using perceptual hashing:
+
+**Features**:
+- URL-based hash generation
+- Dimension-aware comparison
+- Configurable similarity threshold (default 90%)
+- Duplicate detection across providers
+
+### Best Practices
+
+1. **Always capture licensing metadata** during content selection
+2. **Export licensing reports** with each video delivery
+3. **Validate commercial use** before finalizing videos for clients
+4. **Track attribution requirements** per provider guidelines
+5. **Monitor rate limits** to avoid API throttling
+6. **Use blend recommendations** to optimize cost and quality
+7. **Enable content safety filters** for brand-safe content
+8. **Compose queries with LLM** for better search results
 
 ### Visual Asset Selection Workflow
 
