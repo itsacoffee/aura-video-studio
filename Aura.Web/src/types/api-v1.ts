@@ -1352,3 +1352,84 @@ export interface StorageUsageResponse {
   restorePointCount: number;
   formattedSize: string;
 }
+
+// ============================================================================
+// PROVIDER PROFILES
+// ============================================================================
+
+/**
+ * Provider profile tier
+ */
+export enum ProfileTier {
+  FreeOnly = 'FreeOnly',
+  BalancedMix = 'BalancedMix',
+  ProMax = 'ProMax',
+}
+
+/**
+ * Provider profile DTO
+ */
+export interface ProviderProfileDto {
+  id: string;
+  name: string;
+  description: string;
+  tier: string;
+  stages: Record<string, string>;
+  requiredApiKeys: string[];
+  usageNotes: string;
+  lastValidatedAt: string | null;
+}
+
+/**
+ * Profile validation result DTO
+ */
+export interface ProfileValidationResultDto {
+  isValid: boolean;
+  message: string;
+  errors: string[];
+  missingKeys: string[];
+  warnings: string[];
+}
+
+/**
+ * Provider test result DTO
+ */
+export interface ProviderTestResultDto {
+  provider: string;
+  success: boolean;
+  message: string;
+  testedAt: string;
+}
+
+/**
+ * Request to test a provider API key
+ */
+export interface TestProviderRequest {
+  provider: string;
+  apiKey?: string | null;
+}
+
+/**
+ * Request to save API keys
+ */
+export interface SaveApiKeysRequest {
+  keys: Record<string, string>;
+}
+
+/**
+ * Request to set active profile
+ */
+export interface SetActiveProfileRequest {
+  profileId: string;
+}
+
+/**
+ * Provider profile recommendation response
+ */
+export interface ProfileRecommendationDto {
+  recommendedProfileId: string;
+  recommendedProfileName: string;
+  reason: string;
+  availableKeys: string[];
+  missingKeysForProMax: string[];
+}

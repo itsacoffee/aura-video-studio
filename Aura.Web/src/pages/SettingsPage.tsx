@@ -58,6 +58,7 @@ import { LocalEngines } from '../components/Settings/LocalEngines';
 import { LoggingSettingsTab } from '../components/Settings/LoggingSettingsTab';
 import { OutputSettingsTab } from '../components/Settings/OutputSettingsTab';
 import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettingsTab';
+import { ProviderProfilesTab } from '../components/Settings/ProviderProfilesTab';
 import { ProviderRecommendationsTab } from '../components/Settings/ProviderRecommendationsTab';
 import { ProvidersTable } from '../components/Settings/ProvidersTable';
 import { ThemeCustomizationTab } from '../components/Settings/ThemeCustomizationTab';
@@ -96,6 +97,12 @@ const settingsCategories: SettingsCategory[] = [
     title: 'API Keys',
     description: 'Configure API keys for cloud services',
     icon: <Key24Regular />,
+  },
+  {
+    id: 'providerprofiles',
+    title: 'Provider Profiles',
+    description: 'Choose between Free-Only, Balanced Mix, or Pro-Max profiles',
+    icon: <Star24Regular />,
   },
   {
     id: 'aimodels',
@@ -1008,6 +1015,8 @@ export function SettingsPage() {
             hasChanges={hasUnsavedChanges}
           />
         )}
+
+        {activeTab === 'providerprofiles' && <ProviderProfilesTab />}
 
         {activeTab === 'aimodels' && <AIModelsSettingsTab />}
 
