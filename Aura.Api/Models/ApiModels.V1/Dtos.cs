@@ -1958,3 +1958,162 @@ public record ProfileRecommendationDto(
     List<string> AvailableKeys,
     List<string> MissingKeysForProMax);
 
+/// <summary>
+/// SSML planning request
+/// </summary>
+public record SSMLPlanningRequestDto(
+    List<LineDto> ScriptLines,
+    string TargetProvider,
+    VoiceSpecDto VoiceSpec,
+    Dictionary<int, double> TargetDurations,
+    double DurationTolerance = 0.02,
+    int MaxFittingIterations = 10,
+    bool EnableAggressiveAdjustments = false);
+
+/// <summary>
+/// Voice specification for TTS synthesis
+/// </summary>
+public record VoiceSpecDto(
+    string VoiceName,
+    string? VoiceId,
+    double Rate = 1.0,
+    double Pitch = 0.0,
+    double Volume = 1.0);
+
+/// <summary>
+/// SSML planning result
+/// </summary>
+public record SSMLPlanningResultDto(
+    List<SSMLSegmentResultDto> Segments,
+    DurationFittingStatsDto Stats,
+    List<string> Warnings,
+    long PlanningDurationMs);
+
+/// <summary>
+/// SSML segment result for a single scene
+/// </summary>
+public record SSMLSegmentResultDto(
+    int SceneIndex,
+    string OriginalText,
+    string SsmlMarkup,
+    int EstimatedDurationMs,
+    int TargetDurationMs,
+    double DeviationPercent,
+    ProsodyAdjustmentsDto Adjustments,
+    List<TimingMarkerDto> TimingMarkers);
+
+/// <summary>
+/// Prosody adjustments applied to a segment
+/// </summary>
+public record ProsodyAdjustmentsDto(
+    double Rate = 1.0,
+    double Pitch = 0.0,
+    double Volume = 1.0,
+    Dictionary<int, int> Pauses = null!,
+    List<EmphasisSpanDto> Emphasis = null!,
+    int Iterations = 0);
+
+/// <summary>
+/// Emphasis span with strength
+/// </summary>
+public record EmphasisSpanDto(
+    int StartPosition,
+    int Length,
+    string Level);
+
+/// <summary>
+/// Timing marker for synchronization
+/// </summary>
+public record TimingMarkerDto(
+    int OffsetMs,
+    string Name,
+    string? Metadata);
+
+/// <summary>
+/// Duration fitting statistics
+/// </summary>
+public record DurationFittingStatsDto(
+    int SegmentsAdjusted,
+    double AverageFitIterations,
+    int MaxFitIterations,
+    double WithinTolerancePercent,
+    double AverageDeviation,
+    double MaxDeviation,
+    double TargetDurationSeconds,
+    double ActualDurationSeconds);
+
+/// <summary>
+/// SSML validation request
+/// </summary>
+public record SSMLValidationRequestDto(
+    string Ssml,
+    string TargetProvider);
+
+/// <summary>
+/// SSML validation result
+/// </summary>
+public record SSMLValidationResultDto(
+    bool IsValid,
+    List<string> Errors,
+    List<string> Warnings,
+    List<SSMLRepairSuggestionDto> RepairSuggestions);
+
+/// <summary>
+/// SSML auto-repair suggestion
+/// </summary>
+public record SSMLRepairSuggestionDto(
+    string Issue,
+    string Suggestion,
+    bool CanAutoFix);
+
+/// <summary>
+/// SSML auto-repair request
+/// </summary>
+public record SSMLRepairRequestDto(
+    string Ssml,
+    string TargetProvider);
+
+/// <summary>
+/// SSML auto-repair result
+/// </summary>
+public record SSMLRepairResultDto(
+    string RepairedSsml,
+    bool WasRepaired,
+    List<string> RepairsApplied);
+
+/// <summary>
+/// SSML auto-tune request for LLM-assisted optimization
+/// </summary>
+public record SSMLAutoTuneRequestDto(
+    string ScriptText,
+    int SceneIndex,
+    double TargetDurationSeconds,
+    string TargetProvider,
+    VoiceSpecDto VoiceSpec);
+
+/// <summary>
+/// SSML auto-tune result with LLM suggestions
+/// </summary>
+public record SSMLAutoTuneResultDto(
+    string SuggestedSsml,
+    ProsodyAdjustmentsDto Adjustments,
+    string Reasoning,
+    double EstimatedDurationMs,
+    double ConfidenceScore);
+
+/// <summary>
+/// Provider SSML constraints
+/// </summary>
+public record ProviderSSMLConstraintsDto(
+    List<string> SupportedTags,
+    List<string> SupportedProsodyAttributes,
+    double MinRate,
+    double MaxRate,
+    double MinPitch,
+    double MaxPitch,
+    double MinVolume,
+    double MaxVolume,
+    int MaxPauseDurationMs,
+    bool SupportsTimingMarkers,
+    int? MaxTextLength);
+

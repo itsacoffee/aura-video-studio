@@ -427,8 +427,165 @@ Potential improvements for future iterations:
 7. Domain-specific quality metrics
 8. Collaborative refinement with human-in-the-loop
 
+## SSML Preview and Timing Alignment
+
+### Overview
+
+After script generation and refinement, Aura provides an SSML (Speech Synthesis Markup Language) preview UI that allows precise control over timing, prosody, and voice characteristics on a per-scene basis.
+
+### Features
+
+#### 1. Provider-Specific SSML Generation
+
+The SSML Planner automatically generates provider-optimized SSML markup:
+- Maps generic prosody adjustments to provider-specific tags
+- Validates SSML against provider constraints
+- Suggests auto-repairs for invalid markup
+- Supports multiple providers: ElevenLabs, PlayHT, Windows SAPI, Piper, Mimic3
+
+#### 2. Duration Fitting Loop
+
+Automatically adjusts SSML to match target scene durations:
+- ±2% tolerance by default
+- Iterative fitting with rate, pitch, and pause adjustments
+- Reports deviation statistics per scene
+- 95%+ scenes typically fit within tolerance
+
+#### 3. Per-Scene Controls
+
+Edit SSML for individual scenes:
+- **Pace Slider**: Adjust speech rate (0.5x - 2.0x)
+- **SSML Editor**: Direct markup editing with syntax highlighting
+- **Pause Editor**: Insert/adjust pauses at specific positions
+- **Emphasis Toggles**: Mark text spans for emphasis
+- **Validation**: Real-time SSML validation with error messages
+- **Auto-Repair**: One-click fix for common SSML errors
+
+#### 4. Timing Visualization
+
+Visual feedback on duration alignment:
+- Target vs actual duration per scene
+- Deviation percentage with color-coded badges
+- Aggregate statistics (within tolerance %, avg/max deviation)
+- Iteration count per scene
+
+### Usage
+
+#### API Endpoint: `/api/ssml/plan`
+
+```json
+POST /api/ssml/plan
+{
+  "scriptLines": [
+    {
+      "sceneIndex": 0,
+      "text": "Welcome to our video",
+      "startSeconds": 0,
+      "durationSeconds": 3.5
+    }
+  ],
+  "targetProvider": "ElevenLabs",
+  "voiceSpec": {
+    "voiceName": "Rachel",
+    "rate": 1.0,
+    "pitch": 0.0,
+    "volume": 1.0
+  },
+  "targetDurations": {
+    "0": 3.5
+  },
+  "durationTolerance": 0.02,
+  "maxFittingIterations": 10
+}
+```
+
+**Response**:
+```json
+{
+  "segments": [
+    {
+      "sceneIndex": 0,
+      "originalText": "Welcome to our video",
+      "ssmlMarkup": "<speak><prosody rate=\"1.05\">Welcome to our video</prosody></speak>",
+      "estimatedDurationMs": 3480,
+      "targetDurationMs": 3500,
+      "deviationPercent": -0.57,
+      "adjustments": {
+        "rate": 1.05,
+        "pitch": 0.0,
+        "volume": 1.0,
+        "pauses": {},
+        "emphasis": [],
+        "iterations": 2
+      },
+      "timingMarkers": []
+    }
+  ],
+  "stats": {
+    "segmentsAdjusted": 1,
+    "averageFitIterations": 2.0,
+    "maxFitIterations": 2,
+    "withinTolerancePercent": 100.0,
+    "averageDeviation": 0.57,
+    "maxDeviation": 0.57,
+    "targetDurationSeconds": 3.5,
+    "actualDurationSeconds": 3.48
+  },
+  "warnings": [],
+  "planningDurationMs": 245
+}
+```
+
+#### Frontend Integration
+
+```typescript
+import { SSMLPreview } from '@/components/ssml';
+
+// In your voice/script workflow
+<SSMLPreview
+  scriptLines={scriptLines}
+  voiceName="Rachel"
+  initialProvider="ElevenLabs"
+  onSSMLGenerated={(ssmlMarkups) => {
+    // Use generated SSML for TTS synthesis
+    console.log('Generated SSML:', ssmlMarkups);
+  }}
+/>
+```
+
+### Provider Support Matrix
+
+| Provider | SSML Tags | Rate | Pitch | Volume | Pauses | Emphasis | Timing Markers |
+|----------|-----------|------|-------|--------|--------|----------|----------------|
+| ElevenLabs | speak, break, prosody | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
+| PlayHT | speak, break, prosody | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Windows SAPI | speak, break, prosody, emphasis | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Piper | speak, break | ✓ | Limited | ✗ | ✓ | ✗ | ✗ |
+| Mimic3 | speak, break, prosody | ✓ | ✓ | ✗ | ✓ | Limited | ✗ |
+
+### Best Practices
+
+1. **Start with Provider Selection**: Choose provider before generating SSML to ensure compatibility
+2. **Review Auto-Generated SSML**: Always review and test generated SSML before final synthesis
+3. **Iterate on Deviations**: Scenes with >5% deviation may need manual adjustment
+4. **Use Validation**: Run validation before synthesis to catch provider-specific errors
+5. **Lock Approved Sections**: Use script locking (from Guided Mode) to prevent changes during regeneration
+6. **Test with Real Voices**: Different voices may have slightly different timing characteristics
+
+### Troubleshooting
+
+**Issue**: SSML validation fails  
+**Solution**: Click "Auto-Repair" to fix common issues, or manually edit markup according to provider constraints
+
+**Issue**: Duration deviation >10%  
+**Solution**: Increase max fitting iterations, or manually adjust rate/pauses in scene editor
+
+**Issue**: Provider constraints unknown  
+**Solution**: Ensure provider is properly configured in settings with valid API keys
+
 ## References
 
 - Draft-Critique-Revise pattern: Inspired by Constitutional AI approaches
 - Quality metrics: Based on video production best practices
 - Integration: Designed for seamless integration with existing Aura pipeline
+- SSML: W3C Speech Synthesis Markup Language specification
