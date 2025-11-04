@@ -344,6 +344,38 @@ builder.Services.AddSingleton<Aura.Core.AI.Validation.SchemaValidator>();
 builder.Services.AddSingleton<Aura.Core.AI.Orchestration.LlmOrchestrationService>();
 builder.Services.AddScoped<Aura.Core.AI.Orchestration.StructuredLlmProviderAdapter>();
 
+// Add LLM Router services for dynamic provider selection
+builder.Services.AddSingleton<Aura.Core.AI.Routing.IRouterProviderFactory, Aura.Providers.Llm.RouterProviderFactory>();
+builder.Services.Configure<Aura.Core.AI.Routing.RoutingConfiguration>(config =>
+{
+    var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Configuration", "routing-policies.json");
+    if (File.Exists(configPath))
+    {
+        try
+        {
+            var json = File.ReadAllText(configPath);
+            var loadedConfig = System.Text.Json.JsonSerializer.Deserialize<Aura.Core.AI.Routing.RoutingConfiguration>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            if (loadedConfig != null)
+            {
+                config.CircuitBreaker = loadedConfig.CircuitBreaker;
+                config.HealthCheck = loadedConfig.HealthCheck;
+                config.CostTracking = loadedConfig.CostTracking;
+                config.EnableFailover = loadedConfig.EnableFailover;
+                config.EnableCostTracking = loadedConfig.EnableCostTracking;
+                config.Policies = loadedConfig.Policies;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to load routing configuration from {ConfigPath}", configPath);
+        }
+    }
+});
+builder.Services.AddSingleton<Aura.Core.AI.Routing.ILlmRouterService, Aura.Core.AI.Routing.LlmRouterService>();
+
 // Add Prompt Management services
 builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.IPromptRepository, 
     Aura.Core.Services.PromptManagement.InMemoryPromptRepository>();
