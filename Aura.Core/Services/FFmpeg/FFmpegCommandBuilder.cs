@@ -21,6 +21,7 @@ public class FFmpegCommandBuilder
     private int? _threads;
     private string? _hwaccel;
     private Dictionary<string, string> _metadata = new();
+    private string? _videoCodec;
 
     /// <summary>
     /// Add an input file
@@ -54,6 +55,7 @@ public class FFmpegCommandBuilder
     /// </summary>
     public FFmpegCommandBuilder SetVideoCodec(string codec)
     {
+        _videoCodec = codec;
         _outputOptions.Add($"-c:v {codec}");
         return this;
     }
@@ -238,6 +240,72 @@ public class FFmpegCommandBuilder
     public FFmpegCommandBuilder SetAudioChannels(int channels)
     {
         _outputOptions.Add($"-ac {channels}");
+        return this;
+    }
+
+    /// <summary>
+    /// Set color space for HDR/advanced encoding
+    /// </summary>
+    public FFmpegCommandBuilder SetColorSpace(string colorSpace)
+    {
+        _outputOptions.Add($"-colorspace {colorSpace}");
+        return this;
+    }
+
+    /// <summary>
+    /// Set color transfer function for HDR
+    /// </summary>
+    public FFmpegCommandBuilder SetColorTransfer(string colorTransfer)
+    {
+        _outputOptions.Add($"-color_trc {colorTransfer}");
+        return this;
+    }
+
+    /// <summary>
+    /// Set color primaries for HDR
+    /// </summary>
+    public FFmpegCommandBuilder SetColorPrimaries(string colorPrimaries)
+    {
+        _outputOptions.Add($"-color_primaries {colorPrimaries}");
+        return this;
+    }
+
+    /// <summary>
+    /// Set HDR metadata (MaxCLL and MaxFALL) for x265/hevc encoders
+    /// </summary>
+    public FFmpegCommandBuilder SetHdrMetadata(int? maxCll, int? maxFall)
+    {
+        if (maxCll.HasValue && maxFall.HasValue)
+        {
+            if (_videoCodec?.Contains("x265", StringComparison.OrdinalIgnoreCase) == true ||
+                _videoCodec?.Contains("libx265", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _outputOptions.Add($"-x265-params \"max-cll={maxCll.Value},{maxFall.Value}\"");
+            }
+        }
+        return this;
+    }
+
+    /// <summary>
+    /// Apply advanced codec options from AdvancedCodecOptions model
+    /// </summary>
+    public FFmpegCommandBuilder ApplyAdvancedCodecOptions(AdvancedCodecOptions options)
+    {
+        SetPixelFormat(options.GetPixelFormat());
+        SetColorSpace(options.GetColorSpace());
+        SetColorPrimaries(options.GetColorPrimaries());
+        
+        var colorTransfer = options.GetColorTransfer();
+        if (!string.IsNullOrEmpty(colorTransfer))
+        {
+            SetColorTransfer(colorTransfer);
+        }
+        
+        if (options.IsHdr && options.MaxContentLightLevel.HasValue && options.MaxFrameAverageLightLevel.HasValue)
+        {
+            SetHdrMetadata(options.MaxContentLightLevel.Value, options.MaxFrameAverageLightLevel.Value);
+        }
+        
         return this;
     }
 

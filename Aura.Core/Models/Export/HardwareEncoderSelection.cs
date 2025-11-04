@@ -35,6 +35,66 @@ public static class HardwareEncoderSelection
     }
 
     /// <summary>
+    /// Gets the recommended encoder considering advanced codec options (10-bit, HDR)
+    /// </summary>
+    public static string GetRecommendedEncoderWithAdvancedOptions(
+        ExportPreset preset,
+        HardwareTier tier,
+        string? gpuVendor,
+        bool hardwareAccelerationEnabled,
+        AdvancedCodecOptions? advancedOptions)
+    {
+        if (advancedOptions == null || !advancedOptions.Requires10Bit)
+        {
+            return GetRecommendedEncoder(preset, tier, gpuVendor, hardwareAccelerationEnabled);
+        }
+
+        if (!hardwareAccelerationEnabled || tier == HardwareTier.D)
+        {
+            return GetSoftwareEncoder(preset);
+        }
+
+        var supports10Bit = SupportsHardware10Bit(gpuVendor, tier);
+        if (!supports10Bit)
+        {
+            return GetSoftwareEncoder(preset);
+        }
+
+        var preferredEncoder = GetHardwareEncoder(preset.VideoCodec, gpuVendor, tier);
+        return preferredEncoder ?? GetSoftwareEncoder(preset);
+    }
+
+    /// <summary>
+    /// Checks if hardware supports 10-bit encoding
+    /// </summary>
+    public static bool SupportsHardware10Bit(string? gpuVendor, HardwareTier tier)
+    {
+        if (string.IsNullOrEmpty(gpuVendor))
+        {
+            return false;
+        }
+
+        var vendor = gpuVendor.ToLowerInvariant();
+
+        if (vendor.Contains("nvidia"))
+        {
+            return tier == HardwareTier.A || tier == HardwareTier.B;
+        }
+
+        if (vendor.Contains("amd"))
+        {
+            return tier == HardwareTier.A || tier == HardwareTier.B;
+        }
+
+        if (vendor.Contains("intel"))
+        {
+            return tier == HardwareTier.A;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Gets hardware encoder based on codec, GPU vendor, and tier
     /// </summary>
     private static string? GetHardwareEncoder(string codec, string? gpuVendor, HardwareTier tier)

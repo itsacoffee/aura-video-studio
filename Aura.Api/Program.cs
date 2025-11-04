@@ -1021,6 +1021,23 @@ builder.Services.AddSingleton<Aura.Core.Services.Export.IBitrateOptimizationServ
 // Changed from Singleton to Scoped because ExportOrchestrationService depends on scoped AuraDbContext
 builder.Services.AddScoped<Aura.Core.Services.Export.IExportOrchestrationService, Aura.Core.Services.Export.ExportOrchestrationService>();
 
+// Register Cloud Storage services
+builder.Services.AddSingleton(sp =>
+{
+    var settings = new Aura.Core.Models.Settings.CloudStorageSettings();
+    builder.Configuration.GetSection("CloudStorage").Bind(settings);
+    return settings;
+});
+builder.Services.AddSingleton<Aura.Core.Services.Storage.CloudStorageProviderFactory>();
+
+// Register CloudExportService conditionally based on configuration
+var cloudStorageConfig = new Aura.Core.Models.Settings.CloudStorageSettings();
+builder.Configuration.GetSection("CloudStorage").Bind(cloudStorageConfig);
+if (cloudStorageConfig.Enabled)
+{
+    builder.Services.AddSingleton<Aura.Core.Services.Export.ICloudExportService, Aura.Core.Services.Export.CloudExportService>();
+}
+
 // Proxy media and caching services
 builder.Services.AddSingleton<Aura.Core.Services.Media.IProxyMediaService>(sp =>
 {
