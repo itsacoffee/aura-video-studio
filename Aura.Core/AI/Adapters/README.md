@@ -178,9 +178,129 @@ catch (Exception ex)
 }
 ```
 
+## Model Catalog (`ModelCatalog`)
+
+### Purpose
+
+The `ModelCatalog` extends the static `ModelRegistry` with dynamic model discovery and availability checking. It provides:
+
+1. **Dynamic Model Discovery**: Fetches available models from provider APIs (OpenAI, Ollama)
+2. **Capability Caching**: Caches model metadata with 6-hour TTL to reduce API calls
+3. **Availability Checking**: Validates models exist before use with preflight checks
+4. **Graceful Fallback**: Selects safe defaults when requested models are unavailable
+5. **Deprecation Warnings**: Alerts when using deprecated models with replacement suggestions
+
+### How It Works
+
+```csharp
+// Service registration (in Startup)
+services.AddSingleton<ModelCatalog>();
+
+// Usage
+var catalog = serviceProvider.GetRequiredService<ModelCatalog>();
+
+// Refresh catalog from provider APIs
+var apiKeys = new Dictionary<string, string> 
+{
+    ["openai"] = "sk-...",
+    ["gemini"] = "..."
+};
+await catalog.RefreshCatalogAsync(apiKeys, ollamaUrl: "http://localhost:11434");
+
+// Find model with automatic fallback
+var (model, reasoning) = catalog.FindOrDefault("OpenAI", "gpt-4o-mini");
+Console.WriteLine($"Using: {model.ModelId}");
+Console.WriteLine($"Reason: {reasoning}");
+
+// Get capabilities with caching
+var (maxTokens, contextWindow, fromCache) = catalog.GetModelCapabilities("OpenAI", "gpt-4o");
+Console.WriteLine($"Max tokens: {maxTokens} (cached: {fromCache})");
+
+// Preflight check at startup
+var providersToCheck = new Dictionary<string, string>
+{
+    ["OpenAI"] = "gpt-4o-mini",
+    ["Anthropic"] = "claude-3-5-sonnet-20241022"
+};
+var results = await catalog.PreflightCheckAsync(providersToCheck, apiKeys);
+foreach (var (provider, isAvailable) in results)
+{
+    Console.WriteLine($"{provider}: {(isAvailable ? "✓" : "✗")}");
+}
+```
+
+### API Endpoints
+
+**GET /api/models/llm/list** - List all known models
+```json
+{
+  "models": [
+    {
+      "provider": "OpenAI",
+      "modelId": "gpt-4o-mini",
+      "maxTokens": 128000,
+      "contextWindow": 128000,
+      "aliases": ["gpt-4o-mini-latest"],
+      "isDeprecated": false,
+      "source": "catalog"
+    }
+  ],
+  "totalCount": 15,
+  "needsRefresh": false
+}
+```
+
+**POST /api/models/llm/refresh** - Force catalog refresh
+```json
+{
+  "success": true,
+  "message": "Model catalog refreshed successfully",
+  "timestamp": "2024-11-04T01:45:00Z"
+}
+```
+
+**GET /api/diagnostics/models** - Model catalog diagnostics
+```json
+{
+  "status": "Configured",
+  "totalModels": 15,
+  "modelsByProvider": {
+    "OpenAI": [...],
+    "Anthropic": [...]
+  },
+  "needsRefresh": false
+}
+```
+
+### Startup Integration
+
+The catalog performs automatic preflight validation during application startup:
+
+```
+Initialization Phase 3.1: Model Catalog Preflight Check
+Starting model catalog preflight validation...
+✓ Provider OpenAI model check passed: Found requested model 'gpt-4o-mini' in static registry
+✓ Provider Anthropic model check passed: Found requested model 'claude-3-5-sonnet-20241022' in static registry
+Model catalog preflight completed: 2/4 providers available
+```
+
+### Resilience
+
+The catalog is designed for graceful degradation:
+
+- Individual provider failures don't stop the entire refresh
+- Falls back to static registry if dynamic discovery fails
+- Caches results to reduce dependency on external APIs
+- Logs all fallback decisions with clear reasoning
+
+### Testing
+
+See `ModelCatalogTests.cs` and `ModelCatalogIntegrationTests.cs` for comprehensive test coverage (30 test cases).
+
 ## Future Enhancements
 
-- **Model Availability Checking**: Add HTTP checks to verify models exist before use
-- **Dynamic Registry Updates**: Fetch model lists from provider APIs
+- **Provider Circuit Breakers**: Integrate with existing circuit breaker pattern (separate PR)
+- **UI for Manual Model Selection**: Allow users to choose specific models via UI (future PR)
 - **Performance Metrics**: Track adapter overhead and optimization effectiveness
 - **Custom Adapters**: Allow users to create custom adapters for new providers
+- **Extended Provider Discovery**: Add Anthropic, Gemini, Azure model list APIs when available
