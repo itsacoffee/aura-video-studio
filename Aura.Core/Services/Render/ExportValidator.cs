@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Aura.Core.Models;
@@ -361,5 +362,85 @@ public class ExportValidator
             _logger.LogError(ex, "Error parsing FFprobe output");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Captures complete export metadata including hash
+    /// </summary>
+    public async Task<ExportMetadata?> CaptureMetadataAsync(
+        string filePath,
+        ExportPreset preset,
+        TimeSpan encodingDuration,
+        DateTime completedAt)
+    {
+        _logger.LogInformation("Capturing export metadata for: {FilePath}", filePath);
+
+        try
+        {
+            if (!File.Exists(filePath))
+            {
+                _logger.LogError("File does not exist: {FilePath}", filePath);
+                return null;
+            }
+
+            var fileInfo = new FileInfo(filePath);
+            var probeResult = await ProbeVideoAsync(filePath);
+
+            if (probeResult == null)
+            {
+                _logger.LogError("Failed to probe video file");
+                return null;
+            }
+
+            var fileHash = await ComputeFileHashAsync(filePath);
+            var validationResult = await ValidateExportAsync(filePath, preset, probeResult.Duration ?? TimeSpan.Zero);
+
+            const int hashDisplayLength = 8;
+            var metadata = new ExportMetadata
+            {
+                FileHash = fileHash,
+                FileSizeBytes = fileInfo.Length,
+                Duration = probeResult.Duration ?? TimeSpan.Zero,
+                VideoCodec = probeResult.VideoInfo?.Codec ?? "unknown",
+                AudioCodec = probeResult.AudioInfo?.Codec ?? "unknown",
+                Resolution = probeResult.VideoInfo?.Resolution ?? new Resolution(0, 0),
+                FrameRate = probeResult.VideoInfo?.FrameRate ?? 0,
+                VideoBitrate = 0,
+                AudioBitrate = probeResult.AudioInfo?.BitRate ?? 0,
+                Container = Path.GetExtension(filePath).TrimStart('.'),
+                PixelFormat = probeResult.VideoInfo?.PixelFormat ?? "unknown",
+                ColorSpace = "unknown",
+                EncoderUsed = preset.VideoCodec,
+                EncodingDuration = encodingDuration,
+                CompletedAt = completedAt,
+                PresetName = preset.Name,
+                Platform = preset.Platform.ToString(),
+                ValidationIssues = validationResult.Issues,
+                ValidationPassed = validationResult.IsValid,
+                HardwareTier = "Unknown",
+                HardwareAccelerationUsed = preset.VideoCodec.Contains("nvenc") ||
+                                          preset.VideoCodec.Contains("amf") ||
+                                          preset.VideoCodec.Contains("qsv")
+            };
+
+            _logger.LogInformation("Metadata captured successfully. Hash: {Hash}", fileHash[..hashDisplayLength]);
+            return metadata;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error capturing export metadata");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Computes SHA256 hash of a file
+    /// </summary>
+    private async Task<string> ComputeFileHashAsync(string filePath)
+    {
+        using var sha256 = SHA256.Create();
+        using var stream = File.OpenRead(filePath);
+        var hashBytes = await sha256.ComputeHashAsync(stream);
+        return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 }

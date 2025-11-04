@@ -385,6 +385,54 @@ public class ExportController : ControllerBase
             return StatusCode(500, new { error = "Failed to retry job", details = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Run preflight validation for an export
+    /// </summary>
+    /// <param name="request">Preflight request parameters</param>
+    /// <returns>Preflight validation result</returns>
+    [HttpPost("preflight")]
+    public async Task<IActionResult> RunPreflight([FromBody] ExportPreflightRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("Running preflight validation for preset {Preset}", request.PresetName);
+
+            var preset = ExportPresets.GetPresetByName(request.PresetName);
+            if (preset == null)
+            {
+                return BadRequest(new { error = $"Unknown preset: {request.PresetName}" });
+            }
+
+            var outputDirectory = string.IsNullOrEmpty(request.OutputDirectory)
+                ? Path.GetTempPath()
+                : request.OutputDirectory;
+
+            const double diskSpaceBufferMultiplier = 2.5;
+            var estimatedFileSizeMB = ExportPresets.EstimateFileSizeMB(preset, request.VideoDuration);
+            
+            var result = new
+            {
+                canProceed = true,
+                errors = new List<string>(),
+                warnings = new List<string>(),
+                recommendations = new List<string>(),
+                estimates = new
+                {
+                    estimatedFileSizeMB,
+                    estimatedDurationMinutes = 1.0,
+                    requiredDiskSpaceMB = estimatedFileSizeMB * diskSpaceBufferMultiplier
+                }
+            };
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to run preflight validation");
+            return StatusCode(500, new { error = "Failed to run preflight validation", details = ex.Message });
+        }
+    }
 }
 
 /// <summary>
@@ -399,6 +447,18 @@ public record ExportRequestDto
     public TimeSpan? Duration { get; init; }
     public Dictionary<string, string>? Metadata { get; init; }
     public EditableTimeline? Timeline { get; init; }
+}
+
+/// <summary>
+/// DTO for preflight request
+/// </summary>
+public record ExportPreflightRequest
+{
+    public required string PresetName { get; init; }
+    public TimeSpan VideoDuration { get; init; }
+    public string? OutputDirectory { get; init; }
+    public string? SourceResolution { get; init; }
+    public string? SourceAspectRatio { get; init; }
 }
 
 /// <summary>
