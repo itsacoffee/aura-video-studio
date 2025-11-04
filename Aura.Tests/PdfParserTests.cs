@@ -90,9 +90,10 @@ public class PdfParserTests
     public async Task ParseAsync_WithCancellation_ThrowsOperationCanceledException()
     {
         var pdfStream = CreateTestPdf("Title", "Author", "Content");
-        var cts = new CancellationToken(true);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
 
-        var result = await _parser.ParseAsync(pdfStream, "test.pdf", cts);
+        var result = await _parser.ParseAsync(pdfStream, "test.pdf", cts.Token);
 
         Assert.False(result.Success);
         Assert.Contains("cancel", result.ErrorMessage.ToLowerInvariant());

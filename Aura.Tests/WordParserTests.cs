@@ -101,9 +101,10 @@ public class WordParserTests
     public async Task ParseAsync_WithCancellation_ReturnsError()
     {
         var docxStream = CreateTestDocx("Title", "Author", "Content");
-        var cts = new CancellationToken(true);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
 
-        var result = await _parser.ParseAsync(docxStream, "test.docx", cts);
+        var result = await _parser.ParseAsync(docxStream, "test.docx", cts.Token);
 
         Assert.False(result.Success);
         Assert.Contains("cancel", result.ErrorMessage.ToLowerInvariant());
