@@ -304,15 +304,15 @@ builder.Services.AddSingleton<Aura.Core.AI.Cache.ILlmCache>(sp =>
     var logger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.ILlmCache>>();
     var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.AI.Cache.LlmCacheOptions>>();
     
+    // Note: DiskLlmCache referenced in tests but not found in Core - using MemoryLlmCache
+    var memoryLogger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.MemoryLlmCache>>();
     if (options.Value.UseDiskStorage)
     {
-        var diskLogger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.DiskLlmCache>>();
-        logger.LogInformation("Using DiskLlmCache (disk storage enabled)");
-        return new Aura.Core.AI.Cache.DiskLlmCache(diskLogger, options);
+        logger.LogWarning("DiskLlmCache requested but implementation not found - falling back to MemoryLlmCache");
+        return new Aura.Core.AI.Cache.MemoryLlmCache(memoryLogger, options);
     }
     else
     {
-        var memoryLogger = sp.GetRequiredService<ILogger<Aura.Core.AI.Cache.MemoryLlmCache>>();
         logger.LogInformation("Using MemoryLlmCache (disk storage disabled)");
         return new Aura.Core.AI.Cache.MemoryLlmCache(memoryLogger, options);
     }
@@ -338,6 +338,11 @@ builder.Services.AddSingleton<Aura.Core.Services.Conversation.ConversationalLlmS
 // Add Prompt Engineering services
 builder.Services.AddSingleton<Aura.Core.Services.AI.PromptCustomizationService>();
 builder.Services.AddScoped<Aura.Core.Services.AI.ChainOfThoughtOrchestrator>();
+
+// Add LLM Orchestration services with schema validation
+builder.Services.AddSingleton<Aura.Core.AI.Validation.SchemaValidator>();
+builder.Services.AddSingleton<Aura.Core.AI.Orchestration.LlmOrchestrationService>();
+builder.Services.AddScoped<Aura.Core.AI.Orchestration.StructuredLlmProviderAdapter>();
 
 // Add Prompt Management services
 builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.IPromptRepository, 
