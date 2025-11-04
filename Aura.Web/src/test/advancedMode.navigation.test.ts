@@ -94,7 +94,7 @@ describe('Advanced Mode Navigation', () => {
       expect(visibleWhenOff.length).toBeLessThan(visibleWhenOn.length);
     });
 
-    it('should show exactly 5 fewer items when advanced mode is off', () => {
+    it('should show exactly 6 fewer items when advanced mode is off', () => {
       const advancedModeOff = false;
       const advancedModeOn = true;
 
@@ -102,7 +102,7 @@ describe('Advanced Mode Navigation', () => {
       const visibleWhenOn = navItems.filter((item) => !item.advancedOnly || advancedModeOn);
 
       const difference = visibleWhenOn.length - visibleWhenOff.length;
-      expect(difference).toBe(5);
+      expect(difference).toBe(6);
     });
   });
 });
