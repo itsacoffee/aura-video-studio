@@ -8,14 +8,14 @@ using Microsoft.Extensions.Logging;
 namespace Aura.Providers.Llm;
 
 /// <summary>
-/// Factory for creating LLM provider instances.
+/// Factory for creating LLM provider instances for router service.
 /// </summary>
-public class LlmProviderFactory : ILlmProviderFactory
+public class RouterProviderFactory : IRouterProviderFactory
 {
     private readonly ILoggerFactory _loggerFactory;
     private readonly IHttpClientFactory _httpClientFactory;
 
-    public LlmProviderFactory(
+    public RouterProviderFactory(
         ILoggerFactory loggerFactory,
         IHttpClientFactory httpClientFactory)
     {

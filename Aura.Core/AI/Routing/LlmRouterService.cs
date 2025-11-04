@@ -312,11 +312,11 @@ public class LlmRouterService : ILlmRouterService
     {
         _logger.LogInformation("Creating provider instance for {Provider}:{Model}", providerName, modelName);
 
-        var factory = _serviceProvider.GetService(typeof(ILlmProviderFactory)) as ILlmProviderFactory;
+        var factory = _serviceProvider.GetService(typeof(IRouterProviderFactory)) as IRouterProviderFactory;
         
         if (factory == null)
         {
-            throw new InvalidOperationException("ILlmProviderFactory not registered in DI container");
+            throw new InvalidOperationException("IRouterProviderFactory not registered in DI container");
         }
 
         var provider = factory.Create(providerName, modelName);

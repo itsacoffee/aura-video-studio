@@ -3,9 +3,9 @@ using Aura.Core.Providers;
 namespace Aura.Core.AI.Routing;
 
 /// <summary>
-/// Factory for creating LLM provider instances by name.
+/// Factory for creating LLM provider instances by name for router service.
 /// </summary>
-public interface ILlmProviderFactory
+public interface IRouterProviderFactory
 {
     /// <summary>
     /// Create a provider instance by name and model.
