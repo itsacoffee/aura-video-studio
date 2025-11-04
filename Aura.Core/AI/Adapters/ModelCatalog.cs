@@ -287,6 +287,17 @@ public class ModelCatalog
     }
 
     /// <summary>
+    /// Get the timestamp of the last catalog refresh
+    /// </summary>
+    public DateTime? GetLastRefreshTime()
+    {
+        lock (_lock)
+        {
+            return _lastRefresh == DateTime.MinValue ? null : _lastRefresh;
+        }
+    }
+
+    /// <summary>
     /// Discover available OpenAI models
     /// </summary>
     private async Task<List<ModelRegistry.ModelInfo>> DiscoverOpenAiModelsAsync(
@@ -358,8 +369,8 @@ public class ModelCatalog
         try
         {
             // Anthropic doesn't have a public models list API yet
-            // Use static registry models but verify availability
-            _logger.LogDebug("Anthropic model discovery not implemented. Using static registry");
+            // Returns empty list to rely on static registry
+            _logger.LogDebug("Anthropic model discovery not implemented. Relying on static registry");
         }
         catch (Exception ex)
         {
@@ -381,8 +392,8 @@ public class ModelCatalog
         try
         {
             // Gemini uses a different API pattern
-            // For now, use static registry
-            _logger.LogDebug("Gemini model discovery not implemented. Using static registry");
+            // Returns empty list to rely on static registry
+            _logger.LogDebug("Gemini model discovery not implemented. Relying on static registry");
         }
         catch (Exception ex)
         {

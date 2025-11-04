@@ -369,7 +369,7 @@ public class ModelsController : ControllerBase
                     source = "catalog"
                 }),
                 totalCount = models.Count,
-                catalogLastRefresh = DateTime.UtcNow,
+                catalogLastRefresh = _modelCatalog.GetLastRefreshTime(),
                 needsRefresh = _modelCatalog.NeedsRefresh()
             });
         }
