@@ -127,6 +127,10 @@ export function FirstRunWizard() {
   const [manualVram, setManualVram] = useState<string>('');
   const [hasGpu, setHasGpu] = useState<boolean>(true);
 
+  // Sample generation state
+  const [isGeneratingSample, setIsGeneratingSample] = useState(false);
+  const [sampleGenerationError, setSampleGenerationError] = useState<string | null>(null);
+
   // Enhanced step labels for the new wizard flow
   const totalSteps = 10;
   const stepLabels = [
@@ -524,6 +528,44 @@ export function FirstRunWizard() {
     }
   };
 
+  const handleGenerateSample = async () => {
+    setIsGeneratingSample(true);
+    setSampleGenerationError(null);
+
+    try {
+      const response = await fetch('/api/quick/demo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ topic: 'Welcome to Aura Video Studio' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          detail: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+        throw new Error(errorData.detail || 'Failed to generate sample video');
+      }
+
+      const result = await response.json();
+      
+      // Navigate to the job page to watch progress
+      if (result.jobId) {
+        navigate(`/jobs/${result.jobId}`);
+      } else {
+        setSampleGenerationError('Sample generation started but no job ID was returned');
+      }
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error generating sample video';
+      console.error('Sample generation failed:', errorMessage);
+      setSampleGenerationError(errorMessage);
+    } finally {
+      setIsGeneratingSample(false);
+    }
+  };
+
   // Render step 0: Enhanced Welcome Screen
   const renderStep0 = () => (
     <WelcomeScreen
@@ -535,10 +577,24 @@ export function FirstRunWizard() {
     />
   );
 
-  // Render step 1: Tier Selection (unchanged)
-  const renderStep1 = () => (
-    <ChooseTierStep selectedTier={state.selectedTier} onSelectTier={handleSelectTier} />
-  );
+  // Render step 1: Tier Selection with hardware-based recommendation
+  const renderStep1 = () => {
+    const hardwareProfile = state.hardware
+      ? {
+          vram: state.hardware.vram || 0,
+          hasGpu: (state.hardware.vram || 0) > 0,
+          gpuVendor: state.hardware.gpu || undefined,
+        }
+      : null;
+
+    return (
+      <ChooseTierStep
+        selectedTier={state.selectedTier}
+        onSelectTier={handleSelectTier}
+        hardware={hardwareProfile}
+      />
+    );
+  };
 
   // Render step 2: API Keys
   const renderStep2 = () => (
@@ -959,6 +1015,9 @@ export function FirstRunWizard() {
           templateSelected: templateName,
         }}
         onCreateFirstVideo={completeOnboarding}
+        onGenerateSample={handleGenerateSample}
+        isGeneratingSample={isGeneratingSample}
+        sampleGenerationError={sampleGenerationError}
         onExploreApp={async () => {
           clearWizardStateFromStorage();
           await markFirstRunCompleted();
