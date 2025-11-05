@@ -25,6 +25,7 @@ public class VisualSelectionController : ControllerBase
     private readonly VisualSelectionService? _visualSelectionService;
     private readonly VisualPromptRefinementService? _refinementService;
     private readonly LicensingExportService? _exportService;
+    private readonly CandidateCacheService? _cacheService;
 
     public VisualSelectionController(
         ILogger<VisualSelectionController> logger,
@@ -32,7 +33,8 @@ public class VisualSelectionController : ControllerBase
         AestheticScoringService scoringService,
         VisualSelectionService? visualSelectionService = null,
         VisualPromptRefinementService? refinementService = null,
-        LicensingExportService? exportService = null)
+        LicensingExportService? exportService = null,
+        CandidateCacheService? cacheService = null)
     {
         _logger = logger;
         _selectionService = selectionService;
@@ -40,6 +42,7 @@ public class VisualSelectionController : ControllerBase
         _visualSelectionService = visualSelectionService;
         _refinementService = refinementService;
         _exportService = exportService;
+        _cacheService = cacheService;
     }
 
     /// <summary>
@@ -140,6 +143,174 @@ public class VisualSelectionController : ControllerBase
             return StatusCode(500, new
             {
                 error = "Batch image selection failed",
+                message = ex.Message,
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get candidates for a scene with caching support
+    /// </summary>
+    [HttpPost("candidates")]
+    public async Task<ActionResult<GetCandidatesResponse>> GetCandidates(
+        [FromBody] GetCandidatesRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Getting candidates for scene {SceneIndex}, UseCache: {UseCache}, CorrelationId: {CorrelationId}",
+                request.SceneIndex,
+                request.UseCache,
+                HttpContext.TraceIdentifier);
+
+            var prompt = MapToVisualPrompt(new ImageSelectionRequest
+            {
+                SceneIndex = request.SceneIndex,
+                DetailedDescription = request.DetailedDescription,
+                Subject = request.Subject,
+                Framing = request.Framing,
+                NarrativeKeywords = request.NarrativeKeywords,
+                Style = request.Style,
+                QualityTier = request.QualityTier
+            });
+
+            var config = MapToConfig(request.Config);
+            var requestId = _cacheService?.GenerateRequestId(prompt, config) ?? Guid.NewGuid().ToString();
+
+            CachedCandidateEntry? cachedEntry = null;
+            if (request.UseCache && _cacheService != null)
+            {
+                cachedEntry = await _cacheService.GetCachedCandidatesAsync(requestId, cancellationToken);
+            }
+
+            ImageSelectionResult result;
+            bool fromCache = false;
+
+            if (cachedEntry != null)
+            {
+                result = cachedEntry.Result;
+                fromCache = true;
+                _logger.LogInformation("Using cached candidates for request {RequestId}", requestId);
+            }
+            else
+            {
+                result = await _selectionService.SelectImageForSceneAsync(prompt, config, cancellationToken);
+                
+                if (_cacheService != null)
+                {
+                    await _cacheService.CacheCandidatesAsync(requestId, result, null, cancellationToken);
+                }
+            }
+
+            var response = new GetCandidatesResponse
+            {
+                RequestId = requestId,
+                Result = MapToDto(result),
+                FromCache = fromCache,
+                CachedAt = cachedEntry?.CachedAt,
+                ExpiresAt = cachedEntry?.ExpiresAt
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error getting candidates for scene {SceneIndex}, CorrelationId: {CorrelationId}",
+                request.SceneIndex,
+                HttpContext.TraceIdentifier);
+
+            return StatusCode(500, new
+            {
+                error = "Failed to get candidates",
+                message = ex.Message,
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Regenerate candidates for a scene
+    /// </summary>
+    [HttpPost("regenerate")]
+    public async Task<ActionResult<GetCandidatesResponse>> RegenerateCandidates(
+        [FromBody] RegenerateCandidatesRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Regenerating candidates for job {JobId}, scene {SceneIndex}, CorrelationId: {CorrelationId}",
+                request.JobId,
+                request.SceneIndex,
+                HttpContext.TraceIdentifier);
+
+            if (request.RefinedPrompt == null)
+            {
+                return BadRequest(new { error = "RefinedPrompt is required for regeneration" });
+            }
+
+            var prompt = MapToVisualPrompt(new ImageSelectionRequest
+            {
+                SceneIndex = request.SceneIndex,
+                DetailedDescription = request.RefinedPrompt.DetailedDescription,
+                Subject = request.RefinedPrompt.Subject,
+                Framing = request.RefinedPrompt.Framing,
+                NarrativeKeywords = request.RefinedPrompt.NarrativeKeywords,
+                Style = request.RefinedPrompt.Style,
+                QualityTier = request.RefinedPrompt.QualityTier
+            });
+
+            var config = MapToConfig(request.Config);
+            var requestId = _cacheService?.GenerateRequestId(prompt, config) ?? Guid.NewGuid().ToString();
+
+            if (_cacheService != null)
+            {
+                await _cacheService.InvalidateCacheAsync(requestId, cancellationToken);
+            }
+
+            var result = await _selectionService.SelectImageForSceneAsync(prompt, config, cancellationToken);
+
+            if (_cacheService != null)
+            {
+                await _cacheService.CacheCandidatesAsync(requestId, result, null, cancellationToken);
+            }
+
+            if (_visualSelectionService != null)
+            {
+                await _visualSelectionService.RegenerateCandidatesAsync(
+                    request.JobId,
+                    request.SceneIndex,
+                    prompt,
+                    config,
+                    request.UserId,
+                    cancellationToken);
+            }
+
+            var response = new GetCandidatesResponse
+            {
+                RequestId = requestId,
+                Result = MapToDto(result),
+                FromCache = false,
+                CachedAt = DateTime.UtcNow,
+                ExpiresAt = null
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error regenerating candidates for job {JobId}, scene {SceneIndex}, CorrelationId: {CorrelationId}",
+                request.JobId,
+                request.SceneIndex,
+                HttpContext.TraceIdentifier);
+
+            return StatusCode(500, new
+            {
+                error = "Failed to regenerate candidates",
                 message = ex.Message,
                 correlationId = HttpContext.TraceIdentifier
             });

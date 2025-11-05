@@ -903,6 +903,8 @@ builder.Services.AddSingleton<Aura.Core.Services.Assets.StockImageService>(sp =>
 
 builder.Services.AddSingleton<Aura.Core.Services.Visual.AestheticScoringService>();
 builder.Services.AddSingleton<Aura.Core.Services.Visual.ImageSelectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.Visual.CandidateCacheService>();
+builder.Services.AddSingleton<Aura.Core.Services.Visual.VisualSelectionService>();
 
 builder.Services.AddSingleton<Aura.Core.Services.Assets.AIImageGenerator>(sp =>
 {

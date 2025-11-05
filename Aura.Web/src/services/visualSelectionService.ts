@@ -254,6 +254,34 @@ class VisualSelectionService {
     return response.data;
   }
 
+  async getCandidates(request: GetCandidatesRequest): Promise<GetCandidatesResponse> {
+    const response = await axios.post<GetCandidatesResponse>(
+      `${this.baseUrl}/api/VisualSelection/candidates`,
+      request
+    );
+    return response.data;
+  }
+
+  async regenerateCandidatesForScene(
+    jobId: string,
+    sceneIndex: number,
+    refinedPrompt?: GetCandidatesRequest,
+    config?: unknown,
+    userId?: string
+  ): Promise<GetCandidatesResponse> {
+    const response = await axios.post<GetCandidatesResponse>(
+      `${this.baseUrl}/api/VisualSelection/regenerate`,
+      {
+        jobId,
+        sceneIndex,
+        refinedPrompt,
+        config,
+        userId,
+      }
+    );
+    return response.data;
+  }
+
   downloadFile(blob: Blob, filename: string): void {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -264,6 +292,43 @@ class VisualSelectionService {
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
   }
+}
+
+export interface GetCandidatesRequest {
+  sceneIndex: number;
+  detailedDescription: string;
+  subject: string;
+  framing: string;
+  narrativeKeywords: string[];
+  style: string;
+  qualityTier: string;
+  config?: {
+    minimumAestheticThreshold: number;
+    candidatesPerScene: number;
+    aestheticWeight: number;
+    keywordWeight: number;
+    qualityWeight: number;
+    preferGeneratedImages: boolean;
+    maxGenerationTimeSeconds: number;
+  };
+  useCache: boolean;
+}
+
+export interface GetCandidatesResponse {
+  requestId: string;
+  result: {
+    sceneIndex: number;
+    selectedImage?: ImageCandidate;
+    candidates: ImageCandidate[];
+    minimumAestheticThreshold: number;
+    narrativeKeywords: string[];
+    selectionTimeMs: number;
+    meetsCriteria: boolean;
+    warnings: string[];
+  };
+  fromCache: boolean;
+  cachedAt?: string;
+  expiresAt?: string;
 }
 
 export const visualSelectionService = new VisualSelectionService();
