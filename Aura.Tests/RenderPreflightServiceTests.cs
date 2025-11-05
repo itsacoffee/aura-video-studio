@@ -16,8 +16,8 @@ public class RenderPreflightServiceTests
 {
     private readonly Mock<ILogger<RenderPreflightService>> _mockLogger;
     private readonly Mock<IHardwareDetector> _mockHardwareDetector;
-    private readonly Mock<ExportPreflightValidator> _mockExportValidator;
-    private readonly Mock<HardwareEncoder> _mockHardwareEncoder;
+    private readonly ExportPreflightValidator _exportValidator;
+    private readonly HardwareEncoder _hardwareEncoder;
 
     public RenderPreflightServiceTests()
     {
@@ -25,10 +25,10 @@ public class RenderPreflightServiceTests
         _mockHardwareDetector = new Mock<IHardwareDetector>();
         
         var mockExportLogger = new Mock<ILogger<ExportPreflightValidator>>();
-        _mockExportValidator = new Mock<ExportPreflightValidator>(mockExportLogger.Object, _mockHardwareDetector.Object);
+        _exportValidator = new ExportPreflightValidator(mockExportLogger.Object, _mockHardwareDetector.Object);
         
         var mockEncoderLogger = new Mock<ILogger<HardwareEncoder>>();
-        _mockHardwareEncoder = new Mock<HardwareEncoder>(mockEncoderLogger.Object, "ffmpeg");
+        _hardwareEncoder = new HardwareEncoder(mockEncoderLogger.Object, "ffmpeg");
     }
 
     [Fact]
@@ -203,8 +203,8 @@ public class RenderPreflightServiceTests
         return new RenderPreflightService(
             _mockLogger.Object,
             _mockHardwareDetector.Object,
-            _mockExportValidator.Object,
-            _mockHardwareEncoder.Object
+            _exportValidator,
+            _hardwareEncoder
         );
     }
 
@@ -226,60 +226,5 @@ public class RenderPreflightServiceTests
         _mockHardwareDetector
             .Setup(x => x.DetectSystemAsync())
             .ReturnsAsync(systemProfile);
-
-        var capabilities = new HardwareCapabilities(
-            HasNVENC: hasNVENC,
-            HasAMF: false,
-            HasQSV: false,
-            HasVideoToolbox: false,
-            AvailableEncoders: hasNVENC 
-                ? new System.Collections.Generic.List<string> { "h264_nvenc", "libx264" }
-                : new System.Collections.Generic.List<string> { "libx264" }
-        );
-
-        _mockHardwareEncoder
-            .Setup(x => x.DetectHardwareCapabilitiesAsync())
-            .ReturnsAsync(capabilities);
-
-        var encoderConfig = new EncoderConfig(
-            EncoderName: hasNVENC ? "h264_nvenc" : "libx264",
-            Description: hasNVENC ? "NVIDIA NVENC" : "Software encoding",
-            IsHardwareAccelerated: hasNVENC,
-            Parameters: new System.Collections.Generic.Dictionary<string, string>
-            {
-                ["-c:v"] = hasNVENC ? "h264_nvenc" : "libx264"
-            }
-        );
-
-        _mockHardwareEncoder
-            .Setup(x => x.SelectBestEncoderAsync(It.IsAny<ExportPreset>(), It.IsAny<bool>()))
-            .ReturnsAsync(encoderConfig);
-
-        var exportValidation = new PreflightValidationResult
-        {
-            CanProceed = true,
-            Errors = new System.Collections.Generic.List<string>(),
-            Warnings = new System.Collections.Generic.List<string>(),
-            RecommendedActions = new System.Collections.Generic.List<string>(),
-            Estimates = new PreflightEstimates
-            {
-                EstimatedFileSizeMB = 100,
-                EstimatedDurationMinutes = 2.0,
-                RequiredDiskSpaceMB = 250,
-                AvailableDiskSpaceGB = 50,
-                RecommendedEncoder = hasNVENC ? "h264_nvenc" : "libx264",
-                HardwareAccelerationAvailable = hasNVENC
-            }
-        };
-
-        _mockExportValidator
-            .Setup(x => x.ValidateAsync(
-                It.IsAny<ExportPreset>(),
-                It.IsAny<TimeSpan>(),
-                It.IsAny<string>(),
-                It.IsAny<Resolution>(),
-                It.IsAny<AspectRatio?>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(exportValidation);
     }
 }
