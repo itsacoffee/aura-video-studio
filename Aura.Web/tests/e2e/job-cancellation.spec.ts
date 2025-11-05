@@ -268,7 +268,7 @@ test.describe('Job Cancellation', () => {
     test.setTimeout(60000);
 
     const jobId = `test-job-cleanup-${Date.now()}`;
-    let cleanupCalled = false;
+    let _cleanupCalled = false;
 
     await page.route('**/api/quick/demo', async (route) => {
       await route.fulfill({
@@ -295,7 +295,7 @@ test.describe('Job Cancellation', () => {
     });
 
     await page.route(`**/api/jobs/${jobId}/cleanup`, async (route) => {
-      cleanupCalled = true;
+      _cleanupCalled = true;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

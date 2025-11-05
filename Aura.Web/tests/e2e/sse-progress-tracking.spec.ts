@@ -14,8 +14,6 @@ test.describe('SSE Progress Tracking', () => {
     test.setTimeout(90000);
 
     const jobId = `test-job-${Date.now()}`;
-    const progressUpdates: number[] = [];
-    const phaseUpdates: string[] = [];
 
     await page.route('**/api/quick/demo', async (route) => {
       await route.fulfill({
@@ -93,7 +91,7 @@ test.describe('SSE Progress Tracking', () => {
 
     const jobId = `test-job-reconnect-${Date.now()}`;
     let reconnectionAttempted = false;
-    let lastEventIdReceived = '';
+    let _lastEventIdReceived = '';
 
     await page.route('**/api/quick/demo', async (route) => {
       await route.fulfill({
@@ -113,7 +111,7 @@ test.describe('SSE Progress Tracking', () => {
 
       if (lastEventId) {
         reconnectionAttempted = true;
-        lastEventIdReceived = lastEventId;
+        _lastEventIdReceived = lastEventId;
 
         const resumeEvents = mockResponses.sse.jobProgress.reconnection.resumeEvents
           .map(
