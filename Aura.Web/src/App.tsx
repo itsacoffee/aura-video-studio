@@ -43,6 +43,7 @@ import PerformanceAnalyticsPage from './pages/PerformanceAnalytics/PerformanceAn
 import { ProjectsPage } from './pages/Projects/ProjectsPage';
 import { PromptManagementPage } from './pages/PromptManagement/PromptManagementPage';
 import QualityValidationPage from './pages/QualityValidation/QualityValidationPage';
+import RagDocumentManager from './pages/RAG/RagDocumentManager';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { RenderPage } from './pages/RenderPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -447,6 +448,7 @@ function App() {
                       <Route path="/aesthetics" element={<AestheticsPage />} />
                       <Route path="/localization" element={<TranslationPage />} />
                       <Route path="/prompt-management" element={<PromptManagementPage />} />
+                      <Route path="/rag" element={<RagDocumentManager />} />
                       <Route path="/voice-enhancement" element={<VoiceEnhancementPage />} />
                       <Route path="/performance-analytics" element={<PerformanceAnalyticsPage />} />
                       <Route path="/ml-lab" element={<MLLabPage />} />
