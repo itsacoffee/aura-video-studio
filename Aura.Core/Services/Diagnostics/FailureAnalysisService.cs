@@ -6,24 +6,30 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Diagnostics;
+using Aura.Core.Telemetry;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Diagnostics;
 
 /// <summary>
-/// Service for AI-powered analysis of job failures
+/// Service for AI-powered analysis of job failures with telemetry insights
 /// </summary>
 public class FailureAnalysisService
 {
     private readonly ILogger<FailureAnalysisService> _logger;
+    private readonly RunTelemetryCollector? _telemetryCollector;
 
-    public FailureAnalysisService(ILogger<FailureAnalysisService> logger)
+    public FailureAnalysisService(
+        ILogger<FailureAnalysisService> logger,
+        RunTelemetryCollector? telemetryCollector = null)
     {
         _logger = logger;
+        _telemetryCollector = telemetryCollector;
     }
 
     /// <summary>
     /// Analyze a failed job and provide root cause analysis with recommendations
+    /// Integrates telemetry data for cost/latency anomaly detection
     /// </summary>
     public async Task<FailureAnalysis> AnalyzeFailureAsync(
         Job job,
@@ -34,8 +40,24 @@ public class FailureAnalysisService
 
         await Task.CompletedTask;
 
-        // Analyze error patterns
-        var rootCauses = AnalyzeErrorPatterns(job, logs);
+        // Load telemetry for enhanced analysis
+        RunTelemetryCollection? telemetry = null;
+        TelemetryAnomalies? anomalies = null;
+        
+        if (_telemetryCollector != null)
+        {
+            telemetry = _telemetryCollector.LoadTelemetry(job.Id);
+            if (telemetry != null)
+            {
+                anomalies = TelemetryAnomalyDetector.DetectAnomalies(telemetry);
+                _logger.LogInformation("Telemetry loaded for job {JobId}: {RecordCount} records, {AnomalyCount} anomalies detected", 
+                    job.Id, telemetry.Records.Count, 
+                    anomalies.CostAnomalies.Count + anomalies.LatencyAnomalies.Count + anomalies.ProviderIssues.Count);
+            }
+        }
+
+        // Analyze error patterns (now with telemetry context)
+        var rootCauses = AnalyzeErrorPatterns(job, logs, telemetry, anomalies);
         
         // Sort by confidence
         rootCauses = rootCauses.OrderByDescending(rc => rc.Confidence).ToList();
@@ -54,11 +76,11 @@ public class FailureAnalysisService
         var primaryCause = rootCauses.First();
         var secondaryCauses = rootCauses.Skip(1).ToList();
 
-        // Generate recommendations based on root causes
-        var recommendations = GenerateRecommendations(primaryCause, secondaryCauses, job);
+        // Generate recommendations based on root causes (now with telemetry insights)
+        var recommendations = GenerateRecommendations(primaryCause, secondaryCauses, job, telemetry, anomalies);
 
-        // Generate summary
-        var summary = GenerateSummary(job, primaryCause);
+        // Generate summary (now with telemetry context)
+        var summary = GenerateSummary(job, primaryCause, anomalies);
 
         // Get documentation links
         var docLinks = GetDocumentationLinks(primaryCause.Type);
@@ -78,12 +100,38 @@ public class FailureAnalysisService
 
     /// <summary>
     /// Analyze error patterns to identify root causes
+    /// Enhanced with telemetry-based insights
     /// </summary>
-    private List<RootCause> AnalyzeErrorPatterns(Job job, List<LogEntry>? logs)
+    private List<RootCause> AnalyzeErrorPatterns(
+        Job job, 
+        List<LogEntry>? logs, 
+        RunTelemetryCollection? telemetry = null,
+        TelemetryAnomalies? anomalies = null)
     {
         var rootCauses = new List<RootCause>();
         var errorMessage = job.ErrorMessage?.ToLowerInvariant() ?? string.Empty;
         var errorCode = job.FailureDetails?.ErrorCode?.ToLowerInvariant() ?? string.Empty;
+
+        // Check for provider issues from telemetry first (higher confidence)
+        if (anomalies?.ProviderIssues != null && anomalies.ProviderIssues.Count > 0)
+        {
+            foreach (var issue in anomalies.ProviderIssues)
+            {
+                if (issue.IssueType == "HighErrorRate" && issue.Severity == AnomalySeverity.High)
+                {
+                    var rcType = issue.ErrorRate > 0.9 ? RootCauseType.ProviderUnavailable : RootCauseType.NetworkError;
+                    rootCauses.Add(new RootCause
+                    {
+                        Type = rcType,
+                        Description = $"{issue.Provider} provider showing {issue.ErrorRate * 100:F0}% error rate with {issue.ErrorCount} failures",
+                        Evidence = issue.ErrorCodes.Take(3).ToList(),
+                        Confidence = 92,
+                        Stage = job.Stage,
+                        Provider = issue.Provider
+                    });
+                }
+            }
+        }
 
         // Check for rate limit errors
         if (ContainsPattern(errorMessage, new[] { "rate limit", "429", "too many requests", "quota exceeded" }))
@@ -250,13 +298,60 @@ public class FailureAnalysisService
 
     /// <summary>
     /// Generate recommended actions based on root causes
+    /// Enhanced with telemetry-based insights
     /// </summary>
     private List<RecommendedAction> GenerateRecommendations(
         RootCause primaryCause, 
         List<RootCause> secondaryCauses,
-        Job job)
+        Job job,
+        RunTelemetryCollection? telemetry = null,
+        TelemetryAnomalies? anomalies = null)
     {
         var recommendations = new List<RecommendedAction>();
+
+        // Add cost/latency anomaly warnings if present
+        if (anomalies?.HasAnyAnomalies == true)
+        {
+            if (anomalies.CostAnomalies.Any(a => a.Severity == AnomalySeverity.High))
+            {
+                var highCostAnomaly = anomalies.CostAnomalies.First(a => a.Severity == AnomalySeverity.High);
+                recommendations.Add(new RecommendedAction
+                {
+                    Priority = 0,
+                    Title = "⚠️ High Cost Detected",
+                    Description = highCostAnomaly.Description,
+                    Steps = new List<string>
+                    {
+                        "Review the cost breakdown in the diagnostic bundle",
+                        "Consider switching to a more cost-effective provider",
+                        "Reduce batch size or video length if applicable"
+                    },
+                    CanAutomate = false,
+                    EstimatedMinutes = 5,
+                    Type = ActionType.Configuration
+                });
+            }
+
+            if (anomalies.LatencyAnomalies.Any(a => a.Severity == AnomalySeverity.High))
+            {
+                var slowAnomaly = anomalies.LatencyAnomalies.First(a => a.Severity == AnomalySeverity.High);
+                recommendations.Add(new RecommendedAction
+                {
+                    Priority = 0,
+                    Title = "⚠️ Slow Performance Detected",
+                    Description = slowAnomaly.Description,
+                    Steps = new List<string>
+                    {
+                        "Check network connectivity to provider",
+                        "Consider using a faster provider or model",
+                        "Enable caching to avoid repeated slow operations"
+                    },
+                    CanAutomate = false,
+                    EstimatedMinutes = 5,
+                    Type = ActionType.Configuration
+                });
+            }
+        }
 
         switch (primaryCause.Type)
         {
@@ -549,13 +644,42 @@ public class FailureAnalysisService
 
     /// <summary>
     /// Generate human-readable summary
+    /// Enhanced with telemetry context
     /// </summary>
-    private string GenerateSummary(Job job, RootCause primaryCause)
+    private string GenerateSummary(Job job, RootCause primaryCause, TelemetryAnomalies? anomalies = null)
     {
         var stage = job.Stage ?? "Unknown";
         var causeDesc = primaryCause.Description;
 
-        return $"Job {job.Id} failed during the {stage} stage. {causeDesc}";
+        var summary = $"Job {job.Id} failed during the {stage} stage. {causeDesc}";
+
+        // Add telemetry insights to summary
+        if (anomalies?.HasAnyAnomalies == true)
+        {
+            var insights = new List<string>();
+            
+            if (anomalies.CostAnomalies.Count > 0)
+            {
+                insights.Add($"{anomalies.CostAnomalies.Count} cost anomaly/anomalies detected");
+            }
+            
+            if (anomalies.LatencyAnomalies.Count > 0)
+            {
+                insights.Add($"{anomalies.LatencyAnomalies.Count} latency issue(s) found");
+            }
+            
+            if (anomalies.ProviderIssues.Count > 0)
+            {
+                insights.Add($"{anomalies.ProviderIssues.Count} provider issue(s) identified");
+            }
+
+            if (insights.Count > 0)
+            {
+                summary += $" Telemetry analysis shows: {string.Join(", ", insights)}.";
+            }
+        }
+
+        return summary;
     }
 
     /// <summary>

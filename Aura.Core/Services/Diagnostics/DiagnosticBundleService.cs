@@ -10,6 +10,7 @@ using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Models.CostTracking;
 using Aura.Core.Models.Diagnostics;
+using Aura.Core.Telemetry;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Diagnostics;
@@ -22,16 +23,19 @@ public class DiagnosticBundleService
     private readonly ILogger<DiagnosticBundleService> _logger;
     private readonly DiagnosticReportGenerator _reportGenerator;
     private readonly IHardwareDetector? _hardwareDetector;
+    private readonly RunTelemetryCollector? _telemetryCollector;
     private readonly string _bundlesDirectory;
 
     public DiagnosticBundleService(
         ILogger<DiagnosticBundleService> logger,
         DiagnosticReportGenerator reportGenerator,
-        IHardwareDetector? hardwareDetector = null)
+        IHardwareDetector? hardwareDetector = null,
+        RunTelemetryCollector? telemetryCollector = null)
     {
         _logger = logger;
         _reportGenerator = reportGenerator;
         _hardwareDetector = hardwareDetector;
+        _telemetryCollector = telemetryCollector;
 
         _bundlesDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DiagnosticBundles");
         Directory.CreateDirectory(_bundlesDirectory);
@@ -97,6 +101,9 @@ public class DiagnosticBundleService
             {
                 await SaveCostReportAsync(bundleDir, manifest.CostReport, cancellationToken);
             }
+
+            // Collect RunTelemetry
+            await CollectRunTelemetryAsync(bundleDir, job.Id, cancellationToken);
 
             // Create README
             await CreateReadmeAsync(bundleDir, job, manifest, cancellationToken);
@@ -285,7 +292,7 @@ public class DiagnosticBundleService
     }
 
     /// <summary>
-    /// Collect job-specific logs with redaction
+    /// Collect job-specific logs with allowlist-based redaction and time windowing
     /// </summary>
     private async Task CollectJobLogsAsync(string outputDir, string jobId, string? correlationId, CancellationToken cancellationToken)
     {
@@ -316,6 +323,18 @@ public class DiagnosticBundleService
                 return;
             }
 
+            // Load telemetry to get failure time for windowing
+            DateTime? failureTime = null;
+            if (_telemetryCollector != null)
+            {
+                var telemetry = _telemetryCollector.LoadTelemetry(jobId);
+                if (telemetry != null)
+                {
+                    var failedRecord = telemetry.Records.FirstOrDefault(r => r.ResultStatus == ResultStatus.Error);
+                    failureTime = failedRecord?.EndedAt;
+                }
+            }
+
             var allRedactedLogs = new System.Text.StringBuilder();
             foreach (var logFile in logFiles)
             {
@@ -326,13 +345,24 @@ public class DiagnosticBundleService
                 var relevantLines = lines.Where(line => 
                     string.IsNullOrEmpty(correlationId) || 
                     line.Contains(jobId) || 
-                    line.Contains(correlationId ?? string.Empty));
+                    line.Contains(correlationId ?? string.Empty)).ToList();
 
-                var filtered = string.Join('\n', relevantLines);
-                var redacted = RedactSensitiveData(filtered);
+                // Apply time-windowed filtering if we have a failure time (±5 minutes)
+                IEnumerable<string> redactedLines;
+                if (failureTime.HasValue)
+                {
+                    redactedLines = RedactionService.RedactLogLines(relevantLines, failureTime.Value, TimeSpan.FromMinutes(5));
+                }
+                else
+                {
+                    redactedLines = RedactionService.RedactLogLines(relevantLines);
+                }
 
                 allRedactedLogs.AppendLine($"=== {logFile.Name} ===");
-                allRedactedLogs.AppendLine(redacted);
+                foreach (var line in redactedLines)
+                {
+                    allRedactedLogs.AppendLine(line);
+                }
                 allRedactedLogs.AppendLine();
             }
 
@@ -404,6 +434,60 @@ public class DiagnosticBundleService
     }
 
     /// <summary>
+    /// Collect RunTelemetry data with redaction
+    /// </summary>
+    private async Task CollectRunTelemetryAsync(string outputDir, string jobId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (_telemetryCollector == null)
+            {
+                await File.WriteAllTextAsync(
+                    Path.Combine(outputDir, "telemetry-not-available.txt"),
+                    "Telemetry collector not configured",
+                    cancellationToken);
+                return;
+            }
+
+            var telemetry = _telemetryCollector.LoadTelemetry(jobId);
+            if (telemetry == null)
+            {
+                await File.WriteAllTextAsync(
+                    Path.Combine(outputDir, "run_telemetry-not-found.txt"),
+                    "No telemetry data available for this job",
+                    cancellationToken);
+                return;
+            }
+
+            // Serialize and redact telemetry
+            var json = JsonSerializer.Serialize(telemetry, new JsonSerializerOptions 
+            { 
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+
+            // Apply text-based redaction to the JSON string
+            var redactedJson = RedactionService.RedactText(json);
+
+            await File.WriteAllTextAsync(
+                Path.Combine(outputDir, "run_telemetry.json"),
+                redactedJson,
+                cancellationToken);
+
+            _logger.LogInformation("Collected RunTelemetry for job {JobId} with {RecordCount} records", 
+                jobId, telemetry.Records.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to collect run telemetry for job {JobId}", jobId);
+            await File.WriteAllTextAsync(
+                Path.Combine(outputDir, "telemetry-collection-error.txt"),
+                $"Error: {ex.Message}",
+                cancellationToken);
+        }
+    }
+
+    /// <summary>
     /// Create README file explaining bundle contents
     /// </summary>
     private async Task CreateReadmeAsync(string outputDir, Job job, BundleManifest manifest, CancellationToken cancellationToken)
@@ -434,8 +518,9 @@ public class DiagnosticBundleService
         readme.AppendLine("----------------");
         readme.AppendLine("- manifest.json: Complete bundle manifest with all metadata");
         readme.AppendLine("- system-info.json: System and hardware information");
-        readme.AppendLine("- timeline.json: Job execution timeline with durations");
-        readme.AppendLine("- logs-redacted.txt: Anonymized logs (API keys redacted)");
+        readme.AppendLine("- timeline.json: Job execution timeline with durations and correlation IDs");
+        readme.AppendLine("- run_telemetry.json: Complete telemetry with cost, latency, and provider data");
+        readme.AppendLine("- logs-redacted.txt: Time-windowed logs around failure (allowlist redacted)");
         
         if (manifest.ModelDecisions.Count > 0)
         {
@@ -444,7 +529,7 @@ public class DiagnosticBundleService
         
         if (manifest.FFmpegCommands.Count > 0)
         {
-            readme.AppendLine("- ffmpeg-commands.json: FFmpeg commands executed");
+            readme.AppendLine("- ffmpeg-commands.json: FFmpeg commands executed with context");
         }
         
         if (manifest.CostReport != null)
@@ -453,12 +538,13 @@ public class DiagnosticBundleService
         }
 
         readme.AppendLine();
-        readme.AppendLine("PRIVACY:");
-        readme.AppendLine("---------");
-        readme.AppendLine("This bundle has been automatically redacted to remove:");
-        readme.AppendLine("- API keys and tokens");
-        readme.AppendLine("- Passwords and credentials");
-        readme.AppendLine("- Personal identifying information");
+        readme.AppendLine("PRIVACY & REDACTION:");
+        readme.AppendLine("--------------------");
+        readme.AppendLine("This bundle uses allowlist-based redaction (deny by default):");
+        readme.AppendLine("- API keys, tokens, and secrets are REMOVED");
+        readme.AppendLine("- Passwords and credentials are REMOVED");
+        readme.AppendLine("- Only technical metadata and error details are INCLUDED");
+        readme.AppendLine("- Machine names and PII are anonymized");
         readme.AppendLine();
         readme.AppendLine("Safe to share for troubleshooting purposes.");
 
@@ -476,44 +562,12 @@ public class DiagnosticBundleService
 
     /// <summary>
     /// Redact sensitive data from logs (API keys, tokens, etc.)
+    /// Delegates to RedactionService for consistency
     /// </summary>
+    [Obsolete("Use RedactionService.RedactText instead")]
     public static string RedactSensitiveData(string content)
     {
-        // Redact OpenAI/Anthropic API keys
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"sk-[a-zA-Z0-9_-]{20,}", "[REDACTED-API-KEY]");
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"sk-proj-[a-zA-Z0-9_-]{20,}", "[REDACTED-API-KEY]");
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"sk-ant-api[0-9]{2}-[a-zA-Z0-9_-]{20,}", "[REDACTED-API-KEY]");
-        
-        // Redact Bearer tokens
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"Bearer\s+[a-zA-Z0-9\-_\.]{20,}", "Bearer [REDACTED-TOKEN]");
-        
-        // Redact JWT tokens (start with eyJ)
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+", "[REDACTED-JWT]");
-        
-        // Redact Google API keys
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"AIza[a-zA-Z0-9_-]{35}", "[REDACTED-API-KEY]");
-        
-        // Redact AWS keys
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"AKIA[0-9A-Z]{16}", "[REDACTED-AWS-KEY]");
-        
-        // Redact GitHub tokens
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"gh[ps]_[a-zA-Z0-9]{36,}", "[REDACTED-GH-TOKEN]");
-        
-        // Redact other service keys
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"r8_[a-zA-Z0-9]{40,}", "[REDACTED-API-KEY]");
-        
-        // Redact JSON key-value pairs
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"""apiKey""\s*:\s*""[^""]+""", @"""apiKey"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"""api_key""\s*:\s*""[^""]+""", @"""api_key"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"""password""\s*:\s*""[^""]+""", @"""password"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"""token""\s*:\s*""[^""]+""", @"""token"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"""secret""\s*:\s*""[^""]+""", @"""secret"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        
-        // Redact HTTP headers
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"x-api-key:\s*[a-zA-Z0-9_-]{16,}", "x-api-key: [REDACTED]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"Authorization:\s*[^\s\n\r]+", "Authorization: [REDACTED]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-        return content;
+        return RedactionService.RedactText(content);
     }
 
     /// <summary>
