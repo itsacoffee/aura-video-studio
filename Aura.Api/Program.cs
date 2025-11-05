@@ -1176,6 +1176,9 @@ builder.Services.AddSingleton<Aura.Core.Services.Export.IBitrateOptimizationServ
 // Changed from Singleton to Scoped because ExportOrchestrationService depends on scoped AuraDbContext
 builder.Services.AddScoped<Aura.Core.Services.Export.IExportOrchestrationService, Aura.Core.Services.Export.ExportOrchestrationService>();
 
+// Register Licensing services
+builder.Services.AddSingleton<Aura.Core.Services.Licensing.ILicensingService, Aura.Core.Services.Licensing.LicensingService>();
+
 // Register Cloud Storage services
 builder.Services.AddSingleton(sp =>
 {
