@@ -184,7 +184,7 @@ public class KeyStoreMigrationTests : IDisposable
     }
 
     [Fact]
-    public void Windows_DoesNotAttemptMigration()
+    public void Windows_MigratesLegacyPlaintextFile()
     {
         // Only run on Windows platforms
         if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
@@ -193,20 +193,34 @@ public class KeyStoreMigrationTests : IDisposable
             return;
         }
 
-        // Arrange - Create legacy file (should be ignored on Windows)
-        var legacyDir = Path.Combine(_testStorageDir, ".aura-dev");
+        // Arrange - Create legacy plaintext file at Windows location
+        var legacyDir = Path.Combine(_testStorageDir, "Aura");
         Directory.CreateDirectory(legacyDir);
         var legacyFile = Path.Combine(legacyDir, "apikeys.json");
-        File.WriteAllText(legacyFile, "{\"openai\": \"sk-test\"}");
-
-        // Act
-        var keyStore = new KeyStore(_mockLogger.Object);
-        var keys = keyStore.GetAllKeys();
-
-        // Assert - Windows should not migrate from legacy file
-        Assert.Empty(keys);
         
-        // Legacy file should still exist (not touched)
-        Assert.True(File.Exists(legacyFile));
+        var legacyKeys = new Dictionary<string, string>
+        {
+            { "openai", "sk-test-openai-123456" },
+            { "anthropic", "sk-ant-test-456789" }
+        };
+        
+        var json = JsonSerializer.Serialize(legacyKeys, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(legacyFile, json);
+
+        // Act - Create KeyStore which should trigger migration
+        var keyStore = new KeyStore(_mockLogger.Object);
+        var retrievedKeys = keyStore.GetAllKeys();
+
+        // Assert
+        Assert.Equal(2, retrievedKeys.Count);
+        Assert.Equal("sk-test-openai-123456", retrievedKeys["openai"]);
+        Assert.Equal("sk-ant-test-456789", retrievedKeys["anthropic"]);
+        
+        // Verify legacy file was deleted
+        Assert.False(File.Exists(legacyFile), "Legacy plaintext file should be deleted after migration");
+        
+        // Verify encrypted storage exists
+        var encryptedFile = Path.Combine(_testStorageDir, "Aura", "secure", "apikeys.dat");
+        Assert.True(File.Exists(encryptedFile), "Encrypted storage file should exist");
     }
 }
