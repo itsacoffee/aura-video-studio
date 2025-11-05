@@ -358,7 +358,7 @@ public class DiagnosticsController : ControllerBase
     /// Get hardware information for export acceleration detection
     /// </summary>
     [HttpGet("hardware")]
-    public async Task<ActionResult<SystemProfile>> GetHardware()
+    public async Task<ActionResult<Core.Models.SystemProfile>> GetHardware()
     {
         _logger.LogInformation("Hardware detection requested");
 
