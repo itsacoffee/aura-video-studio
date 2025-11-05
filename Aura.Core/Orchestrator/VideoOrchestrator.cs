@@ -44,6 +44,7 @@ public class VideoOrchestrator
     private readonly NarrationOptimizationService? _narrationOptimizationService;
     private readonly PipelineOrchestrationEngine? _pipelineEngine;
     private readonly Services.RAG.RagScriptEnhancer? _ragScriptEnhancer;
+    private readonly Telemetry.RunTelemetryCollector _telemetryCollector;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -61,6 +62,7 @@ public class VideoOrchestrator
         ResourceCleanupManager cleanupManager,
         Timeline.TimelineBuilder timelineBuilder,
         Configuration.ProviderSettings providerSettings,
+        Telemetry.RunTelemetryCollector telemetryCollector,
         IImageProvider? imageProvider = null,
         Services.PacingServices.IntelligentPacingOptimizer? pacingOptimizer = null,
         Services.PacingServices.PacingApplicationService? pacingApplicationService = null,
@@ -83,6 +85,7 @@ public class VideoOrchestrator
         ArgumentNullException.ThrowIfNull(cleanupManager);
         ArgumentNullException.ThrowIfNull(timelineBuilder);
         ArgumentNullException.ThrowIfNull(providerSettings);
+        ArgumentNullException.ThrowIfNull(telemetryCollector);
         
         _logger = logger;
         _llmProvider = llmProvider;
@@ -102,6 +105,7 @@ public class VideoOrchestrator
         _pacingApplicationService = pacingApplicationService;
         _timelineBuilder = timelineBuilder;
         _providerSettings = providerSettings;
+        _telemetryCollector = telemetryCollector;
         _narrationOptimizationService = narrationOptimizationService;
         _pipelineEngine = pipelineEngine;
         _ragScriptEnhancer = ragScriptEnhancer;
@@ -117,7 +121,9 @@ public class VideoOrchestrator
         RenderSpec renderSpec,
         SystemProfile systemProfile,
         IProgress<string>? progress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? jobId = null,
+        string? correlationId = null)
     {
         ArgumentNullException.ThrowIfNull(brief);
         ArgumentNullException.ThrowIfNull(planSpec);
@@ -203,7 +209,9 @@ public class VideoOrchestrator
         VoiceSpec voiceSpec,
         RenderSpec renderSpec,
         IProgress<string>? progress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? jobId = null,
+        string? correlationId = null)
     {
         ArgumentNullException.ThrowIfNull(brief);
         ArgumentNullException.ThrowIfNull(planSpec);
@@ -235,6 +243,10 @@ public class VideoOrchestrator
             // Stage 1: Script generation
             progress?.Report("Stage 1/5: Generating script...");
             _logger.LogInformation("Generating script for topic: {Topic}", brief.Topic);
+            
+            var scriptBuilder = jobId != null && correlationId != null 
+                ? Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Script)
+                : null;
             
             Brief enhancedBrief = brief;
             Models.RAG.RagContext? ragContext = null;
@@ -292,6 +304,16 @@ public class VideoOrchestrator
             }
             
             _logger.LogInformation("Script generated and validated: {Length} characters", script.Length);
+            
+            // Record script generation telemetry
+            if (scriptBuilder != null)
+            {
+                var scriptTelemetry = scriptBuilder
+                    .WithModel(_llmProvider.GetType().Name, _llmProvider.GetType().Name)
+                    .WithStatus(Telemetry.ResultStatus.Ok, message: $"Script generated: {script.Length} characters")
+                    .Build();
+                _telemetryCollector.Record(scriptTelemetry);
+            }
 
             // Stage 2: Parse script into scenes
             progress?.Report("Stage 2/5: Parsing scenes...");
@@ -362,6 +384,10 @@ public class VideoOrchestrator
 
             // Stage 3: Generate narration
             progress?.Report("Stage 3/5: Generating narration...");
+            var ttsBuilder = jobId != null && correlationId != null 
+                ? Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Tts)
+                : null;
+            
             var scriptLines = ConvertScenesToScriptLines(scenes);
             
             // Optimize narration for TTS if service is available
@@ -429,6 +455,16 @@ public class VideoOrchestrator
             ).ConfigureAwait(false);
             
             _logger.LogInformation("Narration generated and validated at: {Path}", narrationPath);
+            
+            // Record TTS telemetry
+            if (ttsBuilder != null)
+            {
+                var ttsTelemetry = ttsBuilder
+                    .WithModel(voiceSpec.VoiceName, _ttsProvider.GetType().Name)
+                    .WithStatus(Telemetry.ResultStatus.Ok, message: "Narration generated successfully")
+                    .Build();
+                _telemetryCollector.Record(ttsTelemetry);
+            }
 
             // Stage 4: Build timeline (placeholder for music/assets)
             progress?.Report("Stage 4/5: Building timeline...");
@@ -442,6 +478,10 @@ public class VideoOrchestrator
 
             // Stage 5: Render video
             progress?.Report("Stage 5/5: Rendering video...");
+            var renderBuilder = jobId != null && correlationId != null 
+                ? Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Render)
+                : null;
+            
             var renderProgress = new Progress<RenderProgress>(p =>
             {
                 progress?.Report($"Rendering: {p.Percentage:F1}% - {p.CurrentStage}");
@@ -449,6 +489,16 @@ public class VideoOrchestrator
 
             string outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
             _logger.LogInformation("Video rendered to: {Path}", outputPath);
+            
+            // Record render telemetry
+            if (renderBuilder != null)
+            {
+                var renderTelemetry = renderBuilder
+                    .WithModel("FFmpeg", "VideoComposer")
+                    .WithStatus(Telemetry.ResultStatus.Ok, message: "Video rendered successfully")
+                    .Build();
+                _telemetryCollector.Record(renderTelemetry);
+            }
 
             progress?.Report("Video generation complete!");
             return outputPath;

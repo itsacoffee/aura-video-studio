@@ -148,6 +148,9 @@ public class VideoGenerationComprehensiveTests
         var timelineBuilder = new Aura.Core.Timeline.TimelineBuilder();
         var providerSettings = new Aura.Core.Configuration.ProviderSettings(
             _loggerFactory.CreateLogger<Aura.Core.Configuration.ProviderSettings>());
+        var telemetryCollector = new Aura.Core.Telemetry.RunTelemetryCollector(
+            _loggerFactory.CreateLogger<Aura.Core.Telemetry.RunTelemetryCollector>(),
+            System.IO.Path.GetTempPath());
 
         var orchestrator = new VideoOrchestrator(
             _loggerFactory.CreateLogger<VideoOrchestrator>(),
@@ -165,6 +168,7 @@ public class VideoGenerationComprehensiveTests
             cleanupManager,
             timelineBuilder,
             providerSettings,
+            telemetryCollector,
             mockImageProvider);
 
         var brief = new Brief("Test Topic", null, null, "Professional", "English", Aspect.Widescreen16x9);
@@ -229,6 +233,9 @@ public class VideoGenerationComprehensiveTests
         var timelineBuilder = new Aura.Core.Timeline.TimelineBuilder();
         var providerSettings = new Aura.Core.Configuration.ProviderSettings(
             _loggerFactory.CreateLogger<Aura.Core.Configuration.ProviderSettings>());
+        var telemetryCollector = new Aura.Core.Telemetry.RunTelemetryCollector(
+            _loggerFactory.CreateLogger<Aura.Core.Telemetry.RunTelemetryCollector>(),
+            System.IO.Path.GetTempPath());
 
         var orchestrator = new VideoOrchestrator(
             _loggerFactory.CreateLogger<VideoOrchestrator>(),
@@ -246,6 +253,7 @@ public class VideoGenerationComprehensiveTests
             cleanupManager,
             timelineBuilder,
             providerSettings,
+            telemetryCollector,
             null);
 
         var brief = new Brief("Test Topic", null, null, "Professional", "English", Aspect.Widescreen16x9);

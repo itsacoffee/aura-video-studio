@@ -8,6 +8,7 @@ using Aura.Core.Artifacts;
 using Aura.Core.Models;
 using Aura.Core.Models.Events;
 using Aura.Core.Providers;
+using Aura.Core.Telemetry;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 
@@ -24,6 +25,7 @@ public class JobRunner
     private readonly Aura.Core.Hardware.HardwareDetector _hardwareDetector;
     private readonly Services.CheckpointManager? _checkpointManager;
     private readonly Services.CleanupService? _cleanupService;
+    private readonly RunTelemetryCollector _telemetryCollector;
     private readonly Dictionary<string, Job> _activeJobs = new();
     private readonly Dictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
     private readonly Dictionary<string, Guid> _jobProjectIds = new();
@@ -35,6 +37,7 @@ public class JobRunner
         ArtifactManager artifactManager,
         VideoOrchestrator orchestrator,
         Aura.Core.Hardware.HardwareDetector hardwareDetector,
+        RunTelemetryCollector telemetryCollector,
         Services.CheckpointManager? checkpointManager = null,
         Services.CleanupService? cleanupService = null)
     {
@@ -42,11 +45,13 @@ public class JobRunner
         ArgumentNullException.ThrowIfNull(artifactManager);
         ArgumentNullException.ThrowIfNull(orchestrator);
         ArgumentNullException.ThrowIfNull(hardwareDetector);
+        ArgumentNullException.ThrowIfNull(telemetryCollector);
         
         _logger = logger;
         _artifactManager = artifactManager;
         _orchestrator = orchestrator;
         _hardwareDetector = hardwareDetector;
+        _telemetryCollector = telemetryCollector;
         _checkpointManager = checkpointManager;
         _cleanupService = cleanupService;
     }
@@ -181,6 +186,10 @@ public class JobRunner
 
             _logger.LogInformation("Starting job {JobId}", jobId);
             
+            // Start telemetry collection for this job
+            _telemetryCollector.StartCollection(jobId, job.CorrelationId ?? Guid.NewGuid().ToString());
+            _logger.LogInformation("Started telemetry collection for job {JobId}", jobId);
+            
             // Create project state for checkpointing if checkpoint manager is available
             Guid? projectId = null;
             if (_checkpointManager != null && job.Brief != null && job.PlanSpec != null && 
@@ -244,7 +253,9 @@ public class JobRunner
                 job.RenderSpec!,
                 systemProfile,
                 progress,
-                ct
+                ct,
+                jobId,
+                job.CorrelationId
             ).ConfigureAwait(false);
 
             // Add final artifact
@@ -262,6 +273,13 @@ public class JobRunner
                 {
                     _logger.LogWarning(ex, "Failed to mark project {ProjectId} as completed", completedProjectId);
                 }
+            }
+
+            // End telemetry collection and persist to disk
+            var telemetryPath = _telemetryCollector.EndCollection();
+            if (telemetryPath != null)
+            {
+                _logger.LogInformation("Telemetry data persisted to {Path}", telemetryPath);
             }
 
             // Mark as done
@@ -299,6 +317,13 @@ public class JobRunner
                     {
                         _logger.LogWarning(ex, "Failed to mark project {ProjectId} as cancelled", cancelledProjectId);
                     }
+                }
+                
+                // End telemetry collection for cancelled job
+                var telemetryPath = _telemetryCollector.EndCollection();
+                if (telemetryPath != null)
+                {
+                    _logger.LogInformation("Telemetry data persisted for cancelled job {JobId} to {Path}", jobId, telemetryPath);
                 }
                 
                 // Add cancellation message to logs so it's visible in UI
@@ -348,6 +373,13 @@ public class JobRunner
                     }
                 };
                 
+                // End telemetry collection for failed validation
+                var telemetryPath = _telemetryCollector.EndCollection();
+                if (telemetryPath != null)
+                {
+                    _logger.LogInformation("Telemetry data persisted for failed job {JobId} to {Path}", jobId, telemetryPath);
+                }
+                
                 // Add detailed validation errors to logs
                 var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] VALIDATION ERROR: {vex.Message}";
                 var updatedLogs = new List<string>(job.Logs) { errorLog };
@@ -388,6 +420,13 @@ public class JobRunner
                     {
                         _logger.LogWarning(checkpointEx, "Failed to mark project {ProjectId} as failed", failedProjectId);
                     }
+                }
+                
+                // End telemetry collection for failed job
+                var telemetryPath = _telemetryCollector.EndCollection();
+                if (telemetryPath != null)
+                {
+                    _logger.LogInformation("Telemetry data persisted for failed job {JobId} to {Path}", jobId, telemetryPath);
                 }
                 
                 var failureDetails = CreateFailureDetails(job, ex);

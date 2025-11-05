@@ -64,6 +64,9 @@ public class VideoOrchestratorIntegrationTests
         var timelineBuilder = new Aura.Core.Timeline.TimelineBuilder();
         var providerSettings = new Aura.Core.Configuration.ProviderSettings(
             _loggerFactory.CreateLogger<Aura.Core.Configuration.ProviderSettings>());
+        var telemetryCollector = new Aura.Core.Telemetry.RunTelemetryCollector(
+            _loggerFactory.CreateLogger<Aura.Core.Telemetry.RunTelemetryCollector>(),
+            System.IO.Path.GetTempPath());
 
         var orchestrator = new VideoOrchestrator(
             _orchestratorLogger,
@@ -81,6 +84,7 @@ public class VideoOrchestratorIntegrationTests
             cleanupManager,
             timelineBuilder,
             providerSettings,
+            telemetryCollector,
             mockImageProvider);
 
         var brief = new Brief("AI Revolution", null, null, "Professional", "English", Aspect.Widescreen16x9);
@@ -161,6 +165,9 @@ public class VideoOrchestratorIntegrationTests
         var timelineBuilder = new Aura.Core.Timeline.TimelineBuilder();
         var providerSettings = new Aura.Core.Configuration.ProviderSettings(
             _loggerFactory.CreateLogger<Aura.Core.Configuration.ProviderSettings>());
+        var telemetryCollector = new Aura.Core.Telemetry.RunTelemetryCollector(
+            _loggerFactory.CreateLogger<Aura.Core.Telemetry.RunTelemetryCollector>(),
+            System.IO.Path.GetTempPath());
 
         var orchestrator = new VideoOrchestrator(
             _orchestratorLogger,
@@ -177,7 +184,8 @@ public class VideoOrchestratorIntegrationTests
             llmValidator,
             cleanupManager,
             timelineBuilder,
-            providerSettings);
+            providerSettings,
+            telemetryCollector);
 
         var brief = new Brief("Test Video", null, null, "Professional", "English", Aspect.Widescreen16x9);
         var planSpec = new PlanSpec(TimeSpan.FromSeconds(30), Pacing.Conversational, Density.Balanced, "Modern");
