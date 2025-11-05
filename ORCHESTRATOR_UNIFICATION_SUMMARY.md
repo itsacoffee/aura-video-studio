@@ -152,26 +152,36 @@ Refactored to use unified orchestration:
    - **File**: `ScriptOrchestrator.cs` line 26
    - **Fix Applied**: Added `volatile` modifier to `_stageAdapter` field
 
-#### Remaining Service Refactoring
+#### Service Refactoring Status
 
-Services with direct provider calls to refactor:
-- EnhancedRefinementOrchestrator
-- VisualPromptRefinementService
-- VisualPromptGenerationService
-- TrendingTopicsService
-- ConversationalLlmService
-- PromptTestingService
-- NarrationOptimizationService
-- AdaptiveContentGenerator
-- ChainOfThoughtOrchestrator
-- CriticService
-- AdvancedScriptEnhancer
-- Audience services (4 services)
-- TopicGenerationService
-- PresetRecommendationService
-- ScriptConverter
+**✅ COMPLETED - Services using DraftScriptAsync (Now use LlmStageAdapter):**
+- IdeationService (PR 242)
+- TrendingTopicsService (PR 242)
+- TopicGenerationService (PR 242)
+- ChainOfThoughtOrchestrator (PR 242)
+- AdaptiveContentGenerator (PR 242)
+- EnhancedRefinementOrchestrator (PR 242)
+- NarrationOptimizationService (PR 243)
+- AdvancedScriptEnhancer (PR 243)
+- ToneOptimizer (PR 243)
+- ExamplePersonalizer (PR 243)
+- PacingAdapter (PR 243)
+- VocabularyLevelAdjuster (PR 243)
+- ScriptConverter (PR 243)
 
-**Pattern to Follow**: See IdeationService for reference implementation
+**🔄 PARTIAL - Services with adapter but not fully utilized:**
+- CriticService (has LlmStageAdapter field but uses CompleteAsync directly)
+
+**⚠️ DIFFERENT PATTERN - Services using CompleteAsync (require specialized handling):**
+- VisualPromptRefinementService (uses CompleteAsync for JSON-formatted refinement)
+- ConversationalLlmService (uses CompleteAsync for conversational patterns)
+- PromptTestingService (uses CompleteAsync for testing)
+- PresetRecommendationService (uses CompleteAsync, optional LLM)
+
+**✅ NO REFACTOR NEEDED:**
+- VisualPromptGenerationService (no direct LLM provider calls)
+
+**Pattern Established**: Services using DraftScriptAsync follow the pattern from IdeationService with GenerateWithLlmAsync helper method
 
 #### Testing
 
