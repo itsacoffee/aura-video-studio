@@ -38,7 +38,8 @@ for pattern in "${FORBIDDEN_PATHS[@]}"; do
             # Check if file should be excluded
             EXCLUDED=0
             for exclude_pattern in "${EXCLUDED_PATHS[@]}"; do
-                if [[ "$file" == $exclude_pattern* ]]; then
+                # Use proper pattern matching with quoted variables
+                if [[ "$file" == "$exclude_pattern"* ]]; then
                     EXCLUDED=1
                     break
                 fi

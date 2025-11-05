@@ -84,24 +84,32 @@ public class SecureStorageService : ISecureStorageService
     {
         try
         {
-            var startInfo = new System.Diagnostics.ProcessStartInfo
+            // Use .NET 7+ UnixFileMode if available (better approach)
+            // Fallback to chmod command for compatibility
+            if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
             {
-                FileName = "chmod",
-                Arguments = $"600 \"{path}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardError = true
-            };
-            
-            using var process = System.Diagnostics.Process.Start(startInfo);
-            if (process != null)
-            {
-                process.WaitForExit();
-                if (process.ExitCode != 0)
+                var startInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    var error = process.StandardError.ReadToEnd();
-                    _logger.LogWarning("chmod command failed with exit code {ExitCode}: {Error}", 
-                        process.ExitCode, error);
+                    FileName = "chmod",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardError = true
+                };
+                
+                // Use ArgumentList for proper escaping (no shell interpretation)
+                startInfo.ArgumentList.Add("600");
+                startInfo.ArgumentList.Add(path);
+                
+                using var process = System.Diagnostics.Process.Start(startInfo);
+                if (process != null)
+                {
+                    process.WaitForExit();
+                    if (process.ExitCode != 0)
+                    {
+                        var error = process.StandardError.ReadToEnd();
+                        _logger.LogWarning("chmod command failed with exit code {ExitCode}: {Error}", 
+                            process.ExitCode, error);
+                    }
                 }
             }
         }
