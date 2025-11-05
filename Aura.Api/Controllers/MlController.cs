@@ -26,19 +26,22 @@ public class MlController : ControllerBase
     private readonly MlTrainingWorker _trainingWorker;
     private readonly ModelManager _modelManager;
     private readonly PreflightCheckService _preflightCheck;
+    private readonly TrainingAuditService _auditService;
 
     public MlController(
         ILogger<MlController> logger,
         AnnotationStorageService annotationStorage,
         MlTrainingWorker trainingWorker,
         ModelManager modelManager,
-        PreflightCheckService preflightCheck)
+        PreflightCheckService preflightCheck,
+        TrainingAuditService auditService)
     {
         _logger = logger;
         _annotationStorage = annotationStorage;
         _trainingWorker = trainingWorker;
         _modelManager = modelManager;
         _preflightCheck = preflightCheck;
+        _auditService = auditService;
     }
 
     /// <summary>
@@ -376,6 +379,101 @@ public class MlController : ControllerBase
                 Title = "Preflight Check Failed",
                 Status = 500,
                 Detail = "An error occurred while checking system capabilities",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Restore model from backup
+    /// </summary>
+    [HttpPost("model/restore-backup")]
+    public async Task<ActionResult<object>> RestoreFromBackup(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        _logger.LogInformation("Restoring model from backup, CorrelationId: {CorrelationId}", correlationId);
+
+        try
+        {
+            var restored = await _modelManager.RestoreFromBackupAsync(cancellationToken);
+            
+            if (!restored)
+            {
+                return StatusCode(500, new ProblemDetails
+                {
+                    Title = "Restore Failed",
+                    Status = 500,
+                    Detail = "Failed to restore model from backup. Backup may not exist.",
+                    Extensions = { ["correlationId"] = correlationId }
+                });
+            }
+
+            return Ok(new { message = "Successfully restored model from backup" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to restore model from backup");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Restore Failed",
+                Status = 500,
+                Detail = "An error occurred while restoring from backup",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get training history from audit log
+    /// </summary>
+    [HttpGet("train/history")]
+    public async Task<ActionResult<object>> GetTrainingHistory(
+        [FromQuery] int maxRecords = 50,
+        CancellationToken cancellationToken = default)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        _logger.LogInformation("Getting training history, CorrelationId: {CorrelationId}", correlationId);
+
+        try
+        {
+            var history = await _auditService.GetTrainingHistoryAsync(maxRecords, cancellationToken);
+            return Ok(new { history, count = history.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get training history");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "History Retrieval Failed",
+                Status = 500,
+                Detail = "An error occurred while retrieving training history",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get training statistics from audit log
+    /// </summary>
+    [HttpGet("train/statistics")]
+    public async Task<ActionResult<object>> GetTrainingStatistics(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        _logger.LogInformation("Getting training statistics, CorrelationId: {CorrelationId}", correlationId);
+
+        try
+        {
+            var stats = await _auditService.GetTrainingStatisticsAsync(cancellationToken);
+            return Ok(stats);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get training statistics");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Statistics Retrieval Failed",
+                Status = 500,
+                Detail = "An error occurred while retrieving training statistics",
                 Extensions = { ["correlationId"] = correlationId }
             });
         }

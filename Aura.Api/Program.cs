@@ -1208,6 +1208,7 @@ builder.Services.AddSingleton<Aura.Core.Services.ML.ModelTrainingService>();
 builder.Services.AddSingleton<Aura.Core.ML.ModelManager>();
 builder.Services.AddSingleton<Aura.Core.Services.ML.MlTrainingWorker>();
 builder.Services.AddSingleton<Aura.Core.Services.ML.PreflightCheckService>();
+builder.Services.AddSingleton<Aura.Core.Services.ML.TrainingAuditService>();
 
 // Register Advanced Mode service
 builder.Services.AddSingleton<Aura.Core.Services.AdvancedModeService>();

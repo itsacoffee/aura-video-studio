@@ -77,11 +77,11 @@ public class PreflightCheckService
     {
         try
         {
-            var gpuInfo = await _hardwareDetector.DetectGpuAsync(cancellationToken);
+            var systemProfile = await _hardwareDetector.DetectSystemAsync();
 
-            result.HasGpu = gpuInfo.IsAvailable;
-            result.GpuName = gpuInfo.Name;
-            result.GpuVramGb = gpuInfo.VramMb / 1024.0;
+            result.HasGpu = systemProfile.Gpu != null;
+            result.GpuName = systemProfile.Gpu?.Model;
+            result.GpuVramGb = systemProfile.Gpu?.VramGB ?? 0;
 
             if (!result.HasGpu)
             {
@@ -108,14 +108,15 @@ public class PreflightCheckService
         }
     }
 
-    private void CheckRamCapabilities(PreflightCheckResult result)
+    private async void CheckRamCapabilities(PreflightCheckResult result)
     {
         try
         {
-            var memoryInfo = _hardwareDetector.GetMemoryInfo();
+            var systemProfile = await _hardwareDetector.DetectSystemAsync();
 
-            result.TotalRamGb = memoryInfo.TotalGB;
-            result.AvailableRamGb = memoryInfo.AvailableGB;
+            result.TotalRamGb = systemProfile.RamGB;
+            // Rough estimate - assume 60% available
+            result.AvailableRamGb = systemProfile.RamGB * 0.6;
 
             if (result.TotalRamGb < 8)
             {
@@ -146,9 +147,10 @@ public class PreflightCheckService
     {
         try
         {
-            var diskInfo = _hardwareDetector.GetDiskInfo();
+            var currentDir = Directory.GetCurrentDirectory();
+            var driveInfo = new DriveInfo(Path.GetPathRoot(currentDir) ?? "C:\\");
 
-            result.AvailableDiskSpaceGb = diskInfo.AvailableGB;
+            result.AvailableDiskSpaceGb = driveInfo.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0);
 
             if (result.AvailableDiskSpaceGb < 2)
             {
@@ -195,7 +197,7 @@ public class PreflightCheckService
             }
 
             // Minimum 1 minute, cap at 120 minutes for estimation
-            result.EstimatedTrainingTimeMinutes = Math.Max(1, Math.Min(120, Math.Ceiling(baseTimeMinutes)));
+            result.EstimatedTrainingTimeMinutes = (int)Math.Max(1, Math.Min(120, Math.Ceiling(baseTimeMinutes)));
 
             _logger.LogDebug("Training time estimate: {Minutes} minutes", result.EstimatedTrainingTimeMinutes);
         }
