@@ -23,6 +23,7 @@ public class JobRunner
     private readonly VideoOrchestrator _orchestrator;
     private readonly Aura.Core.Hardware.HardwareDetector _hardwareDetector;
     private readonly Services.CheckpointManager? _checkpointManager;
+    private readonly Services.CleanupService? _cleanupService;
     private readonly Dictionary<string, Job> _activeJobs = new();
     private readonly Dictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
     private readonly Dictionary<string, Guid> _jobProjectIds = new();
@@ -34,7 +35,8 @@ public class JobRunner
         ArtifactManager artifactManager,
         VideoOrchestrator orchestrator,
         Aura.Core.Hardware.HardwareDetector hardwareDetector,
-        Services.CheckpointManager? checkpointManager = null)
+        Services.CheckpointManager? checkpointManager = null,
+        Services.CleanupService? cleanupService = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(artifactManager);
@@ -46,6 +48,7 @@ public class JobRunner
         _orchestrator = orchestrator;
         _hardwareDetector = hardwareDetector;
         _checkpointManager = checkpointManager;
+        _cleanupService = cleanupService;
     }
 
     /// <summary>
@@ -76,7 +79,8 @@ public class JobRunner
             Brief = brief,
             PlanSpec = planSpec,
             VoiceSpec = voiceSpec,
-            RenderSpec = renderSpec
+            RenderSpec = renderSpec,
+            CreatedUtc = DateTime.UtcNow
         };
 
         _activeJobs[job.Id] = job;
@@ -207,7 +211,8 @@ public class JobRunner
                 status: JobStatus.Running, 
                 percent: 0, 
                 stage: "Initialization",
-                progressMessage: "Initializing job execution");
+                progressMessage: "Initializing job execution",
+                startedUtc: DateTime.UtcNow);
 
             // Detect system profile for orchestration
             _logger.LogInformation("[Job {JobId}] Detecting system hardware...", jobId);
@@ -265,7 +270,8 @@ public class JobRunner
                 percent: 100, 
                 stage: "Complete",
                 artifacts: artifacts,
-                finishedAt: DateTime.UtcNow);
+                finishedAt: DateTime.UtcNow,
+                completedUtc: DateTime.UtcNow);
 
             _logger.LogInformation("Job {JobId} completed successfully. Output: {OutputPath}", jobId, outputPath);
         }
@@ -275,6 +281,13 @@ public class JobRunner
             var job = GetJob(jobId);
             if (job != null)
             {
+                // Clean up temporary files and proxies
+                if (_cleanupService != null)
+                {
+                    _logger.LogInformation("Cleaning up temporary files and proxies for cancelled job {JobId}", jobId);
+                    _cleanupService.CleanupJob(jobId);
+                }
+                
                 // Mark project as cancelled if checkpoint manager is available
                 if (_checkpointManager != null && _jobProjectIds.TryGetValue(jobId, out var cancelledProjectId))
                 {
@@ -296,7 +309,8 @@ public class JobRunner
                     status: JobStatus.Canceled, 
                     errorMessage: "Job was cancelled by user",
                     logs: updatedLogs,
-                    finishedAt: DateTime.UtcNow);
+                    finishedAt: DateTime.UtcNow,
+                    canceledUtc: DateTime.UtcNow);
             }
         }
         catch (ValidationException vex)
@@ -433,7 +447,10 @@ public class JobRunner
         DateTime? finishedAt = null,
         string? errorMessage = null,
         JobFailure? failureDetails = null,
-        string? progressMessage = null)
+        string? progressMessage = null,
+        DateTime? startedUtc = null,
+        DateTime? completedUtc = null,
+        DateTime? canceledUtc = null)
     {
         var updated = job with
         {
@@ -445,7 +462,10 @@ public class JobRunner
             Logs = logs ?? job.Logs,
             FinishedAt = finishedAt ?? job.FinishedAt,
             ErrorMessage = errorMessage ?? job.ErrorMessage,
-            FailureDetails = failureDetails ?? job.FailureDetails
+            FailureDetails = failureDetails ?? job.FailureDetails,
+            StartedUtc = startedUtc ?? job.StartedUtc,
+            CompletedUtc = completedUtc ?? job.CompletedUtc,
+            CanceledUtc = canceledUtc ?? job.CanceledUtc
         };
 
         _activeJobs[job.Id] = updated;

@@ -1191,10 +1191,12 @@ builder.Services.AddSingleton<Aura.Core.Services.Media.WaveformGenerator>(sp =>
     return new Aura.Core.Services.Media.WaveformGenerator(logger, ffmpegPath);
 });
 
-// Register Job Runner and Artifact Manager
+// Register Job Runner, Artifact Manager, and Cleanup Service
 builder.Services.AddSingleton<Aura.Core.Artifacts.ArtifactManager>();
+builder.Services.AddSingleton<Aura.Core.Services.CleanupService>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.JobRunner>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.QuickService>();
+builder.Services.AddHostedService<Aura.Api.HostedServices.CleanupHostedService>();
 
 // Register Provider Health Monitoring services
 builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();

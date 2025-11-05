@@ -37,6 +37,9 @@ Manual verification needed for:
 3. Video export pipeline with FFmpeg
 4. Generate Video feature workflow
 5. Editor UI (Media Library, Timeline, Preview, Properties)
+6. **NEW**: Job queue management and progress tracking
+7. **NEW**: SSE reconnection with Last-Event-ID
+8. **NEW**: Job cancellation and cleanup verification
 
 ---
 
@@ -416,6 +419,86 @@ Manual verification needed for:
 - [ ] Verify user received clear success notification
 - [ ] Test creating second video manually
 - [ ] Confirm learning curve is manageable
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+---
+
+## PHASE 9.5: Job Orchestration & SSE Reliability Validation
+
+### 9.5.1 Job Queue Management
+- [ ] Create multiple jobs (3-5) with different briefs
+- [ ] Call `GET /api/queue` to list all jobs
+- [ ] Verify queue statistics (total, pending, running, completed, failed, canceled)
+- [ ] Filter jobs by status: `GET /api/queue?status=running`
+- [ ] Verify filter returns only jobs with matching status
+- [ ] Check timestamps are accurate for all jobs
+- [ ] Verify correlation IDs are present in all responses
+- [ ] **Validation**: All jobs appear with correct status and timestamps
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.5.2 Job Progress Tracking
+- [ ] Start a video generation job
+- [ ] Call `GET /api/render/{jobId}/progress` periodically
+- [ ] Verify progress percentage increases over time
+- [ ] Check stage transitions (Script → Voice → Visuals → Rendering)
+- [ ] Verify timestamps update correctly (startedAt, completedAt)
+- [ ] Check elapsed time calculation is accurate
+- [ ] Verify ETA is reasonable when available
+- [ ] Confirm completed steps are tracked
+- [ ] **Validation**: Progress information is accurate and updates in real-time
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.5.3 SSE Reconnection with Last-Event-ID
+- [ ] Start a job and establish SSE connection
+- [ ] Monitor Network tab for event IDs in SSE messages
+- [ ] Simulate network interruption (set throttling to Offline for 5 seconds)
+- [ ] Verify client attempts reconnection with Last-Event-ID header
+- [ ] Check backend logs for reconnection with event ID
+- [ ] Verify progress resumes from last event
+- [ ] Confirm no duplicate events after reconnection
+- [ ] Test with multiple reconnections
+- [ ] **Validation**: SSE reconnects reliably with Last-Event-ID
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.5.4 Job Cancellation and Cleanup
+- [ ] Start a job and let it run for 10-20 seconds
+- [ ] Call `POST /api/render/{jobId}/cancel` or `POST /api/jobs/{jobId}/cancel`
+- [ ] Verify job status changes to "Canceled"
+- [ ] Check canceledAt timestamp is set
+- [ ] Verify SSE stream sends job-cancelled event
+- [ ] Check backend logs for cleanup messages
+- [ ] Navigate to %LOCALAPPDATA%/Aura/temp/{jobId} - verify directory removed
+- [ ] Navigate to %LOCALAPPDATA%/Aura/proxy/{jobId} - verify directory removed
+- [ ] Verify partial artifacts are cleaned up
+- [ ] **Validation**: Cancellation is responsive and cleanup is thorough
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.5.5 Background Cleanup Service
+- [ ] Start application and wait for at least 5 minutes
+- [ ] Check backend logs for "Cleanup background service started"
+- [ ] Create some test jobs and cancel them
+- [ ] Wait for hourly sweep (or manually trigger if possible)
+- [ ] Verify cleanup service logs appear
+- [ ] Check storage statistics are logged
+- [ ] Verify orphaned files older than 24 hours are removed
+- [ ] Confirm service doesn't throw exceptions
+- [ ] **Validation**: Background service runs without errors
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.5.6 Job State Persistence
+- [ ] Create a job and let it start
+- [ ] Restart the backend API server
+- [ ] Call `GET /api/queue` to list jobs
+- [ ] Verify previously created job is still present
+- [ ] Check job state (status, progress, timestamps) is preserved
+- [ ] Verify artifacts are still accessible
+- [ ] **Validation**: Job state survives application restarts
 - [ ] **Status**: Not Started
 - [ ] **Notes**: 
 
