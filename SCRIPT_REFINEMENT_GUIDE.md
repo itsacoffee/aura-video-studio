@@ -589,3 +589,46 @@ import { SSMLPreview } from '@/components/ssml';
 - Quality metrics: Based on video production best practices
 - Integration: Designed for seamless integration with existing Aura pipeline
 - SSML: W3C Speech Synthesis Markup Language specification
+
+## Translation Workflow Integration
+
+### Overview
+
+The Script Refinement Pipeline now integrates with the Translation and Localization system, enabling refined scripts to be automatically translated for multilingual video production while maintaining quality standards.
+
+### Translation After Refinement
+
+After script refinement completes, the refined script can be:
+1. **Translated** to target languages with cultural adaptation
+2. **Validated** for timing compatibility
+3. **Enhanced** with SSML for speech synthesis
+4. **Exported** with subtitles for video production
+
+### Best Practices for Translation Integration
+
+#### Refinement Before Translation
+
+1. **Always refine first**: Ensures high-quality source for translation
+2. **Meet quality thresholds**: ≥85% overall score recommended
+3. **Review narrative coherence**: Logical flow translates better
+4. **Check timing appropriateness**: Proper pacing aids translation timing
+
+#### Translation Workflow
+
+1. **Get voice recommendations**: Use appropriate voices for each language
+2. **Enable timing adjustment**: Prevents duration mismatches
+3. **Use localized mode**: Better cultural adaptation
+4. **Enable back-translation**: Validates accuracy
+5. **Validate subtitle timing**: Check for overlaps and gaps
+
+#### Quality Validation
+
+1. **Check all quality metrics**: Don't rely on overall score alone
+2. **Review cultural adaptations**: Ensure appropriateness for target audience
+3. **Validate timing adjustments**: Confirm acceptable compression levels
+4. **Test visual recommendations**: Address text-in-image issues
+5. **Preview subtitles**: Verify RTL layout for RTL languages
+
+### Integration Documentation
+
+For complete translation integration details, see [Translation User Guide](TRANSLATION_USER_GUIDE.md).

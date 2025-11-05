@@ -1433,3 +1433,175 @@ export interface ProfileRecommendationDto {
   availableKeys: string[];
   missingKeysForProMax: string[];
 }
+
+// ============================================================================
+// TRANSLATION AND SUBTITLE INTEGRATION TYPES
+// ============================================================================
+
+/**
+ * Voice specification DTO
+ */
+export interface VoiceSpecDto {
+  voiceName: string;
+  rate: number;
+  pitch: number;
+  volume: number;
+}
+
+/**
+ * SSML Planning Result DTO
+ */
+export interface SSMLPlanningResultDto {
+  segments: SSMLSegmentResultDto[];
+  stats: DurationFittingStatsDto;
+  warnings: string[];
+  planningDurationMs: number;
+}
+
+/**
+ * SSML Segment Result DTO
+ */
+export interface SSMLSegmentResultDto {
+  sceneIndex: number;
+  originalText: string;
+  ssmlMarkup: string;
+  estimatedDurationMs: number;
+  targetDurationMs: number;
+  deviationPercent: number;
+  adjustments: ProsodyAdjustmentsDto;
+  timingMarkers: TimingMarkerDto[];
+}
+
+/**
+ * Prosody Adjustments DTO
+ */
+export interface ProsodyAdjustmentsDto {
+  rate: number;
+  pitch: number;
+  volume: number;
+  pauses: Record<number, number>;
+  emphasis: EmphasisSpanDto[];
+  iterations: number;
+}
+
+/**
+ * Emphasis Span DTO
+ */
+export interface EmphasisSpanDto {
+  startPosition: number;
+  length: number;
+  level: string;
+}
+
+/**
+ * Timing Marker DTO
+ */
+export interface TimingMarkerDto {
+  offsetMs: number;
+  name: string;
+  metadata?: string;
+}
+
+/**
+ * Duration Fitting Stats DTO
+ */
+export interface DurationFittingStatsDto {
+  segmentsAdjusted: number;
+  averageFitIterations: number;
+  maxFitIterations: number;
+  withinTolerancePercent: number;
+  averageDeviation: number;
+  maxDeviation: number;
+  targetDurationSeconds: number;
+  actualDurationSeconds: number;
+}
+
+/**
+ * Request for translation with SSML planning and subtitle generation
+ */
+export interface TranslateAndPlanSSMLRequest {
+  sourceLanguage: string;
+  targetLanguage: string;
+  scriptLines: LineDto[];
+  targetProvider: string;
+  voiceSpec: VoiceSpecDto;
+  culturalContext?: CulturalContextDto;
+  translationOptions?: TranslationOptionsDto;
+  glossary?: Record<string, string>;
+  audienceProfileId?: string;
+  durationTolerance?: number;
+  maxFittingIterations?: number;
+  enableAggressiveAdjustments?: boolean;
+  subtitleFormat?: string;
+}
+
+/**
+ * Result of translation with SSML planning
+ */
+export interface TranslatedSSMLResultDto {
+  translation: TranslationResultDto;
+  ssmlPlanning: SSMLPlanningResultDto;
+  translatedScriptLines: LineDto[];
+  subtitles: SubtitleOutputDto;
+}
+
+/**
+ * Subtitle output
+ */
+export interface SubtitleOutputDto {
+  format: string;
+  content: string;
+  lineCount: number;
+}
+
+/**
+ * Request for voice recommendation
+ */
+export interface VoiceRecommendationRequest {
+  targetLanguage: string;
+  provider: string;
+  preferredGender?: string;
+  preferredStyle?: string;
+}
+
+/**
+ * Voice recommendation result
+ */
+export interface VoiceRecommendationDto {
+  targetLanguage: string;
+  provider: string;
+  isRTL: boolean;
+  recommendedVoices: RecommendedVoiceDto[];
+}
+
+/**
+ * Recommended voice option
+ */
+export interface RecommendedVoiceDto {
+  voiceName: string;
+  gender: string;
+  style: string;
+  quality: string;
+}
+
+/**
+ * Font configuration for subtitles
+ */
+export interface SubtitleFontConfigDto {
+  fontFamily: string;
+  fontSize: number;
+  primaryColor: string;
+  outlineColor: string;
+  outlineWidth: number;
+  alignment: string;
+  isRTL: boolean;
+}
+
+/**
+ * Request to generate subtitles with custom font
+ */
+export interface GenerateSubtitlesRequest {
+  scriptLines: LineDto[];
+  format: string;
+  fontConfig?: SubtitleFontConfigDto;
+}

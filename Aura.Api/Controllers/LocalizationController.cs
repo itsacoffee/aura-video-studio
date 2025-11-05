@@ -5,12 +5,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Models.ApiModels.V1;
 using Aura.Core.Models;
+using Aura.Core.Models.Audio;
 using Aura.Core.Models.Localization;
+using Aura.Core.Models.Voice;
 using Aura.Core.Providers;
+using Aura.Core.Services.Audio;
 using Aura.Core.Services.Localization;
+using Aura.Core.Captions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using ApiTranslateAndPlanSSMLRequest = Aura.Api.Models.ApiModels.V1.TranslateAndPlanSSMLRequest;
+using CoreTranslateAndPlanSSMLRequest = Aura.Core.Services.Localization.TranslationIntegrationService.TranslateAndPlanSSMLRequest;
 
 namespace Aura.Api.Controllers;
 
@@ -578,5 +584,269 @@ public class LocalizationController : ControllerBase
             entry.Context,
             entry.Industry
         );
+    }
+
+    /// <summary>
+    /// Translate script and plan SSML with subtitle generation
+    /// </summary>
+    [HttpPost("translate-and-plan-ssml")]
+    [ProducesResponseType(typeof(TranslatedSSMLResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<TranslatedSSMLResultDto>> TranslateAndPlanSSML(
+        [FromBody] ApiTranslateAndPlanSSMLRequest request,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "Translate and plan SSML: {Source} → {Target}, Provider: {Provider}, CorrelationId: {CorrelationId}",
+            request.SourceLanguage, request.TargetLanguage, request.TargetProvider, HttpContext.TraceIdentifier);
+
+        try
+        {
+            var translationService = new TranslationService(
+                _loggerFactory.CreateLogger<TranslationService>(),
+                _llmProvider);
+
+            var ssmlPlannerService = new SSMLPlannerService(
+                _loggerFactory.CreateLogger<SSMLPlannerService>());
+
+            var captionBuilder = new CaptionBuilder(
+                _loggerFactory.CreateLogger<CaptionBuilder>());
+
+            var integrationService = new TranslationIntegrationService(
+                _loggerFactory.CreateLogger<TranslationIntegrationService>(),
+                translationService,
+                ssmlPlannerService,
+                captionBuilder);
+
+            if (!TryParseVoiceProvider(request.TargetProvider, out var provider))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid Provider",
+                    Status = StatusCodes.Status400BadRequest,
+                    Detail = $"Unknown TTS provider: {request.TargetProvider}",
+                    Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                });
+            }
+
+            var scriptLines = request.ScriptLines.Select(line => new ScriptLine(
+                line.SceneIndex,
+                line.Text,
+                TimeSpan.FromSeconds(line.StartSeconds),
+                TimeSpan.FromSeconds(line.DurationSeconds)
+            )).ToList();
+
+            var voiceSpec = new Voice.VoiceSpec(
+                request.VoiceSpec.VoiceName,
+                request.VoiceSpec.Rate,
+                request.VoiceSpec.Pitch,
+                PauseStyle.Natural
+            );
+
+            var subtitleFormat = Enum.Parse<SubtitleFormat>(
+                request.SubtitleFormat, true);
+
+            var integrationRequest = new CoreTranslateAndPlanSSMLRequest
+            {
+                SourceLanguage = request.SourceLanguage,
+                TargetLanguage = request.TargetLanguage,
+                ScriptLines = scriptLines,
+                TargetProvider = provider,
+                VoiceSpec = voiceSpec,
+                CulturalContext = request.CulturalContext != null ? MapToCulturalContext(request.CulturalContext) : null,
+                TranslationOptions = request.TranslationOptions != null ? MapToTranslationOptions(request.TranslationOptions) : new(),
+                Glossary = request.Glossary ?? new Dictionary<string, string>(),
+                AudienceProfileId = request.AudienceProfileId,
+                DurationTolerance = request.DurationTolerance,
+                MaxFittingIterations = request.MaxFittingIterations,
+                EnableAggressiveAdjustments = request.EnableAggressiveAdjustments,
+                SubtitleFormat = subtitleFormat
+            };
+
+            var result = await integrationService.TranslateAndPlanSSMLAsync(
+                integrationRequest, cancellationToken);
+
+            var dto = MapToTranslatedSSMLResultDto(result);
+
+            _logger.LogInformation("Translation and SSML planning completed successfully");
+
+            return Ok(dto);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid request parameters");
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = ex.Message,
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Translation and SSML planning failed");
+            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
+                Title = "Translation and SSML Planning Failed",
+                Status = StatusCodes.Status500InternalServerError,
+                Detail = ex.Message,
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get recommended voices for target language and provider
+    /// </summary>
+    [HttpPost("voice-recommendation")]
+    [ProducesResponseType(typeof(VoiceRecommendationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public ActionResult<VoiceRecommendationDto> GetVoiceRecommendation(
+        [FromBody] VoiceRecommendationRequest request)
+    {
+        _logger.LogInformation(
+            "Voice recommendation request: {Language}, Provider: {Provider}",
+            request.TargetLanguage, request.Provider);
+
+        try
+        {
+            if (!TryParseVoiceProvider(request.Provider, out var provider))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid Provider",
+                    Status = StatusCodes.Status400BadRequest,
+                    Detail = $"Unknown TTS provider: {request.Provider}",
+                    Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                });
+            }
+
+            var translationService = new TranslationService(
+                _loggerFactory.CreateLogger<TranslationService>(),
+                _llmProvider);
+
+            var ssmlPlannerService = new SSMLPlannerService(
+                _loggerFactory.CreateLogger<SSMLPlannerService>());
+
+            var captionBuilder = new CaptionBuilder(
+                _loggerFactory.CreateLogger<CaptionBuilder>());
+
+            var integrationService = new TranslationIntegrationService(
+                _loggerFactory.CreateLogger<TranslationIntegrationService>(),
+                translationService,
+                ssmlPlannerService,
+                captionBuilder);
+
+            var recommendation = integrationService.GetRecommendedVoice(
+                request.TargetLanguage,
+                provider,
+                request.PreferredGender,
+                request.PreferredStyle);
+
+            var dto = new VoiceRecommendationDto(
+                recommendation.TargetLanguage,
+                recommendation.Provider.ToString(),
+                recommendation.IsRTL,
+                recommendation.RecommendedVoices.Select(v => new RecommendedVoiceDto(
+                    v.VoiceName,
+                    v.Gender,
+                    v.Style,
+                    v.Quality
+                )).ToList()
+            );
+
+            return Ok(dto);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid language or provider");
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = ex.Message,
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Voice recommendation failed");
+            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
+                Title = "Voice Recommendation Failed",
+                Status = StatusCodes.Status500InternalServerError,
+                Detail = ex.Message,
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+    }
+
+    private TranslatedSSMLResultDto MapToTranslatedSSMLResultDto(
+        TranslationIntegrationService.TranslatedSSMLResult result)
+    {
+        return new TranslatedSSMLResultDto(
+            MapToTranslationResultDto(result.Translation),
+            MapToSSMLPlanningResultDto(result.SSMLPlanning),
+            result.TranslatedScriptLines.Select(line => new LineDto(
+                line.SceneIndex,
+                line.Text,
+                line.Start.TotalSeconds,
+                line.Duration.TotalSeconds
+            )).ToList(),
+            new SubtitleOutputDto(
+                result.Subtitles.Format.ToString(),
+                result.Subtitles.Content,
+                result.Subtitles.LineCount
+            )
+        );
+    }
+
+    private SSMLPlanningResultDto MapToSSMLPlanningResultDto(SSMLPlanningResult result)
+    {
+        return new SSMLPlanningResultDto(
+            result.Segments.Select(s => new SSMLSegmentResultDto(
+                s.SceneIndex,
+                s.OriginalText,
+                s.SsmlMarkup,
+                s.EstimatedDurationMs,
+                s.TargetDurationMs,
+                s.DeviationPercent,
+                new ProsodyAdjustmentsDto(
+                    s.Adjustments.Rate,
+                    s.Adjustments.Pitch,
+                    s.Adjustments.Volume,
+                    s.Adjustments.Pauses.ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
+                    s.Adjustments.Emphasis.Select(e => new EmphasisSpanDto(
+                        e.StartPosition,
+                        e.Length,
+                        e.Level.ToString()
+                    )).ToList(),
+                    s.Adjustments.Iterations
+                ),
+                s.TimingMarkers.Select(m => new TimingMarkerDto(
+                    m.OffsetMs,
+                    m.Name,
+                    m.Metadata
+                )).ToList()
+            )).ToList(),
+            new DurationFittingStatsDto(
+                result.Stats.SegmentsAdjusted,
+                result.Stats.AverageFitIterations,
+                result.Stats.MaxFitIterations,
+                result.Stats.WithinTolerancePercent,
+                result.Stats.AverageDeviation,
+                result.Stats.MaxDeviation,
+                result.Stats.TargetDurationSeconds,
+                result.Stats.ActualDurationSeconds
+            ),
+            result.Warnings.ToList(),
+            result.PlanningDurationMs
+        );
+    }
+
+    private bool TryParseVoiceProvider(string providerName, out VoiceProvider provider)
+    {
+        return Enum.TryParse<VoiceProvider>(providerName, true, out provider);
     }
 }

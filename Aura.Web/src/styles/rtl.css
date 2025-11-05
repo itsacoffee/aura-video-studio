@@ -1,0 +1,41 @@
+/* RTL (Right-to-Left) Layout Support */
+
+.rtl-layout {
+  direction: rtl;
+}
+
+.ltr-layout {
+  direction: ltr;
+}
+
+.rtl-container {
+  margin-inline: 0 auto;
+  padding-inline: 16px;
+}
+
+.rtl-text {
+  text-align: start;
+  direction: rtl;
+  font-family: 'Segoe UI', Tahoma, Arial, 'Noto Sans Arabic', 'Noto Sans Hebrew', sans-serif;
+}
+
+.rtl-input {
+  direction: rtl;
+  text-align: right;
+}
+
+.rtl-flex-row {
+  flex-direction: row-reverse;
+}
+
+.subtitle-rtl {
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: embed;
+}
+
+.subtitle-ltr {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: embed;
+}
