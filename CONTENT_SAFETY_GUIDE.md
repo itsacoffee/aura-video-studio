@@ -846,6 +846,136 @@ try {
 - Batch validation when possible
 - Run checks asynchronously when not blocking
 
+## Advanced Features
+
+### Policy Center
+
+The Policy Center provides a centralized interface for managing all safety policies with enhanced features:
+
+**Features:**
+- Create and edit custom policies with descriptive names
+- Configure blocked keywords with different actions (Block, Warn, Auto-Fix)
+- Set category thresholds for granular control
+- Enable/disable policies without deleting them
+- View policy usage statistics
+- Set default policies for automatic application
+
+**Access:**
+Navigate to **Settings** → **Content Safety** → **Policy Center** tab
+
+**Workflow:**
+1. Click "Create Policy" to start a new policy
+2. Enter policy name and description
+3. Select base preset (Unrestricted, Minimal, Moderate, Strict)
+4. Add blocked keywords with specific actions
+5. Configure enable/override settings
+6. Save the policy for use across your projects
+
+### Incident Log Viewer
+
+Track all safety decisions with comprehensive audit logging and advanced override management:
+
+**Features:**
+- View all content safety incidents with timestamps
+- Filter by content ID, policy ID, or decision type
+- Export audit logs to CSV for compliance reporting
+- View detailed incident information including overridden violations
+- Track user decisions (Proceed, Block, Override, Modified)
+- Advanced Mode override tracking with explicit consent
+
+**Access:**
+Navigate to **Settings** → **Content Safety** → **Incident Log** tab
+
+**Log Entry Details:**
+- Timestamp of the safety check
+- Content ID for traceability
+- Policy applied to the content
+- User who made the decision
+- Decision type and reason
+- List of overridden violations (if any)
+
+**Use Cases:**
+- Compliance audits and reporting
+- Review false positives for policy tuning
+- Track Advanced Mode overrides for accountability
+- Export data for external analysis
+
+### Prompt Diff Viewer
+
+Visual comparison of original and modified prompts with clear highlighting:
+
+**Features:**
+- Side-by-side or inline diff view
+- Color-coded changes (red for removed, green for added)
+- Explanation of why changes were needed
+- Accept or reject modifications with one click
+- Preserves intent while ensuring safety compliance
+
+**Integration:**
+The Prompt Diff Viewer appears automatically in the Safety Warning Dialog when a modified prompt is suggested by the LLM safety integration.
+
+**Example:**
+```
+Original: "Create a video about violence and fighting"
+Modified: "Create a video about conflict resolution and peaceful problem-solving"
+```
+
+### LLM-Assisted Safety Features
+
+#### Suggest Safe Phrasing
+
+When content is flagged, the system provides AI-generated alternatives that preserve your intent while meeting safety requirements:
+
+```bash
+POST /api/content-safety/suggest-alternatives
+{
+  "content": "Your original content",
+  "policyId": "optional-policy-id",
+  "count": 3
+}
+```
+
+Response includes multiple safe alternatives ranked by relevance.
+
+#### Explain Safety Block
+
+Get user-friendly explanations in markdown format:
+
+```bash
+POST /api/content-safety/explain-block
+{
+  "content": "Blocked content",
+  "policyId": "optional-policy-id"
+}
+```
+
+Returns detailed explanation with:
+- Specific violations and categories
+- Severity scores
+- Suggested fixes
+- Override options (if available)
+
+### Remediation Reports
+
+Comprehensive reports for addressing safety violations:
+
+```bash
+POST /api/content-safety/remediation-report
+{
+  "contentId": "unique-id",
+  "content": "Content to analyze",
+  "policyId": "optional-policy-id"
+}
+```
+
+**Report Includes:**
+- Summary of issues
+- Detailed explanation with category scores
+- Multiple remediation strategies with success likelihood
+- Suggested alternatives
+- User options (apply fixes, override, cancel)
+- Recommended action
+
 ## Future Enhancements
 
 Potential features for future releases:
@@ -853,7 +983,6 @@ Potential features for future releases:
 - Real-time safety analysis during content creation
 - Machine learning-based detection improvements
 - Integration with external content safety APIs (Azure Content Safety, Google Perspective)
-- Advanced keyword list management UI
 - Safety dashboard with analytics
 - Policy templates for specific industries
 - Bulk content scanning tools
