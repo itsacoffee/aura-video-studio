@@ -113,9 +113,19 @@ The ML training backend enables users to retrain the frame importance model usin
 | POST | `/api/ml/train/frame-importance` | Start training job |
 | GET | `/api/ml/train/{jobId}/status` | Get job status |
 | POST | `/api/ml/train/{jobId}/cancel` | Cancel running job |
+| GET | `/api/ml/train/preflight` | Run preflight check for system capabilities |
+| GET | `/api/ml/train/history` | Get training history from audit log |
+| GET | `/api/ml/train/statistics` | Get training statistics |
 | POST | `/api/ml/model/revert` | Revert to default model |
+| POST | `/api/ml/model/restore-backup` | Restore model from backup |
+
+**Advanced Mode Gating:**
+- All ML endpoints require Advanced Mode to be enabled
+- Returns 403 Forbidden if accessed without advanced mode
+- Middleware checks user settings before allowing access
 
 **Error Handling:**
+- 403 Forbidden: Advanced Mode not enabled
 - 400 Bad Request: Invalid input, insufficient data
 - 404 Not Found: Job not found
 - 500 Internal Server Error: System errors
@@ -399,6 +409,66 @@ All operations are logged with structured logging:
 1. Check annotation file: `%AppData%/Aura/ML/Annotations/{userId}/annotations.jsonl`
 2. Validate JSON format
 3. Clear corrupted annotations: DELETE annotations file and reupload
+
+## New Components (Advanced Mode-Gated)
+
+### 7. Advanced Mode Service (`Aura.Core/Services/AdvancedModeService.cs`)
+
+**Purpose:** Checks if Advanced Mode is enabled from user settings.
+
+**Key Methods:**
+- `IsAdvancedModeEnabledAsync`: Returns true if Advanced Mode is enabled
+
+**Settings Location:**
+```
+%AppData%/Aura/user-settings.json
+```
+
+### 8. Preflight Check Service (`Aura.Core/Services/ML/PreflightCheckService.cs`)
+
+**Purpose:** Validates system capabilities before training.
+
+**Checks Performed:**
+- GPU/VRAM detection (minimum 2GB recommended)
+- RAM availability (minimum 8GB required)
+- Disk space (minimum 2GB required)
+- Training time estimation
+
+**Key Methods:**
+- `CheckSystemCapabilitiesAsync`: Returns comprehensive preflight result with warnings and recommendations
+
+**Preflight Result Includes:**
+- System hardware details (GPU, RAM, disk)
+- Estimated training time
+- Warnings for inadequate resources
+- Recommendations for optimization
+- Pass/fail status for minimum requirements
+
+### 9. Training Audit Service (`Aura.Core/Services/ML/TrainingAuditService.cs`)
+
+**Purpose:** Tracks training history for accountability and analysis.
+
+**Audit Log Location:**
+```
+%AppData%/Aura/ML/AuditLogs/training-audit.jsonl
+```
+
+**Key Methods:**
+- `RecordTrainingRunAsync`: Log a training run with full details
+- `GetTrainingHistoryAsync`: Retrieve recent training runs
+- `GetTrainingStatisticsAsync`: Compute aggregate statistics
+
+**Audit Record Contains:**
+- Job ID, user ID, timestamps
+- Annotation count, model details
+- Training metrics (loss, epochs, duration)
+- System information at time of training
+- Error messages, notes
+
+**Statistics Provided:**
+- Total/successful/failed/cancelled run counts
+- Average and total training time
+- Date range of training activity
 
 ## Summary
 
