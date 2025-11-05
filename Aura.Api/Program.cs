@@ -3296,73 +3296,37 @@ apiGroup.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
 .WithName("ApplyProfile")
 .WithOpenApi();
 
-// API Key Management
-apiGroup.MapPost("/apikeys/save", ([FromBody] ApiKeysRequest request) =>
+// API Key Management - DEPRECATED: Legacy endpoints redirected to secure KeyVault API
+// These endpoints are deprecated and maintained only for backward compatibility.
+// All new code should use /api/keys/* endpoints from KeyVaultController for secure encrypted storage.
+apiGroup.MapPost("/apikeys/save", () =>
 {
-    try
-    {
-        var keysPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "apikeys.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(keysPath)!);
-        
-        // In production, these should be encrypted using DPAPI or similar
-        var keys = new Dictionary<string, string>
-        {
-            ["openai"] = request.OpenAiKey ?? "",
-            ["elevenlabs"] = request.ElevenLabsKey ?? "",
-            ["pexels"] = request.PexelsKey ?? "",
-            ["pixabay"] = request.PixabayKey ?? "",
-            ["unsplash"] = request.UnsplashKey ?? "",
-            ["stabilityai"] = request.StabilityAiKey ?? ""
-        };
-        
-        File.WriteAllText(keysPath, JsonSerializer.Serialize(keys, new JsonSerializerOptions { WriteIndented = true }));
-        
-        return Results.Ok(new { success = true, message = "API keys saved successfully" });
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error saving API keys");
-        return Results.Problem("Error saving API keys", statusCode: 500);
-    }
+    Log.Warning("Deprecated /api/apikeys/save endpoint called. Clients should migrate to /api/keys/set");
+    return Results.Json(new 
+    { 
+        success = false, 
+        deprecated = true,
+        message = "This endpoint is deprecated. Please use /api/keys/set for secure encrypted storage.",
+        newEndpoint = "/api/keys/set",
+        documentation = "See /api/keys/info for details on the secure storage implementation."
+    }, statusCode: 410);
 })
-.WithName("SaveApiKeys")
+.WithName("SaveApiKeys_Deprecated")
 .WithOpenApi();
 
 apiGroup.MapGet("/apikeys/load", () =>
 {
-    try
-    {
-        var keysPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "apikeys.json");
-        if (File.Exists(keysPath))
-        {
-            var json = File.ReadAllText(keysPath);
-            var keys = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-            
-            // Return masked keys (only show first 8 characters)
-            var maskedKeys = keys?.ToDictionary(
-                k => k.Key,
-                k => string.IsNullOrEmpty(k.Value) ? "" : k.Value.Substring(0, Math.Min(8, k.Value.Length)) + "..."
-            );
-            
-            return Results.Ok(maskedKeys);
-        }
-        return Results.Ok(new Dictionary<string, string>
-        {
-            ["openai"] = "",
-            ["elevenlabs"] = "",
-            ["pexels"] = "",
-            ["pixabay"] = "",
-            ["unsplash"] = "",
-            ["stabilityai"] = ""
-        });
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error loading API keys");
-        return Results.Problem("Error loading API keys", statusCode: 500);
-    }
+    Log.Warning("Deprecated /api/apikeys/load endpoint called. Clients should migrate to /api/keys/list");
+    return Results.Json(new 
+    { 
+        success = false, 
+        deprecated = true,
+        message = "This endpoint is deprecated. Please use /api/keys/list for secure encrypted storage.",
+        newEndpoint = "/api/keys/list",
+        documentation = "See /api/keys/info for details on the secure storage implementation."
+    }, statusCode: 410);
 })
-.WithName("LoadApiKeys")
+.WithName("LoadApiKeys_Deprecated")
 .WithOpenApi();
 
 // Local Provider Paths Configuration

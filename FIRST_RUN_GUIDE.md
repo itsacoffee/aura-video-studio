@@ -233,21 +233,28 @@ curl -X POST http://localhost:5005/api/keys/test \
 
 ✅ **All API keys are encrypted at rest**
 - **Windows**: DPAPI encryption (CurrentUser scope)
-  - Storage: `%LOCALAPPDATA%\Aura\apikeys.json` (encrypted)
+  - Storage: `%LOCALAPPDATA%\Aura\secure\apikeys.dat` (encrypted binary)
+  - Encrypted with user's Windows credentials
 - **Linux/macOS**: AES-256-CBC encryption with machine-specific key
-  - Storage: `$HOME/.local/share/Aura/secure/apikeys.dat` (encrypted)
+  - Storage: `$HOME/.local/share/Aura/secure/apikeys.dat` (encrypted binary)
   - Machine Key: `$HOME/.local/share/Aura/secure/.machinekey` (0600 permissions)
   - File permissions: 600 (owner read/write only)
 
-✅ **Automatic migration from legacy plaintext** (Linux/macOS only)
-- Detects old plaintext storage at `$HOME/.aura-dev/apikeys.json`
+✅ **Automatic migration from legacy plaintext** (all platforms)
+- **Windows**: Detects legacy plaintext at `%LOCALAPPDATA%\Aura\apikeys.json`
+- **Linux/macOS**: Detects legacy plaintext at `$HOME/.aura-dev/apikeys.json`
 - Migrates all keys to encrypted storage automatically on first run
-- Securely deletes legacy file (overwrite + delete)
-- One-time operation, logged for audit trail
+- Securely deletes legacy file (64KB random overwrite + delete)
+- One-time operation per installation, logged for audit trail
 
 ✅ **Keys are never logged or displayed in full**
 - Automatic masking: `sk-12345...wxyz`
 - Redaction in logs, errors, and diagnostics
+
+✅ **Unified secure KeyVault API**
+- All key operations use `/api/keys/*` endpoints
+- Legacy `/api/apikeys/*` endpoints deprecated (return HTTP 410 Gone)
+- Comprehensive REST API: set, list, test, rotate, delete, info
 - No secrets in SSE events or API responses
 
 ✅ **Test before saving**

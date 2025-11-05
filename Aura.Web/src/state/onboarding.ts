@@ -743,36 +743,14 @@ export async function validateApiKeyThunk(
       keyField: provider.toLowerCase(),
     };
 
-    // Save the API key first so the validator can access it
-    // Map provider key fields to the expected API request fields (explicit mappings for all known providers)
-    const apiKeyFieldMap: Record<string, string> = {
-      openai: 'openAiKey',
-      elevenlabs: 'elevenLabsKey',
-      pexels: 'pexelsKey',
-      stabilityai: 'stabilityAiKey',
-      pixabay: 'pixabayKey',
-      unsplash: 'unsplashKey',
-      anthropic: 'anthropicKey',
-      gemini: 'geminiKey',
-      playht: 'playHtKey',
-      replicate: 'replicateKey',
-      ollama: 'ollamaKey',
-    };
-
-    const requestField = apiKeyFieldMap[providerInfo.keyField];
-    if (!requestField) {
-      throw new Error(
-        `Unknown provider key field: ${providerInfo.keyField}. Please add mapping to apiKeyFieldMap.`
-      );
-    }
-
-    const apiKeyRequest: Record<string, string> = {};
-    apiKeyRequest[requestField] = apiKey.trim();
-
-    const saveResponse = await fetch(apiUrl('/api/apikeys/save'), {
+    // Save the API key using secure KeyVault API (encrypted storage)
+    const saveResponse = await fetch(apiUrl('/api/keys/set'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(apiKeyRequest),
+      body: JSON.stringify({
+        provider: providerInfo.keyField,
+        apiKey: apiKey.trim(),
+      }),
     });
 
     if (!saveResponse.ok) {
