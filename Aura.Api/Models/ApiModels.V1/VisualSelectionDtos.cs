@@ -111,3 +111,65 @@ public record ImageAcceptanceRequest
     public string Action { get; init; } = "accept";
     public string? Reason { get; init; }
 }
+
+/// <summary>
+/// Request to get candidates with caching support
+/// </summary>
+public record GetCandidatesRequest
+{
+    public int SceneIndex { get; init; }
+    public string DetailedDescription { get; init; } = string.Empty;
+    public string Subject { get; init; } = string.Empty;
+    public string Framing { get; init; } = string.Empty;
+    public List<string> NarrativeKeywords { get; init; } = new();
+    public string Style { get; init; } = "Cinematic";
+    public string QualityTier { get; init; } = "Standard";
+    public ImageSelectionConfigDto? Config { get; init; }
+    public bool UseCache { get; init; } = true;
+}
+
+/// <summary>
+/// Response with candidates and cache info
+/// </summary>
+public record GetCandidatesResponse
+{
+    public string RequestId { get; init; } = string.Empty;
+    public ImageSelectionResultDto Result { get; init; } = null!;
+    public bool FromCache { get; init; }
+    public DateTime? CachedAt { get; init; }
+    public DateTime? ExpiresAt { get; init; }
+}
+
+/// <summary>
+/// Request to regenerate candidates
+/// </summary>
+public record RegenerateCandidatesRequest
+{
+    public string JobId { get; init; } = string.Empty;
+    public int SceneIndex { get; init; }
+    public GetCandidatesRequest? RefinedPrompt { get; init; }
+    public ImageSelectionConfigDto? Config { get; init; }
+    public string? UserId { get; init; }
+}
+
+/// <summary>
+/// Enhanced candidate with coverage details
+/// </summary>
+public record EnhancedImageCandidateDto : ImageCandidateDto
+{
+    public List<string> CoveredKeywords { get; init; } = new();
+    public List<string> MissingKeywords { get; init; } = new();
+    public double KeywordCoveragePercent { get; init; }
+    public string ContentDescription { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Project threshold configuration
+/// </summary>
+public record ThresholdConfigDto
+{
+    public string ProjectId { get; init; } = string.Empty;
+    public double MinimumAestheticThreshold { get; init; } = 60.0;
+    public double AutoAcceptThreshold { get; init; } = 85.0;
+    public bool EnableAutoSelection { get; init; } = false;
+}
