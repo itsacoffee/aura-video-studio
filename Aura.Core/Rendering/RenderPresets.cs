@@ -95,6 +95,62 @@ public static class RenderPresets
     );
 
     /// <summary>
+    /// Instagram Reel preset (1080x1920, H.264, AAC) - Vertical format
+    /// </summary>
+    public static RenderSpec InstagramReel => new RenderSpec(
+        Res: new Resolution(1080, 1920),
+        Container: "mp4",
+        VideoBitrateK: 10000,
+        AudioBitrateK: 192,
+        Fps: 30,
+        Codec: "H264",
+        QualityLevel: 75,
+        EnableSceneCut: true
+    );
+
+    /// <summary>
+    /// TikTok preset (1080x1920, H.264, AAC) - Vertical format optimized for TikTok
+    /// </summary>
+    public static RenderSpec TikTok => new RenderSpec(
+        Res: new Resolution(1080, 1920),
+        Container: "mp4",
+        VideoBitrateK: 10000,
+        AudioBitrateK: 192,
+        Fps: 30,
+        Codec: "H264",
+        QualityLevel: 75,
+        EnableSceneCut: true
+    );
+
+    /// <summary>
+    /// Archival (ProRes 422 HQ) preset (1920x1080, ProRes, uncompressed audio)
+    /// </summary>
+    public static RenderSpec ArchivalProRes => new RenderSpec(
+        Res: new Resolution(1920, 1080),
+        Container: "mov",
+        VideoBitrateK: 120000,
+        AudioBitrateK: 1536,
+        Fps: 30,
+        Codec: "ProRes422HQ",
+        QualityLevel: 100,
+        EnableSceneCut: false
+    );
+
+    /// <summary>
+    /// Archival (H.265) preset (1920x1080, H.265, high bitrate)
+    /// </summary>
+    public static RenderSpec ArchivalH265 => new RenderSpec(
+        Res: new Resolution(1920, 1080),
+        Container: "mp4",
+        VideoBitrateK: 15000,
+        AudioBitrateK: 320,
+        Fps: 30,
+        Codec: "H265",
+        QualityLevel: 90,
+        EnableSceneCut: false
+    );
+
+    /// <summary>
     /// Gets a preset by name.
     /// </summary>
     public static RenderSpec? GetPresetByName(string name)
@@ -107,6 +163,10 @@ public static class RenderPresets
             "youtube1440p" or "youtube 1440p" or "1440p" or "2k" => YouTube1440p,
             "youtube720p" or "youtube 720p" or "720p" => YouTube720p,
             "instagramsquare" or "instagram square" or "square" => InstagramSquare,
+            "instagramreel" or "instagram reel" or "reel" or "ig reel" => InstagramReel,
+            "tiktok" => TikTok,
+            "archivalprores" or "archival prores" or "prores" => ArchivalProRes,
+            "archivalh265" or "archival h265" or "archival" => ArchivalH265,
             _ => null
         };
     }
@@ -123,7 +183,43 @@ public static class RenderPresets
             "YouTube 4K",
             "YouTube 1440p",
             "YouTube 720p",
-            "Instagram Square"
+            "Instagram Square",
+            "Instagram Reel",
+            "TikTok",
+            "Archival ProRes",
+            "Archival H.265"
+        };
+    }
+
+    /// <summary>
+    /// Gets presets grouped by platform/use case.
+    /// </summary>
+    public static Dictionary<string, List<(string Name, RenderSpec Spec)>> GetPresetsByPlatform()
+    {
+        return new Dictionary<string, List<(string, RenderSpec)>>
+        {
+            ["YouTube"] = new List<(string, RenderSpec)>
+            {
+                ("YouTube 1080p", YouTube1080p),
+                ("YouTube Shorts", YouTubeShorts),
+                ("YouTube 4K", YouTube4K),
+                ("YouTube 1440p", YouTube1440p),
+                ("YouTube 720p", YouTube720p)
+            },
+            ["Instagram"] = new List<(string, RenderSpec)>
+            {
+                ("Instagram Square", InstagramSquare),
+                ("Instagram Reel", InstagramReel)
+            },
+            ["TikTok"] = new List<(string, RenderSpec)>
+            {
+                ("TikTok", TikTok)
+            },
+            ["Archival"] = new List<(string, RenderSpec)>
+            {
+                ("Archival ProRes", ArchivalProRes),
+                ("Archival H.265", ArchivalH265)
+            }
         };
     }
 

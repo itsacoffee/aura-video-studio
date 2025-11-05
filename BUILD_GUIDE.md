@@ -602,3 +602,175 @@ If you encounter issues not covered in this guide:
 - [ ] Run `dotnet build Aura.sln` to build backend
 
 Your development environment is ready when all validation scripts pass with green checkmarks! 🎉
+
+## Render Engine Configuration
+
+### Hardware Acceleration
+
+Aura Video Studio supports hardware-accelerated video encoding for 5-10x faster rendering:
+
+#### NVIDIA GPUs (NVENC)
+- **Requirements**: NVIDIA GPU with NVENC support (GTX 10/16 series, RTX 20/30/40/50 series)
+- **Drivers**: Latest NVIDIA drivers from [nvidia.com/drivers](https://www.nvidia.com/drivers)
+- **FFmpeg**: Built-in support in FFmpeg 4.0+
+- **Performance**: 5-10x faster than software encoding
+- **Quality**: Near-identical to software encoding
+
+#### AMD GPUs (AMF)
+- **Requirements**: AMD Radeon RX 5000/6000/7000 series
+- **Drivers**: Latest AMD drivers from [amd.com](https://www.amd.com/en/support)
+- **FFmpeg**: Built-in support in FFmpeg 4.0+
+- **Performance**: 5-10x faster than software encoding
+
+#### Intel GPUs (Quick Sync)
+- **Requirements**: Intel processors with integrated graphics (7th gen or newer) or Intel Arc GPUs
+- **Drivers**: Latest Intel drivers
+- **FFmpeg**: Built-in support in FFmpeg 4.0+
+- **Performance**: 3-5x faster than software encoding
+
+#### Verification
+
+Check if hardware acceleration is available:
+
+```bash
+# Check for NVIDIA NVENC
+ffmpeg -encoders | grep nvenc
+
+# Check for AMD AMF
+ffmpeg -encoders | grep amf
+
+# Check for Intel Quick Sync
+ffmpeg -encoders | grep qsv
+```
+
+### Render Presets
+
+Aura includes production-grade presets for popular platforms:
+
+#### YouTube
+- **YouTube 1080p**: Standard HD (1920x1080, 16:9, 8Mbps)
+- **YouTube 4K**: Ultra HD (3840x2160, 16:9, 20Mbps)
+- **YouTube 1440p**: 2K (2560x1440, 16:9, 12Mbps)
+- **YouTube 720p**: HD (1280x720, 16:9, 5Mbps)
+- **YouTube Shorts**: Vertical HD (1080x1920, 9:16, 10Mbps)
+
+#### Instagram
+- **Instagram Feed**: Square (1080x1080, 1:1, 5Mbps)
+- **Instagram Reel**: Vertical (1080x1920, 9:16, 10Mbps)
+
+#### TikTok
+- **TikTok**: Vertical (1080x1920, 9:16, 10Mbps, max 60s)
+
+#### Archival
+- **Archival ProRes**: Professional editing (1920x1080, ProRes 422 HQ, 120Mbps)
+- **Archival H.265**: Long-term storage (1920x1080, H.265, 15Mbps)
+
+### Preflight Validation
+
+Before rendering, Aura runs comprehensive preflight checks:
+
+1. **Disk Space**: Verifies sufficient space for output and temp files (2.5x estimated file size)
+2. **Write Permissions**: Tests write access to output and temp directories
+3. **Temp Directory**: Validates or creates temp directory for intermediate files
+4. **Encoder Selection**: Chooses optimal encoder (hardware vs software) based on:
+   - Available hardware (NVENC, AMF, QSV)
+   - User preferences (quality vs speed)
+   - Encoder overrides (manual selection)
+5. **Duration Estimates**: Calculates expected render time based on:
+   - Hardware tier (A/B/C/D)
+   - Quality preset (Draft/Good/High/Maximum)
+   - Hardware acceleration availability
+
+### Troubleshooting Rendering
+
+#### Hardware Acceleration Not Working
+
+**NVIDIA NVENC:**
+```bash
+# Check if NVENC is detected
+nvidia-smi
+
+# Verify FFmpeg has NVENC support
+ffmpeg -encoders | grep nvenc
+
+# If missing, install FFmpeg with NVENC:
+# Windows: Download from https://www.gyan.dev/ffmpeg/builds/
+# Linux: Build FFmpeg with --enable-nvenc
+```
+
+**AMD AMF:**
+- Ensure latest AMD drivers installed
+- Verify AMF support: `ffmpeg -encoders | grep amf`
+- AMF requires Windows 10/11 or recent Linux kernel
+
+**Intel Quick Sync:**
+- Enable integrated graphics in BIOS
+- Verify QSV support: `ffmpeg -encoders | grep qsv`
+
+#### Slow Rendering
+
+1. **Enable Hardware Acceleration**: Preflight validation will show recommended encoder
+2. **Lower Quality Preset**: Use Draft or Good instead of High/Maximum for faster renders
+3. **Reduce Resolution**: Render at 720p instead of 1080p/4K for previews
+4. **Check System Load**: Close unnecessary applications during rendering
+
+#### Out of Disk Space
+
+```bash
+# Check available space
+df -h  # Linux/Mac
+wmic logicaldisk get size,freespace,caption  # Windows
+
+# Clean up temp files
+# Aura stores temp files in: %LOCALAPPDATA%\Aura\Temp (Windows)
+# or: ~/.local/share/Aura/Temp (Linux)
+```
+
+#### FFmpeg Command Logging
+
+All FFmpeg commands are logged for debugging:
+
+- **Location**: `%LOCALAPPDATA%\Aura\FFmpegLogs` (Windows) or `~/.local/share/Aura/FFmpegLogs` (Linux)
+- **Retention**: 30 days
+- **Format**: JSON with full command, arguments, environment, and execution results
+- **Support Reports**: Available via API: `GET /api/render-engine/ffmpeg-logs/{jobId}/support-report`
+
+### API Endpoints
+
+#### Preset Recommendation
+```http
+POST /api/render-engine/presets/recommend
+Content-Type: application/json
+
+{
+  "targetPlatform": "YouTube",
+  "contentType": "tutorial",
+  "videoDuration": "00:05:00",
+  "requireHighQuality": true
+}
+```
+
+#### Render Preflight
+```http
+POST /api/render-engine/preflight
+Content-Type: application/json
+
+{
+  "presetName": "YouTube 1080p",
+  "videoDuration": "00:05:00",
+  "outputDirectory": "/path/to/output",
+  "preferHardware": true
+}
+```
+
+#### Get Render Presets
+```http
+GET /api/render-engine/presets
+```
+
+#### Get FFmpeg Logs
+```http
+GET /api/render-engine/ffmpeg-logs/{jobId}
+```
+
+See [PROVIDER_INTEGRATION_GUIDE.md](PROVIDER_INTEGRATION_GUIDE.md) for more details on render engine configuration.
