@@ -175,35 +175,92 @@ The setting persists across application restarts and updates.
 
 ## ML Lab - Advanced Training Features
 
-When Advanced Mode is enabled, the ML Lab provides comprehensive tools for retraining the frame importance model:
+When Advanced Mode is enabled, the ML Lab provides comprehensive tools for retraining the frame importance model with intelligent guidance and safety controls:
 
 ### Prerequisites
 - **Minimum**: 8GB RAM, 2GB disk space, 20+ annotations
 - **Recommended**: 16GB+ RAM, GPU with 4GB+ VRAM, 100+ annotations
 - **Time**: 1-60 minutes depending on system and annotation count
 
-### Workflow
+### Enhanced Workflow
 1. **Annotate Frames**: Rate video frames for importance (0-1 scale)
+   - **NEW**: Get intelligent labeling advice based on your current annotations
+   - System analyzes rating distribution and suggests which frames to annotate next
+   - Focus areas identified automatically (e.g., "Scene transitions", "Static scenes")
+
 2. **Run Preflight Check**: System validates GPU, RAM, disk, estimates time
+   - Automatically runs before training starts
+   - **Blocks risky training** if minimum requirements not met
+   - Provides clear warnings and recommendations
+
 3. **Review Warnings**: Address any critical issues before training
+   - Training cannot proceed if critical issues exist
+   - System provides actionable recommendations for each issue
+
 4. **Start Training**: Monitor progress, can cancel at any time
-5. **Review Results**: Check training metrics and model performance
-6. **Deploy or Rollback**: Accept new model or revert to default/backup
+   - Real-time progress updates with detailed step information
+   - Resource usage monitoring
+   - Cancellation available at any time
+
+5. **Review Results**: Check training metrics and AI-powered analysis
+   - **NEW**: Automated quality analysis with recommendation (Accept/Caution/Revert)
+   - Quality score based on loss, sample count, and training metrics
+   - Specific observations, warnings, and concerns highlighted
+   - Clear next steps provided
+
+6. **Deploy or Rollback**: Act on recommendation
+   - **Accept**: Deploy if analysis recommends it
+   - **Accept with Caution**: Test carefully before full deployment
+   - **Revert**: Immediately revert if model quality is poor
+   - One-click revert to default or restore from backup
 
 ### Safety Features
-- **Preflight Checks**: Blocks training if system doesn't meet minimum requirements
+- **Intelligent Preflight Checks**: Validates GPU, RAM, disk space, annotation count
+  - Training is **blocked** if system doesn't meet minimum requirements
+  - Warnings for suboptimal conditions (insufficient VRAM, low annotation count)
+  - Time estimation based on system capabilities
+  
+- **Labeling Advisor**: Intelligent suggestions for annotation strategy
+  - Analyzes rating distribution (low/medium/high importance frames)
+  - Identifies imbalances and skewed distributions
+  - Recommends specific frame types to annotate next
+  - Focus areas to improve model training quality
+
+- **Post-Training Analysis**: AI-powered quality assessment
+  - Automated quality scoring based on training metrics
+  - Clear recommendation: Accept, Accept with Caution, or Revert
+  - Detailed observations about training performance
+  - Warnings about potential issues (high loss, low sample count)
+  - Specific next steps tailored to your results
+
 - **Atomic Deployment**: New model deployed safely with automatic backup
-- **Easy Rollback**: One-click revert to default model or restore previous backup
-- **Audit Trail**: Complete history of all training runs with timestamps and metrics
-- **Cancellation**: Cancel training at any time without breaking the model
+  - Previous model automatically backed up before deployment
+  - Restore from backup if new model underperforms
+
+- **Easy Rollback**: One-click revert options
+  - Revert to factory default model
+  - Restore from most recent backup
+
+- **Complete Audit Trail**: Full history of all training runs
+  - Timestamps, metrics, system info for each training session
+  - Training statistics (total runs, success rate, average time)
+  - Historical analysis to track improvements
+
+- **Safe Cancellation**: Cancel training at any time
+  - Cancellation doesn't corrupt the model
+  - Previous model remains intact
 
 ### Best Practices
-1. Start with 100+ high-quality annotations for best results
-2. Run preflight check before each training session
-3. Keep training runs under 30 minutes for better experience
-4. Review training history to track model improvements
-5. Always test new models before committing to production use
-6. Use "Revert to Default" if custom model performs poorly
+1. **Use Labeling Advisor**: Check `/api/ml/annotations/advice` regularly for guidance
+2. **Balance Your Dataset**: Aim for good distribution across low/medium/high importance frames
+3. **Start with 100+ Annotations**: More data = better model quality
+4. **Run Preflight Check**: System does this automatically, review warnings carefully
+5. **Keep Training Runs Under 30 Minutes**: Better user experience and easier to manage
+6. **Review Post-Training Analysis**: Always check the automated recommendation before deploying
+7. **Test Carefully**: If analysis recommends "Accept with Caution", test on small batches first
+8. **Revert if Needed**: Don't hesitate to revert if model performs poorly
+9. **Track Your Progress**: Review training history to see improvements over time
+10. **Address Warnings**: If preflight or post-training analysis shows warnings, investigate and address them
 
 ## Related Documentation
 
