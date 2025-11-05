@@ -376,7 +376,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
     {
         await Task.CompletedTask;
 
-        var keyData = $"ssml:{request.TargetProvider}:{request.VoiceSpec.VoiceId}:{string.Join(",", request.ScriptLines.Select(l => l.Text))}";
+        var keyData = $"ssml:{request.TargetProvider}:{request.VoiceSpec.VoiceName}:{string.Join(",", request.ScriptLines.Select(l => l.Text))}";
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(keyData));
         return $"ssml:{Convert.ToHexString(hash)[..16]}";
     }
