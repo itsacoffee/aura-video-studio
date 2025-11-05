@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Audience;
 using Aura.Core.Models.Content;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Aura.Core.Services.Audience;
 using Microsoft.Extensions.Logging;
@@ -18,11 +19,13 @@ namespace Aura.Core.Services.Content;
 /// <summary>
 /// Converts imported documents into video-optimized scripts with scene structure
 /// Handles content restructuring, written-to-spoken conversion, and audience adaptation
+/// Now uses unified orchestration via LlmStageAdapter
 /// </summary>
 public class ScriptConverter
 {
     private readonly ILogger<ScriptConverter> _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
     private readonly ContentAdaptationEngine? _adaptationEngine;
     private readonly AudienceProfileStore? _audienceProfileStore;
 
@@ -32,10 +35,12 @@ public class ScriptConverter
         ILogger<ScriptConverter> logger,
         ILlmProvider llmProvider,
         ContentAdaptationEngine? adaptationEngine = null,
-        AudienceProfileStore? audienceProfileStore = null)
+        AudienceProfileStore? audienceProfileStore = null,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
+        _stageAdapter = stageAdapter;
         _adaptationEngine = adaptationEngine;
         _audienceProfileStore = audienceProfileStore;
     }
@@ -168,7 +173,7 @@ public class ScriptConverter
             Style: prompt
         );
 
-        var response = await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
         
         return ParseScriptToScenes(response, config);
     }
@@ -493,5 +498,22 @@ public class ScriptConverter
     private int CountWords(string text)
     {
         return text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+
+    /// <summary>
+    /// Helper method to execute LLM generation through unified orchestrator or fallback to direct provider
+    /// </summary>
+    private async Task<string> GenerateWithLlmAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        CancellationToken ct)
+    {
+        if (_stageAdapter != null)
+        {
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            if (result.IsSuccess && result.Data != null) return result.Data;
+            _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+        }
+        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
     }
 }
