@@ -266,23 +266,29 @@ Body: { "includeSecrets": true, "selectedKeys": ["openai", "anthropic"] }
 
 ### Migration from Plaintext
 
-**Automatic Migration on Linux/macOS**:
-If legacy plaintext storage is detected (from `$HOME/.aura-dev/apikeys.json`):
-1. Keys automatically migrated to encrypted storage on first read
+**Automatic Migration on All Platforms**:
+If legacy plaintext storage is detected, keys are automatically migrated to encrypted storage:
+1. Keys automatically migrated to encrypted storage on first KeyStore access
 2. Original plaintext file securely deleted (overwritten with random data then deleted)
-3. Migration logged for audit trail
+3. Migration logged with audit trail for compliance
 4. One-time operation per installation
 
-**Legacy Storage Locations** (no longer used):
-- Linux/macOS: `$HOME/.aura-dev/apikeys.json` (plaintext, migrated automatically)
+**Legacy Storage Locations** (no longer used - migrated automatically):
+- **Windows**: `%LOCALAPPDATA%\Aura\apikeys.json` (legacy plaintext from deprecated `/api/apikeys/*` endpoints)
+- **Linux/macOS**: `$HOME/.aura-dev/apikeys.json` (legacy plaintext from development versions)
 
 **Migration Process**:
-- Detects legacy plaintext file on KeyStore initialization
-- Reads all keys from plaintext file
-- Encrypts and saves each key to new encrypted storage
-- Securely overwrites legacy file with random data
+- Detects legacy plaintext files on KeyStore initialization
+- Reads all keys from plaintext file(s)
+- Encrypts and saves each key to secure storage via SecureStorageService
+- Securely overwrites legacy file with random data (64KB chunks)
 - Deletes legacy file
-- Logs migration completion with key count
+- Logs migration completion with provider count and platform info for audit trail
+
+**Deprecated Endpoints**:
+- `/api/apikeys/save` - Deprecated, returns HTTP 410 Gone with redirect to `/api/keys/set`
+- `/api/apikeys/load` - Deprecated, returns HTTP 410 Gone with redirect to `/api/keys/list`
+- All clients must migrate to secure KeyVault endpoints: `/api/keys/*`
 
 ### CI/CD Secrets Enforcement
 
