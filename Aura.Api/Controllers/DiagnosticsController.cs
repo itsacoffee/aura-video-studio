@@ -732,6 +732,8 @@ public class DiagnosticsController : ControllerBase
 
         try
         {
+            // Note: In production, retrieve the actual Job from job store/repository
+            // For now, using minimal stub - the bundle service will collect logs and system info
             var job = new Job { Id = jobId, Status = JobStatus.Failed, Stage = "Unknown" };
             
             var bundle = await _bundleService.GenerateBundleAsync(job, null, null, null, ct);
@@ -805,6 +807,8 @@ public class DiagnosticsController : ControllerBase
 
         try
         {
+            // Note: In production, retrieve the actual Job from job store/repository
+            // The request provides minimal info; full job context would improve analysis accuracy
             var job = new Job 
             { 
                 Id = request.JobId, 

@@ -329,9 +329,7 @@ public class DiagnosticBundleService
                     line.Contains(correlationId ?? string.Empty));
 
                 var filtered = string.Join('\n', relevantLines);
-                var redacted = _reportGenerator.GetType()
-                    .GetMethod("RedactSensitiveData", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                    ?.Invoke(_reportGenerator, new object[] { filtered }) as string ?? filtered;
+                var redacted = RedactSensitiveData(filtered);
 
                 allRedactedLogs.AppendLine($"=== {logFile.Name} ===");
                 allRedactedLogs.AppendLine(redacted);
@@ -474,6 +472,22 @@ public class DiagnosticBundleService
     {
         var files = Directory.GetFiles(_bundlesDirectory, $"*{bundleId}*.zip");
         return files.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Redact sensitive data from logs (API keys, tokens, etc.)
+    /// </summary>
+    private static string RedactSensitiveData(string content)
+    {
+        // Redact API keys (various patterns)
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"sk-[a-zA-Z0-9]{32,}", "[REDACTED-API-KEY]");
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"Bearer\s+[a-zA-Z0-9\-_\.]{20,}", "Bearer [REDACTED-TOKEN]");
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"""apiKey""\s*:\s*""[^""]+""", @"""apiKey"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"""api_key""\s*:\s*""[^""]+""", @"""api_key"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"""password""\s*:\s*""[^""]+""", @"""password"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"""token""\s*:\s*""[^""]+""", @"""token"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        return content;
     }
 
     /// <summary>

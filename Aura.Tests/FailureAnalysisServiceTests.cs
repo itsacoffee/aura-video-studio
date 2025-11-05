@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
@@ -294,18 +295,9 @@ public class FailureAnalysisServiceTests
         Assert.NotNull(analysis);
         
         // Should identify either rate limit or network (or both)
-        var allCauses = new[] { analysis.PrimaryRootCause }.Concat(analysis.SecondaryRootCauses);
+        var allCauses = new[] { analysis.PrimaryRootCause }
+            .Concat(analysis.SecondaryRootCauses);
         Assert.Contains(allCauses, cause => 
             cause.Type == RootCauseType.RateLimit || cause.Type == RootCauseType.NetworkError);
-    }
-
-    private static System.Collections.Generic.IEnumerable<T> Concat<T>(
-        System.Collections.Generic.IEnumerable<T> first, 
-        System.Collections.Generic.IEnumerable<T> second)
-    {
-        foreach (var item in first)
-            yield return item;
-        foreach (var item in second)
-            yield return item;
     }
 }
