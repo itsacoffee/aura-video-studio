@@ -102,6 +102,106 @@ The selected model is stored in `AuraData/settings.json`:
 - If no model is configured, the default is used automatically
 - Backward compatible with existing installations
 
+## Hardware-Specific Recommendations
+
+Aura Video Studio provides intelligent model recommendations based on your hardware:
+
+### RAM-Based Recommendations
+
+**Less than 8GB RAM:**
+- **Recommended:** Models 3B or smaller
+- **Example:** `llama3.2:3b` or `phi3:mini`
+- **Reason:** Smaller models reduce memory pressure and prevent system slowdowns
+
+**8GB RAM:**
+- **Recommended:** `llama3.1:8b-q4_k_m` (quantized 4-bit)
+- **Alternative:** `mistral:7b-q4`
+- **Reason:** 4-bit quantization provides good balance of quality and memory usage
+
+**16GB+ RAM:**
+- **Recommended:** `llama3.1:8b-q4_k_m` (comfortable)
+- **Alternative:** `llama3.1:8b` (higher quality, more memory)
+- **Reason:** Can run 8B models comfortably with room for other applications
+
+**32GB+ RAM:**
+- **Recommended:** `llama3.1:70b-q4_k_m` (if you have GPU)
+- **Alternative:** `llama3.1:8b` or `mixtral:8x7b-q4`
+- **Reason:** Can run larger models or multiple models simultaneously
+
+### GPU Acceleration
+
+If you have a GPU with 8GB+ VRAM:
+- Models can run significantly faster with GPU acceleration
+- Configure Ollama to use GPU: Ollama automatically detects and uses CUDA-capable GPUs
+- Check GPU usage: `nvidia-smi` (NVIDIA) or task manager
+
+**GPU Model Recommendations:**
+- **8GB VRAM:** `llama3.1:8b-q4_k_m`
+- **12GB VRAM:** `llama3.1:8b` or `llama2:13b-q4`
+- **24GB+ VRAM:** `llama3.1:70b-q4_k_m` (for best quality)
+
+### Quality vs. Speed Trade-offs
+
+**Fast (Low Latency):**
+- **Models:** `phi3:mini`, `llama3.2:3b`, `gemma:2b`
+- **Use Case:** Quick iterations, testing, low-end hardware
+- **Expected Quality:** Good for short scripts, acceptable grammar
+
+**Balanced (Recommended):**
+- **Models:** `llama3.1:8b-q4_k_m`, `mistral:7b-q4`
+- **Use Case:** Production videos, most users
+- **Expected Quality:** Excellent grammar, creative, engaging scripts
+
+**High Quality (Slower):**
+- **Models:** `llama3.1:70b-q4_k_m`, `mixtral:8x7b-instruct`
+- **Use Case:** Professional content, maximum quality
+- **Expected Quality:** Near-human writing, excellent coherence
+
+### Keep-Alive Configuration
+
+To reduce model loading time between requests:
+
+1. Open Aura Video Studio Settings
+2. Navigate to Provider Settings → Ollama
+3. Set "Keep Alive" to a duration that fits your workflow:
+   - **5 minutes** (300s): For occasional use
+   - **30 minutes** (1800s): For active editing sessions
+   - **Unlimited** (-1): Keep model loaded always (uses RAM continuously)
+
+**Note:** Keeping models loaded uses RAM but eliminates load time (5-30 seconds per request).
+
+### Checking Ollama Status
+
+Aura Video Studio includes an Ollama status checker:
+
+1. Open Settings → Providers → Offline Status
+2. Click "Check Ollama"
+3. View:
+   - Whether Ollama is running
+   - List of installed models
+   - Hardware-specific recommendations
+   - Model sizes and memory requirements
+
+### Performance Tips
+
+1. **First Run:** The first request to Ollama loads the model into memory (5-30s delay). Subsequent requests are fast.
+2. **Concurrent Requests:** Ollama handles one request at a time per model.
+3. **Memory Management:** If system becomes slow, use smaller models or increase keep-alive to prevent constant loading.
+4. **SSD vs HDD:** Model loading is much faster from SSD storage.
+
+### Advanced: Model Quantization
+
+Quantization reduces model size and memory usage with minimal quality loss:
+
+- **q4_k_m:** 4-bit quantization, good balance (recommended)
+- **q5_k_m:** 5-bit, slightly better quality, more memory
+- **q8_0:** 8-bit, near-original quality, much more memory
+- **f16/f32:** Full precision, highest quality, maximum memory
+
+**Example:**
+- `llama3.1:8b` (16GB RAM required)
+- `llama3.1:8b-q4_k_m` (5GB RAM required) ← Recommended default
+
 ## Benefits
 
 ### Performance Optimization

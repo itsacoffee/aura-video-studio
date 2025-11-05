@@ -82,6 +82,88 @@ All application data is stored in the extracted folder:
 
 You can move the entire folder to another location or machine, and everything will continue to work (except system dependencies like GPU drivers).
 
+## Offline Provider Setup
+
+Aura Video Studio can operate offline using local providers. Here's how to set up each offline provider:
+
+### Ollama (LLM)
+
+**What it is:** Local LLM for script generation  
+**Required:** Yes, for offline script generation  
+**Installation:**
+1. Download Ollama from https://ollama.ai
+2. Install and start the Ollama service
+3. Pull a model: `ollama pull llama3.1:8b-q4_k_m`
+4. Verify: `ollama list` should show your installed model
+
+**Recommendations:**
+- For 8GB RAM: Use 3B models or smaller
+- For 16GB+ RAM: Use 8B models (llama3.1:8b-q4_k_m recommended)
+- Configure keep-alive in Settings to reduce model loading time
+
+### Piper TTS (Text-to-Speech)
+
+**What it is:** Fast, offline neural TTS  
+**Required:** Recommended for offline TTS (alternative to Windows TTS)  
+**Installation:**
+1. Download Piper from https://github.com/rhasspy/piper/releases
+2. Extract to `Tools/piper/` in your Aura folder
+3. Download a voice model (e.g., en_US-lessac-medium) from Piper voices repo
+4. Configure paths in Settings → Provider Paths
+
+**Voice Models:**
+- `en_US-lessac-medium`: Good quality, balanced speed
+- `en_US-amy-medium`: Alternative female voice
+- `en_GB-alba-medium`: British English
+
+### Mimic3 TTS (Text-to-Speech)
+
+**What it is:** Server-based offline TTS  
+**Required:** Optional (alternative to Piper and Windows TTS)  
+**Installation:**
+1. Install via Docker: `docker run -p 59125:59125 mycroftai/mimic3`
+2. Or via pip: `pip install mycroft-mimic3-tts`
+3. Start server: `mimic3-server`
+4. Configure URL in Settings if using non-default port
+
+### Windows TTS (Text-to-Speech)
+
+**What it is:** Built-in Windows text-to-speech  
+**Required:** No (automatically available on Windows)  
+**Setup:** No installation needed on Windows
+
+**Note:** Provides basic quality suitable for testing. Consider Piper or Mimic3 for better quality.
+
+### Stable Diffusion WebUI (Images - Optional)
+
+**What it is:** Local image generation  
+**Required:** No (stock images used as fallback)  
+**Installation:**
+1. Requires NVIDIA GPU with 6GB+ VRAM
+2. Download from https://github.com/AUTOMATIC1111/stable-diffusion-webui
+3. Download at least one checkpoint model (e.g., Stable Diffusion 1.5)
+4. Start WebUI with API enabled: `./webui.sh --api` (Linux/Mac) or `webui.bat --api` (Windows)
+5. Configure URL in Settings if using non-default port
+
+**VRAM Recommendations:**
+- 6-8GB: Use 512x512 resolution
+- 8-12GB: Use 768x768 resolution
+- 12GB+: Use high resolutions and advanced features
+
+### Checking Provider Status
+
+Aura Video Studio provides a built-in offline provider status check:
+
+1. Open Settings → Providers → Offline Status
+2. The system will check all offline providers
+3. Follow installation links and recommendations for any missing providers
+4. Refresh to verify installation
+
+**Provider Profile Recommendations:**
+- **Free-Only Profile**: Uses only offline providers (Ollama, Windows TTS/Piper, stock images)
+- **Balanced Mix Profile**: Combines offline and cloud providers
+- **Pro-Max Profile**: Primarily cloud providers for highest quality
+
 ## Troubleshooting
 
 ### Port Already in Use
