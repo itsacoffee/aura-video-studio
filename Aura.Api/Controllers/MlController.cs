@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Api.Filters;
 using Aura.Api.Models.ApiModels.V1;
 using Aura.Core.ML;
 using Aura.Core.Services.ML;
@@ -13,9 +14,11 @@ namespace Aura.Api.Controllers;
 
 /// <summary>
 /// Controller for ML model training and annotation management
+/// Requires Advanced Mode to be enabled
 /// </summary>
 [ApiController]
 [Route("api/ml")]
+[RequireAdvancedMode]
 public class MlController : ControllerBase
 {
     private readonly ILogger<MlController> _logger;

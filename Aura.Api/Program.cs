@@ -1208,6 +1208,9 @@ builder.Services.AddSingleton<Aura.Core.Services.ML.ModelTrainingService>();
 builder.Services.AddSingleton<Aura.Core.ML.ModelManager>();
 builder.Services.AddSingleton<Aura.Core.Services.ML.MlTrainingWorker>();
 
+// Register Advanced Mode service
+builder.Services.AddSingleton<Aura.Core.Services.AdvancedModeService>();
+
 // Configure Kestrel to listen on specific port with environment variable overrides
 var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL") 
     ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") 
