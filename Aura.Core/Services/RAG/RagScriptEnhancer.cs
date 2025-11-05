@@ -189,12 +189,12 @@ public class RagScriptEnhancer
         }
 
         var sentences = script.Split(new[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
-        var factuaKeywords = new[] { "research", "study", "data", "statistic", "percent", "found", "according" };
+        var factualKeywords = new[] { "research", "study", "data", "statistic", "percent", "found", "according" };
 
         foreach (var sentence in sentences)
         {
             var lowerSentence = sentence.ToLowerInvariant();
-            var containsFactualKeyword = Array.Exists(factuaKeywords, 
+            var containsFactualKeyword = Array.Exists(factualKeywords, 
                 keyword => lowerSentence.Contains(keyword));
 
             if (containsFactualKeyword && !System.Text.RegularExpressions.Regex.IsMatch(sentence, citationPattern))
