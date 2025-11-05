@@ -79,13 +79,27 @@ public class JobsController : ControllerBase
             
             Log.Information("[{CorrelationId}] Creating new job for topic: {Topic}", correlationId, request.Brief.Topic);
 
+            RagConfiguration? ragConfig = null;
+            if (request.Brief.RagConfiguration != null)
+            {
+                ragConfig = new RagConfiguration(
+                    Enabled: request.Brief.RagConfiguration.Enabled,
+                    TopK: request.Brief.RagConfiguration.TopK,
+                    MinimumScore: request.Brief.RagConfiguration.MinimumScore,
+                    MaxContextTokens: request.Brief.RagConfiguration.MaxContextTokens,
+                    IncludeCitations: request.Brief.RagConfiguration.IncludeCitations,
+                    TightenClaims: request.Brief.RagConfiguration.TightenClaims
+                );
+            }
+
             var brief = new Brief(
                 Topic: request.Brief.Topic,
                 Audience: request.Brief.Audience,
                 Goal: request.Brief.Goal,
                 Tone: request.Brief.Tone,
                 Language: request.Brief.Language,
-                Aspect: request.Brief.Aspect
+                Aspect: request.Brief.Aspect,
+                RagConfiguration: ragConfig
             );
 
             var planSpec = new PlanSpec(

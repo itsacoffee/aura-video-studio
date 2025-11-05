@@ -16,7 +16,8 @@ public record Brief(
     string Language, 
     Aspect Aspect,
     PromptModifiers? PromptModifiers = null,
-    AudienceProfile? AudienceProfile = null);
+    AudienceProfile? AudienceProfile = null,
+    RagConfiguration? RagConfiguration = null);
 
 /// <summary>
 /// User customization options for prompt engineering
@@ -168,3 +169,14 @@ public record BrandKit(
     float WatermarkOpacity,
     string? BrandColor,
     string? AccentColor);
+
+/// <summary>
+/// RAG (Retrieval-Augmented Generation) configuration for script grounding
+/// </summary>
+public record RagConfiguration(
+    bool Enabled,
+    int TopK = 5,
+    float MinimumScore = 0.6f,
+    int MaxContextTokens = 2000,
+    bool IncludeCitations = true,
+    bool TightenClaims = false);
