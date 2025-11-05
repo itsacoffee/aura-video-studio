@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using Aura.Core.AI.Cache;
 using Aura.Core.AI.Validation;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
+using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Core.Services.CostTracking;
 using Microsoft.Extensions.Logging;
@@ -65,7 +67,7 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
 
         var result = await ExecuteAsync(request, config, ct);
 
-        if (!result.Success || result.Data == null)
+        if (!result.IsSuccess || result.Data == null)
         {
             return OrchestrationResult<string>.Failure(
                 result.OperationId,
@@ -112,7 +114,7 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
 
         var result = await ExecuteAsync(request, config, ct);
 
-        if (!result.Success || result.Data == null)
+        if (!result.IsSuccess || result.Data == null)
         {
             return OrchestrationResult<string>.Failure(
                 result.OperationId,

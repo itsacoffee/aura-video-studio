@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,6 +7,7 @@ using Aura.Core.AI.Cache;
 using Aura.Core.AI.Validation;
 using Aura.Core.Services.CostTracking;
 using Microsoft.Extensions.Logging;
+using CoreValidationResult = Aura.Core.Validation.ValidationResult;
 
 namespace Aura.Core.Orchestration;
 
@@ -96,12 +98,12 @@ public abstract class UnifiedGenerationOrchestrator<TRequest, TResponse>
                         {
                             Logger.LogWarning(
                                 "Schema validation failed for {Stage}: {Errors}",
-                                GetStageName(), string.Join("; ", validationResult.Errors));
+                                GetStageName(), string.Join("; ", validationResult.Issues));
                             
                             if (config.StrictValidation)
                             {
                                 throw new InvalidOperationException(
-                                    $"Schema validation failed: {string.Join("; ", validationResult.Errors)}");
+                                    $"Schema validation failed: {string.Join("; ", validationResult.Issues)}");
                             }
                         }
                     }
@@ -188,11 +190,11 @@ public abstract class UnifiedGenerationOrchestrator<TRequest, TResponse>
     /// <summary>
     /// Validate the response against schema (optional)
     /// </summary>
-    protected virtual Task<ValidationResult> ValidateResponseAsync(
+    protected virtual Task<CoreValidationResult> ValidateResponseAsync(
         TResponse response,
         CancellationToken ct)
     {
-        return Task.FromResult(new ValidationResult { IsValid = true, Errors = Array.Empty<string>() });
+        return Task.FromResult(new CoreValidationResult(true, new List<string>()));
     }
 
     /// <summary>
@@ -280,7 +282,7 @@ public enum BackoffStrategy
 /// </summary>
 public record OrchestrationResult<T>
 {
-    public bool Success { get; init; }
+    public bool IsSuccess { get; init; }
     public T? Data { get; init; }
     public string OperationId { get; init; } = string.Empty;
     public long ElapsedMs { get; init; }
@@ -297,7 +299,7 @@ public record OrchestrationResult<T>
     {
         return new OrchestrationResult<T>
         {
-            Success = true,
+            IsSuccess = true,
             Data = data,
             OperationId = operationId,
             ElapsedMs = elapsedMs,
@@ -313,7 +315,7 @@ public record OrchestrationResult<T>
     {
         return new OrchestrationResult<T>
         {
-            Success = false,
+            IsSuccess = false,
             Data = default,
             OperationId = operationId,
             ElapsedMs = elapsedMs,
@@ -321,13 +323,4 @@ public record OrchestrationResult<T>
             ErrorMessage = errorMessage
         };
     }
-}
-
-/// <summary>
-/// Validation result
-/// </summary>
-public record ValidationResult
-{
-    public bool IsValid { get; init; }
-    public string[] Errors { get; init; } = Array.Empty<string>();
 }

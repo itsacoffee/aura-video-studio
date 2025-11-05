@@ -463,7 +463,7 @@ public class ScriptOrchestrator
 
         var result = await adapter.GenerateScriptAsync(brief, spec, preferredTier, offlineOnly, ct);
 
-        if (!result.Success)
+        if (!result.IsSuccess)
         {
             return new ScriptResult
             {

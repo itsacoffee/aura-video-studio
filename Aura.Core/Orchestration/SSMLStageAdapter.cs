@@ -14,6 +14,7 @@ using Aura.Core.Providers;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.CostTracking;
 using Microsoft.Extensions.Logging;
+using CoreValidationResult = Aura.Core.Validation.ValidationResult;
 
 namespace Aura.Core.Orchestration;
 
@@ -68,7 +69,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
 
         var result = await ExecuteAsync(request, config, ct);
 
-        if (!result.Success || result.Data == null)
+        if (!result.IsSuccess || result.Data == null)
         {
             return OrchestrationResult<SSMLPlanningResult>.Failure(
                 result.OperationId,
@@ -380,7 +381,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
         return $"ssml:{Convert.ToHexString(hash)[..16]}";
     }
 
-    protected override async Task<ValidationResult> ValidateResponseAsync(
+    protected override async Task<CoreValidationResult> ValidateResponseAsync(
         SSMLStageResponse response,
         CancellationToken ct)
     {
@@ -405,11 +406,7 @@ public class SSMLStageAdapter : UnifiedGenerationOrchestrator<SSMLStageRequest, 
             }
         }
 
-        return new ValidationResult
-        {
-            IsValid = errors.Count == 0,
-            Errors = errors.ToArray()
-        };
+        return new CoreValidationResult(errors.Count == 0, errors);
     }
 }
 

@@ -9,6 +9,7 @@ using Aura.Core.AI.Cache;
 using Aura.Core.AI.Validation;
 using Aura.Core.Models;
 using Aura.Core.Models.Visual;
+using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Core.Services.CostTracking;
 using Aura.Core.Services.Visual;
@@ -82,7 +83,7 @@ public class VisualStageAdapter : UnifiedGenerationOrchestrator<VisualStageReque
 
         var result = await ExecuteAsync(request, config, ct);
 
-        if (!result.Success || result.Data == null)
+        if (!result.IsSuccess || result.Data == null)
         {
             return OrchestrationResult<VisualPrompt>.Failure(
                 result.OperationId,
@@ -156,8 +157,8 @@ public class VisualStageAdapter : UnifiedGenerationOrchestrator<VisualStageReque
             request.Scene.Index, provider.Name);
 
         var visualResult = await llmProvider.GenerateVisualPromptAsync(
-            request.Scene.Text,
-            request.PreviousScene?.Text,
+            request.Scene.Script,
+            request.PreviousScene?.Script,
             request.Tone,
             request.VisualStyle,
             ct);
@@ -167,64 +168,32 @@ public class VisualStageAdapter : UnifiedGenerationOrchestrator<VisualStageReque
             throw new InvalidOperationException("Visual prompt generation returned null");
         }
 
-        var basePrompt = visualResult.DetailedDescription;
-        var continuityElements = visualResult.ContinuityElements.ToList();
-
-        if (request.PreviousScene != null)
-        {
-            var continuityResult = _continuityEngine.ApplyContinuity(
-                basePrompt,
-                Array.Empty<string>(),
-                continuityElements,
-                request.VisualStyle);
-
-            basePrompt = continuityResult.EnhancedPrompt;
-            continuityElements.AddRange(continuityResult.TrackedElements);
-        }
-
-        var optimizationParams = new PromptOptimizationParams
-        {
-            TargetLength = 150,
-            PreserveKeywords = visualResult.StyleKeywords.ToList(),
-            RemoveDuplicates = true,
-            EnhanceClarity = true,
-            TargetStyle = request.VisualStyle
-        };
-
-        var optimizedResult = _promptOptimizer.Optimize(basePrompt, optimizationParams);
-
         var visualPrompt = new VisualPrompt
         {
             SceneIndex = request.Scene.Index,
-            BasePrompt = basePrompt,
-            FinalPrompt = optimizedResult.OptimizedPrompt,
-            NegativePrompt = string.Join(", ", visualResult.NegativeElements),
+            DetailedDescription = visualResult.DetailedDescription,
+            CompositionGuidelines = visualResult.CompositionGuidelines,
             StyleKeywords = visualResult.StyleKeywords.ToList(),
-            ContinuityElements = continuityElements,
-            Importance = request.Importance,
-            EmotionalIntensity = request.EmotionalIntensity,
-            Lighting = new LightingSpec
+            ImportanceScore = request.Importance,
+            Lighting = new LightingSetup
             {
                 Mood = visualResult.LightingMood,
                 Direction = visualResult.LightingDirection,
                 Quality = visualResult.LightingQuality,
                 TimeOfDay = visualResult.TimeOfDay
             },
-            Camera = new CameraSpec
+            Camera = new CameraSetup
             {
-                ShotType = visualResult.ShotType,
-                Angle = visualResult.CameraAngle,
+                ShotType = Enum.TryParse<ShotType>(visualResult.ShotType, true, out var shotType) 
+                    ? shotType : ShotType.Medium,
+                Angle = Enum.TryParse<CameraAngle>(visualResult.CameraAngle, true, out var angle) 
+                    ? angle : CameraAngle.EyeLevel,
                 DepthOfField = visualResult.DepthOfField
             },
-            Composition = visualResult.CompositionGuidelines,
             ColorPalette = visualResult.ColorPalette.ToList(),
-            OptimizationMetadata = new VisualPromptOptimizationMetadata
-            {
-                TokensRemoved = optimizedResult.TokensRemoved,
-                KeywordsEnhanced = optimizedResult.KeywordsEnhanced,
-                ClarityScore = optimizedResult.ClarityScore,
-                OptimizationApplied = optimizedResult.OptimizationsApplied.ToList()
-            }
+            NegativeElements = visualResult.NegativeElements.ToList(),
+            Reasoning = visualResult.Reasoning,
+            Style = request.VisualStyle
         };
 
         return new VisualStageResponse
