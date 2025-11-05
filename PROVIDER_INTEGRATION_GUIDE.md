@@ -1542,3 +1542,399 @@ For Aura-specific integration issues:
 - Enable debug logging
 - File issue on GitHub with correlation ID
 - Include provider name and configuration (sanitized)
+
+## Render Engine Integration
+
+### Hardware Encoder Selection
+
+Aura's render engine automatically selects the optimal encoder based on available hardware:
+
+#### Encoder Selection Algorithm
+
+1. **Detect Hardware Capabilities**
+   - Query FFmpeg for available encoders
+   - Check for NVENC (NVIDIA), AMF (AMD), QSV (Intel), VideoToolbox (Apple)
+   - Cache results to avoid repeated detection
+
+2. **Select Best Encoder**
+   - If hardware acceleration preferred and available: Use hardware encoder
+   - If user override specified: Use specified encoder
+   - Otherwise: Fall back to software encoding (libx264/libx265)
+
+3. **Configure Encoder Parameters**
+   - Quality preset (ultrafast/fast/medium/slow/veryslow)
+   - Bitrate and max bitrate
+   - Rate control (CRF for software, VBR for hardware)
+   - Pixel format
+
+#### Example: Encoder Selection with Override
+
+```csharp
+using Aura.Core.Services.Render;
+
+// Let system auto-select encoder
+var encoder = await hardwareEncoder.SelectBestEncoderAsync(preset, preferHardware: true);
+
+// Or force specific encoder
+var nvencEncoder = await hardwareEncoder.SelectBestEncoderAsync(preset, preferHardware: true);
+// Then override in preflight request
+var preflightResult = await preflightService.ValidateRenderAsync(
+    preset,
+    videoDuration,
+    outputDirectory,
+    encoderOverride: "h264_nvenc",
+    preferHardware: true
+);
+```
+
+### Preset Recommendation Service
+
+The preset recommendation service suggests optimal presets based on project requirements:
+
+#### Rule-Based Recommendation
+
+When LLM provider is unavailable, uses rule-based logic:
+
+```csharp
+var request = new PresetRecommendationRequest
+{
+    TargetPlatform = "YouTube",
+    ContentType = "tutorial",
+    AspectRatioPreference = "16:9",
+    VideoDuration = TimeSpan.FromMinutes(10),
+    RequireHighQuality = true
+};
+
+var recommendation = await presetService.RecommendPresetAsync(request);
+
+Console.WriteLine($"Recommended: {recommendation.PresetName}");
+Console.WriteLine($"Reasoning: {recommendation.Reasoning}");
+Console.WriteLine($"Alternatives: {string.Join(", ", recommendation.AlternativePresets)}");
+```
+
+#### LLM-Assisted Recommendation
+
+When LLM provider is available, generates contextual recommendations:
+
+```csharp
+// LLM will analyze project requirements and recommend best preset
+// considering factors like:
+// - Platform requirements (duration limits, aspect ratios)
+// - Content type (tutorial, vlog, short-form, etc.)
+// - Target audience
+// - Quality requirements
+// - Hardware capabilities
+
+var request = new PresetRecommendationRequest
+{
+    TargetPlatform = "TikTok",
+    ContentType = "comedy sketch",
+    ProjectGoal = "viral content",
+    Audience = "Gen Z",
+    VideoDuration = TimeSpan.FromSeconds(45),
+    RequireHighQuality = false  // Prioritize speed over quality
+};
+
+var recommendation = await presetService.RecommendPresetAsync(request);
+// LLM explains why TikTok preset is optimal for this use case
+```
+
+### Render Preflight Validation
+
+Comprehensive validation before starting render:
+
+#### Validation Checks
+
+1. **Disk Space Validation**
+   - Output directory: 2.5x estimated file size
+   - Temp directory: 1.5x estimated file size
+   - Warns if low disk space (< 2 GB)
+
+2. **Write Permission Validation**
+   - Tests write access to output directory
+   - Tests write access to temp directory
+   - Creates directories if they don't exist
+
+3. **Encoder Selection**
+   - Selects optimal encoder (hardware vs software)
+   - Respects user preferences and overrides
+   - Provides fallback encoder
+
+4. **Duration Estimation**
+   - Estimates render time based on:
+     - Hardware tier (A/B/C/D)
+     - Quality preset
+     - Hardware acceleration availability
+     - Video duration and resolution
+
+#### Example: Full Preflight Check
+
+```csharp
+var preflightRequest = new RenderPreflightRequest
+{
+    PresetName = "YouTube 1080p",
+    VideoDuration = TimeSpan.FromMinutes(5),
+    OutputDirectory = @"C:\Videos\Output",
+    EncoderOverride = null,  // Auto-select
+    PreferHardware = true
+};
+
+var result = await preflightService.ValidateRenderAsync(
+    preset,
+    preflightRequest.VideoDuration,
+    preflightRequest.OutputDirectory,
+    preflightRequest.EncoderOverride,
+    preflightRequest.PreferHardware,
+    correlationId: Guid.NewGuid().ToString()
+);
+
+if (!result.CanProceed)
+{
+    Console.WriteLine("Preflight failed:");
+    foreach (var error in result.Errors)
+    {
+        Console.WriteLine($"  ERROR: {error}");
+    }
+}
+else
+{
+    Console.WriteLine("Preflight passed:");
+    Console.WriteLine($"  Encoder: {result.EncoderSelection.EncoderName}");
+    Console.WriteLine($"  Hardware Accelerated: {result.EncoderSelection.IsHardwareAccelerated}");
+    Console.WriteLine($"  Estimated Duration: {result.Estimates.EstimatedDurationMinutes:F1} minutes");
+    Console.WriteLine($"  Estimated File Size: {result.Estimates.EstimatedFileSizeMB:F1} MB");
+}
+```
+
+### FFmpeg Command Logging
+
+All FFmpeg commands are logged for debugging and support:
+
+#### Log Structure
+
+```json
+{
+  "jobId": "job-12345",
+  "correlationId": "abc-def-ghi",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "command": "ffmpeg",
+  "arguments": [
+    "-i", "input.mp4",
+    "-c:v", "h264_nvenc",
+    "-preset", "medium",
+    "-b:v", "8000k",
+    "-c:a", "aac",
+    "output.mp4"
+  ],
+  "workingDirectory": "/tmp/aura-render",
+  "environment": {
+    "PATH": "...",
+    "CUDA_VISIBLE_DEVICES": "0"
+  },
+  "encoder": {
+    "name": "h264_nvenc",
+    "isHardwareAccelerated": true,
+    "description": "NVIDIA NVENC GPU acceleration"
+  },
+  "exitCode": 0,
+  "duration": "00:02:34",
+  "success": true,
+  "outputPath": "/output/video.mp4"
+}
+```
+
+#### Retrieving Logs
+
+```csharp
+// Get logs for specific job
+var logs = await commandLogger.GetCommandsByJobIdAsync("job-12345");
+
+// Get logs by correlation ID (across multiple jobs)
+var correlatedLogs = await commandLogger.GetCommandsByCorrelationIdAsync("abc-def-ghi");
+
+// Generate support report
+var report = await commandLogger.GenerateSupportReportAsync("job-12345");
+Console.WriteLine(report);
+```
+
+#### Support Report Example
+
+```
+=== FFmpeg Support Report ===
+Job ID: job-12345
+Generated: 2024-01-15 10:35:00 UTC
+Total Commands: 3
+
+--- Command #1 ---
+Timestamp: 2024-01-15 10:30:15
+Correlation ID: abc-def-ghi
+Success: True
+Exit Code: 0
+Duration: 154.23s
+Encoder: h264_nvenc (Hardware)
+Working Directory: /tmp/aura-render
+Output Path: /output/video.mp4
+
+Command:
+  ffmpeg
+Arguments:
+  -i
+  input.mp4
+  -c:v
+  h264_nvenc
+  -preset
+  medium
+  -b:v
+  8000k
+  ...
+```
+
+### Error Handling with ProblemDetails
+
+Render engine uses ProblemDetails (RFC 7807) for consistent error responses:
+
+#### Example Error Response
+
+```json
+{
+  "type": "https://docs.aura.studio/errors/render/insufficient-disk-space",
+  "title": "Insufficient Disk Space",
+  "status": 400,
+  "detail": "Insufficient disk space. Required: 2500 MB, Available: 1200 MB in C:\\Videos\\Output",
+  "correlationId": "abc-def-ghi",
+  "recommendedActions": [
+    "Free up disk space by deleting unnecessary files",
+    "Choose a different output directory with more space",
+    "Reduce video quality or resolution to decrease file size"
+  ]
+}
+```
+
+#### Error Categories
+
+1. **Preflight Failures (400)**
+   - Insufficient disk space
+   - No write permissions
+   - Invalid preset configuration
+
+2. **Encoder Failures (500)**
+   - FFmpeg not found
+   - Encoder not available
+   - Encoding errors
+
+3. **Service Unavailable (503)**
+   - Service not configured
+   - Dependencies missing
+
+### Integration with VideoOrchestrator
+
+The render engine integrates with VideoOrchestrator for end-to-end video generation:
+
+```csharp
+public class VideoOrchestrator
+{
+    private readonly RenderPreflightService _preflightService;
+    private readonly FFmpegCommandLogger _commandLogger;
+    
+    public async Task<string> RenderVideoAsync(
+        RenderSpecification spec,
+        IProgress<RenderProgress> progress,
+        CancellationToken ct)
+    {
+        // 1. Run preflight validation
+        var preflightResult = await _preflightService.ValidateRenderAsync(
+            spec.Preset,
+            spec.Duration,
+            spec.OutputDirectory,
+            spec.EncoderOverride,
+            spec.PreferHardware,
+            correlationId: spec.CorrelationId,
+            ct
+        );
+        
+        if (!preflightResult.CanProceed)
+        {
+            throw new RenderException(
+                "Preflight validation failed",
+                preflightResult.Errors
+            );
+        }
+        
+        // 2. Prepare FFmpeg command with selected encoder
+        var encoder = preflightResult.EncoderSelection;
+        var ffmpegArgs = BuildFFmpegCommand(spec, encoder);
+        
+        // 3. Execute FFmpeg with progress reporting
+        var startTime = DateTimeOffset.UtcNow;
+        var ffmpegResult = await ExecuteFFmpegAsync(
+            ffmpegArgs,
+            progress,
+            ct
+        );
+        
+        // 4. Log FFmpeg command for support
+        await _commandLogger.LogCommandAsync(new FFmpegCommandRecord
+        {
+            JobId = spec.JobId,
+            CorrelationId = spec.CorrelationId,
+            Timestamp = startTime,
+            Command = "ffmpeg",
+            Arguments = ffmpegArgs,
+            Encoder = new EncoderInfo
+            {
+                Name = encoder.EncoderName,
+                IsHardwareAccelerated = encoder.IsHardwareAccelerated,
+                Description = encoder.Description
+            },
+            ExitCode = ffmpegResult.ExitCode,
+            Duration = DateTimeOffset.UtcNow - startTime,
+            Success = ffmpegResult.Success,
+            OutputPath = spec.OutputPath
+        });
+        
+        if (!ffmpegResult.Success)
+        {
+            throw new RenderException(
+                "FFmpeg execution failed",
+                ffmpegResult.ErrorMessage
+            );
+        }
+        
+        return spec.OutputPath;
+    }
+}
+```
+
+### Best Practices
+
+1. **Always Run Preflight**
+   - Prevents mid-render failures
+   - Provides early error detection with actionable guidance
+   - Estimates render time for user expectations
+
+2. **Use Correlation IDs**
+   - Track related operations across services
+   - Enable end-to-end debugging
+   - Link FFmpeg commands to jobs
+
+3. **Handle Encoder Fallbacks**
+   - Hardware encoders may fail (driver issues, GPU in use)
+   - Always have software fallback configured
+   - Log encoder selection for debugging
+
+4. **Monitor Disk Space**
+   - Check before render (preflight)
+   - Monitor during render (temp files grow)
+   - Clean up temp files after render
+
+5. **Log All Commands**
+   - Essential for debugging production issues
+   - Helps users provide support information
+   - Enables command replay for testing
+
+6. **Provide User Guidance**
+   - Clear error messages with solutions
+   - Recommended actions for common issues
+   - Links to documentation
+
+See [BUILD_GUIDE.md](BUILD_GUIDE.md) for hardware acceleration setup and troubleshooting.
