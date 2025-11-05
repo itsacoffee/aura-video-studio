@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Ideation;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -16,11 +17,13 @@ namespace Aura.Core.Services.Ideation;
 
 /// <summary>
 /// Service for fetching and analyzing trending topics from live data sources
+/// Now uses unified orchestration via LlmStageAdapter
 /// </summary>
 public class TrendingTopicsService
 {
     private readonly ILogger<TrendingTopicsService> _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMemoryCache _cache;
 
@@ -46,10 +49,12 @@ public class TrendingTopicsService
         ILogger<TrendingTopicsService> logger,
         ILlmProvider llmProvider,
         IHttpClientFactory httpClientFactory,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
+        _stageAdapter = stageAdapter;
         _httpClientFactory = httpClientFactory;
         _cache = cache;
     }
@@ -333,10 +338,34 @@ public class TrendingTopicsService
             Style: "Analytical"
         );
 
-        var response = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
 
         // Parse AI response into structured insights
         return ParseAiInsights(response, topic);
+    }
+
+    /// <summary>
+    /// Helper method to execute LLM generation through unified orchestrator or fallback to direct provider
+    /// </summary>
+    private async Task<string> GenerateWithLlmAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        CancellationToken ct)
+    {
+        if (_stageAdapter != null)
+        {
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            if (!result.IsSuccess || result.Data == null)
+            {
+                _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            }
+            return result.Data;
+        }
+        else
+        {
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        }
     }
 
     /// <summary>
