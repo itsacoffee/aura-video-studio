@@ -52,6 +52,7 @@ export const SubtitlePreview: FC<SubtitlePreviewProps> = ({
       </div>
 
       <div
+        className={isRTL ? 'subtitle-rtl' : 'subtitle-ltr'}
         style={{
           maxHeight: '400px',
           overflowY: 'auto',
@@ -63,8 +64,6 @@ export const SubtitlePreview: FC<SubtitlePreviewProps> = ({
           fontSize: '14px',
           lineHeight: '1.5',
           whiteSpace: 'pre-wrap',
-          direction: isRTL ? 'rtl' : 'ltr',
-          textAlign: isRTL ? 'right' : 'left',
         }}
       >
         {lines.map((line, index) => (

@@ -84,14 +84,16 @@ export const SubtitleFontSettings: FC<SubtitleFontSettingsProps> = ({
         </div>
 
         <div>
-          <Label htmlFor="fontSize">Font Size</Label>
+          <Label htmlFor="fontSize">Font Size (12-72pt)</Label>
           <Input
             id="fontSize"
             type="number"
             value={config.fontSize.toString()}
+            min={12}
+            max={72}
             onChange={(e) => {
               const value = parseInt(e.target.value, 10);
-              if (!isNaN(value) && value > 0) {
+              if (!isNaN(value) && value >= 12 && value <= 72) {
                 setConfig({ ...config, fontSize: value });
               }
             }}

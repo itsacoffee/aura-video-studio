@@ -5,12 +5,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Models.ApiModels.V1;
 using Aura.Core.Models;
+using Aura.Core.Models.Audio;
 using Aura.Core.Models.Localization;
+using Aura.Core.Models.Voice;
 using Aura.Core.Providers;
+using Aura.Core.Services.Audio;
 using Aura.Core.Services.Localization;
+using Aura.Core.Captions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using ApiTranslateAndPlanSSMLRequest = Aura.Api.Models.ApiModels.V1.TranslateAndPlanSSMLRequest;
+using CoreTranslateAndPlanSSMLRequest = Aura.Core.Services.Localization.TranslationIntegrationService.TranslateAndPlanSSMLRequest;
 
 namespace Aura.Api.Controllers;
 
@@ -587,7 +593,7 @@ public class LocalizationController : ControllerBase
     [ProducesResponseType(typeof(TranslatedSSMLResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TranslatedSSMLResultDto>> TranslateAndPlanSSML(
-        [FromBody] TranslateAndPlanSSMLRequest request,
+        [FromBody] ApiTranslateAndPlanSSMLRequest request,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
@@ -600,11 +606,11 @@ public class LocalizationController : ControllerBase
                 _loggerFactory.CreateLogger<TranslationService>(),
                 _llmProvider);
 
-            var ssmlPlannerService = new Audio.SSMLPlannerService(
-                _loggerFactory.CreateLogger<Audio.SSMLPlannerService>());
+            var ssmlPlannerService = new SSMLPlannerService(
+                _loggerFactory.CreateLogger<SSMLPlannerService>());
 
-            var captionBuilder = new Captions.CaptionBuilder(
-                _loggerFactory.CreateLogger<Captions.CaptionBuilder>());
+            var captionBuilder = new CaptionBuilder(
+                _loggerFactory.CreateLogger<CaptionBuilder>());
 
             var integrationService = new TranslationIntegrationService(
                 _loggerFactory.CreateLogger<TranslationIntegrationService>(),
@@ -612,7 +618,7 @@ public class LocalizationController : ControllerBase
                 ssmlPlannerService,
                 captionBuilder);
 
-            if (!Enum.TryParse<Voice.VoiceProvider>(request.TargetProvider, true, out var provider))
+            if (!TryParseVoiceProvider(request.TargetProvider, out var provider))
             {
                 return BadRequest(new ProblemDetails
                 {
@@ -637,10 +643,10 @@ public class LocalizationController : ControllerBase
                 PauseStyle.Natural
             );
 
-            var subtitleFormat = Enum.Parse<TranslationIntegrationService.SubtitleFormat>(
+            var subtitleFormat = Enum.Parse<SubtitleFormat>(
                 request.SubtitleFormat, true);
 
-            var integrationRequest = new TranslationIntegrationService.TranslateAndPlanSSMLRequest
+            var integrationRequest = new CoreTranslateAndPlanSSMLRequest
             {
                 SourceLanguage = request.SourceLanguage,
                 TargetLanguage = request.TargetLanguage,
@@ -705,7 +711,7 @@ public class LocalizationController : ControllerBase
 
         try
         {
-            if (!Enum.TryParse<Voice.VoiceProvider>(request.Provider, true, out var provider))
+            if (!TryParseVoiceProvider(request.Provider, out var provider))
             {
                 return BadRequest(new ProblemDetails
                 {
@@ -720,11 +726,11 @@ public class LocalizationController : ControllerBase
                 _loggerFactory.CreateLogger<TranslationService>(),
                 _llmProvider);
 
-            var ssmlPlannerService = new Audio.SSMLPlannerService(
-                _loggerFactory.CreateLogger<Audio.SSMLPlannerService>());
+            var ssmlPlannerService = new SSMLPlannerService(
+                _loggerFactory.CreateLogger<SSMLPlannerService>());
 
-            var captionBuilder = new Captions.CaptionBuilder(
-                _loggerFactory.CreateLogger<Captions.CaptionBuilder>());
+            var captionBuilder = new CaptionBuilder(
+                _loggerFactory.CreateLogger<CaptionBuilder>());
 
             var integrationService = new TranslationIntegrationService(
                 _loggerFactory.CreateLogger<TranslationIntegrationService>(),
@@ -796,7 +802,7 @@ public class LocalizationController : ControllerBase
         );
     }
 
-    private SSMLPlanningResultDto MapToSSMLPlanningResultDto(Audio.SSMLPlanningResult result)
+    private SSMLPlanningResultDto MapToSSMLPlanningResultDto(SSMLPlanningResult result)
     {
         return new SSMLPlanningResultDto(
             result.Segments.Select(s => new SSMLSegmentResultDto(
@@ -837,5 +843,10 @@ public class LocalizationController : ControllerBase
             result.Warnings.ToList(),
             result.PlanningDurationMs
         );
+    }
+
+    private bool TryParseVoiceProvider(string providerName, out VoiceProvider provider)
+    {
+        return Enum.TryParse<VoiceProvider>(providerName, true, out provider);
     }
 }

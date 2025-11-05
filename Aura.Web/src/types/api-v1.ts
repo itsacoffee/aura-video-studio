@@ -1445,7 +1445,7 @@ export interface VoiceSpecDto {
   voiceName: string;
   rate: number;
   pitch: number;
-  volume?: number;
+  volume: number;
 }
 
 /**

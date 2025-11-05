@@ -148,14 +148,7 @@ public class TranslationIntegrationService
             "Getting voice recommendation for {Language} with {Provider}",
             targetLanguage, provider);
 
-        var recommendation = new VoiceRecommendation
-        {
-            TargetLanguage = targetLanguage,
-            Provider = provider,
-            IsRTL = language.IsRightToLeft
-        };
-
-        recommendation.RecommendedVoices = provider switch
+        var recommendedVoices = provider switch
         {
             VoiceProvider.ElevenLabs => GetElevenLabsVoices(targetLanguage, preferredGender, preferredStyle),
             VoiceProvider.PlayHT => GetPlayHTVoices(targetLanguage, preferredGender, preferredStyle),
@@ -164,7 +157,13 @@ public class TranslationIntegrationService
             _ => new List<RecommendedVoice>()
         };
 
-        return recommendation;
+        return new VoiceRecommendation
+        {
+            TargetLanguage = targetLanguage,
+            Provider = provider,
+            IsRTL = language.IsRightToLeft,
+            RecommendedVoices = recommendedVoices
+        };
     }
 
     private List<RecommendedVoice> GetElevenLabsVoices(
@@ -174,6 +173,8 @@ public class TranslationIntegrationService
     {
         var voices = new List<RecommendedVoice>();
 
+        var baseLanguage = ExtractBaseLanguageCode(language);
+        
         var languageMap = new Dictionary<string, List<(string Name, string Gender, string Style)>>
         {
             ["es"] = new()
@@ -214,7 +215,6 @@ public class TranslationIntegrationService
             }
         };
 
-        var baseLanguage = language.Split('-')[0];
         if (languageMap.TryGetValue(baseLanguage, out var languageVoices))
         {
             voices.AddRange(languageVoices.Select(v => new RecommendedVoice
@@ -254,6 +254,17 @@ public class TranslationIntegrationService
         {
             new() { VoiceName = "Piper Default", Gender = "Neutral", Style = "Neural", Quality = "Free" }
         };
+    }
+
+    private static string ExtractBaseLanguageCode(string languageCode)
+    {
+        if (string.IsNullOrEmpty(languageCode))
+        {
+            return "en";
+        }
+
+        var hyphenIndex = languageCode.IndexOf('-');
+        return hyphenIndex >= 0 ? languageCode.Substring(0, hyphenIndex) : languageCode;
     }
 }
 
