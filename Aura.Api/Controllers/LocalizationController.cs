@@ -12,6 +12,7 @@ using Aura.Core.Providers;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.Localization;
 using Aura.Core.Captions;
+using Aura.Providers.Tts.validators;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -606,8 +607,18 @@ public class LocalizationController : ControllerBase
                 _loggerFactory.CreateLogger<TranslationService>(),
                 _llmProvider);
 
+            var ssmlMappers = new List<ISSMLMapper>
+            {
+                new ElevenLabsSSMLMapper(),
+                new WindowsSSMLMapper(),
+                new PlayHTSSMLMapper(),
+                new PiperSSMLMapper(),
+                new Mimic3SSMLMapper()
+            };
+
             var ssmlPlannerService = new SSMLPlannerService(
-                _loggerFactory.CreateLogger<SSMLPlannerService>());
+                _loggerFactory.CreateLogger<SSMLPlannerService>(),
+                ssmlMappers);
 
             var captionBuilder = new CaptionBuilder(
                 _loggerFactory.CreateLogger<CaptionBuilder>());
@@ -636,11 +647,11 @@ public class LocalizationController : ControllerBase
                 TimeSpan.FromSeconds(line.DurationSeconds)
             )).ToList();
 
-            var voiceSpec = new Voice.VoiceSpec(
+            var voiceSpec = new VoiceSpec(
                 request.VoiceSpec.VoiceName,
                 request.VoiceSpec.Rate,
                 request.VoiceSpec.Pitch,
-                PauseStyle.Natural
+                Aura.Core.Models.PauseStyle.Natural
             );
 
             var subtitleFormat = Enum.Parse<SubtitleFormat>(
@@ -726,8 +737,18 @@ public class LocalizationController : ControllerBase
                 _loggerFactory.CreateLogger<TranslationService>(),
                 _llmProvider);
 
+            var ssmlMappers2 = new List<ISSMLMapper>
+            {
+                new ElevenLabsSSMLMapper(),
+                new WindowsSSMLMapper(),
+                new PlayHTSSMLMapper(),
+                new PiperSSMLMapper(),
+                new Mimic3SSMLMapper()
+            };
+
             var ssmlPlannerService = new SSMLPlannerService(
-                _loggerFactory.CreateLogger<SSMLPlannerService>());
+                _loggerFactory.CreateLogger<SSMLPlannerService>(),
+                ssmlMappers2);
 
             var captionBuilder = new CaptionBuilder(
                 _loggerFactory.CreateLogger<CaptionBuilder>());

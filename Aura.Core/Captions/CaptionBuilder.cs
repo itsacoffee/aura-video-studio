@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Aura.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -85,14 +87,14 @@ public class CaptionBuilder
     }
 
     /// <summary>
-    /// Builds FFmpeg subtitle filter for burn-in with styling options.
+    /// Builds FFmpeg subtitle filter for burn-in with styling options and RTL support.
     /// </summary>
     public string BuildBurnInFilter(
         string subtitlePath,
         CaptionRenderStyle style)
     {
-        _logger.LogDebug("Building burn-in filter for {Path} with style: {Style}", 
-            subtitlePath, style.FontName);
+        _logger.LogDebug("Building burn-in filter for {Path} with style: {Style}, RTL: {IsRTL}", 
+            subtitlePath, style.FontName, style.IsRightToLeft);
 
         // Escape path for FFmpeg
         string escapedPath = subtitlePath
@@ -101,18 +103,37 @@ public class CaptionBuilder
             .Replace("'", "\\'");
 
         // Build ASS style string for subtitles filter
-        string forceStyle = $"FontName={style.FontName}," +
-                           $"FontSize={style.FontSize}," +
-                           $"PrimaryColour=&H{style.PrimaryColor}&," +
-                           $"OutlineColour=&H{style.OutlineColor}&," +
-                           $"Outline={style.OutlineWidth}," +
-                           $"BorderStyle={style.BorderStyle}," +
-                           $"Alignment={style.Alignment}";
+        var styleElements = new List<string>
+        {
+            $"FontName={GetFontName(style)}",
+            $"FontSize={style.FontSize}",
+            $"PrimaryColour=&H{style.PrimaryColor}&",
+            $"OutlineColour=&H{style.OutlineColor}&",
+            $"Outline={style.OutlineWidth}",
+            $"BorderStyle={style.BorderStyle}",
+            $"Alignment={style.Alignment}"
+        };
 
+        string forceStyle = string.Join(",", styleElements);
         string filter = $"subtitles='{escapedPath}':force_style='{forceStyle}'";
+        
         _logger.LogDebug("Burn-in filter: {Filter}", filter);
 
         return filter;
+    }
+
+    /// <summary>
+    /// Gets appropriate font name with RTL fallback support.
+    /// </summary>
+    private string GetFontName(CaptionRenderStyle style)
+    {
+        if (style.IsRightToLeft && !string.IsNullOrEmpty(style.RtlFontFallback))
+        {
+            _logger.LogDebug("Using RTL font fallback: {Font}", style.RtlFontFallback);
+            return style.RtlFontFallback;
+        }
+
+        return style.FontName;
     }
 
     /// <summary>
@@ -167,6 +188,44 @@ public class CaptionBuilder
     }
 
     /// <summary>
+    /// Export subtitles to file with appropriate format and RTL handling.
+    /// </summary>
+    public async Task<string> ExportSubtitlesToFileAsync(
+        IEnumerable<ScriptLine> lines,
+        SubtitleExportFormat format,
+        string outputDirectory,
+        string baseFileName,
+        bool isRightToLeft = false)
+    {
+        var linesList = lines.ToList();
+        _logger.LogInformation(
+            "Exporting {Format} subtitles to {Directory}/{FileName}, RTL: {IsRTL}", 
+            format, outputDirectory, baseFileName, isRightToLeft);
+
+        if (!Directory.Exists(outputDirectory))
+        {
+            Directory.CreateDirectory(outputDirectory);
+            _logger.LogDebug("Created output directory: {Directory}", outputDirectory);
+        }
+
+        var content = format switch
+        {
+            SubtitleExportFormat.SRT => GenerateSrt(linesList),
+            SubtitleExportFormat.VTT => GenerateVtt(linesList),
+            _ => throw new ArgumentException($"Unsupported subtitle format: {format}")
+        };
+
+        var extension = format == SubtitleExportFormat.SRT ? "srt" : "vtt";
+        var fileName = $"{baseFileName}.{extension}";
+        var outputPath = Path.Combine(outputDirectory, fileName);
+
+        await File.WriteAllTextAsync(outputPath, content, Encoding.UTF8);
+        _logger.LogInformation("Subtitles exported to: {Path}", outputPath);
+
+        return outputPath;
+    }
+
+    /// <summary>
     /// Formats TimeSpan to SRT timecode format (HH:MM:SS,mmm).
     /// </summary>
     private string FormatSrtTimecode(TimeSpan time)
@@ -184,6 +243,15 @@ public class CaptionBuilder
 }
 
 /// <summary>
+/// Subtitle export format
+/// </summary>
+public enum SubtitleExportFormat
+{
+    SRT,
+    VTT
+}
+
+/// <summary>
 /// Caption rendering style options for burn-in with FFmpeg.
 /// </summary>
 public record CaptionRenderStyle(
@@ -193,4 +261,6 @@ public record CaptionRenderStyle(
     string OutlineColor = "000000",
     int OutlineWidth = 2,
     int BorderStyle = 3,  // 3 = opaque box
-    int Alignment = 2);   // 2 = bottom center
+    int Alignment = 2,   // 2 = bottom center
+    bool IsRightToLeft = false,
+    string? RtlFontFallback = null);  // Font fallback for RTL languages like Arabic/Hebrew
