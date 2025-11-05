@@ -1,0 +1,58 @@
+{
+  "name": "Edge Case - Very Short Video",
+  "description": "Test configuration for minimum duration video (5 seconds)",
+  "version": "1.0.0",
+  "brief": {
+    "topic": "Quick Tip",
+    "audience": "Everyone",
+    "goal": "Tutorial",
+    "tone": "Casual",
+    "language": "English",
+    "duration": 5
+  },
+  "plan": {
+    "targetDuration": 5,
+    "pacing": "Fast",
+    "density": "Sparse",
+    "style": "Tutorial"
+  },
+  "providers": {
+    "script": {
+      "name": "RuleBased",
+      "tier": "Free",
+      "offline": true
+    },
+    "tts": {
+      "name": "WindowsTTS",
+      "tier": "Free",
+      "offline": true
+    },
+    "visuals": {
+      "name": "Stock",
+      "tier": "Free",
+      "offline": true
+    }
+  },
+  "renderSettings": {
+    "resolution": "1920x1080",
+    "fps": 30,
+    "codec": "h264",
+    "bitrate": "5M",
+    "format": "mp4"
+  },
+  "expectedResults": {
+    "durationRange": [3, 7],
+    "minScenes": 1,
+    "maxScenes": 2,
+    "expectedArtifacts": [
+      "video.mp4",
+      "subtitles.srt"
+    ]
+  },
+  "metadata": {
+    "createdFor": "E2E Testing",
+    "testCategory": "edge-case",
+    "priority": "medium",
+    "hermetic": true
+  }
+}

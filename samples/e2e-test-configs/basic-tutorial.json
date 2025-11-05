@@ -1,0 +1,61 @@
+{
+  "name": "Basic Tutorial Test Config",
+  "description": "Hermetic test configuration for basic tutorial video generation",
+  "version": "1.0.0",
+  "brief": {
+    "topic": "Getting Started with Aura Video Studio",
+    "audience": "New Users",
+    "goal": "Tutorial",
+    "tone": "Friendly",
+    "language": "English",
+    "duration": 15
+  },
+  "plan": {
+    "targetDuration": 15,
+    "pacing": "Fast",
+    "density": "Sparse",
+    "style": "Tutorial"
+  },
+  "providers": {
+    "script": {
+      "name": "RuleBased",
+      "tier": "Free",
+      "offline": true
+    },
+    "tts": {
+      "name": "WindowsTTS",
+      "tier": "Free",
+      "offline": true,
+      "voice": "David"
+    },
+    "visuals": {
+      "name": "Stock",
+      "tier": "Free",
+      "offline": true
+    }
+  },
+  "renderSettings": {
+    "resolution": "1920x1080",
+    "fps": 30,
+    "codec": "h264",
+    "bitrate": "5M",
+    "format": "mp4"
+  },
+  "expectedResults": {
+    "durationRange": [10, 20],
+    "minScenes": 2,
+    "maxScenes": 5,
+    "expectedArtifacts": [
+      "video.mp4",
+      "subtitles.srt",
+      "subtitles.vtt",
+      "manifest.json"
+    ]
+  },
+  "metadata": {
+    "createdFor": "E2E Testing",
+    "testCategory": "smoke",
+    "priority": "high",
+    "hermetic": true
+  }
+}

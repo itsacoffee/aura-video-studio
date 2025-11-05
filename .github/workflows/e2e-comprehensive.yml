@@ -1,0 +1,334 @@
+name: E2E Comprehensive Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  e2e-windows:
+    name: E2E Tests (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install Node dependencies
+        working-directory: Aura.Web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: Aura.Web
+        run: npm run playwright:install
+
+      - name: Build Backend
+        run: dotnet build Aura.sln --configuration Release
+
+      - name: Start Backend API
+        shell: pwsh
+        run: |
+          $apiProcess = Start-Process -FilePath "dotnet" `
+            -ArgumentList "run --project Aura.Api --configuration Release --no-build" `
+            -PassThru `
+            -RedirectStandardOutput "api-stdout.log" `
+            -RedirectStandardError "api-stderr.log"
+          
+          echo "API_PROCESS_ID=$($apiProcess.Id)" >> $env:GITHUB_ENV
+          
+          Start-Sleep -Seconds 10
+          
+          $maxAttempts = 30
+          $attempt = 0
+          while ($attempt -lt $maxAttempts) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:5005/health/live" -UseBasicParsing -TimeoutSec 5
+              if ($response.StatusCode -eq 200) {
+                Write-Host "API is ready"
+                break
+              }
+            } catch {
+              $attempt++
+              Write-Host "Waiting for API... attempt $attempt/$maxAttempts"
+              Start-Sleep -Seconds 2
+            }
+          }
+
+      - name: Run Complete Workflow E2E Tests
+        working-directory: Aura.Web
+        run: npx playwright test tests/e2e/complete-workflow.spec.ts --project=chromium
+
+      - name: Run SSE Progress Monitoring Tests
+        working-directory: Aura.Web
+        run: npx playwright test tests/e2e/sse-progress-monitoring.spec.ts --project=chromium
+
+      - name: Run Job Lifecycle Management Tests
+        working-directory: Aura.Web
+        run: npx playwright test tests/e2e/job-lifecycle-management.spec.ts --project=chromium
+
+      - name: Run Export Manifest Tests
+        working-directory: Aura.Web
+        run: npx playwright test tests/e2e/export-manifest-licensing.spec.ts --project=chromium
+
+      - name: Run All Other E2E Tests
+        working-directory: Aura.Web
+        run: npx playwright test --project=chromium
+
+      - name: Stop Backend API
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:API_PROCESS_ID) {
+            Stop-Process -Id $env:API_PROCESS_ID -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-windows
+          path: Aura.Web/playwright-report/
+          retention-days: 30
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-windows
+          path: Aura.Web/test-results/
+          retention-days: 30
+
+      - name: Upload API Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-logs-windows
+          path: |
+            api-stdout.log
+            api-stderr.log
+          retention-days: 7
+
+  e2e-linux:
+    name: E2E Tests (Linux Headless)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install Node dependencies
+        working-directory: Aura.Web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: Aura.Web
+        run: npm run playwright:install
+
+      - name: Build Backend
+        run: dotnet build Aura.sln --configuration Release
+
+      - name: Start Backend API
+        run: |
+          dotnet run --project Aura.Api --configuration Release --no-build > api-stdout.log 2> api-stderr.log &
+          API_PID=$!
+          echo "API_PROCESS_ID=$API_PID" >> $GITHUB_ENV
+          
+          sleep 10
+          
+          max_attempts=30
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -f http://localhost:5005/health/live > /dev/null 2>&1; then
+              echo "API is ready"
+              break
+            fi
+            attempt=$((attempt + 1))
+            echo "Waiting for API... attempt $attempt/$max_attempts"
+            sleep 2
+          done
+
+      - name: Run E2E Tests (Headless)
+        working-directory: Aura.Web
+        run: npx playwright test --project=chromium-headless
+
+      - name: Stop Backend API
+        if: always()
+        run: |
+          if [ ! -z "$API_PROCESS_ID" ]; then
+            kill $API_PROCESS_ID || true
+          fi
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-linux
+          path: Aura.Web/playwright-report/
+          retention-days: 30
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-linux
+          path: Aura.Web/test-results/
+          retention-days: 30
+
+      - name: Upload API Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-logs-linux
+          path: |
+            api-stdout.log
+            api-stderr.log
+          retention-days: 7
+
+  flake-detection:
+    name: Flake Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+
+      - name: Install Node dependencies
+        working-directory: Aura.Web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: Aura.Web
+        run: npm run playwright:install
+
+      - name: Run Tests 10 Times
+        working-directory: Aura.Web
+        continue-on-error: true
+        run: |
+          for i in {1..10}; do
+            echo "Run $i of 10"
+            npx playwright test --project=chromium-headless --reporter=json --output=test-results/run-$i.json || true
+          done
+
+      - name: Analyze Flake Rate
+        run: |
+          echo "# Flake Detection Report" > flake-report.md
+          echo "" >> flake-report.md
+          echo "## Summary" >> flake-report.md
+          echo "- Total runs: 10" >> flake-report.md
+          echo "- Date: $(date -u +%Y-%m-%d)" >> flake-report.md
+          echo "" >> flake-report.md
+          echo "## Results" >> flake-report.md
+          echo "See test artifacts for detailed results" >> flake-report.md
+
+      - name: Upload Flake Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake-detection-report
+          path: flake-report.md
+          retention-days: 90
+
+      - name: Upload All Run Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake-detection-results
+          path: Aura.Web/test-results/
+          retention-days: 90
+
+  test-summary:
+    name: Generate Test Summary
+    runs-on: ubuntu-latest
+    needs: [e2e-windows, e2e-linux]
+    if: always()
+    
+    steps:
+      - name: Download Windows Results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results-windows
+          path: results-windows
+
+      - name: Download Linux Results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results-linux
+          path: results-linux
+
+      - name: Generate Summary
+        run: |
+          echo "# E2E Test Summary" > summary.md
+          echo "" >> summary.md
+          echo "## Platform Results" >> summary.md
+          echo "- Windows: See artifacts" >> summary.md
+          echo "- Linux: See artifacts" >> summary.md
+          echo "" >> summary.md
+          echo "## Test Coverage" >> summary.md
+          echo "- Complete Workflow Tests" >> summary.md
+          echo "- SSE Progress Monitoring" >> summary.md
+          echo "- Job Lifecycle Management" >> summary.md
+          echo "- Export Manifest & Licensing" >> summary.md
+          echo "- All Other E2E Scenarios" >> summary.md
+
+      - name: Upload Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-summary
+          path: summary.md
+          retention-days: 90
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('summary.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
