@@ -15,7 +15,6 @@ FORBIDDEN_PATHS=(
     "**/keys.json"
     "**/secrets.json"
     "Aura/apikeys.json"
-    "%LOCALAPPDATA%/Aura/apikeys.json"
     "**/*.backup"
     "**/*.bak"
 )

@@ -34,6 +34,8 @@ public class KeyStore : IKeyStore
         _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
         
         // Initialize SecureStorageService for all platforms
+        // Note: Using NullLogger for SecureStorageService as KeyStore handles all user-facing logging
+        // This avoids logger type mismatch while ensuring important security events are still logged by KeyStore
         var secureLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SecureStorageService>.Instance;
         _secureStorage = new SecureStorageService(secureLogger);
         _migrationCompleted = false;
@@ -220,12 +222,13 @@ public class KeyStore : IKeyStore
         try
         {
             // Load keys from encrypted storage using SecureStorageService
-            var providers = _secureStorage.GetConfiguredProvidersAsync().GetAwaiter().GetResult();
+            // Use ConfigureAwait(false) to avoid potential deadlocks in library code
+            var providers = _secureStorage.GetConfiguredProvidersAsync().ConfigureAwait(false).GetAwaiter().GetResult();
             var keys = new Dictionary<string, string>();
             
             foreach (var provider in providers)
             {
-                var key = _secureStorage.GetApiKeyAsync(provider).GetAwaiter().GetResult();
+                var key = _secureStorage.GetApiKeyAsync(provider).ConfigureAwait(false).GetAwaiter().GetResult();
                 if (!string.IsNullOrEmpty(key))
                 {
                     keys[provider] = key;
@@ -249,12 +252,13 @@ public class KeyStore : IKeyStore
     {
         var legacyFilesToCheck = new List<string>();
         
-        // Add platform-specific legacy paths
+        // Add all applicable legacy paths (check both if present, not exclusive)
         if (_isWindows && !string.IsNullOrEmpty(_legacyPlaintextPath))
         {
             legacyFilesToCheck.Add(_legacyPlaintextPath);
         }
-        else if (!string.IsNullOrEmpty(_legacyDevKeysPath))
+        
+        if (!string.IsNullOrEmpty(_legacyDevKeysPath))
         {
             legacyFilesToCheck.Add(_legacyDevKeysPath);
         }
@@ -291,7 +295,8 @@ public class KeyStore : IKeyStore
                     {
                         try
                         {
-                            _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value).GetAwaiter().GetResult();
+                            // Use ConfigureAwait(false) to avoid potential deadlocks in library code
+                            _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value).ConfigureAwait(false).GetAwaiter().GetResult();
                             migratedCount++;
                         }
                         catch (Exception ex)
