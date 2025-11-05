@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "description": "Hermetic test configuration for E2E tests - isolated from external dependencies",
+  "providers": {
+    "llm": {
+      "default": "RuleBased",
+      "fallback": ["RuleBased"],
+      "offline": true,
+      "timeout": 5000
+    },
+    "tts": {
+      "default": "Mock",
+      "fallback": ["Mock", "Windows"],
+      "offline": true,
+      "timeout": 3000
+    },
+    "visuals": {
+      "default": "Stock",
+      "fallback": ["Stock"],
+      "offline": true,
+      "timeout": 2000
+    }
+  },
+  "rendering": {
+    "mockFFmpeg": true,
+    "skipActualEncoding": true,
+    "generatePlaceholderOutput": true,
+    "maxDuration": 60
+  },
+  "testMode": {
+    "enabled": true,
+    "acceleratedTime": true,
+    "skipNetworkCalls": true,
+    "useMockProviders": true
+  },
+  "retryPolicy": {
+    "maxRetries": 3,
+    "retryDelay": 1000,
+    "exponentialBackoff": true,
+    "retryableErrors": [
+      "ETIMEDOUT",
+      "ECONNREFUSED",
+      "ECONNRESET",
+      "Provider temporarily unavailable"
+    ]
+  },
+  "timeouts": {
+    "brief": 2000,
+    "plan": 3000,
+    "script": 5000,
+    "tts": 3000,
+    "visuals": 3000,
+    "compose": 2000,
+    "render": 5000
+  },
+  "artifacts": {
+    "retainOnSuccess": false,
+    "retainOnFailure": true,
+    "cleanupAfterTest": true,
+    "outputPath": "./test-output"
+  }
+}

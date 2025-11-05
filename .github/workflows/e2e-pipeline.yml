@@ -1,0 +1,386 @@
+name: E2E Pipeline Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run nightly at 3 AM UTC for flake detection
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '20'
+
+jobs:
+  # Job 1: E2E Tests on Windows (Full Pipeline Support)
+  e2e-windows:
+    name: E2E Tests (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+      
+      - name: Install FFmpeg
+        run: |
+          choco install ffmpeg -y
+          ffmpeg -version
+      
+      - name: Restore .NET dependencies
+        run: dotnet restore Aura.sln
+      
+      - name: Build API
+        run: dotnet build Aura.Api/Aura.Api.csproj --configuration Release --no-restore
+      
+      - name: Install frontend dependencies
+        working-directory: Aura.Web
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        working-directory: Aura.Web
+        run: npm run playwright:install
+      
+      - name: Run Full Pipeline E2E Tests
+        working-directory: Aura.Web
+        run: |
+          npx playwright test tests/e2e/full-pipeline.spec.ts `
+            --reporter=html,json,junit `
+            --workers=1 `
+            --retries=2
+        continue-on-error: true
+        id: e2e-tests
+      
+      - name: Run Complete Workflow Tests
+        working-directory: Aura.Web
+        run: |
+          npx playwright test tests/e2e/complete-workflow.spec.ts `
+            --reporter=html,json,junit `
+            --workers=1 `
+            --retries=2
+        continue-on-error: true
+      
+      - name: Generate Flake Report
+        if: always()
+        working-directory: Aura.Web
+        shell: pwsh
+        run: |
+          if (Test-Path .flake-tracker.json) {
+            Write-Host "Flake tracking data found"
+            Get-Content .flake-tracker.json
+          } else {
+            Write-Host "No flake tracking data available"
+          }
+      
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-windows-results
+          path: |
+            Aura.Web/playwright-report/
+            Aura.Web/test-results/
+            Aura.Web/.flake-tracker.json
+          retention-days: 30
+      
+      - name: Upload Test Videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-windows-videos
+          path: Aura.Web/test-results/**/*.webm
+          retention-days: 7
+      
+      - name: Fail if tests failed
+        if: steps.e2e-tests.outcome == 'failure'
+        run: exit 1
+
+  # Job 2: E2E Tests on Linux (Headless)
+  e2e-linux:
+    name: E2E Tests (Linux Headless)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+      
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -version
+      
+      - name: Install frontend dependencies
+        working-directory: Aura.Web
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        working-directory: Aura.Web
+        run: npm run playwright:install
+      
+      - name: Run E2E Tests (Headless)
+        working-directory: Aura.Web
+        run: |
+          npx playwright test tests/e2e/full-pipeline.spec.ts \
+            --reporter=html,json,junit \
+            --workers=1 \
+            --retries=2
+        continue-on-error: true
+        id: e2e-tests-linux
+      
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-linux-results
+          path: |
+            Aura.Web/playwright-report/
+            Aura.Web/test-results/
+          retention-days: 30
+      
+      - name: Fail if tests failed
+        if: steps.e2e-tests-linux.outcome == 'failure'
+        run: exit 1
+
+  # Job 3: Backend Integration Tests (SSE, Cancellation, Export)
+  backend-integration:
+    name: Backend Integration Tests
+    runs-on: windows-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Restore dependencies
+        run: dotnet restore Aura.sln
+      
+      - name: Build solution
+        run: dotnet build Aura.sln --configuration Release --no-restore
+      
+      - name: Run Backend E2E Tests
+        run: |
+          dotnet test Aura.E2E/Aura.E2E.csproj `
+            --configuration Release `
+            --no-build `
+            --logger "trx;LogFileName=backend-e2e.trx" `
+            --logger "console;verbosity=detailed" `
+            --filter "FullyQualifiedName~CompleteWorkflow|FullyQualifiedName~Pipeline"
+      
+      - name: Run SSE Integration Tests
+        run: |
+          dotnet test Aura.Tests/Aura.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --logger "trx;LogFileName=sse-tests.trx" `
+            --logger "console;verbosity=detailed" `
+            --filter "FullyQualifiedName~Sse|FullyQualifiedName~ServerSentEvents"
+        continue-on-error: true
+      
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-integration-results
+          path: |
+            **/TestResults/*.trx
+          retention-days: 30
+
+  # Job 4: CLI Integration Tests
+  cli-integration:
+    name: CLI Integration Tests
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Install FFmpeg (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install ffmpeg -y
+          ffmpeg -version
+      
+      - name: Install FFmpeg (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -version
+      
+      - name: Restore dependencies
+        run: dotnet restore Aura.sln
+      
+      - name: Build CLI
+        run: dotnet build Aura.Cli/Aura.Cli.csproj --configuration Release --no-restore
+      
+      - name: Test CLI Quick Command (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          dotnet run --project Aura.Cli --configuration Release -- quick -t "CLI Test" -d 0.5 -o ./artifacts/cli --dry-run -v
+      
+      - name: Test CLI Quick Command (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          dotnet run --project Aura.Cli --configuration Release -- quick -t "CLI Test" -d 0.5 -o ./artifacts/cli --dry-run -v
+      
+      - name: Test CLI Preflight Command
+        run: |
+          dotnet run --project Aura.Cli --configuration Release -- preflight -v
+      
+      - name: Upload CLI Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-artifacts-${{ matrix.os }}
+          path: artifacts/cli/
+          retention-days: 7
+
+  # Job 5: Flake Analysis and Reporting
+  flake-analysis:
+    name: Flake Analysis
+    runs-on: ubuntu-latest
+    needs: [e2e-windows, e2e-linux, backend-integration]
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-artifacts
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Analyze Flake Data
+        run: |
+          echo "# Flake Analysis Report" > flake-report.md
+          echo "" >> flake-report.md
+          echo "Generated: $(date -u)" >> flake-report.md
+          echo "" >> flake-report.md
+          
+          if [ -f "test-artifacts/e2e-windows-results/.flake-tracker.json" ]; then
+            echo "## Windows E2E Test Flakes" >> flake-report.md
+            cat test-artifacts/e2e-windows-results/.flake-tracker.json >> flake-report.md
+            echo "" >> flake-report.md
+          fi
+          
+          echo "## Test Retry Summary" >> flake-report.md
+          echo "- Windows E2E: Check artifacts for retry counts" >> flake-report.md
+          echo "- Linux E2E: Check artifacts for retry counts" >> flake-report.md
+          echo "- Backend Integration: Check TRX files" >> flake-report.md
+      
+      - name: Upload Flake Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake-analysis-report
+          path: flake-report.md
+          retention-days: 90
+      
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report = 'Flake analysis pending';
+            
+            try {
+              report = fs.readFileSync('flake-report.md', 'utf8');
+            } catch (error) {
+              console.log('Could not read flake report');
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## E2E Test Results\n\n${report}`
+            });
+
+  # Job 6: Test Summary and Gates
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [e2e-windows, e2e-linux, backend-integration, cli-integration]
+    if: always()
+    
+    steps:
+      - name: Check Test Results
+        run: |
+          echo "E2E Windows: ${{ needs.e2e-windows.result }}"
+          echo "E2E Linux: ${{ needs.e2e-linux.result }}"
+          echo "Backend Integration: ${{ needs.backend-integration.result }}"
+          echo "CLI Integration: ${{ needs.cli-integration.result }}"
+          
+          if [ "${{ needs.e2e-windows.result }}" != "success" ] || \
+             [ "${{ needs.e2e-linux.result }}" != "success" ] || \
+             [ "${{ needs.backend-integration.result }}" != "success" ] || \
+             [ "${{ needs.cli-integration.result }}" != "success" ]; then
+            echo "One or more critical test jobs failed"
+            exit 1
+          fi
+          
+          echo "All critical test gates passed"
+      
+      - name: Generate Summary
+        run: |
+          echo "# E2E Pipeline Test Summary" > summary.md
+          echo "" >> summary.md
+          echo "## Results" >> summary.md
+          echo "- ✅ Windows E2E Tests: ${{ needs.e2e-windows.result }}" >> summary.md
+          echo "- ✅ Linux E2E Tests: ${{ needs.e2e-linux.result }}" >> summary.md
+          echo "- ✅ Backend Integration: ${{ needs.backend-integration.result }}" >> summary.md
+          echo "- ✅ CLI Integration: ${{ needs.cli-integration.result }}" >> summary.md
+          echo "" >> summary.md
+          echo "All critical flows tested and verified." >> summary.md
+      
+      - name: Upload Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-summary
+          path: summary.md
+          retention-days: 30

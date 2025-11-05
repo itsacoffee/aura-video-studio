@@ -3,8 +3,8 @@
 ## Overview
 This checklist validates all critical paths from first-run through video generation, verifies all dependencies wire up correctly, tests every user-facing feature, and ensures the application is production-ready.
 
-**Last Updated**: 2025-10-27  
-**Status**: ✅ Build Validation Complete - Ready for Manual QA
+**Last Updated**: 2025-11-05  
+**Status**: ✅ Build Validation Complete - E2E Tests Enhanced
 
 ## Automated Build Validation Results
 
@@ -16,8 +16,10 @@ This checklist validates all critical paths from first-run through video generat
 
 ### ✅ Test Suites
 - **Vitest Unit Tests**: 783 tests PASSED
-- **Playwright E2E Tests**: 10 test files ready (first-run wizard, quick-demo, etc.)
-- **CI Integration**: orchestrator-smoke.yml workflow validates health endpoints
+- **Playwright E2E Tests**: 22 test files including full pipeline scenarios
+- **Backend E2E Tests**: Complete workflow and pipeline validation
+- **CI Integration**: Comprehensive e2e-pipeline.yml with Windows/Linux matrix
+- **Flake Control**: Automatic flake detection and quarantine system active
 
 ### ✅ Infrastructure Components
 - **Health Endpoints**: `/api/health/live` and `/api/health/ready` implemented
@@ -44,6 +46,8 @@ Manual verification needed for:
 ---
 
 ## Related Documentation
+- **[E2E Testing Guide](E2E_TESTING_GUIDE.md)**: Comprehensive guide to end-to-end testing, flake control, and CI gates
+- **[SSE Integration Testing Guide](SSE_INTEGRATION_TESTING_GUIDE.md)**: Server-Sent Events testing documentation
 - **[Dependency Documentation](docs/DEPENDENCIES.md)**: Complete manifest of all dependencies, versions, and installation methods
 - **[Orchestration Runbook](docs/ORCHESTRATION_RUNBOOK.md)**: Operational guide for startup diagnostics and troubleshooting
 - **[FFmpeg Setup Guide](docs/FFmpeg_Setup_Guide.md)**: Step-by-step FFmpeg installation instructions
