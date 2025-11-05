@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ApiTranslateAndPlanSSMLRequest = Aura.Api.Models.ApiModels.V1.TranslateAndPlanSSMLRequest;
-using CoreTranslateAndPlanSSMLRequest = Aura.Core.Services.Localization.TranslationIntegrationService.TranslateAndPlanSSMLRequest;
+using CoreTranslateAndPlanSSMLRequest = Aura.Core.Services.Localization.TranslateAndPlanSSMLRequest;
 
 namespace Aura.Api.Controllers;
 
@@ -783,7 +783,7 @@ public class LocalizationController : ControllerBase
     }
 
     private TranslatedSSMLResultDto MapToTranslatedSSMLResultDto(
-        TranslationIntegrationService.TranslatedSSMLResult result)
+        TranslatedSSMLResult result)
     {
         return new TranslatedSSMLResultDto(
             MapToTranslationResultDto(result.Translation),
