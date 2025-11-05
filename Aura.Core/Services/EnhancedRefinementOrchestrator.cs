@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -13,11 +14,13 @@ namespace Aura.Core.Services;
 
 /// <summary>
 /// Enhanced orchestrator using generator-critic-editor pattern with telemetry
+/// Now uses unified orchestration via LlmStageAdapter
 /// </summary>
 public class EnhancedRefinementOrchestrator
 {
     private readonly ILogger<EnhancedRefinementOrchestrator> _logger;
     private readonly ILlmProvider _generatorProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
     private readonly ICriticProvider _criticProvider;
     private readonly IEditorProvider _editorProvider;
     private readonly IntelligentContentAdvisor? _contentAdvisor;
@@ -27,10 +30,12 @@ public class EnhancedRefinementOrchestrator
         ILlmProvider generatorProvider,
         ICriticProvider criticProvider,
         IEditorProvider editorProvider,
-        IntelligentContentAdvisor? contentAdvisor = null)
+        IntelligentContentAdvisor? contentAdvisor = null,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _generatorProvider = generatorProvider;
+        _stageAdapter = stageAdapter;
         _criticProvider = criticProvider;
         _editorProvider = editorProvider;
         _contentAdvisor = contentAdvisor;
@@ -355,7 +360,7 @@ public class EnhancedRefinementOrchestrator
     {
         try
         {
-            var script = await _generatorProvider.DraftScriptAsync(brief, spec, ct);
+            var script = await GenerateWithLlmAsync(brief, spec, ct);
             return script ?? string.Empty;
         }
         catch (Exception ex)
@@ -363,6 +368,17 @@ public class EnhancedRefinementOrchestrator
             _logger.LogError(ex, "Failed to generate initial draft");
             return string.Empty;
         }
+    }
+
+    private async Task<string> GenerateWithLlmAsync(Brief brief, PlanSpec planSpec, CancellationToken ct)
+    {
+        if (_stageAdapter != null)
+        {
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            if (result.IsSuccess && result.Data != null) return result.Data;
+            _logger.LogWarning("Orchestrator failed, using direct provider: {Error}", result.ErrorMessage);
+        }
+        return await _generatorProvider.DraftScriptAsync(brief, planSpec, ct);
     }
 
     private ScriptQualityMetrics ConvertCritiqueToMetrics(CritiqueResult critique, int iteration)
