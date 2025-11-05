@@ -193,6 +193,10 @@ builder.Services.AddSingleton<IHardwareDetector>(sp => sp.GetRequiredService<Har
 builder.Services.AddSingleton<Aura.Core.Hardware.DiagnosticsHelper>();
 builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
 
+// Register secure storage and key management services
+builder.Services.AddSingleton<Aura.Core.Services.ISecureStorageService, Aura.Core.Services.SecureStorageService>();
+builder.Services.AddSingleton<Aura.Core.Services.IKeyValidationService, Aura.Core.Services.KeyValidationService>();
+
 // Register Ollama service for process control
 builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
 {
