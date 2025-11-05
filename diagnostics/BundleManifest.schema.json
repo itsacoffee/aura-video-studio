@@ -1,0 +1,345 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aura.studio/schemas/diagnostics/BundleManifest.schema.json",
+  "title": "Aura Video Studio Diagnostic Bundle Manifest",
+  "description": "Schema for diagnostic bundle manifest containing job failure information and telemetry",
+  "type": "object",
+  "required": ["schemaVersion", "job", "timeline"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "description": "Schema version for compatibility",
+      "pattern": "^\\d+\\.\\d+$",
+      "examples": ["1.0"]
+    },
+    "job": {
+      "type": "object",
+      "description": "Job information",
+      "required": ["jobId", "status", "stage", "startedAt"],
+      "properties": {
+        "jobId": {
+          "type": "string",
+          "description": "Unique job identifier"
+        },
+        "status": {
+          "type": "string",
+          "description": "Job status",
+          "enum": ["Queued", "Running", "Done", "Failed", "Skipped", "Canceled", "Succeeded"]
+        },
+        "stage": {
+          "type": "string",
+          "description": "Stage where job is/was at"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the job started"
+        },
+        "completedAt": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When the job completed"
+        },
+        "errorMessage": {
+          "type": ["string", "null"],
+          "description": "Error message if failed"
+        },
+        "errorCode": {
+          "type": ["string", "null"],
+          "description": "Error code if failed"
+        },
+        "correlationId": {
+          "type": ["string", "null"],
+          "description": "Correlation ID for tracking"
+        },
+        "warnings": {
+          "type": "array",
+          "description": "List of warnings",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "systemProfile": {
+      "type": ["object", "null"],
+      "description": "System profile at time of failure",
+      "properties": {
+        "machineName": {
+          "type": "string",
+          "description": "Machine name"
+        },
+        "osVersion": {
+          "type": "string",
+          "description": "Operating system version"
+        },
+        "processorCount": {
+          "type": "integer",
+          "description": "Number of processors"
+        },
+        "dotNetVersion": {
+          "type": "string",
+          "description": ".NET runtime version"
+        },
+        "workingSetBytes": {
+          "type": "integer",
+          "description": "Memory working set in bytes"
+        },
+        "hardware": {
+          "type": ["object", "null"],
+          "description": "Hardware information",
+          "properties": {
+            "logicalCores": {
+              "type": "integer"
+            },
+            "physicalCores": {
+              "type": "integer"
+            },
+            "ramGB": {
+              "type": "integer"
+            },
+            "gpuVendor": {
+              "type": ["string", "null"]
+            },
+            "gpuModel": {
+              "type": ["string", "null"]
+            },
+            "tier": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "description": "Timeline of job execution with durations",
+      "items": {
+        "type": "object",
+        "required": ["stage", "correlationId", "startedAt", "status"],
+        "properties": {
+          "stage": {
+            "type": "string",
+            "description": "Stage name"
+          },
+          "correlationId": {
+            "type": "string",
+            "description": "Correlation ID for this stage"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the stage started"
+          },
+          "completedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the stage completed"
+          },
+          "durationSeconds": {
+            "type": "number",
+            "description": "Duration in seconds"
+          },
+          "status": {
+            "type": "string",
+            "description": "Stage status"
+          },
+          "errorMessage": {
+            "type": ["string", "null"],
+            "description": "Error message if failed"
+          }
+        }
+      }
+    },
+    "modelDecisions": {
+      "type": "array",
+      "description": "Model decisions made during execution",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "decisionPoint", "selectedModel", "provider"],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the decision was made"
+          },
+          "decisionPoint": {
+            "type": "string",
+            "description": "What decision was being made"
+          },
+          "selectedModel": {
+            "type": "string",
+            "description": "Which model was selected"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Provider of the model"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why this model was chosen"
+          },
+          "criteria": {
+            "type": "object",
+            "description": "Decision criteria",
+            "additionalProperties": true
+          },
+          "correlationId": {
+            "type": ["string", "null"],
+            "description": "Correlation ID"
+          }
+        }
+      }
+    },
+    "ffmpegCommands": {
+      "type": "array",
+      "description": "FFmpeg commands executed",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "command", "exitCode", "durationSeconds"],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "command": {
+            "type": "string",
+            "description": "FFmpeg command that was executed"
+          },
+          "exitCode": {
+            "type": "integer",
+            "description": "Exit code of the command"
+          },
+          "durationSeconds": {
+            "type": "number",
+            "description": "How long the command took"
+          },
+          "errorOutput": {
+            "type": ["string", "null"],
+            "description": "Error output if failed"
+          },
+          "correlationId": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    "exportManifests": {
+      "type": "array",
+      "description": "Export manifests",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "outputPath", "format", "sizeBytes"],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "outputPath": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "resolution": {
+            "type": ["string", "null"]
+          },
+          "frameRate": {
+            "type": ["integer", "null"]
+          },
+          "codec": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    "costReport": {
+      "type": ["object", "null"],
+      "description": "Cost report if available",
+      "properties": {
+        "totalCost": {
+          "type": "number",
+          "description": "Total cost in currency"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code",
+          "default": "USD"
+        },
+        "costByStage": {
+          "type": "object",
+          "description": "Cost breakdown by stage",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "costByProvider": {
+          "type": "object",
+          "description": "Cost breakdown by provider",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "totalTokens": {
+          "type": "integer",
+          "description": "Total tokens used"
+        },
+        "withinBudget": {
+          "type": "boolean",
+          "description": "Whether within budget"
+        }
+      }
+    },
+    "logs": {
+      "type": "array",
+      "description": "Anonymized log entries",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "level", "message"],
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "level": {
+            "type": "string",
+            "description": "Log level"
+          },
+          "message": {
+            "type": "string",
+            "description": "Log message (redacted)"
+          },
+          "correlationId": {
+            "type": ["string", "null"]
+          },
+          "exception": {
+            "type": ["string", "null"],
+            "description": "Exception details if present"
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "description": "Files included in the bundle",
+      "items": {
+        "type": "object",
+        "required": ["fileName", "description", "sizeBytes"],
+        "properties": {
+          "fileName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

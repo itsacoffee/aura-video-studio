@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using Aura.Core.AI;
 using Aura.Core.AI.Adapters;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
+using Aura.Core.Models.Diagnostics;
 using Aura.Core.Providers;
 using Aura.Core.Services.HealthChecks;
 using Aura.Core.Services.Orchestration;
@@ -37,6 +39,8 @@ public class DiagnosticsController : ControllerBase
     private readonly PerformanceTrackingService? _performanceTracking;
     private readonly DiagnosticReportGenerator? _reportGenerator;
     private readonly ModelCatalog? _modelCatalog;
+    private readonly DiagnosticBundleService? _bundleService;
+    private readonly FailureAnalysisService? _failureAnalysisService;
 
     public DiagnosticsController(
         ILogger<DiagnosticsController> logger,
@@ -51,7 +55,9 @@ public class DiagnosticsController : ControllerBase
         ErrorAggregationService? errorAggregation = null,
         PerformanceTrackingService? performanceTracking = null,
         DiagnosticReportGenerator? reportGenerator = null,
-        ModelCatalog? modelCatalog = null)
+        ModelCatalog? modelCatalog = null,
+        DiagnosticBundleService? bundleService = null,
+        FailureAnalysisService? failureAnalysisService = null)
     {
         _logger = logger;
         _healthService = healthService;
@@ -66,6 +72,8 @@ public class DiagnosticsController : ControllerBase
         _performanceTracking = performanceTracking;
         _reportGenerator = reportGenerator;
         _modelCatalog = modelCatalog;
+        _bundleService = bundleService;
+        _failureAnalysisService = failureAnalysisService;
     }
 
     /// <summary>
@@ -708,6 +716,162 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
+    /// Generate comprehensive diagnostic bundle for a specific job
+    /// </summary>
+    [HttpPost("bundle/{jobId}")]
+    public async Task<ActionResult<object>> GenerateDiagnosticBundle(
+        string jobId,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Diagnostic bundle generation requested for job {JobId}", jobId);
+
+        if (_bundleService == null)
+        {
+            return BadRequest(new { Error = "Diagnostic bundle service not configured" });
+        }
+
+        try
+        {
+            // Note: In production, retrieve the actual Job from job store/repository
+            // For now, using minimal stub - the bundle service will collect logs and system info
+            var job = new Job { Id = jobId, Status = JobStatus.Failed, Stage = "Unknown" };
+            
+            var bundle = await _bundleService.GenerateBundleAsync(job, null, null, null, ct);
+
+            return Ok(new
+            {
+                BundleId = bundle.BundleId,
+                JobId = bundle.JobId,
+                FileName = bundle.FileName,
+                CreatedAt = bundle.CreatedAt,
+                ExpiresAt = bundle.ExpiresAt,
+                SizeBytes = bundle.SizeBytes,
+                DownloadUrl = $"/api/diagnostics/bundle/{bundle.BundleId}/download"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating diagnostic bundle for job {JobId}", jobId);
+            return StatusCode(500, new { Error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Download diagnostic bundle by ID
+    /// </summary>
+    [HttpGet("bundle/{bundleId}/download")]
+    public ActionResult DownloadDiagnosticBundle(string bundleId)
+    {
+        _logger.LogInformation("Diagnostic bundle download requested: {BundleId}", bundleId);
+
+        if (_bundleService == null)
+        {
+            return BadRequest(new { Error = "Diagnostic bundle service not configured" });
+        }
+
+        try
+        {
+            var bundlePath = _bundleService.GetBundlePath(bundleId);
+
+            if (bundlePath == null || !System.IO.File.Exists(bundlePath))
+            {
+                return NotFound(new { Error = "Bundle not found or has expired" });
+            }
+
+            var fileBytes = System.IO.File.ReadAllBytes(bundlePath);
+            var fileName = Path.GetFileName(bundlePath);
+
+            return File(fileBytes, "application/zip", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading diagnostic bundle");
+            return StatusCode(500, new { Error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Analyze job failure and provide AI-powered recommendations
+    /// </summary>
+    [HttpPost("explain-failure")]
+    public async Task<ActionResult<object>> ExplainFailure(
+        [FromBody] ExplainFailureRequest request,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation("Failure analysis requested for job {JobId}", request.JobId);
+
+        if (_failureAnalysisService == null)
+        {
+            return BadRequest(new { Error = "Failure analysis service not configured" });
+        }
+
+        try
+        {
+            // Note: In production, retrieve the actual Job from job store/repository
+            // The request provides minimal info; full job context would improve analysis accuracy
+            var job = new Job 
+            { 
+                Id = request.JobId, 
+                Status = JobStatus.Failed, 
+                Stage = request.Stage ?? "Unknown",
+                ErrorMessage = request.ErrorMessage ?? string.Empty,
+                FailureDetails = !string.IsNullOrEmpty(request.ErrorCode) 
+                    ? new JobFailure 
+                    { 
+                        ErrorCode = request.ErrorCode,
+                        Message = request.ErrorMessage ?? string.Empty,
+                        Stage = request.Stage ?? "Unknown"
+                    } 
+                    : null
+            };
+            
+            var analysis = await _failureAnalysisService.AnalyzeFailureAsync(job, null, ct);
+
+            return Ok(new
+            {
+                JobId = analysis.JobId,
+                AnalyzedAt = analysis.AnalyzedAt,
+                Summary = analysis.Summary,
+                PrimaryRootCause = new
+                {
+                    Type = analysis.PrimaryRootCause.Type.ToString(),
+                    Description = analysis.PrimaryRootCause.Description,
+                    Confidence = analysis.PrimaryRootCause.Confidence,
+                    Evidence = analysis.PrimaryRootCause.Evidence,
+                    Stage = analysis.PrimaryRootCause.Stage,
+                    Provider = analysis.PrimaryRootCause.Provider
+                },
+                SecondaryRootCauses = analysis.SecondaryRootCauses.Select(rc => new
+                {
+                    Type = rc.Type.ToString(),
+                    Description = rc.Description,
+                    Confidence = rc.Confidence,
+                    Evidence = rc.Evidence,
+                    Stage = rc.Stage,
+                    Provider = rc.Provider
+                }).ToList(),
+                RecommendedActions = analysis.RecommendedActions.Select(ra => new
+                {
+                    Priority = ra.Priority,
+                    Title = ra.Title,
+                    Description = ra.Description,
+                    Steps = ra.Steps,
+                    CanAutomate = ra.CanAutomate,
+                    EstimatedMinutes = ra.EstimatedMinutes,
+                    Type = ra.Type.ToString()
+                }).ToList(),
+                DocumentationLinks = analysis.DocumentationLinks,
+                ConfidenceScore = analysis.ConfidenceScore
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing failure for job {JobId}", request.JobId);
+            return StatusCode(500, new { Error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Parse time span from string (e.g., "24h", "7d", "1h")
     /// </summary>
     private TimeSpan ParseTimeSpan(string value)
@@ -729,6 +893,17 @@ public class DiagnosticsController : ControllerBase
             _ => TimeSpan.FromHours(24)
         };
     }
+}
+
+/// <summary>
+/// Request model for failure analysis
+/// </summary>
+public class ExplainFailureRequest
+{
+    public string JobId { get; set; } = string.Empty;
+    public string? Stage { get; set; }
+    public string? ErrorMessage { get; set; }
+    public string? ErrorCode { get; set; }
 }
 
 /// <summary>
