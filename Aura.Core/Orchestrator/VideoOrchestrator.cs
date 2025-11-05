@@ -43,6 +43,7 @@ public class VideoOrchestrator
     private readonly Configuration.ProviderSettings _providerSettings;
     private readonly NarrationOptimizationService? _narrationOptimizationService;
     private readonly PipelineOrchestrationEngine? _pipelineEngine;
+    private readonly Services.RAG.RagScriptEnhancer? _ragScriptEnhancer;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -64,7 +65,8 @@ public class VideoOrchestrator
         Services.PacingServices.IntelligentPacingOptimizer? pacingOptimizer = null,
         Services.PacingServices.PacingApplicationService? pacingApplicationService = null,
         NarrationOptimizationService? narrationOptimizationService = null,
-        PipelineOrchestrationEngine? pipelineEngine = null)
+        PipelineOrchestrationEngine? pipelineEngine = null,
+        Services.RAG.RagScriptEnhancer? ragScriptEnhancer = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(llmProvider);
@@ -102,6 +104,7 @@ public class VideoOrchestrator
         _providerSettings = providerSettings;
         _narrationOptimizationService = narrationOptimizationService;
         _pipelineEngine = pipelineEngine;
+        _ragScriptEnhancer = ragScriptEnhancer;
     }
 
     /// <summary>
@@ -233,10 +236,29 @@ public class VideoOrchestrator
             progress?.Report("Stage 1/5: Generating script...");
             _logger.LogInformation("Generating script for topic: {Topic}", brief.Topic);
             
+            Brief enhancedBrief = brief;
+            Models.RAG.RagContext? ragContext = null;
+            
+            if (_ragScriptEnhancer != null && brief.RagConfiguration?.Enabled == true)
+            {
+                _logger.LogInformation("RAG is enabled, enhancing brief with retrieved context");
+                progress?.Report("Retrieving relevant documents from RAG index...");
+                
+                var (enhanced, context) = await _ragScriptEnhancer.EnhanceBriefWithRagAsync(brief, ct).ConfigureAwait(false);
+                enhancedBrief = enhanced;
+                ragContext = context;
+                
+                if (ragContext != null && ragContext.Chunks.Count > 0)
+                {
+                    _logger.LogInformation("RAG context retrieved: {ChunkCount} chunks, {TokenCount} tokens", 
+                        ragContext.Chunks.Count, ragContext.TotalTokens);
+                }
+            }
+            
             string script = await _retryWrapper.ExecuteWithRetryAsync(
                 async (ctRetry) =>
                 {
-                    var generatedScript = await _llmProvider.DraftScriptAsync(brief, planSpec, ctRetry).ConfigureAwait(false);
+                    var generatedScript = await _llmProvider.DraftScriptAsync(enhancedBrief, planSpec, ctRetry).ConfigureAwait(false);
                     
                     // Validate script structure and content
                     var structuralValidation = _scriptValidator.Validate(generatedScript, planSpec);
@@ -255,6 +277,19 @@ public class VideoOrchestrator
                 ct,
                 maxRetries: 2
             ).ConfigureAwait(false);
+            
+            if (_ragScriptEnhancer != null && brief.RagConfiguration?.TightenClaims == true && ragContext != null)
+            {
+                _logger.LogInformation("Performing 'tighten claims' validation pass");
+                var (enhancedScript, warnings) = await _ragScriptEnhancer.TightenClaimsAsync(script, ragContext, ct).ConfigureAwait(false);
+                
+                foreach (var warning in warnings)
+                {
+                    _logger.LogWarning("RAG claim validation: {Warning}", warning);
+                }
+                
+                script = enhancedScript;
+            }
             
             _logger.LogInformation("Script generated and validated: {Length} characters", script.Length);
 

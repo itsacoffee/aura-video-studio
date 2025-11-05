@@ -878,7 +878,8 @@ public record BriefDto(
     string? Goal,
     string Tone,
     string Language,
-    string Aspect);
+    string Aspect,
+    RagConfigurationDto? RagConfiguration = null);
 
 /// <summary>
 /// A change made during conversion
@@ -2143,4 +2144,15 @@ public record ProviderSSMLConstraintsDto(
     int MaxPauseDurationMs,
     bool SupportsTimingMarkers,
     int? MaxTextLength);
+
+/// <summary>
+/// RAG (Retrieval-Augmented Generation) configuration
+/// </summary>
+public record RagConfigurationDto(
+    bool Enabled,
+    int TopK = 5,
+    float MinimumScore = 0.6f,
+    int MaxContextTokens = 2000,
+    bool IncludeCitations = true,
+    bool TightenClaims = false);
 

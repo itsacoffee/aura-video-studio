@@ -28,6 +28,7 @@ import {
   CheckmarkCircle24Regular,
   ShieldCheckmark24Regular,
   SlideSettings24Regular,
+  DocumentSearch24Regular,
 } from '@fluentui/react-icons';
 
 export interface NavItem {
@@ -100,6 +101,12 @@ export const navItems: NavItem[] = [
     icon: DocumentText24Regular,
     path: '/prompt-management',
     advancedOnly: true,
+  },
+  {
+    key: 'rag',
+    name: 'RAG Documents',
+    icon: DocumentSearch24Regular,
+    path: '/rag',
   },
   {
     key: 'voice-enhancement',

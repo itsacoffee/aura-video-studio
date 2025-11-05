@@ -19,8 +19,8 @@ import {
   Info24Regular,
 } from '@fluentui/react-icons';
 import { useEffect, useState, useCallback } from 'react';
-import { useProviderProfilesStore } from '../../state/providerProfiles';
 import * as providerProfilesApi from '../../api/providerProfiles';
+import { useProviderProfilesStore } from '../../state/providerProfiles';
 import type { ProviderProfileDto } from '../../types/api-v1';
 
 const useStyles = makeStyles({
@@ -52,9 +52,7 @@ const useStyles = makeStyles({
     },
   },
   selectedProfile: {
-    borderColor: tokens.colorBrandStroke1,
-    borderWidth: '2px',
-    borderStyle: 'solid',
+    outline: `2px solid ${tokens.colorBrandStroke1}`,
   },
   profileHeader: {
     display: 'flex',
@@ -137,8 +135,7 @@ export function ProviderProfilesTab() {
       setActiveProfile(result.profile);
       setError(null);
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to apply profile';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to apply profile';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -163,11 +160,23 @@ export function ProviderProfilesTab() {
   const getTierBadge = (tier: string) => {
     switch (tier) {
       case 'FreeOnly':
-        return <Badge appearance="tint" color="success">Free</Badge>;
+        return (
+          <Badge appearance="tint" color="success">
+            Free
+          </Badge>
+        );
       case 'BalancedMix':
-        return <Badge appearance="tint" color="informative">Balanced</Badge>;
+        return (
+          <Badge appearance="tint" color="informative">
+            Balanced
+          </Badge>
+        );
       case 'ProMax':
-        return <Badge appearance="tint" color="important">Premium</Badge>;
+        return (
+          <Badge appearance="tint" color="important">
+            Premium
+          </Badge>
+        );
       default:
         return null;
     }
@@ -217,7 +226,9 @@ export function ProviderProfilesTab() {
   if (loading && profiles.length === 0) {
     return (
       <Card className={styles.section}>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXXL }}>
+        <div
+          style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXXL }}
+        >
           <Spinner label="Loading profiles..." />
         </div>
       </Card>
@@ -281,7 +292,10 @@ export function ProviderProfilesTab() {
                 </div>
               </div>
 
-              <Text size={300} style={{ marginLeft: '32px', marginBottom: tokens.spacingVerticalS }}>
+              <Text
+                size={300}
+                style={{ marginLeft: '32px', marginBottom: tokens.spacingVerticalS }}
+              >
                 {profile.description}
               </Text>
 

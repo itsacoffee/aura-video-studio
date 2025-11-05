@@ -805,6 +805,13 @@ builder.Services.AddSingleton<Aura.Core.Services.RAG.DocumentIngestService>(sp =
         logger, importService, chunkingService, embeddingService, vectorIndex);
 });
 
+builder.Services.AddSingleton<Aura.Core.Services.RAG.RagScriptEnhancer>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.RAG.RagScriptEnhancer>>();
+    var contextBuilder = sp.GetRequiredService<Aura.Core.Services.RAG.RagContextBuilder>();
+    return new Aura.Core.Services.RAG.RagScriptEnhancer(logger, contextBuilder);
+});
+
 // Register Script Enhancement services (for AI Audio Intelligence integration)
 builder.Services.AddSingleton<Aura.Core.Services.ScriptEnhancement.ScriptAnalysisService>(sp =>
 {

@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -7,7 +6,6 @@ import {
   Button,
   Badge,
   Dialog,
-  DialogTrigger,
   DialogSurface,
   DialogTitle,
   DialogBody,
@@ -26,7 +24,8 @@ import {
   Checkmark20Regular,
   FlashCheckmark20Regular,
 } from '@fluentui/react-icons';
-import { useModelSelectionStore, type ModelInfo } from '../../state/modelSelection';
+import React, { useEffect, useState } from 'react';
+import { useModelSelectionStore } from '../../state/modelSelection';
 
 const useStyles = makeStyles({
   container: {
@@ -109,10 +108,7 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
     ];
 
     const currentSelection = allSelections.find(
-      (s) =>
-        s.provider === provider &&
-        s.stage === stage &&
-        s.scope === scope
+      (s) => s.provider === provider && s.stage === stage && s.scope === scope
     );
 
     if (currentSelection) {
@@ -230,7 +226,11 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
           disabled={isSaving}
         >
           {models.map((model) => (
-            <Option key={model.modelId} value={model.modelId}>
+            <Option
+              key={model.modelId}
+              value={model.modelId}
+              text={`${model.modelId}${model.isDeprecated ? ' (Deprecated)' : ''}`}
+            >
               {model.modelId}
               {model.isDeprecated && ' (Deprecated)'}
             </Option>
@@ -254,11 +254,7 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
 
           {selectedModel && (
             <Tooltip content="Test this model" relationship="label">
-              <Button
-                appearance="subtle"
-                icon={<FlashCheckmark20Regular />}
-                disabled={isSaving}
-              >
+              <Button appearance="subtle" icon={<FlashCheckmark20Regular />} disabled={isSaving}>
                 Test
               </Button>
             </Tooltip>
@@ -299,7 +295,10 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
       )}
 
       {/* Deprecation Confirmation Dialog */}
-      <Dialog open={showDeprecationDialog} onOpenChange={(_, data) => setShowDeprecationDialog(data.open)}>
+      <Dialog
+        open={showDeprecationDialog}
+        onOpenChange={(_, data) => setShowDeprecationDialog(data.open)}
+      >
         <DialogSurface>
           <DialogBody>
             <DialogTitle>Model Deprecated</DialogTitle>
