@@ -12,6 +12,10 @@ FORBIDDEN_PATHS=(
     ".aura-dev/api-keys.json"
     "**/apikeys.json"
     "**/api-keys.json"
+    "**/keys.json"
+    "**/secrets.json"
+    "**/*.backup"
+    "**/*.bak"
 )
 
 EXCLUDED_PATHS=(
@@ -61,6 +65,9 @@ SENSITIVE_PATTERNS=(
     "AIza[A-Za-z0-9]"
     "el_[A-Za-z0-9]"
     "r8_[A-Za-z0-9]"
+    "eyJ[A-Za-z0-9_-]+\\.eyJ"        # JWT tokens
+    "Bearer [A-Za-z0-9_-]{20,}"     # Bearer tokens
+    "x-api-key: [A-Za-z0-9_-]{16,}" # x-api-key headers
 )
 
 # Search only in specific file types to avoid false positives
@@ -68,7 +75,7 @@ SEARCH_EXTENSIONS="*.cs *.ts *.tsx *.js *.jsx *.json"
 
 for pattern in "${SENSITIVE_PATTERNS[@]}"; do
     # Search in tracked files, excluding test files and docs
-    MATCHES=$(git grep -l -E "$pattern" -- $SEARCH_EXTENSIONS ':(exclude)*/test/*' ':(exclude)*/tests/*' ':(exclude)docs/' ':(exclude)examples/' ':(exclude)*.md' 2>/dev/null || true)
+    MATCHES=$(git grep -l -E "$pattern" -- $SEARCH_EXTENSIONS ':(exclude)*/test/*' ':(exclude)*/tests/*' ':(exclude)**/__tests__/*' ':(exclude)*.test.*' ':(exclude)Aura.Tests/' ':(exclude)Aura.E2E/' ':(exclude)docs/' ':(exclude)examples/' ':(exclude)*.md' 2>/dev/null || true)
     
     if [ -n "$MATCHES" ]; then
         echo "  ⚠️  WARNING: Found potential API key pattern '$pattern' in:"
@@ -78,6 +85,17 @@ for pattern in "${SENSITIVE_PATTERNS[@]}"; do
         # Don't fail on pattern matches, just warn (could be test data or examples)
     fi
 done
+
+# Check for backup files that might contain secrets
+echo "  Checking for backup files..."
+BACKUP_FILES=$(git ls-files | grep -E '\.(backup|bak)$|_(backup|bak)$' | grep -v -E '^(docs|examples|tests)/' || true)
+if [ -n "$BACKUP_FILES" ]; then
+    echo "  ❌ VIOLATION: Found backup files:"
+    echo "$BACKUP_FILES" | while IFS= read -r file; do
+        echo "      - $file"
+    done
+    FOUND_VIOLATIONS=$((FOUND_VIOLATIONS + 1))
+fi
 
 # Report results
 echo ""
