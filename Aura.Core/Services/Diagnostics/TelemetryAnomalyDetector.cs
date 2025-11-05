@@ -10,6 +10,25 @@ namespace Aura.Core.Services.Diagnostics;
 /// </summary>
 public class TelemetryAnomalyDetector
 {
+    // Cost thresholds
+    private const decimal HighCostPerOperationThreshold = 1.0m;
+    private const decimal VeryHighCostPerOperationThreshold = 2.0m;
+    private const double HighCostStagePercentage = 0.5; // 50%
+    private const double VeryHighCostStagePercentage = 0.7; // 70%
+
+    // Latency thresholds (in milliseconds)
+    private const long HighLatencyThresholdMs = 60000; // 60 seconds
+    private const long VeryHighLatencyThresholdMs = 300000; // 5 minutes
+    private const long HighP95LatencyThresholdMs = 30000; // 30 seconds
+
+    // Provider issue thresholds
+    private const double HighErrorRateThreshold = 0.5; // 50%
+    private const double VeryHighErrorRateThreshold = 0.8; // 80%
+    private const int ExcessiveRetryMultiplier = 2; // 2x operations
+
+    // Retry pattern thresholds
+    private const double HighAvgRetriesThreshold = 3.0;
+
     /// <summary>
     /// Analyze telemetry collection for anomalies
     /// </summary>
@@ -55,8 +74,8 @@ public class TelemetryAnomalyDetector
         
         foreach (var stage in costByStage)
         {
-            // Flag stages that cost more than 50% of total or have very high single operation costs
-            if (stage.TotalCost > totalCost * 0.5m || stage.MaxCost > 1.0m)
+            // Flag stages that cost more than threshold or have very high single operation costs
+            if (stage.TotalCost > totalCost * (decimal)HighCostStagePercentage || stage.MaxCost > HighCostPerOperationThreshold)
             {
                 anomalies.Add(new CostAnomaly
                 {
@@ -65,8 +84,8 @@ public class TelemetryAnomalyDetector
                     AvgCostPerOperation = stage.AvgCost,
                     MaxCostSingleOperation = stage.MaxCost,
                     OperationCount = stage.Count,
-                    Severity = stage.MaxCost > 2.0m ? AnomalySeverity.High : 
-                              stage.TotalCost > totalCost * 0.7m ? AnomalySeverity.High : 
+                    Severity = stage.MaxCost > VeryHighCostPerOperationThreshold ? AnomalySeverity.High : 
+                              stage.TotalCost > totalCost * (decimal)VeryHighCostStagePercentage ? AnomalySeverity.High : 
                               AnomalySeverity.Medium,
                     Description = stage.MaxCost > 1.0m 
                         ? $"Single operation in {stage.Stage} stage cost ${stage.MaxCost:F4}, which is unusually high"
@@ -100,7 +119,7 @@ public class TelemetryAnomalyDetector
         foreach (var stage in latencyByStage)
         {
             // Flag stages with very high max latency or high P95
-            if (stage.MaxLatency > 60000) // > 60 seconds
+            if (stage.MaxLatency > HighLatencyThresholdMs)
             {
                 anomalies.Add(new LatencyAnomaly
                 {
@@ -109,11 +128,11 @@ public class TelemetryAnomalyDetector
                     MaxLatencyMs = stage.MaxLatency,
                     P95LatencyMs = (long)stage.P95Latency,
                     OperationCount = stage.Count,
-                    Severity = stage.MaxLatency > 300000 ? AnomalySeverity.High : AnomalySeverity.Medium,
+                    Severity = stage.MaxLatency > VeryHighLatencyThresholdMs ? AnomalySeverity.High : AnomalySeverity.Medium,
                     Description = $"{stage.Stage} stage had operations taking up to {stage.MaxLatency / 1000:F1} seconds, which is unusually slow"
                 });
             }
-            else if (stage.P95Latency > 30000) // P95 > 30 seconds
+            else if (stage.P95Latency > HighP95LatencyThresholdMs)
             {
                 anomalies.Add(new LatencyAnomaly
                 {
@@ -160,7 +179,7 @@ public class TelemetryAnomalyDetector
             var errorRate = (double)provider.ErrorCount / provider.TotalCount;
 
             // High error rate
-            if (errorRate > 0.5)
+            if (errorRate > HighErrorRateThreshold)
             {
                 issues.Add(new ProviderIssue
                 {
@@ -169,14 +188,14 @@ public class TelemetryAnomalyDetector
                     ErrorCount = provider.ErrorCount,
                     TotalOperations = provider.TotalCount,
                     ErrorRate = errorRate,
-                    Severity = errorRate > 0.8 ? AnomalySeverity.High : AnomalySeverity.Medium,
+                    Severity = errorRate > VeryHighErrorRateThreshold ? AnomalySeverity.High : AnomalySeverity.Medium,
                     Description = $"{provider.Provider} has {errorRate * 100:F1}% error rate ({provider.ErrorCount}/{provider.TotalCount} operations failed)",
                     ErrorCodes = provider.ErrorCodes
                 });
             }
 
             // Many retries
-            if (provider.TotalRetries > provider.TotalCount * 2)
+            if (provider.TotalRetries > provider.TotalCount * ExcessiveRetryMultiplier)
             {
                 issues.Add(new ProviderIssue
                 {
@@ -226,7 +245,7 @@ public class TelemetryAnomalyDetector
                 TotalRetries = stage.TotalRetries,
                 AvgRetriesPerOperation = stage.AvgRetries,
                 OperationsWithRetries = stage.Count,
-                Severity = stage.AvgRetries > 3 ? AnomalySeverity.High : AnomalySeverity.Low,
+                Severity = stage.AvgRetries > HighAvgRetriesThreshold ? AnomalySeverity.High : AnomalySeverity.Low,
                 Description = $"{stage.Stage} stage required {stage.TotalRetries} total retries (avg {stage.AvgRetries:F1} per operation)"
             });
         }

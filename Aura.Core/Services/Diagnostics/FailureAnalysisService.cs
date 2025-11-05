@@ -660,7 +660,7 @@ public class FailureAnalysisService
             
             if (anomalies.CostAnomalies.Count > 0)
             {
-                insights.Add($"{anomalies.CostAnomalies.Count} cost anomaly/anomalies detected");
+                insights.Add($"{anomalies.CostAnomalies.Count} cost {(anomalies.CostAnomalies.Count == 1 ? "anomaly" : "anomalies")} detected");
             }
             
             if (anomalies.LatencyAnomalies.Count > 0)

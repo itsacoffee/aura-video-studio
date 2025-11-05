@@ -72,8 +72,9 @@ public class RedactionService
         // JWT tokens
         new Regex(@"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+", RegexOptions.Compiled),
         
-        // Generic secrets (more than 20 chars of base64-like)
-        new Regex(@"\b[A-Za-z0-9+/]{40,}={0,2}\b", RegexOptions.Compiled),
+        // Generic secrets (base64-like strings >60 chars that don't look like UUIDs/correlation IDs)
+        // Excluded: UUID format (8-4-4-4-12 with hyphens), short encoded values
+        new Regex(@"(?<![a-zA-Z0-9-])[A-Za-z0-9+/]{60,}={0,2}(?![a-zA-Z0-9-])", RegexOptions.Compiled),
     };
 
     private static readonly List<Regex> SensitiveFieldPatterns = new()
