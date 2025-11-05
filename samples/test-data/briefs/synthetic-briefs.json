@@ -129,6 +129,125 @@
       "expectedScenes": 12,
       "expectedComplexity": "high",
       "tags": ["business", "presentation"]
+    },
+    {
+      "id": "edge-case-emojis",
+      "name": "Emoji Support Test",
+      "topic": "Testing 🎥 emoji 🎬 support 🎞️ in videos",
+      "audience": "Content Creators",
+      "goal": "Testing",
+      "tone": "Casual",
+      "language": "English",
+      "duration": 20,
+      "expectedScenes": 3,
+      "expectedComplexity": "medium",
+      "tags": ["edge-case", "emojis"]
+    },
+    {
+      "id": "edge-case-line-breaks",
+      "name": "Line Break Test",
+      "topic": "Testing\nmultiple\nline\nbreaks\nin\ntopic",
+      "audience": "QA Team",
+      "goal": "Validation",
+      "tone": "Technical",
+      "language": "English",
+      "duration": 15,
+      "expectedScenes": 2,
+      "expectedComplexity": "low",
+      "tags": ["edge-case", "formatting"]
+    },
+    {
+      "id": "extreme-duration-short",
+      "name": "Extreme Short Duration",
+      "topic": "Ultra Short Video Test",
+      "audience": "Developers",
+      "goal": "Stress Test",
+      "tone": "Neutral",
+      "language": "English",
+      "duration": 3,
+      "expectedScenes": 1,
+      "expectedComplexity": "low",
+      "tags": ["edge-case", "duration"]
+    },
+    {
+      "id": "extreme-duration-long",
+      "name": "Extreme Long Duration",
+      "topic": "Comprehensive Deep Dive into Advanced Topics",
+      "audience": "Researchers",
+      "goal": "Education",
+      "tone": "Academic",
+      "language": "English",
+      "duration": 300,
+      "expectedScenes": 25,
+      "expectedComplexity": "very-high",
+      "tags": ["edge-case", "duration", "stress-test"]
+    },
+    {
+      "id": "multilingual-mix",
+      "name": "Multilingual Content",
+      "topic": "Welcome - Bienvenue - Willkommen - 欢迎 - مرحبا",
+      "audience": "Global Users",
+      "goal": "Internationalization",
+      "tone": "Friendly",
+      "language": "Multilingual",
+      "duration": 30,
+      "expectedScenes": 5,
+      "expectedComplexity": "high",
+      "tags": ["edge-case", "i18n", "multilingual"]
+    },
+    {
+      "id": "provider-retry-scenario",
+      "name": "Provider Retry Test",
+      "topic": "Testing Provider Fallback and Retry Logic",
+      "audience": "System Engineers",
+      "goal": "Reliability Testing",
+      "tone": "Technical",
+      "language": "English",
+      "duration": 25,
+      "expectedScenes": 4,
+      "expectedComplexity": "medium",
+      "tags": ["reliability", "retry", "fallback"],
+      "testConfig": {
+        "simulateProviderFailure": true,
+        "failurePhase": "tts",
+        "expectedRetries": 2
+      }
+    },
+    {
+      "id": "cancellation-test",
+      "name": "Job Cancellation Test",
+      "topic": "Testing Job Cancellation and Cleanup",
+      "audience": "QA Engineers",
+      "goal": "Testing",
+      "tone": "Technical",
+      "language": "English",
+      "duration": 30,
+      "expectedScenes": 5,
+      "expectedComplexity": "medium",
+      "tags": ["reliability", "cancellation"],
+      "testConfig": {
+        "cancelAtPhase": "visuals",
+        "expectedCleanup": true
+      }
+    },
+    {
+      "id": "sse-reconnection-test",
+      "name": "SSE Reconnection Test",
+      "topic": "Testing SSE Progress Tracking with Network Interruptions",
+      "audience": "Backend Engineers",
+      "goal": "Testing",
+      "tone": "Technical",
+      "language": "English",
+      "duration": 20,
+      "expectedScenes": 3,
+      "expectedComplexity": "medium",
+      "tags": ["reliability", "sse", "reconnection"],
+      "testConfig": {
+        "simulateNetworkInterruption": true,
+        "interruptAtProgress": 50,
+        "expectedReconnection": true,
+        "validateLastEventId": true
+      }
     }
   ]
 }

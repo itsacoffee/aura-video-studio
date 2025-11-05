@@ -2,7 +2,6 @@ import {
   makeStyles,
   tokens,
   Dialog,
-  DialogTrigger,
   DialogSurface,
   DialogTitle,
   DialogBody,
@@ -139,12 +138,24 @@ export const SafetyWarningDialog: FC<SafetyWarningDialogProps> = ({
 
   const getSeverityBadge = (score: number) => {
     if (score >= CRITICAL_SEVERITY_THRESHOLD) {
-      return <Badge appearance="filled" color="danger">Critical</Badge>;
+      return (
+        <Badge appearance="filled" color="danger">
+          Critical
+        </Badge>
+      );
     }
     if (score >= HIGH_SEVERITY_THRESHOLD) {
-      return <Badge appearance="filled" color="warning">High</Badge>;
+      return (
+        <Badge appearance="filled" color="warning">
+          High
+        </Badge>
+      );
     }
-    return <Badge appearance="filled" color="informative">Medium</Badge>;
+    return (
+      <Badge appearance="filled" color="informative">
+        Medium
+      </Badge>
+    );
   };
 
   return (
@@ -159,7 +170,8 @@ export const SafetyWarningDialog: FC<SafetyWarningDialogProps> = ({
           </DialogTitle>
           <DialogContent className={styles.content}>
             <Text>
-              Your content was flagged by the <strong>{policyName || 'current'}</strong> safety policy.
+              Your content was flagged by the <strong>{policyName || 'current'}</strong> safety
+              policy.
             </Text>
 
             <Divider />
@@ -168,19 +180,42 @@ export const SafetyWarningDialog: FC<SafetyWarningDialogProps> = ({
               <Text weight="semibold">Issues Found:</Text>
               {violations.map((violation) => (
                 <div key={violation.id} className={styles.violation}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: tokens.spacingVerticalS }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: tokens.spacingVerticalS,
+                    }}
+                  >
                     <Text weight="semibold">{violation.category}</Text>
                     {getSeverityBadge(violation.severityScore)}
                   </div>
                   <Text size={300}>{violation.reason}</Text>
                   {violation.matchedContent && (
-                    <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
-                      Found: &quot;{violation.matchedContent.substring(0, 100)}{violation.matchedContent.length > 100 ? '...' : ''}&quot;
+                    <Text
+                      size={200}
+                      style={{
+                        marginTop: tokens.spacingVerticalXS,
+                        color: tokens.colorNeutralForeground3,
+                      }}
+                    >
+                      Found: &quot;{violation.matchedContent.substring(0, 100)}
+                      {violation.matchedContent.length > 100 ? '...' : ''}&quot;
                     </Text>
                   )}
                   {violation.suggestedFix && (
-                    <div style={{ marginTop: tokens.spacingVerticalS, display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
-                      <CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
+                    <div
+                      style={{
+                        marginTop: tokens.spacingVerticalS,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: tokens.spacingHorizontalS,
+                      }}
+                    >
+                      <CheckmarkCircle24Regular
+                        style={{ color: tokens.colorPaletteGreenForeground1 }}
+                      />
                       <Text size={300}>
                         <strong>Suggestion:</strong> {violation.suggestedFix}
                       </Text>
@@ -207,45 +242,40 @@ export const SafetyWarningDialog: FC<SafetyWarningDialogProps> = ({
 
             {canOverride && requiresAdvancedMode && (
               <div className={styles.warning}>
-                <Warning24Regular style={{ color: tokens.colorPaletteYellowForeground1, flexShrink: 0 }} />
+                <Warning24Regular
+                  style={{ color: tokens.colorPaletteYellowForeground1, flexShrink: 0 }}
+                />
                 <Text size={300}>
-                  You can override this decision in Advanced Mode if you believe this is a false positive.
-                  Overriding safety checks is your responsibility.
+                  You can override this decision in Advanced Mode if you believe this is a false
+                  positive. Overriding safety checks is your responsibility.
                 </Text>
               </div>
             )}
 
             {!canOverride && (
               <div className={styles.warning}>
-                <Warning24Regular style={{ color: tokens.colorPaletteRedForeground1, flexShrink: 0 }} />
+                <Warning24Regular
+                  style={{ color: tokens.colorPaletteRedForeground1, flexShrink: 0 }}
+                />
                 <Text size={300}>
-                  This policy does not allow overrides. Please modify your content to comply with safety guidelines.
+                  This policy does not allow overrides. Please modify your content to comply with
+                  safety guidelines.
                 </Text>
               </div>
             )}
           </DialogContent>
           <DialogActions>
             <div className={styles.actions}>
-              <Button
-                appearance="secondary"
-                icon={<Dismiss24Regular />}
-                onClick={handleCancel}
-              >
+              <Button appearance="secondary" icon={<Dismiss24Regular />} onClick={handleCancel}>
                 Cancel
               </Button>
               {alternatives.length === 0 && (
-                <Button
-                  appearance="primary"
-                  onClick={handleCancel}
-                >
+                <Button appearance="primary" onClick={handleCancel}>
                   Edit Content
                 </Button>
               )}
               {canOverride && requiresAdvancedMode && (
-                <Button
-                  appearance="primary"
-                  onClick={handleOverride}
-                >
+                <Button appearance="primary" onClick={handleOverride}>
                   Override (Advanced)
                 </Button>
               )}
