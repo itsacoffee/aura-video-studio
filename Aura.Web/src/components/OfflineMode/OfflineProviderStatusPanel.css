@@ -1,0 +1,111 @@
+.offline-provider-status-panel {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.offline-provider-status-panel.loading,
+.offline-provider-status-panel.error {
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.last-checked {
+  color: var(--colorNeutralForeground3);
+  display: block;
+  margin-top: 4px;
+}
+
+.overall-status {
+  margin-bottom: 8px;
+}
+
+.capability-indicators {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.providers-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.provider-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-title {
+  margin-bottom: 4px;
+  color: var(--colorNeutralForeground2);
+}
+
+.provider-card {
+  width: 100%;
+  max-width: 100%;
+}
+
+.provider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.provider-details {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.details-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 4px 0 0;
+}
+
+.details-list li {
+  padding: 2px 0;
+}
+
+.recommendations-list {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.recommendations-list li {
+  padding: 4px 0;
+}
+
+.installation-actions {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+}

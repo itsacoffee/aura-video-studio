@@ -245,6 +245,10 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ProviderMixer>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
 builder.Services.AddSingleton<Aura.Core.Services.CostTracking.EnhancedCostTrackingService>();
+
+// Offline provider availability service
+builder.Services.AddSingleton<Aura.Core.Services.OfflineProviderAvailabilityService>();
+
 builder.Services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommendationService>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.LlmProviderRecommendationService>>();
