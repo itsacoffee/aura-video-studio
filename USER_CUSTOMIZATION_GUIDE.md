@@ -845,3 +845,307 @@ Access the audit log via:
 2. Or set an explicit model selection for the provider/stage
 3. Note that pinned models override automatic fallback
 
+## Cost and Budget Management
+
+Aura Video Studio provides comprehensive cost tracking and budget controls to help you manage expenses across LLM, TTS, and other AI providers.
+
+### Cost Tracking Configuration
+
+Configure cost tracking through the API or Settings UI:
+
+#### Get Current Configuration
+
+```bash
+GET /api/cost-tracking/configuration
+```
+
+#### Update Configuration
+
+```bash
+PUT /api/cost-tracking/configuration
+Content-Type: application/json
+
+{
+  "userId": "default",
+  "overallMonthlyBudget": 100.00,
+  "periodType": "Monthly",
+  "currency": "USD",
+  "alertThresholds": [50, 75, 90, 100],
+  "emailNotificationsEnabled": false,
+  "alertFrequency": "Once",
+  "providerBudgets": {
+    "OpenAI": 50.00,
+    "ElevenLabs": 30.00,
+    "Anthropic": 20.00
+  },
+  "hardBudgetLimit": false,
+  "enableProjectTracking": true
+}
+```
+
+### Budget Period Types
+
+- **Monthly**: Budget resets on the 1st of each month
+- **Weekly**: Budget resets every Sunday
+- **Custom**: Define your own start and end dates
+
+### Budget Thresholds
+
+Configure alert thresholds as percentages:
+- **50%**: Early warning
+- **75%**: Approaching limit
+- **90%**: Near limit
+- **100%**: Limit reached
+
+### Hard vs Soft Limits
+
+**Soft Limits** (default):
+- Generate warnings when thresholds are exceeded
+- Allow operations to continue
+- Useful for monitoring without disruption
+
+**Hard Limits**:
+- Block operations when budget is exceeded
+- Require explicit confirmation to proceed
+- Prevent unexpected overspending
+
+Example:
+```json
+{
+  "overallMonthlyBudget": 100.00,
+  "hardBudgetLimit": true
+}
+```
+
+With this configuration, video generation will be blocked if it would exceed $100 for the month.
+
+### Per-Provider Budgets
+
+Set individual budgets for each provider:
+
+```json
+{
+  "providerBudgets": {
+    "OpenAI": 50.00,
+    "ElevenLabs": 30.00,
+    "Anthropic": 20.00
+  }
+}
+```
+
+Operations will warn or block based on per-provider usage.
+
+### Real-Time Cost Meter
+
+During video generation, the Cost Meter component displays:
+- Current accumulated cost
+- Estimated total cost
+- Budget progress bar
+- Cost breakdown by stage
+- Warning indicators
+
+The cost meter updates live as each operation completes, giving you real-time visibility into spending.
+
+### Post-Run Cost Reports
+
+After each video generation, get a comprehensive cost report:
+
+```bash
+GET /api/cost-tracking/run-summary/{jobId}
+```
+
+**Report includes**:
+- Total cost breakdown by stage
+- Total cost breakdown by provider
+- Token usage statistics (for LLM operations)
+- Individual operation costs with timestamps
+- Cache hit rate and savings
+- Cost optimization suggestions
+
+Example report:
+```json
+{
+  "jobId": "job-12345",
+  "totalCost": 4.75,
+  "currency": "USD",
+  "costByStage": {
+    "ScriptGeneration": { "cost": 2.50, "percentageOfTotal": 52.6 },
+    "TTS": { "cost": 1.50, "percentageOfTotal": 31.6 },
+    "Visuals": { "cost": 0.50, "percentageOfTotal": 10.5 },
+    "Rendering": { "cost": 0.25, "percentageOfTotal": 5.3 }
+  },
+  "tokenStats": {
+    "totalTokens": 15000,
+    "cacheHitRate": 25.0,
+    "costSavedByCache": 0.75
+  },
+  "optimizationSuggestions": [
+    {
+      "category": "ProviderSwitch",
+      "suggestion": "Switch from OpenAI to Gemini for 60% cost reduction",
+      "estimatedSavings": 1.50
+    }
+  ]
+}
+```
+
+### Export Cost Reports
+
+Export detailed reports in JSON or CSV format:
+
+```bash
+POST /api/cost-tracking/export/{jobId}?format=csv
+```
+
+Exports include:
+- All operation details with timestamps
+- Token counts and costs
+- Provider breakdowns
+- Optimization suggestions
+
+Perfect for:
+- Expense reporting
+- Cost analysis
+- Budget planning
+- Provider comparisons
+
+### Cost Optimization Suggestions
+
+The system analyzes your usage patterns and provides actionable suggestions:
+
+1. **Caching**: Enable LLM caching to avoid repeat API calls
+2. **Provider Selection**: Switch to lower-cost alternatives
+3. **Prompt Optimization**: Reduce token usage
+4. **Model Selection**: Use smaller models where appropriate
+5. **Batching**: Combine operations efficiently
+
+Each suggestion includes:
+- Estimated cost savings
+- Quality impact assessment
+- Implementation difficulty
+
+### Optimize for Budget
+
+Get AI-powered recommendations to meet a budget target:
+
+```bash
+POST /api/cost-tracking/optimize-budget
+Content-Type: application/json
+
+{
+  "budgetLimit": 2.00,
+  "desiredQuality": "standard",
+  "deadlineMinutes": 15
+}
+```
+
+Response includes:
+- Before/after cost comparison
+- Recommended provider settings
+- Specific configuration changes
+- Quality impact summary
+
+Example response:
+```json
+{
+  "estimatedCostBefore": 5.00,
+  "estimatedCostAfter": 1.50,
+  "estimatedSavings": 3.50,
+  "recommendedSettings": {
+    "llmProvider": "Gemini",
+    "ttsProvider": "Piper",
+    "enableCaching": true,
+    "maxTokensPerOperation": 2000
+  },
+  "changes": [
+    "Switch LLM provider from OpenAI to Gemini (60% cost reduction)",
+    "Switch TTS provider to Piper (free, offline)",
+    "Enable LLM caching for repeated operations"
+  ],
+  "qualityImpact": "Slight reduction in output creativity, but maintains overall video quality"
+}
+```
+
+### Monitoring Current Spending
+
+Check your current period spending at any time:
+
+```bash
+GET /api/cost-tracking/current-period
+```
+
+Returns:
+```json
+{
+  "totalCost": 45.75,
+  "currency": "USD",
+  "periodType": "Monthly",
+  "budget": 100.00,
+  "percentageUsed": 45.8
+}
+```
+
+### Provider Pricing
+
+View current pricing for all providers:
+
+```bash
+GET /api/cost-tracking/pricing
+```
+
+Update pricing manually if needed:
+
+```bash
+PUT /api/cost-tracking/pricing/OpenAI
+Content-Type: application/json
+
+{
+  "providerName": "OpenAI",
+  "providerType": "LLM",
+  "costPer1KInputTokens": 0.03,
+  "costPer1KOutputTokens": 0.06,
+  "currency": "USD",
+  "notes": "GPT-4 pricing"
+}
+```
+
+### Best Practices
+
+1. **Set Realistic Budgets**: Start with monitoring mode (soft limits) to understand your usage
+2. **Use Provider Budgets**: Allocate budget across providers based on usage patterns
+3. **Enable Caching**: Can save 20-40% on repeated operations
+4. **Review Reports**: Analyze cost reports after each run to identify optimization opportunities
+5. **Monitor Trends**: Track spending over time to spot anomalies
+6. **Test Optimizations**: Try suggested optimizations on test runs before production
+7. **Update Pricing**: Keep provider pricing current for accurate estimates
+
+### Troubleshooting
+
+#### Cost estimates seem inaccurate
+
+**Cause**: Outdated provider pricing or token estimation issues
+
+**Solution**:
+1. Update provider pricing tables
+2. Verify token counts in operation logs
+3. Check for recent provider pricing changes
+
+#### Budget alerts not triggering
+
+**Cause**: Alert frequency setting or threshold configuration
+
+**Solution**:
+1. Check alert thresholds include the levels you want
+2. Verify alertFrequency is not set to "Once" if you want repeated alerts
+3. Check triggered alerts haven't already fired for this period
+
+#### Hard limit blocking operations unexpectedly
+
+**Cause**: Budget exceeded or misconfigured
+
+**Solution**:
+1. Check current period spending
+2. Verify budget limits are set correctly
+3. Consider switching to soft limits during testing
+4. Review recent operations for unexpected costs
+

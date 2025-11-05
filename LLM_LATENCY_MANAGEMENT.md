@@ -419,6 +419,137 @@ var progress = new Progress<LlmOperationProgress>(p => /* handle */);
 await context.ExecuteAsync(..., progress: progress, ...);
 ```
 
+## Cost and Usage Tracking
+
+The LLM Latency Management System integrates with the Cost and Usage Analytics system to track detailed token usage and costs for each operation.
+
+### Token Accounting
+
+Every LLM operation automatically records:
+- Input tokens (prompt)
+- Output tokens (completion)
+- Model name used
+- Provider name
+- Response time (latency)
+- Retry count
+- Cache hit status
+- Estimated cost
+
+**Location**: `Aura.Core/Services/CostTracking/TokenTrackingService.cs`
+
+**Integration**: The `UnifiedLlmOrchestrator` automatically records token metrics for every operation through the `RecordTokenMetrics` method.
+
+**Token Metrics Structure**:
+```csharp
+public record TokenUsageMetrics
+{
+    public string ProviderName { get; init; }
+    public string ModelName { get; init; }
+    public string OperationType { get; init; }
+    public int InputTokens { get; init; }
+    public int OutputTokens { get; init; }
+    public long ResponseTimeMs { get; init; }
+    public int RetryCount { get; init; }
+    public bool CacheHit { get; init; }
+    public decimal EstimatedCost { get; init; }
+    public string? JobId { get; init; }
+    public bool Success { get; init; }
+}
+```
+
+### Cost Estimation
+
+Costs are estimated based on current provider pricing tables maintained in `EnhancedCostTrackingService`:
+
+- **OpenAI GPT-4**: $0.03 per 1K input tokens, $0.06 per 1K output tokens
+- **Anthropic Claude 3**: $0.015 per 1K input tokens, $0.075 per 1K output tokens
+- **Google Gemini**: $0.00025 per 1K tokens
+- **Ollama**: Free (local)
+
+Cost estimation happens automatically during each LLM operation and is recorded for budget tracking and optimization.
+
+### Cache Cost Savings
+
+Cache hits save significant costs by avoiding repeat API calls:
+- Cache hit status is tracked for every operation
+- Cost savings from cache are calculated and reported
+- Run summaries include total cost saved by caching
+
+**Example**: If a cached response would have cost $0.05, that $0.05 is added to the "cost saved by cache" total for the job.
+
+### Real-Time Cost Accumulation
+
+During video generation, costs accumulate in real-time:
+- Each LLM operation adds to the running total
+- Cost meter updates live in the UI
+- Budget warnings trigger if thresholds are approached
+- Hard limits can block operations if enabled
+
+### Per-Run Cost Reports
+
+After each video generation run, a comprehensive cost report is generated including:
+- Total cost breakdown by stage (script generation, TTS, visuals, rendering)
+- Total cost breakdown by provider
+- Token usage statistics (total tokens, cache hit rate)
+- Individual operation costs with timestamps
+- Cost optimization suggestions
+
+**Location**: `Aura.Core/Services/CostTracking/RunCostReportService.cs`
+
+**API Endpoint**: `GET /api/cost-tracking/run-summary/{jobId}`
+
+### Cost Optimization
+
+The system analyzes usage patterns and provides optimization suggestions:
+
+1. **Caching**: Enable LLM caching if cache hit rate is low
+2. **Provider Selection**: Switch to lower-cost providers (e.g., Gemini instead of GPT-4)
+3. **Prompt Optimization**: Reduce token usage through more efficient prompts
+4. **Model Selection**: Use smaller models for simpler tasks
+5. **Batching**: Combine operations to reduce overhead
+
+**Example Suggestion**:
+```
+Category: Caching
+Suggestion: Enable LLM caching to reduce costs. Current cache hit rate is low.
+Estimated Savings: $3.50 (70% of current cost)
+Quality Impact: No impact - identical results from cache
+```
+
+### Budget Controls
+
+Budget thresholds can be configured at multiple levels:
+- Overall monthly budget
+- Per-provider budgets
+- Per-project budgets
+- Soft warnings (alert only)
+- Hard limits (block operations)
+
+When approaching budget limits:
+- Warning at 75% of budget
+- Alert at 90% of budget
+- Block at 100% if hard limit enabled
+
+### Monitoring and Alerts
+
+Monitor cost trends through:
+- Current period spending dashboard
+- Historical cost reports
+- Provider cost comparisons
+- Cache effectiveness metrics
+- Budget utilization percentages
+
+**API Endpoint**: `GET /api/cost-tracking/current-period`
+
+### Integration with Latency
+
+Cost and latency are tracked together:
+- Higher latency may indicate complex operations with higher token usage
+- Retry attempts increase both latency and cost
+- Failed operations still incur costs (tracked separately)
+
+This integrated view helps optimize for both performance and cost efficiency.
+
 ## Contributing
 
 When adding new LLM operations:
@@ -428,9 +559,10 @@ When adding new LLM operations:
 3. Update `GetTimeoutSeconds()` switch statement
 4. Wrap operations with `LlmOperationContext`
 5. Add tests for new operation type
+6. Ensure token tracking is enabled (automatic in `UnifiedLlmOrchestrator`)
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: October 31, 2025  
+**Version**: 2.0.0  
+**Last Updated**: November 5, 2025  
 **Author**: Aura Development Team
