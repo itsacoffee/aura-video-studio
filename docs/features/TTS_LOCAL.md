@@ -8,6 +8,20 @@ Local TTS engines provide high-quality, offline voice synthesis without cloud AP
 - **Piper**: Ultra-fast, lightweight, perfect for quick iterations
 - **Mimic3**: Higher quality, more natural voices, slightly slower
 
+### New: Tune for My Machine 🎯
+
+Aura now automatically detects your hardware and recommends the best TTS provider for your system:
+- Go to **Download Center → Offline Mode** tab
+- Click **"Tune for My Machine"** to see personalized recommendations
+- Get instant hardware-optimized setup guidance with speed/quality expectations
+- Follow the quick start guide tailored to your RAM, CPU, and GPU capabilities
+
+**Benefits**:
+- No guesswork about which provider to use
+- Hardware-specific performance expectations
+- Automatic fallback recommendations
+- Step-by-step setup instructions
+
 ## Comparison Matrix
 
 | Feature | Windows SAPI | Piper | Mimic3 | ElevenLabs |
