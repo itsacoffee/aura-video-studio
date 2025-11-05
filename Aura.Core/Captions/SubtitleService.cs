@@ -119,7 +119,7 @@ public class SubtitleService
             languageCode, isRTL);
 
         return new CaptionRenderStyle(
-            FontName: isRTL ? "Arial" : "Arial",
+            FontName: "Arial",
             FontSize: 24,
             PrimaryColor: "FFFFFF",
             OutlineColor: "000000",

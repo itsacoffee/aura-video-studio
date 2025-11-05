@@ -32,6 +32,7 @@ public class LocalizationController : ControllerBase
     private readonly ILlmProvider _llmProvider;
     private readonly GlossaryManager _glossaryManager;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly List<ISSMLMapper> _ssmlMappers;
 
     public LocalizationController(
         ILogger<LocalizationController> logger,
@@ -49,6 +50,15 @@ public class LocalizationController : ControllerBase
         _glossaryManager = new GlossaryManager(
             loggerFactory.CreateLogger<GlossaryManager>(),
             storageDir);
+
+        _ssmlMappers = new List<ISSMLMapper>
+        {
+            new ElevenLabsSSMLMapper(),
+            new WindowsSSMLMapper(),
+            new PlayHTSSMLMapper(),
+            new PiperSSMLMapper(),
+            new Mimic3SSMLMapper()
+        };
     }
 
     /// <summary>
@@ -607,18 +617,9 @@ public class LocalizationController : ControllerBase
                 _loggerFactory.CreateLogger<TranslationService>(),
                 _llmProvider);
 
-            var ssmlMappers = new List<ISSMLMapper>
-            {
-                new ElevenLabsSSMLMapper(),
-                new WindowsSSMLMapper(),
-                new PlayHTSSMLMapper(),
-                new PiperSSMLMapper(),
-                new Mimic3SSMLMapper()
-            };
-
             var ssmlPlannerService = new SSMLPlannerService(
                 _loggerFactory.CreateLogger<SSMLPlannerService>(),
-                ssmlMappers);
+                _ssmlMappers);
 
             var captionBuilder = new CaptionBuilder(
                 _loggerFactory.CreateLogger<CaptionBuilder>());
@@ -737,18 +738,9 @@ public class LocalizationController : ControllerBase
                 _loggerFactory.CreateLogger<TranslationService>(),
                 _llmProvider);
 
-            var ssmlMappers2 = new List<ISSMLMapper>
-            {
-                new ElevenLabsSSMLMapper(),
-                new WindowsSSMLMapper(),
-                new PlayHTSSMLMapper(),
-                new PiperSSMLMapper(),
-                new Mimic3SSMLMapper()
-            };
-
             var ssmlPlannerService = new SSMLPlannerService(
                 _loggerFactory.CreateLogger<SSMLPlannerService>(),
-                ssmlMappers2);
+                _ssmlMappers);
 
             var captionBuilder = new CaptionBuilder(
                 _loggerFactory.CreateLogger<CaptionBuilder>());
