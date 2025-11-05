@@ -261,5 +261,3 @@ export const OfflineProviderStatusPanel: React.FC<OfflineProviderStatusPanelProp
     </div>
   );
 };
-
-export default OfflineProviderStatusPanel;

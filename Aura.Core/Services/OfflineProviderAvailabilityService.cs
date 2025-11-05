@@ -460,9 +460,18 @@ public class OfflineProviderAvailabilityService
             }
         }
 
-        var systemProfile = _hardwareDetector != null 
-            ? _hardwareDetector.DetectSystemAsync().GetAwaiter().GetResult() 
-            : null;
+        Core.Models.SystemProfile? systemProfile = null;
+        if (_hardwareDetector != null)
+        {
+            try
+            {
+                systemProfile = Task.Run(async () => await _hardwareDetector.DetectSystemAsync()).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to detect hardware for recommendations");
+            }
+        }
 
         if (systemProfile != null)
         {

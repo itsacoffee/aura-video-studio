@@ -193,5 +193,3 @@ export const OfflineModeBanner: React.FC<OfflineModeBannerProps> = ({ show = tru
     </MessageBar>
   );
 };
-
-export default OfflineModeBanner;
