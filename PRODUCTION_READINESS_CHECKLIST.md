@@ -16,8 +16,9 @@ This checklist validates all critical paths from first-run through video generat
 
 ### ✅ Test Suites
 - **Vitest Unit Tests**: 783 tests PASSED
-- **Playwright E2E Tests**: 10 test files ready (first-run wizard, quick-demo, etc.)
-- **CI Integration**: orchestrator-smoke.yml workflow validates health endpoints
+- **Playwright E2E Tests**: 24 test files ready (first-run wizard, quick-demo, SSE, job lifecycle, export, etc.)
+- **E2E Comprehensive Tests**: Windows + Linux runners, flake detection, artifact retention
+- **CI Integration**: orchestrator-smoke.yml and e2e-comprehensive.yml workflows validate health endpoints and critical paths
 
 ### ✅ Infrastructure Components
 - **Health Endpoints**: `/api/health/live` and `/api/health/ready` implemented
@@ -37,9 +38,11 @@ Manual verification needed for:
 3. Video export pipeline with FFmpeg
 4. Generate Video feature workflow
 5. Editor UI (Media Library, Timeline, Preview, Properties)
-6. **NEW**: Job queue management and progress tracking
-7. **NEW**: SSE reconnection with Last-Event-ID
-8. **NEW**: Job cancellation and cleanup verification
+6. ✅ **AUTOMATED**: Job queue management and progress tracking (E2E tests)
+7. ✅ **AUTOMATED**: SSE reconnection with Last-Event-ID (E2E tests)
+8. ✅ **AUTOMATED**: Job cancellation and cleanup verification (E2E tests)
+9. ✅ **AUTOMATED**: Export manifest and licensing compliance (E2E tests)
+10. ✅ **AUTOMATED**: Flaky test detection and quarantine (CI workflow)
 
 ---
 
@@ -47,6 +50,7 @@ Manual verification needed for:
 - **[Dependency Documentation](docs/DEPENDENCIES.md)**: Complete manifest of all dependencies, versions, and installation methods
 - **[Orchestration Runbook](docs/ORCHESTRATION_RUNBOOK.md)**: Operational guide for startup diagnostics and troubleshooting
 - **[FFmpeg Setup Guide](docs/FFmpeg_Setup_Guide.md)**: Step-by-step FFmpeg installation instructions
+- **[E2E Test Configurations](samples/e2e-test-configs/README.md)**: Hermetic test configurations for automated E2E testing
 
 ## Quick Reference: Dependency Validation Tools
 - **CLI Script**: `./scripts/check-deps.sh` - Cross-platform dependency validation

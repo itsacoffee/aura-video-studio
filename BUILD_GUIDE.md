@@ -227,12 +227,32 @@ cd Aura.Web
 # Install Playwright browsers (first time only)
 npm run playwright:install
 
-# Run E2E tests
+# Run all E2E tests
 npm run playwright
+
+# Run specific test suites
+npx playwright test tests/e2e/complete-workflow.spec.ts
+npx playwright test tests/e2e/sse-progress-monitoring.spec.ts
+npx playwright test tests/e2e/job-lifecycle-management.spec.ts
+npx playwright test tests/e2e/export-manifest-licensing.spec.ts
+
+# Run tests on specific project
+npx playwright test --project=chromium
+npx playwright test --project=chromium-headless
+
+# Run quarantined tests
+npx playwright test --project=quarantine
 
 # Interactive mode
 npm run playwright:ui
 ```
+
+**E2E Test Categories:**
+- **SSE Progress Monitoring** - Connection, reconnection, keep-alive, progress updates
+- **Job Lifecycle Management** - Cancellation, cleanup, queue management, pause/resume
+- **Export Manifest & Licensing** - Manifests, licensing, attribution, checksums
+- **Complete Workflow** - End-to-end user flows from brief to export
+- **Accessibility, Error Handling, Navigation** - UX and robustness tests
 
 **Backend Tests:**
 ```bash
