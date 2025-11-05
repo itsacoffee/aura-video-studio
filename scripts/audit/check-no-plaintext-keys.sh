@@ -30,7 +30,8 @@ for pattern in "${FORBIDDEN_PATHS[@]}"; do
     echo "  Checking pattern: $pattern"
     
     # Use git ls-files to find tracked files matching the pattern
-    FILES=$(git ls-files "$pattern" 2>/dev/null || true)
+    # Pattern is properly quoted to prevent shell injection
+    FILES=$(git ls-files -- "$pattern" 2>/dev/null || true)
     
     if [ -n "$FILES" ]; then
         while IFS= read -r file; do

@@ -459,16 +459,26 @@ public class KeyStore : IKeyStore
         try
         {
             // Overwrite file contents before deletion for better security
+            // Use chunked overwriting to handle large files safely
             var fileInfo = new FileInfo(filePath);
             var fileLength = fileInfo.Length;
             
             if (fileLength > 0)
             {
+                const int chunkSize = 64 * 1024; // 64KB chunks
                 using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Write);
-                var randomData = new byte[fileLength];
                 using var rng = RandomNumberGenerator.Create();
-                rng.GetBytes(randomData);
-                fs.Write(randomData, 0, randomData.Length);
+                
+                long bytesRemaining = fileLength;
+                while (bytesRemaining > 0)
+                {
+                    var currentChunkSize = (int)Math.Min(chunkSize, bytesRemaining);
+                    var randomData = new byte[currentChunkSize];
+                    rng.GetBytes(randomData);
+                    fs.Write(randomData, 0, currentChunkSize);
+                    bytesRemaining -= currentChunkSize;
+                }
+                
                 fs.Flush();
             }
 

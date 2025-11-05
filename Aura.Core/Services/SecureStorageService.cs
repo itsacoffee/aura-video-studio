@@ -84,8 +84,26 @@ public class SecureStorageService : ISecureStorageService
     {
         try
         {
-            var chmod = System.Diagnostics.Process.Start("chmod", $"600 \"{path}\"");
-            chmod?.WaitForExit();
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "chmod",
+                Arguments = $"600 \"{path}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardError = true
+            };
+            
+            using var process = System.Diagnostics.Process.Start(startInfo);
+            if (process != null)
+            {
+                process.WaitForExit();
+                if (process.ExitCode != 0)
+                {
+                    var error = process.StandardError.ReadToEnd();
+                    _logger.LogWarning("chmod command failed with exit code {ExitCode}: {Error}", 
+                        process.ExitCode, error);
+                }
+            }
         }
         catch (Exception ex)
         {
