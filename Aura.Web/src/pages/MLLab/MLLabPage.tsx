@@ -8,9 +8,12 @@ import {
   MessageBarBody,
   MessageBarTitle,
   Link,
+  Button,
 } from '@fluentui/react-components';
-import { Info24Regular } from '@fluentui/react-icons';
+import { Info24Regular, LockClosed24Regular } from '@fluentui/react-icons';
 import { useState, useEffect, type FC } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAdvancedMode } from '../../hooks/useAdvancedMode';
 import { useMLLabStore } from '../../state/mlLab';
 import { AnnotationTab } from './AnnotationTab';
 import { TrainingTab } from './TrainingTab';
@@ -49,17 +52,50 @@ const useStyles = makeStyles({
     overflow: 'auto',
     padding: tokens.spacingVerticalXL,
   },
+  blockedContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    padding: tokens.spacingVerticalXXXL,
+    textAlign: 'center',
+    gap: tokens.spacingVerticalXL,
+  },
+  blockedIcon: {
+    fontSize: '72px',
+    color: tokens.colorPaletteRedForeground1,
+  },
+  blockedTitle: {
+    fontSize: tokens.fontSizeHero900,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  blockedDescription: {
+    maxWidth: '600px',
+    fontSize: tokens.fontSizeBase400,
+    color: tokens.colorNeutralForeground2,
+    lineHeight: '1.6',
+  },
+  blockedActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    marginTop: tokens.spacingVerticalL,
+  },
 });
 
 export const MLLabPage: FC = () => {
   const styles = useStyles();
+  const navigate = useNavigate();
+  const [advancedMode] = useAdvancedMode();
   const { currentTab, setCurrentTab, checkSystemCapabilities, systemCapabilities } =
     useMLLabStore();
   const [selectedTab, setSelectedTab] = useState(currentTab);
 
   useEffect(() => {
-    checkSystemCapabilities();
-  }, [checkSystemCapabilities]);
+    if (advancedMode) {
+      checkSystemCapabilities();
+    }
+  }, [advancedMode, checkSystemCapabilities]);
 
   const handleTabSelect = (tabValue: string) => {
     const tab = tabValue as 'annotation' | 'training';
@@ -67,7 +103,44 @@ export const MLLabPage: FC = () => {
     setCurrentTab(tab);
   };
 
+  const handleGoToSettings = () => {
+    navigate('/settings');
+  };
+
+  const handleGoBack = () => {
+    navigate('/');
+  };
+
   const hasWarnings = systemCapabilities && systemCapabilities.warnings.length > 0;
+
+  // Show blocked state if advanced mode is not enabled
+  if (!advancedMode) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.blockedContainer}>
+          <LockClosed24Regular className={styles.blockedIcon} />
+          <Text className={styles.blockedTitle}>Advanced Mode Required</Text>
+          <Text className={styles.blockedDescription}>
+            The ML Lab is an advanced feature that requires Advanced Mode to be enabled. Advanced
+            Mode unlocks expert-level features including in-app ML model training, deep prompt
+            customization, and low-level render controls.
+          </Text>
+          <Text className={styles.blockedDescription}>
+            To access this feature, enable Advanced Mode in Settings &gt; General. This feature
+            assumes familiarity with machine learning concepts and video processing workflows.
+          </Text>
+          <div className={styles.blockedActions}>
+            <Button appearance="primary" onClick={handleGoToSettings}>
+              Go to Settings
+            </Button>
+            <Button appearance="secondary" onClick={handleGoBack}>
+              Go Back
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
