@@ -395,12 +395,19 @@ public class JobsController : ControllerBase
     
     /// <summary>
     /// Stream Server-Sent Events for job progress updates
+    /// Supports reconnection via Last-Event-ID header
     /// </summary>
     [HttpGet("{jobId}/events")]
     public async Task GetJobEvents(string jobId, CancellationToken ct = default)
     {
         var correlationId = HttpContext.TraceIdentifier;
-        Log.Information("[{CorrelationId}] SSE stream requested for job {JobId}", correlationId, jobId);
+        
+        // Check for Last-Event-ID header for reconnection support
+        var lastEventId = Request.Headers["Last-Event-ID"].FirstOrDefault();
+        var isReconnect = !string.IsNullOrEmpty(lastEventId);
+        
+        Log.Information("[{CorrelationId}] SSE stream requested for job {JobId}, reconnect={IsReconnect}, lastEventId={LastEventId}", 
+            correlationId, jobId, isReconnect, lastEventId ?? "none");
         
         // Set headers for SSE
         Response.Headers.Add("Content-Type", "text/event-stream");
@@ -413,17 +420,18 @@ public class JobsController : ControllerBase
             var job = _jobRunner.GetJob(jobId);
             if (job == null)
             {
-                await SendSseEvent("error", new { message = "Job not found", jobId, correlationId });
+                await SendSseEventWithId("error", new { message = "Job not found", jobId, correlationId }, GenerateEventId());
                 return;
             }
             
             // Send initial job status with artifacts
-            await SendSseEvent("job-status", new { 
+            await SendSseEventWithId("job-status", new { 
                 status = job.Status.ToString(), 
                 stage = job.Stage,
                 percent = job.Percent,
-                correlationId 
-            });
+                correlationId,
+                isReconnect
+            }, GenerateEventId());
             
             // Track last sent values and last ping time
             var lastStatus = job.Status;
@@ -434,6 +442,7 @@ public class JobsController : ControllerBase
             var lastPingTime = DateTime.UtcNow;
             var pingIntervalSeconds = 10;
             var pollIntervalMs = 500; // Poll every 500ms for responsiveness
+            var eventIdCounter = 0;
             
             while (!ct.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)
             {
@@ -452,24 +461,24 @@ public class JobsController : ControllerBase
                 // Send status change events
                 if (job.Status != lastStatus)
                 {
-                    await SendSseEvent("job-status", new { 
+                    await SendSseEventWithId("job-status", new { 
                         status = job.Status.ToString(), 
                         stage = job.Stage,
                         percent = job.Percent,
                         correlationId 
-                    });
+                    }, GenerateEventId(++eventIdCounter));
                     lastStatus = job.Status;
                 }
                 
                 // Send stage change events (phase transitions)
                 if (job.Stage != lastStage)
                 {
-                    await SendSseEvent("step-status", new { 
+                    await SendSseEventWithId("step-status", new { 
                         step = job.Stage, 
                         status = "started",
                         phase = MapStageToPhase(job.Stage),
                         correlationId 
-                    });
+                    }, GenerateEventId(++eventIdCounter));
                     lastStage = job.Stage;
                 }
                 
@@ -477,13 +486,13 @@ public class JobsController : ControllerBase
                 if (job.Percent != lastPercent)
                 {
                     var latestLog = job.Logs.LastOrDefault() ?? "";
-                    await SendSseEvent("step-progress", new { 
+                    await SendSseEventWithId("step-progress", new { 
                         step = job.Stage, 
                         phase = MapStageToPhase(job.Stage),
                         progressPct = job.Percent,
                         message = latestLog,
                         correlationId 
-                    });
+                    }, GenerateEventId(++eventIdCounter));
                     lastPercent = job.Percent;
                     lastProgressMessage = latestLog;
                 }
@@ -498,11 +507,11 @@ public class JobsController : ControllerBase
                         if (logEntry.Contains("warning", StringComparison.OrdinalIgnoreCase) || 
                             logEntry.Contains("error", StringComparison.OrdinalIgnoreCase))
                         {
-                            await SendSseEvent("warning", new {
+                            await SendSseEventWithId("warning", new {
                                 message = logEntry,
                                 step = job.Stage,
                                 correlationId
-                            });
+                            }, GenerateEventId(++eventIdCounter));
                         }
                     }
                     lastLogCount = job.Logs.Count;
@@ -517,7 +526,7 @@ public class JobsController : ControllerBase
                 var videoArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4");
                 var subtitleArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "subtitle" || a.Type == "text/srt");
                 
-                await SendSseEvent("job-completed", new 
+                await SendSseEventWithId("job-completed", new 
                 { 
                     status = "Succeeded", 
                     jobId = job.Id,
@@ -533,7 +542,7 @@ public class JobsController : ControllerBase
                         sizeBytes = videoArtifact?.SizeBytes ?? 0
                     },
                     correlationId 
-                });
+                }, GenerateEventId(++eventIdCounter));
             }
             else if (job?.Status == JobStatus.Failed)
             {
@@ -541,7 +550,7 @@ public class JobsController : ControllerBase
                     ? job.Errors.ToArray() 
                     : new[] { new JobStepError { Code = "UnknownError", Message = job.ErrorMessage ?? "Job failed", Remediation = "Check logs for details" } };
                     
-                await SendSseEvent("job-failed", new 
+                await SendSseEventWithId("job-failed", new 
                 { 
                     status = "Failed",
                     jobId = job.Id,
@@ -550,18 +559,18 @@ public class JobsController : ControllerBase
                     errorMessage = job.ErrorMessage,
                     logs = job.Logs.TakeLast(10).ToArray(),
                     correlationId 
-                });
+                }, GenerateEventId(++eventIdCounter));
             }
             else if (job?.Status == JobStatus.Canceled)
             {
-                await SendSseEvent("job-cancelled", new 
+                await SendSseEventWithId("job-cancelled", new 
                 { 
                     status = "Cancelled",
                     jobId = job.Id,
                     stage = job.Stage,
                     message = "Job was cancelled by user",
                     correlationId 
-                });
+                }, GenerateEventId(++eventIdCounter));
             }
         }
         catch (OperationCanceledException)
@@ -666,11 +675,25 @@ public class JobsController : ControllerBase
         await Response.Body.WriteAsync(bytes);
     }
 
+    private async Task SendSseEventWithId(string eventType, object data, string eventId)
+    {
+        var json = JsonSerializer.Serialize(data);
+        var message = $"id: {eventId}\nevent: {eventType}\ndata: {json}\n\n";
+        var bytes = Encoding.UTF8.GetBytes(message);
+        await Response.Body.WriteAsync(bytes);
+    }
+
     private async Task SendSseComment(string comment)
     {
         var message = $": {comment}\n\n";
         var bytes = Encoding.UTF8.GetBytes(message);
         await Response.Body.WriteAsync(bytes);
+    }
+
+    private static string GenerateEventId(int counter = 0)
+    {
+        // Generate event ID with timestamp and counter for uniqueness
+        return $"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{counter}";
     }
 
     private static string MapStageToPhase(string stage)
