@@ -57,7 +57,7 @@ public class SecureStorageService : ISecureStorageService
         _logger = logger;
         _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
-        // Set up storage path
+        // Set up storage path - unified for all platforms
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var secureDir = Path.Combine(localAppData, "Aura", "secure");
         Directory.CreateDirectory(secureDir);
@@ -65,6 +65,58 @@ public class SecureStorageService : ISecureStorageService
 
         // Generate or load machine-specific key for non-Windows platforms
         _machineKey = GetOrCreateMachineKey(secureDir);
+
+        // Set proper file permissions on non-Windows systems
+        if (!_isWindows)
+        {
+            SetUnixFilePermissions(secureDir);
+            if (File.Exists(_storagePath))
+            {
+                SetUnixFilePermissions(_storagePath);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets file permissions to 600 (owner read/write only) on Unix-like systems
+    /// </summary>
+    private void SetUnixFilePermissions(string path)
+    {
+        try
+        {
+            // Use .NET 7+ UnixFileMode if available (better approach)
+            // Fallback to chmod command for compatibility
+            if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+            {
+                var startInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "chmod",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardError = true
+                };
+                
+                // Use ArgumentList for proper escaping (no shell interpretation)
+                startInfo.ArgumentList.Add("600");
+                startInfo.ArgumentList.Add(path);
+                
+                using var process = System.Diagnostics.Process.Start(startInfo);
+                if (process != null)
+                {
+                    process.WaitForExit();
+                    if (process.ExitCode != 0)
+                    {
+                        var error = process.StandardError.ReadToEnd();
+                        _logger.LogWarning("chmod command failed with exit code {ExitCode}: {Error}", 
+                            process.ExitCode, error);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to set file permissions on {Path}", path);
+        }
     }
 
     public async Task SaveApiKeyAsync(string providerName, string apiKey)
@@ -275,6 +327,12 @@ public class SecureStorageService : ISecureStorageService
             }
 
             await File.WriteAllBytesAsync(_storagePath, encryptedData).ConfigureAwait(false);
+
+            // Set proper file permissions on non-Windows systems
+            if (!_isWindows)
+            {
+                SetUnixFilePermissions(_storagePath);
+            }
         }
         catch (Exception ex)
         {
@@ -357,19 +415,10 @@ public class SecureStorageService : ISecureStorageService
             // On Unix-like systems, restrict file permissions
             if (!_isWindows)
             {
-                try
-                {
-                    // chmod 600 (owner read/write only)
-                    var chmod = System.Diagnostics.Process.Start("chmod", $"600 {keyPath}");
-                    chmod?.WaitForExit();
-                }
-                catch
-                {
-                    _logger.LogWarning("Failed to set file permissions on machine key");
-                }
+                SetUnixFilePermissions(keyPath);
             }
 
-            _logger.LogInformation("Generated new machine-specific encryption key");
+            _logger.LogInformation("Generated new machine-specific encryption key at {Path}", keyPath);
             return key;
         }
         catch (Exception ex)

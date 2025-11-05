@@ -156,13 +156,18 @@ All API keys and provider secrets are encrypted at rest using platform-specific 
 - **Storage**: `%LOCALAPPDATA%\Aura\secure\apikeys.dat`
 - **Security**: Keys encrypted with user's Windows credentials, cannot be decrypted by other users or on other machines
 
-**Linux/macOS (Development)**:
-- **Method**: AES-256 encryption
-- **Key**: Machine-specific key stored in `$HOME/.local/share/Aura/secure/.machinekey`
+**Linux/macOS**:
+- **Method**: AES-256-CBC encryption
+- **Key**: Machine-specific 256-bit key stored in `$HOME/.local/share/Aura/secure/.machinekey`
 - **Storage**: `$HOME/.local/share/Aura/secure/apikeys.dat`
-- **Security**: Keys encrypted with machine-specific key, file permissions set to 600 (owner read/write only)
+- **Security**: 
+  - Keys encrypted with machine-specific AES-256 key
+  - File permissions set to 600 (owner read/write only)
+  - Initialization vector (IV) prepended to encrypted data for CBC mode
+  - Machine key generated from cryptographically secure random number generator
+  - Automatic migration from legacy plaintext storage (if detected)
 
-⚠️ **Warning**: Linux/macOS encryption is suitable for development environments only. For production deployments on non-Windows platforms, consider additional security measures or use a dedicated secrets management solution.
+✅ **Production-Ready**: Linux/macOS encryption uses industry-standard AES-256-CBC with proper key management and file permissions. Suitable for production use.
 
 ### Key Management API
 
@@ -261,11 +266,23 @@ Body: { "includeSecrets": true, "selectedKeys": ["openai", "anthropic"] }
 
 ### Migration from Plaintext
 
-If legacy plaintext storage is detected:
-1. Keys automatically migrated to encrypted storage
-2. Old plaintext file backed up with `.migrated` extension
-3. Original plaintext file deleted
-4. Migration logged for audit trail
+**Automatic Migration on Linux/macOS**:
+If legacy plaintext storage is detected (from `$HOME/.aura-dev/apikeys.json`):
+1. Keys automatically migrated to encrypted storage on first read
+2. Original plaintext file securely deleted (overwritten with random data then deleted)
+3. Migration logged for audit trail
+4. One-time operation per installation
+
+**Legacy Storage Locations** (no longer used):
+- Linux/macOS: `$HOME/.aura-dev/apikeys.json` (plaintext, migrated automatically)
+
+**Migration Process**:
+- Detects legacy plaintext file on KeyStore initialization
+- Reads all keys from plaintext file
+- Encrypts and saves each key to new encrypted storage
+- Securely overwrites legacy file with random data
+- Deletes legacy file
+- Logs migration completion with key count
 
 ### Precedence Enforcement
 

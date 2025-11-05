@@ -9,20 +9,23 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Aura.Core.Services;
 
 namespace Aura.Core.Configuration;
 
 /// <summary>
-/// Manages secure storage of API keys using DPAPI on Windows or encrypted storage on Linux
+/// Manages secure storage of API keys using DPAPI on Windows or AES-256 encryption on Linux/macOS
 /// </summary>
 public class KeyStore : IKeyStore
 {
     private readonly ILogger<KeyStore> _logger;
     private readonly string _keysPath;
-    private readonly string _devKeysPath;
+    private readonly string _legacyDevKeysPath;
     private readonly bool _isWindows;
     private Dictionary<string, string>? _cachedKeys;
     private readonly object _lock = new();
+    private readonly SecureStorageService? _secureStorage;
+    private bool _migrationCompleted;
 
     public KeyStore(ILogger<KeyStore> logger)
     {
@@ -36,14 +39,22 @@ public class KeyStore : IKeyStore
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Aura",
                 "apikeys.json");
-            _devKeysPath = string.Empty;
+            _legacyDevKeysPath = string.Empty;
+            _secureStorage = null;
         }
         else
         {
-            // Linux: Use plaintext dev storage in home directory
+            // Linux/macOS: Use AES-256 encrypted storage via SecureStorageService
             _keysPath = string.Empty;
             var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            _devKeysPath = Path.Combine(homeDir, ".aura-dev", "apikeys.json");
+            
+            // Legacy plaintext locations to check for migration
+            _legacyDevKeysPath = Path.Combine(homeDir, ".aura-dev", "apikeys.json");
+            
+            // Initialize SecureStorageService for encrypted storage
+            var secureLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<SecureStorageService>.Instance;
+            _secureStorage = new SecureStorageService(secureLogger);
+            _migrationCompleted = false;
         }
     }
 
@@ -147,51 +158,72 @@ public class KeyStore : IKeyStore
     {
         try
         {
-            var path = _isWindows ? _keysPath : _devKeysPath;
-            var directory = Path.GetDirectoryName(path);
-            
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            Dictionary<string, string> keysToStore;
-
             if (_isWindows)
             {
-                keysToStore = new Dictionary<string, string>();
-                foreach (var kvp in keys)
-                {
-                    if (!string.IsNullOrWhiteSpace(kvp.Value))
-                    {
-                        var encrypted = ProtectString(kvp.Value);
-                        keysToStore[kvp.Key] = encrypted;
-                    }
-                }
-                _logger.LogInformation("Encrypting {Count} API keys using DPAPI", keysToStore.Count);
+                await SaveKeysWindowsAsync(keys, ct);
             }
             else
             {
-                keysToStore = keys.Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value))
-                                  .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                _logger.LogInformation("Storing {Count} API keys (development mode, encryption not available)", keysToStore.Count);
+                await SaveKeysNonWindowsAsync(keys, ct);
             }
-
-            var json = JsonSerializer.Serialize(keysToStore, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(path, json, ct);
 
             lock (_lock)
             {
                 _cachedKeys = keys;
             }
 
-            _logger.LogInformation("API keys saved successfully to {Path}", MaskPath(path));
+            _logger.LogInformation("API keys saved successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save API keys");
             throw;
         }
+    }
+
+    private async Task SaveKeysWindowsAsync(Dictionary<string, string> keys, CancellationToken ct)
+    {
+        var directory = Path.GetDirectoryName(_keysPath);
+        
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var keysToStore = new Dictionary<string, string>();
+        foreach (var kvp in keys)
+        {
+            if (!string.IsNullOrWhiteSpace(kvp.Value))
+            {
+                var encrypted = ProtectString(kvp.Value);
+                keysToStore[kvp.Key] = encrypted;
+            }
+        }
+        
+        _logger.LogInformation("Encrypting {Count} API keys using DPAPI", keysToStore.Count);
+
+        var json = JsonSerializer.Serialize(keysToStore, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(_keysPath, json, ct);
+    }
+
+    private async Task SaveKeysNonWindowsAsync(Dictionary<string, string> keys, CancellationToken ct)
+    {
+        if (_secureStorage == null)
+        {
+            throw new InvalidOperationException("SecureStorageService not initialized for non-Windows platform");
+        }
+
+        var saveCount = 0;
+        foreach (var kvp in keys)
+        {
+            if (!string.IsNullOrWhiteSpace(kvp.Key) && !string.IsNullOrWhiteSpace(kvp.Value))
+            {
+                await _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value);
+                saveCount++;
+            }
+        }
+
+        _logger.LogInformation("Saved {Count} API keys using AES-256 encryption", saveCount);
     }
 
     /// <summary>
@@ -272,16 +304,26 @@ public class KeyStore : IKeyStore
     /// </summary>
     private Dictionary<string, string> LoadAndDecryptKeys()
     {
-        var path = _isWindows ? _keysPath : _devKeysPath;
-        
-        if (!File.Exists(path))
+        if (_isWindows)
+        {
+            return LoadAndDecryptKeysWindows();
+        }
+        else
+        {
+            return LoadAndDecryptKeysNonWindows();
+        }
+    }
+
+    private Dictionary<string, string> LoadAndDecryptKeysWindows()
+    {
+        if (!File.Exists(_keysPath))
         {
             return new Dictionary<string, string>();
         }
 
         try
         {
-            var json = File.ReadAllText(path);
+            var json = File.ReadAllText(_keysPath);
             var encryptedKeys = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
 
             if (encryptedKeys == null)
@@ -289,29 +331,174 @@ public class KeyStore : IKeyStore
                 return new Dictionary<string, string>();
             }
 
-            if (_isWindows)
+            var decryptedKeys = new Dictionary<string, string>();
+            foreach (var kvp in encryptedKeys)
             {
-                var decryptedKeys = new Dictionary<string, string>();
-                foreach (var kvp in encryptedKeys)
+                try
                 {
-                    try
-                    {
-                        decryptedKeys[kvp.Key] = UnprotectString(kvp.Value);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to decrypt key for provider {Provider}, skipping", kvp.Key);
-                    }
+                    decryptedKeys[kvp.Key] = UnprotectString(kvp.Value);
                 }
-                return decryptedKeys;
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to decrypt key for provider {Provider}, skipping", kvp.Key);
+                }
             }
-
-            return encryptedKeys;
+            return decryptedKeys;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to load and decrypt API keys");
+            _logger.LogWarning(ex, "Failed to load and decrypt API keys from Windows storage");
             return new Dictionary<string, string>();
+        }
+    }
+
+    private Dictionary<string, string> LoadAndDecryptKeysNonWindows()
+    {
+        if (_secureStorage == null)
+        {
+            _logger.LogError("SecureStorageService not initialized for non-Windows platform");
+            return new Dictionary<string, string>();
+        }
+
+        // Perform one-time migration from legacy plaintext if needed
+        if (!_migrationCompleted)
+        {
+            MigrateLegacyPlaintextKeys();
+            _migrationCompleted = true;
+        }
+
+        try
+        {
+            // Load keys from encrypted storage using SecureStorageService
+            var providers = _secureStorage.GetConfiguredProvidersAsync().GetAwaiter().GetResult();
+            var keys = new Dictionary<string, string>();
+            
+            foreach (var provider in providers)
+            {
+                var key = _secureStorage.GetApiKeyAsync(provider).GetAwaiter().GetResult();
+                if (!string.IsNullOrEmpty(key))
+                {
+                    keys[provider] = key;
+                }
+            }
+            
+            return keys;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load API keys from encrypted storage");
+            return new Dictionary<string, string>();
+        }
+    }
+
+    private void MigrateLegacyPlaintextKeys()
+    {
+        if (_secureStorage == null || string.IsNullOrEmpty(_legacyDevKeysPath))
+        {
+            return;
+        }
+
+        // Check for legacy plaintext file
+        if (!File.Exists(_legacyDevKeysPath))
+        {
+            return;
+        }
+
+        try
+        {
+            _logger.LogInformation("Detected legacy plaintext API keys file, beginning migration");
+            
+            // Read legacy plaintext keys
+            var json = File.ReadAllText(_legacyDevKeysPath);
+            var plaintextKeys = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+
+            if (plaintextKeys == null || plaintextKeys.Count == 0)
+            {
+                _logger.LogInformation("Legacy file empty, skipping migration");
+                return;
+            }
+
+            // Migrate each key to encrypted storage
+            int migratedCount = 0;
+            foreach (var kvp in plaintextKeys)
+            {
+                if (!string.IsNullOrWhiteSpace(kvp.Key) && !string.IsNullOrWhiteSpace(kvp.Value))
+                {
+                    try
+                    {
+                        _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value).GetAwaiter().GetResult();
+                        migratedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to migrate key for provider {Provider}", kvp.Key);
+                    }
+                }
+            }
+
+            _logger.LogInformation("Successfully migrated {Count} API keys from plaintext to encrypted storage", migratedCount);
+
+            // Securely delete the old plaintext file
+            SecureDeleteFile(_legacyDevKeysPath);
+            
+            _logger.LogInformation("Legacy plaintext file securely deleted");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during legacy key migration");
+        }
+    }
+
+    private void SecureDeleteFile(string filePath)
+    {
+        if (!File.Exists(filePath))
+        {
+            return;
+        }
+
+        try
+        {
+            // Overwrite file contents before deletion for better security
+            // Use chunked overwriting to handle large files safely without loading entire file into memory
+            var fileInfo = new FileInfo(filePath);
+            var fileLength = fileInfo.Length;
+            
+            if (fileLength > 0)
+            {
+                // 64KB chunk size balances memory usage and I/O performance
+                // Large enough to minimize system calls, small enough to avoid memory pressure
+                const int chunkSize = 64 * 1024;
+                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Write);
+                using var rng = RandomNumberGenerator.Create();
+                
+                long bytesRemaining = fileLength;
+                while (bytesRemaining > 0)
+                {
+                    var currentChunkSize = (int)Math.Min(chunkSize, bytesRemaining);
+                    var randomData = new byte[currentChunkSize];
+                    rng.GetBytes(randomData);
+                    fs.Write(randomData, 0, currentChunkSize);
+                    bytesRemaining -= currentChunkSize;
+                }
+                
+                fs.Flush();
+            }
+
+            // Delete the file
+            File.Delete(filePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to securely delete file {Path}, attempting normal delete", MaskPath(filePath));
+            
+            try
+            {
+                File.Delete(filePath);
+            }
+            catch (Exception deleteEx)
+            {
+                _logger.LogError(deleteEx, "Failed to delete file {Path}", MaskPath(filePath));
+            }
         }
     }
 }
