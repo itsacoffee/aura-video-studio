@@ -565,14 +565,14 @@ public class OfflineProviderAvailabilityService
                 VramGB = vramGB,
                 HasNvidiaGpu = hasNvidia,
                 LogicalCores = logicalCores,
-                Tier = systemProfile?.Tier ?? "Unknown"
+                Tier = systemProfile?.Tier.ToString() ?? "Unknown"
             }
         };
 
         // TTS Recommendations
         if (ramGB >= 16)
         {
-            recommendations.TtsRecommendation = new ProviderRecommendation
+            recommendations.TtsRecommendation = new OfflineProviderRecommendation
             {
                 Primary = "Mimic3",
                 Rationale = "High RAM available - Mimic3 offers best quality for offline TTS",
@@ -589,7 +589,7 @@ public class OfflineProviderAvailabilityService
         }
         else
         {
-            recommendations.TtsRecommendation = new ProviderRecommendation
+            recommendations.TtsRecommendation = new OfflineProviderRecommendation
             {
                 Primary = "Piper",
                 Rationale = "Limited RAM - Piper offers excellent quality with minimal resource usage",
@@ -608,7 +608,7 @@ public class OfflineProviderAvailabilityService
         // LLM Recommendations
         if (ramGB >= 16 && vramGB >= 8)
         {
-            recommendations.LlmRecommendation = new ProviderRecommendation
+            recommendations.LlmRecommendation = new OfflineProviderRecommendation
             {
                 Primary = "Ollama with llama3.1:8b-q4_k_m",
                 Rationale = "Good RAM and VRAM - can run 8B models with GPU acceleration",
@@ -624,7 +624,7 @@ public class OfflineProviderAvailabilityService
         }
         else if (ramGB >= 16)
         {
-            recommendations.LlmRecommendation = new ProviderRecommendation
+            recommendations.LlmRecommendation = new OfflineProviderRecommendation
             {
                 Primary = "Ollama with llama3.1:8b-q4_k_m",
                 Rationale = "Good RAM available - can run 8B models on CPU",
@@ -640,7 +640,7 @@ public class OfflineProviderAvailabilityService
         }
         else if (ramGB >= 8)
         {
-            recommendations.LlmRecommendation = new ProviderRecommendation
+            recommendations.LlmRecommendation = new OfflineProviderRecommendation
             {
                 Primary = "Ollama with llama3.2:3b-q4_0",
                 Rationale = "Limited RAM - use smaller 3B model for reliable performance",
@@ -656,7 +656,7 @@ public class OfflineProviderAvailabilityService
         }
         else
         {
-            recommendations.LlmRecommendation = new ProviderRecommendation
+            recommendations.LlmRecommendation = new OfflineProviderRecommendation
             {
                 Primary = "RuleBased (offline fallback)",
                 Rationale = "Limited resources - template-based generation is most reliable",
@@ -675,7 +675,7 @@ public class OfflineProviderAvailabilityService
         // Image/Video Recommendations
         if (hasNvidia && vramGB >= 8)
         {
-            recommendations.ImageRecommendation = new ProviderRecommendation
+            recommendations.ImageRecommendation = new OfflineProviderRecommendation
             {
                 Primary = "Stable Diffusion WebUI",
                 Rationale = "NVIDIA GPU with sufficient VRAM - can generate high-quality images locally",
@@ -692,7 +692,7 @@ public class OfflineProviderAvailabilityService
         }
         else if (hasNvidia && vramGB >= 6)
         {
-            recommendations.ImageRecommendation = new ProviderRecommendation
+            recommendations.ImageRecommendation = new OfflineProviderRecommendation
             {
                 Primary = "Stable Diffusion WebUI (limited)",
                 Rationale = "NVIDIA GPU with 6GB VRAM - can generate images at lower resolutions",
@@ -709,7 +709,7 @@ public class OfflineProviderAvailabilityService
         }
         else
         {
-            recommendations.ImageRecommendation = new ProviderRecommendation
+            recommendations.ImageRecommendation = new OfflineProviderRecommendation
             {
                 Primary = "Stock Images (Pexels/Pixabay/Unsplash)",
                 Rationale = "Insufficient GPU VRAM for local image generation",
@@ -772,13 +772,13 @@ public class OfflineProviderAvailabilityService
 /// </summary>
 public record MachineRecommendations
 {
-    public HardwareSummary HardwareSummary { get; init; } = new();
-    public ProviderRecommendation TtsRecommendation { get; init; } = new();
-    public string TtsFallback { get; init; } = string.Empty;
-    public ProviderRecommendation LlmRecommendation { get; init; } = new();
-    public ProviderRecommendation ImageRecommendation { get; init; } = new();
-    public List<string> OverallCapabilities { get; init; } = new();
-    public List<string> QuickStartSteps { get; init; } = new();
+    public required HardwareSummary HardwareSummary { get; init; }
+    public OfflineProviderRecommendation? TtsRecommendation { get; set; }
+    public string TtsFallback { get; set; } = string.Empty;
+    public OfflineProviderRecommendation? LlmRecommendation { get; set; }
+    public OfflineProviderRecommendation? ImageRecommendation { get; set; }
+    public List<string> OverallCapabilities { get; set; } = new();
+    public List<string> QuickStartSteps { get; set; } = new();
 }
 
 /// <summary>
@@ -796,7 +796,7 @@ public record HardwareSummary
 /// <summary>
 /// Recommendation for a specific provider
 /// </summary>
-public record ProviderRecommendation
+public record OfflineProviderRecommendation
 {
     public string Primary { get; init; } = string.Empty;
     public string Rationale { get; init; } = string.Empty;
