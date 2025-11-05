@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,7 @@ namespace Aura.Cli
                         "compose" => await services.GetRequiredService<ComposeCommand>().ExecuteAsync(commandArgs),
                         "render" => await services.GetRequiredService<RenderCommand>().ExecuteAsync(commandArgs),
                         "quick" => await services.GetRequiredService<QuickCommand>().ExecuteAsync(commandArgs),
+                        "keys" => await services.GetRequiredService<KeysCommand>().ExecuteAsync(commandArgs),
                         "help" or "--help" or "-h" => ShowHelp(),
                         _ => ShowUnknownCommand(commandName)
                     };
@@ -99,6 +101,7 @@ namespace Aura.Cli
             Console.WriteLine("  compose         Create composition plan from timeline and assets");
             Console.WriteLine("  render          Execute FFmpeg rendering to produce final video");
             Console.WriteLine("  quick           Quick end-to-end generation with defaults");
+            Console.WriteLine("  keys            Manage API keys for external providers");
             Console.WriteLine("  help            Show this help message");
             Console.WriteLine();
             Console.WriteLine("Options:");
@@ -141,6 +144,9 @@ namespace Aura.Cli
                 {
                     // Core services
                     services.AddSingleton<HardwareDetector>();
+                    services.AddSingleton<Aura.Core.Services.ISecureStorageService, Aura.Core.Services.SecureStorageService>();
+                    services.AddSingleton<Aura.Core.Services.IKeyValidationService, Aura.Core.Services.KeyValidationService>();
+                    services.AddSingleton<System.Net.Http.IHttpClientFactory, DefaultHttpClientFactory>();
                     
                     // Register FFmpeg locator for centralized FFmpeg path resolution
                     services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
@@ -171,6 +177,7 @@ namespace Aura.Cli
                     services.AddTransient<ComposeCommand>();
                     services.AddTransient<RenderCommand>();
                     services.AddTransient<QuickCommand>();
+                    services.AddTransient<KeysCommand>();
                     
                     // Demo service (legacy)
                     services.AddTransient<CliDemo>();
@@ -338,6 +345,19 @@ namespace Aura.Cli
             Console.WriteLine("  • Add Pro provider API keys in Settings");
             Console.WriteLine("  • Install FFmpeg for actual video rendering");
             Console.WriteLine("  • Run 'Quick Generate' to create your first video");
+        }
+    }
+
+    /// <summary>
+    /// Simple HttpClientFactory implementation for CLI
+    /// </summary>
+    public class DefaultHttpClientFactory : IHttpClientFactory
+    {
+        private static readonly HttpClient _client = new();
+
+        public HttpClient CreateClient(string name)
+        {
+            return _client;
         }
     }
 }

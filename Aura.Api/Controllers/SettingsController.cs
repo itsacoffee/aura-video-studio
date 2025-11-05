@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Api.Models;
 using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Aura.Core.Models.Settings;
@@ -397,7 +398,7 @@ public class SettingsController : ControllerBase
     }
 
     /// <summary>
-    /// Test API key for a specific provider
+    /// Test API key for a specific provider (basic format validation only)
     /// </summary>
     [HttpPost("test-api-key/{provider}")]
     public async Task<IActionResult> TestApiKey(
@@ -407,8 +408,10 @@ public class SettingsController : ControllerBase
     {
         try
         {
+            var apiKey = request.ApiKey ?? "";
+            
             // Basic validation
-            if (string.IsNullOrWhiteSpace(request.ApiKey))
+            if (string.IsNullOrWhiteSpace(apiKey))
             {
                 return Ok(new
                 {
@@ -420,10 +423,10 @@ public class SettingsController : ControllerBase
             // Provider-specific validation
             var result = provider.ToLowerInvariant() switch
             {
-                "openai" => ValidateOpenAIKey(request.ApiKey),
-                "anthropic" => ValidateAnthropicKey(request.ApiKey),
-                "stabilityai" => ValidateStabilityAIKey(request.ApiKey),
-                "elevenlabs" => ValidateElevenLabsKey(request.ApiKey),
+                "openai" => ValidateOpenAIKey(apiKey),
+                "anthropic" => ValidateAnthropicKey(apiKey),
+                "stabilityai" => ValidateStabilityAIKey(apiKey),
+                "elevenlabs" => ValidateElevenLabsKey(apiKey),
                 _ => new { success = false, message = "Unknown provider" }
             };
 
@@ -678,37 +681,5 @@ public class SettingsController : ControllerBase
     }
 }
 
-/// <summary>
-/// First-run status model
-/// </summary>
-public class FirstRunStatus
-{
-    public bool HasCompletedFirstRun { get; set; }
-    public string? CompletedAt { get; set; }
-    public string? Version { get; set; }
-}
 
-/// <summary>
-/// Request model for testing API keys
-/// </summary>
-public class TestApiKeyRequest
-{
-    public string ApiKey { get; set; } = "";
-}
-
-/// <summary>
-/// Request model for validating file paths
-/// </summary>
-public class ValidatePathRequest
-{
-    public string Path { get; set; } = "";
-}
-
-/// <summary>
-/// Request model for setting Ollama model
-/// </summary>
-public class SetOllamaModelRequest
-{
-    public string Model { get; set; } = "";
-}
 

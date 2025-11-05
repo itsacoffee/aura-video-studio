@@ -99,4 +99,18 @@ public static class SecretMaskingService
 
         return masked;
     }
+
+    /// <summary>
+    /// Sanitize user input for safe logging to prevent log injection
+    /// </summary>
+    public static string SanitizeForLogging(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return "[empty]";
+        }
+
+        // Remove newlines and control characters to prevent log forging
+        return Regex.Replace(input, @"[\r\n\t\x00-\x1F\x7F]", "");
+    }
 }
