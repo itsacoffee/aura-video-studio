@@ -178,6 +178,39 @@ public class MlController : ControllerBase
                 });
             }
 
+            // Run preflight check to validate system capabilities
+            var preflightResult = await _preflightCheck.CheckSystemCapabilitiesAsync(
+                stats.TotalAnnotations, 
+                cancellationToken);
+
+            // Block training if minimum requirements are not met
+            if (!preflightResult.MeetsMinimumRequirements)
+            {
+                var issues = string.Join("; ", preflightResult.Warnings.Concat(preflightResult.Errors));
+                _logger.LogWarning("Training blocked due to failed preflight check: {Issues}", issues);
+                
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "System Requirements Not Met",
+                    Status = 400,
+                    Detail = "Training cannot proceed due to insufficient system resources. " + issues,
+                    Extensions = 
+                    { 
+                        ["correlationId"] = correlationId,
+                        ["warnings"] = preflightResult.Warnings,
+                        ["errors"] = preflightResult.Errors,
+                        ["recommendations"] = preflightResult.Recommendations
+                    }
+                });
+            }
+
+            // Log warnings even if proceeding
+            if (preflightResult.Warnings.Any())
+            {
+                _logger.LogWarning("Training proceeding with warnings: {Warnings}", 
+                    string.Join("; ", preflightResult.Warnings));
+            }
+
             var jobId = await _trainingWorker.SubmitJobAsync(
                 userId, 
                 request.ModelName, 
@@ -596,13 +629,12 @@ public class MlController : ControllerBase
                 cancellationToken);
 
             // Convert DTO metrics to service model
-            var metrics = new Core.Services.ML.TrainingMetrics
-            {
-                Loss = job.Metrics.Loss,
-                Samples = job.Metrics.Samples,
-                Duration = job.Metrics.Duration,
-                AdditionalMetrics = job.Metrics.AdditionalMetrics ?? new Dictionary<string, double>()
-            };
+            var metrics = new Core.Services.ML.TrainingMetrics(
+                Loss: job.Metrics.Loss,
+                Samples: job.Metrics.Samples,
+                Duration: job.Metrics.Duration,
+                AdditionalMetrics: job.Metrics.AdditionalMetrics
+            );
 
             var analysis = await _postTrainingAnalysis.AnalyzeTrainingResultsAsync(
                 metrics,
