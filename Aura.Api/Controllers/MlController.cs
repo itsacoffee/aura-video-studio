@@ -25,17 +25,20 @@ public class MlController : ControllerBase
     private readonly AnnotationStorageService _annotationStorage;
     private readonly MlTrainingWorker _trainingWorker;
     private readonly ModelManager _modelManager;
+    private readonly PreflightCheckService _preflightCheck;
 
     public MlController(
         ILogger<MlController> logger,
         AnnotationStorageService annotationStorage,
         MlTrainingWorker trainingWorker,
-        ModelManager modelManager)
+        ModelManager modelManager,
+        PreflightCheckService preflightCheck)
     {
         _logger = logger;
         _annotationStorage = annotationStorage;
         _trainingWorker = trainingWorker;
         _modelManager = modelManager;
+        _preflightCheck = preflightCheck;
     }
 
     /// <summary>
@@ -323,6 +326,56 @@ public class MlController : ControllerBase
                 Title = "Revert Failed",
                 Status = 500,
                 Detail = "An error occurred while reverting to the default model",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Run preflight check before training to verify system capabilities
+    /// </summary>
+    [HttpGet("train/preflight")]
+    public async Task<ActionResult<PreflightCheckResultDto>> RunPreflightCheck(
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        _logger.LogInformation("Running preflight check, CorrelationId: {CorrelationId}", correlationId);
+
+        try
+        {
+            var userId = GetUserId();
+            var stats = await _annotationStorage.GetStatsAsync(userId, cancellationToken);
+            
+            var result = await _preflightCheck.CheckSystemCapabilitiesAsync(
+                stats.TotalAnnotations, 
+                cancellationToken);
+
+            var dto = new PreflightCheckResultDto(
+                Timestamp: result.Timestamp,
+                AnnotationCount: result.AnnotationCount,
+                HasGpu: result.HasGpu,
+                GpuName: result.GpuName,
+                GpuVramGb: result.GpuVramGb,
+                TotalRamGb: result.TotalRamGb,
+                AvailableRamGb: result.AvailableRamGb,
+                AvailableDiskSpaceGb: result.AvailableDiskSpaceGb,
+                EstimatedTrainingTimeMinutes: result.EstimatedTrainingTimeMinutes,
+                MeetsMinimumRequirements: result.MeetsMinimumRequirements,
+                Warnings: result.Warnings,
+                Recommendations: result.Recommendations,
+                Errors: result.Errors
+            );
+
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to run preflight check");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Preflight Check Failed",
+                Status = 500,
+                Detail = "An error occurred while checking system capabilities",
                 Extensions = { ["correlationId"] = correlationId }
             });
         }

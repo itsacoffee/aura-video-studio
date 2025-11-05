@@ -1603,6 +1603,24 @@ public record StartTrainingResponse(
     string Message);
 
 /// <summary>
+/// Preflight check result for ML training
+/// </summary>
+public record PreflightCheckResultDto(
+    DateTime Timestamp,
+    int AnnotationCount,
+    bool HasGpu,
+    string? GpuName,
+    double GpuVramGb,
+    double TotalRamGb,
+    double AvailableRamGb,
+    double AvailableDiskSpaceGb,
+    int EstimatedTrainingTimeMinutes,
+    bool MeetsMinimumRequirements,
+    List<string> Warnings,
+    List<string> Recommendations,
+    List<string> Errors);
+
+/// <summary>
 /// Request to generate proxy media
 /// </summary>
 public record GenerateProxyRequest(
