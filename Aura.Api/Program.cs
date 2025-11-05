@@ -1218,6 +1218,16 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.JobRunner>();
 builder.Services.AddSingleton<Aura.Core.Orchestrator.QuickService>();
 builder.Services.AddHostedService<Aura.Api.HostedServices.CleanupHostedService>();
 
+// Register Run Telemetry Collector and Integration
+builder.Services.AddSingleton<Aura.Core.Telemetry.RunTelemetryCollector>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Telemetry.RunTelemetryCollector>>();
+    var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    var artifactsPath = Path.Combine(localAppData, "Aura", "jobs");
+    return new Aura.Core.Telemetry.RunTelemetryCollector(logger, artifactsPath);
+});
+builder.Services.AddSingleton<Aura.Core.Telemetry.TelemetryIntegration>();
+
 // Register Provider Health Monitoring services
 builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.SmartProviderSelector>();

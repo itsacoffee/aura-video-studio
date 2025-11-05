@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aura.studio/schemas/run-telemetry/v1",
+  "title": "RunTelemetry v1",
+  "description": "Unified telemetry schema for video generation run stages",
+  "type": "object",
+  "required": [
+    "version",
+    "job_id",
+    "correlation_id",
+    "stage",
+    "started_at",
+    "ended_at",
+    "result_status"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Unique job identifier"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Request correlation identifier for tracing"
+    },
+    "project_id": {
+      "type": ["string", "null"],
+      "description": "Optional project identifier"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "brief",
+        "plan",
+        "script",
+        "ssml",
+        "tts",
+        "visuals",
+        "render",
+        "post"
+      ],
+      "description": "Pipeline stage name"
+    },
+    "scene_index": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Optional scene index for per-scene operations"
+    },
+    "model_id": {
+      "type": ["string", "null"],
+      "description": "Model identifier used (e.g., 'gpt-4', 'claude-3-sonnet')"
+    },
+    "provider": {
+      "type": ["string", "null"],
+      "description": "Provider name (e.g., 'OpenAI', 'ElevenLabs', 'Piper')"
+    },
+    "selection_source": {
+      "type": ["string", "null"],
+      "enum": ["default", "pinned", "cli", "fallback", null],
+      "description": "How the provider was selected"
+    },
+    "fallback_reason": {
+      "type": ["string", "null"],
+      "description": "Reason for fallback if selection_source is 'fallback'"
+    },
+    "tokens_in": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Input tokens for LLM operations"
+    },
+    "tokens_out": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Output tokens for LLM operations"
+    },
+    "cache_hit": {
+      "type": ["boolean", "null"],
+      "description": "Whether operation hit cache"
+    },
+    "retries": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Number of retry attempts"
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Operation latency in milliseconds"
+    },
+    "cost_estimate": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Estimated cost for this operation"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD",
+      "description": "Currency code for cost_estimate"
+    },
+    "pricing_version": {
+      "type": ["string", "null"],
+      "description": "Pricing data version used for cost estimation"
+    },
+    "result_status": {
+      "type": "string",
+      "enum": ["ok", "warn", "error"],
+      "description": "Operation result status"
+    },
+    "error_code": {
+      "type": ["string", "null"],
+      "description": "Error code if result_status is 'error' or 'warn'"
+    },
+    "message": {
+      "type": ["string", "null"],
+      "description": "Human-readable status message"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when operation started"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when operation ended"
+    },
+    "metadata": {
+      "type": ["object", "null"],
+      "description": "Additional stage-specific metadata (no PII)",
+      "properties": {
+        "characters": {
+          "type": "integer",
+          "description": "Character count for TTS operations"
+        },
+        "duration_seconds": {
+          "type": "number",
+          "description": "Duration of generated media"
+        },
+        "file_size_bytes": {
+          "type": "integer",
+          "description": "Size of generated artifact"
+        },
+        "resolution": {
+          "type": "string",
+          "description": "Video resolution (e.g., '1920x1080')"
+        },
+        "codec": {
+          "type": "string",
+          "description": "Video codec used"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

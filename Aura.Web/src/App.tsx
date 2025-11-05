@@ -45,6 +45,7 @@ import { PromptManagementPage } from './pages/PromptManagement/PromptManagementP
 import QualityValidationPage from './pages/QualityValidation/QualityValidationPage';
 import RagDocumentManager from './pages/RAG/RagDocumentManager';
 import { RecentJobsPage } from './pages/RecentJobsPage';
+import { RunDetailsPage } from './pages/Jobs/RunDetailsPage';
 import { RenderPage } from './pages/RenderPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SetupWizard } from './pages/Setup/SetupWizard';
@@ -441,6 +442,7 @@ function App() {
                       <Route path="/export-history" element={<ExportHistoryPage />} />
                       <Route path="/assets" element={<AssetLibrary />} />
                       <Route path="/jobs" element={<RecentJobsPage />} />
+                      <Route path="/jobs/:jobId/telemetry" element={<RunDetailsPage />} />
                       <Route path="/downloads" element={<DownloadsPage />} />
                       <Route path="/health" element={<SystemHealthDashboard />} />
                       <Route path="/health/providers" element={<ProviderHealthDashboard />} />
