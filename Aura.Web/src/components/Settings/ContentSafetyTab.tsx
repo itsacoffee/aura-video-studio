@@ -11,12 +11,21 @@ import {
   Dropdown,
   Option,
   Badge,
+  Tab,
+  TabList,
 } from '@fluentui/react-components';
-import { Shield24Regular, Info24Regular } from '@fluentui/react-icons';
+import {
+  Shield24Regular,
+  Info24Regular,
+  History24Regular,
+  Settings24Regular,
+} from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
 import { useContentSafetyStore } from '../../state/contentSafety';
 import type { SafetyPolicy, SafetyCategoryType } from '../../state/contentSafety';
 import { SafetyAnalysisPreview } from '../ContentSafety/SafetyAnalysisPreview';
+import { IncidentLogViewer } from '../ContentSafety/IncidentLogViewer';
+import { PolicyCenter } from '../ContentSafety/PolicyCenter';
 
 const useStyles = makeStyles({
   container: {
@@ -86,6 +95,7 @@ export const ContentSafetyTab = () => {
 
   const [selectedPolicy, setSelectedPolicy] = useState<SafetyPolicy | null>(null);
   const [editedPolicy, setEditedPolicy] = useState<SafetyPolicy | null>(null);
+  const [selectedSubTab, setSelectedSubTab] = useState<'settings' | 'policies' | 'logs'>('settings');
 
   useEffect(() => {
     loadPolicies();
@@ -173,6 +183,21 @@ export const ContentSafetyTab = () => {
         </Text>
       </div>
 
+      <TabList
+        selectedValue={selectedSubTab}
+        onTabSelect={(_, data) => setSelectedSubTab(data.value as 'settings' | 'policies' | 'logs')}
+      >
+        <Tab value="settings" icon={<Settings24Regular />}>
+          Settings
+        </Tab>
+        <Tab value="policies" icon={<Shield24Regular />}>
+          Policy Center
+        </Tab>
+        <Tab value="logs" icon={<History24Regular />}>
+          Incident Log
+        </Tab>
+      </TabList>
+
       {error && (
         <Card
           className={styles.card}
@@ -182,7 +207,9 @@ export const ContentSafetyTab = () => {
         </Card>
       )}
 
-      <Card className={styles.card}>
+      {selectedSubTab === 'settings' && (
+        <>
+          <Card className={styles.card}>
         <div className={styles.section}>
           <Field label="Active Safety Policy">
             <Dropdown
@@ -329,18 +356,24 @@ export const ContentSafetyTab = () => {
         </>
       )}
 
-      <Card className={styles.card} style={{ backgroundColor: tokens.colorNeutralBackground2 }}>
-        <div className={styles.row}>
-          <Info24Regular />
-          <Text weight="semibold">About Content Safety</Text>
-        </div>
-        <Text size={200}>
-          Content safety policies help ensure your videos are appropriate for your target audience
-          and comply with platform guidelines. Unrestricted mode disables all filtering and puts
-          full responsibility on the user. Strict mode enforces family-friendly content suitable for
-          all ages.
-        </Text>
-      </Card>
+          <Card className={styles.card} style={{ backgroundColor: tokens.colorNeutralBackground2 }}>
+            <div className={styles.row}>
+              <Info24Regular />
+              <Text weight="semibold">About Content Safety</Text>
+            </div>
+            <Text size={200}>
+              Content safety policies help ensure your videos are appropriate for your target audience
+              and comply with platform guidelines. Unrestricted mode disables all filtering and puts
+              full responsibility on the user. Strict mode enforces family-friendly content suitable for
+              all ages.
+            </Text>
+          </Card>
+        </>
+      )}
+
+      {selectedSubTab === 'policies' && <PolicyCenter />}
+
+      {selectedSubTab === 'logs' && <IncidentLogViewer showFilters={true} />}
     </div>
   );
 };

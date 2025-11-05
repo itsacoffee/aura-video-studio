@@ -120,7 +120,7 @@ const useStyles = makeStyles({
   },
   actions: {
     display: 'flex',
-    gap: tokens.spacingHorizontalM',
+    gap: tokens.spacingHorizontalM,
     justifyContent: 'flex-end',
   },
 });
