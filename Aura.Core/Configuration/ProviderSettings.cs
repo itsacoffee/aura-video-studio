@@ -150,6 +150,11 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Stable Diffusion WebUI URL (for offline availability check)
+    /// </summary>
+    public string? StableDiffusionWebUiUrl => GetStableDiffusionUrl();
+
+    /// <summary>
     /// Get Ollama URL
     /// </summary>
     public string GetOllamaUrl()
@@ -157,6 +162,11 @@ public class ProviderSettings
         LoadSettings();
         return GetStringSetting("ollamaUrl", "http://127.0.0.1:11434");
     }
+
+    /// <summary>
+    /// Ollama base URL (for offline availability check)
+    /// </summary>
+    public string? OllamaBaseUrl => GetOllamaUrl();
 
     /// <summary>
     /// Get Ollama model name
@@ -371,6 +381,42 @@ public class ProviderSettings
     {
         LoadSettings();
         return GetDoubleSetting("azureDefaultRate", 0.0);
+    }
+
+    /// <summary>
+    /// Get Piper TTS executable path
+    /// </summary>
+    public string? PiperExecutablePath
+    {
+        get
+        {
+            LoadSettings();
+            return GetStringSetting("piperExecutablePath", "");
+        }
+    }
+
+    /// <summary>
+    /// Get Piper TTS voice model path
+    /// </summary>
+    public string? PiperVoiceModelPath
+    {
+        get
+        {
+            LoadSettings();
+            return GetStringSetting("piperVoiceModelPath", "");
+        }
+    }
+
+    /// <summary>
+    /// Get Mimic3 TTS server base URL
+    /// </summary>
+    public string? Mimic3BaseUrl
+    {
+        get
+        {
+            LoadSettings();
+            return GetStringSetting("mimic3BaseUrl", "http://127.0.0.1:59125");
+        }
     }
 
     /// <summary>

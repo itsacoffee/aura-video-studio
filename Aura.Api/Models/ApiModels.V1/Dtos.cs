@@ -1147,6 +1147,88 @@ public record GlossaryEntryDto(
     string? Industry);
 
 /// <summary>
+/// Request for translation with SSML planning and subtitle generation
+/// </summary>
+public record TranslateAndPlanSSMLRequest(
+    string SourceLanguage,
+    string TargetLanguage,
+    List<LineDto> ScriptLines,
+    string TargetProvider,
+    VoiceSpecDto VoiceSpec,
+    CulturalContextDto? CulturalContext,
+    TranslationOptionsDto? TranslationOptions,
+    Dictionary<string, string>? Glossary,
+    string? AudienceProfileId,
+    double DurationTolerance = 0.02,
+    int MaxFittingIterations = 10,
+    bool EnableAggressiveAdjustments = false,
+    string SubtitleFormat = "SRT");
+
+/// <summary>
+/// Result of translation with SSML planning
+/// </summary>
+public record TranslatedSSMLResultDto(
+    TranslationResultDto Translation,
+    SSMLPlanningResultDto SSMLPlanning,
+    List<LineDto> TranslatedScriptLines,
+    SubtitleOutputDto Subtitles);
+
+/// <summary>
+/// Subtitle output
+/// </summary>
+public record SubtitleOutputDto(
+    string Format,
+    string Content,
+    int LineCount);
+
+/// <summary>
+/// Request for voice recommendation
+/// </summary>
+public record VoiceRecommendationRequest(
+    string TargetLanguage,
+    string Provider,
+    string? PreferredGender = null,
+    string? PreferredStyle = null);
+
+/// <summary>
+/// Voice recommendation result
+/// </summary>
+public record VoiceRecommendationDto(
+    string TargetLanguage,
+    string Provider,
+    bool IsRTL,
+    List<RecommendedVoiceDto> RecommendedVoices);
+
+/// <summary>
+/// Recommended voice option
+/// </summary>
+public record RecommendedVoiceDto(
+    string VoiceName,
+    string Gender,
+    string Style,
+    string Quality);
+
+/// <summary>
+/// Font configuration for subtitles
+/// </summary>
+public record SubtitleFontConfigDto(
+    string FontFamily,
+    int FontSize,
+    string PrimaryColor,
+    string OutlineColor,
+    int OutlineWidth,
+    string Alignment,
+    bool IsRTL);
+
+/// <summary>
+/// Request to generate subtitles with custom font
+/// </summary>
+public record GenerateSubtitlesRequest(
+    List<LineDto> ScriptLines,
+    string Format,
+    SubtitleFontConfigDto? FontConfig);
+
+/// <summary>
 /// Project glossary
 /// </summary>
 public record ProjectGlossaryDto(

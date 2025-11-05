@@ -538,20 +538,330 @@ GET /api/stock-media/licensing/export?format=csv
 GET /api/stock-media/licensing/summary
 ```
 
+## LLM Safety Integration
+
+### Overview
+
+Aura Video Studio includes comprehensive LLM safety integration that validates prompts and responses at multiple pipeline stages. This ensures AI-generated content complies with your safety policies before being used in video generation.
+
+### Features
+
+#### Prompt Validation
+
+All prompts sent to LLM providers are validated against your active safety policy:
+
+```typescript
+// Example: Validate a prompt before sending to LLM
+const result = await apiClient.post('/api/content-safety/validate-llm-prompt', {
+  prompt: "Your prompt text here",
+  policyId: "optional-policy-id"
+});
+
+if (!result.isValid) {
+  // Show safety warning dialog
+  // Use suggested alternatives or modified prompt
+}
+```
+
+**Validation includes:**
+- Keyword matching against blocked terms
+- Topic detection for controversial subjects
+- Category scoring (violence, profanity, etc.)
+- Automatic prompt modification suggestions
+- Safe alternative generation
+
+#### Response Validation
+
+LLM responses are validated before being used in the pipeline:
+
+```typescript
+// Automatically validated after LLM returns response
+// If unsafe, response is either:
+// 1. Auto-fixed using suggested replacements
+// 2. Regenerated with safer prompts
+// 3. Blocked if no safe alternative exists
+```
+
+#### Automatic Remediation
+
+When content violates safety policies, the system provides:
+
+1. **Modified Prompts** - Automatically rewritten to pass safety checks
+2. **Safe Alternatives** - Multiple alternative prompts preserving intent
+3. **Explanations** - Clear descriptions of why content was blocked
+4. **Remediation Strategies** - Step-by-step guidance to fix issues
+
+### Safety Warning Dialog
+
+The frontend includes a dedicated safety warning dialog that appears when content is blocked:
+
+**Features:**
+- Clear violation display with category and severity
+- Matched content highlighting
+- Suggested fixes for each violation
+- Alternative content suggestions (clickable)
+- Override option for Advanced Mode users
+- Policy name and enforcement rules
+
+**Usage in Code:**
+```typescript
+import SafetyWarningDialog from '@/components/ContentSafety/SafetyWarningDialog';
+
+<SafetyWarningDialog
+  open={showDialog}
+  onOpenChange={setShowDialog}
+  violations={violations}
+  alternatives={alternatives}
+  onUseAlternative={(alt) => handleUseAlternative(alt)}
+  onOverride={() => handleOverride()}
+  canOverride={policy.allowUserOverride}
+  requiresAdvancedMode={true}
+  policyName={policy.name}
+/>
+```
+
+### API Endpoints for LLM Safety
+
+#### Validate Prompt
+
+```bash
+POST /api/content-safety/validate-llm-prompt
+Content-Type: application/json
+
+{
+  "prompt": "Create a video about...",
+  "policyId": "optional-policy-id"
+}
+```
+
+Response:
+```json
+{
+  "originalPrompt": "...",
+  "isValid": false,
+  "canProceed": true,
+  "modifiedPrompt": "...",
+  "explanation": "...",
+  "alternatives": ["alt1", "alt2", "alt3"],
+  "analysisResult": { ... }
+}
+```
+
+#### Suggest Alternatives
+
+```bash
+POST /api/content-safety/suggest-alternatives
+Content-Type: application/json
+
+{
+  "content": "Unsafe content",
+  "policyId": "optional-policy-id",
+  "count": 3
+}
+```
+
+#### Get Remediation Report
+
+```bash
+POST /api/content-safety/remediation-report
+Content-Type: application/json
+
+{
+  "contentId": "unique-id",
+  "content": "Content to analyze",
+  "policyId": "optional-policy-id"
+}
+```
+
+Response includes:
+- Summary of issues
+- Detailed explanation with category scores
+- Multiple remediation strategies
+- Suggested alternatives
+- User options (apply fixes, override, cancel)
+- Recommended action
+
+#### Explain Block
+
+```bash
+POST /api/content-safety/explain-block
+Content-Type: application/json
+
+{
+  "content": "Blocked content",
+  "policyId": "optional-policy-id"
+}
+```
+
+Returns user-friendly markdown explanation of why content was blocked.
+
+### Integration with Video Generation
+
+Safety checks are integrated at key pipeline stages:
+
+1. **Script Generation** (Brief → Script)
+   - Validates user brief before sending to LLM
+   - Validates generated script before TTS
+
+2. **Visual Prompts** (Script → Image Prompts)
+   - Validates image generation prompts
+   - Sanitizes prompts for safe image generation
+
+3. **Stock Media Search** (Scene → Query)
+   - Validates search queries
+   - Sanitizes queries to remove unsafe terms
+   - Filters results based on metadata
+
+4. **Final Review** (Pre-Export)
+   - Optional final safety scan of complete content
+   - Generates compliance report
+
+### Advanced Mode Override
+
+Users in Advanced Mode can override safety blocks:
+
+**Requirements:**
+- Advanced Mode must be enabled in Settings
+- Policy must allow user overrides (`allowUserOverride: true`)
+- User accepts responsibility for content
+
+**Audit Trail:**
+All overrides are logged with:
+- User ID
+- Timestamp
+- Policy violated
+- Violations overridden
+- Reason (if provided)
+
+**UI Flow:**
+1. Content blocked by safety check
+2. Safety Warning Dialog displays
+3. Override button visible (Advanced Mode only)
+4. User clicks Override
+5. Decision recorded in audit log
+6. Content proceeds in pipeline
+
+## Stock Media Safety Filtering (Enhanced)
+
+### Query Validation
+
+All stock media queries are validated before searching:
+
+```bash
+POST /api/stock-media/validate-query
+Content-Type: application/json
+
+{
+  "query": "search query",
+  "policyId": "optional-policy-id"
+}
+```
+
+Response:
+```json
+{
+  "originalQuery": "...",
+  "isValid": true,
+  "validationMessage": "Query is safe",
+  "sanitizedQuery": "...",
+  "alternatives": ["alt1", "alt2"]
+}
+```
+
+### Query Sanitization
+
+Automatically removes unsafe terms:
+
+```bash
+POST /api/stock-media/sanitize-query
+Content-Type: application/json
+
+{
+  "query": "query with blocked terms"
+}
+```
+
+### Safe Search Enforcement
+
+All stock media searches automatically:
+1. Validate query against safety policy
+2. Sanitize query if needed
+3. Apply provider-specific safe search flags
+4. Filter results based on metadata
+5. Record decision in audit log
+
+### Audit Trail for Stock Media
+
+All stock media safety decisions are logged:
+- Original query
+- Sanitized query
+- Policy applied
+- Violations detected
+- User override (if any)
+- Results filtered
+
+Access audit logs:
+```bash
+GET /api/content-safety/audit?contentType=StockMediaQuery
+```
+
+## Best Practices for Developers
+
+### Integrating Safety Checks
+
+1. **Validate Early** - Check content as early as possible
+2. **Provide Alternatives** - Always offer safe alternatives
+3. **Clear Messaging** - Use user-friendly explanations
+4. **Allow Overrides** - For Advanced Mode, when appropriate
+5. **Audit Everything** - Log all safety decisions
+
+### Error Handling
+
+```typescript
+try {
+  const result = await validatePrompt(prompt, policy);
+  
+  if (!result.isValid) {
+    if (result.canProceed && result.modifiedPrompt) {
+      // Use modified prompt
+      return result.modifiedPrompt;
+    } else if (result.alternatives.length > 0) {
+      // Show alternatives to user
+      showSafetyDialog(result);
+    } else {
+      // Block and explain
+      showErrorMessage(result.explanation);
+    }
+  }
+} catch (error) {
+  logger.error('Safety check failed', error);
+  // Fallback to blocking content
+}
+```
+
+### Performance Considerations
+
+- Safety checks add 50-200ms latency per check
+- Use caching for repeated content validation
+- Batch validation when possible
+- Run checks asynchronously when not blocking
+
 ## Future Enhancements
 
 Potential features for future releases:
 
 - Real-time safety analysis during content creation
 - Machine learning-based detection improvements
-- Integration with external content safety APIs
+- Integration with external content safety APIs (Azure Content Safety, Google Perspective)
 - Advanced keyword list management UI
 - Safety dashboard with analytics
 - Policy templates for specific industries
 - Bulk content scanning tools
 - Export safety reports (PDF)
-- AI-powered content moderation for stock media
-- Automatic NSFW detection with computer vision
+- AI-powered content moderation with computer vision
+- Automatic NSFW image detection
+- Sentiment analysis integration
+- Multi-language safety detection
 
 ## Support
 
@@ -564,6 +874,11 @@ For questions or issues with content safety features:
    - Content sample (if appropriate)
    - Expected vs. actual behavior
    - Steps to reproduce
+4. For LLM safety issues, include:
+   - Original prompt
+   - LLM provider used
+   - Policy applied
+   - Validation result
 
 ## License
 

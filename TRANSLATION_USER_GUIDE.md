@@ -317,6 +317,215 @@ When translating with specific audience in mind:
 4. Export glossary for translation services if needed
 5. Re-use glossaries across video series
 
+## Advanced Features: Translation with Video Production
+
+### Translation Mode for Video Generation
+
+Aura Video Studio now supports integrated translation workflows that combine translation, text-to-speech, and subtitle generation for localized video production.
+
+#### Workflow Overview
+
+1. **Translate Script** → 2. **Generate SSML with Timing** → 3. **Synthesize Speech** → 4. **Generate Subtitles** → 5. **Render Video**
+
+#### How to Use Translation Mode
+
+**Step 1: Prepare Your Source Script**
+- Create or import your video script in the source language
+- Ensure timing information is accurate for each scene
+- Review script quality before translation
+
+**Step 2: Select Target Language and Voice**
+- Choose target language from 55+ supported languages
+- System automatically detects RTL languages (Arabic, Hebrew, Persian, Urdu)
+- Get voice recommendations for the target language
+  - Premium voices: ElevenLabs, PlayHT (requires API keys)
+  - Free voices: Windows SAPI, Piper (offline capable)
+
+**Step 3: Configure Translation Options**
+- Select translation mode (Literal, Localized, or Transcreation)
+- Enable timing adjustment for language expansion
+- Configure quality scoring for validation
+
+**Step 4: Generate Translated Video**
+- System automatically:
+  - Translates script with cultural adaptation
+  - Plans SSML with timing alignment to match original durations
+  - Generates subtitles in SRT or VTT format
+  - Selects appropriate voice for target language
+  - Renders video with synchronized audio and subtitles
+
+#### Voice Recommendations
+
+The system provides intelligent voice recommendations based on:
+- **Target language**: Native voices for each language
+- **Provider availability**: Premium vs. free options
+- **Gender and style preferences**: Male/female, professional/conversational/warm
+- **RTL support**: Automatic font and layout adjustments
+
+**Example Recommendations:**
+- **Spanish (es)**: Diego (Male, Professional), Sofia (Female, Warm), Matias (Male, Conversational)
+- **French (fr)**: Antoine (Male, Professional), Charlotte (Female, Elegant), Thomas (Male, Friendly)
+- **Arabic (ar)**: Ahmed (Male, Professional), Fatima (Female, Warm), Omar (Male, Authoritative) - RTL layout enabled
+- **Japanese (ja)**: Akira (Male, Professional), Sakura (Female, Gentle), Takeshi (Male, Dynamic)
+
+### Subtitle Generation and Preview
+
+#### Automatic Subtitle Generation
+
+When translating for video, subtitles are automatically generated with:
+- **Accurate timing**: Synchronized with SSML timing markers
+- **Format options**: SRT (SubRip) or VTT (WebVTT)
+- **Quality validation**: Checks for overlapping timecodes and timing issues
+
+#### Subtitle Preview
+
+Preview subtitles before rendering:
+- **Real-time display**: See subtitles with proper timing
+- **RTL layout**: Automatic right-to-left text alignment for RTL languages
+- **Font preview**: See how subtitles will appear with selected fonts
+- **Download option**: Export subtitles as separate files
+
+#### Font Configuration for Subtitles
+
+Configure subtitle appearance with RTL support:
+
+**Font Settings:**
+- **Font Family**: Choose from system fonts with automatic RTL fallbacks
+  - LTR languages: Arial, Helvetica, Verdana, Segoe UI, Roboto
+  - RTL languages: Noto Sans Arabic, Tahoma, Microsoft Sans Serif
+- **Font Size**: Adjustable from 12-48pt (default: 24pt)
+- **Text Color**: Hex color code (default: FFFFFF white)
+- **Outline Color**: Hex color code for text outline (default: 000000 black)
+- **Outline Width**: Thickness of outline (0-5px, default: 2px)
+- **Text Alignment**: Left, Center, Right (auto-selected for RTL)
+
+**RTL Font Fallbacks:**
+- Arabic: Noto Sans Arabic, Tahoma
+- Hebrew: Noto Sans Hebrew, Arial
+- Persian/Urdu: Noto Nastaliq Urdu, Tahoma
+
+### RTL (Right-to-Left) Language Support
+
+#### Automatic RTL Detection
+
+The system automatically detects and configures RTL layout for:
+- **Arabic** (ar, ar-SA, ar-EG, etc.)
+- **Hebrew** (he)
+- **Persian** (fa)
+- **Urdu** (ur)
+
+#### RTL Features
+
+**User Interface:**
+- Direction: Automatic text-align right
+- Layout: Flex-direction reversed
+- Margins/Padding: Logical properties (inline-start/inline-end)
+
+**Subtitles:**
+- Text direction: RTL with proper Unicode bidi support
+- Font stacks: RTL-optimized font fallbacks
+- Alignment: Right-aligned by default
+
+**Visual Indicators:**
+- RTL badge displayed in language selection
+- RTL indicator in subtitle preview
+- Font recommendations include RTL-optimized options
+
+#### Best Practices for RTL Content
+
+1. **Font Selection**: Always use recommended RTL fonts
+2. **Text Length**: RTL languages may have different expansion factors
+3. **Visual Elements**: Review visual recommendations for text-in-image
+4. **Testing**: Preview subtitles before final render
+5. **Quality Check**: Verify cultural appropriateness scores
+
+### Timing Alignment with SSML
+
+#### SSML Planning Integration
+
+The translation system integrates with SSML (Speech Synthesis Markup Language) planning to ensure:
+- **Duration matching**: Translated speech matches original timing
+- **Natural pauses**: Appropriate breaks between sentences
+- **Prosody adjustments**: Rate, pitch, and volume tuning
+- **Emphasis markers**: Highlight important words
+- **Timing markers**: Synchronization points for subtitles
+
+#### Timing Tolerance
+
+Configure timing tolerance for translation:
+- **Default**: ±2% deviation from target duration
+- **Tight**: ±1% for precise synchronization
+- **Relaxed**: ±5% for more natural speech
+
+#### Handling Timing Expansion
+
+Some languages naturally expand or contract compared to English:
+- **Expansion**: German (+30%), French (+20%), Spanish (+20%)
+- **Contraction**: Chinese (-30%), Japanese (-20%)
+
+The system automatically:
+1. Adjusts speech rate within natural limits
+2. Suggests text compression if needed
+3. Provides warnings for critical timing issues
+4. Maintains quality while meeting duration targets
+
+## API Integration
+
+For developers integrating translation features:
+
+### Translation with SSML Endpoint
+
+```http
+POST /api/localization/translate-and-plan-ssml
+Content-Type: application/json
+
+{
+  "sourceLanguage": "en",
+  "targetLanguage": "es",
+  "scriptLines": [
+    {
+      "sceneIndex": 0,
+      "text": "Welcome to our tutorial",
+      "startSeconds": 0.0,
+      "durationSeconds": 3.0
+    }
+  ],
+  "targetProvider": "ElevenLabs",
+  "voiceSpec": {
+    "voiceName": "Diego",
+    "rate": 1.0,
+    "pitch": 0.0,
+    "volume": 1.0
+  },
+  "subtitleFormat": "SRT"
+}
+```
+
+**Response includes:**
+- Translated script with adjusted timing
+- SSML markup with prosody adjustments
+- Generated subtitles in requested format
+- Quality metrics and warnings
+
+### Voice Recommendation Endpoint
+
+```http
+POST /api/localization/voice-recommendation
+Content-Type: application/json
+
+{
+  "targetLanguage": "ar",
+  "provider": "ElevenLabs",
+  "preferredGender": "Female",
+  "preferredStyle": "Professional"
+}
+```
+
+**Response includes:**
+- List of recommended voices
+- RTL indicator for the language
+- Voice characteristics (gender, style, quality tier)
+
 ## Support
 
 For issues or questions:
@@ -324,11 +533,14 @@ For issues or questions:
 - Review cultural adaptations for unexpected changes
 - Verify language codes are correct
 - Ensure source text is clean (no formatting issues)
+- Preview subtitles for RTL layout correctness
+- Test voice recommendations before full production
 - Contact support with correlation ID from error messages
 
 ---
 
 **Last Updated**: November 2024  
-**Feature Version**: 1.0  
+**Feature Version**: 1.1  
 **Supported Languages**: 55+  
-**Translation Modes**: Literal, Localized, Transcreation
+**Translation Modes**: Literal, Localized, Transcreation  
+**New Features**: Translation with SSML, Subtitle Generation, RTL Support, Voice Recommendations

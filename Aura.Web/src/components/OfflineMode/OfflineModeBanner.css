@@ -1,0 +1,20 @@
+.offline-mode-banner {
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.offline-provider-summary {
+  margin-top: 12px;
+  padding: 8px 0;
+}
+
+.offline-provider-summary ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.offline-provider-summary li {
+  padding: 4px 0;
+  font-size: 14px;
+}
