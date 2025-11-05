@@ -20,6 +20,7 @@ import {
   CheckmarkCircle24Regular,
 } from '@fluentui/react-icons';
 import type { FC } from 'react';
+import { PromptDiffViewer } from './PromptDiffViewer';
 
 const useStyles = makeStyles({
   content: {
@@ -96,6 +97,10 @@ export interface SafetyWarningDialogProps {
   canOverride: boolean;
   requiresAdvancedMode: boolean;
   policyName?: string;
+  originalContent?: string;
+  modifiedContent?: string;
+  showDiff?: boolean;
+  explanation?: string;
 }
 
 export const SafetyWarningDialog: FC<SafetyWarningDialogProps> = ({
@@ -109,6 +114,10 @@ export const SafetyWarningDialog: FC<SafetyWarningDialogProps> = ({
   canOverride,
   requiresAdvancedMode,
   policyName,
+  originalContent,
+  modifiedContent,
+  showDiff = false,
+  explanation,
 }) => {
   const styles = useStyles();
 
@@ -175,6 +184,22 @@ export const SafetyWarningDialog: FC<SafetyWarningDialogProps> = ({
             </Text>
 
             <Divider />
+
+            {showDiff && originalContent && modifiedContent && (
+              <PromptDiffViewer
+                originalPrompt={originalContent}
+                modifiedPrompt={modifiedContent}
+                explanation={explanation}
+                showInlineDiff={true}
+                onAcceptModified={() => {
+                  if (onUseAlternative) {
+                    onUseAlternative(modifiedContent);
+                  }
+                  onOpenChange(false);
+                }}
+                onReject={() => {}}
+              />
+            )}
 
             <div className={styles.violations}>
               <Text weight="semibold">Issues Found:</Text>
