@@ -6,13 +6,139 @@ This guide explains how to use the comprehensive user customization framework in
 
 Aura Video Studio now provides granular control over:
 
-- **Model Selection and Pinning**: Explicit control over which AI models are used at every pipeline stage
+- **Model Selection and Pinning**: Explicit control over which AI models are used at every pipeline stage (see detailed section below)
 - **Custom Audience Profiles**: Define audience characteristics beyond preset profiles
 - **Content Filtering**: Control what content is acceptable with custom policies
 - **AI Behavior**: Customize LLM parameters and prompts for each pipeline stage
 - **Quality Thresholds**: Define your own quality standards and validation rules
 - **Visual Styles**: Create custom visual aesthetic preferences
 - **Import/Export**: Share and backup your configurations
+
+## Model Selection and Pinning
+
+The model selection system provides complete control over which AI models are used at each stage of the video generation pipeline with strict precedence rules and audit visibility.
+
+### Precedence Rules
+
+Model selection follows a strict hierarchy. Higher priority selections override lower ones:
+
+| Priority | Source | Pinnable | Scope | Behavior When Unavailable |
+|----------|--------|----------|-------|---------------------------|
+| 1 (Highest) | Run Override (Pinned) | Yes | Single run via CLI/API | **Blocks execution** - requires user action |
+| 2 | Run Override | No | Single run via CLI/API | Falls back to next priority |
+| 3 | Stage Pinned | Yes | Per-stage selection in UI | **Blocks execution** - requires user action |
+| 4 | Project Override | No | Per-project setting | Falls back to next priority |
+| 5 | Global Default | No | Application-wide | Falls back to next priority |
+| 6 (Lowest) | Automatic Fallback | No | System default | Only if "Allow automatic fallback" is enabled |
+
+**Key Rules:**
+- **Pinned selections always block** when unavailable - the system will NOT automatically fall back
+- **Non-pinned selections** allow fallback to the next priority level
+- All selections are recorded in the audit log with source, reasoning, and timestamp
+- No silent swaps - all model changes are transparent and traceable
+
+### Per-Stage Configuration
+
+Configure models separately for each pipeline stage:
+
+- **Script Generation**: Initial video script from brief
+- **Visual Prompts**: Image generation prompt creation
+- **Narration Optimization**: Text-to-speech preparation
+- **Script Refinement**: Script improvement and polishing
+
+### Using the Models Page
+
+Navigate to **Settings > Models** or the dedicated **Models** page:
+
+1. **Select Model**: Choose model for each stage from dropdown
+2. **Pin/Unpin**: Click pin icon to prevent automatic changes
+3. **Test Model**: Verify model is accessible and working
+4. **Explain Choice**: Get AI analysis comparing your selection to recommendations
+5. **View Audit Log**: See all model resolutions with full reasoning
+
+### CLI Override Syntax
+
+Override models for a specific run:
+
+```bash
+# Single stage override
+aura generate --brief "..." --model-override script=gpt-4
+
+# Multiple stage overrides
+aura generate --brief "..." \
+  --model-override script=gpt-4 \
+  --model-override visual=gpt-4o
+
+# Pinned override (blocks on unavailability)
+aura generate --brief "..." \
+  --model-override script=gpt-4 --pin-model script
+```
+
+### API Override Syntax
+
+```json
+{
+  "brief": "...",
+  "modelOverrides": {
+    "script": {
+      "provider": "OpenAI",
+      "modelId": "gpt-4",
+      "pin": true
+    },
+    "visual": {
+      "provider": "Anthropic",
+      "modelId": "claude-3-opus",
+      "pin": false
+    }
+  }
+}
+```
+
+### Audit Log Format
+
+Every model resolution is logged with:
+
+```json
+{
+  "provider": "OpenAI",
+  "stage": "script",
+  "modelId": "gpt-4",
+  "source": "StagePinned",
+  "reasoning": "Using stage-pinned model: gpt-4",
+  "isPinned": true,
+  "isBlocked": false,
+  "timestamp": "2025-01-15T10:30:00Z",
+  "jobId": "job-abc123"
+}
+```
+
+### Best Practices
+
+1. **Pin critical stages**: Pin models for stages where consistency is critical
+2. **Test before pinning**: Always test a model before pinning it
+3. **Monitor audit log**: Regularly review to understand actual model usage
+4. **Use "Explain my choice"**: Understand tradeoffs of your selections
+5. **Enable fallback carefully**: Only enable automatic fallback if you accept model changes
+6. **Set project overrides**: Use project scope for project-specific requirements
+
+### Troubleshooting
+
+**Problem**: "Pinned model unavailable" error blocks generation
+
+**Solution**: 
+1. View audit log to see recommended alternatives
+2. Test alternative models
+3. Either:
+   - Update pinned selection to available model, or
+   - Temporarily unpin to allow fallback
+
+**Problem**: Models changing unexpectedly
+
+**Check**:
+1. Audit log for resolution source
+2. Verify "Allow automatic fallback" setting
+3. Check if selections are pinned
+4. Review precedence hierarchy
 
 ## Architecture
 
