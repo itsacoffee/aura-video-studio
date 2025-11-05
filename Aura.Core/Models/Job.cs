@@ -25,14 +25,20 @@ public record Job
     public VoiceSpec? VoiceSpec { get; init; }
     public RenderSpec? RenderSpec { get; init; }
     
-    // Enhanced fields for new jobs API
+    // Enhanced fields for new jobs API with proper timestamps
     public DateTime CreatedUtc { get; init; } = DateTime.UtcNow;
     public DateTime? StartedUtc { get; init; }
+    public DateTime? CompletedUtc { get; init; }
+    public DateTime? CanceledUtc { get; init; }
     public DateTime? EndedUtc { get; init; }
     public List<JobStep> Steps { get; init; } = new();
     public JobOutput? Output { get; init; }
     public List<string> Warnings { get; init; } = new();
     public List<JobStepError> Errors { get; init; } = new();
+    
+    // Resumability fields
+    public string? LastCompletedStep { get; init; }
+    public bool CanResume { get; init; } = false;
 }
 
 /// <summary>
