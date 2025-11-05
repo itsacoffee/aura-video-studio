@@ -331,6 +331,111 @@ public class ModelSelectionController : ControllerBase
     }
 
     /// <summary>
+    /// Get audit log of model selection resolutions
+    /// </summary>
+    [HttpGet("audit-log")]
+    public async Task<IActionResult> GetAuditLog(
+        [FromQuery] int? limit = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("Getting model selection audit log, limit: {Limit}", limit);
+
+            var auditLog = await _selectionService.GetAuditLogAsync(limit, ct);
+
+            return Ok(new
+            {
+                entries = auditLog.Select(a => new
+                {
+                    provider = a.Provider,
+                    stage = a.Stage,
+                    modelId = a.ModelId,
+                    source = a.Source,
+                    reasoning = a.Reasoning,
+                    isPinned = a.IsPinned,
+                    isBlocked = a.IsBlocked,
+                    blockReason = a.BlockReason,
+                    timestamp = a.Timestamp,
+                    jobId = a.JobId
+                }),
+                totalCount = auditLog.Count,
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get audit log");
+            return StatusCode(500, new
+            {
+                error = "Failed to retrieve audit log",
+                detail = ex.Message,
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Explain model choice comparison between selected and recommended models
+    /// </summary>
+    [HttpPost("explain-choice")]
+    public async Task<IActionResult> ExplainChoice(
+        [FromBody] ExplainChoiceRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Explaining model choice: {Provider}/{Stage}, selected={Selected}",
+                request.Provider, request.Stage, request.SelectedModelId);
+
+            var explanation = await _selectionService.ExplainModelChoiceAsync(
+                request.Provider,
+                request.Stage,
+                request.SelectedModelId,
+                ct);
+
+            return Ok(new
+            {
+                selectedModel = new
+                {
+                    modelId = explanation.SelectedModel.ModelId,
+                    provider = explanation.SelectedModel.Provider,
+                    maxTokens = explanation.SelectedModel.MaxTokens,
+                    contextWindow = explanation.SelectedModel.ContextWindow,
+                    isDeprecated = explanation.SelectedModel.IsDeprecated
+                },
+                recommendedModel = explanation.RecommendedModel != null ? new
+                {
+                    modelId = explanation.RecommendedModel.ModelId,
+                    provider = explanation.RecommendedModel.Provider,
+                    maxTokens = explanation.RecommendedModel.MaxTokens,
+                    contextWindow = explanation.RecommendedModel.ContextWindow,
+                    isDeprecated = explanation.RecommendedModel.IsDeprecated
+                } : null,
+                comparison = new
+                {
+                    selectedIsRecommended = explanation.SelectedIsRecommended,
+                    reasoning = explanation.Reasoning,
+                    tradeoffs = explanation.Tradeoffs,
+                    suggestions = explanation.Suggestions
+                },
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to explain model choice");
+            return StatusCode(500, new
+            {
+                error = "Failed to explain model choice",
+                detail = ex.Message,
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
     /// Get deprecation status for models
     /// </summary>
     [HttpGet("deprecation-status")]
@@ -441,4 +546,11 @@ public class TestModelRequest
     public required string Provider { get; set; }
     public required string ModelId { get; set; }
     public required string ApiKey { get; set; }
+}
+
+public class ExplainChoiceRequest
+{
+    public required string Provider { get; set; }
+    public required string Stage { get; set; }
+    public required string SelectedModelId { get; set; }
 }

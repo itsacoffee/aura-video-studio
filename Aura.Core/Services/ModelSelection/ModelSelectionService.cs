@@ -283,6 +283,180 @@ public class ModelSelectionService
         };
     }
 
+    /// <summary>
+    /// Get audit log of model selection resolutions
+    /// </summary>
+    public async Task<List<ModelSelectionAudit>> GetAuditLogAsync(
+        int? limit = null,
+        CancellationToken ct = default)
+    {
+        return await _selectionStore.GetAuditLogAsync(limit, ct);
+    }
+
+    /// <summary>
+    /// Explain model choice by comparing selected model with recommendations
+    /// </summary>
+    public async Task<ModelChoiceExplanation> ExplainModelChoiceAsync(
+        string provider,
+        string stage,
+        string selectedModelId,
+        CancellationToken ct = default)
+    {
+        _logger.LogInformation(
+            "Explaining model choice: provider={Provider}, stage={Stage}, selected={ModelId}",
+            provider, stage, selectedModelId);
+
+        var selectedModel = await ValidateAndGetModelAsync(provider, selectedModelId, ct);
+        if (selectedModel == null)
+        {
+            throw new ArgumentException($"Model '{selectedModelId}' not found for provider '{provider}'");
+        }
+
+        var allModels = _modelCatalog.GetAllModels(provider);
+        var activeModels = allModels
+            .Where(m => !m.DeprecationDate.HasValue || m.DeprecationDate.Value > DateTime.UtcNow)
+            .OrderByDescending(m => m.ContextWindow)
+            .ToList();
+
+        var recommendedModel = activeModels.FirstOrDefault();
+        var selectedIsRecommended = recommendedModel?.ModelId == selectedModelId;
+
+        var reasoning = GenerateChoiceReasoning(selectedModel, recommendedModel, stage);
+        var tradeoffs = GenerateTradeoffs(selectedModel, recommendedModel);
+        var suggestions = GenerateSuggestions(selectedModel, activeModels, stage);
+
+        return new ModelChoiceExplanation
+        {
+            SelectedModel = new ModelInfo
+            {
+                ModelId = selectedModel.ModelId,
+                Provider = selectedModel.Provider,
+                MaxTokens = selectedModel.MaxTokens,
+                ContextWindow = selectedModel.ContextWindow,
+                IsDeprecated = selectedModel.DeprecationDate.HasValue && 
+                               selectedModel.DeprecationDate.Value <= DateTime.UtcNow
+            },
+            RecommendedModel = recommendedModel != null ? new ModelInfo
+            {
+                ModelId = recommendedModel.ModelId,
+                Provider = recommendedModel.Provider,
+                MaxTokens = recommendedModel.MaxTokens,
+                ContextWindow = recommendedModel.ContextWindow,
+                IsDeprecated = recommendedModel.DeprecationDate.HasValue && 
+                               recommendedModel.DeprecationDate.Value <= DateTime.UtcNow
+            } : null,
+            SelectedIsRecommended = selectedIsRecommended,
+            Reasoning = reasoning,
+            Tradeoffs = tradeoffs,
+            Suggestions = suggestions
+        };
+    }
+
+    private string GenerateChoiceReasoning(
+        ModelRegistry.ModelInfo selected,
+        ModelRegistry.ModelInfo? recommended,
+        string stage)
+    {
+        if (recommended == null || selected.ModelId == recommended.ModelId)
+        {
+            return $"Your selected model '{selected.ModelId}' is the recommended choice for {stage} operations. " +
+                   $"It provides {selected.ContextWindow} tokens of context, suitable for most use cases.";
+        }
+
+        var contextComparison = selected.ContextWindow > recommended.ContextWindow ? "larger" : "smaller";
+        return $"You selected '{selected.ModelId}' which has a {contextComparison} context window " +
+               $"({selected.ContextWindow} tokens) compared to the recommended '{recommended.ModelId}' " +
+               $"({recommended.ContextWindow} tokens). " +
+               $"For {stage} operations, context window size affects how much information can be processed at once.";
+    }
+
+    private List<string> GenerateTradeoffs(
+        ModelRegistry.ModelInfo selected,
+        ModelRegistry.ModelInfo? recommended)
+    {
+        var tradeoffs = new List<string>();
+
+        if (recommended == null)
+        {
+            return tradeoffs;
+        }
+
+        if (selected.ContextWindow < recommended.ContextWindow)
+        {
+            tradeoffs.Add($"Smaller context window: {selected.ContextWindow} vs {recommended.ContextWindow} tokens");
+            tradeoffs.Add("May require breaking large scripts into smaller chunks");
+        }
+        else if (selected.ContextWindow > recommended.ContextWindow)
+        {
+            tradeoffs.Add($"Larger context window: {selected.ContextWindow} vs {recommended.ContextWindow} tokens");
+            tradeoffs.Add("Can handle longer scripts in a single operation");
+        }
+
+        if (selected.MaxTokens < recommended.MaxTokens)
+        {
+            tradeoffs.Add($"Lower output limit: {selected.MaxTokens} vs {recommended.MaxTokens} tokens");
+        }
+
+        if (selected.DeprecationDate.HasValue)
+        {
+            tradeoffs.Add($"Model is deprecated or will be deprecated on {selected.DeprecationDate.Value:yyyy-MM-dd}");
+            if (!string.IsNullOrEmpty(selected.ReplacementModel))
+            {
+                tradeoffs.Add($"Consider migrating to {selected.ReplacementModel}");
+            }
+        }
+
+        return tradeoffs;
+    }
+
+    private List<string> GenerateSuggestions(
+        ModelRegistry.ModelInfo selected,
+        List<ModelRegistry.ModelInfo> activeModels,
+        string stage)
+    {
+        var suggestions = new List<string>();
+
+        if (selected.DeprecationDate.HasValue && selected.DeprecationDate.Value <= DateTime.UtcNow)
+        {
+            suggestions.Add($"⚠️ Consider upgrading to {selected.ReplacementModel ?? "a newer model"}");
+        }
+
+        var largerModels = activeModels
+            .Where(m => m.ContextWindow > selected.ContextWindow)
+            .OrderBy(m => m.ContextWindow)
+            .Take(2)
+            .ToList();
+
+        if (largerModels.Any())
+        {
+            foreach (var model in largerModels)
+            {
+                suggestions.Add($"For larger scripts, consider {model.ModelId} ({model.ContextWindow} tokens)");
+            }
+        }
+
+        var similarModels = activeModels
+            .Where(m => Math.Abs(m.ContextWindow - selected.ContextWindow) < 10000 && 
+                       m.ModelId != selected.ModelId)
+            .Take(2)
+            .ToList();
+
+        if (similarModels.Any())
+        {
+            foreach (var model in similarModels)
+            {
+                suggestions.Add($"Alternative with similar capabilities: {model.ModelId}");
+            }
+        }
+
+        if (!suggestions.Any())
+        {
+            suggestions.Add("Your current selection is appropriate for this stage");
+        }
+
+        return suggestions;
+    }
+
     private async Task<ModelRegistry.ModelInfo?> ValidateAndGetModelAsync(
         string provider,
         string modelId,
@@ -387,4 +561,29 @@ public enum ModelSelectionSource
     ProjectOverride,
     GlobalDefault,
     AutomaticFallback
+}
+
+/// <summary>
+/// Explanation comparing selected model with recommendations
+/// </summary>
+public class ModelChoiceExplanation
+{
+    public required ModelInfo SelectedModel { get; set; }
+    public ModelInfo? RecommendedModel { get; set; }
+    public bool SelectedIsRecommended { get; set; }
+    public required string Reasoning { get; set; }
+    public List<string> Tradeoffs { get; set; } = new();
+    public List<string> Suggestions { get; set; } = new();
+}
+
+/// <summary>
+/// Model information for explanations
+/// </summary>
+public class ModelInfo
+{
+    public required string ModelId { get; set; }
+    public required string Provider { get; set; }
+    public int MaxTokens { get; set; }
+    public int ContextWindow { get; set; }
+    public bool IsDeprecated { get; set; }
 }

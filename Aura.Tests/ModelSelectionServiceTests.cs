@@ -275,4 +275,211 @@ public class ModelSelectionServiceTests
         Assert.Single(state.GlobalDefaults);
         Assert.Equal("Anthropic", state.GlobalDefaults[0].Provider);
     }
+
+    [Fact]
+    public async Task PrecedenceMatrix_CompleteHierarchy()
+    {
+        // Arrange: Set up complete hierarchy of selections
+        var gptMini = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-4o-mini",
+            MaxTokens = 16384,
+            ContextWindow = 128000
+        };
+        var gpt35 = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-3.5-turbo",
+            MaxTokens = 4096,
+            ContextWindow = 16384
+        };
+        var gpt4 = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-4",
+            MaxTokens = 8192,
+            ContextWindow = 8192
+        };
+        var gpt4o = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-4o",
+            MaxTokens = 16384,
+            ContextWindow = 128000
+        };
+
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4o-mini"))
+            .Returns((gptMini, "Found"));
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-3.5-turbo"))
+            .Returns((gpt35, "Found"));
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4"))
+            .Returns((gpt4, "Found"));
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4o"))
+            .Returns((gpt4o, "Found"));
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", null))
+            .Returns((gptMini, "Default"));
+
+        // Set up hierarchy: Global -> Project -> Stage
+        await _service.SetModelSelectionAsync(
+            "OpenAI", "script", "gpt-4o-mini", ModelSelectionScope.Global, false, "test", "Global default", default);
+        await _service.SetModelSelectionAsync(
+            "OpenAI", "script", "gpt-3.5-turbo", ModelSelectionScope.Project, false, "test", "Project override", default);
+        await _service.SetModelSelectionAsync(
+            "OpenAI", "script", "gpt-4", ModelSelectionScope.Stage, true, "test", "Stage pinned", default);
+
+        // Test 1: Run override (pinned) beats everything
+        var result1 = await _service.ResolveModelAsync("OpenAI", "script", "gpt-4o", true, "job1", default);
+        Assert.Equal("gpt-4o", result1.SelectedModelId);
+        Assert.Equal(ModelSelectionSource.RunOverridePinned, result1.Source);
+        Assert.True(result1.IsPinned);
+
+        // Test 2: Run override (not pinned) beats stage/project/global
+        var result2 = await _service.ResolveModelAsync("OpenAI", "script", "gpt-4o", false, "job2", default);
+        Assert.Equal("gpt-4o", result2.SelectedModelId);
+        Assert.Equal(ModelSelectionSource.RunOverride, result2.Source);
+        Assert.False(result2.IsPinned);
+
+        // Test 3: Stage pinned beats project and global
+        var result3 = await _service.ResolveModelAsync("OpenAI", "script", null, false, "job3", default);
+        Assert.Equal("gpt-4", result3.SelectedModelId);
+        Assert.Equal(ModelSelectionSource.StagePinned, result3.Source);
+        Assert.True(result3.IsPinned);
+
+        // Test 4: Clear stage, project override should win
+        await _store.ClearSelectionsAsync("OpenAI", "script", ModelSelectionScope.Stage, default);
+        var result4 = await _service.ResolveModelAsync("OpenAI", "script", null, false, "job4", default);
+        Assert.Equal("gpt-3.5-turbo", result4.SelectedModelId);
+        Assert.Equal(ModelSelectionSource.ProjectOverride, result4.Source);
+
+        // Test 5: Clear project, global default should win
+        await _store.ClearSelectionsAsync("OpenAI", "script", ModelSelectionScope.Project, default);
+        var result5 = await _service.ResolveModelAsync("OpenAI", "script", null, false, "job5", default);
+        Assert.Equal("gpt-4o-mini", result5.SelectedModelId);
+        Assert.Equal(ModelSelectionSource.GlobalDefault, result5.Source);
+    }
+
+    [Fact]
+    public async Task AuditLog_RecordsAllResolutions()
+    {
+        // Arrange: Set up model
+        var model = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-4",
+            MaxTokens = 8192,
+            ContextWindow = 8192
+        };
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4"))
+            .Returns((model, "Found"));
+
+        await _service.SetModelSelectionAsync(
+            "OpenAI", "script", "gpt-4", ModelSelectionScope.Global, false, "user", "test", default);
+
+        // Act: Perform multiple resolutions
+        await _service.ResolveModelAsync("OpenAI", "script", null, false, "job1", default);
+        await _service.ResolveModelAsync("OpenAI", "script", null, false, "job2", default);
+        await _service.ResolveModelAsync("OpenAI", "visual", null, false, "job3", default);
+
+        // Get audit log
+        var auditLog = await _service.GetAuditLogAsync(null, default);
+
+        // Assert: Should have 3 entries
+        Assert.True(auditLog.Count >= 3);
+        var lastThree = auditLog.TakeLast(3).ToList();
+        
+        Assert.Equal("OpenAI", lastThree[0].Provider);
+        Assert.Equal("script", lastThree[0].Stage);
+        Assert.Equal("job1", lastThree[0].JobId);
+        
+        Assert.Equal("job2", lastThree[1].JobId);
+        Assert.Equal("job3", lastThree[2].JobId);
+    }
+
+    [Fact]
+    public async Task ExplainChoice_ComparesModels()
+    {
+        // Arrange: Set up models
+        var gpt4 = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-4",
+            MaxTokens = 8192,
+            ContextWindow = 8192
+        };
+        var gpt4o = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-4o",
+            MaxTokens = 16384,
+            ContextWindow = 128000
+        };
+
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4"))
+            .Returns((gpt4, "Found"));
+        _mockCatalog.Setup(c => c.GetAllModels("OpenAI"))
+            .Returns(new List<ModelRegistry.ModelInfo> { gpt4o, gpt4 });
+
+        // Act: Explain choosing gpt-4 (not the recommended gpt-4o)
+        var explanation = await _service.ExplainModelChoiceAsync("OpenAI", "script", "gpt-4", default);
+
+        // Assert
+        Assert.Equal("gpt-4", explanation.SelectedModel.ModelId);
+        Assert.NotNull(explanation.RecommendedModel);
+        Assert.Equal("gpt-4o", explanation.RecommendedModel.ModelId);
+        Assert.False(explanation.SelectedIsRecommended);
+        Assert.Contains("smaller context window", explanation.Reasoning);
+        Assert.NotEmpty(explanation.Tradeoffs);
+        Assert.NotEmpty(explanation.Suggestions);
+    }
+
+    [Fact]
+    public async Task Integration_UnavailableWithBlock_UserAppliedFallback()
+    {
+        // Arrange: Pin a model that becomes unavailable
+        await _service.SetModelSelectionAsync(
+            "OpenAI", "script", "gpt-4", ModelSelectionScope.Stage, true, "user", "test", default);
+
+        // Mock model as unavailable
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4"))
+            .Returns(((ModelRegistry.ModelInfo?)null, "Not found"));
+        _mockCatalog.Setup(c => c.GetAllModels("OpenAI"))
+            .Returns(new List<ModelRegistry.ModelInfo>
+            {
+                new ModelRegistry.ModelInfo
+                {
+                    Provider = "OpenAI",
+                    ModelId = "gpt-4o",
+                    MaxTokens = 16384,
+                    ContextWindow = 128000
+                }
+            });
+
+        // Act: Try to resolve - should be blocked
+        var result = await _service.ResolveModelAsync("OpenAI", "script", null, false, "job1", default);
+
+        // Assert: Blocked with alternatives
+        Assert.True(result.IsBlocked);
+        Assert.Contains("unavailable", result.BlockReason);
+        Assert.NotEmpty(result.RecommendedAlternatives);
+
+        // User applies fallback manually
+        var fallback = result.RecommendedAlternatives.First();
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", fallback))
+            .Returns((new ModelRegistry.ModelInfo
+            {
+                Provider = "OpenAI",
+                ModelId = fallback,
+                MaxTokens = 16384,
+                ContextWindow = 128000
+            }, "Found"));
+
+        await _service.SetModelSelectionAsync(
+            "OpenAI", "script", fallback, ModelSelectionScope.Stage, true, "user", "Manual fallback", default);
+
+        var result2 = await _service.ResolveModelAsync("OpenAI", "script", null, false, "job2", default);
+        Assert.False(result2.IsBlocked);
+        Assert.Equal(fallback, result2.SelectedModelId);
+        Assert.Equal(ModelSelectionSource.StagePinned, result2.Source);
+    }
 }
