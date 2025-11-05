@@ -232,12 +232,23 @@ curl -X POST http://localhost:5005/api/keys/test \
 ### Security Features
 
 ✅ **All API keys are encrypted at rest**
-- Windows: DPAPI encryption
-- Linux/macOS: AES-256 encryption
+- **Windows**: DPAPI encryption (CurrentUser scope)
+  - Storage: `%LOCALAPPDATA%\Aura\apikeys.json` (encrypted)
+- **Linux/macOS**: AES-256-CBC encryption with machine-specific key
+  - Storage: `$HOME/.local/share/Aura/secure/apikeys.dat` (encrypted)
+  - Machine Key: `$HOME/.local/share/Aura/secure/.machinekey` (0600 permissions)
+  - File permissions: 600 (owner read/write only)
+
+✅ **Automatic migration from legacy plaintext** (Linux/macOS only)
+- Detects old plaintext storage at `$HOME/.aura-dev/apikeys.json`
+- Migrates all keys to encrypted storage automatically on first run
+- Securely deletes legacy file (overwrite + delete)
+- One-time operation, logged for audit trail
 
 ✅ **Keys are never logged or displayed in full**
 - Automatic masking: `sk-12345...wxyz`
 - Redaction in logs, errors, and diagnostics
+- No secrets in SSE events or API responses
 
 ✅ **Test before saving**
 - Validates key with real provider connection
