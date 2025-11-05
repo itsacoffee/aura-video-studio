@@ -8,7 +8,13 @@ import {
   Button,
   Badge,
 } from '@fluentui/react-components';
-import { Checkmark20Regular, Info16Regular } from '@fluentui/react-icons';
+import { Checkmark20Regular, Info16Regular, Lightbulb20Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
+import {
+  recommendProfile,
+  getTierGuidance,
+  type HardwareProfile,
+} from '../../services/profileRecommendationService';
 
 const useStyles = makeStyles({
   container: {
@@ -90,6 +96,7 @@ const useStyles = makeStyles({
 export interface ChooseTierStepProps {
   selectedTier: 'free' | 'pro' | null;
   onSelectTier: (tier: 'free' | 'pro') => void;
+  hardware?: HardwareProfile | null;
 }
 
 interface ProviderOption {
@@ -105,8 +112,19 @@ interface ProviderCategory {
   providers: ProviderOption[];
 }
 
-export function ChooseTierStep({ selectedTier, onSelectTier }: ChooseTierStepProps) {
+export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseTierStepProps) {
   const styles = useStyles();
+  const [showRecommendation, setShowRecommendation] = useState(false);
+  const [recommendation, setRecommendation] = useState<ReturnType<typeof recommendProfile> | null>(
+    null
+  );
+
+  const handleChooseBestProfile = () => {
+    const rec = recommendProfile(hardware || null);
+    setRecommendation(rec);
+    setShowRecommendation(true);
+    onSelectTier(rec.tier);
+  };
 
   const providerCategories: ProviderCategory[] = [
     {
@@ -183,6 +201,79 @@ export function ChooseTierStep({ selectedTier, onSelectTier }: ChooseTierStepPro
           </div>
         </div>
       </Card>
+
+      <Card
+        style={{
+          padding: tokens.spacingVerticalL,
+          backgroundColor: tokens.colorBrandBackground2,
+          textAlign: 'center',
+          marginBottom: tokens.spacingVerticalL,
+        }}
+      >
+        <Lightbulb20Regular style={{ fontSize: '24px', marginBottom: tokens.spacingVerticalS }} />
+        <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalM }}>
+          Not sure which to choose?
+        </Text>
+        <Button appearance="primary" onClick={handleChooseBestProfile}>
+          Choose Best Profile for Me
+        </Button>
+        <Text
+          size={200}
+          style={{
+            display: 'block',
+            marginTop: tokens.spacingVerticalS,
+            color: tokens.colorNeutralForeground2,
+          }}
+        >
+          We&apos;ll analyze your system and recommend the optimal setup
+        </Text>
+      </Card>
+
+      {showRecommendation && recommendation && (
+        <Card
+          style={{
+            padding: tokens.spacingVerticalL,
+            backgroundColor: tokens.colorPaletteGreenBackground1,
+            marginBottom: tokens.spacingVerticalL,
+            border: `2px solid ${tokens.colorPaletteGreenBorder1}`,
+          }}
+        >
+          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
+            💡 Recommendation for Your System
+          </Title3>
+          <Text
+            weight="semibold"
+            style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+          >
+            {getTierGuidance(recommendation.tier, recommendation.confidence)}
+          </Text>
+          <div style={{ marginTop: tokens.spacingVerticalM }}>
+            <Text
+              weight="semibold"
+              style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
+            >
+              Why we recommend this:
+            </Text>
+            <ul
+              style={{
+                marginTop: tokens.spacingVerticalXS,
+                paddingLeft: tokens.spacingHorizontalL,
+              }}
+            >
+              {recommendation.reasoning.map((reason, idx) => (
+                <li key={idx}>
+                  <Text size={200}>{reason}</Text>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div style={{ marginTop: tokens.spacingVerticalM }}>
+            <Text size={200} style={{ fontStyle: 'italic', color: tokens.colorNeutralForeground2 }}>
+              💡 Tip: {recommendation.explanations.llm}
+            </Text>
+          </div>
+        </Card>
+      )}
 
       <div className={styles.cardsContainer}>
         <Card

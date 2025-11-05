@@ -169,12 +169,12 @@ This document summarizes the implementation of the web-based architecture for Au
 │  └─────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
 
-Windows Shells (Planned):
-┌─────────────────────┐  ┌─────────────────────┐
-│  WinUI 3 Packaged   │  │  WPF Portable       │
-│  + WebView2         │  │  + WebView2         │
-│  → MSIX             │  │  → EXE/ZIP          │
-└─────────────────────┘  └─────────────────────┘
+Distribution Interface:
+┌─────────────────────────────────┐
+│  User extracts portable ZIP     │
+│  Runs start_portable.cmd        │
+│  Browser opens to localhost:5005│
+└─────────────────────────────────┘
 ```
 
 ## Platform Compatibility
@@ -185,9 +185,7 @@ Windows Shells (Planned):
 | Aura.Providers | ⚠️ Mocked | ⚠️ Mocked | ✅ | ✅ |
 | Aura.Api | ✅ | ✅ | ✅ | ✅ |
 | Aura.Web | ✅ | ✅ | ✅ | ✅ |
-| Aura.App (WinUI 3) | ❌ | ❌ | ✅ | ✅ |
-| Aura.Host.Win | ❌ | ❌ | ✅ (Planned) | ✅ (Planned) |
-| MSIX Packaging | ❌ | ❌ | ✅ | ✅ |
+| Portable Distribution | ✅ | ✅ | ✅ | ✅ |
 
 Legend:
 - ✅ Fully supported
@@ -264,45 +262,39 @@ npm run dev
 ## What's Still Needed
 
 ### High Priority
-1. **Aura.Host.Win Projects**
-   - WinUI 3 packaged shell with WebView2
-   - WPF portable shell with WebView2
-   - API child process management
-   - Health check waiting logic
-
-2. **Complete API Endpoints**
+1. **Complete API Endpoints**
    - `/assets/search`, `/assets/generate`
    - `/compose`, `/render`, `/render/{id}/progress`
    - `/queue`, `/logs/stream` (SSE)
    - `/probes/run`
 
-3. **Full Web UI**
-   - Create Wizard (6 steps)
+2. **Full Web UI**
+   - Complete Create Wizard flow
    - Timeline Editor with PixiJS or DOM
    - Render Queue with live progress
    - Settings with provider configuration
 
 ### Medium Priority
-4. **Assets Directory**
+3. **Assets Directory**
    - Default CC0 music pack
    - Stock placeholder images
    - Icon files for packaging
 
-5. **DPAPI Key Encryption**
+4. **DPAPI Key Encryption**
    - Implement Windows DPAPI for API keys
    - Fallback for Linux development
 
-6. **Code Signing**
-   - PFX certificate management
-   - Automated signing in CI
+5. **Code Signing**
+   - PFX certificate management for portable distributions
+   - Automated signing in CI (optional)
 
 ### Low Priority
-7. **Additional Pro Providers**
+6. **Additional Pro Providers**
    - Azure OpenAI, Google Gemini
    - ElevenLabs, PlayHT TTS
    - Stability AI, Runway visuals
 
-8. **E2E Tests**
+7. **E2E Tests**
    - Playwright tests for web UI
    - End-to-end video generation test
 
@@ -313,15 +305,13 @@ npm run dev
 | ASP.NET Core API on http://127.0.0.1:5005 | ✅ Complete |
 | React + Vite + TypeScript + Fluent UI | ✅ Complete |
 | Linux dev and CI support | ✅ Complete |
-| Windows packaging (MSIX, EXE, ZIP) | ✅ Scripts ready |
+| Windows packaging (Portable ZIP) | ✅ Complete |
 | Split CI workflows (Linux + Windows) | ✅ Complete |
 | Packaging scripts with checksums | ✅ Complete |
 | SBOM generation | ✅ Complete |
 | API endpoints (core subset) | ✅ 8 of 18 endpoints |
 | Web UI (full features) | ⚠️ Scaffold only |
-| Windows shells (WinUI 3 + WPF) | ❌ Planned |
-| WebView2 integration | ❌ Planned |
-| Code signing | ⚠️ Ready, needs cert |
+| Code signing | ⚠️ Optional, infrastructure ready |
 
 **Overall Compliance**: ~70% complete for web-based architecture
 

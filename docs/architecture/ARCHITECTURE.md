@@ -87,33 +87,19 @@ Aura Video Studio is a Windows 11 desktop application for creating AI-powered vi
 
 **Platforms**: Linux (dev/CI), Windows (production)
 
-### 5. Aura.Host.Win (Windows Shells) - **Planned**
-**Technology**: WinUI 3 (packaged) + WPF (portable)  
-**Purpose**: Native Windows shells that host the web UI via WebView2
+### 5. Aura.Host.Win (Windows Shells) - **Future Consideration**
+**Technology**: Native Windows shells (concept only)
+**Purpose**: Would provide native Windows shells that host the web UI via WebView2
 
-**Two Variants**:
+**Note**: These are concepts for future exploration. Current distribution follows a portable-only model using the web browser as the primary interface. Native shell variants would need to align with the portable-only distribution policy.
 
-#### 5a. WinUI 3 Packaged Shell (MSIX)
-- Windows App SDK
-- Mica window chrome
-- WebView2 for hosting Aura.Web
-- Starts Aura.Api as child process
-- Waits for `/healthz` then navigates to `http://127.0.0.1:5005`
+**Platforms**: Windows only (if implemented)
 
-#### 5b. WPF Portable Shell (EXE/ZIP)
-- Classic WPF window
-- WebView2 control
-- Same API-hosting logic as WinUI 3
-- No Windows App SDK dependency
-- Self-contained deployment
-
-**Platforms**: Windows only
-
-### 6. Aura.App (Current WinUI 3 App)
+### 6. Aura.App (Legacy WinUI 3 App)
 **Technology**: WinUI 3 + XAML  
-**Purpose**: Original standalone WinUI 3 application
+**Purpose**: Original standalone WinUI 3 application (legacy)
 
-**Status**: Functional with ViewModels and XAML views. Will coexist with new web-based architecture as an alternative UI option.
+**Status**: This was the original desktop application. The project has transitioned to a web-based architecture with portable distribution. The web-based approach provides better cross-platform development and simpler deployment.
 
 ## Data Flow
 
@@ -164,8 +150,9 @@ User runs:
 
 ### Windows (Production)
 - **Purpose**: Final deployment target
-- **What Works**: Everything, including Windows shells, MSIX packaging, code signing
-- **Requirements**: Windows 11 x64, .NET 8 Runtime, WebView2 Evergreen
+- **What Works**: Everything, including full provider support and hardware acceleration
+- **Requirements**: Windows 10/11 x64, Modern web browser (Chrome, Edge, Firefox recommended)
+- **Distribution**: Portable ZIP only - no installation required
 
 ## Build & CI Strategy
 
@@ -179,12 +166,12 @@ User runs:
 
 ### ci-windows.yml
 - Runs on `windows-latest`
-- Builds all projects including Aura.App
+- Builds all .NET projects
 - Runs unit tests
-- Builds WinUI 3 packaged app (MSIX)
+- Builds portable ZIP distribution
 - Generates checksums (SHA-256)
-- Optional: Signs artifacts with PFX certificate
-- Uploads MSIX packages and logs
+- Uploads portable artifacts and test results
+- Enforces portable-only policy (no MSIX/installer packaging)
 
 ## Security Considerations
 
@@ -194,14 +181,15 @@ User runs:
 - **Linux dev**: Plaintext in `~/.aura-dev/` with warnings
 
 ### Code Signing
-- MSIX and EXE can be signed with PFX certificate
+- Portable distributions can be signed with PFX certificate (optional)
 - Certificate stored in GitHub Secrets for CI/CD
-- Unsigned builds clearly marked
+- Unsigned builds clearly marked in documentation
 
-### WebView2
-- Uses Evergreen runtime (auto-updates)
-- Sandboxed JavaScript execution
-- HTTPS-only for external resources (API is local HTTP)
+### Browser Security
+- Application served over localhost HTTP (127.0.0.1:5005)
+- CORS restricted to localhost only
+- Uses standard browser security sandbox
+- HTTPS-only for external API calls (OpenAI, etc.)
 
 ## Directory Structure
 
@@ -211,19 +199,18 @@ aura-video-studio/
 ├── Aura.Providers/         # Provider implementations (.NET 8)
 ├── Aura.Api/               # Backend API (ASP.NET Core 8)
 ├── Aura.Web/               # Frontend UI (React + Vite)
-├── Aura.App/               # Original WinUI 3 app
 ├── Aura.Tests/             # Unit tests
 ├── Aura.E2E/               # Integration tests
 ├── scripts/
 │   ├── ffmpeg/             # FFmpeg binaries
-│   ├── packaging/          # Build scripts (Portable ZIP)
+│   ├── packaging/          # Build scripts (Portable ZIP only)
 │   └── cleanup/            # Cleanup scripts and CI guard
 ├── .github/workflows/
 │   ├── ci-linux.yml        # Linux CI
 │   └── ci-windows.yml      # Windows CI + packaging
 └── artifacts/              # Build outputs (created during build)
     └── windows/
-        ├── portable/
+        ├── portable/       # Portable ZIP distribution
         ├── checksums.txt
         ├── sbom.json
         └── attributions.txt

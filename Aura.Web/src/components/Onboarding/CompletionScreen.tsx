@@ -153,16 +153,22 @@ export interface CompletionScreenProps {
   summary: CompletionSummary;
   onCreateFirstVideo: () => void;
   onExploreApp: () => void;
+  onGenerateSample?: () => void;
   onNeverShowAgain?: (checked: boolean) => void;
   showNeverShowAgain?: boolean;
+  isGeneratingSample?: boolean;
+  sampleGenerationError?: string | null;
 }
 
 export function CompletionScreen({
   summary,
   onCreateFirstVideo,
   onExploreApp,
+  onGenerateSample,
   onNeverShowAgain,
   showNeverShowAgain = true,
+  isGeneratingSample = false,
+  sampleGenerationError = null,
 }: CompletionScreenProps) {
   const styles = useStyles();
 
@@ -322,6 +328,45 @@ export function CompletionScreen({
 
       {/* Call to Action */}
       <div className={styles.ctaContainer}>
+        {onGenerateSample && (
+          <Card
+            style={{
+              padding: tokens.spacingVerticalL,
+              backgroundColor: tokens.colorBrandBackground2,
+              marginBottom: tokens.spacingVerticalL,
+              width: '100%',
+              maxWidth: '700px',
+            }}
+          >
+            <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
+              🎬 Test Your Setup
+            </Title3>
+            <Text style={{ display: 'block', marginBottom: tokens.spacingVerticalM }}>
+              Generate a quick sample video to verify everything is working correctly. This uses
+              safe defaults and takes about 30-60 seconds.
+            </Text>
+            <Button
+              appearance="primary"
+              size="large"
+              onClick={onGenerateSample}
+              disabled={isGeneratingSample}
+            >
+              {isGeneratingSample ? 'Generating Sample...' : 'Generate Sample Video'}
+            </Button>
+            {sampleGenerationError && (
+              <Text
+                style={{
+                  display: 'block',
+                  marginTop: tokens.spacingVerticalM,
+                  color: tokens.colorPaletteRedForeground1,
+                }}
+              >
+                ❌ {sampleGenerationError}
+              </Text>
+            )}
+          </Card>
+        )}
+
         <div className={styles.buttonGroup}>
           <Button
             appearance="primary"
