@@ -466,12 +466,15 @@ public class SafetyRemediationService
         };
     }
 
+    private const int HighSeverityThreshold = 8;
+    private const int MediumSeverityThreshold = 5;
+
     private string CalculateImpact(SafetyViolation violation)
     {
         return violation.SeverityScore switch
         {
-            >= 8 => "High",
-            >= 5 => "Medium",
+            >= HighSeverityThreshold => "High",
+            >= MediumSeverityThreshold => "Medium",
             _ => "Low"
         };
     }

@@ -134,11 +134,14 @@ export const SafetyWarningDialog: FC<SafetyWarningDialogProps> = ({
     onOpenChange(false);
   };
 
+  const CRITICAL_SEVERITY_THRESHOLD = 8;
+  const HIGH_SEVERITY_THRESHOLD = 5;
+
   const getSeverityBadge = (score: number) => {
-    if (score >= 8) {
+    if (score >= CRITICAL_SEVERITY_THRESHOLD) {
       return <Badge appearance="filled" color="danger">Critical</Badge>;
     }
-    if (score >= 5) {
+    if (score >= HIGH_SEVERITY_THRESHOLD) {
       return <Badge appearance="filled" color="warning">High</Badge>;
     }
     return <Badge appearance="filled" color="informative">Medium</Badge>;
@@ -172,7 +175,7 @@ export const SafetyWarningDialog: FC<SafetyWarningDialogProps> = ({
                   <Text size={300}>{violation.reason}</Text>
                   {violation.matchedContent && (
                     <Text size={200} style={{ marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground3 }}>
-                      Found: &quot;{violation.matchedContent}&quot;
+                      Found: &quot;{violation.matchedContent.substring(0, 100)}{violation.matchedContent.length > 100 ? '...' : ''}&quot;
                     </Text>
                   )}
                   {violation.suggestedFix && (

@@ -101,22 +101,23 @@ public class StockMediaSafetyEnforcer
     {
         _logger.LogInformation("Filtering {Count} stock media results", results.Count);
 
-        var safeResults = new List<StockMediaResult>();
-
-        foreach (var result in results)
+        var filterTasks = results.Select(async result =>
         {
             var isSafe = await IsResultSafeAsync(result, policy, ct);
-            if (isSafe)
-            {
-                safeResults.Add(result);
-            }
-            else
-            {
-                _logger.LogDebug(
-                    "Filtered out result {Id} from {Provider}",
-                    result.Id,
-                    result.Provider);
-            }
+            return new { Result = result, IsSafe = isSafe };
+        });
+
+        var filterResults = await Task.WhenAll(filterTasks);
+
+        var safeResults = filterResults
+            .Where(r => r.IsSafe)
+            .Select(r => r.Result)
+            .ToList();
+
+        var filteredCount = results.Count - safeResults.Count;
+        if (filteredCount > 0)
+        {
+            _logger.LogDebug("Filtered out {Count} results", filteredCount);
         }
 
         _logger.LogInformation(
