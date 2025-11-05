@@ -123,4 +123,86 @@ describe('ProxyMediaService', () => {
       expect(effectivePath).toBe(sourcePath);
     });
   });
+
+  describe('cache size management', () => {
+    it('should set max cache size', async () => {
+      const maxSizeBytes = 5 * 1024 * 1024 * 1024; // 5GB
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ maxSizeBytes }),
+      } as Response);
+
+      await service.setMaxCacheSize(maxSizeBytes);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/proxy/cache-limit'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ maxSizeBytes }),
+        })
+      );
+    });
+
+    it('should get max cache size', async () => {
+      const maxSizeBytes = 10 * 1024 * 1024 * 1024; // 10GB
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ maxSizeBytes }),
+      } as Response);
+
+      const result = await service.getMaxCacheSize();
+      expect(result).toBe(maxSizeBytes);
+    });
+
+    it('should trigger eviction', async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ message: 'Eviction completed' }),
+      } as Response);
+
+      await service.triggerEviction();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/proxy/evict'),
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+    });
+
+    it('should handle eviction errors', async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: false,
+      } as Response);
+
+      await expect(service.triggerEviction()).rejects.toThrow('Failed to trigger eviction');
+    });
+  });
+
+  describe('cache statistics', () => {
+    it('should get cache stats with new fields', async () => {
+      const stats = {
+        totalProxies: 5,
+        totalCacheSizeBytes: 5000000000,
+        totalSourceSizeBytes: 10000000000,
+        compressionRatio: 0.5,
+        maxCacheSizeBytes: 10000000000,
+        cacheUsagePercent: 50.0,
+        isOverLimit: false,
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => stats,
+      } as Response);
+
+      const result = await service.getCacheStats();
+      expect(result).toEqual(stats);
+      expect(result.maxCacheSizeBytes).toBe(10000000000);
+      expect(result.cacheUsagePercent).toBe(50.0);
+      expect(result.isOverLimit).toBe(false);
+    });
+  });
 });

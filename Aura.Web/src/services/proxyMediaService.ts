@@ -37,6 +37,9 @@ export interface ProxyCacheStats {
   totalCacheSizeBytes: number;
   totalSourceSizeBytes: number;
   compressionRatio: number;
+  maxCacheSizeBytes: number;
+  cacheUsagePercent: number;
+  isOverLimit: boolean;
 }
 
 export class ProxyMediaService {
@@ -241,6 +244,42 @@ export class ProxyMediaService {
    */
   public clearInternalCache(): void {
     this.proxies.clear();
+  }
+
+  /**
+   * Set maximum cache size in bytes
+   */
+  public async setMaxCacheSize(maxSizeBytes: number): Promise<void> {
+    await fetch(apiUrl('/api/proxy/cache-limit'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ maxSizeBytes }),
+    });
+  }
+
+  /**
+   * Get maximum cache size in bytes
+   */
+  public async getMaxCacheSize(): Promise<number> {
+    const response = await fetch(apiUrl('/api/proxy/cache-limit'));
+    if (!response.ok) {
+      throw new Error('Failed to get cache limit');
+    }
+    const result = await response.json();
+    return result.maxSizeBytes;
+  }
+
+  /**
+   * Manually trigger LRU eviction
+   */
+  public async triggerEviction(): Promise<void> {
+    const response = await fetch(apiUrl('/api/proxy/evict'), {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to trigger eviction');
+    }
   }
 
   private getProxyKey(sourcePath: string, quality: string): string {

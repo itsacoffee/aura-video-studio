@@ -218,13 +218,81 @@ public class ProxyMediaController : ControllerBase
                 stats.TotalProxies,
                 stats.TotalCacheSizeBytes,
                 stats.TotalSourceSizeBytes,
-                stats.CompressionRatio);
+                stats.CompressionRatio,
+                stats.MaxCacheSizeBytes,
+                stats.CacheUsagePercent,
+                stats.IsOverLimit);
             return Ok(response);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting cache statistics");
             return StatusCode(500, new { error = "Failed to get statistics" });
+        }
+    }
+
+    /// <summary>
+    /// Set maximum cache size
+    /// </summary>
+    [HttpPost("cache-limit")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult SetCacheLimit([FromBody] SetCacheLimitRequest request)
+    {
+        try
+        {
+            if (request.MaxSizeBytes <= 0)
+            {
+                return BadRequest(new { error = "Max size must be greater than zero" });
+            }
+
+            _proxyMediaService.SetMaxCacheSizeBytes(request.MaxSizeBytes);
+            return Ok(new { maxSizeBytes = request.MaxSizeBytes });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting cache limit");
+            return StatusCode(500, new { error = "Failed to set cache limit" });
+        }
+    }
+
+    /// <summary>
+    /// Get maximum cache size
+    /// </summary>
+    [HttpGet("cache-limit")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult GetCacheLimit()
+    {
+        try
+        {
+            var maxSize = _proxyMediaService.GetMaxCacheSizeBytes();
+            return Ok(new { maxSizeBytes = maxSize });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cache limit");
+            return StatusCode(500, new { error = "Failed to get cache limit" });
+        }
+    }
+
+    /// <summary>
+    /// Manually trigger LRU eviction
+    /// </summary>
+    [HttpPost("evict")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> TriggerEviction(CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Manual cache eviction triggered");
+            await _proxyMediaService.EvictLeastRecentlyUsedAsync(cancellationToken);
+            var stats = await _proxyMediaService.GetCacheStatisticsAsync();
+            return Ok(new { message = "Eviction completed", stats });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during manual eviction");
+            return StatusCode(500, new { error = "Failed to evict cache" });
         }
     }
 

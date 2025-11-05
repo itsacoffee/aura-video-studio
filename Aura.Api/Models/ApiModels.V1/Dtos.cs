@@ -1638,7 +1638,16 @@ public record ProxyCacheStatsResponse(
     int TotalProxies,
     long TotalCacheSizeBytes,
     long TotalSourceSizeBytes,
-    double CompressionRatio);
+    double CompressionRatio,
+    long MaxCacheSizeBytes,
+    double CacheUsagePercent,
+    bool IsOverLimit);
+
+/// <summary>
+/// Request to set cache size limit
+/// </summary>
+public record SetCacheLimitRequest(
+    long MaxSizeBytes);
 
 /// <summary>
 /// Request to generate waveform data

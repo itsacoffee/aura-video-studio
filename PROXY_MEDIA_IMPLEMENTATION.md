@@ -13,8 +13,22 @@ This document summarizes the implementation of proxy media, waveform/thumbnail c
   - FFmpeg-based proxy generation with three quality presets (Draft/Preview/High)
   - Persistent metadata storage using JSON files
   - Background generation with progress tracking
-  - LRU-based cache eviction
+  - **LRU-based cache eviction with configurable size limits**
+  - **Automatic eviction when cache exceeds limit (evicts to 80% of limit)**
   - Compression statistics and cache management
+  - **Tracks last accessed time for LRU algorithm**
+
+- `ProxyPresetService` in `Aura.Core/Services/Media/ProxyPresetService.cs`
+  - **Hardware-aware proxy quality suggestion**
+  - **Analyzes media characteristics (resolution, bitrate, duration)**
+  - **Considers hardware tier (A/B/C/D) for optimal preset selection**
+  - **Provides reasoning and confidence scores**
+  - **Suggests alternative quality options**
+
+- `ProxyCacheEvictionService` in `Aura.Api/HostedServices/ProxyCacheEvictionService.cs`
+  - **Background service running every 15 minutes**
+  - **Automatically triggers LRU eviction when cache exceeds limit**
+  - **Scoped service injection for cache operations**
 
 **API Endpoints**:
 - `POST /api/proxy/generate` - Generate proxy media
@@ -23,7 +37,10 @@ This document summarizes the implementation of proxy media, waveform/thumbnail c
 - `GET /api/proxy/all` - List all proxies
 - `DELETE /api/proxy` - Delete specific proxy
 - `POST /api/proxy/clear` - Clear all proxies
-- `GET /api/proxy/stats` - Get cache statistics
+- `GET /api/proxy/stats` - Get cache statistics (enhanced with usage percentage)
+- **`POST /api/proxy/cache-limit` - Set maximum cache size in bytes**
+- **`GET /api/proxy/cache-limit` - Get current cache size limit**
+- **`POST /api/proxy/evict` - Manually trigger LRU eviction**
 
 **Frontend (TypeScript)**:
 - `ProxyMediaService` in `Aura.Web/src/services/proxyMediaService.ts`
@@ -31,6 +48,16 @@ This document summarizes the implementation of proxy media, waveform/thumbnail c
   - Seamless source/proxy switching
   - Settings persistence via LocalStorage
   - Cache statistics retrieval
+  - **Cache size limit configuration**
+  - **Manual eviction trigger**
+
+- `ProxyCacheManager` in `Aura.Web/src/components/Preview/ProxyCacheManager.tsx`
+  - **Visual cache management UI component**
+  - **Real-time cache usage progress bar**
+  - **Cache statistics dashboard (proxies, size, space saved)**
+  - **Max size configuration input**
+  - **Manual eviction and clear buttons**
+  - **Warning indicators when cache exceeds limit**
 
 ### 2. Waveform Caching
 
@@ -124,7 +151,12 @@ Cache Storage
 - Structure: 
   - `video_proxy_preview.mp4` (proxy files)
   - `metadata/{id}.json` (metadata files)
-- Eviction: Manual (user-triggered via UI)
+- **Eviction: LRU-based automatic eviction + manual user-triggered**
+  - **Automatically evicts when cache exceeds configured max size**
+  - **Background service checks every 15 minutes**
+  - **Evicts least recently accessed proxies first**
+  - **Target: 80% of max size after eviction to avoid frequent runs**
+  - **Default max size: 10GB (configurable)**
 
 **Waveform Data**:
 - Location: `%TEMP%/aura-waveform-cache/`
@@ -239,14 +271,37 @@ fpsCalculationInterval: 1000ms
 - **Error Handling**: Graceful degradation when proxy generation fails
 - **No Sensitive Data**: Cache metadata contains only file paths and stats
 
-## Future Enhancements
+## Implementation Status
+
+### Completed Features ✅
+
+1. **LRU Cache Eviction**:
+   - ✅ LRU eviction algorithm based on last accessed time
+   - ✅ Configurable max cache size (default 10GB)
+   - ✅ Background service for automatic eviction (15-minute interval)
+   - ✅ Manual eviction trigger via API/UI
+   - ✅ Evicts to 80% of limit to avoid frequent evictions
+
+2. **Cache Size Management**:
+   - ✅ Cache size limit configuration API
+   - ✅ Real-time usage percentage calculation
+   - ✅ Over-limit warning indicators
+   - ✅ ProxyCacheManager UI component
+
+3. **Hardware-Based Preset Suggestion**:
+   - ✅ ProxyPresetService for quality suggestions
+   - ✅ Hardware tier consideration (A/B/C/D)
+   - ✅ Media characteristics analysis (resolution, bitrate, duration)
+   - ✅ Confidence scores and alternative suggestions
+
+### Future Enhancements
 
 Potential improvements for future iterations:
 
-1. **Automatic Cleanup**:
-   - LRU eviction for proxy cache
+1. **Advanced Eviction**:
    - Age-based cleanup (e.g., proxies older than 30 days)
-   - Smart cache size management based on disk space
+   - Smart cache size management based on available disk space
+   - Predictive pre-eviction based on usage patterns
 
 2. **Batch Operations**:
    - Bulk proxy generation for entire project

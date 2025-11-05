@@ -55,6 +55,21 @@ public interface IProxyMediaService
     /// Get cache statistics
     /// </summary>
     Task<CacheStatistics> GetCacheStatisticsAsync();
+    
+    /// <summary>
+    /// Set maximum cache size in bytes
+    /// </summary>
+    void SetMaxCacheSizeBytes(long maxSizeBytes);
+    
+    /// <summary>
+    /// Get maximum cache size in bytes
+    /// </summary>
+    long GetMaxCacheSizeBytes();
+    
+    /// <summary>
+    /// Evict least recently used proxies if cache exceeds size limit
+    /// </summary>
+    Task EvictLeastRecentlyUsedAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -66,6 +81,9 @@ public record CacheStatistics
     public long TotalCacheSizeBytes { get; init; }
     public long TotalSourceSizeBytes { get; init; }
     public double CompressionRatio { get; init; }
+    public long MaxCacheSizeBytes { get; init; }
+    public double CacheUsagePercent { get; init; }
+    public bool IsOverLimit { get; init; }
 }
 
 /// <summary>
@@ -79,6 +97,7 @@ public class ProxyMediaService : IProxyMediaService
     private readonly string _metadataDirectory;
     private readonly ConcurrentDictionary<string, ProxyMediaMetadata> _proxyCache = new();
     private readonly SemaphoreSlim _generateLock = new(1, 1);
+    private long _maxCacheSizeBytes = 10L * 1024 * 1024 * 1024; // Default 10GB
 
     public ProxyMediaService(
         IFFmpegService ffmpegService,
@@ -294,14 +313,92 @@ public class ProxyMediaService : IProxyMediaService
         var totalCacheSize = completed.Sum(p => p.FileSizeBytes);
         var totalSourceSize = completed.Sum(p => p.SourceFileSizeBytes);
         var compressionRatio = totalSourceSize > 0 ? 1.0 - ((double)totalCacheSize / totalSourceSize) : 0;
+        var cacheUsagePercent = _maxCacheSizeBytes > 0 ? ((double)totalCacheSize / _maxCacheSizeBytes) * 100 : 0;
+        var isOverLimit = totalCacheSize > _maxCacheSizeBytes;
         
         return new CacheStatistics
         {
             TotalProxies = completed.Count,
             TotalCacheSizeBytes = totalCacheSize,
             TotalSourceSizeBytes = totalSourceSize,
-            CompressionRatio = compressionRatio
+            CompressionRatio = compressionRatio,
+            MaxCacheSizeBytes = _maxCacheSizeBytes,
+            CacheUsagePercent = cacheUsagePercent,
+            IsOverLimit = isOverLimit
         };
+    }
+
+    public void SetMaxCacheSizeBytes(long maxSizeBytes)
+    {
+        if (maxSizeBytes <= 0)
+        {
+            throw new ArgumentException("Max cache size must be greater than zero", nameof(maxSizeBytes));
+        }
+        
+        _maxCacheSizeBytes = maxSizeBytes;
+        _logger.LogInformation("Max cache size set to {Size:N0} bytes ({SizeGB:N2} GB)", 
+            maxSizeBytes, maxSizeBytes / (1024.0 * 1024.0 * 1024.0));
+    }
+
+    public long GetMaxCacheSizeBytes()
+    {
+        return _maxCacheSizeBytes;
+    }
+
+    public async Task EvictLeastRecentlyUsedAsync(CancellationToken cancellationToken = default)
+    {
+        var stats = await GetCacheStatisticsAsync();
+        
+        if (!stats.IsOverLimit)
+        {
+            _logger.LogDebug("Cache size {Size:N0} bytes is within limit {Limit:N0} bytes. No eviction needed.",
+                stats.TotalCacheSizeBytes, _maxCacheSizeBytes);
+            return;
+        }
+        
+        _logger.LogInformation("Cache size {Size:N0} bytes exceeds limit {Limit:N0} bytes. Starting LRU eviction.",
+            stats.TotalCacheSizeBytes, _maxCacheSizeBytes);
+        
+        var proxies = await GetAllProxiesAsync();
+        var completed = proxies
+            .Where(p => p.Status == ProxyStatus.Completed)
+            .OrderBy(p => p.LastAccessedAt)
+            .ToList();
+        
+        long currentSize = stats.TotalCacheSizeBytes;
+        long targetSize = (long)(_maxCacheSizeBytes * 0.8); // Evict to 80% of limit to avoid frequent evictions
+        int evictedCount = 0;
+        
+        foreach (var proxy in completed)
+        {
+            if (currentSize <= targetSize)
+            {
+                break;
+            }
+            
+            if (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+            
+            try
+            {
+                await DeleteProxyAsync(proxy.SourcePath, proxy.Quality);
+                currentSize -= proxy.FileSizeBytes;
+                evictedCount++;
+                
+                _logger.LogDebug("Evicted proxy {SourcePath} ({Quality}), freed {Size:N0} bytes",
+                    proxy.SourcePath, proxy.Quality, proxy.FileSizeBytes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error evicting proxy {SourcePath}", proxy.SourcePath);
+            }
+        }
+        
+        _logger.LogInformation("LRU eviction completed. Evicted {Count} proxies, freed {Size:N0} bytes. " +
+            "New cache size: {NewSize:N0} bytes",
+            evictedCount, stats.TotalCacheSizeBytes - currentSize, currentSize);
     }
 
     private async Task LoadProxyMetadataAsync()
