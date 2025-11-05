@@ -324,9 +324,238 @@ captionBuilder.ValidateTimecodes(lines, out var msg);
 var voices = await ttsProvider.GetAvailableVoicesAsync();
 ```
 
+## Internationalization and RTL Support
+
+### Overview
+
+Aura Studio provides comprehensive internationalization support including:
+- Translation + TTS integration for 55+ languages
+- RTL (Right-to-Left) subtitle rendering for Arabic, Hebrew, Persian, Urdu
+- Language-specific voice recommendations
+- Automatic font fallback for complex scripts
+- Timing validation for translated content (±2% tolerance)
+
+### SubtitleService
+
+The `SubtitleService` provides high-level subtitle generation with language awareness:
+
+```csharp
+var subtitleService = serviceProvider.GetRequiredService<SubtitleService>();
+
+var request = new SubtitleGenerationRequest
+{
+    ScriptLines = translatedLines,
+    TargetLanguage = "ar",  // Arabic (RTL)
+    Format = SubtitleExportFormat.SRT,
+    IsRightToLeft = true,
+    ExportToFile = true,
+    OutputDirectory = "/output/subtitles",
+    BaseFileName = "arabic_subtitles"
+};
+
+var result = await subtitleService.GenerateSubtitlesAsync(request);
+// result.ExportedFilePath contains path to generated .srt file
+```
+
+### RTL Language Support
+
+#### Automatic RTL Detection
+
+```csharp
+// Get recommended style for any language
+var style = subtitleService.GetRecommendedStyle("ar");  // Arabic
+// style.IsRightToLeft == true
+// style.RtlFontFallback == "Arial Unicode MS"
+
+var englishStyle = subtitleService.GetRecommendedStyle("en");
+// englishStyle.IsRightToLeft == false
+// englishStyle.RtlFontFallback == null
+```
+
+#### Supported RTL Languages
+
+- **Arabic**: ar, ar-SA, ar-EG, ar-AE
+- **Hebrew**: he
+- **Persian/Farsi**: fa
+- **Urdu**: ur
+
+#### RTL Font Fallbacks
+
+RTL languages automatically use Unicode-compatible fonts:
+
+```csharp
+var style = new CaptionRenderStyle(
+    FontName: "Arial",  // Base font
+    FontSize: 24,
+    IsRightToLeft: true,
+    RtlFontFallback: "Arial Unicode MS"  // Used for RTL rendering
+);
+
+string filter = captionBuilder.BuildBurnInFilter("arabic.srt", style);
+// Automatically uses Arial Unicode MS for proper glyph rendering
+```
+
+#### RTL Burn-In Example
+
+```csharp
+var arabicStyle = new CaptionRenderStyle(
+    FontName: "Arial",
+    FontSize: 28,
+    PrimaryColor: "FFFFFF",
+    OutlineColor: "000000",
+    OutlineWidth: 2,
+    BorderStyle: 3,
+    Alignment: 2,
+    IsRightToLeft: true,
+    RtlFontFallback: "Arial Unicode MS"
+);
+
+string filter = captionBuilder.BuildBurnInFilter("arabic_subtitles.srt", arabicStyle);
+// Use with FFmpeg for RTL-aware subtitle rendering
+```
+
+### Translation Integration
+
+#### Translation → SSML → Subtitles Pipeline
+
+Complete workflow from source script to translated audio + aligned subtitles:
+
+```csharp
+var integrationService = serviceProvider.GetRequiredService<TranslationIntegrationService>();
+
+var request = new TranslateAndPlanSSMLRequest
+{
+    SourceLanguage = "en",
+    TargetLanguage = "es",
+    ScriptLines = sourceLines,
+    TargetProvider = VoiceProvider.ElevenLabs,
+    VoiceSpec = new VoiceSpec("Sofia", 1.0, 1.0, PauseStyle.Natural),
+    SubtitleFormat = SubtitleFormat.SRT,
+    DurationTolerance = 0.02  // ±2% timing tolerance
+};
+
+var result = await integrationService.TranslateAndPlanSSMLAsync(request);
+
+// result.Translation - Full translation with quality metrics
+// result.SSMLPlanning - SSML markup with timing
+// result.TranslatedScriptLines - Lines ready for TTS
+// result.Subtitles - Synchronized subtitle file (SRT or VTT)
+```
+
+#### Voice Recommendations per Language
+
+Get AI-recommended voices for target languages:
+
+```csharp
+var recommendation = integrationService.GetRecommendedVoice(
+    targetLanguage: "es",
+    provider: VoiceProvider.ElevenLabs,
+    preferredGender: "Female",
+    preferredStyle: "Professional"
+);
+
+// recommendation.IsRTL - Whether language is RTL
+// recommendation.RecommendedVoices - List of suitable voices with quality/style info
+```
+
+### Timing Validation
+
+Ensure subtitles match target durations within tolerance:
+
+```csharp
+var validation = subtitleService.ValidateTimingAlignment(
+    lines: translatedLines,
+    targetTotalDuration: 30.0,  // seconds
+    tolerancePercent: 0.02  // ±2%
+);
+
+if (!validation.IsValid)
+{
+    Console.WriteLine($"Timing deviation: {validation.DeviationPercent:F2}%");
+    Console.WriteLine($"Target: {validation.TargetDuration:F2}s, Actual: {validation.ActualDuration:F2}s");
+}
+```
+
+### Subtitle Export
+
+Export subtitles to file with UTF-8 encoding:
+
+```csharp
+string path = await captionBuilder.ExportSubtitlesToFileAsync(
+    lines: scriptLines,
+    format: SubtitleExportFormat.VTT,
+    outputDirectory: "/output",
+    baseFileName: "spanish_subtitles",
+    isRightToLeft: false
+);
+
+// Creates: /output/spanish_subtitles.vtt (UTF-8 encoded)
+```
+
+### Burn-In Options
+
+Control subtitle rendering with `BurnInOptions`:
+
+```csharp
+var burnInOptions = new BurnInOptions
+{
+    FontName = "Arial",
+    FontSize = 24,
+    PrimaryColor = "FFFFFF",
+    OutlineColor = "000000",
+    OutlineWidth = 2,
+    BorderStyle = 3,  // Opaque box
+    Alignment = 2,  // Bottom center
+    IsRightToLeft = true,
+    RtlFontFallback = "Arial Unicode MS"
+};
+
+string filter = subtitleService.GenerateBurnInFilter(
+    subtitleFilePath: "arabic.srt",
+    options: burnInOptions
+);
+```
+
+### Language Registry
+
+Access language metadata:
+
+```csharp
+using Aura.Core.Services.Localization;
+
+var language = LanguageRegistry.GetLanguage("ar");
+// language.IsRightToLeft == true
+// language.TypicalExpansionFactor == 0.95 (Arabic is slightly more compact than English)
+
+var allLanguages = LanguageRegistry.GetAllLanguages();
+// Returns LanguageInfo for 55+ supported languages
+```
+
+### Best Practices
+
+**For RTL Languages:**
+1. Always use `GetRecommendedStyle()` to get proper RTL configuration
+2. Test subtitles on target playback devices before mass production
+3. Use UTF-8 encoding for all subtitle files
+4. Verify font support for complex scripts (Arabic diacritics, Hebrew vowel points)
+
+**For Translation:**
+1. Enable timing validation to ensure subtitle alignment
+2. Use ±2% tolerance for production quality
+3. Review timing warnings for scenes exceeding tolerance
+4. Test with actual TTS output before finalizing
+
+**For Multi-Language Projects:**
+1. Export subtitles to separate files per language
+2. Use consistent naming convention (e.g., `video_ar.srt`, `video_es.srt`)
+3. Validate timing for each language separately
+4. Consider language-specific font requirements for burn-in
+
 ## References
 
 - [EBS R128: Loudness Normalization](https://tech.ebu.ch/docs/r/r128.pdf)
 - [SubRip (SRT) Format](https://en.wikipedia.org/wiki/SubRip)
 - [WebVTT Specification](https://www.w3.org/TR/webvtt1/)
 - [FFmpeg Audio Filters](https://ffmpeg.org/ffmpeg-filters.html#Audio-Filters)
+- [Unicode Bidirectional Algorithm](https://unicode.org/reports/tr9/)
+- [ISO 639 Language Codes](https://www.loc.gov/standards/iso639-2/php/code_list.php)
