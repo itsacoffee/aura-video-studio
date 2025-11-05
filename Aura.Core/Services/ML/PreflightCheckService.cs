@@ -47,7 +47,7 @@ public class PreflightCheckService
             await CheckGpuCapabilitiesAsync(result, cancellationToken);
 
             // Check RAM
-            CheckRamCapabilities(result);
+            await CheckRamCapabilitiesAsync(result);
 
             // Check disk space
             CheckDiskSpace(result);
@@ -108,7 +108,7 @@ public class PreflightCheckService
         }
     }
 
-    private async void CheckRamCapabilities(PreflightCheckResult result)
+    private async Task CheckRamCapabilitiesAsync(PreflightCheckResult result)
     {
         try
         {
