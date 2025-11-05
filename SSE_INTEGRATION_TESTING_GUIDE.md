@@ -13,6 +13,18 @@ This guide provides instructions for testing the Server-Sent Events (SSE) integr
    - Added progress message support
    - Better error and warning event handling
    - Helper methods for phase mapping
+   - **NEW**: Last-Event-ID support for reconnection
+   - **NEW**: Event IDs on all SSE events for tracking
+
+2. **New Queue Management Endpoints**
+   - `GET /api/queue` - List all jobs with optional status filtering
+   - `GET /api/render/{id}/progress` - Detailed job progress information
+   - `POST /api/render/{id}/cancel` - Cancel running render jobs
+
+3. **Cleanup Infrastructure**
+   - CleanupService for managing temporary files and proxy media
+   - CleanupHostedService running hourly sweeps
+   - Automatic cleanup on job cancellation
 
 ### Frontend (Aura.Web)
 1. **New SSE Client** (`src/services/api/sseClient.ts`)
@@ -100,7 +112,7 @@ This guide provides instructions for testing the Server-Sent Events (SSE) integr
 - ✅ Video file generated
 - ✅ Artifacts downloadable
 
-### Test 3: SSE Auto-Reconnect
+### Test 3: SSE Auto-Reconnect with Last-Event-ID
 
 **Steps:**
 1. Start Quick Demo
@@ -112,17 +124,19 @@ This guide provides instructions for testing the Server-Sent Events (SSE) integr
 **Expected Results:**
 - ✅ SSE connection drops
 - ✅ Auto-reconnect attempts logged in console
-- ✅ Connection re-establishes automatically
-- ✅ Progress updates resume
+- ✅ Connection re-establishes automatically with Last-Event-ID header
+- ✅ Progress updates resume from last received event
 - ✅ Job completes successfully
 - ✅ Max 5 reconnect attempts before giving up
+- ✅ Backend logs reconnection with last event ID
 
 **Console Verification:**
 ```
 [SseClient] Connection error
 [SseClient] Reconnecting in 1000ms (attempt 1/5)
-[SseClient] Attempting reconnect...
+[SseClient] Attempting reconnect with Last-Event-ID: 1234567890-5
 [SseClient] Connected successfully
+[Backend] SSE stream requested for job abc123, reconnect=true, lastEventId=1234567890-5
 ```
 
 ### Test 4: Job Cancellation
@@ -192,6 +206,63 @@ data: {"step":"TTS",...}
 - ✅ No memory leaks from dangling connections
 - ✅ Each job tracked independently
 
+### Test 8: Queue API Endpoints
+
+**Steps:**
+1. Start multiple jobs (2-3 Quick Demo jobs)
+2. Let one complete, cancel one mid-execution
+3. Test queue endpoint: `GET /api/queue`
+4. Test with status filter: `GET /api/queue?status=running`
+5. Test progress endpoint: `GET /api/render/{jobId}/progress`
+
+**Expected Results:**
+- ✅ Queue endpoint returns all jobs with stats
+- ✅ Status filter correctly filters jobs
+- ✅ Progress endpoint returns detailed job information
+- ✅ Timestamps are accurate (createdAt, startedAt, completedAt, canceledAt)
+- ✅ Progress percentage matches current stage
+- ✅ Correlation IDs present in all responses
+
+**Example Queue Response:**
+```json
+{
+  "jobs": [
+    {
+      "jobId": "abc123",
+      "status": "running",
+      "stage": "Voice",
+      "percent": 45,
+      "createdAt": "2024-01-01T12:00:00Z",
+      "startedAt": "2024-01-01T12:00:05Z",
+      "canResume": false
+    }
+  ],
+  "stats": {
+    "total": 3,
+    "pending": 0,
+    "running": 1,
+    "completed": 1,
+    "failed": 0,
+    "canceled": 1
+  }
+}
+```
+
+### Test 9: Cleanup Service
+
+**Steps:**
+1. Start a job and let it run for 10-20 seconds
+2. Cancel the job
+3. Check backend logs for cleanup messages
+4. Verify temp files are cleaned up
+
+**Expected Results:**
+- ✅ Cleanup service logs appear on cancellation
+- ✅ Temporary files removed from %LOCALAPPDATA%/Aura/temp/{jobId}
+- ✅ Proxy media removed from %LOCALAPPDATA%/Aura/proxy/{jobId}
+- ✅ Background sweep service runs periodically
+- ✅ Orphaned files older than 24 hours are cleaned
+
 ## Debugging Tips
 
 ### SSE Not Connecting
@@ -249,10 +320,15 @@ All tests must pass for the feature to be considered complete:
 - ✅ Quick Demo produces playable MP4 in Demo Mode
 - ✅ Full Generate Video runs end-to-end with visible progress
 - ✅ SSE connection resilient to network interruptions
+- ✅ SSE reconnection with Last-Event-ID works correctly
 - ✅ Keep-alive pings prevent connection timeout
 - ✅ Error messages surface in UI with helpful guidance
 - ✅ Download links work for artifacts
-- ✅ Job cancellation works cleanly
+- ✅ Job cancellation works cleanly and triggers cleanup
+- ✅ Queue API returns accurate job list and statistics
+- ✅ Progress API provides detailed job information
+- ✅ Cleanup service removes temporary files on cancellation
+- ✅ Background sweep service cleans orphaned files
 - ✅ No console errors during normal operation
 - ✅ No memory leaks with multiple jobs
 
