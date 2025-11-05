@@ -226,8 +226,56 @@ These work but could be enhanced later:
 - Engine-specific advanced settings UI
 - Custom health check intervals
 
+## Offline Mode Enhancements
+
+### New: "Tune for My Machine" Feature
+
+Aura now provides intelligent, hardware-specific recommendations for offline providers:
+
+**Features**:
+- Automatic hardware detection (RAM, VRAM, CPU cores, GPU vendor)
+- TTS provider recommendations (Piper vs Mimic3) based on available RAM
+- LLM model recommendations (Ollama models) based on RAM and VRAM
+- Image provider recommendations (SD WebUI vs Stock Images) based on GPU capabilities
+- Overall capability assessment showing what's possible offline
+- Hardware-specific quick start guides
+
+**Access**:
+1. Navigate to **Download Center → Offline Mode** tab
+2. View your hardware summary and capabilities
+3. Follow provider-specific recommendations with speed/quality expectations
+4. Use the quick start guide tailored to your system
+
+**Benefits**:
+- Zero guesswork about which offline providers to use
+- Clear performance expectations (speed and quality)
+- Automatic fallback recommendations
+- Transparent capability display
+
+### Offline Provider Status Dashboard
+
+Real-time monitoring of all offline providers:
+- Live status checks for Piper, Mimic3, Ollama, SD WebUI, Windows TTS
+- Capability summary (TTS, LLM, images available)
+- Provider-specific recommendations and setup guides
+- Installation links for unavailable providers
+
+### Offline Mode Capability Banners
+
+Context-aware banners that display:
+- Current offline capabilities (what's available vs missing)
+- Setup guidance for missing providers
+- Direct links to configuration pages
+- Compact mode for minimal intrusion
+
 ## Conclusion
 
 This implementation provides complete flexibility for engine management while maintaining the simplicity of the Managed mode for new users. The UI clearly shows what's installed, where it is, and how to access it. Documentation guides users through both modes with practical examples.
 
-**Key Achievement**: Users are no longer forced into internal directories and can point Aura to engines anywhere on their system, solving the core problems outlined in the issue.
+With the new offline mode enhancements, users get:
+1. **Hardware-optimized recommendations** - No more guessing which providers work on their system
+2. **Transparent capabilities** - Clear visibility of what works offline
+3. **Actionable guidance** - Step-by-step setup instructions tailored to hardware
+4. **Smart fallbacks** - Automatic recommendations when primary providers unavailable
+
+**Key Achievement**: Users are no longer forced into internal directories and can point Aura to engines anywhere on their system. Additionally, offline mode is now fully discoverable with intelligent recommendations and clear capability transparency, solving the core problems outlined in the issue.
