@@ -1,0 +1,207 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aura.studio/schemas/subtitle-manifest.json",
+  "title": "Subtitle Manifest",
+  "description": "Schema for Aura Video Studio subtitle manifests with multi-language support and RTL handling",
+  "type": "object",
+  "required": ["version", "sourceLanguage", "subtitles"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "default": "1.0.0"
+    },
+    "sourceLanguage": {
+      "type": "string",
+      "description": "ISO 639-1 language code for source content",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+      "examples": ["en", "en-US", "es-MX"]
+    },
+    "projectId": {
+      "type": "string",
+      "description": "Associated project identifier"
+    },
+    "videoId": {
+      "type": "string",
+      "description": "Associated video identifier"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of manifest creation"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last update"
+    },
+    "subtitles": {
+      "type": "array",
+      "description": "Array of subtitle tracks for different languages",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/SubtitleTrack"
+      }
+    }
+  },
+  "definitions": {
+    "SubtitleTrack": {
+      "type": "object",
+      "required": ["language", "format", "filePath"],
+      "properties": {
+        "language": {
+          "type": "string",
+          "description": "ISO 639-1 language code",
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+          "examples": ["en", "es-MX", "ar", "he"]
+        },
+        "languageName": {
+          "type": "string",
+          "description": "Human-readable language name",
+          "examples": ["English", "Spanish (Mexico)", "Arabic", "Hebrew"]
+        },
+        "nativeLanguageName": {
+          "type": "string",
+          "description": "Language name in native script",
+          "examples": ["English", "Español", "العربية", "עברית"]
+        },
+        "format": {
+          "type": "string",
+          "enum": ["SRT", "VTT"],
+          "description": "Subtitle file format"
+        },
+        "filePath": {
+          "type": "string",
+          "description": "Path to subtitle file (relative or absolute)"
+        },
+        "isRightToLeft": {
+          "type": "boolean",
+          "description": "Whether the language is right-to-left",
+          "default": false
+        },
+        "isDefault": {
+          "type": "boolean",
+          "description": "Whether this is the default subtitle track",
+          "default": false
+        },
+        "lineCount": {
+          "type": "integer",
+          "description": "Number of subtitle lines",
+          "minimum": 0
+        },
+        "totalDuration": {
+          "type": "number",
+          "description": "Total duration in seconds",
+          "minimum": 0
+        },
+        "encoding": {
+          "type": "string",
+          "description": "Character encoding",
+          "default": "UTF-8",
+          "examples": ["UTF-8", "UTF-16"]
+        },
+        "styling": {
+          "$ref": "#/definitions/SubtitleStyling"
+        },
+        "metadata": {
+          "$ref": "#/definitions/SubtitleMetadata"
+        }
+      }
+    },
+    "SubtitleStyling": {
+      "type": "object",
+      "description": "Styling options for burn-in rendering",
+      "properties": {
+        "fontName": {
+          "type": "string",
+          "description": "Font family name",
+          "default": "Arial"
+        },
+        "fontSize": {
+          "type": "integer",
+          "description": "Font size in points",
+          "minimum": 8,
+          "maximum": 72,
+          "default": 24
+        },
+        "primaryColor": {
+          "type": "string",
+          "description": "Primary text color (hex without #)",
+          "pattern": "^[0-9A-Fa-f]{6}$",
+          "default": "FFFFFF"
+        },
+        "outlineColor": {
+          "type": "string",
+          "description": "Text outline color (hex without #)",
+          "pattern": "^[0-9A-Fa-f]{6}$",
+          "default": "000000"
+        },
+        "outlineWidth": {
+          "type": "integer",
+          "description": "Outline width in pixels",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 2
+        },
+        "borderStyle": {
+          "type": "integer",
+          "description": "ASS border style (1=outline, 3=opaque box)",
+          "enum": [1, 3],
+          "default": 3
+        },
+        "alignment": {
+          "type": "integer",
+          "description": "Text alignment (1=left, 2=center, 3=right)",
+          "enum": [1, 2, 3],
+          "default": 2
+        },
+        "rtlFontFallback": {
+          "type": "string",
+          "description": "Fallback font for RTL languages",
+          "examples": ["Arial Unicode MS", "Tahoma"]
+        }
+      }
+    },
+    "SubtitleMetadata": {
+      "type": "object",
+      "description": "Additional metadata for subtitle track",
+      "properties": {
+        "translatedBy": {
+          "type": "string",
+          "description": "Translation provider or method",
+          "examples": ["OpenAI GPT-4", "Anthropic Claude", "Manual"]
+        },
+        "translatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of translation"
+        },
+        "qualityScore": {
+          "type": "number",
+          "description": "Translation quality score (0-100)",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "timingDeviation": {
+          "type": "number",
+          "description": "Timing deviation from target as percentage",
+          "minimum": 0
+        },
+        "culturalAdaptations": {
+          "type": "integer",
+          "description": "Number of cultural adaptations made",
+          "minimum": 0
+        },
+        "glossaryUsed": {
+          "type": "string",
+          "description": "Glossary identifier if used"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes or comments"
+        }
+      }
+    }
+  }
+}

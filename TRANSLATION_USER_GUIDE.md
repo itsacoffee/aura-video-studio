@@ -222,6 +222,156 @@ And 30+ more including:
 - **Review high-priority languages first**
 - **Plan for ~15-45 seconds per language**
 
+## Advanced Features
+
+### 5. Subtitle Generation and Export
+
+Aura Video Studio automatically generates subtitles from translated scripts with precise timing alignment, supporting both burn-in (embedded) and external file formats.
+
+#### Subtitle Formats
+
+**SRT (SubRip Text)**
+- Standard format supported by most video players
+- Simple text format with timecodes
+- File extension: `.srt`
+- Use for: Maximum compatibility
+
+**VTT (WebVTT)**
+- Web-standard subtitle format
+- Supports styling and positioning
+- File extension: `.vtt`
+- Use for: Web videos, HTML5 players
+
+#### Timing Alignment
+
+**Automatic Duration Matching:**
+- Subtitles automatically adjusted to match target TTS duration
+- ±2% tolerance ensures accurate synchronization
+- Timing validation prevents overlaps and gaps
+- Expansion/contraction handled per language characteristics
+
+**Timing Validation:**
+- Pre-export validation checks for:
+  - Non-overlapping timecodes
+  - Positive durations
+  - Proper sequencing
+  - Duration tolerance compliance
+
+#### Subtitle Export Options
+
+**External Files (Recommended for flexibility):**
+1. Navigate to translation results
+2. Click "Export Subtitles"
+3. Select format (SRT or VTT)
+4. Choose output location
+5. File saved with UTF-8 encoding
+
+**Burn-In (Embedded in video):**
+1. Enable "Burn Subtitles" during rendering
+2. Configure styling options:
+   - Font family and size
+   - Text color and outline
+   - Position (bottom center recommended)
+   - Background style (transparent or opaque box)
+3. Subtitles rendered directly into video frames
+4. Cannot be disabled or changed after rendering
+
+#### RTL (Right-to-Left) Language Support
+
+Aura Studio provides comprehensive RTL support for Arabic, Hebrew, Persian, and Urdu subtitles.
+
+**Automatic RTL Detection:**
+- System automatically detects RTL languages
+- Font fallback to Unicode-compatible fonts (Arial Unicode MS, Tahoma)
+- Text alignment adjusted for RTL reading direction
+- Proper bidirectional text handling
+
+**RTL Subtitle Features:**
+- Arabic (ar, ar-SA, ar-EG)
+- Hebrew (he)
+- Persian/Farsi (fa)
+- Urdu (ur)
+
+**RTL Styling Options:**
+- Font fallback: Arial Unicode MS (default for RTL)
+- Text direction: Automatic right-to-left
+- Alignment: Properly positioned for RTL reading
+- Mixed content: Handles numbers and Latin text within RTL text
+
+**Best Practices for RTL:**
+1. Always preview RTL subtitles before final rendering
+2. Use recommended font fallbacks for proper glyph rendering
+3. Test on target playback devices
+4. Verify number and punctuation placement
+5. Check for proper handling of mixed LTR/RTL content
+
+#### Voice Recommendations per Language
+
+Get AI-recommended voices tailored to each target language with appropriate accent, style, and quality tier.
+
+**How It Works:**
+1. Select target language
+2. Choose TTS provider (ElevenLabs, PlayHT, Windows SAPI, Piper)
+3. System recommends voices based on:
+   - Native language support
+   - Voice quality tier
+   - Style appropriateness (professional, conversational, warm)
+   - Gender options
+
+**Provider Recommendations:**
+
+**ElevenLabs (Premium):**
+- Spanish: Diego (Male/Professional), Sofia (Female/Warm)
+- French: Antoine (Male/Professional), Charlotte (Female/Elegant)
+- German: Hans (Male/Authoritative), Greta (Female/Professional)
+- Japanese: Akira (Male/Professional), Sakura (Female/Gentle)
+- Chinese: Li Wei (Male/Professional), Mei Lin (Female/Warm)
+- Arabic: Ahmed (Male/Professional), Fatima (Female/Warm)
+
+**PlayHT (Premium):**
+- Adaptive voice selection per language
+- Voice cloning support
+- High-quality neural synthesis
+
+**Windows SAPI (Free):**
+- Native Windows voices per system language
+- Standard quality
+- Offline capability
+
+**Piper (Free, Offline):**
+- Neural TTS for multiple languages
+- Privacy-focused (fully offline)
+- Good quality for free option
+
+**RTL Language Voice Tips:**
+- Arabic: Use native Arabic voices for authentic pronunciation
+- Hebrew: Select Hebrew-native voices for proper emphasis
+- Persian: Ensure voice supports Persian-specific phonetics
+- Test with sample text before full production
+
+### 6. Translation with SSML Integration
+
+Advanced workflow combining translation, SSML markup, and TTS generation for complete localized video production.
+
+**Integrated Pipeline:**
+1. **Translation**: Script translated to target language with cultural adaptation
+2. **SSML Planning**: Prosody and timing adjusted for target voice provider
+3. **TTS Synthesis**: Audio generated with optimized SSML markup
+4. **Subtitle Generation**: Perfectly aligned subtitles from SSML timing markers
+
+**Benefits:**
+- Single-click workflow from script to audio + subtitles
+- Timing automatically synchronized across translation and audio
+- SSML optimizations ensure natural-sounding narration
+- Subtitles guaranteed to match audio timing within ±2% tolerance
+
+**Usage:**
+1. Select source and target languages
+2. Choose TTS provider and voice
+3. Enable "Generate with SSML and Subtitles"
+4. System handles complete pipeline automatically
+5. Receive: translated audio + synchronized subtitles + translation report
+
 ## Troubleshooting
 
 ### Low Quality Scores

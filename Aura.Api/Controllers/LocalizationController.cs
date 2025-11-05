@@ -12,6 +12,7 @@ using Aura.Core.Providers;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.Localization;
 using Aura.Core.Captions;
+using Aura.Providers.Tts.validators;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -31,6 +32,7 @@ public class LocalizationController : ControllerBase
     private readonly ILlmProvider _llmProvider;
     private readonly GlossaryManager _glossaryManager;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly List<ISSMLMapper> _ssmlMappers;
 
     public LocalizationController(
         ILogger<LocalizationController> logger,
@@ -48,6 +50,15 @@ public class LocalizationController : ControllerBase
         _glossaryManager = new GlossaryManager(
             loggerFactory.CreateLogger<GlossaryManager>(),
             storageDir);
+
+        _ssmlMappers = new List<ISSMLMapper>
+        {
+            new ElevenLabsSSMLMapper(),
+            new WindowsSSMLMapper(),
+            new PlayHTSSMLMapper(),
+            new PiperSSMLMapper(),
+            new Mimic3SSMLMapper()
+        };
     }
 
     /// <summary>
@@ -607,7 +618,8 @@ public class LocalizationController : ControllerBase
                 _llmProvider);
 
             var ssmlPlannerService = new SSMLPlannerService(
-                _loggerFactory.CreateLogger<SSMLPlannerService>());
+                _loggerFactory.CreateLogger<SSMLPlannerService>(),
+                _ssmlMappers);
 
             var captionBuilder = new CaptionBuilder(
                 _loggerFactory.CreateLogger<CaptionBuilder>());
@@ -636,11 +648,11 @@ public class LocalizationController : ControllerBase
                 TimeSpan.FromSeconds(line.DurationSeconds)
             )).ToList();
 
-            var voiceSpec = new Voice.VoiceSpec(
+            var voiceSpec = new VoiceSpec(
                 request.VoiceSpec.VoiceName,
                 request.VoiceSpec.Rate,
                 request.VoiceSpec.Pitch,
-                PauseStyle.Natural
+                Aura.Core.Models.PauseStyle.Natural
             );
 
             var subtitleFormat = Enum.Parse<SubtitleFormat>(
@@ -727,7 +739,8 @@ public class LocalizationController : ControllerBase
                 _llmProvider);
 
             var ssmlPlannerService = new SSMLPlannerService(
-                _loggerFactory.CreateLogger<SSMLPlannerService>());
+                _loggerFactory.CreateLogger<SSMLPlannerService>(),
+                _ssmlMappers);
 
             var captionBuilder = new CaptionBuilder(
                 _loggerFactory.CreateLogger<CaptionBuilder>());
