@@ -1812,6 +1812,38 @@ public record PreflightCheckResultDto(
     List<string> Errors);
 
 /// <summary>
+/// LLM-assisted advice for labeling focus
+/// </summary>
+public record LabelingAdviceDto(
+    int TotalAnnotations,
+    double AverageRating,
+    double MinRating,
+    double MaxRating,
+    Dictionary<string, int> RatingDistribution,
+    List<string> Recommendations,
+    List<string> FocusAreas,
+    List<string> Warnings);
+
+/// <summary>
+/// Post-training analysis with recommendations
+/// </summary>
+public record PostTrainingAnalysisDto(
+    double TrainingLoss,
+    int TrainingSamples,
+    int TrainingDurationSeconds,
+    int AnnotationCount,
+    bool HadGpu,
+    int ActualTimeMinutes,
+    int EstimatedTimeMinutes,
+    int QualityScore,
+    List<string> Observations,
+    List<string> Warnings,
+    List<string> Concerns,
+    string Summary,
+    string Recommendation,
+    List<string> NextSteps);
+
+/// <summary>
 /// Request to generate proxy media
 /// </summary>
 public record GenerateProxyRequest(
