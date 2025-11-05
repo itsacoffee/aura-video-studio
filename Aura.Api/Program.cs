@@ -249,6 +249,8 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ProviderMixer>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
 builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
 builder.Services.AddSingleton<Aura.Core.Services.CostTracking.EnhancedCostTrackingService>();
+builder.Services.AddSingleton<Aura.Core.Services.CostTracking.TokenTrackingService>();
+builder.Services.AddSingleton<Aura.Core.Services.CostTracking.RunCostReportService>();
 
 // Offline provider availability service
 builder.Services.AddSingleton<Aura.Core.Services.OfflineProviderAvailabilityService>();

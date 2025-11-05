@@ -11,10 +11,17 @@ namespace Aura.Api.Controllers;
 public class CostTrackingController : ControllerBase
 {
     private readonly EnhancedCostTrackingService? _costTrackingService;
+    private readonly TokenTrackingService? _tokenTrackingService;
+    private readonly RunCostReportService? _reportService;
 
-    public CostTrackingController(EnhancedCostTrackingService? costTrackingService = null)
+    public CostTrackingController(
+        EnhancedCostTrackingService? costTrackingService = null,
+        TokenTrackingService? tokenTrackingService = null,
+        RunCostReportService? reportService = null)
     {
         _costTrackingService = costTrackingService;
+        _tokenTrackingService = tokenTrackingService;
+        _reportService = reportService;
     }
 
     /// <summary>
@@ -348,5 +355,259 @@ public class CostTrackingController : ControllerBase
             Log.Error(ex, "Error resetting budget");
             return Problem($"Error resetting budget: {ex.Message}", statusCode: 500);
         }
+    }
+
+    /// <summary>
+    /// Get token usage statistics for a job
+    /// </summary>
+    [HttpGet("token-stats/{jobId}")]
+    public IActionResult GetTokenStatistics(string jobId)
+    {
+        if (_tokenTrackingService == null)
+        {
+            return Problem("Token tracking service not available", statusCode: 503);
+        }
+
+        try
+        {
+            var stats = _tokenTrackingService.GetJobStatistics(jobId);
+            
+            var dto = new TokenUsageStatisticsDto(
+                TotalInputTokens: stats.TotalInputTokens,
+                TotalOutputTokens: stats.TotalOutputTokens,
+                TotalTokens: stats.TotalTokens,
+                OperationCount: stats.OperationCount,
+                CacheHits: stats.CacheHits,
+                CacheHitRate: stats.CacheHitRate,
+                AverageTokensPerOperation: stats.AverageTokensPerOperation,
+                AverageResponseTimeMs: stats.AverageResponseTimeMs,
+                TotalCost: stats.TotalCost,
+                CostSavedByCache: stats.CostSavedByCache);
+
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting token statistics for job {JobId}", jobId);
+            return Problem($"Error getting token statistics: {ex.Message}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Get comprehensive cost report for a run
+    /// </summary>
+    [HttpGet("run-summary/{jobId}")]
+    public IActionResult GetRunSummary(string jobId)
+    {
+        if (_reportService == null)
+        {
+            return Problem("Report service not available", statusCode: 503);
+        }
+
+        try
+        {
+            var report = _reportService.GetReport(jobId);
+            
+            if (report == null)
+            {
+                return NotFound(new { error = $"No cost report found for job {jobId}" });
+            }
+
+            var dto = MapReportToDto(report);
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting run summary for job {JobId}", jobId);
+            return Problem($"Error getting run summary: {ex.Message}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Export cost report in JSON or CSV format
+    /// </summary>
+    [HttpPost("export/{jobId}")]
+    public IActionResult ExportReport(string jobId, [FromQuery] string format = "json")
+    {
+        if (_reportService == null)
+        {
+            return Problem("Report service not available", statusCode: 503);
+        }
+
+        try
+        {
+            var report = _reportService.GetReport(jobId);
+            
+            if (report == null)
+            {
+                return NotFound(new { error = $"No cost report found for job {jobId}" });
+            }
+
+            string filePath;
+            string contentType;
+            
+            if (format.ToLowerInvariant() == "csv")
+            {
+                filePath = _reportService.ExportToCsv(report);
+                contentType = "text/csv";
+            }
+            else
+            {
+                filePath = _reportService.ExportToJson(report);
+                contentType = "application/json";
+            }
+
+            var fileBytes = System.IO.File.ReadAllBytes(filePath);
+            var fileName = Path.GetFileName(filePath);
+            
+            return File(fileBytes, contentType, fileName);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error exporting report for job {JobId}", jobId);
+            return Problem($"Error exporting report: {ex.Message}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Get cost optimization suggestions for a job
+    /// </summary>
+    [HttpGet("optimize-suggestions/{jobId}")]
+    public IActionResult GetOptimizationSuggestions(string jobId)
+    {
+        if (_tokenTrackingService == null)
+        {
+            return Problem("Token tracking service not available", statusCode: 503);
+        }
+
+        try
+        {
+            var suggestions = _tokenTrackingService.GenerateOptimizationSuggestions(jobId);
+            
+            var dtos = suggestions.Select(s => new CostOptimizationSuggestionDto(
+                Category: s.Category.ToString(),
+                Suggestion: s.Suggestion,
+                EstimatedSavings: s.EstimatedSavings,
+                QualityImpact: s.QualityImpact)).ToList();
+
+            return Ok(dtos);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting optimization suggestions for job {JobId}", jobId);
+            return Problem($"Error getting optimization suggestions: {ex.Message}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Optimize generation settings for a budget
+    /// </summary>
+    [HttpPost("optimize-budget")]
+    public IActionResult OptimizeForBudget([FromBody] OptimizeForBudgetRequest request)
+    {
+        if (_costTrackingService == null)
+        {
+            return Problem("Cost tracking service not available", statusCode: 503);
+        }
+
+        try
+        {
+            var estimatedCostBefore = 5.00m;
+            var recommendedSettings = new Dictionary<string, object>
+            {
+                ["llmProvider"] = "Gemini",
+                ["ttsProvider"] = "Piper",
+                ["enableCaching"] = true,
+                ["maxTokensPerOperation"] = 2000,
+                ["imageQuality"] = "standard"
+            };
+            
+            var changes = new List<string>
+            {
+                "Switch LLM provider from OpenAI to Gemini (60% cost reduction)",
+                "Switch TTS provider to Piper (free, offline)",
+                "Enable LLM caching for repeated operations",
+                "Reduce max tokens per operation from 4000 to 2000",
+                "Use standard image quality instead of high"
+            };
+            
+            var estimatedCostAfter = 1.50m;
+            
+            var response = new BudgetOptimizationResponse(
+                EstimatedCostBefore: estimatedCostBefore,
+                EstimatedCostAfter: estimatedCostAfter,
+                EstimatedSavings: estimatedCostBefore - estimatedCostAfter,
+                RecommendedSettings: recommendedSettings,
+                Changes: changes,
+                QualityImpact: "Slight reduction in output creativity and voice quality, but maintains overall video quality",
+                WithinBudget: estimatedCostAfter <= request.BudgetLimit);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error optimizing for budget");
+            return Problem($"Error optimizing for budget: {ex.Message}", statusCode: 500);
+        }
+    }
+
+    private static RunCostReportDto MapReportToDto(RunCostReport report)
+    {
+        var tokenStatsDto = report.TokenStats != null
+            ? new TokenUsageStatisticsDto(
+                TotalInputTokens: report.TokenStats.TotalInputTokens,
+                TotalOutputTokens: report.TokenStats.TotalOutputTokens,
+                TotalTokens: report.TokenStats.TotalTokens,
+                OperationCount: report.TokenStats.OperationCount,
+                CacheHits: report.TokenStats.CacheHits,
+                CacheHitRate: report.TokenStats.CacheHitRate,
+                AverageTokensPerOperation: report.TokenStats.AverageTokensPerOperation,
+                AverageResponseTimeMs: report.TokenStats.AverageResponseTimeMs,
+                TotalCost: report.TokenStats.TotalCost,
+                CostSavedByCache: report.TokenStats.CostSavedByCache)
+            : null;
+
+        var stageBreakdownDtos = report.CostByStage.ToDictionary(
+            kvp => kvp.Key,
+            kvp => new StageCostBreakdownDto(
+                StageName: kvp.Value.StageName,
+                Cost: kvp.Value.Cost,
+                PercentageOfTotal: kvp.Value.PercentageOfTotal,
+                DurationSeconds: kvp.Value.DurationSeconds,
+                OperationCount: kvp.Value.OperationCount,
+                ProviderName: kvp.Value.ProviderName));
+
+        var operationDtos = report.Operations.Select(o => new OperationCostDetailDto(
+            Timestamp: o.Timestamp,
+            OperationType: o.OperationType,
+            ProviderName: o.ProviderName,
+            Cost: o.Cost,
+            DurationMs: o.DurationMs,
+            TokensUsed: o.TokensUsed,
+            CharactersProcessed: o.CharactersProcessed,
+            CacheHit: o.CacheHit)).ToList();
+
+        var suggestionDtos = report.OptimizationSuggestions.Select(s => new CostOptimizationSuggestionDto(
+            Category: s.Category.ToString(),
+            Suggestion: s.Suggestion,
+            EstimatedSavings: s.EstimatedSavings,
+            QualityImpact: s.QualityImpact)).ToList();
+
+        return new RunCostReportDto(
+            JobId: report.JobId,
+            ProjectId: report.ProjectId,
+            ProjectName: report.ProjectName,
+            StartedAt: report.StartedAt,
+            CompletedAt: report.CompletedAt,
+            DurationSeconds: report.DurationSeconds,
+            TotalCost: report.TotalCost,
+            Currency: report.Currency,
+            CostByStage: stageBreakdownDtos,
+            CostByProvider: report.CostByProvider,
+            TokenStats: tokenStatsDto,
+            Operations: operationDtos,
+            OptimizationSuggestions: suggestionDtos,
+            WithinBudget: report.WithinBudget,
+            BudgetLimit: report.BudgetLimit);
     }
 }

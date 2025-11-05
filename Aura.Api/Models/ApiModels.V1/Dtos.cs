@@ -1615,6 +1615,114 @@ public record CostEstimateRequest(
     int? EstimatedCharacters,
     double? EstimatedComputeSeconds);
 
+/// <summary>
+/// Token usage metrics for an LLM operation
+/// </summary>
+public record TokenUsageMetricsDto(
+    string Id,
+    DateTime Timestamp,
+    string ProviderName,
+    string ModelName,
+    string OperationType,
+    int InputTokens,
+    int OutputTokens,
+    int TotalTokens,
+    long ResponseTimeMs,
+    int RetryCount,
+    bool CacheHit,
+    decimal EstimatedCost,
+    string? JobId,
+    bool Success);
+
+/// <summary>
+/// Aggregated token usage statistics
+/// </summary>
+public record TokenUsageStatisticsDto(
+    long TotalInputTokens,
+    long TotalOutputTokens,
+    long TotalTokens,
+    int OperationCount,
+    int CacheHits,
+    double CacheHitRate,
+    double AverageTokensPerOperation,
+    long AverageResponseTimeMs,
+    decimal TotalCost,
+    decimal CostSavedByCache);
+
+/// <summary>
+/// Comprehensive cost report for a run
+/// </summary>
+public record RunCostReportDto(
+    string JobId,
+    string? ProjectId,
+    string? ProjectName,
+    DateTime StartedAt,
+    DateTime? CompletedAt,
+    double DurationSeconds,
+    decimal TotalCost,
+    string Currency,
+    Dictionary<string, StageCostBreakdownDto> CostByStage,
+    Dictionary<string, decimal> CostByProvider,
+    TokenUsageStatisticsDto? TokenStats,
+    List<OperationCostDetailDto> Operations,
+    List<CostOptimizationSuggestionDto> OptimizationSuggestions,
+    bool WithinBudget,
+    decimal? BudgetLimit);
+
+/// <summary>
+/// Cost breakdown for a pipeline stage
+/// </summary>
+public record StageCostBreakdownDto(
+    string StageName,
+    decimal Cost,
+    double PercentageOfTotal,
+    double DurationSeconds,
+    int OperationCount,
+    string? ProviderName);
+
+/// <summary>
+/// Detailed cost for a single operation
+/// </summary>
+public record OperationCostDetailDto(
+    DateTime Timestamp,
+    string OperationType,
+    string ProviderName,
+    decimal Cost,
+    long DurationMs,
+    int? TokensUsed,
+    int? CharactersProcessed,
+    bool CacheHit);
+
+/// <summary>
+/// Cost optimization suggestion
+/// </summary>
+public record CostOptimizationSuggestionDto(
+    string Category,
+    string Suggestion,
+    decimal EstimatedSavings,
+    string? QualityImpact);
+
+/// <summary>
+/// Request to optimize generation for budget
+/// </summary>
+public record OptimizeForBudgetRequest(
+    decimal BudgetLimit,
+    string? DesiredQuality,
+    int? DeadlineMinutes,
+    Dictionary<string, object>? CurrentSettings);
+
+/// <summary>
+/// Budget optimization response with recommendations
+/// </summary>
+public record BudgetOptimizationResponse(
+    decimal EstimatedCostBefore,
+    decimal EstimatedCostAfter,
+    decimal EstimatedSavings,
+    Dictionary<string, object> RecommendedSettings,
+    List<string> Changes,
+    string QualityImpact,
+    bool WithinBudget);
+
 // ===== ML Training and Annotation DTOs =====
 
 /// <summary>
