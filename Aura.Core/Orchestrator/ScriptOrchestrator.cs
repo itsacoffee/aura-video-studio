@@ -23,7 +23,7 @@ public class ScriptOrchestrator
     private readonly Func<Dictionary<string, ILlmProvider>>? _providerFactory;
     private Dictionary<string, ILlmProvider>? _providers;
     private readonly object _lock = new object();
-    private LlmStageAdapter? _stageAdapter;
+    private volatile LlmStageAdapter? _stageAdapter;
 
     /// <summary>
     /// Constructor with pre-created providers (for backward compatibility)

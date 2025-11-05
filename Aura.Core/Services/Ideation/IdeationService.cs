@@ -70,20 +70,7 @@ public class IdeationService
             Style: "Creative"
         );
 
-        string response;
-        if (_stageAdapter != null)
-        {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
-            if (!result.IsSuccess || result.Data == null)
-            {
-                throw new InvalidOperationException($"Script generation failed: {result.ErrorMessage}");
-            }
-            response = result.Data;
-        }
-        else
-        {
-            response = await GenerateWithLlmAsync(brief, planSpec, ct);
-        }
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
         
         // Parse the response into structured concepts
         var concepts = ParseBrainstormResponse(response, request.Topic);

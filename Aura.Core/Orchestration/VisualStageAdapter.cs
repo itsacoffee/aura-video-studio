@@ -185,7 +185,7 @@ public class VisualStageAdapter : UnifiedGenerationOrchestrator<VisualStageReque
             Camera = new CameraSetup
             {
                 ShotType = Enum.TryParse<ShotType>(visualResult.ShotType, true, out var shotType) 
-                    ? shotType : ShotType.Medium,
+                    ? shotType : ShotType.MediumShot,
                 Angle = Enum.TryParse<CameraAngle>(visualResult.CameraAngle, true, out var angle) 
                     ? angle : CameraAngle.EyeLevel,
                 DepthOfField = visualResult.DepthOfField
@@ -207,7 +207,7 @@ public class VisualStageAdapter : UnifiedGenerationOrchestrator<VisualStageReque
     {
         await Task.CompletedTask;
 
-        var keyData = $"visual:{request.Scene.Text}:{request.Tone}:{request.VisualStyle}:{request.Importance}";
+        var keyData = $"visual:{request.Scene.Script}:{request.Tone}:{request.VisualStyle}:{request.Importance}";
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(keyData));
         return $"visual:{Convert.ToHexString(hash)[..16]}";
     }

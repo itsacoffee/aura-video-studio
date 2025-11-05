@@ -7,6 +7,7 @@ using Aura.Core.ML;
 using Aura.Core.ML.Models;
 using Aura.Core.Models;
 using Aura.Core.Models.Settings;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -15,11 +16,13 @@ namespace Aura.Core.Services.AI;
 /// <summary>
 /// Adaptive content generator that wraps LLM providers with ML-driven optimization
 /// Applies user-configured enhancements and tracks performance
+/// Now uses unified orchestration via LlmStageAdapter
 /// </summary>
 public class AdaptiveContentGenerator
 {
     private readonly ILogger<AdaptiveContentGenerator> _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
     private readonly ContentOptimizationEngine _optimizationEngine;
     private readonly DynamicPromptEnhancer _promptEnhancer;
     private readonly IntelligentContentAdvisor? _contentAdvisor;
@@ -29,10 +32,12 @@ public class AdaptiveContentGenerator
         ILlmProvider llmProvider,
         ContentOptimizationEngine optimizationEngine,
         DynamicPromptEnhancer promptEnhancer,
-        IntelligentContentAdvisor? contentAdvisor = null)
+        IntelligentContentAdvisor? contentAdvisor = null,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
+        _stageAdapter = stageAdapter;
         _optimizationEngine = optimizationEngine;
         _promptEnhancer = promptEnhancer;
         _contentAdvisor = contentAdvisor;
@@ -93,7 +98,7 @@ public class AdaptiveContentGenerator
             // Step 3: Generate content using LLM provider
             _logger.LogInformation("Generating content with {Provider}", _llmProvider.GetType().Name);
             
-            var generatedContent = await _llmProvider.DraftScriptAsync(workingBrief, workingSpec, ct);
+            var generatedContent = await GenerateWithLlmAsync(workingBrief, workingSpec, ct);
             result.GeneratedContent = generatedContent;
 
             // Step 4: Validate quality if advisor is available
@@ -191,6 +196,30 @@ public class AdaptiveContentGenerator
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to record generation outcome");
+        }
+    }
+
+    /// <summary>
+    /// Helper method to execute LLM generation through unified orchestrator or fallback to direct provider
+    /// </summary>
+    private async Task<string> GenerateWithLlmAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        CancellationToken ct)
+    {
+        if (_stageAdapter != null)
+        {
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            if (!result.IsSuccess || result.Data == null)
+            {
+                _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            }
+            return result.Data;
+        }
+        else
+        {
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
         }
     }
 }

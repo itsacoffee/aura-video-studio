@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -13,19 +14,23 @@ namespace Aura.Core.Services;
 
 /// <summary>
 /// Service for generating structured critique of scripts using rubric-based evaluation
+/// Now uses unified orchestration via LlmStageAdapter
 /// </summary>
 public class CriticService : ICriticProvider
 {
     private readonly ILogger<CriticService> _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
     private const int AverageWordsPerMinute = 150;
 
     public CriticService(
         ILogger<CriticService> logger,
-        ILlmProvider llmProvider)
+        ILlmProvider llmProvider,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
+        _stageAdapter = stageAdapter;
     }
 
     /// <inheritdoc/>

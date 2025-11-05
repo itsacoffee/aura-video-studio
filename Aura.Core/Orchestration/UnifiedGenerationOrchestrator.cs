@@ -59,15 +59,19 @@ public abstract class UnifiedGenerationOrchestrator<TRequest, TResponse>
         
         if (cacheKey != null && _cache != null)
         {
-            var cachedResult = await _cache.GetAsync<TResponse>(cacheKey, ct);
-            if (cachedResult != null)
+            var cachedEntry = await _cache.GetAsync(cacheKey, ct);
+            if (cachedEntry != null)
             {
                 Logger.LogInformation("Cache hit for operation {OperationId}", operationId);
-                return OrchestrationResult<TResponse>.Success(
-                    cachedResult,
-                    operationId,
-                    stopwatch.ElapsedMilliseconds,
-                    true);
+                var cachedResponse = System.Text.Json.JsonSerializer.Deserialize<TResponse>(cachedEntry.Response);
+                if (cachedResponse != null)
+                {
+                    return OrchestrationResult<TResponse>.Success(
+                        cachedResponse,
+                        operationId,
+                        stopwatch.ElapsedMilliseconds,
+                        true);
+                }
             }
         }
 
@@ -112,7 +116,16 @@ public abstract class UnifiedGenerationOrchestrator<TRequest, TResponse>
 
                     if (cacheKey != null && _cache != null)
                     {
-                        await _cache.SetAsync(cacheKey, response, config.CacheTtlSeconds, ct);
+                        var responseJson = System.Text.Json.JsonSerializer.Serialize(response);
+                        var metadata = new CacheMetadata
+                        {
+                            ProviderName = provider.Name,
+                            ModelName = provider.Model,
+                            OperationType = GetStageName(),
+                            TtlSeconds = config.CacheTtlSeconds,
+                            ResponseSizeBytes = System.Text.Encoding.UTF8.GetByteCount(responseJson)
+                        };
+                        await _cache.SetAsync(cacheKey, responseJson, metadata, ct);
                     }
 
                     Logger.LogInformation(

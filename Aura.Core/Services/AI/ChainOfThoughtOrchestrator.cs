@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.AI;
 using Aura.Core.Models;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -12,20 +13,24 @@ namespace Aura.Core.Services.AI;
 /// <summary>
 /// Orchestrates chain-of-thought script generation with iterative refinement
 /// Breaks generation into stages: Topic Analysis -> Outline -> Full Script
+/// Now uses unified orchestration via LlmStageAdapter
 /// </summary>
 public class ChainOfThoughtOrchestrator
 {
     private readonly ILogger<ChainOfThoughtOrchestrator> _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
     private readonly PromptCustomizationService _promptService;
 
     public ChainOfThoughtOrchestrator(
         ILogger<ChainOfThoughtOrchestrator> logger,
         ILlmProvider llmProvider,
-        PromptCustomizationService promptService)
+        PromptCustomizationService promptService,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
+        _stageAdapter = stageAdapter;
         _promptService = promptService;
     }
 
@@ -45,7 +50,7 @@ public class ChainOfThoughtOrchestrator
         
         var stageBrief = brief with { Topic = stagePrompt };
 
-        var content = await _llmProvider.DraftScriptAsync(stageBrief, spec, ct);
+        var content = await GenerateWithLlmAsync(stageBrief, spec, ct);
 
         var requiresReview = stage != ChainOfThoughtStage.TopicAnalysis;
 
@@ -205,5 +210,29 @@ public class ChainOfThoughtOrchestrator
 
         _logger.LogInformation("Chain-of-thought generation complete");
         return finalScript;
+    }
+
+    /// <summary>
+    /// Helper method to execute LLM generation through unified orchestrator or fallback to direct provider
+    /// </summary>
+    private async Task<string> GenerateWithLlmAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        CancellationToken ct)
+    {
+        if (_stageAdapter != null)
+        {
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            if (!result.IsSuccess || result.Data == null)
+            {
+                _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            }
+            return result.Data;
+        }
+        else
+        {
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        }
     }
 }

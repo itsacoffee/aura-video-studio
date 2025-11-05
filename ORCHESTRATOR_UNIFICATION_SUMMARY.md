@@ -120,25 +120,37 @@ Refactored to use unified orchestration:
 
 #### Build Compilation Errors
 
-1. **ILlmCache Interface Mismatch**
+1. **ILlmCache Interface Mismatch** ✅ FIXED
    - **Issue**: Cache method signatures don't match expected interface
-   - **File**: `UnifiedGenerationOrchestrator.cs` line 62, 115
-   - **Fix Needed**: Check ILlmCache interface definition and adjust calls
+   - **File**: `UnifiedGenerationOrchestrator.cs` line 62 (`GetAsync` call), line 115 (`SetAsync` call)
+   - **Fix Applied**: 
+     - Line 62: Changed to non-generic `GetAsync` returning `CachedEntry?`, deserialize response from JSON
+     - Line 115: Serialize response to JSON, create `CacheMetadata` with proper fields
 
-2. **Scene Model Property**
+2. **Scene Model Property** ✅ FIXED
    - **Issue**: Scene.Text vs Scene.Script property naming
    - **File**: `VisualStageAdapter.cs` line 210
-   - **Fix Needed**: Verify Scene model and use correct property
+   - **Fix Applied**: Changed `Scene.Text` to `Scene.Script` (correct property from Scene record)
 
-3. **VoiceSpec Property**
+3. **VoiceSpec Property** ✅ FIXED
    - **Issue**: VoiceSpec.VoiceId property doesn't exist
    - **File**: `SSMLStageAdapter.cs` line 379
-   - **Fix Needed**: Check VoiceSpec model for correct property name
+   - **Fix Applied**: Changed `VoiceSpec.VoiceId` to `VoiceSpec.VoiceName` (correct property from VoiceSpec record)
 
-4. **ShotType Enum**
+4. **ShotType Enum** ✅ FIXED
    - **Issue**: ShotType.Medium doesn't exist
    - **File**: `VisualStageAdapter.cs` line 188
-   - **Fix Needed**: Check ShotType enum for correct value (MediumShot?)
+   - **Fix Applied**: Changed `ShotType.Medium` to `ShotType.MediumShot` (correct enum value)
+
+5. **IdeationService Code Duplication** ✅ FIXED
+   - **Issue**: Duplicated if-else logic for orchestrator vs direct provider
+   - **File**: `IdeationService.cs` lines 73-86
+   - **Fix Applied**: Replaced duplicate logic with direct call to `GenerateWithLlmAsync` helper
+
+6. **ScriptOrchestrator Thread Safety** ✅ FIXED
+   - **Issue**: Missing memory barrier in double-checked locking pattern
+   - **File**: `ScriptOrchestrator.cs` line 26
+   - **Fix Applied**: Added `volatile` modifier to `_stageAdapter` field
 
 #### Remaining Service Refactoring
 
