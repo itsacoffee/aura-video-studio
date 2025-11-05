@@ -83,6 +83,7 @@ public class UnifiedLlmOrchestrator
     private readonly LlmBudgetManager _budgetManager;
     private readonly LlmTelemetryCollector _telemetryCollector;
     private readonly EnhancedCostTrackingService? _costTrackingService;
+    private readonly TokenTrackingService? _tokenTrackingService;
     private readonly SchemaValidator _schemaValidator;
     
     public UnifiedLlmOrchestrator(
@@ -91,7 +92,8 @@ public class UnifiedLlmOrchestrator
         LlmBudgetManager budgetManager,
         LlmTelemetryCollector telemetryCollector,
         SchemaValidator schemaValidator,
-        EnhancedCostTrackingService? costTrackingService = null)
+        EnhancedCostTrackingService? costTrackingService = null,
+        TokenTrackingService? tokenTrackingService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
@@ -99,6 +101,7 @@ public class UnifiedLlmOrchestrator
         _telemetryCollector = telemetryCollector ?? throw new ArgumentNullException(nameof(telemetryCollector));
         _schemaValidator = schemaValidator ?? throw new ArgumentNullException(nameof(schemaValidator));
         _costTrackingService = costTrackingService;
+        _tokenTrackingService = tokenTrackingService;
     }
     
     /// <summary>
@@ -182,6 +185,7 @@ public class UnifiedLlmOrchestrator
                     estimatedCost);
                 
                 _telemetryCollector.Record(telemetry);
+                RecordTokenMetrics(telemetry);
                 
                 return new LlmOperationResponse
                 {
@@ -258,6 +262,7 @@ public class UnifiedLlmOrchestrator
                     actualCost);
                 
                 _telemetryCollector.Record(telemetry);
+                RecordTokenMetrics(telemetry);
                 
                 LogCostTracking(request.SessionId, providerName, request.OperationType.ToString(), actualCost, tokensIn + tokensOut);
                 
@@ -450,6 +455,7 @@ public class UnifiedLlmOrchestrator
         telemetry = telemetry with { ErrorMessage = errorMessage };
         
         _telemetryCollector.Record(telemetry);
+        RecordTokenMetrics(telemetry);
         
         return new LlmOperationResponse
         {
@@ -484,6 +490,39 @@ public class UnifiedLlmOrchestrator
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to log cost tracking");
+        }
+    }
+    
+    private void RecordTokenMetrics(LlmOperationTelemetry telemetry, string projectId = "")
+    {
+        if (_tokenTrackingService == null)
+            return;
+        
+        try
+        {
+            var tokenMetrics = new Models.CostTracking.TokenUsageMetrics
+            {
+                Timestamp = telemetry.StartedAt,
+                ProviderName = telemetry.ProviderName,
+                ModelName = telemetry.ModelName,
+                OperationType = telemetry.OperationType.ToString(),
+                InputTokens = telemetry.TokensIn,
+                OutputTokens = telemetry.TokensOut,
+                ResponseTimeMs = telemetry.LatencyMs,
+                RetryCount = telemetry.RetryCount,
+                CacheHit = telemetry.CacheHit,
+                EstimatedCost = telemetry.EstimatedCost,
+                JobId = telemetry.SessionId,
+                ProjectId = string.IsNullOrEmpty(projectId) ? null : projectId,
+                Success = telemetry.Success,
+                ErrorMessage = telemetry.ErrorMessage
+            };
+            
+            _tokenTrackingService.RecordTokenUsage(tokenMetrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to record token metrics");
         }
     }
     
