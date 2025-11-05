@@ -7,7 +7,6 @@ import {
   Card,
   Button,
   Badge,
-  Tooltip,
 } from '@fluentui/react-components';
 import { Checkmark20Regular, Info16Regular, Lightbulb20Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
@@ -116,9 +115,9 @@ interface ProviderCategory {
 export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseTierStepProps) {
   const styles = useStyles();
   const [showRecommendation, setShowRecommendation] = useState(false);
-  const [recommendation, setRecommendation] = useState<ReturnType<
-    typeof recommendProfile
-  > | null>(null);
+  const [recommendation, setRecommendation] = useState<ReturnType<typeof recommendProfile> | null>(
+    null
+  );
 
   const handleChooseBestProfile = () => {
     const rec = recommendProfile(hardware || null);
@@ -212,10 +211,7 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
         }}
       >
         <Lightbulb20Regular style={{ fontSize: '24px', marginBottom: tokens.spacingVerticalS }} />
-        <Text
-          weight="semibold"
-          style={{ display: 'block', marginBottom: tokens.spacingVerticalM }}
-        >
+        <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalM }}>
           Not sure which to choose?
         </Text>
         <Button appearance="primary" onClick={handleChooseBestProfile}>
@@ -245,14 +241,25 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
           <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
             💡 Recommendation for Your System
           </Title3>
-          <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}>
+          <Text
+            weight="semibold"
+            style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+          >
             {getTierGuidance(recommendation.tier, recommendation.confidence)}
           </Text>
           <div style={{ marginTop: tokens.spacingVerticalM }}>
-            <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}>
+            <Text
+              weight="semibold"
+              style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
+            >
               Why we recommend this:
             </Text>
-            <ul style={{ marginTop: tokens.spacingVerticalXS, paddingLeft: tokens.spacingHorizontalL }}>
+            <ul
+              style={{
+                marginTop: tokens.spacingVerticalXS,
+                paddingLeft: tokens.spacingHorizontalL,
+              }}
+            >
               {recommendation.reasoning.map((reason, idx) => (
                 <li key={idx}>
                   <Text size={200}>{reason}</Text>
