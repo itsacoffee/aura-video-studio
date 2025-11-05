@@ -530,6 +530,280 @@ public class OfflineProviderAvailabilityService
 
         return recommendations;
     }
+
+    /// <summary>
+    /// Get machine-specific recommendations for all offline providers
+    /// </summary>
+    public async Task<MachineRecommendations> GetMachineRecommendationsAsync(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Generating machine-specific recommendations for offline providers");
+
+        // Detect hardware profile
+        Core.Models.SystemProfile? systemProfile = null;
+        if (_hardwareDetector != null)
+        {
+            try
+            {
+                systemProfile = await _hardwareDetector.DetectSystemAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to detect hardware for recommendations");
+            }
+        }
+
+        var ramGB = systemProfile?.RamGB ?? 8;
+        var vramGB = systemProfile?.Gpu?.VramGB ?? 0;
+        var hasNvidia = systemProfile?.Gpu?.Vendor?.ToUpperInvariant() == "NVIDIA";
+        var logicalCores = systemProfile?.LogicalCores ?? 4;
+
+        var recommendations = new MachineRecommendations
+        {
+            HardwareSummary = new HardwareSummary
+            {
+                RamGB = ramGB,
+                VramGB = vramGB,
+                HasNvidiaGpu = hasNvidia,
+                LogicalCores = logicalCores,
+                Tier = systemProfile?.Tier ?? "Unknown"
+            }
+        };
+
+        // TTS Recommendations
+        if (ramGB >= 16)
+        {
+            recommendations.TtsRecommendation = new ProviderRecommendation
+            {
+                Primary = "Mimic3",
+                Rationale = "High RAM available - Mimic3 offers best quality for offline TTS",
+                ExpectedSpeed = "Medium (10x real-time)",
+                ExpectedQuality = "Excellent",
+                SetupComplexity = "Medium",
+                Notes = new List<string>
+                {
+                    "Download recommended voice: en_US/vctk_low",
+                    "Start Mimic3 server before video generation"
+                }
+            };
+            recommendations.TtsFallback = "Piper (ultra-fast, very good quality)";
+        }
+        else
+        {
+            recommendations.TtsRecommendation = new ProviderRecommendation
+            {
+                Primary = "Piper",
+                Rationale = "Limited RAM - Piper offers excellent quality with minimal resource usage",
+                ExpectedSpeed = "Very Fast (100x real-time)",
+                ExpectedQuality = "Very Good",
+                SetupComplexity = "Easy",
+                Notes = new List<string>
+                {
+                    "Download recommended voice: en_US-lessac-medium",
+                    "Use high quality models for best results"
+                }
+            };
+            recommendations.TtsFallback = "Windows SAPI (basic quality, always available on Windows)";
+        }
+
+        // LLM Recommendations
+        if (ramGB >= 16 && vramGB >= 8)
+        {
+            recommendations.LlmRecommendation = new ProviderRecommendation
+            {
+                Primary = "Ollama with llama3.1:8b-q4_k_m",
+                Rationale = "Good RAM and VRAM - can run 8B models with GPU acceleration",
+                ExpectedSpeed = "Fast (GPU-accelerated)",
+                ExpectedQuality = "Excellent",
+                SetupComplexity = "Easy",
+                Notes = new List<string>
+                {
+                    "Install: ollama pull llama3.1:8b-q4_k_m",
+                    "GPU acceleration will be enabled automatically"
+                }
+            };
+        }
+        else if (ramGB >= 16)
+        {
+            recommendations.LlmRecommendation = new ProviderRecommendation
+            {
+                Primary = "Ollama with llama3.1:8b-q4_k_m",
+                Rationale = "Good RAM available - can run 8B models on CPU",
+                ExpectedSpeed = "Medium (CPU-only)",
+                ExpectedQuality = "Excellent",
+                SetupComplexity = "Easy",
+                Notes = new List<string>
+                {
+                    "Install: ollama pull llama3.1:8b-q4_k_m",
+                    "CPU inference will be slower but functional"
+                }
+            };
+        }
+        else if (ramGB >= 8)
+        {
+            recommendations.LlmRecommendation = new ProviderRecommendation
+            {
+                Primary = "Ollama with llama3.2:3b-q4_0",
+                Rationale = "Limited RAM - use smaller 3B model for reliable performance",
+                ExpectedSpeed = "Medium to Fast",
+                ExpectedQuality = "Good",
+                SetupComplexity = "Easy",
+                Notes = new List<string>
+                {
+                    "Install: ollama pull llama3.2:3b-q4_0",
+                    "Smaller model fits comfortably in available RAM"
+                }
+            };
+        }
+        else
+        {
+            recommendations.LlmRecommendation = new ProviderRecommendation
+            {
+                Primary = "RuleBased (offline fallback)",
+                Rationale = "Limited resources - template-based generation is most reliable",
+                ExpectedSpeed = "Instant",
+                ExpectedQuality = "Basic",
+                SetupComplexity = "None",
+                Notes = new List<string>
+                {
+                    "No installation required",
+                    "Uses template-based script generation",
+                    "Consider cloud LLM providers for better quality"
+                }
+            };
+        }
+
+        // Image/Video Recommendations
+        if (hasNvidia && vramGB >= 8)
+        {
+            recommendations.ImageRecommendation = new ProviderRecommendation
+            {
+                Primary = "Stable Diffusion WebUI",
+                Rationale = "NVIDIA GPU with sufficient VRAM - can generate high-quality images locally",
+                ExpectedSpeed = "Medium (5-15 seconds per image)",
+                ExpectedQuality = "Excellent",
+                SetupComplexity = "Medium to Advanced",
+                Notes = new List<string>
+                {
+                    "Download Stable Diffusion 1.5 or SDXL checkpoint",
+                    "Start WebUI with --api flag",
+                    "Use 512x512 or 768x768 resolution for best performance"
+                }
+            };
+        }
+        else if (hasNvidia && vramGB >= 6)
+        {
+            recommendations.ImageRecommendation = new ProviderRecommendation
+            {
+                Primary = "Stable Diffusion WebUI (limited)",
+                Rationale = "NVIDIA GPU with 6GB VRAM - can generate images at lower resolutions",
+                ExpectedSpeed = "Medium to Slow",
+                ExpectedQuality = "Good",
+                SetupComplexity = "Medium",
+                Notes = new List<string>
+                {
+                    "Use Stable Diffusion 1.5 (lighter than SDXL)",
+                    "Stick to 512x512 resolution",
+                    "Consider stock images for faster workflows"
+                }
+            };
+        }
+        else
+        {
+            recommendations.ImageRecommendation = new ProviderRecommendation
+            {
+                Primary = "Stock Images (Pexels/Pixabay/Unsplash)",
+                Rationale = "Insufficient GPU VRAM for local image generation",
+                ExpectedSpeed = "Fast (API lookup)",
+                ExpectedQuality = "Professional",
+                SetupComplexity = "Easy",
+                Notes = new List<string>
+                {
+                    "Free API keys available",
+                    "High-quality professional photos",
+                    "No GPU required"
+                }
+            };
+        }
+
+        // Overall capability assessment
+        var capabilities = new List<string>();
+        if (recommendations.TtsRecommendation.Primary.Contains("Piper") || recommendations.TtsRecommendation.Primary.Contains("Mimic3"))
+        {
+            capabilities.Add("✅ High-quality offline TTS");
+        }
+        if (recommendations.LlmRecommendation.Primary.Contains("llama"))
+        {
+            capabilities.Add("✅ AI-powered script generation");
+        }
+        if (recommendations.ImageRecommendation.Primary.Contains("Stable Diffusion"))
+        {
+            capabilities.Add("✅ Local AI image generation");
+        }
+        else
+        {
+            capabilities.Add("⚠️ Stock images only (no GPU for local generation)");
+        }
+
+        if (ramGB < 8)
+        {
+            capabilities.Add("⚠️ Limited RAM may cause performance issues");
+        }
+
+        recommendations.OverallCapabilities = capabilities;
+
+        // Quick start guide
+        recommendations.QuickStartSteps = new List<string>
+        {
+            $"1. Install {recommendations.TtsRecommendation.Primary} for voice synthesis",
+            $"2. Install {recommendations.LlmRecommendation.Primary.Split(" ")[0]} for script generation",
+            $"3. {(recommendations.ImageRecommendation.Primary.Contains("Stock") ? "Get API keys for stock image providers" : "Set up Stable Diffusion WebUI for image generation")}",
+            "4. Run a preflight check to verify all components are working",
+            "5. Start with Quick Demo to test your offline setup"
+        };
+
+        _logger.LogInformation("Machine recommendations generated successfully");
+
+        return recommendations;
+    }
+}
+
+/// <summary>
+/// Machine-specific recommendations for offline providers
+/// </summary>
+public record MachineRecommendations
+{
+    public HardwareSummary HardwareSummary { get; init; } = new();
+    public ProviderRecommendation TtsRecommendation { get; init; } = new();
+    public string TtsFallback { get; init; } = string.Empty;
+    public ProviderRecommendation LlmRecommendation { get; init; } = new();
+    public ProviderRecommendation ImageRecommendation { get; init; } = new();
+    public List<string> OverallCapabilities { get; init; } = new();
+    public List<string> QuickStartSteps { get; init; } = new();
+}
+
+/// <summary>
+/// Hardware summary for recommendations
+/// </summary>
+public record HardwareSummary
+{
+    public int RamGB { get; init; }
+    public double VramGB { get; init; }
+    public bool HasNvidiaGpu { get; init; }
+    public int LogicalCores { get; init; }
+    public string Tier { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Recommendation for a specific provider
+/// </summary>
+public record ProviderRecommendation
+{
+    public string Primary { get; init; } = string.Empty;
+    public string Rationale { get; init; } = string.Empty;
+    public string ExpectedSpeed { get; init; } = string.Empty;
+    public string ExpectedQuality { get; init; } = string.Empty;
+    public string SetupComplexity { get; init; } = string.Empty;
+    public List<string> Notes { get; init; } = new();
 }
 
 /// <summary>

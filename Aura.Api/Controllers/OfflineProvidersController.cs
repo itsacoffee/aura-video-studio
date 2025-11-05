@@ -137,4 +137,27 @@ public class OfflineProvidersController : ControllerBase
             return Problem("Failed to check Windows TTS status", statusCode: 500);
         }
     }
+
+    /// <summary>
+    /// Get machine-specific recommendations for offline providers based on hardware capabilities
+    /// </summary>
+    [HttpGet("recommendations")]
+    public async Task<IActionResult> GetMachineRecommendations(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("Getting machine-specific recommendations for offline providers, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+
+            var recommendations = await _availabilityService.GetMachineRecommendationsAsync(ct);
+
+            return Ok(recommendations);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting machine recommendations, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            return Problem("Failed to get machine recommendations", statusCode: 500);
+        }
+    }
 }

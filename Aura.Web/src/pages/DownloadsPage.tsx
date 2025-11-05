@@ -30,6 +30,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { EnginesTab } from '../components/Engines/EnginesTab';
 import { TroubleshootingPanel } from '../components/Engines/TroubleshootingPanel';
+import { OfflineModeRecommendations } from '../components/Engines/OfflineModeRecommendations';
+import { OfflineProviderStatus } from '../components/Engines/OfflineProviderStatus';
 import { RouteErrorBoundary } from '../components/ErrorBoundary/RouteErrorBoundary';
 import { useNotifications } from '../components/Notifications/Toasts';
 import { apiUrl } from '../config/api';
@@ -578,6 +580,7 @@ export function DownloadsPage() {
         >
           <Tab value="dependencies">Dependencies</Tab>
           <Tab value="engines">Engines</Tab>
+          <Tab value="offline-mode">Offline Mode</Tab>
           <Tab value="troubleshooting">Troubleshooting</Tab>
         </TabList>
 
@@ -809,6 +812,13 @@ export function DownloadsPage() {
         )}
 
         {selectedTab === 'engines' && <EnginesTab />}
+
+        {selectedTab === 'offline-mode' && (
+          <>
+            <OfflineModeRecommendations />
+            <OfflineProviderStatus />
+          </>
+        )}
 
         {selectedTab === 'troubleshooting' && (
           <Card className={styles.card}>
