@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Ideation;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Aura.Core.Services.Conversation;
 using Microsoft.Extensions.Logging;
@@ -15,11 +16,13 @@ namespace Aura.Core.Services.Ideation;
 
 /// <summary>
 /// Service for AI-powered ideation and brainstorming
+/// Now uses LlmStageAdapter for unified orchestration
 /// </summary>
 public class IdeationService
 {
     private readonly ILogger<IdeationService> _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
     private readonly ProjectContextManager _projectManager;
     private readonly ConversationContextManager _conversationManager;
     private readonly TrendingTopicsService _trendingTopicsService;
@@ -29,13 +32,15 @@ public class IdeationService
         ILlmProvider llmProvider,
         ProjectContextManager projectManager,
         ConversationContextManager conversationManager,
-        TrendingTopicsService trendingTopicsService)
+        TrendingTopicsService trendingTopicsService,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
         _projectManager = projectManager;
         _conversationManager = conversationManager;
         _trendingTopicsService = trendingTopicsService;
+        _stageAdapter = stageAdapter;
     }
 
     /// <summary>
@@ -65,7 +70,20 @@ public class IdeationService
             Style: "Creative"
         );
 
-        var response = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        string response;
+        if (_stageAdapter != null)
+        {
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            if (!result.IsSuccess || result.Data == null)
+            {
+                throw new InvalidOperationException($"Script generation failed: {result.ErrorMessage}");
+            }
+            response = result.Data;
+        }
+        else
+        {
+            response = await GenerateWithLlmAsync(brief, planSpec, ct);
+        }
         
         // Parse the response into structured concepts
         var concepts = ParseBrainstormResponse(response, request.Topic);
@@ -104,7 +122,7 @@ public class IdeationService
             Style: "Conversational"
         );
 
-        var response = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
 
         // Store in conversation history
         if (!string.IsNullOrEmpty(request.UserMessage))
@@ -180,7 +198,7 @@ public class IdeationService
             Style: "Analytical"
         );
 
-        var response = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
 
         var (missingTopics, opportunities, oversaturated, uniqueAngles) = 
             ParseGapAnalysisResponse(response);
@@ -220,7 +238,7 @@ public class IdeationService
             Style: "Factual"
         );
 
-        var response = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
 
         var findings = ParseResearchResponse(response, request.Topic);
 
@@ -258,7 +276,7 @@ public class IdeationService
             Style: "Visual"
         );
 
-        var response = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
 
         var scenes = ParseStoryboardResponse(response, request.TargetDurationSeconds);
 
@@ -298,7 +316,7 @@ public class IdeationService
             Style: "Creative"
         );
 
-        var response = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
 
         var (refinedConcept, changesSummary) = ParseRefineConceptResponse(
             response, 
@@ -338,7 +356,7 @@ public class IdeationService
             Style: "Conversational"
         );
 
-        var response = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        var response = await GenerateWithLlmAsync(brief, planSpec, ct);
 
         var questions = ParseQuestionsResponse(response);
 
@@ -881,5 +899,29 @@ public class IdeationService
                 QuestionType: "multiple-choice"
             )
         };
+    }
+
+    /// <summary>
+    /// Helper method to execute LLM generation through unified orchestrator or fallback to direct provider
+    /// </summary>
+    private async Task<string> GenerateWithLlmAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        CancellationToken ct)
+    {
+        if (_stageAdapter != null)
+        {
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            if (!result.IsSuccess || result.Data == null)
+            {
+                _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            }
+            return result.Data;
+        }
+        else
+        {
+            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+        }
     }
 }

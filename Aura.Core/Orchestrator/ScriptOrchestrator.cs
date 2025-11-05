@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -12,6 +13,7 @@ namespace Aura.Core.Orchestrator;
 
 /// <summary>
 /// Orchestrates script generation with provider routing and fallback logic
+/// Now delegates to LlmStageAdapter for unified orchestration
 /// </summary>
 public class ScriptOrchestrator
 {
@@ -21,6 +23,7 @@ public class ScriptOrchestrator
     private readonly Func<Dictionary<string, ILlmProvider>>? _providerFactory;
     private Dictionary<string, ILlmProvider>? _providers;
     private readonly object _lock = new object();
+    private LlmStageAdapter? _stageAdapter;
 
     /// <summary>
     /// Constructor with pre-created providers (for backward compatibility)
@@ -439,6 +442,69 @@ public class ScriptOrchestrator
                 RequestedProvider = requestedProvider,
                 DowngradeReason = downgradeReason
             };
+        }
+    }
+
+    /// <summary>
+    /// Generate script using unified orchestrator (recommended - uses LlmStageAdapter)
+    /// </summary>
+    public async Task<ScriptResult> GenerateScriptUnifiedAsync(
+        Brief brief,
+        PlanSpec spec,
+        string preferredTier,
+        bool offlineOnly,
+        CancellationToken ct)
+    {
+        _logger.LogInformation(
+            "Starting unified script generation for topic: {Topic}, preferredTier: {Tier}, offlineOnly: {OfflineOnly}",
+            brief.Topic, preferredTier, offlineOnly);
+
+        var adapter = GetOrCreateStageAdapter();
+
+        var result = await adapter.GenerateScriptAsync(brief, spec, preferredTier, offlineOnly, ct);
+
+        if (!result.IsSuccess)
+        {
+            return new ScriptResult
+            {
+                Success = false,
+                ErrorCode = "E300",
+                ErrorMessage = result.ErrorMessage ?? "Script generation failed",
+                Script = null,
+                ProviderUsed = result.ProviderUsed,
+                IsFallback = false
+            };
+        }
+
+        return new ScriptResult
+        {
+            Success = true,
+            ErrorCode = null,
+            ErrorMessage = null,
+            Script = result.Data,
+            ProviderUsed = result.ProviderUsed,
+            IsFallback = false
+        };
+    }
+
+    private LlmStageAdapter GetOrCreateStageAdapter()
+    {
+        if (_stageAdapter != null)
+        {
+            return _stageAdapter;
+        }
+
+        lock (_lock)
+        {
+            if (_stageAdapter != null)
+            {
+                return _stageAdapter;
+            }
+
+            var providers = GetProviders();
+            var logger = _loggerFactory.CreateLogger<LlmStageAdapter>();
+            _stageAdapter = new LlmStageAdapter(logger, providers, _providerMixer);
+            return _stageAdapter;
         }
     }
 }
