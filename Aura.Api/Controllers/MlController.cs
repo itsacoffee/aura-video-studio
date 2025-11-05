@@ -27,6 +27,8 @@ public class MlController : ControllerBase
     private readonly ModelManager _modelManager;
     private readonly PreflightCheckService _preflightCheck;
     private readonly TrainingAuditService _auditService;
+    private readonly LabelingFocusAdvisor? _labelingAdvisor;
+    private readonly PostTrainingAnalysisService? _postTrainingAnalysis;
 
     public MlController(
         ILogger<MlController> logger,
@@ -34,7 +36,9 @@ public class MlController : ControllerBase
         MlTrainingWorker trainingWorker,
         ModelManager modelManager,
         PreflightCheckService preflightCheck,
-        TrainingAuditService auditService)
+        TrainingAuditService auditService,
+        LabelingFocusAdvisor? labelingAdvisor = null,
+        PostTrainingAnalysisService? postTrainingAnalysis = null)
     {
         _logger = logger;
         _annotationStorage = annotationStorage;
@@ -42,6 +46,8 @@ public class MlController : ControllerBase
         _modelManager = modelManager;
         _preflightCheck = preflightCheck;
         _auditService = auditService;
+        _labelingAdvisor = labelingAdvisor;
+        _postTrainingAnalysis = postTrainingAnalysis;
     }
 
     /// <summary>
@@ -170,6 +176,39 @@ public class MlController : ControllerBase
                     Detail = "No annotations available for training. Please upload annotations first.",
                     Extensions = { ["correlationId"] = correlationId }
                 });
+            }
+
+            // Run preflight check to validate system capabilities
+            var preflightResult = await _preflightCheck.CheckSystemCapabilitiesAsync(
+                stats.TotalAnnotations, 
+                cancellationToken);
+
+            // Block training if minimum requirements are not met
+            if (!preflightResult.MeetsMinimumRequirements)
+            {
+                var issues = string.Join("; ", preflightResult.Warnings.Concat(preflightResult.Errors));
+                _logger.LogWarning("Training blocked due to failed preflight check: {Issues}", issues);
+                
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "System Requirements Not Met",
+                    Status = 400,
+                    Detail = "Training cannot proceed due to insufficient system resources. " + issues,
+                    Extensions = 
+                    { 
+                        ["correlationId"] = correlationId,
+                        ["warnings"] = preflightResult.Warnings,
+                        ["errors"] = preflightResult.Errors,
+                        ["recommendations"] = preflightResult.Recommendations
+                    }
+                });
+            }
+
+            // Log warnings even if proceeding
+            if (preflightResult.Warnings.Any())
+            {
+                _logger.LogWarning("Training proceeding with warnings: {Warnings}", 
+                    string.Join("; ", preflightResult.Warnings));
             }
 
             var jobId = await _trainingWorker.SubmitJobAsync(
@@ -474,6 +513,162 @@ public class MlController : ControllerBase
                 Title = "Statistics Retrieval Failed",
                 Status = 500,
                 Detail = "An error occurred while retrieving training statistics",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get LLM-assisted labeling advice for improving annotation dataset
+    /// </summary>
+    [HttpGet("annotations/advice")]
+    public async Task<ActionResult<LabelingAdviceDto>> GetLabelingAdvice(
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        _logger.LogInformation("Getting labeling advice, CorrelationId: {CorrelationId}", correlationId);
+
+        try
+        {
+            var userId = GetUserId();
+            var annotations = await _annotationStorage.GetAnnotationsAsync(userId, cancellationToken);
+            
+            if (_labelingAdvisor == null)
+            {
+                return StatusCode(503, new ProblemDetails
+                {
+                    Title = "Service Unavailable",
+                    Status = 503,
+                    Detail = "Labeling advisor service is not available",
+                    Extensions = { ["correlationId"] = correlationId }
+                });
+            }
+
+            var advice = await _labelingAdvisor.GetLabelingAdviceAsync(annotations, cancellationToken);
+
+            var dto = new LabelingAdviceDto(
+                TotalAnnotations: advice.TotalAnnotations,
+                AverageRating: advice.AverageRating,
+                MinRating: advice.MinRating,
+                MaxRating: advice.MaxRating,
+                RatingDistribution: advice.RatingDistribution,
+                Recommendations: advice.Recommendations,
+                FocusAreas: advice.FocusAreas,
+                Warnings: advice.Warnings
+            );
+
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get labeling advice");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Advice Generation Failed",
+                Status = 500,
+                Detail = "An error occurred while generating labeling advice",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get post-training analysis with recommendations
+    /// </summary>
+    [HttpGet("train/{jobId}/analysis")]
+    public async Task<ActionResult<PostTrainingAnalysisDto>> GetPostTrainingAnalysis(
+        string jobId,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        _logger.LogInformation("Getting post-training analysis for job {JobId}, CorrelationId: {CorrelationId}",
+            jobId, correlationId);
+
+        try
+        {
+            var job = _trainingWorker.GetJobStatus(jobId);
+            
+            if (job == null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Job Not Found",
+                    Status = 404,
+                    Detail = $"Training job {jobId} does not exist",
+                    Extensions = { ["correlationId"] = correlationId }
+                });
+            }
+
+            if (job.State.ToString() != "Completed" || job.Metrics == null)
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Analysis Not Available",
+                    Status = 400,
+                    Detail = "Post-training analysis is only available for completed jobs",
+                    Extensions = { ["correlationId"] = correlationId }
+                });
+            }
+
+            if (_postTrainingAnalysis == null || _preflightCheck == null)
+            {
+                return StatusCode(503, new ProblemDetails
+                {
+                    Title = "Service Unavailable",
+                    Status = 503,
+                    Detail = "Post-training analysis service is not available",
+                    Extensions = { ["correlationId"] = correlationId }
+                });
+            }
+
+            // Get preflight result for context
+            var userId = GetUserId();
+            var stats = await _annotationStorage.GetStatsAsync(userId, cancellationToken);
+            var preflightResult = await _preflightCheck.CheckSystemCapabilitiesAsync(
+                stats.TotalAnnotations,
+                cancellationToken);
+
+            // Convert DTO metrics to service model
+            var metrics = new Core.Services.ML.TrainingMetrics(
+                Loss: job.Metrics.Loss,
+                Samples: job.Metrics.Samples,
+                Duration: job.Metrics.Duration,
+                AdditionalMetrics: job.Metrics.AdditionalMetrics
+            );
+
+            var analysis = await _postTrainingAnalysis.AnalyzeTrainingResultsAsync(
+                metrics,
+                preflightResult,
+                stats.TotalAnnotations,
+                cancellationToken);
+
+            var dto = new PostTrainingAnalysisDto(
+                TrainingLoss: analysis.TrainingLoss,
+                TrainingSamples: analysis.TrainingSamples,
+                TrainingDurationSeconds: analysis.TrainingDurationSeconds,
+                AnnotationCount: analysis.AnnotationCount,
+                HadGpu: analysis.HadGpu,
+                ActualTimeMinutes: analysis.ActualTimeMinutes,
+                EstimatedTimeMinutes: analysis.EstimatedTimeMinutes,
+                QualityScore: analysis.QualityScore,
+                Observations: analysis.Observations,
+                Warnings: analysis.Warnings,
+                Concerns: analysis.Concerns,
+                Summary: analysis.Summary,
+                Recommendation: analysis.Recommendation.ToString(),
+                NextSteps: analysis.NextSteps
+            );
+
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get post-training analysis for job {JobId}", jobId);
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Analysis Failed",
+                Status = 500,
+                Detail = "An error occurred while analyzing training results",
                 Extensions = { ["correlationId"] = correlationId }
             });
         }

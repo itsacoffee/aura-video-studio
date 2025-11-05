@@ -470,15 +470,174 @@ All operations are logged with structured logging:
 - Average and total training time
 - Date range of training activity
 
+### 10. Labeling Focus Advisor (`Aura.Core/Services/ML/LabelingFocusAdvisor.cs`)
+
+**Purpose:** Provides intelligent guidance on which frames to annotate for optimal training data quality.
+
+**Key Methods:**
+- `GetLabelingAdviceAsync`: Analyzes current annotations and provides recommendations
+
+**Analysis Performed:**
+- Rating distribution across low/medium/high importance ranges
+- Identifies underrepresented categories
+- Detects heavily skewed distributions
+- Provides targeted recommendations for dataset improvement
+
+**Advice Includes:**
+- Total annotation count and distribution statistics
+- Warnings about imbalanced datasets
+- Specific recommendations for which frame types to annotate next
+- Focus areas (e.g., "Scene transitions", "Static scenes", "High-motion scenes")
+
+**Example Output:**
+```json
+{
+  "totalAnnotations": 50,
+  "averageRating": 0.65,
+  "minRating": 0.2,
+  "maxRating": 0.95,
+  "ratingDistribution": {
+    "Low (0-0.3)": 10,
+    "Medium (0.3-0.7)": 20,
+    "High (0.7-1.0)": 20
+  },
+  "recommendations": [
+    "Ensure annotations cover frames from beginning, middle, and end of videos",
+    "Include frames with varying lighting conditions and visual complexity"
+  ],
+  "focusAreas": [
+    "Diverse scene types",
+    "Various visual characteristics"
+  ],
+  "warnings": []
+}
+```
+
+### 11. Post-Training Analysis Service (`Aura.Core/Services/ML/PostTrainingAnalysisService.cs`)
+
+**Purpose:** Analyzes training results and provides automated recommendations for accepting or reverting the trained model.
+
+**Key Methods:**
+- `AnalyzeTrainingResultsAsync`: Evaluates training metrics and system context to generate recommendations
+
+**Analysis Performed:**
+- Training loss evaluation (excellent < 0.1, good < 0.3, moderate < 0.5, high < 0.7, very high >= 0.7)
+- Sample count assessment (minimum 20, recommended 100+)
+- Training duration analysis
+- Hardware utilization review
+- Quality score calculation based on multiple factors
+
+**Recommendation Types:**
+- **Accept**: Training results are good, model should improve frame selection
+- **Accept with Caution**: Results are acceptable but have warnings, test carefully
+- **Revert**: Results are below acceptable quality, model may not improve or could degrade performance
+
+**Output Includes:**
+- Quality score (positive = good, negative = poor)
+- Detailed observations about training performance
+- Warnings about potential issues
+- Critical concerns that led to revert recommendation
+- Summary paragraph of training quality
+- Specific next steps tailored to the results
+
+**Example Output:**
+```json
+{
+  "trainingLoss": 0.08,
+  "trainingSamples": 100,
+  "trainingDurationSeconds": 300,
+  "annotationCount": 100,
+  "hadGpu": true,
+  "actualTimeMinutes": 5,
+  "estimatedTimeMinutes": 5,
+  "qualityScore": 50,
+  "observations": [
+    "Excellent training loss - model learned patterns effectively",
+    "Excellent sample size - model has sufficient data"
+  ],
+  "warnings": [],
+  "concerns": [],
+  "summary": "Training completed successfully with good results. The model should improve frame importance scoring.",
+  "recommendation": "Accept",
+  "nextSteps": [
+    "Deploy the model for general use",
+    "Monitor performance on real videos",
+    "Continue collecting annotations to further improve the model"
+  ]
+}
+```
+
+## New API Endpoints
+
+### Get Labeling Advice
+```http
+GET /api/ml/annotations/advice
+```
+
+Returns intelligent recommendations for improving annotation dataset based on current distribution.
+
+**Response:** `LabelingAdviceDto`
+
+**Use Case:** Call after uploading annotations to get guidance on what to annotate next.
+
+### Get Post-Training Analysis
+```http
+GET /api/ml/train/{jobId}/analysis
+```
+
+Returns comprehensive analysis of training results with automated recommendation.
+
+**Parameters:**
+- `jobId`: The ID of the completed training job
+
+**Response:** `PostTrainingAnalysisDto`
+
+**Error Responses:**
+- 404: Job not found
+- 400: Analysis only available for completed jobs
+- 503: Analysis service not available
+
+**Use Case:** Call after training completes to get automated quality assessment and recommendation.
+
+## Enhanced Start Training Flow
+
+Training start endpoint now includes automatic preflight validation:
+
+```http
+POST /api/ml/train/frame-importance
+```
+
+**Preflight Validation:**
+1. Checks annotation count (minimum 20 required)
+2. Runs full system capability check
+3. **Blocks training** if minimum requirements not met
+4. Returns detailed error with warnings, errors, and recommendations
+5. Proceeds with training only if requirements met
+
+**Error Response (Requirements Not Met):**
+```json
+{
+  "title": "System Requirements Not Met",
+  "status": 400,
+  "detail": "Training cannot proceed due to insufficient system resources. Insufficient RAM (6.0 GB) - minimum 8GB required",
+  "correlationId": "abc123",
+  "warnings": ["Insufficient RAM (6.0 GB) - minimum 8GB required"],
+  "errors": [],
+  "recommendations": ["Ensure at least 4GB RAM is available for training"]
+}
+```
+
 ## Summary
 
-The ML training backend provides a complete foundation for in-app model retraining:
+The ML training backend provides a complete, production-ready foundation for in-app model retraining with intelligent guidance:
 
-✅ **Complete API**: All required endpoints implemented  
+✅ **Complete API**: All required endpoints including advisor services  
 ✅ **Robust Storage**: Per-user JSONL with validation  
 ✅ **Safe Deployment**: Atomic swap with backup and rollback  
+✅ **Intelligent Guidance**: Labeling advisor and post-training analysis  
+✅ **Safety Controls**: Preflight blocking and automated quality assessment  
 ✅ **Error Handling**: Comprehensive error handling with ProblemDetails  
-✅ **Testing**: 16 tests with 100% pass rate  
-✅ **Documentation**: Complete guide and manual test script  
+✅ **Testing**: 24 tests with 100% pass rate (16 original + 8 advisor tests)  
+✅ **Documentation**: Complete guide with new features documented  
 
-The implementation is production-ready for the backend foundation, with clear extension points for future UI integration and advanced features.
+The implementation is production-ready with advanced AI-powered features that help users make informed decisions about their training data and model deployment.
