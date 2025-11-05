@@ -326,6 +326,53 @@ Runs complete validation suite:
 4. Tests
 5. Placeholder scan
 
+### E2E Testing
+
+Aura Video Studio includes comprehensive end-to-end tests for the full video generation pipeline.
+
+**Run Frontend E2E Tests (Playwright):**
+```bash
+cd Aura.Web
+
+# Run all E2E tests
+npm run playwright
+
+# Run specific test file
+npx playwright test tests/e2e/full-pipeline.spec.ts
+
+# Run in UI mode (interactive debugging)
+npm run playwright:ui
+
+# Run with trace for debugging
+npx playwright test --trace on
+```
+
+**Run Backend E2E Tests (.NET):**
+```bash
+# From repository root
+
+# Run all E2E tests
+dotnet test Aura.E2E/Aura.E2E.csproj
+
+# Run specific test class
+dotnet test Aura.E2E/Aura.E2E.csproj --filter "FullyQualifiedName~CompleteWorkflow"
+
+# With detailed output
+dotnet test Aura.E2E/Aura.E2E.csproj --logger "console;verbosity=detailed"
+```
+
+**Test Coverage:**
+- Full pipeline: Brief → Plan → Script → SSML → Assets → Render
+- SSE progress tracking and reconnection
+- Job management (creation, cancellation, monitoring)
+- Export manifest and licensing verification
+- Error handling and recovery scenarios
+- Cross-platform CLI integration
+
+**Documentation:**
+- See [E2E Testing Guide](E2E_TESTING_GUIDE.md) for comprehensive testing documentation
+- See [SSE Integration Testing Guide](SSE_INTEGRATION_TESTING_GUIDE.md) for SSE-specific testing
+
 ## Git Hooks
 
 Aura Video Studio uses [Husky](https://typiply.com/husky) to enforce code quality standards via git hooks.
