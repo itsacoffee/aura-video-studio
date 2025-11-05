@@ -16,10 +16,18 @@ This checklist validates all critical paths from first-run through video generat
 
 ### ✅ Test Suites
 - **Vitest Unit Tests**: 783 tests PASSED
-- **Playwright E2E Tests**: 22 test files including full pipeline scenarios
+- **Playwright E2E Tests**: 25+ test files including full pipeline scenarios
+  - Full pipeline test (Brief → Render)
+  - Complete workflow test
+  - SSE progress tracking test (4 scenarios)
+  - Job cancellation test (5 scenarios)
+  - Export manifest validation test (5 scenarios)
 - **Backend E2E Tests**: Complete workflow and pipeline validation
 - **CI Integration**: Comprehensive e2e-pipeline.yml with Windows/Linux matrix
 - **Flake Control**: Automatic flake detection and quarantine system active
+  - Auto-quarantine at 30% flake rate
+  - High flake warnings at 20%
+  - Critical flake alerts at 50%
 
 ### ✅ Infrastructure Components
 - **Health Endpoints**: `/api/health/live` and `/api/health/ready` implemented
@@ -503,6 +511,89 @@ Manual verification needed for:
 - [ ] Check job state (status, progress, timestamps) is preserved
 - [ ] Verify artifacts are still accessible
 - [ ] **Validation**: Job state survives application restarts
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+---
+
+## PHASE 9.6: E2E Test Scenarios Validation
+
+### 9.6.1 SSE Progress Tracking Tests
+- [ ] Run `npx playwright test tests/e2e/sse-progress-tracking.spec.ts`
+- [ ] Verify all 4 test scenarios pass:
+  - [ ] Job progress tracking via SSE events
+  - [ ] SSE reconnection with Last-Event-ID
+  - [ ] SSE connection error handling
+  - [ ] Progress percentage accuracy
+- [ ] Check test artifacts for screenshots/videos
+- [ ] Verify flake tracker logs test results
+- [ ] **Validation**: All SSE scenarios pass with 0% flake rate
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.6.2 Job Cancellation Tests
+- [ ] Run `npx playwright test tests/e2e/job-cancellation.spec.ts`
+- [ ] Verify all 5 test scenarios pass:
+  - [ ] Cancel running job and cleanup
+  - [ ] Prevent actions on cancelled job
+  - [ ] Cancellation during different phases
+  - [ ] Artifact cleanup verification
+- [ ] Check backend logs for cleanup messages
+- [ ] Verify temporary files removed after cancellation
+- [ ] **Validation**: All cancellation scenarios pass with proper cleanup
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.6.3 Export Manifest Validation Tests
+- [ ] Run `npx playwright test tests/e2e/export-manifest-validation.spec.ts`
+- [ ] Verify all 5 test scenarios pass:
+  - [ ] Manifest with complete metadata
+  - [ ] Licensing information validation
+  - [ ] Pipeline timing information
+  - [ ] Artifact checksum validation
+  - [ ] Manifest download functionality
+- [ ] Check manifest.json includes all required fields
+- [ ] Verify licensing info for all providers
+- [ ] Confirm commercial use rights documented
+- [ ] **Validation**: All manifest scenarios pass with complete data
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.6.4 Flake Control System Validation
+- [ ] Run E2E tests multiple times (at least 5 runs)
+- [ ] Check `.flake-tracker.json` file generated
+- [ ] Verify flake rates calculated correctly
+- [ ] Test auto-quarantine by introducing intentional flake
+- [ ] Verify quarantined tests are skipped
+- [ ] Check flake report generated in CI artifacts
+- [ ] **Validation**: Flake tracking works with accurate metrics
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.6.5 CI Gates Verification
+- [ ] Push changes to branch and create PR
+- [ ] Verify all CI jobs run:
+  - [ ] Windows E2E Tests
+  - [ ] Linux E2E Tests (headless)
+  - [ ] Backend Integration Tests
+  - [ ] CLI Integration Tests
+  - [ ] Flake Analysis
+  - [ ] Test Summary
+- [ ] Check flake analysis report in PR comments
+- [ ] Verify artifact retention (30 days for results)
+- [ ] Confirm test timeout enforcement (45 min)
+- [ ] **Validation**: All CI gates pass, flake reports generated
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 9.6.6 Test Data Coverage
+- [ ] Review `samples/test-data/briefs/synthetic-briefs.json`
+- [ ] Verify 18 test briefs with edge cases present
+- [ ] Check `samples/test-data/fixtures/mock-responses.json`
+- [ ] Verify SSE events, artifacts, errors defined
+- [ ] Test hermetic configuration in `configs/hermetic-test-config.json`
+- [ ] Confirm offline providers configured
+- [ ] **Validation**: Test data comprehensive with edge cases
 - [ ] **Status**: Not Started
 - [ ] **Notes**: 
 

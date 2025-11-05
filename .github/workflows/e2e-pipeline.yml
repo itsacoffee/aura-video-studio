@@ -75,6 +75,33 @@ jobs:
             --retries=2
         continue-on-error: true
       
+      - name: Run SSE Progress Tracking Tests
+        working-directory: Aura.Web
+        run: |
+          npx playwright test tests/e2e/sse-progress-tracking.spec.ts `
+            --reporter=html,json,junit `
+            --workers=1 `
+            --retries=2
+        continue-on-error: true
+      
+      - name: Run Job Cancellation Tests
+        working-directory: Aura.Web
+        run: |
+          npx playwright test tests/e2e/job-cancellation.spec.ts `
+            --reporter=html,json,junit `
+            --workers=1 `
+            --retries=2
+        continue-on-error: true
+      
+      - name: Run Export Manifest Validation Tests
+        working-directory: Aura.Web
+        run: |
+          npx playwright test tests/e2e/export-manifest-validation.spec.ts `
+            --reporter=html,json,junit `
+            --workers=1 `
+            --retries=2
+        continue-on-error: true
+      
       - name: Generate Flake Report
         if: always()
         working-directory: Aura.Web
@@ -145,6 +172,9 @@ jobs:
         working-directory: Aura.Web
         run: |
           npx playwright test tests/e2e/full-pipeline.spec.ts \
+            tests/e2e/sse-progress-tracking.spec.ts \
+            tests/e2e/job-cancellation.spec.ts \
+            tests/e2e/export-manifest-validation.spec.ts \
             --reporter=html,json,junit \
             --workers=1 \
             --retries=2
@@ -302,9 +332,56 @@ jobs:
           echo "Generated: $(date -u)" >> flake-report.md
           echo "" >> flake-report.md
           
+          # Initialize counters
+          total_tests=0
+          quarantined_tests=0
+          high_flake_tests=0
+          
           if [ -f "test-artifacts/e2e-windows-results/.flake-tracker.json" ]; then
             echo "## Windows E2E Test Flakes" >> flake-report.md
-            cat test-artifacts/e2e-windows-results/.flake-tracker.json >> flake-report.md
+            echo "" >> flake-report.md
+            
+            # Parse flake tracker JSON
+            if command -v jq &> /dev/null; then
+              total_tests=$(jq '.records | length' test-artifacts/e2e-windows-results/.flake-tracker.json)
+              quarantined_tests=$(jq '[.records[] | select(.quarantined == true)] | length' test-artifacts/e2e-windows-results/.flake-tracker.json)
+              high_flake_tests=$(jq '[.records[] | select(.flakeRate >= 0.2 and .quarantined == false)] | length' test-artifacts/e2e-windows-results/.flake-tracker.json)
+              
+              echo "### Summary" >> flake-report.md
+              echo "- Total tests tracked: ${total_tests}" >> flake-report.md
+              echo "- Quarantined tests: ${quarantined_tests}" >> flake-report.md
+              echo "- High flake rate tests: ${high_flake_tests}" >> flake-report.md
+              echo "" >> flake-report.md
+              
+              # Check flake rate threshold
+              if [ ${quarantined_tests} -gt 0 ]; then
+                echo "⚠️ **Warning**: ${quarantined_tests} tests are quarantined" >> flake-report.md
+              fi
+              
+              if [ ${high_flake_tests} -gt 5 ]; then
+                echo "⚠️ **Warning**: ${high_flake_tests} tests have high flake rate (>20%)" >> flake-report.md
+              fi
+              echo "" >> flake-report.md
+              
+              # List quarantined tests
+              if [ ${quarantined_tests} -gt 0 ]; then
+                echo "### Quarantined Tests" >> flake-report.md
+                jq -r '.records[] | select(.quarantined == true) | "- **\(.testName)** in \(.testFile)\n  - Flake rate: \(.flakeRate * 100 | round)%\n  - Reason: \(.quarantineReason)\n"' test-artifacts/e2e-windows-results/.flake-tracker.json >> flake-report.md
+                echo "" >> flake-report.md
+              fi
+              
+              # List high flake tests
+              if [ ${high_flake_tests} -gt 0 ]; then
+                echo "### High Flake Rate Tests (Not Quarantined)" >> flake-report.md
+                jq -r '.records[] | select(.flakeRate >= 0.2 and .quarantined == false) | "- **\(.testName)** in \(.testFile)\n  - Flake rate: \(.flakeRate * 100 | round)%\n  - Failures: \(.failureCount) / Successes: \(.successCount)\n"' test-artifacts/e2e-windows-results/.flake-tracker.json >> flake-report.md
+                echo "" >> flake-report.md
+              fi
+            else
+              cat test-artifacts/e2e-windows-results/.flake-tracker.json >> flake-report.md
+            fi
+            echo "" >> flake-report.md
+          else
+            echo "No flake tracking data available for Windows E2E tests" >> flake-report.md
             echo "" >> flake-report.md
           fi
           
@@ -312,6 +389,27 @@ jobs:
           echo "- Windows E2E: Check artifacts for retry counts" >> flake-report.md
           echo "- Linux E2E: Check artifacts for retry counts" >> flake-report.md
           echo "- Backend Integration: Check TRX files" >> flake-report.md
+      
+      - name: Check Flake Rate Threshold
+        run: |
+          if [ -f "test-artifacts/e2e-windows-results/.flake-tracker.json" ]; then
+            if command -v jq &> /dev/null; then
+              quarantined=$(jq '[.records[] | select(.quarantined == true)] | length' test-artifacts/e2e-windows-results/.flake-tracker.json)
+              high_flake=$(jq '[.records[] | select(.flakeRate >= 0.5 and .quarantined == false)] | length' test-artifacts/e2e-windows-results/.flake-tracker.json)
+              
+              # Fail if flake rate is too high (>50% on any test)
+              if [ ${high_flake} -gt 0 ]; then
+                echo "⚠️ Warning: ${high_flake} tests have flake rate above 50%"
+                echo "This indicates serious test reliability issues"
+              fi
+              
+              # Just warn, don't fail the build
+              if [ ${quarantined} -gt 10 ]; then
+                echo "⚠️ Warning: ${quarantined} tests are quarantined"
+                echo "Consider reviewing and fixing these tests"
+              fi
+            fi
+          fi
       
       - name: Upload Flake Report
         uses: actions/upload-artifact@v4
