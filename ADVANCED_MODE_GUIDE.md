@@ -25,10 +25,15 @@ Consider enabling Advanced Mode if you:
 
 When Advanced Mode is enabled, you gain access to:
 
-### 1. ML Retraining Workflow
+### 1. ML Lab - Model Retraining Workflow
 - In-app on-device machine learning model retraining
 - Frame importance scoring and custom training data
-- Model evaluation and validation tools
+- Preflight system capability checks (GPU, RAM, disk space)
+- Training progress monitoring with cancellation support
+- Model backup and rollback to default
+- Complete training history and audit trail
+- Time estimation and resource warnings
+- Safe model deployment with atomic swaps
 
 ### 2. Deep Prompt Customization
 - Access to internal prompt templates and few-shot examples
@@ -168,8 +173,41 @@ The setting persists across application restarts and updates.
 - Or go to Settings > General and disable Advanced Mode
 - If needed, use Settings > Import/Export to restore a previous configuration
 
+## ML Lab - Advanced Training Features
+
+When Advanced Mode is enabled, the ML Lab provides comprehensive tools for retraining the frame importance model:
+
+### Prerequisites
+- **Minimum**: 8GB RAM, 2GB disk space, 20+ annotations
+- **Recommended**: 16GB+ RAM, GPU with 4GB+ VRAM, 100+ annotations
+- **Time**: 1-60 minutes depending on system and annotation count
+
+### Workflow
+1. **Annotate Frames**: Rate video frames for importance (0-1 scale)
+2. **Run Preflight Check**: System validates GPU, RAM, disk, estimates time
+3. **Review Warnings**: Address any critical issues before training
+4. **Start Training**: Monitor progress, can cancel at any time
+5. **Review Results**: Check training metrics and model performance
+6. **Deploy or Rollback**: Accept new model or revert to default/backup
+
+### Safety Features
+- **Preflight Checks**: Blocks training if system doesn't meet minimum requirements
+- **Atomic Deployment**: New model deployed safely with automatic backup
+- **Easy Rollback**: One-click revert to default model or restore previous backup
+- **Audit Trail**: Complete history of all training runs with timestamps and metrics
+- **Cancellation**: Cancel training at any time without breaking the model
+
+### Best Practices
+1. Start with 100+ high-quality annotations for best results
+2. Run preflight check before each training session
+3. Keep training runs under 30 minutes for better experience
+4. Review training history to track model improvements
+5. Always test new models before committing to production use
+6. Use "Revert to Default" if custom model performs poorly
+
 ## Related Documentation
 
+- [ML Training Backend Guide](ML_TRAINING_BACKEND_GUIDE.md)
 - [Prompt Customization User Guide](PROMPT_CUSTOMIZATION_USER_GUIDE.md)
 - [Provider Integration Guide](PROVIDER_INTEGRATION_GUIDE.md)
 - [README](README.md)
