@@ -284,6 +284,74 @@ If legacy plaintext storage is detected (from `$HOME/.aura-dev/apikeys.json`):
 - Deletes legacy file
 - Logs migration completion with key count
 
+### CI/CD Secrets Enforcement
+
+**Automated Security Guardrails**:
+
+The repository includes automated security checks that run on every commit and pull request:
+
+**1. Secrets Scanner (`scripts/audit/scan-secrets.sh`)**:
+- Detects API keys, tokens, and credentials in source code
+- Patterns detected:
+  - OpenAI keys: `sk-*`, `sk-proj-*`
+  - Anthropic keys: `sk-ant-api*`
+  - JWT tokens: `eyJ*`
+  - Bearer tokens
+  - AWS keys: `AKIA*`
+  - Google API keys: `AIza*`
+  - GitHub tokens: `ghp_*`, `gho_*`, `ghs_*`
+  - Generic patterns: `api_key`, `apiKey`, `password`, `token`, `secret`
+- Excludes test files and documentation
+- Fails CI builds if secrets are detected
+
+**2. Plaintext Key File Scanner (`scripts/audit/check-no-plaintext-keys.sh`)**:
+- Blocks known plaintext key filenames:
+  - `apikeys.json`, `api-keys.json`, `keys.json`, `secrets.json`
+  - `.env.production`, `.env.prod`
+- Detects backup files: `*.backup`, `*.bak`, `*_backup`, `*_bak`
+- Fails CI if forbidden files are committed
+
+**3. Diagnostics Bundle Redaction**:
+- All diagnostic bundles automatically redact secrets
+- Comprehensive pattern matching for:
+  - API keys and tokens
+  - Bearer tokens and JWT tokens
+  - Authorization headers
+  - JSON key-value pairs containing secrets
+- Public `RedactSensitiveData` method with extensive test coverage
+- Safe to share diagnostic bundles for troubleshooting
+
+**4. Pre-commit Hook Documentation**:
+- Husky pre-commit hooks can be configured to run security scans
+- Prevents accidental commits of sensitive data
+- Configuration in `.husky/pre-commit` (optional)
+
+**CI Workflow: Secrets Enforcement** (`.github/workflows/secrets-enforcement.yml`):
+- Runs on all pushes and pull requests
+- Four security check jobs:
+  1. **Secrets Scan**: Pattern-based secret detection
+  2. **Diagnostics Redaction Test**: Validates bundle scrubbing
+  3. **CI Artifacts Check**: Scans workflows and scripts for hardcoded secrets
+  4. **Security Summary**: Aggregates results and fails if any violations found
+- Blocks PR merges if secrets are detected
+- Provides detailed violation reports with file locations and line numbers
+
+**Developer Guidelines**:
+- ✅ Use encrypted KeyStore API for all secrets
+- ✅ Set API keys via `/api/keys/set` or `aura keys set` CLI
+- ✅ Test changes locally with `scripts/audit/scan-secrets.sh` before committing
+- ❌ Never commit plaintext API keys or tokens
+- ❌ Never commit backup files that may contain sensitive data
+- ❌ Never hardcode credentials in source code or configuration files
+
+**Incident Response**:
+If a secret is accidentally committed:
+1. Rotate the exposed credential immediately
+2. Remove the secret from git history using `git filter-branch` or BFG Repo-Cleaner
+3. Force-push the cleaned history (coordinate with team)
+4. Update all deployments with the new credential
+5. Document the incident for security audit trail
+
 ### Precedence Enforcement
 
 Model selection precedence is enforced server-side:

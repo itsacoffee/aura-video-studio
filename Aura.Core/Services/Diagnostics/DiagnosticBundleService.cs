@@ -477,15 +477,41 @@ public class DiagnosticBundleService
     /// <summary>
     /// Redact sensitive data from logs (API keys, tokens, etc.)
     /// </summary>
-    private static string RedactSensitiveData(string content)
+    public static string RedactSensitiveData(string content)
     {
-        // Redact API keys (various patterns)
-        content = System.Text.RegularExpressions.Regex.Replace(content, @"sk-[a-zA-Z0-9]{32,}", "[REDACTED-API-KEY]");
+        // Redact OpenAI/Anthropic API keys
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"sk-[a-zA-Z0-9_-]{20,}", "[REDACTED-API-KEY]");
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"sk-proj-[a-zA-Z0-9_-]{20,}", "[REDACTED-API-KEY]");
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"sk-ant-api[0-9]{2}-[a-zA-Z0-9_-]{20,}", "[REDACTED-API-KEY]");
+        
+        // Redact Bearer tokens
         content = System.Text.RegularExpressions.Regex.Replace(content, @"Bearer\s+[a-zA-Z0-9\-_\.]{20,}", "Bearer [REDACTED-TOKEN]");
+        
+        // Redact JWT tokens (start with eyJ)
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+", "[REDACTED-JWT]");
+        
+        // Redact Google API keys
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"AIza[a-zA-Z0-9_-]{35}", "[REDACTED-API-KEY]");
+        
+        // Redact AWS keys
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"AKIA[0-9A-Z]{16}", "[REDACTED-AWS-KEY]");
+        
+        // Redact GitHub tokens
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"gh[ps]_[a-zA-Z0-9]{36,}", "[REDACTED-GH-TOKEN]");
+        
+        // Redact other service keys
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"r8_[a-zA-Z0-9]{40,}", "[REDACTED-API-KEY]");
+        
+        // Redact JSON key-value pairs
         content = System.Text.RegularExpressions.Regex.Replace(content, @"""apiKey""\s*:\s*""[^""]+""", @"""apiKey"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         content = System.Text.RegularExpressions.Regex.Replace(content, @"""api_key""\s*:\s*""[^""]+""", @"""api_key"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         content = System.Text.RegularExpressions.Regex.Replace(content, @"""password""\s*:\s*""[^""]+""", @"""password"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         content = System.Text.RegularExpressions.Regex.Replace(content, @"""token""\s*:\s*""[^""]+""", @"""token"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"""secret""\s*:\s*""[^""]+""", @"""secret"": ""[REDACTED]""", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        // Redact HTTP headers
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"x-api-key:\s*[a-zA-Z0-9_-]{16,}", "x-api-key: [REDACTED]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"Authorization:\s*[^\s\n\r]+", "Authorization: [REDACTED]", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         return content;
     }
