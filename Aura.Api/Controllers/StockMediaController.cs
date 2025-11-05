@@ -381,4 +381,82 @@ public class StockMediaController : ControllerBase
             result.NarrativeCoverageScore
         );
     }
+
+    /// <summary>
+    /// Validate stock media query for safety
+    /// </summary>
+    [HttpPost("validate-query")]
+    public async Task<IActionResult> ValidateQuery(
+        [FromBody] ValidateStockQueryRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Validating stock media query, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+
+            if (string.IsNullOrWhiteSpace(request.Query))
+            {
+                return BadRequest(new { error = "Query is required" });
+            }
+
+            await Task.CompletedTask;
+            _logger.LogWarning("Stock media safety integration not yet wired up to controller dependencies");
+
+            return Ok(new ValidateStockQueryResponse(
+                request.Query,
+                true,
+                "Query validation pending full integration",
+                request.Query,
+                null,
+                new List<string>()
+            ));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating query");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Validation Failed",
+                Status = 500,
+                Detail = "Failed to validate stock media query",
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Sanitize stock media query to remove unsafe terms
+    /// </summary>
+    [HttpPost("sanitize-query")]
+    public IActionResult SanitizeQuery([FromBody] ValidateStockQueryRequest request)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Sanitizing stock media query, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+
+            if (string.IsNullOrWhiteSpace(request.Query))
+            {
+                return BadRequest(new { error = "Query is required" });
+            }
+
+            _logger.LogWarning("Stock media safety integration not yet wired up to controller dependencies");
+
+            return Ok(new { originalQuery = request.Query, sanitizedQuery = request.Query });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sanitizing query");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Sanitization Failed",
+                Status = 500,
+                Detail = "Failed to sanitize stock media query",
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+    }
 }

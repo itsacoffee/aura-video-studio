@@ -25,6 +25,8 @@ public class ContentSafetyController : ControllerBase
     private readonly ContentSafetyService _safetyService;
     private readonly KeywordListManager _keywordManager;
     private readonly TopicFilterManager _topicManager;
+    private readonly SafetyRemediationService _remediationService;
+    private readonly LlmSafetyIntegrationService _llmSafetyService;
     private readonly ProviderSettings _providerSettings;
     private readonly string _policiesPath;
     private readonly string _auditLogPath;
@@ -34,12 +36,16 @@ public class ContentSafetyController : ControllerBase
         ContentSafetyService safetyService,
         KeywordListManager keywordManager,
         TopicFilterManager topicManager,
+        SafetyRemediationService remediationService,
+        LlmSafetyIntegrationService llmSafetyService,
         ProviderSettings providerSettings)
     {
         _logger = logger;
         _safetyService = safetyService;
         _keywordManager = keywordManager;
         _topicManager = topicManager;
+        _remediationService = remediationService;
+        _llmSafetyService = llmSafetyService;
         _providerSettings = providerSettings;
         
         var auraDataDir = _providerSettings.GetAuraDataDirectory();
@@ -677,5 +683,198 @@ public class ContentSafetyController : ControllerBase
         }
 
         return policy;
+    }
+
+    /// <summary>
+    /// Validate LLM prompt for safety before sending to provider
+    /// </summary>
+    [HttpPost("validate-llm-prompt")]
+    public async Task<IActionResult> ValidateLlmPrompt(
+        [FromBody] ValidateLlmPromptRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Prompt))
+            {
+                return BadRequest(new { error = "Prompt is required" });
+            }
+
+            var policy = await GetPolicyAsync(request.PolicyId, ct);
+            if (policy == null)
+            {
+                return NotFound(new { error = "Policy not found" });
+            }
+
+            var result = await _llmSafetyService.ValidatePromptAsync(request.Prompt, policy, ct);
+
+            var response = new ValidateLlmPromptResponse(
+                result.OriginalPrompt,
+                result.IsValid,
+                result.CanProceed,
+                result.AnalysisResult != null ? MapToAnalysisResponse(result.AnalysisResult) : null,
+                result.ModifiedPrompt,
+                result.Explanation,
+                result.Alternatives
+            );
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating LLM prompt");
+            return StatusCode(500, new { error = "Failed to validate prompt" });
+        }
+    }
+
+    /// <summary>
+    /// Suggest safe alternatives for content that violated safety policy
+    /// </summary>
+    [HttpPost("suggest-alternatives")]
+    public async Task<IActionResult> SuggestAlternatives(
+        [FromBody] SuggestAlternativesRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Content))
+            {
+                return BadRequest(new { error = "Content is required" });
+            }
+
+            var policy = await GetPolicyAsync(request.PolicyId, ct);
+            if (policy == null)
+            {
+                return NotFound(new { error = "Policy not found" });
+            }
+
+            var analysisResult = await _safetyService.AnalyzeContentAsync(
+                Guid.NewGuid().ToString(),
+                request.Content,
+                policy,
+                ct);
+
+            var alternatives = await _llmSafetyService.SuggestSafeAlternativesAsync(
+                request.Content,
+                analysisResult,
+                request.Count,
+                ct);
+
+            var response = new SuggestAlternativesResponse(
+                alternatives,
+                "Alternatives generated to avoid safety violations while preserving intent"
+            );
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error suggesting alternatives");
+            return StatusCode(500, new { error = "Failed to suggest alternatives" });
+        }
+    }
+
+    /// <summary>
+    /// Generate comprehensive remediation report for safety violations
+    /// </summary>
+    [HttpPost("remediation-report")]
+    public async Task<IActionResult> GetRemediationReport(
+        [FromBody] RemediationReportRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Content))
+            {
+                return BadRequest(new { error = "Content is required" });
+            }
+
+            var policy = await GetPolicyAsync(request.PolicyId, ct);
+            if (policy == null)
+            {
+                return NotFound(new { error = "Policy not found" });
+            }
+
+            var analysisResult = await _safetyService.AnalyzeContentAsync(
+                request.ContentId,
+                request.Content,
+                policy,
+                ct);
+
+            var report = await _remediationService.GenerateRemediationReportAsync(
+                request.ContentId,
+                request.Content,
+                analysisResult,
+                policy,
+                ct);
+
+            var response = new RemediationReportResponse(
+                report.ContentId,
+                report.AnalysisResult != null ? MapToAnalysisResponse(report.AnalysisResult) : null,
+                report.Summary,
+                report.DetailedExplanation,
+                report.RemediationStrategies.Select(s => new RemediationStrategyDto(
+                    s.Name,
+                    s.Description,
+                    s.Difficulty,
+                    s.SuccessLikelihood,
+                    s.Steps
+                )).ToList(),
+                report.Alternatives,
+                report.UserOptions.Select(o => new UserOptionDto(
+                    o.Id,
+                    o.Label,
+                    o.Description,
+                    o.IsRecommended,
+                    o.RequiresAdvancedMode
+                )).ToList(),
+                report.RecommendedAction
+            );
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating remediation report");
+            return StatusCode(500, new { error = "Failed to generate remediation report" });
+        }
+    }
+
+    /// <summary>
+    /// Explain why content was blocked in user-friendly language
+    /// </summary>
+    [HttpPost("explain-block")]
+    public async Task<IActionResult> ExplainBlock(
+        [FromBody] SafetyAnalysisRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Content))
+            {
+                return BadRequest(new { error = "Content is required" });
+            }
+
+            var policy = await GetPolicyAsync(request.PolicyId, ct);
+            if (policy == null)
+            {
+                return NotFound(new { error = "Policy not found" });
+            }
+
+            var analysisResult = await _safetyService.AnalyzeContentAsync(
+                Guid.NewGuid().ToString(),
+                request.Content,
+                policy,
+                ct);
+
+            var explanation = _remediationService.ExplainSafetyBlock(analysisResult, policy);
+
+            return Ok(new { explanation, analysisResult = MapToAnalysisResponse(analysisResult) });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error explaining safety block");
+            return StatusCode(500, new { error = "Failed to explain block" });
+        }
     }
 }

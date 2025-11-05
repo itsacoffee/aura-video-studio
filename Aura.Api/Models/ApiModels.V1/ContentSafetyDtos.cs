@@ -202,3 +202,96 @@ public record SafetyDecisionRequest(
     string Decision,
     string? DecisionReason,
     List<string>? OverriddenViolations);
+
+/// <summary>
+/// Request to validate LLM prompt
+/// </summary>
+public record ValidateLlmPromptRequest(
+    string Prompt,
+    string? PolicyId = null);
+
+/// <summary>
+/// Response from LLM prompt validation
+/// </summary>
+public record ValidateLlmPromptResponse(
+    string OriginalPrompt,
+    bool IsValid,
+    bool CanProceed,
+    SafetyAnalysisResponse? AnalysisResult,
+    string? ModifiedPrompt,
+    string? Explanation,
+    List<string> Alternatives);
+
+/// <summary>
+/// Request to suggest safe alternatives
+/// </summary>
+public record SuggestAlternativesRequest(
+    string Content,
+    string? PolicyId = null,
+    int Count = 3);
+
+/// <summary>
+/// Response with suggested alternatives
+/// </summary>
+public record SuggestAlternativesResponse(
+    List<string> Alternatives,
+    string Reasoning);
+
+/// <summary>
+/// Request to validate stock media query
+/// </summary>
+public record ValidateStockQueryRequest(
+    string Query,
+    string? PolicyId = null);
+
+/// <summary>
+/// Response from stock media query validation
+/// </summary>
+public record ValidateStockQueryResponse(
+    string OriginalQuery,
+    bool IsValid,
+    string ValidationMessage,
+    string SanitizedQuery,
+    SafetyAnalysisResponse? AnalysisResult,
+    List<string> Alternatives);
+
+/// <summary>
+/// Request for remediation report
+/// </summary>
+public record RemediationReportRequest(
+    string ContentId,
+    string Content,
+    string? PolicyId = null);
+
+/// <summary>
+/// Remediation report response
+/// </summary>
+public record RemediationReportResponse(
+    string ContentId,
+    SafetyAnalysisResponse? AnalysisResult,
+    string Summary,
+    string DetailedExplanation,
+    List<RemediationStrategyDto> RemediationStrategies,
+    List<string> Alternatives,
+    List<UserOptionDto> UserOptions,
+    string RecommendedAction);
+
+/// <summary>
+/// Remediation strategy DTO
+/// </summary>
+public record RemediationStrategyDto(
+    string Name,
+    string Description,
+    string Difficulty,
+    int SuccessLikelihood,
+    List<string> Steps);
+
+/// <summary>
+/// User option DTO
+/// </summary>
+public record UserOptionDto(
+    string Id,
+    string Label,
+    string Description,
+    bool IsRecommended,
+    bool RequiresAdvancedMode);
