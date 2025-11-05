@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Audio;
 using Aura.Core.Models.Voice;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -18,11 +19,13 @@ namespace Aura.Core.Services.Audio;
 /// <summary>
 /// Service for optimizing narration text for TTS synthesis excellence
 /// Uses LLMs to improve naturalness, pacing, and emotional delivery
+/// Now uses unified orchestration via LlmStageAdapter
 /// </summary>
 public class NarrationOptimizationService
 {
     private readonly ILogger<NarrationOptimizationService> _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
 
     private static readonly HashSet<string> CommonAcronyms = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -39,10 +42,12 @@ public class NarrationOptimizationService
 
     public NarrationOptimizationService(
         ILogger<NarrationOptimizationService> logger,
-        ILlmProvider llmProvider)
+        ILlmProvider llmProvider,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
+        _stageAdapter = stageAdapter;
     }
 
     /// <summary>
@@ -214,7 +219,7 @@ public class NarrationOptimizationService
                 Style: "natural-speech"
             );
 
-            var llmResponse = await _llmProvider.DraftScriptAsync(brief, spec, ct);
+            var llmResponse = await GenerateWithLlmAsync(brief, spec, ct);
             
             return ParseLlmResponse(llmResponse, text);
         }
@@ -223,6 +228,23 @@ public class NarrationOptimizationService
             _logger.LogWarning(ex, "LLM rewrite failed, using heuristic optimization");
             return HeuristicOptimization(text, issues, config);
         }
+    }
+
+    /// <summary>
+    /// Helper method to execute LLM generation through unified orchestrator or fallback to direct provider
+    /// </summary>
+    private async Task<string> GenerateWithLlmAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        CancellationToken ct)
+    {
+        if (_stageAdapter != null)
+        {
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            if (result.IsSuccess && result.Data != null) return result.Data;
+            _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+        }
+        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
     }
 
     /// <summary>

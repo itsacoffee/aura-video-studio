@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.ScriptEnhancement;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -14,20 +15,24 @@ namespace Aura.Core.Services.ScriptEnhancement;
 
 /// <summary>
 /// Advanced service for comprehensive script enhancement with AI
+/// Now uses unified orchestration via LlmStageAdapter
 /// </summary>
 public class AdvancedScriptEnhancer
 {
     private readonly ILogger<AdvancedScriptEnhancer> _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
     private readonly ScriptAnalysisService _analysisService;
 
     public AdvancedScriptEnhancer(
         ILogger<AdvancedScriptEnhancer> logger,
         ILlmProvider llmProvider,
-        ScriptAnalysisService analysisService)
+        ScriptAnalysisService analysisService,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
+        _stageAdapter = stageAdapter;
         _analysisService = analysisService;
     }
 
@@ -127,7 +132,7 @@ public class AdvancedScriptEnhancer
             var brief = new Brief("Hook Optimization", targetAudience, null, "engaging", "en", Aspect.Widescreen16x9);
             var planSpec = new PlanSpec(TimeSpan.FromSeconds(targetSeconds), Pacing.Fast, Density.Balanced, prompt);
 
-            var optimizedHook = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            var optimizedHook = await GenerateWithLlmAsync(brief, planSpec, ct);
 
             // Analyze improved hook
             var improvedScript = optimizedHook + "\n\n" + string.Join("\n", lines.Skip(3));
@@ -354,7 +359,7 @@ public class AdvancedScriptEnhancer
             var brief = new Brief("Tone Adjustment", null, null, "adjusted", "en", Aspect.Widescreen16x9);
             var planSpec = new PlanSpec(TimeSpan.FromMinutes(5), Pacing.Conversational, Density.Balanced, prompt);
 
-            var adjustedScript = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            var adjustedScript = await GenerateWithLlmAsync(brief, planSpec, ct);
             var achievedTone = AnalyzeToneProfile(adjustedScript);
 
             var changes = GenerateToneChangeSuggestions(script, adjustedScript);
@@ -400,7 +405,7 @@ public class AdvancedScriptEnhancer
             var brief = new Brief($"Apply {framework} Framework", targetAudience, null, "structured", "en", Aspect.Widescreen16x9);
             var planSpec = new PlanSpec(TimeSpan.FromMinutes(5), Pacing.Conversational, Density.Balanced, frameworkPrompt);
 
-            var enhancedScript = await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
+            var enhancedScript = await GenerateWithLlmAsync(brief, planSpec, ct);
 
             var appliedFramework = new StoryFramework(
                 Type: framework,
@@ -922,5 +927,22 @@ Maintain the core content but reorganize it to follow the framework structure cl
         }
 
         return diffs;
+    }
+
+    /// <summary>
+    /// Helper method to execute LLM generation through unified orchestrator or fallback to direct provider
+    /// </summary>
+    private async Task<string> GenerateWithLlmAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        CancellationToken ct)
+    {
+        if (_stageAdapter != null)
+        {
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            if (result.IsSuccess && result.Data != null) return result.Data;
+            _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+        }
+        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
     }
 }

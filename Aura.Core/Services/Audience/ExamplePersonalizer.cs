@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Audience;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -15,16 +16,19 @@ namespace Aura.Core.Services.Audience;
 /// <summary>
 /// Personalizes examples and analogies based on audience characteristics
 /// Uses LLM to generate audience-specific examples that are culturally relevant
+/// Now uses unified orchestration via LlmStageAdapter
 /// </summary>
 public class ExamplePersonalizer
 {
     private readonly ILogger _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
 
-    public ExamplePersonalizer(ILogger logger, ILlmProvider llmProvider)
+    public ExamplePersonalizer(ILogger logger, ILlmProvider llmProvider, LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
+        _stageAdapter = stageAdapter;
     }
 
     /// <summary>
@@ -47,7 +51,7 @@ public class ExamplePersonalizer
 
             var prompt = BuildExamplePersonalizationPrompt(text, context, examplesPerConcept);
 
-            var response = await _llmProvider.DraftScriptAsync(
+            var response = await GenerateWithLlmAsync(
                 new Brief(
                     "Example Personalization",
                     context.Profile.Name,
@@ -270,6 +274,23 @@ public class ExamplePersonalizer
         }
 
         return 0.85;
+    }
+
+    /// <summary>
+    /// Helper method to execute LLM generation through unified orchestrator or fallback to direct provider
+    /// </summary>
+    private async Task<string> GenerateWithLlmAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        CancellationToken ct)
+    {
+        if (_stageAdapter != null)
+        {
+            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct);
+            if (result.IsSuccess && result.Data != null) return result.Data;
+            _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
+        }
+        return await _llmProvider.DraftScriptAsync(brief, planSpec, ct);
     }
 }
 
