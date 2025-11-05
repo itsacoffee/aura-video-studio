@@ -46,10 +46,15 @@ If you discover a security vulnerability, please report it by:
 
 ### 5. Authentication & Authorization
 - API key validation for external service providers
-- **DPAPI Encryption**: Windows users benefit from Data Protection API (DPAPI) encryption for API keys at rest
-- **Secure Key Storage**: API keys stored in user-specific encrypted storage (Windows LocalApplicationData)
-- **Secret Masking**: All API keys automatically masked in logs, diagnostics, and error messages
-- **Development Mode**: Non-Windows platforms use plaintext storage with file system permissions for development
+- **Secrets Encryption at Rest**:
+  - **Windows**: Data Protection API (DPAPI) encryption with CurrentUser scope
+  - **Linux/macOS**: AES-256 encryption with machine-specific key
+  - Storage location: `%LOCALAPPDATA%\Aura\secure\apikeys.dat` (Windows) or `$HOME/.local/share/Aura/secure/apikeys.dat` (Linux/macOS)
+- **Key Management API**: Comprehensive REST API for set/get/rotate/test/delete operations
+- **CLI Support**: Full key management via `aura keys` commands for headless environments
+- **Secret Masking**: All API keys automatically masked in logs, diagnostics, error messages, and SSE events
+- **Key Validation**: Test keys with real provider connections before saving
+- **Migration Support**: Automatic migration from plaintext to encrypted storage (if legacy plaintext detected)
 - Preflight validation with secure API key testing
 - No hardcoded credentials or secrets in source code
 
@@ -78,6 +83,10 @@ For detailed security summaries of specific features and implementations, see [d
 ✅ Secure file operations  
 ✅ No hardcoded credentials or secrets  
 ✅ Thread-safe operations  
+✅ Encrypted secrets at rest with platform-specific encryption  
+✅ Automatic secret masking in all logs and diagnostics  
+✅ Key validation before storage  
+✅ Secure export/import with explicit opt-in for secrets  
 
 ## Compliance
 
@@ -134,6 +143,129 @@ Model selections are stored in `AuraData/model-selections.json`:
 - No sensitive data (API keys, secrets) stored
 - Audit log limited to last 1000 entries to prevent unbounded growth
 - Regular cleanup of old audit entries
+
+## Key Management and Secrets Encryption
+
+### Encryption at Rest
+
+All API keys and provider secrets are encrypted at rest using platform-specific encryption:
+
+**Windows (Production)**:
+- **Method**: Data Protection API (DPAPI)
+- **Scope**: CurrentUser
+- **Storage**: `%LOCALAPPDATA%\Aura\secure\apikeys.dat`
+- **Security**: Keys encrypted with user's Windows credentials, cannot be decrypted by other users or on other machines
+
+**Linux/macOS (Development)**:
+- **Method**: AES-256 encryption
+- **Key**: Machine-specific key stored in `$HOME/.local/share/Aura/secure/.machinekey`
+- **Storage**: `$HOME/.local/share/Aura/secure/apikeys.dat`
+- **Security**: Keys encrypted with machine-specific key, file permissions set to 600 (owner read/write only)
+
+⚠️ **Warning**: Linux/macOS encryption is suitable for development environments only. For production deployments on non-Windows platforms, consider additional security measures or use a dedicated secrets management solution.
+
+### Key Management API
+
+Comprehensive REST API for secure key management:
+
+#### Endpoints
+
+- **POST /api/keys/set** - Set or update an API key
+  - Body: `{ "provider": "string", "apiKey": "string" }`
+  - Response: Masked key confirmation
+  - Encryption: Automatic encryption before storage
+
+- **GET /api/keys/list** - List configured providers
+  - Response: Array of providers with masked keys
+  - Security: Never returns actual key values
+
+- **POST /api/keys/test** - Test key with real provider connection
+  - Body: `{ "provider": "string", "apiKey": "string?" }`
+  - Optional: Provide key to test without saving
+  - Default: Tests stored key
+  - Validation: Makes actual API call to provider
+
+- **POST /api/keys/rotate** - Rotate an existing key
+  - Body: `{ "provider": "string", "newApiKey": "string", "testBeforeSaving": true }`
+  - Safety: Tests new key before overwriting old key
+  - Atomic: Old key retained if validation fails
+
+- **DELETE /api/keys/{provider}** - Delete a key
+  - Permanent deletion of encrypted key
+
+- **GET /api/keys/info** - Get encryption status
+  - Returns platform, method, and storage location
+  - No sensitive data returned
+
+### CLI Key Management
+
+Full command-line interface for headless environments:
+
+```bash
+# Set an API key
+aura keys set openai sk-proj-abc123...
+
+# List configured providers (with masked keys)
+aura keys list
+
+# Test a key with real API connection
+aura keys test openai
+
+# Rotate a key (tests new key before saving)
+aura keys rotate openai sk-proj-new456...
+
+# Delete a key (with confirmation)
+aura keys delete elevenlabs
+```
+
+### Secret Masking and Redaction
+
+**Automatic masking in all output**:
+- Logs (Serilog structured logging)
+- SSE events (Server-Sent Events for real-time progress)
+- Diagnostics bundles and crash reports
+- Error messages and stack traces
+- API responses
+
+**Masking format**:
+- Keys < 12 chars: `***`
+- Keys >= 12 chars: `sk-12345...wxyz` (first 8 + last 4 characters)
+
+**Pattern detection**:
+- Regex-based detection of API key patterns
+- Sensitive field names: `apiKey`, `api_key`, `secret`, `password`, `token`
+- Automatic redaction of detected patterns in text
+
+### Export and Import
+
+**Export without secrets** (default):
+```bash
+POST /api/settings/export
+# Returns settings with all secrets redacted
+```
+
+**Export with secrets** (explicit opt-in):
+```bash
+POST /api/settings/export
+Body: { "includeSecrets": true, "selectedKeys": ["openai", "anthropic"] }
+# Requires per-key checkbox confirmation in UI
+# Shows redaction preview before export
+# Prominent warnings about secret exposure
+```
+
+⚠️ **Security Warning**: Exported files containing secrets should be:
+- Stored securely (encrypted filesystem, password manager, secure vault)
+- Never committed to version control
+- Never shared via insecure channels (email, chat, public cloud)
+- Deleted after use
+
+### Migration from Plaintext
+
+If legacy plaintext storage is detected:
+1. Keys automatically migrated to encrypted storage
+2. Old plaintext file backed up with `.migrated` extension
+3. Original plaintext file deleted
+4. Migration logged for audit trail
 
 ### Precedence Enforcement
 

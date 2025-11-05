@@ -40,22 +40,41 @@ General application settings.
 - **uiScale** (number): UI scale percentage (75-150)
 - **compactMode** (boolean): Whether to use compact layout
 
-#### `apiKeys` (object, required)
-API keys for external services. Values are encrypted when stored locally but exported as-is.
+#### `apiKeys` (object, optional)
+API keys for external services. 
+
+**Storage**: 
+- **At Rest**: Keys are encrypted using platform-specific encryption (DPAPI on Windows, AES-256 on Linux/macOS)
+- **Location**: `%LOCALAPPDATA%\Aura\secure\apikeys.dat` (Windows) or `$HOME/.local/share/Aura/secure/apikeys.dat` (Linux/macOS)
+- **Export**: By default, keys are **NOT** included in exports (redacted)
+- **Export with secrets**: Requires explicit opt-in with per-key selection and warnings
+
+**Managed via**:
+- **API**: `/api/keys/*` endpoints (set, list, test, rotate, delete)
+- **CLI**: `aura keys` commands
+- **UI**: Key management interface with test and masked display
 
 ```json
 {
   "openai": "sk-...",
+  "anthropic": "sk-ant-...",
+  "gemini": "AIza...",
   "elevenlabs": "...",
-  "pexels": "...",
-  "stabilityai": "..."
+  "stabilityai": "sk-...",
+  "playht": "..."
 }
 ```
 
-- **openai** (string): OpenAI API key
+**Supported providers**:
+- **openai** (string): OpenAI API key (starts with `sk-`)
+- **anthropic** (string): Anthropic API key (starts with `sk-ant-`)
+- **gemini** or **google** (string): Google Gemini API key (starts with `AIza`)
 - **elevenlabs** (string): ElevenLabs API key
-- **pexels** (string): Pexels API key
-- **stabilityai** (string): Stability AI API key
+- **stabilityai** (string): Stability AI API key (starts with `sk-`)
+- **playht** (string): PlayHT API key
+- **azure** (string): Azure OpenAI API key
+
+**Note**: API keys are never stored in `settings.json`. They are stored separately in encrypted storage.
 
 #### `providerPaths` (object, required)
 Local provider configuration paths and URLs.
@@ -162,12 +181,30 @@ Premium providers for maximum quality:
 
 ## Security Notes
 
-⚠️ **IMPORTANT**: Exported settings files contain API keys in plain text. Store them securely and never commit them to version control.
+### Encryption at Rest
 
-- Use `.gitignore` to exclude `*-settings.json` files
-- Encrypt exported files if storing in cloud storage
-- Consider using a password manager to store API keys separately
-- Regularly rotate API keys for security
+✅ **All API keys are encrypted at rest** using platform-specific encryption:
+- **Windows**: DPAPI (Data Protection API) with CurrentUser scope
+- **Linux/macOS**: AES-256 with machine-specific key
+
+### Export Security
+
+⚠️ **By default, API keys are NOT exported** - they are redacted from settings exports.
+
+⚠️ **If you choose to export with secrets**:
+- Requires explicit opt-in with per-key selection
+- Shows redaction preview before export
+- Displays prominent security warnings
+- Exported files contain API keys in **plain text**
+
+**Best practices for exported files with secrets**:
+- ✅ Use `.gitignore` to exclude `*-settings.json` files
+- ✅ Encrypt exported files before storing in cloud storage
+- ✅ Use a password manager or secure vault for storage
+- ✅ Delete exported files after use
+- ✅ Regularly rotate API keys
+- ❌ Never commit secrets to version control
+- ❌ Never share via email, chat, or public channels
 
 ## Import Validation
 

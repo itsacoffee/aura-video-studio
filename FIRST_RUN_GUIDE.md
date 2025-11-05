@@ -166,10 +166,90 @@ VITE_ENABLE_DEBUG=true
 Once the application is running:
 
 1. Complete the onboarding wizard
-2. Configure your preferred AI providers (optional)
+2. Configure your preferred AI providers (see below)
 3. Create your first video project
 
-For more detailed information, see:
+## Provider Setup and API Keys
+
+Aura Video Studio supports multiple AI providers for different capabilities:
+
+### Free/Local Providers (No API Keys Required)
+
+- **Ollama** - Local LLM (script generation)
+- **Windows TTS** - Built-in text-to-speech (Windows only)
+- **Piper TTS** - Free offline text-to-speech
+- **Stock Images** - Free image sources (Pexels, Unsplash, Pixabay)
+
+### Premium Providers (API Keys Required)
+
+#### Script Generation (LLM)
+- **OpenAI** (GPT-4, GPT-3.5) - [Get API key](https://platform.openai.com/api-keys)
+- **Anthropic** (Claude) - [Get API key](https://console.anthropic.com/)
+- **Google Gemini** - [Get API key](https://makersuite.google.com/app/apikey)
+
+#### Text-to-Speech
+- **ElevenLabs** - Premium realistic voices - [Get API key](https://elevenlabs.io/api)
+- **PlayHT** - Voice cloning and synthesis - [Get API key](https://play.ht/api-access)
+- **Azure Speech** - Microsoft neural voices - [Get API key](https://azure.microsoft.com/services/cognitive-services/speech-services/)
+
+#### Image Generation
+- **Stability AI** - Stable Diffusion models - [Get API key](https://platform.stability.ai/account/keys)
+
+### Adding API Keys
+
+#### Via UI (Recommended)
+1. Open **Settings** → **Providers**
+2. Click **Add Key** for the provider you want
+3. Paste your API key
+4. Click **Test** to validate the key
+5. Click **Save** to encrypt and store
+
+#### Via CLI (Headless)
+```bash
+# Add a key
+aura keys set openai sk-proj-abc123...
+
+# Test the key
+aura keys test openai
+
+# List configured providers
+aura keys list
+```
+
+#### Via API (Programmatic)
+```bash
+# Set a key
+curl -X POST http://localhost:5005/api/keys/set \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"openai","apiKey":"sk-proj-abc123..."}'
+
+# Test a key
+curl -X POST http://localhost:5005/api/keys/test \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"openai"}'
+```
+
+### Security Features
+
+✅ **All API keys are encrypted at rest**
+- Windows: DPAPI encryption
+- Linux/macOS: AES-256 encryption
+
+✅ **Keys are never logged or displayed in full**
+- Automatic masking: `sk-12345...wxyz`
+- Redaction in logs, errors, and diagnostics
+
+✅ **Test before saving**
+- Validates key with real provider connection
+- Prevents saving invalid keys
+
+✅ **Safe export/import**
+- Keys excluded from exports by default
+- Explicit opt-in required to include secrets
+
+For more information, see:
+- `SECURITY.md` - Detailed security documentation
+- `docs/workflows/SETTINGS_SCHEMA.md` - Settings format and schema
 - `BUILD_GUIDE.md` - Complete build instructions
 - `README.md` - Project overview
 - `docs/` - Detailed documentation
