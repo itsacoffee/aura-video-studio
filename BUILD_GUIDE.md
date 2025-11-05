@@ -363,11 +363,41 @@ dotnet test Aura.E2E/Aura.E2E.csproj --logger "console;verbosity=detailed"
 
 **Test Coverage:**
 - Full pipeline: Brief → Plan → Script → SSML → Assets → Render
-- SSE progress tracking and reconnection
-- Job management (creation, cancellation, monitoring)
-- Export manifest and licensing verification
+- SSE progress tracking with Last-Event-ID reconnection (4 scenarios)
+- Job cancellation and cleanup (5 scenarios)
+- Export manifest with licensing validation (5 scenarios)
 - Error handling and recovery scenarios
 - Cross-platform CLI integration
+
+**Specific Test Scenarios:**
+
+Run individual E2E test suites:
+
+```bash
+cd Aura.Web
+
+# SSE Progress Tracking (real-time updates, reconnection, error handling)
+npx playwright test tests/e2e/sse-progress-tracking.spec.ts
+
+# Job Cancellation (cancel during phases, cleanup verification)
+npx playwright test tests/e2e/job-cancellation.spec.ts
+
+# Export Manifest (metadata, licensing, pipeline timing)
+npx playwright test tests/e2e/export-manifest-validation.spec.ts
+
+# Full Pipeline (complete workflow)
+npx playwright test tests/e2e/full-pipeline.spec.ts
+
+# Run all E2E tests
+npm run playwright
+```
+
+**Test Data:**
+
+E2E tests use synthetic data from `samples/test-data/`:
+- **Briefs**: 18 test scenarios with edge cases (unicode, emojis, extreme durations)
+- **Mock Responses**: Provider responses, SSE events, artifacts
+- **Hermetic Config**: Offline-first configuration for isolated testing
 
 **Documentation:**
 - See [E2E Testing Guide](E2E_TESTING_GUIDE.md) for comprehensive testing documentation

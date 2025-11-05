@@ -42,12 +42,30 @@ Test data is organized under `samples/test-data/`:
 ```
 samples/test-data/
 ├── briefs/
-│   └── synthetic-briefs.json      # LLM-generated test scenarios
+│   └── synthetic-briefs.json      # LLM-generated test scenarios with edge cases
 ├── configs/
 │   └── hermetic-test-config.json  # Isolated test configuration
 └── fixtures/
-    └── mock-responses.json        # Provider mock data
+    └── mock-responses.json        # Provider mock responses, SSE events, artifacts
 ```
+
+**Synthetic Briefs** (`briefs/synthetic-briefs.json`):
+- 18 test scenarios covering various content types and edge cases
+- Edge cases: Unicode/emoji, special characters, extreme durations, line breaks
+- Reliability tests: Provider retry, job cancellation, SSE reconnection
+- Each brief includes expected complexity and scene count
+
+**Mock Responses** (`fixtures/mock-responses.json`):
+- Provider responses (LLM, TTS, visuals) with success and fallback scenarios
+- SSE event streams for job progress and cancellation
+- Export manifest with licensing information
+- Error responses for testing retry logic
+
+**Hermetic Config** (`configs/hermetic-test-config.json`):
+- Offline-first provider configuration
+- Mock FFmpeg with placeholder output
+- Accelerated time for faster tests
+- Retry policy for transient failures
 
 ## Running Tests
 
@@ -139,6 +157,62 @@ E2E tests run automatically on:
 - Generation execution
 
 **Expected Duration**: 30-60 seconds
+
+### SSE Progress Tracking Test
+
+**Location**: `Aura.Web/tests/e2e/sse-progress-tracking.spec.ts`
+
+**Coverage**:
+- Real-time job progress via SSE events
+- SSE reconnection with Last-Event-ID after network interruptions
+- Connection error handling and retry
+- Progress percentage accuracy validation
+
+**Expected Duration**: 60-90 seconds
+
+**Success Criteria**:
+- All phase transitions tracked correctly
+- Reconnection works with Last-Event-ID header
+- Error handling graceful with retry logic
+- Progress updates accurate (0-100%)
+
+### Job Cancellation Test
+
+**Location**: `Aura.Web/tests/e2e/job-cancellation.spec.ts`
+
+**Coverage**:
+- Job cancellation during execution
+- Resource cleanup after cancellation
+- Prevention of actions on cancelled jobs
+- Phase-specific cancellation handling
+
+**Expected Duration**: 60-90 seconds
+
+**Success Criteria**:
+- Jobs can be cancelled at any phase
+- Cleanup removes temporary files
+- Cancelled jobs cannot be resumed (validation error)
+- Status updates correctly to "cancelled"
+
+### Export Manifest Validation Test
+
+**Location**: `Aura.Web/tests/e2e/export-manifest-validation.spec.ts`
+
+**Coverage**:
+- Manifest generation with complete metadata
+- Licensing information validation
+- Pipeline timing and phase duration tracking
+- Artifact checksum validation
+- Manifest download functionality
+
+**Expected Duration**: 60-90 seconds
+
+**Success Criteria**:
+- Manifest includes all required metadata
+- Licensing information present (LLM, TTS, visuals providers)
+- Pipeline phases tracked with timing
+- Commercial use rights documented
+- Manifest downloadable as JSON file
 
 ### Backend Integration Tests
 
@@ -272,13 +346,25 @@ All E2E tests must pass before merge:
 
 **Fail Criteria**:
 - Any critical test failure
-- Flake rate above 50% (warning)
-- Test timeout (45 minutes max)
+- Flake rate above 50% on any test (warning, tracked but doesn't fail build)
+- More than 10 quarantined tests (warning)
+- Test timeout (45 minutes max for Windows, 30 minutes for Linux)
 
 **Artifact Retention**:
 - Test results: 30 days
 - Screenshots/videos: 7 days (failures only)
 - Flake reports: 90 days
+- CLI artifacts: 7 days
+
+**Flake Rate Thresholds**:
+- **30%**: Auto-quarantine test after 5 runs
+- **20%**: High flake warning (reported but not quarantined)
+- **50%**: Critical flake warning (serious reliability issue)
+
+**Test Retry Policy**:
+- CI: 2 retries on failure
+- Local: 0 retries (fail fast for quick feedback)
+- Timeout: 60 seconds per test (configurable per test)
 
 ## Writing New Tests
 
