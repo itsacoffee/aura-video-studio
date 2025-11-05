@@ -44,4 +44,24 @@ public static class ExitCodes
     /// E500 - Unexpected error
     /// </summary>
     public const int UnexpectedError = 500;
+
+    /// <summary>
+    /// E101 - Invalid configuration
+    /// </summary>
+    public const int InvalidConfiguration = 101;
+
+    /// <summary>
+    /// E102 - Not implemented yet
+    /// </summary>
+    public const int NotImplemented = 102;
+
+    /// <summary>
+    /// E501 - Runtime error
+    /// </summary>
+    public const int RuntimeError = 501;
+
+    /// <summary>
+    /// E502 - Unhandled exception
+    /// </summary>
+    public const int UnhandledException = 502;
 }
