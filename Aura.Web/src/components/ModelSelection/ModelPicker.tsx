@@ -262,15 +262,47 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
         </div>
 
         {isPinned && (
-          <Badge color="important" appearance="filled" icon={<LockClosed20Regular />}>
-            Pinned
-          </Badge>
+          <Tooltip
+            content="This model is pinned and will never be automatically changed. If unavailable, operations will be blocked until you make a manual choice."
+            relationship="description"
+          >
+            <Badge color="important" appearance="filled" icon={<LockClosed20Regular />}>
+              Pinned
+            </Badge>
+          </Tooltip>
+        )}
+
+        {selectedModelId && scope === 'Stage' && (
+          <Tooltip
+            content={`This is a per-stage override (${scope} scope). It takes precedence over project and global defaults.`}
+            relationship="description"
+          >
+            <Badge color="brand" appearance="outline">
+              Stage Override
+            </Badge>
+          </Tooltip>
+        )}
+
+        {selectedModelId && scope === 'Project' && (
+          <Tooltip
+            content={`This is a project-level override (${scope} scope). It takes precedence over global defaults but not stage pins.`}
+            relationship="description"
+          >
+            <Badge color="informative" appearance="outline">
+              Project Override
+            </Badge>
+          </Tooltip>
         )}
 
         {selectedModel?.isDeprecated && (
-          <Badge color="warning" appearance="outline" icon={<Warning20Regular />}>
-            Deprecated
-          </Badge>
+          <Tooltip
+            content={`This model is deprecated and may be removed soon. ${selectedModel.replacementModel ? `Consider migrating to ${selectedModel.replacementModel}.` : 'Consider using an alternative model.'}`}
+            relationship="description"
+          >
+            <Badge color="warning" appearance="outline" icon={<Warning20Regular />}>
+              Deprecated
+            </Badge>
+          </Tooltip>
         )}
       </div>
 
