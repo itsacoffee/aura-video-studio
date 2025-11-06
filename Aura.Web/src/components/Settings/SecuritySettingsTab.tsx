@@ -127,10 +127,13 @@ export function SecuritySettingsTab() {
         const data = await response.json();
         setKeyVaultInfo(data);
       } else {
-        console.error('Failed to fetch KeyVault info');
+        console.error(
+          `Failed to fetch KeyVault info: HTTP ${response.status} ${response.statusText}`
+        );
       }
-    } catch (error) {
-      console.error('Error fetching KeyVault info:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error fetching KeyVault info:', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -147,10 +150,11 @@ export function SecuritySettingsTab() {
         const data = await response.json();
         setDiagnostics(data);
       } else {
-        console.error('Failed to run diagnostics');
+        console.error(`Failed to run diagnostics: HTTP ${response.status} ${response.statusText}`);
       }
-    } catch (error) {
-      console.error('Error running diagnostics:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error running diagnostics:', errorMessage);
     } finally {
       setRunningDiagnostics(false);
     }
@@ -176,7 +180,9 @@ export function SecuritySettingsTab() {
   if (!keyVaultInfo) {
     return (
       <Card className={styles.section}>
-        <Text>Failed to load security information.</Text>
+        <Text role="alert" aria-live="polite">
+          Failed to load security information. Please try again or check your connection.
+        </Text>
         <Button
           appearance="primary"
           onClick={fetchKeyVaultInfo}
@@ -285,6 +291,8 @@ export function SecuritySettingsTab() {
             appearance="secondary"
             icon={<Info24Regular />}
             onClick={() => setShowDetails(!showDetails)}
+            aria-expanded={showDetails}
+            aria-controls="security-details"
           >
             {showDetails ? 'Hide Details' : 'View Details'}
           </Button>
@@ -294,7 +302,7 @@ export function SecuritySettingsTab() {
         </div>
 
         {showDetails && (
-          <div className={styles.detailsSection}>
+          <div id="security-details" className={styles.detailsSection}>
             <Text weight="semibold" size={300} style={{ marginBottom: tokens.spacingVerticalS }}>
               Technical Details
             </Text>
