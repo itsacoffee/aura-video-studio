@@ -817,38 +817,43 @@ function validateApiKeyFormat(
   provider: string,
   apiKey: string
 ): { valid: boolean; error?: string } {
-  if (!apiKey || apiKey.trim() === '') {
+  const trimmedKey = apiKey.trim();
+
+  if (!trimmedKey) {
     return { valid: false, error: 'Please enter your API key' };
   }
 
   switch (provider) {
     case 'openai':
-      if (!apiKey.startsWith('sk-')) {
-        return { valid: false, error: 'OpenAI API keys start with "sk-"' };
+      if (!trimmedKey.startsWith('sk-')) {
+        return { valid: false, error: 'OpenAI API keys must start with "sk-"' };
+      }
+      if (trimmedKey.length < 20) {
+        return { valid: false, error: 'OpenAI API keys must be at least 20 characters' };
       }
       break;
     case 'anthropic':
-      if (!apiKey.startsWith('sk-ant-')) {
+      if (!trimmedKey.startsWith('sk-ant-')) {
         return { valid: false, error: 'Anthropic API keys start with "sk-ant-"' };
       }
       break;
     case 'gemini':
-      if (apiKey.length !== 39) {
+      if (trimmedKey.length !== 39) {
         return { valid: false, error: 'Google Gemini API keys are 39 characters long' };
       }
       break;
     case 'replicate':
-      if (!apiKey.startsWith('r8_')) {
+      if (!trimmedKey.startsWith('r8_')) {
         return { valid: false, error: 'Replicate API keys start with "r8_"' };
       }
       break;
     case 'elevenlabs':
-      if (apiKey.length !== 32) {
+      if (trimmedKey.length !== 32) {
         return { valid: false, error: 'ElevenLabs API keys are 32 characters long' };
       }
       break;
     case 'playht':
-      if (!apiKey.includes(':')) {
+      if (!trimmedKey.includes(':')) {
         return {
           valid: false,
           error: 'PlayHT requires both User ID and Secret Key (format: userId:secretKey)',
@@ -856,7 +861,7 @@ function validateApiKeyFormat(
       }
       break;
     case 'pexels':
-      if (apiKey.length < 20) {
+      if (trimmedKey.length < 20) {
         return { valid: false, error: 'Pexels API keys should be at least 20 characters' };
       }
       break;

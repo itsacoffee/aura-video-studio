@@ -32,7 +32,7 @@ export const PRESET_LAYOUTS: Record<string, WorkspaceLayout> = {
   editing: {
     id: 'editing',
     name: 'Editing',
-    description: 'Focus on timeline with large preview (Adobe Premiere Pro inspired)',
+    description: 'Focus on timeline with large preview',
     panelSizes: {
       propertiesWidth: 320,
       mediaLibraryWidth: 280,

@@ -469,7 +469,7 @@ export function SetupWizard() {
           type="password"
           value={apiKeys.openai}
           onChange={(e) => setApiKeys({ ...apiKeys, openai: e.target.value })}
-          placeholder="sk-..."
+          placeholder="sk-... / sk-proj-..."
         />
       </div>
 

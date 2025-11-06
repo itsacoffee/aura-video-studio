@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -339,30 +340,51 @@ public class KeyVaultController : ControllerBase
     /// Get encryption status and storage location info
     /// </summary>
     [HttpGet("info")]
-    public IActionResult GetKeyVaultInfo()
+    public async Task<IActionResult> GetKeyVaultInfo()
     {
         try
         {
             var isWindows = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
                 System.Runtime.InteropServices.OSPlatform.Windows);
 
-            return Ok(new
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var storagePath = Path.Combine(localAppData, "Aura", "secure", "apikeys.dat");
+
+            var configuredKeys = await _secureStorage.GetConfiguredProvidersAsync();
+
+            DateTime? lastModified = null;
+            var fileExists = System.IO.File.Exists(storagePath);
+            if (fileExists)
             {
-                success = true,
-                encryption = new
+                lastModified = System.IO.File.GetLastWriteTimeUtc(storagePath);
+            }
+
+            var response = new Models.KeyVaultInfoResponse
+            {
+                Success = true,
+                Encryption = new Models.KeyVaultEncryptionInfo
                 {
-                    platform = isWindows ? "Windows" : "Linux/macOS",
-                    method = isWindows ? "DPAPI (Data Protection API)" : "AES-256",
-                    scope = isWindows ? "CurrentUser" : "Machine-specific key"
+                    Platform = isWindows ? "Windows" : "Linux/macOS",
+                    Method = isWindows ? "DPAPI (Data Protection API)" : "AES-256",
+                    Scope = isWindows ? "CurrentUser" : "Machine-specific key"
                 },
-                storage = new
+                Storage = new Models.KeyVaultStorageInfo
                 {
-                    location = isWindows 
+                    Location = isWindows 
                         ? "%LOCALAPPDATA%\\Aura\\secure\\apikeys.dat"
                         : "$HOME/.local/share/Aura/secure/apikeys.dat",
-                    encrypted = true
-                }
-            });
+                    Encrypted = true,
+                    FileExists = fileExists
+                },
+                Metadata = new Models.KeyVaultMetadata
+                {
+                    ConfiguredKeysCount = configuredKeys.Count,
+                    LastModified = lastModified?.ToString("o")
+                },
+                Status = fileExists && configuredKeys.Count > 0 ? "healthy" : "empty"
+            };
+
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -372,6 +394,72 @@ public class KeyVaultController : ControllerBase
             {
                 success = false,
                 message = "Failed to get key vault info",
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Run diagnostics self-check for redaction and security
+    /// </summary>
+    [HttpPost("diagnostics")]
+    public async Task<IActionResult> RunDiagnostics(CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("Running KeyVault diagnostics, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+
+            var checks = new List<string>();
+            var allPassed = true;
+
+            var providers = await _secureStorage.GetConfiguredProvidersAsync();
+            checks.Add($"✓ Storage accessible - {providers.Count} provider(s) configured");
+
+            foreach (var provider in providers)
+            {
+                var key = await _secureStorage.GetApiKeyAsync(provider);
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    var masked = SecretMaskingService.MaskApiKey(key);
+                    
+                    if (masked.Contains("***") && !masked.Equals(key))
+                    {
+                        checks.Add($"✓ {provider}: Redaction working (key properly masked)");
+                    }
+                    else
+                    {
+                        checks.Add($"✗ {provider}: Redaction failed (key may be exposed)");
+                        allPassed = false;
+                    }
+                }
+            }
+
+            if (providers.Count == 0)
+            {
+                checks.Add("ℹ No API keys configured yet");
+            }
+
+            var response = new Models.KeyVaultDiagnosticsResponse
+            {
+                Success = true,
+                RedactionCheckPassed = allPassed,
+                Checks = checks,
+                Message = allPassed 
+                    ? "All diagnostics passed. Redaction is working correctly."
+                    : "Some diagnostics failed. Review the checks above."
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error running diagnostics, CorrelationId: {CorrelationId}",
+                HttpContext.TraceIdentifier);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Failed to run diagnostics",
                 correlationId = HttpContext.TraceIdentifier
             });
         }

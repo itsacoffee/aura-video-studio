@@ -24,6 +24,7 @@ interface WorkspaceLayoutState {
   toggleFullscreen: () => void;
   exitFullscreen: () => void;
   togglePanelCollapsed: (panel: keyof WorkspaceLayoutState['collapsedPanels']) => void;
+  toggleAllLeftPanels: () => void;
   resetLayout: () => void;
   getCurrentLayout: () => WorkspaceLayout | null;
   saveCurrentLayout: (name: string, description: string, panelSizes: PanelSizes) => WorkspaceLayout;
@@ -38,7 +39,7 @@ const loadCollapsedPanels = () => {
   } catch {
     // Ignore errors
   }
-  // Default to all panels collapsed (Adobe Premiere Pro style)
+  // Default to all panels collapsed (professional video editor style)
   return {
     properties: true,
     mediaLibrary: true,
@@ -112,6 +113,19 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
     set({ collapsedPanels: newCollapsed });
   },
 
+  toggleAllLeftPanels: () => {
+    const currentPanels = get().collapsedPanels;
+    // If any left panel is visible (not collapsed), collapse all. Otherwise, expand all.
+    const shouldCollapseAll = !currentPanels.mediaLibrary || !currentPanels.effects;
+    const newCollapsed = {
+      ...currentPanels,
+      mediaLibrary: shouldCollapseAll,
+      effects: shouldCollapseAll,
+    };
+    saveCollapsedPanels(newCollapsed);
+    set({ collapsedPanels: newCollapsed });
+  },
+
   resetLayout: () => {
     const defaultLayoutId = 'editing';
     applyWorkspaceLayout(defaultLayoutId);
@@ -133,7 +147,7 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
       }
     });
 
-    // Reset collapsed panels to default (all collapsed - Adobe Premiere Pro style)
+    // Reset collapsed panels to default (all collapsed - professional video editor style)
     const defaultCollapsed = {
       properties: true,
       mediaLibrary: true,

@@ -12,6 +12,17 @@ $rootDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $outputDir = Join-Path $rootDir $OutputDir
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
+# Read version from version.json
+$versionFile = Join-Path $rootDir "version.json"
+$appVersion = "1.0.0"
+if (Test-Path $versionFile) {
+    $versionData = Get-Content $versionFile | ConvertFrom-Json
+    $appVersion = $versionData.version
+    Write-Host "Using version from version.json: $appVersion" -ForegroundColor Green
+} else {
+    Write-Host "Warning: version.json not found, using default version: $appVersion" -ForegroundColor Yellow
+}
+
 # Generate basic SBOM in CycloneDX format
 $sbom = @{
     bomFormat = "CycloneDX"
@@ -22,7 +33,7 @@ $sbom = @{
         component = @{
             type = "application"
             name = "Aura Video Studio"
-            version = "1.0.0"
+            version = $appVersion
             description = "AI-powered video creation tool for Windows 11"
         }
     }

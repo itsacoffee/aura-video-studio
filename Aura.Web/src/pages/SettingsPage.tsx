@@ -31,6 +31,7 @@ import {
   Keyboard24Regular,
   ClipboardTask24Regular,
   ShieldTask24Regular,
+  ShieldCheckmark24Regular,
   Info24Regular,
   Cloud24Regular,
   Server24Regular,
@@ -59,6 +60,7 @@ import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettin
 import { ProviderProfilesTab } from '../components/Settings/ProviderProfilesTab';
 import { ProviderRecommendationsTab } from '../components/Settings/ProviderRecommendationsTab';
 import { ProvidersTable } from '../components/Settings/ProvidersTable';
+import { SecuritySettingsTab } from '../components/Settings/SecuritySettingsTab';
 import { SettingsExportImportTab } from '../components/Settings/SettingsExportImportTab';
 import { ThemeCustomizationTab } from '../components/Settings/ThemeCustomizationTab';
 import { VideoDefaultsSettingsTab } from '../components/Settings/VideoDefaultsSettingsTab';
@@ -96,6 +98,12 @@ const settingsCategories: SettingsCategory[] = [
     title: 'API Keys',
     description: 'Configure API keys for cloud services',
     icon: <Key24Regular />,
+  },
+  {
+    id: 'security',
+    title: 'Security',
+    description: 'Encryption status, storage location, and security diagnostics',
+    icon: <ShieldCheckmark24Regular />,
   },
   {
     id: 'providerprofiles',
@@ -955,6 +963,7 @@ export function SettingsPage() {
       >
         <Tab value="general">General</Tab>
         <Tab value="apikeys">API Keys</Tab>
+        <Tab value="security">Security</Tab>
         <Tab value="aimodels">AI Models</Tab>
         <Tab value="filelocations">File Locations</Tab>
         <Tab value="videodefaults">Video Defaults</Tab>
@@ -999,6 +1008,8 @@ export function SettingsPage() {
             hasChanges={hasUnsavedChanges}
           />
         )}
+
+        {activeTab === 'security' && <SecuritySettingsTab />}
 
         {activeTab === 'providerprofiles' && <ProviderProfilesTab />}
 

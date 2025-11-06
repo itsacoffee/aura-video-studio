@@ -1,4 +1,3 @@
-import apiClient from './apiClient';
 import type {
   ProjectLicensingManifest,
   GenerateLicensingManifestRequest,
@@ -8,6 +7,7 @@ import type {
   LicensingExportResponse,
   LicensingValidationResult,
 } from '../../types/licensing';
+import apiClient from './apiClient';
 
 /**
  * API client for licensing and provenance operations
@@ -29,9 +29,7 @@ export async function generateLicensingManifest(
 /**
  * Get existing licensing manifest for a project
  */
-export async function getLicensingManifest(
-  projectId: string
-): Promise<ProjectLicensingManifest> {
+export async function getLicensingManifest(projectId: string): Promise<ProjectLicensingManifest> {
   const response = await apiClient.get<ProjectLicensingManifest>(
     `/api/licensing/manifest/${projectId}`
   );
@@ -58,13 +56,10 @@ export async function downloadLicensingManifest(
   projectId: string,
   format: 'json' | 'csv' | 'html' | 'text' = 'json'
 ): Promise<Blob> {
-  const response = await apiClient.get<Blob>(
-    `/api/licensing/manifest/${projectId}/download`,
-    {
-      params: { format },
-      responseType: 'blob',
-    }
-  );
+  const response = await apiClient.get<Blob>(`/api/licensing/manifest/${projectId}/download`, {
+    params: { format },
+    responseType: 'blob',
+  });
   return response.data;
 }
 
@@ -96,11 +91,7 @@ export async function validateLicensingManifest(
 /**
  * Download manifest as file and trigger browser download
  */
-export function downloadManifestFile(
-  content: string,
-  filename: string,
-  contentType: string
-): void {
+export function downloadManifestFile(content: string, filename: string, contentType: string): void {
   const blob = new Blob([content], { type: contentType });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

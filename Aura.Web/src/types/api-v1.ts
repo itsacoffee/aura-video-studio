@@ -1605,3 +1605,19 @@ export interface GenerateSubtitlesRequest {
   format: string;
   fontConfig?: SubtitleFontConfigDto;
 }
+
+// ============================================================================
+// VERSION INFO
+// ============================================================================
+
+/**
+ * Application version information
+ */
+export interface VersionInfo {
+  semanticVersion: string;
+  buildDate: string;
+  informationalVersion: string;
+  assemblyVersion: string;
+  runtimeVersion: string;
+  description: string;
+}

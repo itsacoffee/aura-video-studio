@@ -11,7 +11,9 @@ import {
 } from '@fluentui/react-components';
 import { ChevronUp24Regular, ChevronDown24Regular } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
+import { getVersion } from '../../services/api/versionApi';
 import { useActivity, type Activity } from '../../state/activityContext';
+import type { VersionInfo } from '../../types/api-v1';
 import { ToastNotification } from '../Notifications/Toast';
 import { ActivityDrawer } from '../StatusBar/ActivityDrawer';
 import { ResourceMonitor } from '../StatusBar/ResourceMonitor';
@@ -66,6 +68,11 @@ const useStyles = makeStyles({
     fontSize: tokens.fontSizeBase200,
     color: tokens.colorNeutralForeground3,
   },
+  versionText: {
+    fontSize: tokens.fontSizeBase100,
+    color: tokens.colorNeutralForeground4,
+    marginRight: '8px',
+  },
   emptyState: {
     padding: '20px',
     textAlign: 'center',
@@ -96,6 +103,7 @@ function formatDuration(startTime: Date, endTime?: Date): string {
 export function GlobalStatusFooter() {
   const styles = useStyles();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [version, setVersion] = useState<VersionInfo | null>(null);
   const toasterId = useId('status-toaster');
   const { dispatchToast } = useToastController(toasterId);
 
@@ -119,6 +127,15 @@ export function GlobalStatusFooter() {
 
   // Track previously completed/failed activities to show toasts
   const [previousActivityStates] = useState<Map<string, Activity>>(new Map());
+
+  // Load version information on mount
+  useEffect(() => {
+    getVersion()
+      .then((versionInfo) => setVersion(versionInfo))
+      .catch((error) => {
+        console.error('Failed to load version information:', error);
+      });
+  }, []);
 
   // Show toast notifications when activities complete or fail
   useEffect(() => {
@@ -264,6 +281,14 @@ export function GlobalStatusFooter() {
           </div>
 
           <div className={styles.headerRight}>
+            {version && (
+              <Text
+                className={styles.versionText}
+                title={`Build: ${version.buildDate} | Runtime: ${version.runtimeVersion}`}
+              >
+                v{version.semanticVersion}
+              </Text>
+            )}
             <ResourceMonitor compact />
             <Button
               appearance="subtle"

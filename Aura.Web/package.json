@@ -42,6 +42,8 @@
     "docs": "typedoc",
     "docs:watch": "typedoc --watch",
     "generate:api-types": "node scripts/generate-api-types.js",
+    "release:version": "node ../scripts/release/update-version.js",
+    "release:notes": "node ../scripts/release/generate-release-notes.js",
     "prepare": "node scripts/setup-git-hooks.cjs"
   },
   "dependencies": {

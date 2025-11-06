@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import {
   Card,
   Button,
@@ -15,6 +14,7 @@ import {
   ArrowClockwiseRegular,
   DismissCircleRegular,
 } from '@fluentui/react-icons';
+import React, { useState, useEffect } from 'react';
 import {
   getCacheStatistics,
   clearCache,
@@ -153,7 +153,9 @@ const CacheManagementPanel: React.FC = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <DatabaseRegular style={{ fontSize: '24px' }} />
-        <Text size={500} weight="semibold">LLM Cache Management</Text>
+        <Text size={500} weight="semibold">
+          LLM Cache Management
+        </Text>
       </div>
 
       {loading && !stats ? (
@@ -245,7 +247,9 @@ const CacheManagementPanel: React.FC = () => {
           </div>
 
           {message && (
-            <Body1 className={message.type === 'error' ? styles.errorMessage : styles.successMessage}>
+            <Body1
+              className={message.type === 'error' ? styles.errorMessage : styles.successMessage}
+            >
               {message.text}
             </Body1>
           )}
