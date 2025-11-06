@@ -10,7 +10,6 @@ using Aura.Core.Models.Localization;
 using Aura.Core.Models.Voice;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.TTS;
-using VoiceRegistry = Aura.Core.Services.Voice.VoiceProviderRegistry;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Localization;

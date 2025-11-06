@@ -1,4 +1,4 @@
-import { Card, Text, ProgressBar, makeStyles, tokens, Caption1 } from '@fluentui/react-components';
+import { Card, Text, ProgressBar, makeStyles, tokens, Caption1, Badge } from '@fluentui/react-components';
 import React from 'react';
 import { useCostTrackingStore } from '../../state/costTracking';
 
@@ -27,6 +27,18 @@ const useStyles = makeStyles({
   warningText: {
     color: tokens.colorPaletteRedForeground1,
   },
+  softLimitText: {
+    color: tokens.colorPaletteYellowForeground1,
+  },
+  statusBadge: {
+    marginLeft: tokens.spacingHorizontalS,
+  },
+  budgetInfo: {
+    marginTop: tokens.spacingVerticalS,
+    padding: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+  },
 });
 
 interface CostMeterProps {
@@ -38,6 +50,7 @@ interface CostMeterProps {
 
 /**
  * Real-time cost meter component that displays accumulating costs during video generation
+ * Enhanced with clear soft/hard budget threshold indicators
  */
 export const CostMeter: React.FC<CostMeterProps> = ({ showDetails = false }) => {
   const styles = useStyles();
@@ -49,38 +62,80 @@ export const CostMeter: React.FC<CostMeterProps> = ({ showDetails = false }) => 
 
   const { currentCost, estimatedTotalCost, costByStage } = liveAccumulation;
   const budget = configuration?.overallMonthlyBudget;
-  const isNearBudget = budget && currentCost > budget * 0.9;
+  const isHardLimit = configuration?.hardBudgetLimit ?? false;
+  
+  // Calculate budget status
+  const budgetPercentage = budget ? (currentCost / budget) * 100 : 0;
+  const isNearBudget = budget && budgetPercentage >= 90;
   const isOverBudget = budget && currentCost > budget;
+  const isApproachingBudget = budget && budgetPercentage >= 75 && budgetPercentage < 90;
 
-  const progressValue = budget ? Math.min((currentCost / budget) * 100, 100) : 0;
-
+  // Determine progress bar color based on budget status
   const progressColor = isOverBudget ? 'error' : isNearBudget ? 'warning' : 'success';
+  
+  // Determine status badge
+  const getBudgetStatus = () => {
+    if (!budget) return null;
+    
+    if (isOverBudget && isHardLimit) {
+      return <Badge appearance="filled" color="danger" className={styles.statusBadge}>HARD LIMIT EXCEEDED</Badge>;
+    }
+    if (isOverBudget) {
+      return <Badge appearance="filled" color="warning" className={styles.statusBadge}>SOFT LIMIT EXCEEDED</Badge>;
+    }
+    if (isNearBudget) {
+      return <Badge appearance="filled" color="warning" className={styles.statusBadge}>APPROACHING LIMIT</Badge>;
+    }
+    if (isApproachingBudget) {
+      return <Badge appearance="outline" color="warning" className={styles.statusBadge}>WARNING</Badge>;
+    }
+    return <Badge appearance="outline" color="success" className={styles.statusBadge}>WITHIN BUDGET</Badge>;
+  };
+
+  const progressValue = budget ? Math.min(budgetPercentage, 100) : 0;
 
   return (
     <Card className={styles.card}>
       <div className={styles.header}>
-        <Text weight="semibold">Cost Meter</Text>
+        <div>
+          <Text weight="semibold">Cost Meter</Text>
+          {getBudgetStatus()}
+        </div>
         <Text className={styles.costAmount}>${currentCost.toFixed(4)}</Text>
       </div>
 
       {budget && (
         <>
           <ProgressBar value={progressValue} color={progressColor} thickness="large" />
-          <div className={styles.stageRow}>
-            <Caption1>
-              {isOverBudget ? (
-                <span className={styles.warningText}>
-                  Budget exceeded: ${(currentCost - budget).toFixed(4)} over
-                </span>
-              ) : (
-                `${progressValue.toFixed(1)}% of ${configuration.currency} ${budget.toFixed(2)} budget`
-              )}
-            </Caption1>
+          <div className={styles.budgetInfo}>
+            <div className={styles.stageRow}>
+              <Caption1>Budget Type:</Caption1>
+              <Caption1 weight="semibold">{isHardLimit ? 'Hard Limit' : 'Soft Limit'}</Caption1>
+            </div>
+            <div className={styles.stageRow}>
+              <Caption1>Budget Usage:</Caption1>
+              <Caption1 weight="semibold">{budgetPercentage.toFixed(1)}% of {configuration.currency} ${budget.toFixed(2)}</Caption1>
+            </div>
+            {isOverBudget ? (
+              <div className={styles.stageRow}>
+                <Caption1 className={isHardLimit ? styles.warningText : styles.softLimitText}>
+                  {isHardLimit 
+                    ? `⛔ Operations blocked: $${(currentCost - budget).toFixed(4)} over hard limit`
+                    : `⚠️ Over budget by: $${(currentCost - budget).toFixed(4)} (soft limit)`
+                  }
+                </Caption1>
+              </div>
+            ) : (
+              <div className={styles.stageRow}>
+                <Caption1>Remaining:</Caption1>
+                <Caption1 weight="semibold">${(budget - currentCost).toFixed(4)}</Caption1>
+              </div>
+            )}
           </div>
         </>
       )}
 
-      <div className={styles.stageRow}>
+      <div className={styles.stageRow} style={{ marginTop: tokens.spacingVerticalM }}>
         <Caption1>Estimated total:</Caption1>
         <Caption1>${estimatedTotalCost.toFixed(4)}</Caption1>
       </div>
