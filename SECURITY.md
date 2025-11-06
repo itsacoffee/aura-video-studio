@@ -50,11 +50,15 @@ If you discover a security vulnerability, please report it by:
   - **Windows**: Data Protection API (DPAPI) encryption with CurrentUser scope
   - **Linux/macOS**: AES-256 encryption with machine-specific key
   - Storage location: `%LOCALAPPDATA%\Aura\secure\apikeys.dat` (Windows) or `$HOME/.local/share/Aura/secure/apikeys.dat` (Linux/macOS)
-- **Key Management API**: Comprehensive REST API for set/get/rotate/test/delete operations
+  - **File permissions**: 600 (owner read/write only) on Unix-like systems
+- **No Plaintext Storage**: API keys are NEVER stored in plaintext files (all storage is encrypted)
+- **Key Management API**: Comprehensive REST API at `/api/keys/*` (KeyVaultController) for set/get/rotate/test/delete operations
+- **Deprecated Endpoints Removed**: Legacy `/api/apikeys/*` endpoints have been completely removed for security
+- **Settings Integration**: User settings in `user-settings.json` do NOT contain API keys (stored separately in encrypted storage)
 - **CLI Support**: Full key management via `aura keys` commands for headless environments
 - **Secret Masking**: All API keys automatically masked in logs, diagnostics, error messages, and SSE events
 - **Key Validation**: Test keys with real provider connections before saving
-- **Migration Support**: Automatic migration from plaintext to encrypted storage (if legacy plaintext detected)
+- **Migration Support**: Automatic one-time migration from legacy plaintext files to encrypted storage on first startup
 - Preflight validation with secure API key testing
 - No hardcoded credentials or secrets in source code
 
@@ -83,9 +87,11 @@ For detailed security summaries of specific features and implementations, see [d
 ✅ Secure file operations  
 ✅ No hardcoded credentials or secrets  
 ✅ Thread-safe operations  
-✅ Encrypted secrets at rest with platform-specific encryption  
+✅ Encrypted secrets at rest with platform-specific encryption (DPAPI on Windows, AES-256 on Linux/macOS)
+✅ No plaintext API key storage (all keys encrypted at rest)
 ✅ Automatic secret masking in all logs and diagnostics  
 ✅ Key validation before storage  
+✅ Secure migration from legacy plaintext files (one-time, automatic)
 ✅ Secure export/import with explicit opt-in for secrets  
 
 ## Compliance
