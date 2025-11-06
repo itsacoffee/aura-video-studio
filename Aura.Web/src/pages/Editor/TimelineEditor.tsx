@@ -4,11 +4,14 @@ import {
   Play24Regular,
   ZoomIn24Regular,
   ZoomOut24Regular,
+  ChartMultiple24Regular,
 } from '@fluentui/react-icons';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ScenePropertiesPanel } from '../../components/Editor/ScenePropertiesPanel';
 import { VideoPreviewPlayer } from '../../components/Editor/VideoPreviewPlayer';
+import { PacingOptimizerPanel } from '../../components/PacingAnalysis';
+import type { Scene } from '../../types/pacing';
 import type { EditableTimeline, TimelineScene, TimelineAsset } from '../../types/timeline';
 
 const useStyles = makeStyles({
@@ -166,6 +169,7 @@ export function TimelineEditor() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const [showPacingPanel, setShowPacingPanel] = useState(false);
 
   // Load timeline
   useEffect(() => {
@@ -380,6 +384,13 @@ export function TimelineEditor() {
           </Text>
           <Button
             appearance="subtle"
+            icon={<ChartMultiple24Regular />}
+            onClick={() => setShowPacingPanel(true)}
+          >
+            Pacing Analysis
+          </Button>
+          <Button
+            appearance="subtle"
             icon={<Save24Regular />}
             onClick={saveTimeline}
             disabled={!isDirty || isSaving}
@@ -483,6 +494,61 @@ export function TimelineEditor() {
           />
         </div>
       </div>
+
+      {/* Pacing Analysis Panel Overlay */}
+      {showPacingPanel &&
+        timeline &&
+        (() => {
+          const pacingScenes: Scene[] = timeline.scenes.map((s) => ({
+            sceneIndex: s.index,
+            narration: s.script || '',
+            visualDescription: s.heading || '',
+            duration: s.duration,
+          }));
+
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: tokens.colorNeutralBackground1,
+                zIndex: 1000,
+                overflow: 'auto',
+              }}
+            >
+              <PacingOptimizerPanel
+                script={timeline.scenes.map((s) => s.script || '').join('\n\n')}
+                scenes={pacingScenes}
+                brief={{
+                  topic: 'Timeline Analysis',
+                  audience: 'General',
+                  goal: 'Inform',
+                  tone: 'Informative',
+                  language: 'en-US',
+                  aspect: 'Widescreen16x9',
+                }}
+                onScenesUpdated={(updatedScenes) => {
+                  // Update timeline with new scene durations from pacing suggestions
+                  const newTimeline = { ...timeline };
+                  updatedScenes.forEach((scene) => {
+                    const timelineScene = newTimeline.scenes.find(
+                      (s) => s.index === scene.sceneIndex
+                    );
+                    if (timelineScene && scene.duration) {
+                      timelineScene.duration = scene.duration;
+                    }
+                  });
+                  setTimeline(newTimeline);
+                  setIsDirty(true);
+                }}
+                onClose={() => setShowPacingPanel(false)}
+              />
+            </div>
+          );
+        })()}
     </div>
   );
 }
