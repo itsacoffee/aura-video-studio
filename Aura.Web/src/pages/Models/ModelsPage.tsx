@@ -115,6 +115,7 @@ interface AuditEntry {
   isPinned: boolean;
   isBlocked: boolean;
   blockReason?: string;
+  fallbackReason?: string;
   timestamp: string;
   jobId?: string;
 }
@@ -403,10 +404,20 @@ export const ModelsPage: FC = () => {
                 Source: {entry.source} {entry.isPinned && '(Pinned)'}
               </Text>
               <Text size={200}>{entry.reasoning}</Text>
+              {entry.fallbackReason && (
+                <MessageBar intent="info" style={{ marginTop: tokens.spacingVerticalXS }}>
+                  <MessageBarBody>Fallback: {entry.fallbackReason}</MessageBarBody>
+                </MessageBar>
+              )}
               {entry.isBlocked && (
-                <MessageBar intent="warning">
+                <MessageBar intent="warning" style={{ marginTop: tokens.spacingVerticalXS }}>
                   <MessageBarBody>Blocked: {entry.blockReason}</MessageBarBody>
                 </MessageBar>
+              )}
+              {entry.jobId && (
+                <Text size={100} style={{ marginTop: tokens.spacingVerticalXXS }}>
+                  Job ID: {entry.jobId}
+                </Text>
               )}
             </div>
           ))}

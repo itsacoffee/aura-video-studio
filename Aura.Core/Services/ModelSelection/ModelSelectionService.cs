@@ -94,6 +94,7 @@ public class ModelSelectionService
             }
 
             _logger.LogWarning("Run-override model {ModelId} unavailable, falling back", runOverride);
+            resolution.FallbackReason = $"Requested run-override model '{runOverride}' was unavailable";
         }
 
         // Priority 3: Stage pinned model
@@ -139,6 +140,7 @@ public class ModelSelectionService
             }
 
             _logger.LogWarning("Project-override model {ModelId} unavailable, falling back", projectSelection.ModelId);
+            resolution.FallbackReason = $"Project-override model '{projectSelection.ModelId}' was unavailable";
         }
 
         // Priority 5: Global default
@@ -158,6 +160,7 @@ public class ModelSelectionService
             }
 
             _logger.LogWarning("Global default model {ModelId} unavailable, falling back", globalSelection.ModelId);
+            resolution.FallbackReason = $"Global default model '{globalSelection.ModelId}' was unavailable";
         }
 
         // Priority 6: Catalog safe fallback (only if automatic fallback allowed)
@@ -170,6 +173,9 @@ public class ModelSelectionService
                 resolution.SelectedModelId = fallbackModel.ModelId;
                 resolution.Source = ModelSelectionSource.AutomaticFallback;
                 resolution.Reasoning = $"Using automatic fallback: {reasoning}";
+                resolution.FallbackReason = string.IsNullOrWhiteSpace(resolution.FallbackReason) 
+                    ? "No configured model was available" 
+                    : resolution.FallbackReason;
                 resolution.RequiresUserNotification = true;
                 
                 _logger.LogInformation("Model resolved via automatic fallback: {ModelId}", fallbackModel.ModelId);
@@ -291,6 +297,16 @@ public class ModelSelectionService
         CancellationToken ct = default)
     {
         return await _selectionStore.GetAuditLogAsync(limit, ct);
+    }
+
+    /// <summary>
+    /// Get audit log entries for a specific job
+    /// </summary>
+    public async Task<List<ModelSelectionAudit>> GetAuditLogByJobIdAsync(
+        string jobId,
+        CancellationToken ct = default)
+    {
+        return await _selectionStore.GetAuditLogByJobIdAsync(jobId, ct);
     }
 
     /// <summary>
@@ -496,6 +512,7 @@ public class ModelResolutionResult
     public bool IsPinned { get; set; }
     public bool IsBlocked { get; set; }
     public string? BlockReason { get; set; }
+    public string? FallbackReason { get; set; }
     public List<string> RecommendedAlternatives { get; set; } = new();
     public bool RequiresUserNotification { get; set; }
     public DateTime ResolutionTimestamp { get; set; }

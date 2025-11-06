@@ -16,6 +16,8 @@ import {
   Tooltip,
   MessageBar,
   MessageBarBody,
+  Input,
+  Field,
 } from '@fluentui/react-components';
 import {
   LockClosed20Regular,
@@ -91,6 +93,14 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
   const [deprecationWarning, setDeprecationWarning] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [showTestDialog, setShowTestDialog] = useState<boolean>(false);
+  const [testApiKey, setTestApiKey] = useState<string>('');
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+    isAvailable?: boolean;
+  } | null>(null);
+  const [isTesting, setIsTesting] = useState<boolean>(false);
 
   useEffect(() => {
     loadAvailableModels(provider);
@@ -161,6 +171,62 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
       applyModelSelection(pendingSelection);
       setPendingSelection(null);
       setShowDeprecationDialog(false);
+    }
+  };
+
+  const handleTestModel = () => {
+    setShowTestDialog(true);
+    setTestResult(null);
+    setTestApiKey('');
+  };
+
+  const executeModelTest = async () => {
+    if (!selectedModelId || !testApiKey.trim()) {
+      setTestResult({
+        success: false,
+        message: 'Please provide an API key',
+      });
+      return;
+    }
+
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      const response = await fetch('/api/models/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          modelId: selectedModelId,
+          apiKey: testApiKey,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setTestResult({
+          success: true,
+          message: data.isAvailable
+            ? `✓ Model is available and working! Context: ${data.contextWindow.toLocaleString()} tokens`
+            : `✗ Model is not available: ${data.errorMessage || 'Unknown error'}`,
+          isAvailable: data.isAvailable,
+        });
+      } else {
+        setTestResult({
+          success: false,
+          message: data.error || 'Failed to test model',
+        });
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setTestResult({
+        success: false,
+        message: `Test failed: ${errorMessage}`,
+      });
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -253,8 +319,13 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
           </Tooltip>
 
           {selectedModel && (
-            <Tooltip content="Test this model" relationship="label">
-              <Button appearance="subtle" icon={<FlashCheckmark20Regular />} disabled={isSaving}>
+            <Tooltip content="Test model availability with a lightweight probe" relationship="label">
+              <Button
+                appearance="subtle"
+                icon={<FlashCheckmark20Regular />}
+                onClick={handleTestModel}
+                disabled={isSaving}
+              >
                 Test
               </Button>
             </Tooltip>
@@ -262,15 +333,47 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
         </div>
 
         {isPinned && (
-          <Badge color="important" appearance="filled" icon={<LockClosed20Regular />}>
-            Pinned
-          </Badge>
+          <Tooltip
+            content="This model is pinned and will never be automatically changed. If unavailable, operations will be blocked until you make a manual choice."
+            relationship="description"
+          >
+            <Badge color="important" appearance="filled" icon={<LockClosed20Regular />}>
+              Pinned
+            </Badge>
+          </Tooltip>
+        )}
+
+        {selectedModelId && scope === 'Stage' && (
+          <Tooltip
+            content={`This is a per-stage override (${scope} scope). It takes precedence over project and global defaults.`}
+            relationship="description"
+          >
+            <Badge color="brand" appearance="outline">
+              Stage Override
+            </Badge>
+          </Tooltip>
+        )}
+
+        {selectedModelId && scope === 'Project' && (
+          <Tooltip
+            content={`This is a project-level override (${scope} scope). It takes precedence over global defaults but not stage pins.`}
+            relationship="description"
+          >
+            <Badge color="informative" appearance="outline">
+              Project Override
+            </Badge>
+          </Tooltip>
         )}
 
         {selectedModel?.isDeprecated && (
-          <Badge color="warning" appearance="outline" icon={<Warning20Regular />}>
-            Deprecated
-          </Badge>
+          <Tooltip
+            content={`This model is deprecated and may be removed soon. ${selectedModel.replacementModel ? `Consider migrating to ${selectedModel.replacementModel}.` : 'Consider using an alternative model.'}`}
+            relationship="description"
+          >
+            <Badge color="warning" appearance="outline" icon={<Warning20Regular />}>
+              Deprecated
+            </Badge>
+          </Tooltip>
         )}
       </div>
 
@@ -327,6 +430,65 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
               </Button>
               <Button appearance="primary" onClick={confirmDeprecatedModel}>
                 <Checkmark20Regular /> Use Anyway
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Test Model Dialog */}
+      <Dialog open={showTestDialog} onOpenChange={(_, data) => setShowTestDialog(data.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Test Model: {selectedModelId}</DialogTitle>
+            <DialogContent>
+              <Text style={{ display: 'block', marginBottom: tokens.spacingVerticalM }}>
+                Test if the model <strong>{selectedModelId}</strong> from provider{' '}
+                <strong>{provider}</strong> is available and working properly.
+              </Text>
+
+              <Field label="API Key" required style={{ marginBottom: tokens.spacingVerticalM }}>
+                <Input
+                  type="password"
+                  value={testApiKey}
+                  onChange={(_, data) => setTestApiKey(data.value)}
+                  placeholder={`Enter your ${provider} API key`}
+                  disabled={isTesting}
+                />
+              </Field>
+
+              {testResult && (
+                <MessageBar
+                  intent={testResult.isAvailable ? 'success' : 'error'}
+                  style={{ marginTop: tokens.spacingVerticalM }}
+                >
+                  <MessageBarBody>{testResult.message}</MessageBarBody>
+                </MessageBar>
+              )}
+
+              <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+                <em>Note: Your API key is not stored and only used for this test.</em>
+              </Text>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                appearance="secondary"
+                onClick={() => {
+                  setShowTestDialog(false);
+                  setTestResult(null);
+                  setTestApiKey('');
+                }}
+                disabled={isTesting}
+              >
+                Close
+              </Button>
+              <Button
+                appearance="primary"
+                onClick={executeModelTest}
+                disabled={isTesting || !testApiKey.trim()}
+              >
+                {isTesting ? <Spinner size="tiny" /> : <FlashCheckmark20Regular />}
+                {isTesting ? 'Testing...' : 'Test Model'}
               </Button>
             </DialogActions>
           </DialogBody>

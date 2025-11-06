@@ -27,6 +27,7 @@ import {
   Warning24Regular,
 } from '@fluentui/react-icons';
 import { getJobTelemetry } from '@/api/telemetryClient';
+import { ModelSelectionAudit } from '@/components/Jobs';
 import type {
   RunTelemetryCollection,
   RunTelemetryRecord,
@@ -332,6 +333,12 @@ export const RunDetailsPage: React.FC = () => {
             )}
           </div>
         </Card>
+      )}
+
+      {jobId && (
+        <div style={{ marginTop: '24px' }}>
+          <ModelSelectionAudit jobId={jobId} />
+        </div>
       )}
     </div>
   );

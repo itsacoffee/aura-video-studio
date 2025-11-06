@@ -482,4 +482,180 @@ public class ModelSelectionServiceTests
         Assert.Equal(fallback, result2.SelectedModelId);
         Assert.Equal(ModelSelectionSource.StagePinned, result2.Source);
     }
+
+    [Fact]
+    public async Task FallbackReason_TrackedWhenRunOverrideUnavailable()
+    {
+        // Arrange: Set up a project override
+        var projectModel = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-4",
+            MaxTokens = 8192,
+            ContextWindow = 8192
+        };
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4"))
+            .Returns((projectModel, "Found"));
+        
+        await _service.SetModelSelectionAsync(
+            "OpenAI", "script", "gpt-4", ModelSelectionScope.Project, false, "user", "test", default);
+
+        // Mock run override as unavailable
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4o"))
+            .Returns(((ModelRegistry.ModelInfo?)null, "Not found"));
+
+        // Act: Try to resolve with unavailable run override
+        var result = await _service.ResolveModelAsync(
+            "OpenAI", "script", "gpt-4o", false, "job1", default);
+
+        // Assert: Should fall back to project and track reason
+        Assert.Equal("gpt-4", result.SelectedModelId);
+        Assert.Equal(ModelSelectionSource.ProjectOverride, result.Source);
+        Assert.NotNull(result.FallbackReason);
+        Assert.Contains("gpt-4o", result.FallbackReason);
+        Assert.Contains("unavailable", result.FallbackReason);
+    }
+
+    [Fact]
+    public async Task FallbackReason_TrackedInAutomaticFallback()
+    {
+        // Arrange: Enable auto-fallback, no selections configured
+        await _store.SetAutoFallbackSettingAsync(true, default);
+
+        var fallbackModel = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-4o-mini",
+            MaxTokens = 128000,
+            ContextWindow = 128000
+        };
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", null))
+            .Returns((fallbackModel, "Using safe default"));
+
+        // Act: Resolve with no configured selections
+        var result = await _service.ResolveModelAsync(
+            "OpenAI", "script", null, false, "job1", default);
+
+        // Assert: Should use automatic fallback with reason
+        Assert.Equal("gpt-4o-mini", result.SelectedModelId);
+        Assert.Equal(ModelSelectionSource.AutomaticFallback, result.Source);
+        Assert.NotNull(result.FallbackReason);
+        Assert.Contains("No configured model", result.FallbackReason);
+    }
+
+    [Fact]
+    public async Task AuditLog_IncludesFallbackReasonForJob()
+    {
+        // Arrange: Set up model that will become unavailable
+        var gpt4 = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-4",
+            MaxTokens = 8192,
+            ContextWindow = 8192
+        };
+        var gptMini = new ModelRegistry.ModelInfo
+        {
+            Provider = "OpenAI",
+            ModelId = "gpt-4o-mini",
+            MaxTokens = 128000,
+            ContextWindow = 128000
+        };
+
+        await _service.SetModelSelectionAsync(
+            "OpenAI", "script", "gpt-4o-mini", ModelSelectionScope.Global, false, "user", "test", default);
+
+        // Mock project override as unavailable
+        await _service.SetModelSelectionAsync(
+            "OpenAI", "script", "gpt-4", ModelSelectionScope.Project, false, "user", "test", default);
+
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4"))
+            .Returns(((ModelRegistry.ModelInfo?)null, "Not found"));
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4o-mini"))
+            .Returns((gptMini, "Found"));
+
+        // Act: Resolve - should fall back from project to global
+        var result = await _service.ResolveModelAsync(
+            "OpenAI", "script", null, false, "job-with-fallback", default);
+
+        // Assert resolution
+        Assert.Equal("gpt-4o-mini", result.SelectedModelId);
+        Assert.NotNull(result.FallbackReason);
+
+        // Get audit log for this job
+        var auditLog = await _store.GetAuditLogByJobIdAsync("job-with-fallback", default);
+        Assert.Single(auditLog);
+        
+        var auditEntry = auditLog.First();
+        Assert.Equal("job-with-fallback", auditEntry.JobId);
+        Assert.Equal("gpt-4o-mini", auditEntry.ModelId);
+        Assert.NotNull(auditEntry.FallbackReason);
+        Assert.Contains("gpt-4", auditEntry.FallbackReason);
+    }
+
+    [Fact]
+    public async Task PrecedenceMatrix_RunOverridePinnedBlocksEvenWithAutoFallbackEnabled()
+    {
+        // Arrange: Enable auto-fallback
+        await _store.SetAutoFallbackSettingAsync(true, default);
+
+        // Mock run override as unavailable, but have a fallback available
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "gpt-4-unavailable"))
+            .Returns(((ModelRegistry.ModelInfo?)null, "Not found"));
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", null))
+            .Returns((new ModelRegistry.ModelInfo
+            {
+                Provider = "OpenAI",
+                ModelId = "gpt-4o-mini",
+                MaxTokens = 128000,
+                ContextWindow = 128000
+            }, "Safe fallback"));
+
+        // Act: Try to resolve with pinned run override that's unavailable
+        var result = await _service.ResolveModelAsync(
+            "OpenAI", "script", "gpt-4-unavailable", true, "job1", default);
+
+        // Assert: Should be blocked despite auto-fallback being enabled
+        Assert.True(result.IsBlocked);
+        Assert.Null(result.SelectedModelId);
+        Assert.Contains("Pinned model", result.BlockReason);
+        Assert.Contains("unavailable", result.BlockReason);
+    }
+
+    [Fact]
+    public async Task NoSilentSwaps_AllFallbacksAudited()
+    {
+        // Arrange: Set up chain of unavailable models
+        await _service.SetModelSelectionAsync(
+            "OpenAI", "script", "unavailable-global", ModelSelectionScope.Global, false, "user", "test", default);
+        
+        await _store.SetAutoFallbackSettingAsync(true, default);
+
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", "unavailable-global"))
+            .Returns(((ModelRegistry.ModelInfo?)null, "Not found"));
+        _mockCatalog.Setup(c => c.FindOrDefault("OpenAI", null))
+            .Returns((new ModelRegistry.ModelInfo
+            {
+                Provider = "OpenAI",
+                ModelId = "gpt-4o-mini",
+                MaxTokens = 128000,
+                ContextWindow = 128000
+            }, "Catalog fallback"));
+
+        // Act: Resolve - should use automatic fallback
+        var result = await _service.ResolveModelAsync(
+            "OpenAI", "script", null, false, "job-audit-test", default);
+
+        // Assert: Fallback was used and audited
+        Assert.Equal("gpt-4o-mini", result.SelectedModelId);
+        Assert.Equal(ModelSelectionSource.AutomaticFallback, result.Source);
+        Assert.NotNull(result.FallbackReason);
+        Assert.True(result.RequiresUserNotification);
+
+        // Verify audit trail
+        var auditLog = await _store.GetAuditLogByJobIdAsync("job-audit-test", default);
+        Assert.Single(auditLog);
+        Assert.NotNull(auditLog[0].FallbackReason);
+        Assert.Equal(ModelSelectionSource.AutomaticFallback.ToString(), auditLog[0].Source);
+    }
 }
