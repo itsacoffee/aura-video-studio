@@ -10,7 +10,7 @@ using Aura.Core.Models.Localization;
 using Aura.Core.Models.Voice;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.TTS;
-using Aura.Core.Services.Voice;
+using VoiceRegistry = Aura.Core.Services.Voice.VoiceProviderRegistry;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Localization;
@@ -26,7 +26,7 @@ public class TranslationIntegrationService
     private readonly SSMLPlannerService _ssmlPlannerService;
     private readonly CaptionBuilder _captionBuilder;
     private readonly SSMLSubtitleSynchronizer? _subtitleSynchronizer;
-    private readonly VoiceProviderRegistry? _voiceRegistry;
+    private readonly VoiceRegistry? _voiceRegistry;
 
     public TranslationIntegrationService(
         ILogger<TranslationIntegrationService> logger,
@@ -34,7 +34,7 @@ public class TranslationIntegrationService
         SSMLPlannerService ssmlPlannerService,
         CaptionBuilder captionBuilder,
         SSMLSubtitleSynchronizer? subtitleSynchronizer = null,
-        VoiceProviderRegistry? voiceRegistry = null)
+        VoiceRegistry? voiceRegistry = null)
     {
         _logger = logger;
         _translationService = translationService;
