@@ -252,10 +252,11 @@ curl -X POST http://localhost:5005/api/keys/test \
 - Redaction in logs, errors, and diagnostics
 
 ✅ **Unified secure KeyVault API**
-- All key operations use `/api/keys/*` endpoints
-- Legacy `/api/apikeys/*` endpoints deprecated (return HTTP 410 Gone)
+- All key operations use `/api/keys/*` endpoints (KeyVaultController)
+- Legacy `/api/apikeys/*` endpoints completely removed for security
 - Comprehensive REST API: set, list, test, rotate, delete, info
 - No secrets in SSE events or API responses
+- User settings file (`user-settings.json`) does NOT contain API keys (stored separately in encrypted storage)
 
 ✅ **Test before saving**
 - Validates key with real provider connection
