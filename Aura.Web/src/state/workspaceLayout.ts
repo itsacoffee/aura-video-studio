@@ -116,11 +116,11 @@ export const useWorkspaceLayoutStore = create<WorkspaceLayoutState>((set, get) =
   toggleAllLeftPanels: () => {
     const currentPanels = get().collapsedPanels;
     // If any left panel is visible (not collapsed), collapse all. Otherwise, expand all.
-    const anyVisible = !currentPanels.mediaLibrary || !currentPanels.effects;
+    const shouldCollapseAll = !currentPanels.mediaLibrary || !currentPanels.effects;
     const newCollapsed = {
       ...currentPanels,
-      mediaLibrary: anyVisible,
-      effects: anyVisible,
+      mediaLibrary: shouldCollapseAll,
+      effects: shouldCollapseAll,
     };
     saveCollapsedPanels(newCollapsed);
     set({ collapsedPanels: newCollapsed });
