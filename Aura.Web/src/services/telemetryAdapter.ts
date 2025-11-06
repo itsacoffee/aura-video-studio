@@ -3,7 +3,6 @@
  * This allows Cost Analytics and Diagnostics to consume the unified telemetry contract
  */
 
-import type { RunTelemetryCollection } from '@/types/telemetry';
 import type {
   RunCostReport,
   StageCostBreakdown,
@@ -11,6 +10,7 @@ import type {
   TokenUsageStatistics,
   CostOptimizationSuggestion,
 } from '@/state/costTracking';
+import type { RunTelemetryCollection } from '@/types/telemetry';
 
 /**
  * Convert RunTelemetryCollection to RunCostReport format
@@ -20,12 +20,12 @@ export function adaptTelemetryToRunCost(telemetry: RunTelemetryCollection): RunC
   const records = telemetry.records;
 
   const costByStage: Record<string, StageCostBreakdown> = {};
-  
+
   if (summary?.cost_by_stage) {
     Object.entries(summary.cost_by_stage).forEach(([stage, cost]) => {
       const stageRecords = records.filter((r) => r.stage.toLowerCase() === stage.toLowerCase());
       const totalDuration = stageRecords.reduce((sum, r) => sum + r.latency_ms, 0);
-      
+
       costByStage[stage] = {
         stageName: stage,
         cost: cost,
@@ -55,17 +55,13 @@ export function adaptTelemetryToRunCost(telemetry: RunTelemetryCollection): RunC
         operationCount: summary.total_operations,
         cacheHits: summary.cache_hits,
         cacheHitRate:
-          summary.total_operations > 0
-            ? (summary.cache_hits / summary.total_operations) * 100
-            : 0,
+          summary.total_operations > 0 ? (summary.cache_hits / summary.total_operations) * 100 : 0,
         averageTokensPerOperation:
           summary.total_operations > 0
             ? (summary.total_tokens_in + summary.total_tokens_out) / summary.total_operations
             : 0,
         averageResponseTimeMs:
-          summary.total_operations > 0
-            ? summary.total_latency_ms / summary.total_operations
-            : 0,
+          summary.total_operations > 0 ? summary.total_latency_ms / summary.total_operations : 0,
         totalCost: summary.total_cost,
         costSavedByCache: 0,
       }
@@ -110,7 +106,7 @@ export function adaptTelemetryToRunCost(telemetry: RunTelemetryCollection): RunC
     costByStage,
     costByProvider: summary?.operations_by_provider
       ? Object.entries(summary.operations_by_provider).reduce(
-          (acc, [provider, count]) => {
+          (acc, [provider, _count]) => {
             const providerRecords = records.filter((r) => r.provider === provider);
             const cost = providerRecords.reduce((sum, r) => sum + (r.cost_estimate || 0), 0);
             acc[provider] = cost;
