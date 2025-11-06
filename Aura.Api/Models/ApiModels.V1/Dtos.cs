@@ -2378,3 +2378,33 @@ public record RagConfigurationDto(
     bool IncludeCitations = true,
     bool TightenClaims = false);
 
+/// <summary>
+/// Request for voice validation
+/// </summary>
+public record ValidateVoiceRequest(
+    string TargetLanguage,
+    string Provider,
+    string VoiceName);
+
+/// <summary>
+/// Voice validation result
+/// </summary>
+public record VoiceValidationDto(
+    string Language,
+    string Provider,
+    string VoiceName,
+    bool IsValid,
+    string? ErrorMessage,
+    VoiceInfoDto? MatchedVoice,
+    VoiceInfoDto? FallbackSuggestion);
+
+/// <summary>
+/// Voice information
+/// </summary>
+public record VoiceInfoDto(
+    string VoiceName,
+    string VoiceId,
+    string Gender,
+    string Style,
+    string Quality);
+
