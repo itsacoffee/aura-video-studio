@@ -1,4 +1,3 @@
-import React, { useEffect } from 'react';
 import {
   Dialog,
   DialogSurface,
@@ -14,8 +13,9 @@ import {
   Caption1,
   Divider,
 } from '@fluentui/react-components';
-import { useCostTrackingStore, type RunCostReport } from '../../state/costTracking';
 import { Dismiss24Regular, ArrowDownload24Regular } from '@fluentui/react-icons';
+import React, { useEffect } from 'react';
+import { useCostTrackingStore } from '../../state/costTracking';
 
 const useStyles = makeStyles({
   content: {
@@ -61,12 +61,12 @@ interface RunCostSummaryProps {
    * Job ID to show summary for
    */
   jobId: string;
-  
+
   /**
    * Whether the dialog is open
    */
   open: boolean;
-  
+
   /**
    * Callback when dialog is closed
    */
@@ -76,38 +76,34 @@ interface RunCostSummaryProps {
 /**
  * Comprehensive cost summary modal shown after a run completes
  */
-export const RunCostSummary: React.FC<RunCostSummaryProps> = ({
-  jobId,
-  open,
-  onClose,
-}) => {
+export const RunCostSummary: React.FC<RunCostSummaryProps> = ({ jobId, open, onClose }) => {
   const styles = useStyles();
   const { getRunSummary, exportReport, runReports } = useCostTrackingStore();
-  
+
   const report = runReports[jobId];
-  
+
   useEffect(() => {
     if (open && !report) {
       void getRunSummary(jobId);
     }
   }, [open, jobId, report, getRunSummary]);
-  
+
   if (!report) {
     return null;
   }
-  
+
   const handleExport = async (format: 'json' | 'csv') => {
     await exportReport(jobId, format);
   };
-  
+
   const topStages = Object.values(report.costByStage)
     .sort((a, b) => b.cost - a.cost)
     .slice(0, 5);
-  
+
   const topProviders = Object.entries(report.costByProvider)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
-  
+
   return (
     <Dialog open={open} onOpenChange={(_, data) => !data.open && onClose()}>
       <DialogSurface>
@@ -153,7 +149,7 @@ export const RunCostSummary: React.FC<RunCostSummaryProps> = ({
                 </div>
               )}
             </Card>
-            
+
             {report.tokenStats && (
               <Card className={styles.summaryCard}>
                 <Text weight="semibold">Token Usage</Text>
@@ -173,9 +169,9 @@ export const RunCostSummary: React.FC<RunCostSummaryProps> = ({
                 </div>
               </Card>
             )}
-            
+
             <Divider />
-            
+
             <div>
               <Text weight="semibold" className={styles.sectionTitle}>
                 Top Stages by Cost
@@ -191,7 +187,7 @@ export const RunCostSummary: React.FC<RunCostSummaryProps> = ({
                 </Card>
               ))}
             </div>
-            
+
             <div>
               <Text weight="semibold" className={styles.sectionTitle}>
                 Cost by Provider
@@ -203,7 +199,7 @@ export const RunCostSummary: React.FC<RunCostSummaryProps> = ({
                 </div>
               ))}
             </div>
-            
+
             {report.optimizationSuggestions.length > 0 && (
               <>
                 <Divider />

@@ -1,4 +1,3 @@
-import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Button,
@@ -8,6 +7,7 @@ import {
   Checkbox,
   Textarea,
   Spinner,
+  Field,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -18,17 +18,15 @@ import {
   Document24Regular,
   Shield24Regular,
 } from '@fluentui/react-icons';
+import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
-import type {
-  ProjectLicensingManifest,
-  LicensingSignOffRequest,
-} from '../../types/licensing';
 import {
   getLicensingManifest,
   exportLicensingManifest,
   recordLicensingSignOff,
   downloadManifestFile,
 } from '../../services/api/licensingApi';
+import type { ProjectLicensingManifest, LicensingSignOffRequest } from '../../types/licensing';
 
 const useStyles = makeStyles({
   container: {
@@ -233,8 +231,7 @@ const LicensingExportPage: FC<LicensingExportPageProps> = ({ projectId }) => {
     return null;
   }
 
-  const canSignOff =
-    acknowledgedCommercial && acknowledgedAttribution && acknowledgedWarnings;
+  const canSignOff = acknowledgedCommercial && acknowledgedAttribution && acknowledgedWarnings;
 
   return (
     <div className={styles.container}>
@@ -246,9 +243,7 @@ const LicensingExportPage: FC<LicensingExportPageProps> = ({ projectId }) => {
         <div className={styles.statusBadge}>
           {manifest.allCommercialUseAllowed ? (
             <>
-              <Checkmark24Regular
-                style={{ color: tokens.colorPaletteGreenForeground1 }}
-              />
+              <Checkmark24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
               <Badge appearance="filled" color="success">
                 Commercial Use Allowed
               </Badge>
@@ -324,7 +319,7 @@ const LicensingExportPage: FC<LicensingExportPageProps> = ({ projectId }) => {
                   {asset.assetType} • Scene {asset.sceneIndex} • {asset.source}
                 </Text>
                 {asset.attributionRequired && (
-                  <Text size={200} style={{ color: tokens.colorPaletteBlueForeground1 }}>
+                  <Text size={200} style={{ color: tokens.colorPaletteBlueForeground2 }}>
                     Attribution: {asset.attributionText || 'Required'}
                   </Text>
                 )}
@@ -377,14 +372,15 @@ const LicensingExportPage: FC<LicensingExportPageProps> = ({ projectId }) => {
               disabled={signedOff}
             />
           </div>
-          <Textarea
-            label="Additional Notes (Optional)"
-            placeholder="Enter any additional notes about licensing compliance..."
-            value={signOffNotes}
-            onChange={(_, data) => setSignOffNotes(data.value)}
-            disabled={signedOff}
-            rows={3}
-          />
+          <Field label="Additional Notes (Optional)">
+            <Textarea
+              placeholder="Enter any additional notes about licensing compliance..."
+              value={signOffNotes}
+              onChange={(_, data) => setSignOffNotes(data.value)}
+              disabled={signedOff}
+              rows={3}
+            />
+          </Field>
           <Button
             appearance="primary"
             icon={<Shield24Regular />}
@@ -395,9 +391,7 @@ const LicensingExportPage: FC<LicensingExportPageProps> = ({ projectId }) => {
           </Button>
           {signedOff && (
             <div className={styles.statusBadge}>
-              <Checkmark24Regular
-                style={{ color: tokens.colorPaletteGreenForeground1 }}
-              />
+              <Checkmark24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
               <Text size={300} style={{ color: tokens.colorPaletteGreenForeground1 }}>
                 Sign-off recorded successfully
               </Text>
