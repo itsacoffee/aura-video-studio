@@ -75,6 +75,7 @@ public class JobRunner
         var jobId = Guid.NewGuid().ToString();
         _logger.LogInformation("Creating new job with ID: {JobId}, Topic: {Topic}", jobId, brief.Topic);
         
+        var nowUtc = DateTime.UtcNow;
         var job = new Job
         {
             Id = jobId,
@@ -85,7 +86,8 @@ public class JobRunner
             PlanSpec = planSpec,
             VoiceSpec = voiceSpec,
             RenderSpec = renderSpec,
-            CreatedUtc = DateTime.UtcNow
+            CreatedUtc = nowUtc,
+            QueuedUtc = nowUtc
         };
 
         _activeJobs[job.Id] = job;
@@ -299,11 +301,19 @@ public class JobRunner
             var job = GetJob(jobId);
             if (job != null)
             {
+                _logger.LogInformation("Beginning cleanup for cancelled job {JobId} (Stage: {Stage}, Percent: {Percent}%)", 
+                    jobId, job.Stage, job.Percent);
+                
                 // Clean up temporary files and proxies
                 if (_cleanupService != null)
                 {
                     _logger.LogInformation("Cleaning up temporary files and proxies for cancelled job {JobId}", jobId);
                     _cleanupService.CleanupJob(jobId);
+                    _logger.LogInformation("Cleanup completed for job {JobId}", jobId);
+                }
+                else
+                {
+                    _logger.LogWarning("CleanupService not available, temporary files may remain for job {JobId}", jobId);
                 }
                 
                 // Mark project as cancelled if checkpoint manager is available
@@ -312,6 +322,7 @@ public class JobRunner
                     try
                     {
                         await _checkpointManager.CancelProjectAsync(cancelledProjectId, default).ConfigureAwait(false);
+                        _logger.LogInformation("Project {ProjectId} marked as cancelled", cancelledProjectId);
                     }
                     catch (Exception ex)
                     {
@@ -327,7 +338,7 @@ public class JobRunner
                 }
                 
                 // Add cancellation message to logs so it's visible in UI
-                var cancelLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Job was cancelled by user";
+                var cancelLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Job was cancelled by user - cleanup completed";
                 var updatedLogs = new List<string>(job.Logs) { cancelLog };
                 
                 UpdateJob(job, 
@@ -336,6 +347,8 @@ public class JobRunner
                     logs: updatedLogs,
                     finishedAt: DateTime.UtcNow,
                     canceledUtc: DateTime.UtcNow);
+                
+                _logger.LogInformation("Job {JobId} marked as Canceled with cleanup complete", jobId);
             }
         }
         catch (ValidationException vex)

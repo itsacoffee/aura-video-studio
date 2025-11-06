@@ -643,12 +643,13 @@ public class JobsController : ControllerBase
             
             if (cancelled)
             {
-                Log.Information("[{CorrelationId}] Successfully cancelled job {JobId}", correlationId, jobId);
+                Log.Information("[{CorrelationId}] Successfully cancelled job {JobId}, cleanup will be performed", correlationId, jobId);
                 return Accepted(new
                 {
                     jobId,
-                    message = "Job cancellation triggered successfully",
+                    message = "Job cancellation triggered successfully. Cleanup of temporary files and proxies will be performed.",
                     currentStatus = job.Status,
+                    cleanupScheduled = true,
                     correlationId
                 });
             }
