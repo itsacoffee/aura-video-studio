@@ -39,6 +39,7 @@ import {
   Sparkle24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GenerationPanel } from '../../components/Generation/GenerationPanel';
 import { useNotifications } from '../../components/Notifications/Toasts';
 import { PreflightPanel } from '../../components/PreflightPanel';
@@ -168,6 +169,7 @@ const SETTINGS_STORAGE_KEY = 'aura-wizard-settings';
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Multi-step wizard component with various state management and conditional rendering
 export function CreateWizard() {
   const styles = useStyles();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
 
   // Load settings from localStorage or use defaults
@@ -821,7 +823,7 @@ export function CreateWizard() {
                           <Button
                             appearance="subtle"
                             onClick={() => {
-                              window.location.href = '/rag';
+                              navigate('/rag');
                             }}
                           >
                             Manage Documents
