@@ -139,6 +139,18 @@ public record IndexStatistics
 }
 
 /// <summary>
+/// Information about an indexed document
+/// </summary>
+public record DocumentInfo
+{
+    public string DocumentId { get; init; } = string.Empty;
+    public string Source { get; init; } = string.Empty;
+    public string? Title { get; init; }
+    public int ChunkCount { get; init; }
+    public DateTime CreatedAt { get; init; }
+}
+
+/// <summary>
 /// Result of document indexing operation
 /// </summary>
 public record IndexingResult

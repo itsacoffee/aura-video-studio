@@ -148,6 +148,35 @@ public class VectorIndex
     }
 
     /// <summary>
+    /// Get list of all document IDs and their metadata
+    /// </summary>
+    public Task<List<DocumentInfo>> GetDocumentsAsync(CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            var documents = new List<DocumentInfo>();
+            
+            foreach (var (documentId, chunks) in _index)
+            {
+                if (chunks.Count > 0)
+                {
+                    var firstChunk = chunks.First();
+                    documents.Add(new DocumentInfo
+                    {
+                        DocumentId = documentId,
+                        Source = firstChunk.Metadata.Source,
+                        Title = firstChunk.Metadata.Title,
+                        ChunkCount = chunks.Count,
+                        CreatedAt = firstChunk.CreatedAt
+                    });
+                }
+            }
+            
+            return Task.FromResult(documents);
+        }
+    }
+
+    /// <summary>
     /// Get statistics about the index
     /// </summary>
     public Task<IndexStatistics> GetStatisticsAsync(CancellationToken ct = default)

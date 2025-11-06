@@ -2390,6 +2390,16 @@ public record CitationDto(
     int? PageNumber = null);
 
 /// <summary>
+/// Information about an indexed document
+/// </summary>
+public record DocumentInfoDto(
+    string DocumentId,
+    string Source,
+    string? Title,
+    int ChunkCount,
+    DateTime CreatedAt);
+
+/// <summary>
 /// Request for voice validation
 /// </summary>
 public record ValidateVoiceRequest(

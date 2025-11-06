@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Models.ApiModels.V1;
@@ -178,6 +179,40 @@ public class RagController : ControllerBase
                 Title = "Internal Server Error",
                 Status = 500,
                 Detail = $"An error occurred while searching: {ex.Message}",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get list of all indexed documents
+    /// </summary>
+    [HttpGet("documents")]
+    [ProducesResponseType(typeof(List<DocumentInfoDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDocuments(CancellationToken ct = default)
+    {
+        try
+        {
+            var documents = await _vectorIndex.GetDocumentsAsync(ct);
+
+            return Ok(documents.Select(d => new DocumentInfoDto(
+                DocumentId: d.DocumentId,
+                Source: d.Source,
+                Title: d.Title,
+                ChunkCount: d.ChunkCount,
+                CreatedAt: d.CreatedAt
+            )).ToList());
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Error getting document list", correlationId);
+
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Internal Server Error",
+                Status = 500,
+                Detail = $"An error occurred while getting document list: {ex.Message}",
                 Extensions = { ["correlationId"] = correlationId }
             });
         }
