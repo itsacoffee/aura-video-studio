@@ -146,13 +146,13 @@ const providers: ProviderConfig[] = [
       'Add a payment method to your account',
       'Go to the API Keys section',
       'Create a new secret key',
-      'Copy the key (starts with "sk-")',
+      'Copy the key (starts with "sk-" or "sk-proj-")',
     ],
     pricingInfo: {
       freeTier: '$5 credit for new users',
       costEstimate: '~$0.15 per 5-minute video script',
     },
-    keyFormat: 'start with "sk-"',
+    keyFormat: 'start with "sk-" or "sk-proj-"',
     category: 'llm',
   },
   {
