@@ -12,6 +12,8 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+# But allow scripts/release directory
+!scripts/release/
 x64/
 x86/
 [Aa][Rr][Mm]/
