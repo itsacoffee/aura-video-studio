@@ -67,7 +67,8 @@ public class PexelsValidator : IProviderValidator
             // Test the API key by fetching a simple curated photos endpoint
             // This endpoint requires authentication and has minimal quota impact
             var request = new HttpRequestMessage(HttpMethod.Get, "https://api.pexels.com/v1/curated?per_page=1");
-            request.Headers.Authorization = new AuthenticationHeaderValue(apiKey);
+            // Pexels uses the API key directly in the Authorization header (not Bearer)
+            request.Headers.Add("Authorization", apiKey);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(15));
