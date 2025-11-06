@@ -1,0 +1,187 @@
+/**
+ * Settings Validation Service
+ *
+ * Validates that required settings are configured and valid.
+ * Used by ConfigurationGate to determine if setup is needed.
+ */
+
+import { apiUrl } from '../config/api';
+import { isValidPath, migrateLegacyPath } from '../utils/pathUtils';
+
+export interface SettingsValidation {
+  valid: boolean;
+  error?: string;
+  missingSettings?: string[];
+}
+
+/**
+ * Validate that all required settings are configured
+ */
+export async function validateRequiredSettings(): Promise<SettingsValidation> {
+  const missingSettings: string[] = [];
+
+  try {
+    // Check FFmpeg availability (required for video generation)
+    const ffmpegStatus = await checkFFmpegStatus();
+    if (!ffmpegStatus.available) {
+      missingSettings.push('FFmpeg');
+    }
+
+    // Check default save location
+    const saveLocation = await getDefaultSaveLocation();
+    if (!saveLocation || !isValidPath(saveLocation)) {
+      missingSettings.push('Default Save Location');
+    }
+
+    // If any required settings are missing, return invalid
+    if (missingSettings.length > 0) {
+      return {
+        valid: false,
+        error: `Required settings missing: ${missingSettings.join(', ')}`,
+        missingSettings,
+      };
+    }
+
+    return { valid: true };
+  } catch (error: unknown) {
+    console.error('Settings validation error:', error);
+    return {
+      valid: false,
+      error: error instanceof Error ? error.message : 'Settings validation failed',
+    };
+  }
+}
+
+/**
+ * Check if FFmpeg is available and configured
+ */
+async function checkFFmpegStatus(): Promise<{ available: boolean; path?: string }> {
+  try {
+    const response = await fetch(apiUrl('/api/downloads/ffmpeg/status'));
+
+    if (!response.ok) {
+      return { available: false };
+    }
+
+    const data = await response.json();
+    const isAvailable = data.state === 'Installed' || data.state === 'ExternalAttached';
+
+    return {
+      available: isAvailable,
+      path: data.path,
+    };
+  } catch (error: unknown) {
+    console.error('FFmpeg status check failed:', error);
+    return { available: false };
+  }
+}
+
+/**
+ * Get the configured default save location from settings
+ */
+async function getDefaultSaveLocation(): Promise<string | null> {
+  try {
+    // Check localStorage first (fast path)
+    const localSettings = localStorage.getItem('workspacePreferences');
+    if (localSettings) {
+      const prefs = JSON.parse(localSettings);
+      if (prefs.defaultSaveLocation) {
+        // Migrate legacy paths if needed
+        return migrateLegacyPath(prefs.defaultSaveLocation);
+      }
+    }
+
+    // Fall back to backend settings
+    const response = await fetch(apiUrl('/api/settings'));
+    if (!response.ok) {
+      return null;
+    }
+
+    const settings = await response.json();
+    return settings.defaultSaveLocation || null;
+  } catch (error: unknown) {
+    console.error('Failed to get default save location:', error);
+    return null;
+  }
+}
+
+/**
+ * Migrate settings from old format to new format
+ * This is called during app initialization
+ */
+export async function migrateSettingsIfNeeded(): Promise<void> {
+  try {
+    // Check if migration is needed
+    const localSettings = localStorage.getItem('workspacePreferences');
+    if (!localSettings) {
+      return;
+    }
+
+    const prefs = JSON.parse(localSettings);
+    let needsMigration = false;
+    const migratedPrefs = { ...prefs };
+
+    // Migrate default save location if it has placeholder
+    if (prefs.defaultSaveLocation && !isValidPath(prefs.defaultSaveLocation)) {
+      migratedPrefs.defaultSaveLocation = migrateLegacyPath(prefs.defaultSaveLocation);
+      needsMigration = true;
+    }
+
+    // Migrate cache location if it has placeholder
+    if (prefs.cacheLocation && !isValidPath(prefs.cacheLocation)) {
+      migratedPrefs.cacheLocation = migrateLegacyPath(prefs.cacheLocation);
+      needsMigration = true;
+    }
+
+    // Save migrated settings
+    if (needsMigration) {
+      localStorage.setItem('workspacePreferences', JSON.stringify(migratedPrefs));
+
+      // Also update backend settings
+      await fetch(apiUrl('/api/settings'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          defaultSaveLocation: migratedPrefs.defaultSaveLocation,
+          cacheLocation: migratedPrefs.cacheLocation,
+        }),
+      });
+    }
+  } catch (error: unknown) {
+    console.error('Settings migration failed:', error);
+  }
+}
+
+/**
+ * Persist workspace preferences to localStorage and backend
+ */
+export async function saveWorkspacePreferences(preferences: {
+  defaultSaveLocation: string;
+  cacheLocation: string;
+  autosaveInterval: number;
+  theme: 'light' | 'dark' | 'auto';
+}): Promise<void> {
+  try {
+    // Save to localStorage for fast access
+    localStorage.setItem('workspacePreferences', JSON.stringify(preferences));
+
+    // Save to backend for persistence
+    await fetch(apiUrl('/api/settings'), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        defaultSaveLocation: preferences.defaultSaveLocation,
+        cacheLocation: preferences.cacheLocation,
+        autosaveInterval: preferences.autosaveInterval,
+        theme: preferences.theme,
+      }),
+    });
+  } catch (error: unknown) {
+    console.error('Failed to save workspace preferences:', error);
+    throw error;
+  }
+}

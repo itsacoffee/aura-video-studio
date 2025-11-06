@@ -13,7 +13,13 @@ import {
   Field,
 } from '@fluentui/react-components';
 import { Folder24Regular, FolderOpen24Regular, Save24Regular } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import {
+  getDefaultSaveLocation,
+  getDefaultCacheLocation,
+  pickFolder,
+  isValidPath,
+} from '../../utils/pathUtils';
 
 const useStyles = makeStyles({
   container: {
@@ -127,16 +133,44 @@ export function WorkspaceSetup({
   const styles = useStyles();
   const [isBrowsing, setIsBrowsing] = useState<'save' | 'cache' | null>(null);
 
+  // Initialize default paths if not set
+  useEffect(() => {
+    if (!preferences.defaultSaveLocation || !isValidPath(preferences.defaultSaveLocation)) {
+      onPreferencesChange({
+        ...preferences,
+        defaultSaveLocation: getDefaultSaveLocation(),
+      });
+    }
+    if (!preferences.cacheLocation || !isValidPath(preferences.cacheLocation)) {
+      onPreferencesChange({
+        ...preferences,
+        cacheLocation: getDefaultCacheLocation(),
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleBrowse = async (type: 'save' | 'cache') => {
     setIsBrowsing(type);
     try {
-      const path = await onBrowseFolder(type);
+      // First try the provided callback (for compatibility)
+      let path: string | null = null;
+      if (onBrowseFolder) {
+        path = await onBrowseFolder(type);
+      }
+
+      // If callback didn't provide a path, use our folder picker
+      if (!path) {
+        path = await pickFolder();
+      }
+
       if (path) {
         onPreferencesChange({
           ...preferences,
           [type === 'save' ? 'defaultSaveLocation' : 'cacheLocation']: path,
         });
       }
+    } catch (error: unknown) {
+      console.error('Failed to browse folder:', error);
     } finally {
       setIsBrowsing(null);
     }
@@ -194,7 +228,7 @@ export function WorkspaceSetup({
                     defaultSaveLocation: e.target.value,
                   })
                 }
-                placeholder="C:\Users\YourName\Videos\Aura"
+                placeholder={getDefaultSaveLocation()}
               />
               <Button
                 appearance="secondary"
@@ -229,7 +263,7 @@ export function WorkspaceSetup({
                     cacheLocation: e.target.value,
                   })
                 }
-                placeholder="C:\Users\YourName\AppData\Local\Aura\Cache"
+                placeholder={getDefaultCacheLocation()}
               />
               <Button
                 appearance="secondary"
