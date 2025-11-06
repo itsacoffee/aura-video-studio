@@ -61,6 +61,7 @@ import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettin
 import { ProviderProfilesTab } from '../components/Settings/ProviderProfilesTab';
 import { ProviderRecommendationsTab } from '../components/Settings/ProviderRecommendationsTab';
 import { ProvidersTable } from '../components/Settings/ProvidersTable';
+import { SettingsExportImportTab } from '../components/Settings/SettingsExportImportTab';
 import { ThemeCustomizationTab } from '../components/Settings/ThemeCustomizationTab';
 import { VideoDefaultsSettingsTab } from '../components/Settings/VideoDefaultsSettingsTab';
 import { apiUrl } from '../config/api';
@@ -2015,82 +2016,10 @@ export function SettingsPage() {
         {activeTab === 'recommendations' && <ProviderRecommendationsTab />}
 
         {activeTab === 'importexport' && (
-          <Card className={styles.section}>
-            <Title2>Import/Export Settings</Title2>
-            <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-              Backup and restore all your settings as a JSON file
-            </Text>
-            <div className={styles.form}>
-              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' }}>
-                <Button
-                  appearance="primary"
-                  icon={<ArrowDownload24Regular />}
-                  onClick={exportUserSettings}
-                >
-                  Export All Settings
-                </Button>
-                <Button
-                  appearance="secondary"
-                  icon={<ArrowUpload24Regular />}
-                  onClick={importUserSettings}
-                >
-                  Import Settings
-                </Button>
-                <Button appearance="subtle" onClick={resetUserSettings}>
-                  Reset to Defaults
-                </Button>
-              </div>
-              <Card
-                style={{
-                  marginTop: tokens.spacingVerticalL,
-                  padding: tokens.spacingVerticalM,
-                  backgroundColor: tokens.colorNeutralBackground3,
-                }}
-              >
-                <Text weight="semibold" size={300}>
-                  ⚠️ Important
-                </Text>
-                <Text size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
-                  Exported settings include API keys and sensitive information. Keep your exported
-                  files secure and never share them publicly.
-                </Text>
-              </Card>
-              <Card
-                style={{
-                  marginTop: tokens.spacingVerticalM,
-                  padding: tokens.spacingVerticalM,
-                  backgroundColor: tokens.colorNeutralBackground2,
-                }}
-              >
-                <Text weight="semibold" size={300}>
-                  📋 What&apos;s Included
-                </Text>
-                <ul style={{ marginTop: tokens.spacingVerticalS, paddingLeft: '20px' }}>
-                  <li>
-                    <Text size={200}>General settings (theme, language, autosave, etc.)</Text>
-                  </li>
-                  <li>
-                    <Text size={200}>API keys for all services</Text>
-                  </li>
-                  <li>
-                    <Text size={200}>File locations and paths</Text>
-                  </li>
-                  <li>
-                    <Text size={200}>Video defaults (resolution, codec, etc.)</Text>
-                  </li>
-                  <li>
-                    <Text size={200}>Editor preferences</Text>
-                  </li>
-                  <li>
-                    <Text size={200}>UI customization</Text>
-                  </li>
-                  <li>
-                    <Text size={200}>Advanced settings</Text>
-                  </li>
-                </ul>
-              </Card>
-            </div>
-          </Card>
+          <SettingsExportImportTab
+            userSettings={userSettings}
+            onSettingsChange={loadUserSettings}
+          />
         )}
 
         <div className={styles.actions}>
