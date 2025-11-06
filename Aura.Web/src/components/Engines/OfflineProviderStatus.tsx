@@ -140,23 +140,26 @@ export function OfflineProviderStatus() {
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
-    
+
     try {
       const response = await fetch(`${apiUrl}/offline-providers/status`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to load status: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setStatus(data);
-      
+
       if (data.isFullyOperational) {
-        showSuccessToast('Offline Mode Ready', 'All critical offline providers are available');
+        showSuccessToast({
+          title: 'Offline Mode Ready',
+          message: 'All critical offline providers are available',
+        });
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      showFailureToast('Failed to load offline provider status', errorMessage);
+      showFailureToast({ title: 'Failed to load offline provider status', message: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -195,10 +198,14 @@ export function OfflineProviderStatus() {
       )}
       {provider.recommendations.length > 0 && (
         <div>
-          <Text size={200} weight="semibold">Recommendations:</Text>
+          <Text size={200} weight="semibold">
+            Recommendations:
+          </Text>
           <ul className={styles.recommendationsList}>
             {provider.recommendations.map((rec, index) => (
-              <li key={index} className={styles.recommendation}>{rec}</li>
+              <li key={index} className={styles.recommendation}>
+                {rec}
+              </li>
             ))}
           </ul>
         </div>
@@ -254,16 +261,32 @@ export function OfflineProviderStatus() {
           <div className={styles.summary}>
             <Text weight="semibold">Offline Mode Capability</Text>
             <div className={styles.summaryRow}>
-              {status.hasTtsProvider ? <Checkmark24Regular color="green" /> : <Dismiss24Regular color="red" />}
+              {status.hasTtsProvider ? (
+                <Checkmark24Regular color="green" />
+              ) : (
+                <Dismiss24Regular color="red" />
+              )}
               <Text>Text-to-Speech: {status.hasTtsProvider ? 'Available' : 'Not Available'}</Text>
             </div>
             <div className={styles.summaryRow}>
-              {status.hasLlmProvider ? <Checkmark24Regular color="green" /> : <Dismiss24Regular color="red" />}
-              <Text>Script Generation: {status.hasLlmProvider ? 'Available' : 'Not Available'}</Text>
+              {status.hasLlmProvider ? (
+                <Checkmark24Regular color="green" />
+              ) : (
+                <Dismiss24Regular color="red" />
+              )}
+              <Text>
+                Script Generation: {status.hasLlmProvider ? 'Available' : 'Not Available'}
+              </Text>
             </div>
             <div className={styles.summaryRow}>
-              {status.hasImageProvider ? <Checkmark24Regular color="green" /> : <Info24Regular color="orange" />}
-              <Text>Image Generation: {status.hasImageProvider ? 'Available' : 'Use Stock Images'}</Text>
+              {status.hasImageProvider ? (
+                <Checkmark24Regular color="green" />
+              ) : (
+                <Info24Regular color="orange" />
+              )}
+              <Text>
+                Image Generation: {status.hasImageProvider ? 'Available' : 'Use Stock Images'}
+              </Text>
             </div>
             {status.isFullyOperational && (
               <Badge appearance="filled" color="success" style={{ alignSelf: 'flex-start' }}>

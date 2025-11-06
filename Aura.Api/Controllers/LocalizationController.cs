@@ -858,6 +858,74 @@ public class LocalizationController : ControllerBase
         );
     }
 
+    /// <summary>
+    /// Validate voice availability for target language and provider
+    /// </summary>
+    [HttpPost("validate-voice")]
+    [ProducesResponseType(typeof(VoiceValidationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public ActionResult<VoiceValidationDto> ValidateVoice(
+        [FromBody] ValidateVoiceRequest request)
+    {
+        _logger.LogInformation(
+            "Voice validation request: {Language}, Provider: {Provider}, Voice: {Voice}",
+            request.TargetLanguage, request.Provider, request.VoiceName);
+
+        try
+        {
+            if (!TryParseVoiceProvider(request.Provider, out var provider))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid Provider",
+                    Status = StatusCodes.Status400BadRequest,
+                    Detail = $"Unknown TTS provider: {request.Provider}",
+                    Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+                });
+            }
+
+            var registry = new Aura.Core.Services.TTS.VoiceProviderRegistry(
+                _loggerFactory.CreateLogger<Aura.Core.Services.TTS.VoiceProviderRegistry>());
+
+            var result = registry.ValidateVoice(provider, request.TargetLanguage, request.VoiceName);
+
+            var dto = new VoiceValidationDto(
+                request.TargetLanguage,
+                request.Provider,
+                request.VoiceName,
+                result.IsValid,
+                result.ErrorMessage,
+                result.MatchedVoice != null ? new VoiceInfoDto(
+                    result.MatchedVoice.VoiceName,
+                    result.MatchedVoice.VoiceId,
+                    result.MatchedVoice.Gender,
+                    result.MatchedVoice.Style,
+                    result.MatchedVoice.Quality
+                ) : null,
+                result.FallbackSuggestion != null ? new VoiceInfoDto(
+                    result.FallbackSuggestion.VoiceName,
+                    result.FallbackSuggestion.VoiceId,
+                    result.FallbackSuggestion.Gender,
+                    result.FallbackSuggestion.Style,
+                    result.FallbackSuggestion.Quality
+                ) : null
+            );
+
+            return Ok(new { validation = dto });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Voice validation failed");
+            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
+                Title = "Voice Validation Failed",
+                Status = StatusCodes.Status500InternalServerError,
+                Detail = ex.Message,
+                Extensions = { ["correlationId"] = HttpContext.TraceIdentifier }
+            });
+        }
+    }
+
     private bool TryParseVoiceProvider(string providerName, out VoiceProvider provider)
     {
         return Enum.TryParse<VoiceProvider>(providerName, true, out provider);

@@ -17,7 +17,6 @@ import {
 import {
   Lightbulb24Regular,
   ArrowSync24Regular,
-  Checkmark24Regular,
   Warning24Regular,
   Info24Regular,
 } from '@fluentui/react-icons';
@@ -171,7 +170,7 @@ interface MachineRecommendations {
 
 export function OfflineModeRecommendations() {
   const styles = useStyles();
-  const { showSuccessToast, showFailureToast } = useNotifications();
+  const { showFailureToast } = useNotifications();
   const [loading, setLoading] = useState(true);
   const [recommendations, setRecommendations] = useState<MachineRecommendations | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -179,20 +178,20 @@ export function OfflineModeRecommendations() {
   const loadRecommendations = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`${apiUrl}/offline-providers/recommendations`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to load recommendations: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setRecommendations(data);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      showFailureToast('Failed to load recommendations', errorMessage);
+      showFailureToast({ title: 'Failed to load recommendations', message: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -206,7 +205,9 @@ export function OfflineModeRecommendations() {
     <div className={styles.recommendation}>
       <div className={styles.recommendationHeader}>
         <div className={styles.recommendationTitle}>{title}</div>
-        <Badge appearance="tint" color="informative">{recommendation.primary}</Badge>
+        <Badge appearance="tint" color="informative">
+          {recommendation.primary}
+        </Badge>
       </div>
       <div className={styles.recommendationDetails}>
         <div className={styles.detailRow}>
@@ -228,7 +229,9 @@ export function OfflineModeRecommendations() {
         {recommendation.notes.length > 0 && (
           <div className={styles.notesList}>
             {recommendation.notes.map((note, index) => (
-              <div key={index} className={styles.note}>• {note}</div>
+              <div key={index} className={styles.note}>
+                • {note}
+              </div>
             ))}
           </div>
         )}
@@ -262,7 +265,11 @@ export function OfflineModeRecommendations() {
           <div className={styles.error}>
             <Text>{error}</Text>
             <div className={styles.actions}>
-              <Button appearance="primary" icon={<ArrowSync24Regular />} onClick={() => void loadRecommendations()}>
+              <Button
+                appearance="primary"
+                icon={<ArrowSync24Regular />}
+                onClick={() => void loadRecommendations()}
+              >
                 Retry
               </Button>
             </div>
@@ -295,15 +302,21 @@ export function OfflineModeRecommendations() {
             <div className={styles.hardwareSummary}>
               <div className={styles.hardwareItem}>
                 <div className={styles.hardwareLabel}>RAM</div>
-                <div className={styles.hardwareValue}>{recommendations.hardwareSummary.ramGB} GB</div>
+                <div className={styles.hardwareValue}>
+                  {recommendations.hardwareSummary.ramGB} GB
+                </div>
               </div>
               <div className={styles.hardwareItem}>
                 <div className={styles.hardwareLabel}>GPU VRAM</div>
-                <div className={styles.hardwareValue}>{recommendations.hardwareSummary.vramGB} GB</div>
+                <div className={styles.hardwareValue}>
+                  {recommendations.hardwareSummary.vramGB} GB
+                </div>
               </div>
               <div className={styles.hardwareItem}>
                 <div className={styles.hardwareLabel}>CPU Cores</div>
-                <div className={styles.hardwareValue}>{recommendations.hardwareSummary.logicalCores}</div>
+                <div className={styles.hardwareValue}>
+                  {recommendations.hardwareSummary.logicalCores}
+                </div>
               </div>
               <div className={styles.hardwareItem}>
                 <div className={styles.hardwareLabel}>System Tier</div>
@@ -331,7 +344,10 @@ export function OfflineModeRecommendations() {
                 Text-to-Speech Recommendation
               </AccordionHeader>
               <AccordionPanel>
-                {renderRecommendation('Recommended TTS Provider', recommendations.ttsRecommendation)}
+                {renderRecommendation(
+                  'Recommended TTS Provider',
+                  recommendations.ttsRecommendation
+                )}
                 <Text size={200} style={{ marginTop: tokens.spacingVerticalS }}>
                   <strong>Fallback:</strong> {recommendations.ttsFallback}
                 </Text>
@@ -343,7 +359,10 @@ export function OfflineModeRecommendations() {
                 Script Generation Recommendation
               </AccordionHeader>
               <AccordionPanel>
-                {renderRecommendation('Recommended LLM Provider', recommendations.llmRecommendation)}
+                {renderRecommendation(
+                  'Recommended LLM Provider',
+                  recommendations.llmRecommendation
+                )}
               </AccordionPanel>
             </AccordionItem>
 
@@ -352,7 +371,10 @@ export function OfflineModeRecommendations() {
                 Image Generation Recommendation
               </AccordionHeader>
               <AccordionPanel>
-                {renderRecommendation('Recommended Image Provider', recommendations.imageRecommendation)}
+                {renderRecommendation(
+                  'Recommended Image Provider',
+                  recommendations.imageRecommendation
+                )}
               </AccordionPanel>
             </AccordionItem>
           </Accordion>
@@ -362,13 +384,19 @@ export function OfflineModeRecommendations() {
             <Text weight="semibold">Quick Start Guide</Text>
             <ol className={styles.quickStartList}>
               {recommendations.quickStartSteps.map((step, index) => (
-                <li key={index} className={styles.quickStartItem}>{step}</li>
+                <li key={index} className={styles.quickStartItem}>
+                  {step}
+                </li>
               ))}
             </ol>
           </div>
 
           <div className={styles.actions}>
-            <Button appearance="primary" icon={<ArrowSync24Regular />} onClick={() => void loadRecommendations()}>
+            <Button
+              appearance="primary"
+              icon={<ArrowSync24Regular />}
+              onClick={() => void loadRecommendations()}
+            >
               Refresh Recommendations
             </Button>
           </div>

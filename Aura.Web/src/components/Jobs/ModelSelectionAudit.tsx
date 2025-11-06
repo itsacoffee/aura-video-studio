@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from 'react';
 import {
   makeStyles,
   tokens,
@@ -10,11 +9,8 @@ import {
   MessageBar,
   MessageBarBody,
 } from '@fluentui/react-components';
-import {
-  CheckmarkCircle20Regular,
-  Warning20Regular,
-  LockClosed20Regular,
-} from '@fluentui/react-icons';
+import { CheckmarkCircle20Regular, LockClosed20Regular } from '@fluentui/react-icons';
+import React, { useEffect, useState } from 'react';
 
 const useStyles = makeStyles({
   container: {
@@ -78,7 +74,7 @@ export const ModelSelectionAudit: React.FC<ModelSelectionAuditProps> = ({ jobId 
       try {
         setLoading(true);
         const response = await fetch(`/api/models/audit-log/job/${jobId}`);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch audit log: ${response.statusText}`);
         }
@@ -163,7 +159,10 @@ export const ModelSelectionAudit: React.FC<ModelSelectionAuditProps> = ({ jobId 
                 <Text weight="semibold">
                   {entry.provider} / {entry.stage}
                 </Text>
-                <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
+                <Text
+                  size={200}
+                  style={{ display: 'block', color: tokens.colorNeutralForeground3 }}
+                >
                   Model: {entry.modelId}
                 </Text>
               </div>

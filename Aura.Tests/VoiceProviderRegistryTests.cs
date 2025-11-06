@@ -1,0 +1,178 @@
+using System.Linq;
+using Aura.Core.Models.Voice;
+using Aura.Core.Services.TTS;
+using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
+
+namespace Aura.Tests;
+
+public class VoiceProviderRegistryTests
+{
+    private readonly VoiceProviderRegistry _registry;
+
+    public VoiceProviderRegistryTests()
+    {
+        _registry = new VoiceProviderRegistry(NullLogger<VoiceProviderRegistry>.Instance);
+    }
+
+    [Fact]
+    public void ValidateVoice_ValidElevenLabsVoice_ReturnsSuccess()
+    {
+        var result = _registry.ValidateVoice(
+            VoiceProvider.ElevenLabs,
+            "en",
+            "Rachel");
+
+        Assert.True(result.IsValid);
+        Assert.NotNull(result.MatchedVoice);
+        Assert.Equal("Rachel", result.MatchedVoice.VoiceName);
+        Assert.Equal("Female", result.MatchedVoice.Gender);
+    }
+
+    [Fact]
+    public void ValidateVoice_CaseInsensitiveMatch_ReturnsSuccess()
+    {
+        var result = _registry.ValidateVoice(
+            VoiceProvider.ElevenLabs,
+            "en",
+            "rachel");
+
+        Assert.True(result.IsValid);
+        Assert.NotNull(result.MatchedVoice);
+        Assert.Equal("Rachel", result.MatchedVoice.VoiceName);
+    }
+
+    [Fact]
+    public void ValidateVoice_InvalidVoice_ReturnsFailureWithFallback()
+    {
+        var result = _registry.ValidateVoice(
+            VoiceProvider.ElevenLabs,
+            "en",
+            "NonExistentVoice");
+
+        Assert.False(result.IsValid);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("not found", result.ErrorMessage);
+        Assert.NotNull(result.FallbackSuggestion);
+        Assert.NotEmpty(result.AvailableVoices);
+    }
+
+    [Fact]
+    public void ValidateVoice_UnsupportedLanguage_ReturnsFailure()
+    {
+        var result = _registry.ValidateVoice(
+            VoiceProvider.ElevenLabs,
+            "unsupported-lang",
+            "Rachel");
+
+        Assert.False(result.IsValid);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("No voices available", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void GetAvailableVoices_ElevenLabsEnglish_ReturnsMultipleVoices()
+    {
+        var voices = _registry.GetAvailableVoices(VoiceProvider.ElevenLabs, "en");
+
+        Assert.NotEmpty(voices);
+        Assert.Contains(voices, v => v.VoiceName == "Rachel");
+        Assert.Contains(voices, v => v.VoiceName == "Josh");
+        Assert.All(voices, v => Assert.Equal("Premium", v.Quality));
+    }
+
+    [Fact]
+    public void GetAvailableVoices_RTLLanguage_ReturnsRTLVoices()
+    {
+        var arabicVoices = _registry.GetAvailableVoices(VoiceProvider.ElevenLabs, "ar");
+        var hebrewVoices = _registry.GetAvailableVoices(VoiceProvider.ElevenLabs, "he");
+
+        Assert.NotEmpty(arabicVoices);
+        Assert.NotEmpty(hebrewVoices);
+        Assert.Contains(arabicVoices, v => v.VoiceName == "Ahmed");
+        Assert.Contains(hebrewVoices, v => v.VoiceName == "David");
+    }
+
+    [Fact]
+    public void GetFallbackVoice_ReturnsHighestQualityVoice()
+    {
+        var fallback = _registry.GetFallbackVoice(VoiceProvider.ElevenLabs, "en");
+
+        Assert.NotNull(fallback);
+        Assert.Equal("Premium", fallback.Quality);
+    }
+
+    [Fact]
+    public void GetFallbackVoice_UnsupportedLanguage_ReturnsNull()
+    {
+        var fallback = _registry.GetFallbackVoice(VoiceProvider.ElevenLabs, "unsupported");
+
+        Assert.Null(fallback);
+    }
+
+    [Theory]
+    [InlineData("en", "en")]
+    [InlineData("en-US", "en")]
+    [InlineData("en_GB", "en")]
+    [InlineData("zh-CN", "zh")]
+    public void ValidateVoice_LanguageCodeVariants_HandlesCorrectly(string languageCode, string expectedBase)
+    {
+        var result = _registry.GetAvailableVoices(VoiceProvider.ElevenLabs, languageCode);
+
+        Assert.NotEmpty(result);
+    }
+
+    [Fact]
+    public void ValidateVoice_AllProviders_HaveVoicesRegistered()
+    {
+        var providers = new[]
+        {
+            VoiceProvider.ElevenLabs,
+            VoiceProvider.PlayHT,
+            VoiceProvider.WindowsSAPI,
+            VoiceProvider.Piper,
+            VoiceProvider.Mimic3,
+            VoiceProvider.Azure
+        };
+
+        foreach (var provider in providers)
+        {
+            var voices = _registry.GetAvailableVoices(provider, "en");
+            Assert.NotEmpty(voices);
+        }
+    }
+
+    [Fact]
+    public void ValidateVoice_PremiumProviders_HaveHighQualityVoices()
+    {
+        var providers = new[]
+        {
+            VoiceProvider.ElevenLabs,
+            VoiceProvider.PlayHT,
+            VoiceProvider.Azure
+        };
+
+        foreach (var provider in providers)
+        {
+            var voices = _registry.GetAvailableVoices(provider, "en");
+            Assert.All(voices, v => Assert.Equal("Premium", v.Quality));
+        }
+    }
+
+    [Fact]
+    public void ValidateVoice_FreeProviders_HaveFreeVoices()
+    {
+        var providers = new[]
+        {
+            VoiceProvider.WindowsSAPI,
+            VoiceProvider.Piper,
+            VoiceProvider.Mimic3
+        };
+
+        foreach (var provider in providers)
+        {
+            var voices = _registry.GetAvailableVoices(provider, "en");
+            Assert.All(voices, v => Assert.Equal("Free", v.Quality));
+        }
+    }
+}

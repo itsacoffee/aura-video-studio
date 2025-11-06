@@ -349,4 +349,126 @@ public class TranslationToSubtitleIntegrationTests : IDisposable
     {
         return new VoiceSpec("TestVoice", 1.0, 1.0, PauseStyle.Natural);
     }
+
+    [Fact]
+    public async Task TranslateAndPlanSSML_EnglishToHebrew_HandlesRTL()
+    {
+        SetupMockTranslation("en", "he", 
+            "Welcome to our service", 
+            "ברוכים הבאים לשירות שלנו");
+
+        var scriptLines = new List<ScriptLine>
+        {
+            new ScriptLine(0, "Welcome to our service", TimeSpan.Zero, TimeSpan.FromSeconds(3))
+        };
+
+        var request = new TranslateAndPlanSSMLRequest
+        {
+            SourceLanguage = "en",
+            TargetLanguage = "he",
+            ScriptLines = scriptLines,
+            TargetProvider = VoiceProvider.ElevenLabs,
+            VoiceSpec = CreateTestVoiceSpec(),
+            SubtitleFormat = SubtitleFormat.SRT,
+            DurationTolerance = 0.02
+        };
+
+        var result = await _integrationService.TranslateAndPlanSSMLAsync(request);
+
+        Assert.NotNull(result);
+        Assert.Equal("he", result.Translation.TargetLanguage);
+        Assert.NotEmpty(result.Translation.TranslatedText);
+        
+        Assert.Equal(SubtitleFormat.SRT, result.Subtitles.Format);
+        Assert.NotEmpty(result.Subtitles.Content);
+        
+        var hebrewStyle = _subtitleService.GetRecommendedStyle("he");
+        Assert.True(hebrewStyle.IsRightToLeft);
+        Assert.NotNull(hebrewStyle.RtlFontFallback);
+    }
+
+    [Fact]
+    public void SubtitleTimingValidation_ExactTolerance_Passes()
+    {
+        var targetDuration = 10.0;
+        var lines = new List<ScriptLine>
+        {
+            new ScriptLine(0, "Line 1", TimeSpan.Zero, TimeSpan.FromSeconds(10.2))
+        };
+
+        var result = _subtitleService.ValidateTimingAlignment(lines, targetDuration, 0.02);
+
+        Assert.True(result.IsValid);
+        Assert.Equal(2.0, result.DeviationPercent);
+        Assert.Equal(2.0, result.TolerancePercent);
+    }
+
+    [Fact]
+    public void SubtitleTimingValidation_JustOverTolerance_Fails()
+    {
+        var targetDuration = 10.0;
+        var lines = new List<ScriptLine>
+        {
+            new ScriptLine(0, "Line 1", TimeSpan.Zero, TimeSpan.FromSeconds(10.21))
+        };
+
+        var result = _subtitleService.ValidateTimingAlignment(lines, targetDuration, 0.02);
+
+        Assert.False(result.IsValid);
+        Assert.True(result.DeviationPercent > 2.0);
+    }
+
+    [Fact]
+    public void VoiceRecommendation_HebrewLanguage_ReturnsRTLVoices()
+    {
+        var hebrewVoices = _integrationService.GetRecommendedVoice("he", VoiceProvider.ElevenLabs);
+
+        Assert.NotNull(hebrewVoices);
+        Assert.True(hebrewVoices.IsRTL);
+        Assert.NotEmpty(hebrewVoices.RecommendedVoices);
+    }
+
+    [Fact]
+    public void VoiceRecommendation_PersianLanguage_ReturnsRTLVoices()
+    {
+        var persianVoices = _integrationService.GetRecommendedVoice("fa", VoiceProvider.ElevenLabs);
+
+        Assert.NotNull(persianVoices);
+        Assert.True(persianVoices.IsRTL);
+    }
+
+    [Fact]
+    public async Task TranslateAndPlanSSML_MultipleRTLLanguages_AllHandledCorrectly()
+    {
+        var rtlLanguages = new[] { "ar", "he", "fa", "ur" };
+        
+        foreach (var lang in rtlLanguages)
+        {
+            SetupMockTranslation("en", lang, "Hello", $"Hello in {lang}");
+
+            var scriptLines = new List<ScriptLine>
+            {
+                new ScriptLine(0, "Hello", TimeSpan.Zero, TimeSpan.FromSeconds(1))
+            };
+
+            var request = new TranslateAndPlanSSMLRequest
+            {
+                SourceLanguage = "en",
+                TargetLanguage = lang,
+                ScriptLines = scriptLines,
+                TargetProvider = VoiceProvider.ElevenLabs,
+                VoiceSpec = CreateTestVoiceSpec(),
+                SubtitleFormat = SubtitleFormat.VTT,
+                DurationTolerance = 0.02
+            };
+
+            var result = await _integrationService.TranslateAndPlanSSMLAsync(request);
+
+            Assert.Equal(lang, result.Translation.TargetLanguage);
+            Assert.Equal(SubtitleFormat.VTT, result.Subtitles.Format);
+            
+            var style = _subtitleService.GetRecommendedStyle(lang);
+            Assert.True(style.IsRightToLeft, $"Language {lang} should be RTL");
+        }
+    }
 }

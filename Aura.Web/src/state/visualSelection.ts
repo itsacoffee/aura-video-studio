@@ -1,16 +1,20 @@
 import { create } from 'zustand';
-import type { ImageCandidate, SceneVisualSelection } from '@/services/visualSelectionService';
+import type { SceneVisualSelection } from '@/services/visualSelectionService';
 
 interface VisualSelectionState {
   selections: Map<string, SceneVisualSelection>;
   projectThresholds: Map<string, ThresholdConfig>;
-  
+
   getSelection: (jobId: string, sceneIndex: number) => SceneVisualSelection | undefined;
   setSelection: (selection: SceneVisualSelection) => void;
-  updateSelection: (jobId: string, sceneIndex: number, updates: Partial<SceneVisualSelection>) => void;
+  updateSelection: (
+    jobId: string,
+    sceneIndex: number,
+    updates: Partial<SceneVisualSelection>
+  ) => void;
   removeSelection: (jobId: string, sceneIndex: number) => void;
   clearJobSelections: (jobId: string) => void;
-  
+
   getThresholds: (projectId: string) => ThresholdConfig;
   setThresholds: (projectId: string, thresholds: ThresholdConfig) => void;
 }

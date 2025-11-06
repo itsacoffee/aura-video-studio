@@ -119,22 +119,22 @@ interface CostTrackingState {
   currentPeriodSpending: CurrentPeriodSpending | null;
   liveAccumulation: LiveCostAccumulation | null;
   runReports: Record<string, RunCostReport>;
-  
+
   isLoading: boolean;
   error: string | null;
-  
+
   loadConfiguration: () => Promise<void>;
   updateConfiguration: (config: BudgetConfiguration) => Promise<void>;
-  
+
   loadCurrentPeriodSpending: () => Promise<void>;
-  
+
   getRunSummary: (jobId: string) => Promise<RunCostReport | null>;
   exportReport: (jobId: string, format: 'json' | 'csv') => Promise<void>;
-  
-  startLiveTracking: (jobId: string) => void;
-  updateLiveCost: (jobId: string, cost: number, stage: string) => void;
+
+  startLiveTracking: () => void;
+  updateLiveCost: (cost: number, stage: string) => void;
   stopLiveTracking: () => void;
-  
+
   reset: () => void;
 }
 
@@ -147,19 +147,19 @@ const initialState = {
   error: null,
 };
 
-export const useCostTrackingStore = create<CostTrackingState>((set, get) => ({
+export const useCostTrackingStore = create<CostTrackingState>((set) => ({
   ...initialState,
-  
+
   loadConfiguration: async () => {
     set({ isLoading: true, error: null });
-    
+
     try {
       const response = await fetch('/api/cost-tracking/configuration');
-      
+
       if (!response.ok) {
         throw new Error('Failed to load cost tracking configuration');
       }
-      
+
       const config = await response.json();
       set({ configuration: config, isLoading: false });
     } catch (error: unknown) {
@@ -167,38 +167,38 @@ export const useCostTrackingStore = create<CostTrackingState>((set, get) => ({
       set({ error: errorObj.message, isLoading: false });
     }
   },
-  
+
   updateConfiguration: async (config: BudgetConfiguration) => {
     set({ isLoading: true, error: null });
-    
+
     try {
       const response = await fetch('/api/cost-tracking/configuration', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update cost tracking configuration');
       }
-      
+
       set({ configuration: config, isLoading: false });
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       set({ error: errorObj.message, isLoading: false });
     }
   },
-  
+
   loadCurrentPeriodSpending: async () => {
     set({ isLoading: true, error: null });
-    
+
     try {
       const response = await fetch('/api/cost-tracking/current-period');
-      
+
       if (!response.ok) {
         throw new Error('Failed to load current period spending');
       }
-      
+
       const spending = await response.json();
       set({ currentPeriodSpending: spending, isLoading: false });
     } catch (error: unknown) {
@@ -206,10 +206,10 @@ export const useCostTrackingStore = create<CostTrackingState>((set, get) => ({
       set({ error: errorObj.message, isLoading: false });
     }
   },
-  
+
   getRunSummary: async (jobId: string) => {
     set({ isLoading: true, error: null });
-    
+
     try {
       // Use the unified RunTelemetry v1 endpoint
       const response = await fetch(`/api/telemetry/${jobId}`);
@@ -232,7 +232,7 @@ export const useCostTrackingStore = create<CostTrackingState>((set, get) => ({
         runReports: { ...state.runReports, [jobId]: report },
         isLoading: false,
       }));
-      
+
       return report;
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
@@ -240,19 +240,19 @@ export const useCostTrackingStore = create<CostTrackingState>((set, get) => ({
       return null;
     }
   },
-  
+
   exportReport: async (jobId: string, format: 'json' | 'csv') => {
     set({ isLoading: true, error: null });
-    
+
     try {
       const response = await fetch(`/api/cost-tracking/export/${jobId}?format=${format}`, {
         method: 'POST',
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to export report');
       }
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -262,15 +262,15 @@ export const useCostTrackingStore = create<CostTrackingState>((set, get) => ({
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       set({ isLoading: false });
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       set({ error: errorObj.message, isLoading: false });
     }
   },
-  
-  startLiveTracking: (jobId: string) => {
+
+  startLiveTracking: () => {
     set({
       liveAccumulation: {
         currentCost: 0,
@@ -280,18 +280,18 @@ export const useCostTrackingStore = create<CostTrackingState>((set, get) => ({
       },
     });
   },
-  
-  updateLiveCost: (jobId: string, cost: number, stage: string) => {
+
+  updateLiveCost: (cost: number, stage: string) => {
     set((state) => {
       if (!state.liveAccumulation) return state;
-      
+
       const newCostByStage = {
         ...state.liveAccumulation.costByStage,
         [stage]: (state.liveAccumulation.costByStage[stage] || 0) + cost,
       };
-      
+
       const totalCost = Object.values(newCostByStage).reduce((sum, c) => sum + c, 0);
-      
+
       return {
         liveAccumulation: {
           currentCost: totalCost,
@@ -302,11 +302,11 @@ export const useCostTrackingStore = create<CostTrackingState>((set, get) => ({
       };
     });
   },
-  
+
   stopLiveTracking: () => {
     set({ liveAccumulation: null });
   },
-  
+
   reset: () => {
     set(initialState);
   },

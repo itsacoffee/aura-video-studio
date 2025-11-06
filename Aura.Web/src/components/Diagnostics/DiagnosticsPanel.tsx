@@ -154,19 +154,12 @@ interface FailureAnalysis {
 
 interface DiagnosticsPanelProps {
   jobId: string;
-  jobStatus?: string;
   errorMessage?: string;
   errorCode?: string;
   stage?: string;
 }
 
-export function DiagnosticsPanel({
-  jobId,
-  jobStatus,
-  errorMessage,
-  errorCode,
-  stage,
-}: DiagnosticsPanelProps) {
+export function DiagnosticsPanel({ jobId, errorMessage, errorCode, stage }: DiagnosticsPanelProps) {
   const styles = useStyles();
   const [downloading, setDownloading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -188,7 +181,7 @@ export function DiagnosticsPanel({
       }
 
       const result = await response.json();
-      
+
       const downloadResponse = await fetch(result.downloadUrl);
       if (!downloadResponse.ok) {
         throw new Error('Failed to download bundle');
@@ -354,7 +347,9 @@ export function DiagnosticsPanel({
                 Primary Root Cause
               </Text>
               <div className={styles.rootCause}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   {getTypeIcon(analysis.primaryRootCause.type)}
                   <Text weight="semibold">{analysis.primaryRootCause.type}</Text>
                   <Badge appearance="filled" color="danger">
@@ -394,17 +389,25 @@ export function DiagnosticsPanel({
                 <Accordion collapsible>
                   <AccordionItem value="secondary">
                     <AccordionHeader>
-                      <Text weight="semibold">Other Possible Causes ({analysis.secondaryRootCauses.length})</Text>
+                      <Text weight="semibold">
+                        Other Possible Causes ({analysis.secondaryRootCauses.length})
+                      </Text>
                     </AccordionHeader>
                     <AccordionPanel>
                       {analysis.secondaryRootCauses.map((cause, index) => (
                         <div key={index} style={{ marginBottom: tokens.spacingVerticalM }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: tokens.spacingHorizontalS,
+                            }}
+                          >
                             {getTypeIcon(cause.type)}
                             <Text weight="semibold">{cause.type}</Text>
                             <Badge>{cause.confidence}%</Badge>
                           </div>
-                          <Body1 size={200} style={{ marginTop: tokens.spacingVerticalXS }}>
+                          <Body1 style={{ marginTop: tokens.spacingVerticalXS }}>
                             {cause.description}
                           </Body1>
                         </div>
@@ -428,7 +431,13 @@ export function DiagnosticsPanel({
                       alignItems: 'center',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: tokens.spacingHorizontalS,
+                      }}
+                    >
                       <Checkmark24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
                       <Text weight="semibold">{action.title}</Text>
                       <Badge appearance="tint" color="informative">
@@ -442,7 +451,13 @@ export function DiagnosticsPanel({
                   <Body1 style={{ marginTop: tokens.spacingVerticalS }}>{action.description}</Body1>
                   {action.steps.length > 0 && (
                     <div className={styles.stepsContainer}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
                         <Text weight="semibold" size={200}>
                           Steps:
                         </Text>
@@ -450,7 +465,9 @@ export function DiagnosticsPanel({
                           size="small"
                           appearance="subtle"
                           onClick={() => {
-                            const stepsText = action.steps.map((s, i) => `${i + 1}. ${s}`).join('\n');
+                            const stepsText = action.steps
+                              .map((s, i) => `${i + 1}. ${s}`)
+                              .join('\n');
                             navigator.clipboard.writeText(stepsText);
                           }}
                         >
@@ -487,9 +504,7 @@ export function DiagnosticsPanel({
                       <DocumentBulletList24Regular />
                       <div>
                         <Text>{link.title}</Text>
-                        {link.description && (
-                          <Caption1 block>{link.description}</Caption1>
-                        )}
+                        {link.description && <Caption1 block>{link.description}</Caption1>}
                       </div>
                     </a>
                   ))}

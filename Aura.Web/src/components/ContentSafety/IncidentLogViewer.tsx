@@ -30,13 +30,12 @@ import {
   History24Regular,
   Shield24Regular,
   Warning24Regular,
-  Dismiss24Regular,
   Filter24Regular,
   ArrowDownload24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
-import { apiClient } from '../../services/api/apiClient';
+import apiClient from '../../services/api/apiClient';
 
 const useStyles = makeStyles({
   container: {
@@ -108,27 +107,27 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
   const [isLoading, setIsLoading] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const [showDetails, setShowDetails] = useState(false);
-  
+
   const [filterContentId, setFilterContentId] = useState('');
   const [filterPolicyId, setFilterPolicyId] = useState('');
   const [filterDecision, setFilterDecision] = useState<string>('');
-  
+
   const loadLogs = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (filterContentId) params.append('contentId', filterContentId);
       if (filterPolicyId) params.append('policyId', filterPolicyId);
-      
+
       const response = await apiClient.get<{ total: number; logs: AuditLogEntry[] }>(
         `/api/contentsafety/audit?${params.toString()}`
       );
-      
+
       let filteredLogs = response.data.logs;
       if (filterDecision && filterDecision !== 'all') {
-        filteredLogs = filteredLogs.filter(log => log.decision === filterDecision);
+        filteredLogs = filteredLogs.filter((log: AuditLogEntry) => log.decision === filterDecision);
       }
-      
+
       setLogs(filteredLogs);
     } catch (error) {
       console.error('Failed to load audit logs', error);
@@ -148,17 +147,28 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
 
   const handleExportLogs = async () => {
     const csvContent = [
-      ['ID', 'Timestamp', 'Content ID', 'Policy ID', 'User', 'Decision', 'Reason', 'Overrides'].join(','),
-      ...logs.map(log => [
-        log.id,
-        new Date(log.timestamp).toLocaleString(),
-        log.contentId,
-        log.policyId,
-        log.userId,
-        log.decision,
-        `"${log.decisionReason.replace(/"/g, '""')}"`,
-        log.overriddenViolations.length,
-      ].join(',')),
+      [
+        'ID',
+        'Timestamp',
+        'Content ID',
+        'Policy ID',
+        'User',
+        'Decision',
+        'Reason',
+        'Overrides',
+      ].join(','),
+      ...logs.map((log) =>
+        [
+          log.id,
+          new Date(log.timestamp).toLocaleString(),
+          log.contentId,
+          log.policyId,
+          log.userId,
+          log.decision,
+          `"${log.decisionReason.replace(/"/g, '""')}"`,
+          log.overriddenViolations.length,
+        ].join(',')
+      ),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -173,13 +183,29 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
   const getDecisionBadge = (decision: string) => {
     switch (decision) {
       case 'Proceed':
-        return <Badge appearance="filled" color="success">Proceed</Badge>;
+        return (
+          <Badge appearance="filled" color="success">
+            Proceed
+          </Badge>
+        );
       case 'Block':
-        return <Badge appearance="filled" color="danger">Block</Badge>;
+        return (
+          <Badge appearance="filled" color="danger">
+            Block
+          </Badge>
+        );
       case 'Override':
-        return <Badge appearance="filled" color="warning">Override</Badge>;
+        return (
+          <Badge appearance="filled" color="warning">
+            Override
+          </Badge>
+        );
       case 'ModifyAndProceed':
-        return <Badge appearance="filled" color="brand">Modified</Badge>;
+        return (
+          <Badge appearance="filled" color="brand">
+            Modified
+          </Badge>
+        );
       default:
         return <Badge appearance="outline">{decision}</Badge>;
     }
@@ -190,9 +216,7 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
       columnId: 'timestamp',
       renderHeaderCell: () => 'Timestamp',
       renderCell: (log) => (
-        <TableCellLayout>
-          {new Date(log.timestamp).toLocaleString()}
-        </TableCellLayout>
+        <TableCellLayout>{new Date(log.timestamp).toLocaleString()}</TableCellLayout>
       ),
     }),
     createTableColumn<AuditLogEntry>({
@@ -209,11 +233,7 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
     createTableColumn<AuditLogEntry>({
       columnId: 'decision',
       renderHeaderCell: () => 'Decision',
-      renderCell: (log) => (
-        <TableCellLayout>
-          {getDecisionBadge(log.decision)}
-        </TableCellLayout>
-      ),
+      renderCell: (log) => <TableCellLayout>{getDecisionBadge(log.decision)}</TableCellLayout>,
     }),
     createTableColumn<AuditLogEntry>({
       columnId: 'overrides',
@@ -235,11 +255,7 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
       renderHeaderCell: () => 'Actions',
       renderCell: (log) => (
         <TableCellLayout>
-          <Button
-            appearance="subtle"
-            size="small"
-            onClick={() => handleViewDetails(log)}
-          >
+          <Button appearance="subtle" size="small" onClick={() => handleViewDetails(log)}>
             Details
           </Button>
         </TableCellLayout>
@@ -258,11 +274,7 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
           <Badge appearance="outline">{logs.length} entries</Badge>
         </div>
         <div className={styles.actionButtons}>
-          <Button
-            appearance="subtle"
-            icon={<Filter24Regular />}
-            onClick={loadLogs}
-          >
+          <Button appearance="subtle" icon={<Filter24Regular />} onClick={loadLogs}>
             Refresh
           </Button>
           <Button
@@ -319,7 +331,13 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
 
       {isLoading ? (
         <Card className={styles.card}>
-          <div style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXL }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              padding: tokens.spacingVerticalXXL,
+            }}
+          >
             <Spinner label="Loading audit logs..." />
           </div>
         </Card>
@@ -337,12 +355,7 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
         </Card>
       ) : (
         <Card>
-          <DataGrid
-            items={logs}
-            columns={columns}
-            sortable
-            getRowId={(item) => item.id}
-          >
+          <DataGrid items={logs} columns={columns} sortable getRowId={(item) => item.id}>
             <DataGridHeader>
               <DataGridRow>
                 {({ renderHeaderCell }) => (
@@ -353,9 +366,7 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
             <DataGridBody<AuditLogEntry>>
               {({ item, rowId }) => (
                 <DataGridRow<AuditLogEntry> key={rowId}>
-                  {({ renderCell }) => (
-                    <DataGridCell>{renderCell(item)}</DataGridCell>
-                  )}
+                  {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
                 </DataGridRow>
               )}
             </DataGridBody>
@@ -398,7 +409,7 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
                     <Text weight="semibold">Reason:</Text>
                     <Text>{selectedLog.decisionReason}</Text>
                   </div>
-                  
+
                   {selectedLog.overriddenViolations.length > 0 && (
                     <div className={styles.overrideIndicator}>
                       <Warning24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
@@ -407,7 +418,8 @@ export const IncidentLogViewer: FC<IncidentLogViewerProps> = ({ showFilters = tr
                           {selectedLog.overriddenViolations.length} Safety Violation(s) Overridden
                         </Text>
                         <Text size={200}>
-                          This user chose to proceed despite safety warnings. Advanced Mode permission required.
+                          This user chose to proceed despite safety warnings. Advanced Mode
+                          permission required.
                         </Text>
                         <ul style={{ marginTop: tokens.spacingVerticalS, paddingLeft: '20px' }}>
                           {selectedLog.overriddenViolations.map((violation, idx) => (

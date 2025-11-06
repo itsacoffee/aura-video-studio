@@ -25,7 +25,6 @@ import {
   Add24Regular,
   Delete24Regular,
   Edit24Regular,
-  Save24Regular,
   Dismiss24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
@@ -127,24 +126,18 @@ const useStyles = makeStyles({
 
 export const PolicyCenter: FC = () => {
   const styles = useStyles();
-  const {
-    policies,
-    createPolicy,
-    updatePolicy,
-    deletePolicy,
-    isLoading,
-  } = useContentSafetyStore();
+  const { policies, createPolicy, updatePolicy, deletePolicy, isLoading } = useContentSafetyStore();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<SafetyPolicy | null>(null);
-  
+
   const [policyName, setPolicyName] = useState('');
   const [policyDescription, setPolicyDescription] = useState('');
   const [policyPreset, setPolicyPreset] = useState('Moderate');
   const [policyEnabled, setPolicyEnabled] = useState(true);
   const [allowOverride, setAllowOverride] = useState(true);
-  
+
   const [newKeyword, setNewKeyword] = useState('');
   const [newKeywordAction, setNewKeywordAction] = useState('Warn');
   const [keywords, setKeywords] = useState<Array<{ keyword: string; action: string }>>([]);
@@ -157,12 +150,12 @@ export const PolicyCenter: FC = () => {
       isEnabled: policyEnabled,
       allowUserOverride: allowOverride,
       categories: {},
-      keywordRules: keywords.map(k => ({
+      keywordRules: keywords.map((k) => ({
         id: crypto.randomUUID(),
         keyword: k.keyword,
-        matchType: 'WholeWord',
+        matchType: 'WholeWord' as const,
         isCaseSensitive: false,
-        action: k.action,
+        action: k.action as any,
         replacement: '',
         contextExceptions: [],
         isRegex: false,
@@ -171,7 +164,7 @@ export const PolicyCenter: FC = () => {
     };
 
     await createPolicy(newPolicy as SafetyPolicy);
-    
+
     setPolicyName('');
     setPolicyDescription('');
     setPolicyPreset('Moderate');
@@ -190,12 +183,12 @@ export const PolicyCenter: FC = () => {
       description: policyDescription,
       isEnabled: policyEnabled,
       allowUserOverride: allowOverride,
-      keywordRules: keywords.map(k => ({
+      keywordRules: keywords.map((k) => ({
         id: crypto.randomUUID(),
         keyword: k.keyword,
-        matchType: 'WholeWord',
+        matchType: 'WholeWord' as const,
         isCaseSensitive: false,
-        action: k.action,
+        action: k.action as any,
         replacement: '',
         contextExceptions: [],
         isRegex: false,
@@ -203,7 +196,7 @@ export const PolicyCenter: FC = () => {
     };
 
     await updatePolicy(editingPolicy.id, updatedPolicy);
-    
+
     setEditingPolicy(null);
     setShowEditDialog(false);
   };
@@ -231,7 +224,7 @@ export const PolicyCenter: FC = () => {
     setPolicyDescription(policy.description || '');
     setPolicyEnabled(policy.isEnabled);
     setAllowOverride(policy.allowUserOverride);
-    setKeywords(policy.keywordRules.map(k => ({ keyword: k.keyword, action: k.action })));
+    setKeywords(policy.keywordRules.map((k) => ({ keyword: k.keyword, action: k.action })));
     setShowEditDialog(true);
   };
 
@@ -248,11 +241,23 @@ export const PolicyCenter: FC = () => {
   const getActionBadge = (action: string) => {
     switch (action) {
       case 'Block':
-        return <Badge appearance="filled" color="danger">Block</Badge>;
+        return (
+          <Badge appearance="filled" color="danger">
+            Block
+          </Badge>
+        );
       case 'Warn':
-        return <Badge appearance="filled" color="warning">Warn</Badge>;
+        return (
+          <Badge appearance="filled" color="warning">
+            Warn
+          </Badge>
+        );
       case 'AutoFix':
-        return <Badge appearance="filled" color="brand">Auto-Fix</Badge>;
+        return (
+          <Badge appearance="filled" color="brand">
+            Auto-Fix
+          </Badge>
+        );
       default:
         return <Badge appearance="outline">{action}</Badge>;
     }
@@ -284,7 +289,9 @@ export const PolicyCenter: FC = () => {
         <div className={styles.policyList}>
           {policies.length === 0 ? (
             <div style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL }}>
-              <Shield24Regular style={{ fontSize: '48px', color: tokens.colorNeutralForeground3 }} />
+              <Shield24Regular
+                style={{ fontSize: '48px', color: tokens.colorNeutralForeground3 }}
+              />
               <Text style={{ display: 'block', marginTop: tokens.spacingVerticalM }}>
                 No policies configured
               </Text>
@@ -296,23 +303,33 @@ export const PolicyCenter: FC = () => {
             policies.map((policy) => (
               <div key={policy.id} className={styles.policyItem}>
                 <div className={styles.policyInfo}>
-                  <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: tokens.spacingHorizontalS,
+                      alignItems: 'center',
+                    }}
+                  >
                     <Text weight="semibold">{policy.name}</Text>
                     {policy.isDefault && (
-                      <Badge appearance="filled" color="brand">Default</Badge>
+                      <Badge appearance="filled" color="brand">
+                        Default
+                      </Badge>
                     )}
-                    {!policy.isEnabled && (
-                      <Badge appearance="outline">Disabled</Badge>
-                    )}
+                    {!policy.isEnabled && <Badge appearance="outline">Disabled</Badge>}
                   </div>
                   <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                     {policy.description || 'No description'}
                   </Text>
-                  <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, marginTop: tokens.spacingVerticalXS }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: tokens.spacingHorizontalS,
+                      marginTop: tokens.spacingVerticalXS,
+                    }}
+                  >
                     <Badge appearance="outline">{policy.preset}</Badge>
-                    <Badge appearance="outline">
-                      {policy.keywordRules.length} keywords
-                    </Badge>
+                    <Badge appearance="outline">{policy.keywordRules.length} keywords</Badge>
                     <Badge appearance="outline">
                       {policy.allowUserOverride ? 'Override allowed' : 'No override'}
                     </Badge>
@@ -397,7 +414,7 @@ export const PolicyCenter: FC = () => {
 
                 <div className={styles.keywordSection}>
                   <Text weight="semibold">Blocked Keywords</Text>
-                  
+
                   <div className={styles.addKeywordRow}>
                     <Field label="Keyword" style={{ flex: 1 }}>
                       <Input
@@ -409,7 +426,9 @@ export const PolicyCenter: FC = () => {
                     <Field label="Action">
                       <Dropdown
                         value={newKeywordAction}
-                        onOptionSelect={(_, data) => setNewKeywordAction(data.optionValue as string)}
+                        onOptionSelect={(_, data) =>
+                          setNewKeywordAction(data.optionValue as string)
+                        }
                       >
                         <Option value="Block">Block</Option>
                         <Option value="Warn">Warn</Option>
@@ -450,10 +469,7 @@ export const PolicyCenter: FC = () => {
               </div>
             </DialogContent>
             <DialogActions>
-              <Button
-                appearance="secondary"
-                onClick={() => setShowCreateDialog(false)}
-              >
+              <Button appearance="secondary" onClick={() => setShowCreateDialog(false)}>
                 Cancel
               </Button>
               <Button
@@ -512,7 +528,7 @@ export const PolicyCenter: FC = () => {
 
                 <div className={styles.keywordSection}>
                   <Text weight="semibold">Blocked Keywords</Text>
-                  
+
                   <div className={styles.addKeywordRow}>
                     <Field label="Keyword" style={{ flex: 1 }}>
                       <Input
@@ -524,7 +540,9 @@ export const PolicyCenter: FC = () => {
                     <Field label="Action">
                       <Dropdown
                         value={newKeywordAction}
-                        onOptionSelect={(_, data) => setNewKeywordAction(data.optionValue as string)}
+                        onOptionSelect={(_, data) =>
+                          setNewKeywordAction(data.optionValue as string)
+                        }
                       >
                         <Option value="Block">Block</Option>
                         <Option value="Warn">Warn</Option>
@@ -565,10 +583,7 @@ export const PolicyCenter: FC = () => {
               </div>
             </DialogContent>
             <DialogActions>
-              <Button
-                appearance="secondary"
-                onClick={() => setShowEditDialog(false)}
-              >
+              <Button appearance="secondary" onClick={() => setShowEditDialog(false)}>
                 Cancel
               </Button>
               <Button
