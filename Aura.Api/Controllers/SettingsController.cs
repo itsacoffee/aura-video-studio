@@ -7,6 +7,7 @@ using Aura.Api.Models;
 using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Aura.Core.Models.Settings;
+using Aura.Core.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -21,16 +22,19 @@ public class SettingsController : ControllerBase
 {
     private readonly ILogger<SettingsController> _logger;
     private readonly ProviderSettings _providerSettings;
+    private readonly ISecureStorageService _secureStorage;
     private readonly string _settingsFilePath;
     private readonly string _firstRunFilePath;
     private readonly string _userSettingsFilePath;
 
     public SettingsController(
         ILogger<SettingsController> logger,
-        ProviderSettings providerSettings)
+        ProviderSettings providerSettings,
+        ISecureStorageService secureStorage)
     {
         _logger = logger;
         _providerSettings = providerSettings;
+        _secureStorage = secureStorage;
         
         // Store settings in AuraData directory
         var auraDataDir = _providerSettings.GetAuraDataDirectory();
@@ -337,6 +341,7 @@ public class SettingsController : ControllerBase
 
     /// <summary>
     /// Save comprehensive user settings
+    /// API keys are extracted and saved via secure encrypted storage separately
     /// </summary>
     [HttpPost("user")]
     public async Task<IActionResult> SaveUserSettings(
@@ -353,6 +358,13 @@ public class SettingsController : ControllerBase
             // Update timestamp
             settings.LastUpdated = DateTime.UtcNow;
 
+            // Extract and save API keys securely (encrypted storage)
+            if (settings.ApiKeys != null)
+            {
+                await SaveApiKeysSecurelyAsync(settings.ApiKeys, ct);
+            }
+
+            // Save settings WITHOUT API keys (they're stored securely in encrypted storage)
             await SaveUserSettingsAsync(settings, ct);
 
             _logger.LogInformation("User settings saved successfully");
@@ -500,29 +512,43 @@ public class SettingsController : ControllerBase
     /// <summary>
     /// Load user settings from file or return defaults
     /// </summary>
+    /// <summary>
+    /// Load user settings from file and API keys from secure encrypted storage
+    /// </summary>
     private async Task<UserSettings> LoadUserSettingsAsync(CancellationToken ct)
     {
+        UserSettings settings;
+        
         if (!System.IO.File.Exists(_userSettingsFilePath))
         {
             _logger.LogDebug("User settings file not found, using defaults");
-            return new UserSettings();
+            settings = new UserSettings();
+        }
+        else
+        {
+            try
+            {
+                var json = await System.IO.File.ReadAllTextAsync(_userSettingsFilePath, ct);
+                settings = JsonSerializer.Deserialize<UserSettings>(json) ?? new UserSettings();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error reading user settings file, using defaults");
+                settings = new UserSettings();
+            }
         }
 
-        try
+        // Load API keys from secure encrypted storage (never from settings file)
+        if (settings.ApiKeys != null)
         {
-            var json = await System.IO.File.ReadAllTextAsync(_userSettingsFilePath, ct);
-            var settings = JsonSerializer.Deserialize<UserSettings>(json);
-            return settings ?? new UserSettings();
+            await LoadApiKeysSecurelyAsync(settings.ApiKeys, ct);
         }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error reading user settings file, using defaults");
-            return new UserSettings();
-        }
+
+        return settings;
     }
 
     /// <summary>
-    /// Save user settings to file
+    /// Save user settings to file WITHOUT API keys (they're stored securely separately)
     /// </summary>
     private async Task SaveUserSettingsAsync(UserSettings settings, CancellationToken ct)
     {
@@ -532,14 +558,79 @@ public class SettingsController : ControllerBase
             Directory.CreateDirectory(directory);
         }
 
+        // Create a copy of settings with API keys cleared (they're stored securely)
+        var settingsToSave = new UserSettings
+        {
+            General = settings.General,
+            ApiKeys = new ApiKeysSettings(), // Empty - keys stored in secure storage
+            FileLocations = settings.FileLocations,
+            VideoDefaults = settings.VideoDefaults,
+            EditorPreferences = settings.EditorPreferences,
+            UI = settings.UI,
+            Advanced = settings.Advanced,
+            Version = settings.Version,
+            LastUpdated = settings.LastUpdated
+        };
+
         var options = new JsonSerializerOptions
         {
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
-        var json = JsonSerializer.Serialize(settings, options);
+        var json = JsonSerializer.Serialize(settingsToSave, options);
         await System.IO.File.WriteAllTextAsync(_userSettingsFilePath, json, ct);
+    }
+
+    /// <summary>
+    /// Save API keys to secure encrypted storage (DPAPI on Windows, AES-256 on Linux/macOS)
+    /// </summary>
+    private async Task SaveApiKeysSecurelyAsync(ApiKeysSettings apiKeys, CancellationToken ct)
+    {
+        var keyMap = new System.Collections.Generic.Dictionary<string, string>
+        {
+            { "openai", apiKeys.OpenAI ?? string.Empty },
+            { "anthropic", apiKeys.Anthropic ?? string.Empty },
+            { "stabilityai", apiKeys.StabilityAI ?? string.Empty },
+            { "elevenlabs", apiKeys.ElevenLabs ?? string.Empty },
+            { "pexels", apiKeys.Pexels ?? string.Empty },
+            { "pixabay", apiKeys.Pixabay ?? string.Empty },
+            { "unsplash", apiKeys.Unsplash ?? string.Empty },
+            { "google", apiKeys.Google ?? string.Empty },
+            { "azure", apiKeys.Azure ?? string.Empty }
+        };
+
+        foreach (var kvp in keyMap)
+        {
+            if (!string.IsNullOrWhiteSpace(kvp.Value))
+            {
+                await _secureStorage.SaveApiKeyAsync(kvp.Key, kvp.Value);
+            }
+            else
+            {
+                // Delete key if it's empty (user cleared it)
+                if (await _secureStorage.HasApiKeyAsync(kvp.Key))
+                {
+                    await _secureStorage.DeleteApiKeyAsync(kvp.Key);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Load API keys from secure encrypted storage into ApiKeysSettings
+    /// </summary>
+    private async Task LoadApiKeysSecurelyAsync(ApiKeysSettings apiKeys, CancellationToken ct)
+    {
+        apiKeys.OpenAI = await _secureStorage.GetApiKeyAsync("openai") ?? string.Empty;
+        apiKeys.Anthropic = await _secureStorage.GetApiKeyAsync("anthropic") ?? string.Empty;
+        apiKeys.StabilityAI = await _secureStorage.GetApiKeyAsync("stabilityai") ?? string.Empty;
+        apiKeys.ElevenLabs = await _secureStorage.GetApiKeyAsync("elevenlabs") ?? string.Empty;
+        apiKeys.Pexels = await _secureStorage.GetApiKeyAsync("pexels") ?? string.Empty;
+        apiKeys.Pixabay = await _secureStorage.GetApiKeyAsync("pixabay") ?? string.Empty;
+        apiKeys.Unsplash = await _secureStorage.GetApiKeyAsync("unsplash") ?? string.Empty;
+        apiKeys.Google = await _secureStorage.GetApiKeyAsync("google") ?? string.Empty;
+        apiKeys.Azure = await _secureStorage.GetApiKeyAsync("azure") ?? string.Empty;
     }
 
     /// <summary>
