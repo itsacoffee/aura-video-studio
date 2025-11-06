@@ -1,6 +1,6 @@
 /**
  * TopMenuBar Component
- * Professional desktop-style menu bar matching Adobe Premiere Pro conventions
+ * Professional desktop-style menu bar for video editing
  */
 
 import {

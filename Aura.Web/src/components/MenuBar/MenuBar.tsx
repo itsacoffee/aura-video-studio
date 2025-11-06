@@ -26,6 +26,8 @@ import {
   ArrowMaximize24Regular,
   ArrowMinimize24Regular,
   Settings24Regular,
+  PanelLeft24Regular,
+  PanelLeftContract24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -139,8 +141,12 @@ export function MenuBar({
   const navigate = useNavigate();
   const [undoStack] = useState<string[]>([]);
   const [redoStack] = useState<string[]>([]);
-  const { isFullscreen, toggleFullscreen, resetLayout } = useWorkspaceLayoutStore();
+  const { isFullscreen, toggleFullscreen, resetLayout, toggleAllLeftPanels, collapsedPanels } =
+    useWorkspaceLayoutStore();
   const [workspaceManagerOpen, setWorkspaceManagerOpen] = useState(false);
+
+  // Check if all left panels are collapsed
+  const allLeftPanelsCollapsed = collapsedPanels.mediaLibrary && collapsedPanels.effects;
 
   const handleUndo = () => {
     // Placeholder for undo functionality
@@ -305,6 +311,14 @@ export function MenuBar({
           />
         </Toolbar>
         <div className={styles.divider} />
+        <ToolbarButton
+          aria-label={allLeftPanelsCollapsed ? 'Show left panels' : 'Hide left panels'}
+          icon={allLeftPanelsCollapsed ? <PanelLeft24Regular /> : <PanelLeftContract24Regular />}
+          onClick={toggleAllLeftPanels}
+          title={
+            allLeftPanelsCollapsed ? 'Show Left Panels (Workspace)' : 'Hide Left Panels (Workspace)'
+          }
+        />
         <WorkspaceLayoutSwitcher />
         <ToolbarButton
           aria-label="Manage Workspaces"
