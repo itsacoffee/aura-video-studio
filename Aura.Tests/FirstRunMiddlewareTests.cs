@@ -26,6 +26,8 @@ public class FirstRunMiddlewareTests
 
     [Theory]
     [InlineData("/api/apikeys/save")]
+    [InlineData("/api/keys/set")]
+    [InlineData("/api/keys/test")]
     [InlineData("/api/providers/validate")]
     [InlineData("/api/dependencies/rescan")]
     [InlineData("/api/preflight")]

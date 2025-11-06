@@ -33,6 +33,7 @@ public class FirstRunMiddleware
             path.StartsWith("/api/downloads", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/dependencies", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/apikeys", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/keys", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/providers", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/healthz", StringComparison.OrdinalIgnoreCase) ||
