@@ -21,15 +21,18 @@ public class KeyVaultController : ControllerBase
     private readonly ILogger<KeyVaultController> _logger;
     private readonly ISecureStorageService _secureStorage;
     private readonly IKeyValidationService _keyValidator;
+    private readonly Aura.Core.Configuration.IKeyStore _keyStore;
 
     public KeyVaultController(
         ILogger<KeyVaultController> _logger,
         ISecureStorageService secureStorage,
-        IKeyValidationService keyValidator)
+        IKeyValidationService keyValidator,
+        Aura.Core.Configuration.IKeyStore keyStore)
     {
         this._logger = _logger;
         _secureStorage = secureStorage;
         _keyValidator = keyValidator;
+        _keyStore = keyStore;
     }
 
     /// <summary>
@@ -66,6 +69,10 @@ public class KeyVaultController : ControllerBase
                 sanitizedProvider, HttpContext.TraceIdentifier);
 
             await _secureStorage.SaveApiKeyAsync(request.Provider, request.ApiKey);
+            
+            // Invalidate KeyStore cache so validation immediately sees the new key
+            _keyStore.Reload();
+            _logger.LogDebug("KeyStore cache reloaded after setting API key for {Provider}", sanitizedProvider);
 
             return Ok(new
             {
@@ -260,6 +267,9 @@ public class KeyVaultController : ControllerBase
             }
 
             await _secureStorage.SaveApiKeyAsync(request.Provider, request.NewApiKey);
+            
+            // Invalidate KeyStore cache so validation immediately sees the new key
+            _keyStore.Reload();
 
             return Ok(new
             {
@@ -315,6 +325,9 @@ public class KeyVaultController : ControllerBase
                 sanitizedProvider, HttpContext.TraceIdentifier);
 
             await _secureStorage.DeleteApiKeyAsync(provider);
+            
+            // Invalidate KeyStore cache after deletion
+            _keyStore.Reload();
 
             return Ok(new
             {
