@@ -716,6 +716,124 @@ export function CreateWizard() {
               </Field>
             </div>
 
+            {/* RAG Configuration */}
+            <div style={{ marginTop: tokens.spacingVerticalL }}>
+              <Accordion collapsible>
+                <AccordionItem value="rag">
+                  <AccordionHeader icon={<ChevronDown24Regular />} expandIconPosition="end">
+                    <Title3>Document Grounding (Optional)</Title3>
+                  </AccordionHeader>
+                  <AccordionPanel>
+                    <div className={styles.fieldGroup}>
+                      <Text size={300} style={{ marginBottom: tokens.spacingVerticalM }}>
+                        Ground your video script in source documents. Upload PDFs, Word documents,
+                        or other files to ensure factual accuracy and include citations.
+                      </Text>
+
+                      <Field>
+                        <Switch
+                          checked={settings.brief.ragConfiguration?.enabled ?? false}
+                          onChange={(_, data) =>
+                            updateBrief({
+                              ragConfiguration: {
+                                enabled: data.checked,
+                                topK: settings.brief.ragConfiguration?.topK ?? 5,
+                                minimumScore: settings.brief.ragConfiguration?.minimumScore ?? 0.6,
+                                maxContextTokens:
+                                  settings.brief.ragConfiguration?.maxContextTokens ?? 2000,
+                                includeCitations:
+                                  settings.brief.ragConfiguration?.includeCitations ?? true,
+                                tightenClaims:
+                                  settings.brief.ragConfiguration?.tightenClaims ?? false,
+                              },
+                            })
+                          }
+                          label="Use attached source documents"
+                        />
+                      </Field>
+
+                      {settings.brief.ragConfiguration?.enabled && (
+                        <>
+                          <Field
+                            label="Number of source chunks (TopK)"
+                            hint="How many relevant document chunks to retrieve"
+                          >
+                            <Slider
+                              min={1}
+                              max={20}
+                              step={1}
+                              value={settings.brief.ragConfiguration.topK ?? 5}
+                              onChange={(_, data) =>
+                                updateBrief({
+                                  ragConfiguration: {
+                                    ...settings.brief.ragConfiguration,
+                                    enabled: true,
+                                    topK: data.value,
+                                  },
+                                })
+                              }
+                            />
+                            <Text size={200}>
+                              {settings.brief.ragConfiguration.topK ?? 5} chunks
+                            </Text>
+                          </Field>
+
+                          <Field
+                            label="Minimum relevance score"
+                            hint="Filter out less relevant content (0-1)"
+                          >
+                            <Slider
+                              min={0}
+                              max={1}
+                              step={0.1}
+                              value={settings.brief.ragConfiguration.minimumScore ?? 0.6}
+                              onChange={(_, data) =>
+                                updateBrief({
+                                  ragConfiguration: {
+                                    ...settings.brief.ragConfiguration,
+                                    enabled: true,
+                                    minimumScore: data.value,
+                                  },
+                                })
+                              }
+                            />
+                            <Text size={200}>
+                              {(settings.brief.ragConfiguration.minimumScore ?? 0.6).toFixed(1)}
+                            </Text>
+                          </Field>
+
+                          <Field>
+                            <Checkbox
+                              checked={settings.brief.ragConfiguration.includeCitations ?? true}
+                              onChange={(_, data) =>
+                                updateBrief({
+                                  ragConfiguration: {
+                                    ...settings.brief.ragConfiguration,
+                                    enabled: true,
+                                    includeCitations: data.checked === true,
+                                  },
+                                })
+                              }
+                              label="Include citations in script"
+                            />
+                          </Field>
+
+                          <Button
+                            appearance="subtle"
+                            onClick={() => {
+                              window.location.href = '/rag';
+                            }}
+                          >
+                            Manage Documents
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </AccordionPanel>
+                </AccordionItem>
+              </Accordion>
+            </div>
+
             {/* Quick Demo Button */}
             <div
               style={{
