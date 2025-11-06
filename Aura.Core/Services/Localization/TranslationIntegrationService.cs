@@ -9,6 +9,7 @@ using Aura.Core.Models.Audio;
 using Aura.Core.Models.Localization;
 using Aura.Core.Models.Voice;
 using Aura.Core.Services.Audio;
+using Aura.Core.Services.TTS;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Localization;
@@ -23,17 +24,23 @@ public class TranslationIntegrationService
     private readonly TranslationService _translationService;
     private readonly SSMLPlannerService _ssmlPlannerService;
     private readonly CaptionBuilder _captionBuilder;
+    private readonly SSMLSubtitleSynchronizer? _subtitleSynchronizer;
+    private readonly VoiceProviderRegistry? _voiceRegistry;
 
     public TranslationIntegrationService(
         ILogger<TranslationIntegrationService> logger,
         TranslationService translationService,
         SSMLPlannerService ssmlPlannerService,
-        CaptionBuilder captionBuilder)
+        CaptionBuilder captionBuilder,
+        SSMLSubtitleSynchronizer? subtitleSynchronizer = null,
+        VoiceProviderRegistry? voiceRegistry = null)
     {
         _logger = logger;
         _translationService = translationService;
         _ssmlPlannerService = ssmlPlannerService;
         _captionBuilder = captionBuilder;
+        _subtitleSynchronizer = subtitleSynchronizer;
+        _voiceRegistry = voiceRegistry;
     }
 
     /// <summary>
@@ -46,6 +53,34 @@ public class TranslationIntegrationService
         _logger.LogInformation(
             "Starting translation and SSML planning: {Source} → {Target}, Provider: {Provider}",
             request.SourceLanguage, request.TargetLanguage, request.TargetProvider);
+
+        if (_voiceRegistry != null)
+        {
+            var voiceValidation = _voiceRegistry.ValidateVoice(
+                request.TargetProvider,
+                request.TargetLanguage,
+                request.VoiceSpec.VoiceName);
+
+            if (!voiceValidation.IsValid)
+            {
+                _logger.LogWarning(
+                    "Voice validation failed: {Error}. Using fallback.",
+                    voiceValidation.ErrorMessage);
+                
+                if (voiceValidation.FallbackSuggestion != null)
+                {
+                    _logger.LogInformation(
+                        "Fallback voice suggested: {Voice}",
+                        voiceValidation.FallbackSuggestion.VoiceName);
+                }
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Voice validated: {Voice} for {Language}/{Provider}",
+                    voiceValidation.MatchedVoice?.VoiceName, request.TargetLanguage, request.TargetProvider);
+            }
+        }
 
         var translationRequest = new TranslationRequest
         {
@@ -88,15 +123,42 @@ public class TranslationIntegrationService
         var ssmlResult = await _ssmlPlannerService.PlanSSMLAsync(
             ssmlRequest, cancellationToken);
 
-        var subtitles = GenerateSubtitles(translatedScriptLines, request.SubtitleFormat);
+        var finalScriptLines = translatedScriptLines;
+        SubtitleTimingSyncResult? timingSyncResult = null;
+
+        if (_subtitleSynchronizer != null)
+        {
+            timingSyncResult = _subtitleSynchronizer.SynchronizeWithSSML(
+                ssmlResult.Segments,
+                translatedScriptLines,
+                request.DurationTolerance);
+
+            if (!timingSyncResult.IsValid)
+            {
+                _logger.LogWarning(
+                    "Subtitle timing synchronization deviation {Deviation:P2} exceeds tolerance {Tolerance:P2}",
+                    timingSyncResult.OverallDeviation, request.DurationTolerance);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Subtitle timing synchronized: {WithinTolerance}/{Total} segments within tolerance",
+                    timingSyncResult.WithinToleranceCount, timingSyncResult.Adjustments.Count);
+            }
+
+            finalScriptLines = timingSyncResult.SynchronizedLines;
+        }
+
+        var subtitles = GenerateSubtitles(finalScriptLines, request.SubtitleFormat);
 
         return new TranslatedSSMLResult
         {
             Translation = translationResult,
             SSMLPlanning = ssmlResult,
-            TranslatedScriptLines = translatedScriptLines,
+            TranslatedScriptLines = finalScriptLines,
             Subtitles = subtitles,
-            SubtitleFormat = request.SubtitleFormat
+            SubtitleFormat = request.SubtitleFormat,
+            TimingSyncResult = timingSyncResult
         };
     }
 
@@ -298,6 +360,7 @@ public record TranslatedSSMLResult
     public required IReadOnlyList<ScriptLine> TranslatedScriptLines { get; init; }
     public required SubtitleOutput Subtitles { get; init; }
     public SubtitleFormat SubtitleFormat { get; init; }
+    public SubtitleTimingSyncResult? TimingSyncResult { get; init; }
 }
 
 /// <summary>
