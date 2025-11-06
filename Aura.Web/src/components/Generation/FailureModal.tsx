@@ -15,7 +15,6 @@ import {
   Dismiss24Regular,
   Copy24Regular,
   Folder24Regular,
-  ArrowClockwise24Regular,
   Wrench24Regular,
   Settings24Regular,
 } from '@fluentui/react-icons';
@@ -110,7 +109,8 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
       if (response.ok) {
         showSuccessToast({
           title: 'FFmpeg Installed',
-          message: 'Managed FFmpeg has been installed successfully. You can now retry video generation.',
+          message:
+            'Managed FFmpeg has been installed successfully. You can now retry video generation.',
         });
         onClose();
       } else {
@@ -131,38 +131,7 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
     }
   };
 
-  const handleRepairFFmpeg = async () => {
-    setRepairing(true);
-    try {
-      const response = await fetch('/api/downloads/ffmpeg/repair', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (response.ok) {
-        showSuccessToast({
-          title: 'FFmpeg Repair Started',
-          message: 'FFmpeg repair initiated. Please wait for it to complete.',
-        });
-      } else {
-        showFailureToast({
-          title: 'Repair Failed',
-          message: 'Failed to start FFmpeg repair. Please try manually from the Dependencies page.',
-        });
-      }
-    } catch (error) {
-      console.error('Error repairing FFmpeg:', error);
-      showFailureToast({
-        title: 'Repair Error',
-        message: 'Error initiating FFmpeg repair.',
-      });
-    } finally {
-      setRepairing(false);
-    }
-  };
-
   const handleAttachFFmpeg = async () => {
-    // Open dependencies page where user can attach FFmpeg
     window.location.href = '/dependencies';
   };
 
