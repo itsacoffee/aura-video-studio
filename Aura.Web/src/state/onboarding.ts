@@ -770,7 +770,8 @@ export async function validateApiKeyThunk(
       // Handle both successful validation and error responses
       const data = await response.json();
 
-      if (response.ok && (data.isValid === true || data.status === 'Valid')) {
+      // Check for successful validation (only isValid === true is considered success)
+      if (response.ok && data.isValid === true) {
         dispatch({
           type: 'API_KEY_VALID',
           payload: {

@@ -168,7 +168,7 @@ export class SettingsService {
         // Handle different response types
         if (response.ok) {
           return {
-            success: data.isValid ?? true,
+            success: data.isValid === true,
             message: data.message || 'API key is valid and verified with OpenAI.',
           };
         }

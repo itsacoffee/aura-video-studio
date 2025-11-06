@@ -19,24 +19,24 @@ public class ProvidersController : ControllerBase
     private readonly ProviderHealthMonitoringService? _healthMonitoringService;
     private readonly ProviderCostTrackingService? _costTrackingService;
     private readonly ProviderSettings _settings;
-    private readonly OpenAIKeyValidationService? _openAIValidationService;
+    private readonly OpenAIKeyValidationService _openAIValidationService;
 
     public ProvidersController(
         IHardwareDetector hardwareDetector, 
         IKeyStore keyStore,
         ProviderSettings settings,
+        OpenAIKeyValidationService openAIValidationService,
         LlmProviderRecommendationService? recommendationService = null,
         ProviderHealthMonitoringService? healthMonitoringService = null,
-        ProviderCostTrackingService? costTrackingService = null,
-        OpenAIKeyValidationService? openAIValidationService = null)
+        ProviderCostTrackingService? costTrackingService = null)
     {
         _hardwareDetector = hardwareDetector;
         _keyStore = keyStore;
         _settings = settings;
+        _openAIValidationService = openAIValidationService;
         _recommendationService = recommendationService;
         _healthMonitoringService = healthMonitoringService;
         _costTrackingService = costTrackingService;
-        _openAIValidationService = openAIValidationService;
     }
 
     /// <summary>
@@ -319,15 +319,6 @@ public class ProvidersController : ControllerBase
         
         try
         {
-            if (_openAIValidationService == null)
-            {
-                return Problem(
-                    title: "Validation Service Unavailable",
-                    detail: "OpenAI validation service is not configured.",
-                    statusCode: 503,
-                    type: "https://docs.aura.studio/errors/service-unavailable");
-            }
-
             if (string.IsNullOrWhiteSpace(request.ApiKey))
             {
                 return BadRequest(new ProviderValidationResponse(

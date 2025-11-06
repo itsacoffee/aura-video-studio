@@ -82,13 +82,13 @@ export function ApiKeysSettingsTab({
   hasChanges,
 }: ApiKeysSettingsTabProps) {
   const styles = useStyles();
-  const [testResults, setTestResults] = useState<Record<string, TestResult | undefined>>({});
+  const [testResults, setTestResults] = useState<Record<string, TestResult | null>>({});
   const [testing, setTesting] = useState<Record<string, boolean>>({});
 
   const updateSetting = <K extends keyof ApiKeysSettings>(key: K, value: ApiKeysSettings[K]) => {
     onChange({ ...settings, [key]: value });
     // Clear test result when value changes
-    setTestResults((prev) => ({ ...prev, [key]: undefined }));
+    setTestResults((prev) => ({ ...prev, [key]: null }));
   };
 
   const handleTest = async (provider: string, key: keyof ApiKeysSettings) => {
@@ -98,7 +98,7 @@ export function ApiKeysSettingsTab({
     }
 
     setTesting((prev) => ({ ...prev, [key]: true }));
-    setTestResults((prev) => ({ ...prev, [key]: undefined })); // Clear previous result
+    setTestResults((prev) => ({ ...prev, [key]: null })); // Clear previous result
     try {
       const result = await onTestApiKey(provider, apiKey);
       setTestResults((prev) => ({ ...prev, [key]: result }));
@@ -118,7 +118,7 @@ export function ApiKeysSettingsTab({
 
   const renderTestResult = (key: string) => {
     const result = testResults[key];
-    if (!result) return null;
+    if (result === null || result === undefined) return null;
 
     return (
       <div className={styles.testResult}>

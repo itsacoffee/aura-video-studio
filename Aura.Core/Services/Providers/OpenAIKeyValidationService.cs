@@ -17,7 +17,6 @@ public class OpenAIKeyValidationService
     private readonly ILogger<OpenAIKeyValidationService> _logger;
     private readonly HttpClient _httpClient;
     
-    private const int ConnectTimeoutSeconds = 5;
     private const int TotalTimeoutSeconds = 10;
     private const string DefaultBaseUrl = "https://api.openai.com";
 
