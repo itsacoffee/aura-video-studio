@@ -128,10 +128,14 @@ jobs:
       - name: Generate release notes
         run: |
           # Get previous tag for changelog
-          $PREV_TAG = git describe --tags --abbrev=0 HEAD^ 2>$null
-          if ($PREV_TAG) {
-            node scripts/release/generate-release-notes.js $PREV_TAG HEAD
-          } else {
+          try {
+            $PREV_TAG = git describe --tags --abbrev=0 HEAD^ 2>&1
+            if ($LASTEXITCODE -eq 0 -and $PREV_TAG) {
+              node scripts/release/generate-release-notes.js $PREV_TAG HEAD
+            } else {
+              node scripts/release/generate-release-notes.js
+            }
+          } catch {
             node scripts/release/generate-release-notes.js
           }
 

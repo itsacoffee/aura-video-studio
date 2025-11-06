@@ -18,23 +18,45 @@ function execCommand(command) {
   }
 }
 
-function getCommitsSinceTag(fromTag, toTag = 'HEAD') {
+function getCommitsSinceTag(fromTag, toTag = 'HEAD', limit = 100) {
   const command = fromTag 
-    ? `git log ${fromTag}..${toTag} --pretty=format:"%H|||%s|||%an|||%aI" --no-merges`
-    : `git log ${toTag} --pretty=format:"%H|||%s|||%an|||%aI" --no-merges -n 50`;
+    ? `git log ${fromTag}..${toTag} --pretty=format:"%H|||%s|||%an|||%aI|||%b" --no-merges`
+    : `git log ${toTag} --pretty=format:"%H|||%s|||%an|||%aI|||%b" --no-merges -n ${limit}`;
   
   const output = execCommand(command);
   if (!output) return [];
 
-  return output.split('\n')
-    .filter(line => line.trim())
-    .map(line => {
+  const commits = [];
+  const lines = output.split('\n');
+  let currentCommit = null;
+  
+  for (const line of lines) {
+    if (line.includes('|||')) {
       const parts = line.split('|||');
-      if (parts.length < 4) return null;
-      const [hash, subject, author, date] = parts;
-      return { hash, subject: subject || '', body: '', author: author || 'Unknown', email: '', date };
-    })
-    .filter(commit => commit !== null);
+      if (parts.length >= 4) {
+        if (currentCommit) {
+          commits.push(currentCommit);
+        }
+        const [hash, subject, author, date] = parts;
+        currentCommit = { 
+          hash, 
+          subject: subject || '', 
+          author: author || 'Unknown', 
+          email: '', 
+          date,
+          body: parts.slice(4).join('|||') || ''
+        };
+      }
+    } else if (currentCommit && line.trim()) {
+      currentCommit.body += '\n' + line;
+    }
+  }
+  
+  if (currentCommit) {
+    commits.push(currentCommit);
+  }
+  
+  return commits.filter(commit => commit !== null);
 }
 
 function parseConventionalCommit(subject, body) {

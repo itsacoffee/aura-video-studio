@@ -16,8 +16,7 @@ namespace Aura.Api.Controllers;
 public class VersionController : ControllerBase
 {
     private readonly ILogger<VersionController> _logger;
-    private static VersionInfo? _cachedVersionInfo;
-    private static readonly object _lock = new object();
+    private static readonly Lazy<Task<VersionInfo>> _versionInfoLazy = new Lazy<Task<VersionInfo>>(LoadVersionInfoAsync);
 
     public VersionController(ILogger<VersionController> logger)
     {
@@ -33,13 +32,9 @@ public class VersionController : ControllerBase
     {
         try
         {
-            if (_cachedVersionInfo == null)
-            {
-                _cachedVersionInfo = await LoadVersionInfoAsync();
-            }
-
-            _logger.LogInformation("Version info requested: {Version}", _cachedVersionInfo.SemanticVersion);
-            return Ok(_cachedVersionInfo);
+            var versionInfo = await _versionInfoLazy.Value;
+            _logger.LogInformation("Version info requested: {Version}", versionInfo.SemanticVersion);
+            return Ok(versionInfo);
         }
         catch (Exception ex)
         {
@@ -48,7 +43,7 @@ public class VersionController : ControllerBase
         }
     }
 
-    private async Task<VersionInfo> LoadVersionInfoAsync()
+    private static async Task<VersionInfo> LoadVersionInfoAsync()
     {
         var versionFilePath = Path.Combine(AppContext.BaseDirectory, "version.json");
         
@@ -73,7 +68,6 @@ public class VersionController : ControllerBase
         }
         else
         {
-            _logger.LogWarning("version.json not found, using assembly version");
             var assembly = Assembly.GetExecutingAssembly();
             var assemblyVersion = assembly.GetName().Version?.ToString() ?? "1.0.0";
             
