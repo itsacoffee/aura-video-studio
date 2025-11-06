@@ -819,7 +819,7 @@ function validateApiKeyFormat(
 ): { valid: boolean; error?: string } {
   const trimmedKey = apiKey.trim();
 
-  if (!apiKey || trimmedKey === '') {
+  if (!trimmedKey) {
     return { valid: false, error: 'Please enter your API key' };
   }
 
