@@ -31,6 +31,7 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { usePacingAnalysis } from '../../hooks/usePacingAnalysis';
+import { pacingAnalytics } from '../../services/analytics';
 import { getPlatformPresets } from '../../services/pacingService';
 import { Brief } from '../../types';
 import { Scene, PacingSettings as PacingSettingsType, PlatformPreset } from '../../types/pacing';
@@ -164,14 +165,38 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
   const handleAnalyze = useCallback(async () => {
     const targetDuration = scenes.reduce((sum, scene) => sum + (scene.duration || 0), 0);
 
-    await analyzePacing({
-      script,
-      scenes,
-      targetPlatform: settings.targetPlatform,
-      targetDuration,
-      brief,
-    });
+    const tempCorrelationId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+    // Track analysis start
+    pacingAnalytics.analysisStarted(scenes.length, settings.targetPlatform, tempCorrelationId);
+
+    try {
+      await analyzePacing({
+        script,
+        scenes,
+        targetPlatform: settings.targetPlatform,
+        targetDuration,
+        brief,
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      pacingAnalytics.analysisFailed(errorMessage, tempCorrelationId);
+      throw error;
+    }
   }, [script, scenes, settings.targetPlatform, brief, analyzePacing]);
+
+  // Track analysis completion when data changes
+  useEffect(() => {
+    if (data && !loading && !error) {
+      pacingAnalytics.analysisCompleted(
+        data.analysisId,
+        data.overallScore,
+        data.suggestions.length,
+        data.estimatedRetention,
+        data.correlationId
+      );
+    }
+  }, [data, loading, error]);
 
   const handleReanalyze = useCallback(async () => {
     const optimizationLevelMap: Record<string, 'Low' | 'Medium' | 'High'> = {
@@ -180,11 +205,20 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
       Aggressive: 'High',
     };
 
+    if (data?.analysisId) {
+      pacingAnalytics.reanalysisTriggered(
+        data.analysisId,
+        settings.optimizationLevel,
+        settings.targetPlatform,
+        data.correlationId
+      );
+    }
+
     await reanalyzePacing({
       optimizationLevel: optimizationLevelMap[settings.optimizationLevel],
       targetPlatform: settings.targetPlatform,
     });
-  }, [settings, reanalyzePacing]);
+  }, [data, settings, reanalyzePacing]);
 
   const handleAcceptSuggestion = (sceneIndex: number) => {
     const suggestion = data?.suggestions.find((s) => s.sceneIndex === sceneIndex);
@@ -192,6 +226,11 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
 
     setAppliedSuggestions((prev) => new Set(prev).add(sceneIndex));
     setSuccessMessage(`Applied pacing suggestion for Scene ${sceneIndex + 1}`);
+
+    // Track suggestion application
+    if (data?.analysisId) {
+      pacingAnalytics.suggestionApplied(sceneIndex, data.analysisId);
+    }
 
     // Clear success message after 3 seconds
     setTimeout(() => setSuccessMessage(null), 3000);
@@ -204,6 +243,11 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
   };
 
   const handleRejectSuggestion = (sceneIndex: number) => {
+    // Track suggestion rejection
+    if (data?.analysisId) {
+      pacingAnalytics.suggestionRejected(sceneIndex, data.analysisId);
+    }
+
     // Just remove from applied if it was applied
     setAppliedSuggestions((prev) => {
       const next = new Set(prev);
@@ -223,6 +267,11 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
     setAppliedSuggestions(newApplied);
     setSuccessMessage(`Applied ${newApplied.size} pacing suggestions`);
 
+    // Track bulk application
+    if (data?.analysisId) {
+      pacingAnalytics.allSuggestionsApplied(newApplied.size, data.analysisId);
+    }
+
     setTimeout(() => setSuccessMessage(null), 3000);
 
     if (onScenesUpdated) {
@@ -233,6 +282,14 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
   const handleSettingsSave = () => {
     setShowSettings(false);
     setSuccessMessage('Settings saved successfully');
+
+    // Track settings change
+    pacingAnalytics.settingsChanged(
+      settings.optimizationLevel,
+      settings.targetPlatform,
+      settings.minConfidence
+    );
+
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
@@ -378,6 +435,15 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
               <Title3>{data.suggestions.length}</Title3>
             </Card>
           </div>
+
+          {/* Diagnostic Info */}
+          {data.correlationId && (
+            <Card style={{ padding: tokens.spacingVerticalS }}>
+              <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>
+                Analysis ID: {data.analysisId} | Correlation ID: {data.correlationId}
+              </Caption1>
+            </Card>
+          )}
 
           {/* Attention Curve */}
           {data.attentionCurve && <AttentionCurveChart data={data.attentionCurve} />}

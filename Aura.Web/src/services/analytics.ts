@@ -111,6 +111,85 @@ export const wizardAnalytics = {
 };
 
 /**
+ * Track pacing analysis events
+ */
+export const pacingAnalytics = {
+  analysisStarted: (sceneCount: number, platform: string, correlationId: string) => {
+    trackEvent('pacing_analysis_started', 'pacing', {
+      scene_count: sceneCount,
+      target_platform: platform,
+      correlation_id: correlationId,
+    });
+  },
+
+  analysisCompleted: (
+    analysisId: string,
+    overallScore: number,
+    suggestionCount: number,
+    estimatedRetention: number,
+    correlationId: string
+  ) => {
+    trackEvent('pacing_analysis_completed', 'pacing', {
+      analysis_id: analysisId,
+      overall_score: overallScore,
+      suggestion_count: suggestionCount,
+      estimated_retention: estimatedRetention,
+      correlation_id: correlationId,
+    });
+  },
+
+  analysisFailed: (error: string, correlationId: string) => {
+    trackEvent('pacing_analysis_failed', 'pacing', {
+      error_message: error,
+      correlation_id: correlationId,
+    });
+  },
+
+  reanalysisTriggered: (
+    analysisId: string,
+    optimizationLevel: string,
+    platform: string,
+    correlationId: string
+  ) => {
+    trackEvent('pacing_reanalysis_triggered', 'pacing', {
+      original_analysis_id: analysisId,
+      optimization_level: optimizationLevel,
+      target_platform: platform,
+      correlation_id: correlationId,
+    });
+  },
+
+  suggestionApplied: (sceneIndex: number, analysisId: string) => {
+    trackEvent('pacing_suggestion_applied', 'pacing', {
+      scene_index: sceneIndex,
+      analysis_id: analysisId,
+    });
+  },
+
+  suggestionRejected: (sceneIndex: number, analysisId: string) => {
+    trackEvent('pacing_suggestion_rejected', 'pacing', {
+      scene_index: sceneIndex,
+      analysis_id: analysisId,
+    });
+  },
+
+  allSuggestionsApplied: (count: number, analysisId: string) => {
+    trackEvent('pacing_all_suggestions_applied', 'pacing', {
+      suggestion_count: count,
+      analysis_id: analysisId,
+    });
+  },
+
+  settingsChanged: (optimizationLevel: string, platform: string, minConfidence: number) => {
+    trackEvent('pacing_settings_changed', 'pacing', {
+      optimization_level: optimizationLevel,
+      target_platform: platform,
+      min_confidence: minConfidence,
+    });
+  },
+};
+
+/**
  * Store event locally for analysis
  */
 function storeEventLocally(event: AnalyticsEvent): void {
