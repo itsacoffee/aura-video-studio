@@ -26,9 +26,16 @@ public class ValidationControllerTests
         _mockFfmpegLocator = new Mock<IFfmpegLocator>();
         _mockHardwareDetector = new Mock<IHardwareDetector>();
 
+        var mockCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
+            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var ffmpegResolver = new FFmpegResolver(
+            NullLogger<FFmpegResolver>.Instance,
+            mockCache);
+
         _validator = new PreGenerationValidator(
             NullLogger<PreGenerationValidator>.Instance,
             _mockFfmpegLocator.Object,
+            ffmpegResolver,
             _mockHardwareDetector.Object
         );
 

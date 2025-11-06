@@ -17,15 +17,18 @@ public class PreGenerationValidator
 {
     private readonly ILogger<PreGenerationValidator> _logger;
     private readonly IFfmpegLocator _ffmpegLocator;
+    private readonly FFmpegResolver _ffmpegResolver;
     private readonly IHardwareDetector _hardwareDetector;
 
     public PreGenerationValidator(
         ILogger<PreGenerationValidator> logger,
         IFfmpegLocator ffmpegLocator,
+        FFmpegResolver ffmpegResolver,
         IHardwareDetector hardwareDetector)
     {
         _logger = logger;
         _ffmpegLocator = ffmpegLocator;
+        _ffmpegResolver = ffmpegResolver;
         _hardwareDetector = hardwareDetector;
     }
 
@@ -43,23 +46,29 @@ public class PreGenerationValidator
     {
         var issues = new List<string>();
 
-        // Validate FFmpeg availability
+        // Validate FFmpeg availability using FFmpegResolver for proper precedence
         try
         {
-            var ffmpegResult = await _ffmpegLocator.CheckAllCandidatesAsync(null, ct).ConfigureAwait(false);
-            if (!ffmpegResult.Found || string.IsNullOrEmpty(ffmpegResult.FfmpegPath))
+            var resolutionResult = await _ffmpegResolver.ResolveAsync(null, forceRefresh: false, ct).ConfigureAwait(false);
+            
+            if (!resolutionResult.Found || !resolutionResult.IsValid)
             {
-                issues.Add("FFmpeg is required but not found. Install FFmpeg from https://ffmpeg.org or configure the path in Settings.");
-                _logger.LogWarning("FFmpeg validation failed: Not found");
+                issues.Add("FFmpeg is required but not found or invalid. Install managed FFmpeg or configure the path in Settings.");
+                _logger.LogWarning("FFmpeg validation failed: {Error}", resolutionResult.Error ?? "Not found");
             }
-            else if (!File.Exists(ffmpegResult.FfmpegPath))
+            else if (!string.IsNullOrEmpty(resolutionResult.Path))
             {
-                issues.Add($"FFmpeg path configured but file does not exist: {ffmpegResult.FfmpegPath}. Install FFmpeg or update the path in Settings.");
-                _logger.LogWarning("FFmpeg validation failed: Path does not exist - {Path}", ffmpegResult.FfmpegPath);
-            }
-            else
-            {
-                _logger.LogInformation("FFmpeg validation passed: {Path}", ffmpegResult.FfmpegPath);
+                // Double-check file existence for non-PATH sources
+                if (resolutionResult.Source != "PATH" && !File.Exists(resolutionResult.Path))
+                {
+                    issues.Add($"FFmpeg path configured but file does not exist: {resolutionResult.Path}. Install FFmpeg or update the path in Settings.");
+                    _logger.LogWarning("FFmpeg validation failed: Path does not exist - {Path}", resolutionResult.Path);
+                }
+                else
+                {
+                    _logger.LogInformation("FFmpeg validation passed: {Path} (Source: {Source})", 
+                        resolutionResult.Path, resolutionResult.Source);
+                }
             }
         }
         catch (Exception ex)

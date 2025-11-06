@@ -15,7 +15,6 @@ import {
   Dismiss24Regular,
   Copy24Regular,
   Folder24Regular,
-  ArrowClockwise24Regular,
   Wrench24Regular,
   Settings24Regular,
 } from '@fluentui/react-icons';
@@ -96,33 +95,36 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
 
   const handleRetry = () => {
     onClose();
-    // User will need to start a new generation from the main UI
   };
 
-  const handleRepairFFmpeg = async () => {
+  const handleInstallFFmpeg = async () => {
     setRepairing(true);
     try {
-      const response = await fetch('/api/downloads/ffmpeg/repair', {
+      const response = await fetch('/api/ffmpeg/install', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ version: null }),
       });
 
       if (response.ok) {
         showSuccessToast({
-          title: 'FFmpeg Repair Started',
-          message: 'FFmpeg repair initiated. Please wait for it to complete.',
+          title: 'FFmpeg Installed',
+          message:
+            'Managed FFmpeg has been installed successfully. You can now retry video generation.',
         });
+        onClose();
       } else {
+        const errorData = await response.json();
         showFailureToast({
-          title: 'Repair Failed',
-          message: 'Failed to start FFmpeg repair. Please try manually from the Dependencies page.',
+          title: 'Installation Failed',
+          message: errorData.detail || 'Failed to install FFmpeg. Please check logs.',
         });
       }
     } catch (error) {
-      console.error('Error repairing FFmpeg:', error);
+      console.error('Error installing FFmpeg:', error);
       showFailureToast({
-        title: 'Repair Error',
-        message: 'Error initiating FFmpeg repair.',
+        title: 'Installation Error',
+        message: 'Error installing FFmpeg. Please check network connection and try again.',
       });
     } finally {
       setRepairing(false);
@@ -130,7 +132,6 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
   };
 
   const handleAttachFFmpeg = async () => {
-    // Open dependencies page where user can attach FFmpeg
     window.location.href = '/dependencies';
   };
 
@@ -208,18 +209,15 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
           </DialogContent>
         </DialogBody>
         <DialogActions>
-          <Button appearance="secondary" icon={<Folder24Regular />} onClick={handleViewFullLog}>
-            View Full Log
-          </Button>
           {isFFmpegError && (
             <>
               <Button
-                appearance="secondary"
+                appearance="primary"
                 icon={<Wrench24Regular />}
-                onClick={handleRepairFFmpeg}
+                onClick={handleInstallFFmpeg}
                 disabled={repairing}
               >
-                {repairing ? 'Repairing...' : 'Repair FFmpeg'}
+                {repairing ? 'Installing...' : 'Install FFmpeg'}
               </Button>
               <Button
                 appearance="secondary"
@@ -230,8 +228,11 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
               </Button>
             </>
           )}
-          <Button appearance="primary" icon={<ArrowClockwise24Regular />} onClick={handleRetry}>
-            Close & Retry
+          <Button appearance="secondary" icon={<Folder24Regular />} onClick={handleViewFullLog}>
+            View Full Log
+          </Button>
+          <Button appearance="secondary" icon={<Dismiss24Regular />} onClick={handleRetry}>
+            Dismiss
           </Button>
         </DialogActions>
       </DialogSurface>

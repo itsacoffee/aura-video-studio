@@ -1,6 +1,7 @@
 import { makeStyles, tokens, Title2, Text, Button, Card } from '@fluentui/react-components';
 import type { FileLocationsSettings } from '../../types/settings';
 import { PathSelector } from '../common/PathSelector';
+import { FFmpegStatusCard } from './FFmpegStatusCard';
 
 const useStyles = makeStyles({
   section: {
@@ -49,6 +50,8 @@ export function FileLocationsSettingsTab({
       <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
         Configure paths for tools and directories used by the application
       </Text>
+
+      <FFmpegStatusCard />
 
       <div className={styles.infoBox}>
         <Text weight="semibold" size={300}>

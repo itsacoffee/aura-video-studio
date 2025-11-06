@@ -45,9 +45,15 @@ public class VideoOrchestratorIntegrationTests
         var mockImageProvider = new MockImageProvider();
         var mockFfmpegLocator = new MockFfmpegLocator();
         var mockHardwareDetector = new MockHardwareDetector();
+        var mockCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
+            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var ffmpegResolver = new Aura.Core.Dependencies.FFmpegResolver(
+            _loggerFactory.CreateLogger<Aura.Core.Dependencies.FFmpegResolver>(),
+            mockCache);
         var preGenerationValidator = new Aura.Core.Validation.PreGenerationValidator(
             _loggerFactory.CreateLogger<Aura.Core.Validation.PreGenerationValidator>(),
             mockFfmpegLocator,
+            ffmpegResolver,
             mockHardwareDetector);
         var scriptValidator = new Aura.Core.Validation.ScriptValidator();
         var retryWrapper = new Aura.Core.Services.ProviderRetryWrapper(
@@ -146,9 +152,15 @@ public class VideoOrchestratorIntegrationTests
         var mockVideoComposer = new MockVideoComposer();
         var mockFfmpegLocator = new MockFfmpegLocator();
         var mockHardwareDetector = new MockHardwareDetector();
+        var mockCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
+            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var ffmpegResolver = new Aura.Core.Dependencies.FFmpegResolver(
+            _loggerFactory.CreateLogger<Aura.Core.Dependencies.FFmpegResolver>(),
+            mockCache);
         var preGenerationValidator = new Aura.Core.Validation.PreGenerationValidator(
             _loggerFactory.CreateLogger<Aura.Core.Validation.PreGenerationValidator>(),
             mockFfmpegLocator,
+            ffmpegResolver,
             mockHardwareDetector);
         var scriptValidator = new Aura.Core.Validation.ScriptValidator();
         var retryWrapper = new Aura.Core.Services.ProviderRetryWrapper(
