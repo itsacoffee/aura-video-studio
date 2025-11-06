@@ -824,7 +824,7 @@ function validateApiKeyFormat(
   switch (provider) {
     case 'openai':
       if (!apiKey.trim().startsWith('sk-')) {
-        return { valid: false, error: 'OpenAI API keys start with "sk-" or "sk-proj-"' };
+        return { valid: false, error: 'OpenAI API keys must start with "sk-"' };
       }
       if (apiKey.trim().length < 20) {
         return { valid: false, error: 'OpenAI API keys must be at least 20 characters' };

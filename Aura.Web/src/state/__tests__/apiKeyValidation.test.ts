@@ -66,7 +66,7 @@ describe('API Key Validation', () => {
         type: 'API_KEY_INVALID',
         payload: {
           provider: 'openai',
-          error: 'OpenAI API keys start with "sk-" or "sk-proj-"',
+          error: 'OpenAI API keys must start with "sk-"',
         },
       });
     });
