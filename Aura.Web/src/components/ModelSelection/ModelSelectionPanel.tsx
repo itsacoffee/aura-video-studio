@@ -1,4 +1,3 @@
-import React, { useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -10,9 +9,10 @@ import {
   MessageBar,
   MessageBarBody,
 } from '@fluentui/react-components';
-import { ModelPicker } from './ModelPicker';
-import { useModelSelectionStore } from '../../state/modelSelection';
 import { Delete20Regular } from '@fluentui/react-icons';
+import React, { useEffect } from 'react';
+import { useModelSelectionStore } from '../../state/modelSelection';
+import { ModelPicker } from './ModelPicker';
 
 const useStyles = makeStyles({
   container: {
@@ -166,10 +166,7 @@ export const ModelSelectionPanel: React.FC = () => {
             <div className={styles.precedenceNumber}>1</div>
             <div>
               <Text weight="semibold">Run Override (Pinned)</Text>
-              <Text
-                size={200}
-                style={{ display: 'block', color: tokens.colorNeutralForeground3 }}
-              >
+              <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
                 CLI or API parameter with pin flag — Blocks if unavailable
               </Text>
             </div>
@@ -179,10 +176,7 @@ export const ModelSelectionPanel: React.FC = () => {
             <div className={styles.precedenceNumber}>2</div>
             <div>
               <Text weight="semibold">Run Override</Text>
-              <Text
-                size={200}
-                style={{ display: 'block', color: tokens.colorNeutralForeground3 }}
-              >
+              <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
                 CLI or API parameter without pin flag — Falls back if unavailable
               </Text>
             </div>
@@ -192,11 +186,8 @@ export const ModelSelectionPanel: React.FC = () => {
             <div className={styles.precedenceNumber}>3</div>
             <div>
               <Text weight="semibold">Stage Pinned</Text>
-              <Text
-                size={200}
-                style={{ display: 'block', color: tokens.colorNeutralForeground3 }}
-              >
-                Per-stage pinned selection (e.g., "Script model") — Blocks if unavailable
+              <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
+                Per-stage pinned selection (e.g., &quot;Script model&quot;) — Blocks if unavailable
               </Text>
             </div>
           </div>
@@ -205,10 +196,7 @@ export const ModelSelectionPanel: React.FC = () => {
             <div className={styles.precedenceNumber}>4</div>
             <div>
               <Text weight="semibold">Project Override</Text>
-              <Text
-                size={200}
-                style={{ display: 'block', color: tokens.colorNeutralForeground3 }}
-              >
+              <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
                 Per-project model preference — Falls back if unavailable
               </Text>
             </div>
@@ -218,10 +206,7 @@ export const ModelSelectionPanel: React.FC = () => {
             <div className={styles.precedenceNumber}>5</div>
             <div>
               <Text weight="semibold">Global Default</Text>
-              <Text
-                size={200}
-                style={{ display: 'block', color: tokens.colorNeutralForeground3 }}
-              >
+              <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
                 Application-wide default model — Falls back if unavailable
               </Text>
             </div>
@@ -231,12 +216,9 @@ export const ModelSelectionPanel: React.FC = () => {
             <div className={styles.precedenceNumber}>6</div>
             <div>
               <Text weight="semibold">Automatic Fallback</Text>
-              <Text
-                size={200}
-                style={{ display: 'block', color: tokens.colorNeutralForeground3 }}
-              >
-                Safe fallback from model catalog — Only used if "Allow Automatic Fallback" is
-                enabled
+              <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
+                Safe fallback from model catalog — Only used if &quot;Allow Automatic Fallback&quot;
+                is enabled
               </Text>
             </div>
           </div>
@@ -261,18 +243,11 @@ export const ModelSelectionPanel: React.FC = () => {
               <Text size={500} weight="semibold">
                 Global Defaults
               </Text>
-              <Text
-                size={300}
-                style={{ display: 'block', marginTop: tokens.spacingVerticalXXS }}
-              >
+              <Text size={300} style={{ display: 'block', marginTop: tokens.spacingVerticalXXS }}>
                 Default models used across all projects unless overridden
               </Text>
             </div>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              onClick={handleClearGlobal}
-            >
+            <Button appearance="subtle" icon={<Delete20Regular />} onClick={handleClearGlobal}>
               Clear All
             </Button>
           </div>

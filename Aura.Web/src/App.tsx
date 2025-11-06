@@ -32,6 +32,7 @@ import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard'
 import SystemHealthDashboard from './pages/Health/SystemHealthDashboard';
 import { IdeationDashboard } from './pages/Ideation/IdeationDashboard';
 import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer';
+import { RunDetailsPage } from './pages/Jobs/RunDetailsPage';
 import LearningPage from './pages/Learning/LearningPage';
 import { TranslationPage } from './pages/Localization/TranslationPage';
 import { MLLabPage } from './pages/MLLab/MLLabPage';
@@ -45,7 +46,6 @@ import { PromptManagementPage } from './pages/PromptManagement/PromptManagementP
 import QualityValidationPage from './pages/QualityValidation/QualityValidationPage';
 import RagDocumentManager from './pages/RAG/RagDocumentManager';
 import { RecentJobsPage } from './pages/RecentJobsPage';
-import { RunDetailsPage } from './pages/Jobs/RunDetailsPage';
 import { RenderPage } from './pages/RenderPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SetupWizard } from './pages/Setup/SetupWizard';

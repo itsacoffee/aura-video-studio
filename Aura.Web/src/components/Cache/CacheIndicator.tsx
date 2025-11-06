@@ -1,6 +1,6 @@
-import React from 'react';
 import { Tooltip, Badge } from '@fluentui/react-components';
 import { DatabaseRegular, ClockRegular } from '@fluentui/react-icons';
+import React from 'react';
 import type { CacheMetadata } from '../../types/cache';
 
 interface CacheIndicatorProps {
@@ -17,13 +17,13 @@ const CacheIndicator: React.FC<CacheIndicatorProps> = ({ metadata }) => {
 
   const formatCacheAge = (ageMs?: number): string => {
     if (!ageMs) return 'just now';
-    
+
     const seconds = Math.floor(ageMs / 1000);
     if (seconds < 60) return `${seconds}s ago`;
-    
+
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
-    
+
     const hours = Math.floor(minutes / 60);
     return `${hours}h ago`;
   };
@@ -55,12 +55,7 @@ const CacheIndicator: React.FC<CacheIndicatorProps> = ({ metadata }) => {
 
   return (
     <Tooltip content={tooltipContent} relationship="label">
-      <Badge 
-        appearance="filled" 
-        color="informative"
-        size="small"
-        icon={<DatabaseRegular />}
-      >
+      <Badge appearance="filled" color="informative" size="small" icon={<DatabaseRegular />}>
         Cached
       </Badge>
     </Tooltip>

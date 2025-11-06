@@ -23,9 +23,9 @@ import {
 import { useEffect, useState } from 'react';
 import { useContentSafetyStore } from '../../state/contentSafety';
 import type { SafetyPolicy, SafetyCategoryType } from '../../state/contentSafety';
-import { SafetyAnalysisPreview } from '../ContentSafety/SafetyAnalysisPreview';
 import { IncidentLogViewer } from '../ContentSafety/IncidentLogViewer';
 import { PolicyCenter } from '../ContentSafety/PolicyCenter';
+import { SafetyAnalysisPreview } from '../ContentSafety/SafetyAnalysisPreview';
 
 const useStyles = makeStyles({
   container: {
@@ -95,7 +95,9 @@ export const ContentSafetyTab = () => {
 
   const [selectedPolicy, setSelectedPolicy] = useState<SafetyPolicy | null>(null);
   const [editedPolicy, setEditedPolicy] = useState<SafetyPolicy | null>(null);
-  const [selectedSubTab, setSelectedSubTab] = useState<'settings' | 'policies' | 'logs'>('settings');
+  const [selectedSubTab, setSelectedSubTab] = useState<'settings' | 'policies' | 'logs'>(
+    'settings'
+  );
 
   useEffect(() => {
     loadPolicies();
@@ -210,151 +212,151 @@ export const ContentSafetyTab = () => {
       {selectedSubTab === 'settings' && (
         <>
           <Card className={styles.card}>
-        <div className={styles.section}>
-          <Field label="Active Safety Policy">
-            <Dropdown
-              value={selectedPolicy?.name || 'Select a policy'}
-              onOptionSelect={(_, data) => handlePolicyChange(data.optionValue as string)}
-              disabled={isLoading}
-            >
-              {policies.map((policy) => (
-                <Option key={policy.id} value={policy.id} text={policy.name}>
-                  {policy.name}
-                  {policy.isDefault && (
-                    <Badge className={styles.badge} appearance="filled" color="brand">
-                      Default
-                    </Badge>
-                  )}
-                </Option>
-              ))}
-            </Dropdown>
-          </Field>
-
-          {selectedPolicy && (
-            <>
-              <Field label="Policy Description">
-                <Text>{selectedPolicy.description || 'No description provided'}</Text>
-              </Field>
-
-              <Field label="Preset Level">
-                <Badge
-                  appearance="filled"
-                  color={
-                    selectedPolicy.preset === 'Unrestricted'
-                      ? 'danger'
-                      : selectedPolicy.preset === 'Strict'
-                        ? 'success'
-                        : 'warning'
-                  }
+            <div className={styles.section}>
+              <Field label="Active Safety Policy">
+                <Dropdown
+                  value={selectedPolicy?.name || 'Select a policy'}
+                  onOptionSelect={(_, data) => handlePolicyChange(data.optionValue as string)}
+                  disabled={isLoading}
                 >
-                  {selectedPolicy.preset}
-                </Badge>
+                  {policies.map((policy) => (
+                    <Option key={policy.id} value={policy.id} text={policy.name}>
+                      {policy.name}
+                      {policy.isDefault && (
+                        <Badge className={styles.badge} appearance="filled" color="brand">
+                          Default
+                        </Badge>
+                      )}
+                    </Option>
+                  ))}
+                </Dropdown>
               </Field>
 
-              <Field>
-                <Switch
-                  label="Enable Content Filtering"
-                  checked={editedPolicy?.isEnabled ?? false}
-                  onChange={(_, data) =>
-                    setEditedPolicy(
-                      editedPolicy ? { ...editedPolicy, isEnabled: data.checked } : null
-                    )
-                  }
-                />
-              </Field>
+              {selectedPolicy && (
+                <>
+                  <Field label="Policy Description">
+                    <Text>{selectedPolicy.description || 'No description provided'}</Text>
+                  </Field>
 
-              <Field>
-                <Switch
-                  label="Allow User Override"
-                  checked={editedPolicy?.allowUserOverride ?? false}
-                  onChange={(_, data) =>
-                    setEditedPolicy(
-                      editedPolicy ? { ...editedPolicy, allowUserOverride: data.checked } : null
-                    )
-                  }
-                />
-              </Field>
-            </>
-          )}
-        </div>
-      </Card>
-
-      {editedPolicy && editedPolicy.isEnabled && (
-        <Card className={styles.card}>
-          <div className={styles.section}>
-            <Title2>Safety Categories</Title2>
-            <Text>
-              Adjust thresholds for each category. Higher values = more restrictive filtering.
-            </Text>
-
-            {categories.map((category) => {
-              const categoryData = editedPolicy.categories[category];
-              const threshold = categoryData?.threshold ?? 5;
-
-              return (
-                <div key={category} className={styles.categorySlider}>
-                  <div className={styles.row}>
-                    <Text weight="semibold">{category}</Text>
+                  <Field label="Preset Level">
                     <Badge
                       appearance="filled"
-                      color={getSafetyLevelColor(threshold) as 'success' | 'warning' | 'danger'}
+                      color={
+                        selectedPolicy.preset === 'Unrestricted'
+                          ? 'danger'
+                          : selectedPolicy.preset === 'Strict'
+                            ? 'success'
+                            : 'warning'
+                      }
                     >
-                      Level {threshold}
+                      {selectedPolicy.preset}
                     </Badge>
-                  </div>
-                  <Slider
-                    min={0}
-                    max={10}
-                    value={threshold}
-                    onChange={(_, data) => handleCategoryThresholdChange(category, data.value)}
-                  />
-                  <div className={styles.row}>
-                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                      0 = No restrictions
-                    </Text>
-                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                      10 = Maximum filtering
-                    </Text>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
+                  </Field>
 
-      <div className={styles.actions}>
-        <Button
-          appearance="secondary"
-          onClick={() => {
-            if (selectedPolicy) {
-              setEditedPolicy(selectedPolicy);
-            }
-          }}
-          disabled={isLoading}
-        >
-          Reset Changes
-        </Button>
-        <Button
-          appearance="primary"
-          onClick={handleSavePolicy}
-          disabled={isLoading || !editedPolicy}
-        >
-          Save Policy
-        </Button>
-      </div>
+                  <Field>
+                    <Switch
+                      label="Enable Content Filtering"
+                      checked={editedPolicy?.isEnabled ?? false}
+                      onChange={(_, data) =>
+                        setEditedPolicy(
+                          editedPolicy ? { ...editedPolicy, isEnabled: data.checked } : null
+                        )
+                      }
+                    />
+                  </Field>
 
-      {editedPolicy && editedPolicy.isEnabled && (
-        <>
-          <Card className={styles.card}>
-            <Title2>Test Your Policy</Title2>
-            <Text style={{ marginBottom: tokens.spacingVerticalM }}>
-              Preview how your safety policy analyzes content
-            </Text>
-            <SafetyAnalysisPreview />
+                  <Field>
+                    <Switch
+                      label="Allow User Override"
+                      checked={editedPolicy?.allowUserOverride ?? false}
+                      onChange={(_, data) =>
+                        setEditedPolicy(
+                          editedPolicy ? { ...editedPolicy, allowUserOverride: data.checked } : null
+                        )
+                      }
+                    />
+                  </Field>
+                </>
+              )}
+            </div>
           </Card>
-        </>
-      )}
+
+          {editedPolicy && editedPolicy.isEnabled && (
+            <Card className={styles.card}>
+              <div className={styles.section}>
+                <Title2>Safety Categories</Title2>
+                <Text>
+                  Adjust thresholds for each category. Higher values = more restrictive filtering.
+                </Text>
+
+                {categories.map((category) => {
+                  const categoryData = editedPolicy.categories[category];
+                  const threshold = categoryData?.threshold ?? 5;
+
+                  return (
+                    <div key={category} className={styles.categorySlider}>
+                      <div className={styles.row}>
+                        <Text weight="semibold">{category}</Text>
+                        <Badge
+                          appearance="filled"
+                          color={getSafetyLevelColor(threshold) as 'success' | 'warning' | 'danger'}
+                        >
+                          Level {threshold}
+                        </Badge>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={10}
+                        value={threshold}
+                        onChange={(_, data) => handleCategoryThresholdChange(category, data.value)}
+                      />
+                      <div className={styles.row}>
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                          0 = No restrictions
+                        </Text>
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                          10 = Maximum filtering
+                        </Text>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
+          <div className={styles.actions}>
+            <Button
+              appearance="secondary"
+              onClick={() => {
+                if (selectedPolicy) {
+                  setEditedPolicy(selectedPolicy);
+                }
+              }}
+              disabled={isLoading}
+            >
+              Reset Changes
+            </Button>
+            <Button
+              appearance="primary"
+              onClick={handleSavePolicy}
+              disabled={isLoading || !editedPolicy}
+            >
+              Save Policy
+            </Button>
+          </div>
+
+          {editedPolicy && editedPolicy.isEnabled && (
+            <>
+              <Card className={styles.card}>
+                <Title2>Test Your Policy</Title2>
+                <Text style={{ marginBottom: tokens.spacingVerticalM }}>
+                  Preview how your safety policy analyzes content
+                </Text>
+                <SafetyAnalysisPreview />
+              </Card>
+            </>
+          )}
 
           <Card className={styles.card} style={{ backgroundColor: tokens.colorNeutralBackground2 }}>
             <div className={styles.row}>
@@ -362,10 +364,10 @@ export const ContentSafetyTab = () => {
               <Text weight="semibold">About Content Safety</Text>
             </div>
             <Text size={200}>
-              Content safety policies help ensure your videos are appropriate for your target audience
-              and comply with platform guidelines. Unrestricted mode disables all filtering and puts
-              full responsibility on the user. Strict mode enforces family-friendly content suitable for
-              all ages.
+              Content safety policies help ensure your videos are appropriate for your target
+              audience and comply with platform guidelines. Unrestricted mode disables all filtering
+              and puts full responsibility on the user. Strict mode enforces family-friendly content
+              suitable for all ages.
             </Text>
           </Card>
         </>
