@@ -21,6 +21,12 @@ import {
   DrawerHeader,
   DrawerHeaderTitle,
   DrawerBody,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogContent,
+  DialogActions,
 } from '@fluentui/react-components';
 import {
   ChartMultiple24Regular,
@@ -140,6 +146,8 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [appliedSuggestions, setAppliedSuggestions] = useState<Set<number>>(new Set());
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingSuggestions, setPendingSuggestions] = useState<number[]>([]);
 
   // Fetch platform presets on mount
   useEffect(() => {
@@ -263,7 +271,13 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
       (s) => s.confidence >= settings.minConfidence
     );
 
-    const newApplied = new Set(highConfidenceSuggestions.map((s) => s.sceneIndex));
+    // Store pending suggestions and show confirmation dialog
+    setPendingSuggestions(highConfidenceSuggestions.map((s) => s.sceneIndex));
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmApply = () => {
+    const newApplied = new Set(pendingSuggestions);
     setAppliedSuggestions(newApplied);
     setSuccessMessage(`Applied ${newApplied.size} pacing suggestions`);
 
@@ -277,6 +291,14 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
     if (onScenesUpdated) {
       onScenesUpdated(scenes);
     }
+
+    setShowConfirmDialog(false);
+    setPendingSuggestions([]);
+  };
+
+  const handleCancelApply = () => {
+    setShowConfirmDialog(false);
+    setPendingSuggestions([]);
   };
 
   const handleSettingsSave = () => {
@@ -508,6 +530,53 @@ export const PacingOptimizerPanel: React.FC<PacingOptimizerPanelProps> = ({
           />
         </DrawerBody>
       </Drawer>
+
+      {/* Confirmation Dialog for Applying Suggestions */}
+      <Dialog open={showConfirmDialog} onOpenChange={(_, { open }) => !open && handleCancelApply()}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Apply Pacing Suggestions?</DialogTitle>
+            <DialogContent>
+              <Body1>
+                You are about to apply {pendingSuggestions.length} high-confidence pacing
+                suggestions to your scenes. This will adjust the duration of the following scenes:
+              </Body1>
+              <div
+                style={{
+                  marginTop: tokens.spacingVerticalM,
+                  marginBottom: tokens.spacingVerticalM,
+                }}
+              >
+                {pendingSuggestions.map((sceneIndex) => {
+                  const suggestion = data?.suggestions.find((s) => s.sceneIndex === sceneIndex);
+                  if (!suggestion) return null;
+                  return (
+                    <Caption1
+                      key={sceneIndex}
+                      block
+                      style={{ marginTop: tokens.spacingVerticalXS }}
+                    >
+                      • Scene {sceneIndex + 1}: {suggestion.currentDuration} →{' '}
+                      {suggestion.optimalDuration}
+                    </Caption1>
+                  );
+                })}
+              </div>
+              <Body1>
+                You can revert individual suggestions later if needed. Would you like to proceed?
+              </Body1>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={handleCancelApply}>
+                Cancel
+              </Button>
+              <Button appearance="primary" onClick={handleConfirmApply}>
+                Apply Suggestions
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 };
