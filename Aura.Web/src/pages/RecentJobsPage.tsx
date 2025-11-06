@@ -17,8 +17,10 @@ import {
   Video24Regular,
   Folder24Regular,
   Search24Regular,
+  DocumentBulletList24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../config/api';
 import { retryJob } from '../features/render/api/jobs';
 
@@ -132,6 +134,7 @@ interface Job {
 
 export function RecentJobsPage() {
   const styles = useStyles();
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -320,6 +323,15 @@ export function RecentJobsPage() {
                   )}
                 </div>
                 <div className={styles.jobActions}>
+                  {(job.status === 'Done' || job.status === 'Failed' || job.status === 'Canceled') && (
+                    <Button
+                      appearance="subtle"
+                      icon={<DocumentBulletList24Regular />}
+                      onClick={() => navigate(`/jobs/${job.id}/telemetry`)}
+                    >
+                      View Details
+                    </Button>
+                  )}
                   {job.status === 'Done' && (
                     <Button
                       appearance="primary"

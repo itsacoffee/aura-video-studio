@@ -3296,38 +3296,10 @@ apiGroup.MapPost("/profiles/apply", ([FromBody] ApplyProfileRequest request) =>
 .WithName("ApplyProfile")
 .WithOpenApi();
 
-// API Key Management - DEPRECATED: Legacy endpoints redirected to secure KeyVault API
-// These endpoints are deprecated and maintained only for backward compatibility.
-// All new code should use /api/keys/* endpoints from KeyVaultController for secure encrypted storage.
-apiGroup.MapPost("/apikeys/save", () =>
-{
-    Log.Warning("Deprecated /api/apikeys/save endpoint called. Clients should migrate to /api/keys/set");
-    return Results.Json(new 
-    { 
-        success = false, 
-        deprecated = true,
-        message = "This endpoint is deprecated. Please use /api/keys/set for secure encrypted storage.",
-        newEndpoint = "/api/keys/set",
-        documentation = "See /api/keys/info for details on the secure storage implementation."
-    }, statusCode: 410);
-})
-.WithName("SaveApiKeys_Deprecated")
-.WithOpenApi();
-
-apiGroup.MapGet("/apikeys/load", () =>
-{
-    Log.Warning("Deprecated /api/apikeys/load endpoint called. Clients should migrate to /api/keys/list");
-    return Results.Json(new 
-    { 
-        success = false, 
-        deprecated = true,
-        message = "This endpoint is deprecated. Please use /api/keys/list for secure encrypted storage.",
-        newEndpoint = "/api/keys/list",
-        documentation = "See /api/keys/info for details on the secure storage implementation."
-    }, statusCode: 410);
-})
-.WithName("LoadApiKeys_Deprecated")
-.WithOpenApi();
+// Legacy plaintext API key endpoints have been completely removed.
+// All API key operations must use the secure KeyVault API at /api/keys/* (KeyVaultController)
+// which provides encrypted storage using DPAPI (Windows) or AES-256 (Linux/macOS).
+// Migration from legacy plaintext files happens automatically on first startup via KeyStore.
 
 // Local Provider Paths Configuration
 apiGroup.MapPost("/providers/paths/save", ([FromBody] ProviderPathsRequest request) =>

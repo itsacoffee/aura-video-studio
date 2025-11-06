@@ -239,6 +239,19 @@ public class VideoOrchestrator
             }
 
             progress?.Report("Starting video generation pipeline...");
+            
+            // Stage 0: Brief processing (capture initial brief validation)
+            if (jobId != null && correlationId != null)
+            {
+                var briefBuilder = Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Brief);
+                var briefTelemetry = briefBuilder
+                    .WithStatus(Telemetry.ResultStatus.Ok, message: $"Brief processed: {brief.Topic}")
+                    .AddMetadata("topic", brief.Topic ?? "Untitled")
+                    .AddMetadata("audience", brief.Audience ?? "General")
+                    .AddMetadata("goal", brief.Goal ?? "Not specified")
+                    .Build();
+                _telemetryCollector.Record(briefTelemetry);
+            }
 
             // Stage 1: Script generation
             progress?.Report("Stage 1/5: Generating script...");
@@ -311,6 +324,8 @@ public class VideoOrchestrator
                 var scriptTelemetry = scriptBuilder
                     .WithModel(_llmProvider.GetType().Name, _llmProvider.GetType().Name)
                     .WithStatus(Telemetry.ResultStatus.Ok, message: $"Script generated: {script.Length} characters")
+                    .AddMetadata("script_length", script.Length)
+                    .AddMetadata("rag_enabled", brief.RagConfiguration?.Enabled == true)
                     .Build();
                 _telemetryCollector.Record(scriptTelemetry);
             }
@@ -319,6 +334,18 @@ public class VideoOrchestrator
             progress?.Report("Stage 2/5: Parsing scenes...");
             var scenes = ParseScriptIntoScenes(script, planSpec.TargetDuration);
             _logger.LogInformation("Parsed {SceneCount} scenes", scenes.Count);
+            
+            // Record plan/scene parsing telemetry
+            if (jobId != null && correlationId != null)
+            {
+                var planBuilder = Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Plan);
+                var planTelemetry = planBuilder
+                    .WithStatus(Telemetry.ResultStatus.Ok, message: $"Script parsed into {scenes.Count} scenes")
+                    .AddMetadata("scene_count", scenes.Count)
+                    .AddMetadata("target_duration_seconds", planSpec.TargetDuration.TotalSeconds)
+                    .Build();
+                _telemetryCollector.Record(planTelemetry);
+            }
 
             // Optional: Apply pacing optimization if enabled
             if (_providerSettings.GetEnablePacingOptimization() && 
@@ -459,9 +486,13 @@ public class VideoOrchestrator
             // Record TTS telemetry
             if (ttsBuilder != null)
             {
+                var totalCharacters = scriptLines.Sum(sl => sl.Text?.Length ?? 0);
                 var ttsTelemetry = ttsBuilder
                     .WithModel(voiceSpec.VoiceName, _ttsProvider.GetType().Name)
                     .WithStatus(Telemetry.ResultStatus.Ok, message: "Narration generated successfully")
+                    .AddMetadata("total_characters", totalCharacters)
+                    .AddMetadata("scene_count", scriptLines.Count)
+                    .AddMetadata("voice_name", voiceSpec.VoiceName ?? "default")
                     .Build();
                 _telemetryCollector.Record(ttsTelemetry);
             }
@@ -496,20 +527,53 @@ public class VideoOrchestrator
                 var renderTelemetry = renderBuilder
                     .WithModel("FFmpeg", "VideoComposer")
                     .WithStatus(Telemetry.ResultStatus.Ok, message: "Video rendered successfully")
+                    .AddMetadata("output_path", outputPath)
+                    .AddMetadata("resolution", $"{renderSpec.Res.Width}x{renderSpec.Res.Height}")
+                    .AddMetadata("fps", renderSpec.Fps)
+                    .AddMetadata("codec", renderSpec.Codec)
                     .Build();
                 _telemetryCollector.Record(renderTelemetry);
+            }
+            
+            // Stage 6: Post-processing completion
+            if (jobId != null && correlationId != null)
+            {
+                var postBuilder = Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Post);
+                var postTelemetry = postBuilder
+                    .WithStatus(Telemetry.ResultStatus.Ok, message: "Post-processing completed")
+                    .AddMetadata("final_output", outputPath)
+                    .Build();
+                _telemetryCollector.Record(postTelemetry);
             }
 
             progress?.Report("Video generation complete!");
             return outputPath;
         }
-        catch (ValidationException)
+        catch (ValidationException vex)
         {
+            // Record validation failure telemetry
+            if (jobId != null && correlationId != null)
+            {
+                var errorBuilder = Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Post);
+                var errorTelemetry = errorBuilder
+                    .WithStatus(Telemetry.ResultStatus.Error, "VALIDATION_ERROR", vex.Message)
+                    .Build();
+                _telemetryCollector.Record(errorTelemetry);
+            }
             // Re-throw validation exceptions without wrapping
             throw;
         }
         catch (Exception ex)
         {
+            // Record general failure telemetry
+            if (jobId != null && correlationId != null)
+            {
+                var errorBuilder = Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Post);
+                var errorTelemetry = errorBuilder
+                    .WithStatus(Telemetry.ResultStatus.Error, "GENERATION_ERROR", ex.Message)
+                    .Build();
+                _telemetryCollector.Record(errorTelemetry);
+            }
             _logger.LogError(ex, "Error during video generation");
             throw;
         }

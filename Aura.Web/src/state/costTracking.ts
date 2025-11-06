@@ -211,17 +211,23 @@ export const useCostTrackingStore = create<CostTrackingState>((set) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await fetch(`/api/cost-tracking/run-summary/${jobId}`);
-
+      // Use the unified RunTelemetry v1 endpoint
+      const response = await fetch(`/api/telemetry/${jobId}`);
+      
       if (!response.ok) {
         if (response.status === 404) {
           set({ isLoading: false });
           return null;
         }
-        throw new Error('Failed to load run summary');
+        throw new Error('Failed to load run telemetry');
       }
-
-      const report = await response.json();
+      
+      const telemetry = await response.json();
+      
+      // Adapt telemetry data to RunCostReport format
+      const { adaptTelemetryToRunCost } = await import('@/services/telemetryAdapter');
+      const report = adaptTelemetryToRunCost(telemetry);
+      
       set((state) => ({
         runReports: { ...state.runReports, [jobId]: report },
         isLoading: false,
