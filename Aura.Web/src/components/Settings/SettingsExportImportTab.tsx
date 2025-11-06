@@ -8,7 +8,6 @@ import {
   DialogContent,
   DialogSurface,
   DialogTitle,
-  DialogTrigger,
   Field,
   MessageBar,
   MessageBarBody,
@@ -28,10 +27,9 @@ import {
   CheckmarkCircle24Regular,
   Info24Regular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { apiUrl } from '../../config/api';
-import type { UserSettings } from '../../types/settings';
 
 const useStyles = makeStyles({
   container: {
@@ -79,10 +77,9 @@ const useStyles = makeStyles({
 interface ExportModalProps {
   open: boolean;
   onClose: () => void;
-  userSettings: UserSettings;
 }
 
-const ExportModal: FC<ExportModalProps> = ({ open, onClose, userSettings }) => {
+const ExportModal: FC<ExportModalProps> = ({ open, onClose }) => {
   const styles = useStyles();
   const [includeSecrets, setIncludeSecrets] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -101,12 +98,6 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose, userSettings }) => {
       }
     } catch (error) {
       console.error('Error loading preview:', error);
-    }
-  };
-
-  const handleOpen = () => {
-    if (open) {
-      loadPreview();
     }
   };
 
@@ -130,7 +121,7 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose, userSettings }) => {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         const exportData = {
           version: data.version,
           exportedAt: data.exportedAt,
@@ -161,9 +152,11 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose, userSettings }) => {
     }
   };
 
-  useState(() => {
-    handleOpen();
-  });
+  useEffect(() => {
+    if (open) {
+      loadPreview();
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={(_, data) => !data.open && onClose()}>
@@ -197,15 +190,27 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose, userSettings }) => {
               {includeSecrets && (
                 <>
                   <div className={styles.warningBox}>
-                    <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
-                      <Warning24Regular style={{ color: tokens.colorPaletteYellowForeground1, flexShrink: 0 }} />
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: tokens.spacingHorizontalS,
+                        alignItems: 'flex-start',
+                      }}
+                    >
+                      <Warning24Regular
+                        style={{ color: tokens.colorPaletteYellowForeground1, flexShrink: 0 }}
+                      />
                       <div>
-                        <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}>
+                        <Text
+                          weight="semibold"
+                          style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
+                        >
                           Security Warning
                         </Text>
                         <Text size={200}>
-                          Exported files will contain API keys in PLAIN TEXT. Never share via email, chat,
-                          or commit to version control. Use secure storage and delete after use.
+                          Exported files will contain API keys in PLAIN TEXT. Never share via email,
+                          chat, or commit to version control. Use secure storage and delete after
+                          use.
                         </Text>
                       </div>
                     </div>
@@ -220,7 +225,13 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose, userSettings }) => {
                             <div>
                               <Text>{key}</Text>
                               {preview && preview[key] && (
-                                <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginLeft: tokens.spacingHorizontalS }}>
+                                <Text
+                                  size={200}
+                                  style={{
+                                    color: tokens.colorNeutralForeground3,
+                                    marginLeft: tokens.spacingHorizontalS,
+                                  }}
+                                >
                                   ({preview[key]})
                                 </Text>
                               )}
@@ -228,7 +239,7 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose, userSettings }) => {
                           }
                           checked={selectedKeys.includes(key)}
                           onChange={(_, data) => {
-                            if (data.checked) {
+                            if (data.checked === true) {
                               setSelectedKeys([...selectedKeys, key]);
                             } else {
                               setSelectedKeys(selectedKeys.filter((k) => k !== key));
@@ -243,7 +254,7 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose, userSettings }) => {
                     <Checkbox
                       label="I understand the security risks and will handle this file securely"
                       checked={acknowledgeWarning}
-                      onChange={(_, data) => setAcknowledgeWarning(data.checked)}
+                      onChange={(_, data) => setAcknowledgeWarning(data.checked === true)}
                     />
                   </Field>
                 </>
@@ -252,7 +263,13 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose, userSettings }) => {
               {!includeSecrets && (
                 <MessageBar intent="success">
                   <MessageBarBody>
-                    <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: tokens.spacingHorizontalS,
+                        alignItems: 'center',
+                      }}
+                    >
                       <CheckmarkCircle24Regular />
                       <Text>Secure export: API keys will be redacted (shown as empty)</Text>
                     </div>
@@ -268,7 +285,9 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose, userSettings }) => {
             <Button
               appearance="primary"
               onClick={handleExport}
-              disabled={loading || (includeSecrets && (!acknowledgeWarning || selectedKeys.length === 0))}
+              disabled={
+                loading || (includeSecrets && (!acknowledgeWarning || selectedKeys.length === 0))
+              }
               icon={loading ? <Spinner size="tiny" /> : <ArrowDownload24Regular />}
             >
               {loading ? 'Exporting...' : 'Export'}
@@ -383,7 +402,8 @@ const ImportModal: FC<ImportModalProps> = ({ open, onClose, onSuccess }) => {
               <MessageBar intent="info">
                 <MessageBarBody>
                   <MessageBarTitle>Safe Import with Dry-Run</MessageBarTitle>
-                  We'll first analyze your file and show what would change before applying anything.
+                  We&apos;ll first analyze your file and show what would change before applying
+                  anything.
                 </MessageBarBody>
               </MessageBar>
 
@@ -397,7 +417,9 @@ const ImportModal: FC<ImportModalProps> = ({ open, onClose, onSuccess }) => {
               </Field>
 
               {loading && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+                >
                   <Spinner size="small" />
                   <Text>Analyzing file...</Text>
                 </div>
@@ -405,7 +427,9 @@ const ImportModal: FC<ImportModalProps> = ({ open, onClose, onSuccess }) => {
 
               {dryRunResult && !loading && (
                 <>
-                  <MessageBar intent={dryRunResult.conflicts?.totalConflicts > 0 ? 'warning' : 'success'}>
+                  <MessageBar
+                    intent={dryRunResult.conflicts?.totalConflicts > 0 ? 'warning' : 'success'}
+                  >
                     <MessageBarBody>
                       <MessageBarTitle>
                         {dryRunResult.conflicts?.totalConflicts > 0
@@ -419,17 +443,20 @@ const ImportModal: FC<ImportModalProps> = ({ open, onClose, onSuccess }) => {
                   {dryRunResult.conflicts && dryRunResult.conflicts.totalConflicts > 0 && (
                     <div>
                       <Title3>Conflicts to Review</Title3>
-                      
+
                       {dryRunResult.conflicts.generalSettings?.length > 0 && (
                         <div>
                           <Text weight="semibold">General Settings:</Text>
-                          {dryRunResult.conflicts.generalSettings.map((conflict: any, i: number) => (
-                            <div key={i} className={styles.conflictItem}>
-                              <Text size={200}>
-                                <strong>{conflict.key}:</strong> {conflict.currentValue} → {conflict.newValue}
-                              </Text>
-                            </div>
-                          ))}
+                          {dryRunResult.conflicts.generalSettings.map(
+                            (conflict: any, i: number) => (
+                              <div key={i} className={styles.conflictItem}>
+                                <Text size={200}>
+                                  <strong>{conflict.key}:</strong> {conflict.currentValue} →{' '}
+                                  {conflict.newValue}
+                                </Text>
+                              </div>
+                            )
+                          )}
                         </div>
                       )}
 
@@ -452,7 +479,8 @@ const ImportModal: FC<ImportModalProps> = ({ open, onClose, onSuccess }) => {
                           {dryRunResult.conflicts.providerPaths.map((conflict: any, i: number) => (
                             <div key={i} className={styles.conflictItem}>
                               <Text size={200}>
-                                <strong>{conflict.key}:</strong> {conflict.currentValue} → {conflict.newValue}
+                                <strong>{conflict.key}:</strong> {conflict.currentValue} →{' '}
+                                {conflict.newValue}
                               </Text>
                             </div>
                           ))}
@@ -484,14 +512,10 @@ const ImportModal: FC<ImportModalProps> = ({ open, onClose, onSuccess }) => {
 };
 
 interface SettingsExportImportTabProps {
-  userSettings: UserSettings;
   onSettingsChange: () => void;
 }
 
-export const SettingsExportImportTab: FC<SettingsExportImportTabProps> = ({
-  userSettings,
-  onSettingsChange,
-}) => {
+export const SettingsExportImportTab: FC<SettingsExportImportTabProps> = ({ onSettingsChange }) => {
   const styles = useStyles();
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -521,12 +545,11 @@ export const SettingsExportImportTab: FC<SettingsExportImportTabProps> = ({
           </Button>
         </div>
 
-        <MessageBar
-          intent="info"
-          style={{ marginTop: tokens.spacingVerticalL }}
-        >
+        <MessageBar intent="info" style={{ marginTop: tokens.spacingVerticalL }}>
           <MessageBarBody>
-            <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}>
+            <div
+              style={{ display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-start' }}
+            >
               <Info24Regular style={{ flexShrink: 0 }} />
               <div>
                 <MessageBarTitle>Security by Default</MessageBarTitle>
@@ -540,11 +563,7 @@ export const SettingsExportImportTab: FC<SettingsExportImportTabProps> = ({
         </MessageBar>
       </Card>
 
-      <ExportModal
-        open={exportModalOpen}
-        onClose={() => setExportModalOpen(false)}
-        userSettings={userSettings}
-      />
+      <ExportModal open={exportModalOpen} onClose={() => setExportModalOpen(false)} />
 
       <ImportModal
         open={importModalOpen}

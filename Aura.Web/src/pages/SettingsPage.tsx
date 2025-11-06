@@ -15,8 +15,6 @@ import {
 } from '@fluentui/react-components';
 import {
   Save24Regular,
-  ArrowDownload24Regular,
-  ArrowUpload24Regular,
   Settings24Regular,
   Key24Regular,
   Brain24Regular,
@@ -834,22 +832,6 @@ export function SettingsPage() {
       }
     };
     input.click();
-  };
-
-  // Reset settings to defaults
-  const resetUserSettings = async () => {
-    if (!confirm('Reset all settings to defaults? This cannot be undone.')) {
-      return;
-    }
-    try {
-      const defaults = await settingsService.resetToDefaults();
-      setUserSettings(defaults);
-      setOriginalSettings(defaults);
-      alert('Settings reset to defaults');
-    } catch (error) {
-      console.error('Error resetting settings:', error);
-      alert('Error resetting settings');
-    }
   };
 
   const fetchPortableModeSettings = async () => {
@@ -2016,10 +1998,7 @@ export function SettingsPage() {
         {activeTab === 'recommendations' && <ProviderRecommendationsTab />}
 
         {activeTab === 'importexport' && (
-          <SettingsExportImportTab
-            userSettings={userSettings}
-            onSettingsChange={loadUserSettings}
-          />
+          <SettingsExportImportTab onSettingsChange={loadUserSettings} />
         )}
 
         <div className={styles.actions}>
