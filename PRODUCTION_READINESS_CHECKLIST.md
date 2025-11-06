@@ -31,9 +31,18 @@ This checklist validates all critical paths from first-run through video generat
 
 ### ✅ Infrastructure Components
 - **Health Endpoints**: `/api/health/live` and `/api/health/ready` implemented
+- **Version Endpoint**: `/api/version` returns semantic version, build date, and runtime info
 - **Dependency Detection**: `scripts/check-deps.sh` script available
 - **Service Initialization**: Orchestrator with proper startup order implemented
 - **Documentation**: DEPENDENCIES.md, ORCHESTRATION_RUNBOOK.md complete
+
+### ✅ Release Automation
+- **Version Management**: Single source of truth in `version.json`
+- **Release Workflow**: GitHub Actions workflow for automated releases
+- **Release Notes**: Auto-generated from conventional commits
+- **Artifacts**: Portable ZIP, checksums, SBOM, attributions
+- **CI Guards**: Placeholder check, secret scans, E2E gates enforced
+- **Multi-Platform**: Windows/Linux E2E test matrices
 
 ### 🔧 Test Fixes Applied
 - Fixed enum references in ValidationTests.cs (Pacing.Standard → Pacing.Conversational)
@@ -636,6 +645,81 @@ Manual verification needed for:
 - [ ] Record all performance metrics measured
 - [ ] Note any known limitations or issues
 - [ ] Create sign-off checklist for release approval
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+---
+
+## PHASE 11: Release Readiness Verification
+
+### 11.1 Version Surface Validation
+- [ ] Verify `version.json` exists with correct version
+- [ ] Call `GET /api/version` endpoint
+- [ ] Confirm response includes semanticVersion, buildDate, runtimeVersion
+- [ ] Check version displayed in UI footer (bottom-right)
+- [ ] Verify version tooltip shows build date and runtime info
+- [ ] **Validation**: Version visible in API and UI
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 11.2 Release Workflow Testing (Dry-Run)
+- [ ] Update version using `node scripts/release/update-version.js patch`
+- [ ] Verify `version.json` updated correctly
+- [ ] Generate release notes: `node scripts/release/generate-release-notes.js v1.0.0 HEAD`
+- [ ] Verify `RELEASE_NOTES.md` created with proper sections
+- [ ] Check release notes include Features, Bug Fixes, Statistics
+- [ ] Verify conventional commits properly categorized
+- [ ] Create test tag: `git tag -a v0.0.1-test -m "Test release"`
+- [ ] Push tag to trigger workflow (if testing in fork/branch)
+- [ ] **Validation**: Release notes generation works
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 11.3 CI Guards Verification
+- [ ] Verify placeholder check runs on PR
+- [ ] Verify secret scan runs on PR
+- [ ] Verify E2E tests run on Windows
+- [ ] Verify E2E tests run on Linux (headless)
+- [ ] Confirm all guards must pass before merge
+- [ ] Test placeholder detection with intentional violation
+- [ ] Verify violation blocks commit/push
+- [ ] **Validation**: All CI guards enforced
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 11.4 Artifact Generation Testing
+- [ ] Run `pwsh scripts/packaging/make_portable_zip.ps1`
+- [ ] Verify portable ZIP created
+- [ ] Verify SHA-256 checksum file created
+- [ ] Run `pwsh scripts/packaging/generate-sbom.ps1`
+- [ ] Verify SBOM JSON file created with correct version
+- [ ] Verify attributions.txt file created
+- [ ] Check all artifacts in `artifacts/windows/portable/`
+- [ ] **Validation**: All release artifacts generated
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 11.5 Release Workflow Gates
+- [ ] Verify workflow runs validation job first
+- [ ] Verify workflow checks version format
+- [ ] Verify workflow runs placeholder scan
+- [ ] Verify workflow runs secret scan
+- [ ] Verify workflow builds artifacts
+- [ ] Verify workflow runs E2E tests on both platforms
+- [ ] Verify workflow creates GitHub Release
+- [ ] Verify workflow attaches all artifacts
+- [ ] **Validation**: Release workflow complete end-to-end
+- [ ] **Status**: Not Started
+- [ ] **Notes**: 
+
+### 11.6 Documentation Verification
+- [ ] Review `ReleasePlaybook.md` for accuracy
+- [ ] Verify automated release process documented
+- [ ] Verify conventional commit format documented
+- [ ] Verify manual trigger process documented
+- [ ] Check `PRODUCTION_READINESS_CHECKLIST.md` updated
+- [ ] Verify release automation section complete
+- [ ] **Validation**: Documentation complete and accurate
 - [ ] **Status**: Not Started
 - [ ] **Notes**: 
 

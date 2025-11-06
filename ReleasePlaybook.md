@@ -1,9 +1,10 @@
 # Release Playbook
 
-This document provides step-by-step procedures for deploying Aura Video Studio safely to production.
+This document provides step-by-step procedures for creating releases and deploying Aura Video Studio safely to production.
 
 ## Table of Contents
 
+- [Automated Release Process](#automated-release-process)
 - [Prerequisites](#prerequisites)
 - [Pre-Deployment Checklist](#pre-deployment-checklist)
 - [Canary Deployment Process](#canary-deployment-process)
@@ -12,6 +13,127 @@ This document provides step-by-step procedures for deploying Aura Video Studio s
 - [Health Check Verification](#health-check-verification)
 - [Post-Deployment Validation](#post-deployment-validation)
 - [Troubleshooting](#troubleshooting)
+
+## Automated Release Process
+
+Aura Video Studio uses an automated GitHub Actions workflow to create releases with complete artifacts and release notes.
+
+### Creating a Release
+
+1. **Update Version Number**
+
+   ```bash
+   # Increment patch version (1.0.0 → 1.0.1)
+   node scripts/release/update-version.js patch
+
+   # Increment minor version (1.0.0 → 1.1.0)
+   node scripts/release/update-version.js minor
+
+   # Increment major version (1.0.0 → 2.0.0)
+   node scripts/release/update-version.js major
+
+   # Or set explicit version
+   node scripts/release/update-version.js 1.2.3
+   ```
+
+2. **Commit Version Change**
+
+   ```bash
+   git add version.json
+   git commit -m "chore: Bump version to X.Y.Z"
+   git push origin main
+   ```
+
+3. **Create and Push Tag**
+
+   ```bash
+   # Create annotated tag
+   git tag -a v1.2.3 -m "Release v1.2.3"
+   git push origin v1.2.3
+   ```
+
+4. **Automated Workflow Execution**
+
+   The GitHub Actions release workflow automatically:
+   - Validates version format and runs security scans
+   - Builds .NET backend (Release configuration)
+   - Builds React frontend (production bundle)
+   - Runs all unit tests (.NET + TypeScript)
+   - Runs E2E tests on Windows and Linux
+   - Creates portable distribution ZIP
+   - Generates SHA-256 checksums
+   - Generates SBOM (Software Bill of Materials)
+   - Generates release notes from conventional commits
+   - Creates GitHub Release with all artifacts
+
+5. **Release Artifacts**
+
+   The workflow produces:
+   - `AuraVideoStudio_Portable_x64.zip` - Complete portable distribution
+   - `AuraVideoStudio_Portable_x64.zip.sha256` - SHA-256 checksum
+   - `sbom.json` - CycloneDX format SBOM
+   - `attributions.txt` - Third-party license attributions
+   - `RELEASE_NOTES.md` - Auto-generated from commits
+
+### Conventional Commits
+
+To ensure quality release notes, follow conventional commit format:
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Types:**
+- `feat`: New feature (appears in Features section)
+- `fix`: Bug fix (appears in Bug Fixes section)
+- `perf`: Performance improvement
+- `docs`: Documentation changes
+- `refactor`: Code refactoring
+- `test`: Test additions/updates
+- `chore`: Build/tooling changes
+- `ci`: CI/CD changes
+
+**Breaking Changes:**
+Add `!` after type or include `BREAKING CHANGE:` in footer:
+
+```
+feat!: Remove deprecated API endpoint
+
+BREAKING CHANGE: The /api/v1/old endpoint has been removed. Use /api/v2/new instead.
+```
+
+### Manual Trigger
+
+If you need to create a release without pushing a tag:
+
+1. Go to Actions → Release workflow
+2. Click "Run workflow"
+3. Enter tag version (e.g., `v1.2.3`)
+4. Optionally mark as pre-release
+5. Click "Run workflow"
+
+### Version Visibility
+
+The application version is visible:
+- **API Endpoint**: `GET /api/version` returns full version info
+- **UI Footer**: Version displayed in bottom-right of status bar
+- **Health Check**: Version included in health endpoint responses
+
+### Release Notes Generation
+
+Release notes are automatically generated from commits between tags using conventional commit format. You can preview them locally:
+
+```bash
+# Generate notes for commits since last tag
+node scripts/release/generate-release-notes.js v1.0.0 HEAD
+
+# View generated RELEASE_NOTES.md
+cat RELEASE_NOTES.md
+```
 
 ## Prerequisites
 
