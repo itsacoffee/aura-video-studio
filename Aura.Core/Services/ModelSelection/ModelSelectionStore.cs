@@ -139,6 +139,7 @@ public class ModelSelectionStore
                 IsPinned = resolution.IsPinned,
                 IsBlocked = resolution.IsBlocked,
                 BlockReason = resolution.BlockReason,
+                FallbackReason = resolution.FallbackReason,
                 Timestamp = resolution.ResolutionTimestamp,
                 JobId = resolution.JobId
             };
@@ -174,6 +175,24 @@ public class ModelSelectionStore
             {
                 log = log.Take(limit.Value).ToList();
             }
+            
+            return Task.FromResult(log);
+        }
+    }
+
+    /// <summary>
+    /// Get audit log entries for a specific job
+    /// </summary>
+    public Task<List<ModelSelectionAudit>> GetAuditLogByJobIdAsync(
+        string jobId,
+        CancellationToken ct = default)
+    {
+        lock (_lock)
+        {
+            var log = _data.AuditLog
+                .Where(a => a.JobId == jobId)
+                .OrderBy(a => a.Timestamp)
+                .ToList();
             
             return Task.FromResult(log);
         }
@@ -281,6 +300,7 @@ public class ModelSelectionAudit
     public bool IsPinned { get; set; }
     public bool IsBlocked { get; set; }
     public string? BlockReason { get; set; }
+    public string? FallbackReason { get; set; }
     public DateTime Timestamp { get; set; }
     public string? JobId { get; set; }
 }

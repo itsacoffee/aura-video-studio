@@ -356,6 +356,7 @@ public class ModelSelectionController : ControllerBase
                     isPinned = a.IsPinned,
                     isBlocked = a.IsBlocked,
                     blockReason = a.BlockReason,
+                    fallbackReason = a.FallbackReason,
                     timestamp = a.Timestamp,
                     jobId = a.JobId
                 }),
@@ -369,6 +370,52 @@ public class ModelSelectionController : ControllerBase
             return StatusCode(500, new
             {
                 error = "Failed to retrieve audit log",
+                detail = ex.Message,
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get audit log entries for a specific job
+    /// </summary>
+    [HttpGet("audit-log/job/{jobId}")]
+    public async Task<IActionResult> GetAuditLogByJobId(
+        string jobId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("Getting model selection audit log for job: {JobId}", jobId);
+
+            var auditLog = await _selectionService.GetAuditLogByJobIdAsync(jobId, ct);
+
+            return Ok(new
+            {
+                jobId,
+                entries = auditLog.Select(a => new
+                {
+                    provider = a.Provider,
+                    stage = a.Stage,
+                    modelId = a.ModelId,
+                    source = a.Source,
+                    reasoning = a.Reasoning,
+                    isPinned = a.IsPinned,
+                    isBlocked = a.IsBlocked,
+                    blockReason = a.BlockReason,
+                    fallbackReason = a.FallbackReason,
+                    timestamp = a.Timestamp
+                }),
+                totalCount = auditLog.Count,
+                correlationId = HttpContext.TraceIdentifier
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get audit log for job");
+            return StatusCode(500, new
+            {
+                error = "Failed to retrieve audit log for job",
                 detail = ex.Message,
                 correlationId = HttpContext.TraceIdentifier
             });
