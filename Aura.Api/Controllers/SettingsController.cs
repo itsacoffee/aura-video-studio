@@ -383,7 +383,7 @@ public class SettingsController : ControllerBase
     }
 
     /// <summary>
-    /// Reset user settings to defaults
+    /// Reset user settings to defaults and clear API keys from secure storage
     /// </summary>
     [HttpPost("user/reset")]
     public async Task<IActionResult> ResetUserSettings(CancellationToken ct)
@@ -391,9 +391,18 @@ public class SettingsController : ControllerBase
         try
         {
             var defaults = new UserSettings();
+            
+            // Clear all API keys from secure storage when resetting
+            var configuredProviders = await _secureStorage.GetConfiguredProvidersAsync();
+            foreach (var provider in configuredProviders)
+            {
+                await _secureStorage.DeleteApiKeyAsync(provider);
+            }
+            
+            // Save default settings (without API keys)
             await SaveUserSettingsAsync(defaults, ct);
 
-            _logger.LogInformation("User settings reset to defaults");
+            _logger.LogInformation("User settings reset to defaults and API keys cleared");
 
             return Ok(new
             {
@@ -510,9 +519,6 @@ public class SettingsController : ControllerBase
     }
 
     /// <summary>
-    /// Load user settings from file or return defaults
-    /// </summary>
-    /// <summary>
     /// Load user settings from file and API keys from secure encrypted storage
     /// </summary>
     private async Task<UserSettings> LoadUserSettingsAsync(CancellationToken ct)
@@ -539,10 +545,12 @@ public class SettingsController : ControllerBase
         }
 
         // Load API keys from secure encrypted storage (never from settings file)
-        if (settings.ApiKeys != null)
+        // Initialize ApiKeys if null to ensure keys are loaded
+        if (settings.ApiKeys == null)
         {
-            await LoadApiKeysSecurelyAsync(settings.ApiKeys, ct);
+            settings.ApiKeys = new ApiKeysSettings();
         }
+        await LoadApiKeysSecurelyAsync(settings.ApiKeys, ct);
 
         return settings;
     }
