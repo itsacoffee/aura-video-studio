@@ -236,22 +236,22 @@ export function WelcomePage() {
                 verticalAlign: 'middle',
               }}
             />
-            ⚡ Required First Step: Initial Setup
+            🚀 REQUIRED: Complete Initial Setup Before Proceeding
           </Title3>
           <Text className={styles.calloutText}>
-            <strong>Important:</strong> Before you can create videos, please complete the quick 3-5
-            minute setup wizard. This is essential to:
+            <strong>You must complete this setup before creating videos.</strong> This quick 3-5
+            minute wizard will:
             <br />
             <br />
-            ✓ Configure your AI providers (free or paid options)
+            ✓ Configure your AI providers (free or paid options available)
             <br />
             ✓ Detect your hardware capabilities for optimal performance
             <br />
             ✓ Set up your workspace and ensure all dependencies are ready
             <br />
             <br />
-            The setup wizard is flexible - you can use completely free tools or add API keys for
-            premium services. You&apos;ll have full control over your configuration!
+            Don&apos;t worry - the setup is flexible. You can use completely free tools or add API
+            keys for premium services. You&apos;ll have full control over your configuration!
           </Text>
           <Button
             appearance="primary"
@@ -279,8 +279,8 @@ export function WelcomePage() {
             Need to Reconfigure Your Setup?
           </Title3>
           <Text className={styles.reconfigureText}>
-            Update API keys, configure dependencies, or adjust your workspace preferences using the
-            setup wizard.
+            Use the setup wizard to update API keys, configure dependencies, or adjust your
+            workspace preferences.
           </Text>
           <Button
             appearance="primary"
