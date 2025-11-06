@@ -17,7 +17,15 @@ public class VoiceProviderRegistry
     }
 
     /// <summary>
-    /// Validate if a voice name is valid for a given provider and language
+    /// Validate if a voice name is valid for a given provider and language (accepts enum)
+    /// </summary>
+    public VoiceValidationResult ValidateVoice(VoiceProvider provider, string language, string voiceName)
+    {
+        return ValidateVoice(provider.ToString(), language, voiceName);
+    }
+
+    /// <summary>
+    /// Validate if a voice name is valid for a given provider and language (string overload)
     /// </summary>
     public VoiceValidationResult ValidateVoice(string providerName, string language, string voiceName)
     {
@@ -57,4 +65,14 @@ public class VoiceValidationResult
     public string? ErrorMessage { get; init; }
     public VoiceDescriptor? MatchedVoice { get; init; }
     public VoiceDescriptor? FallbackSuggestion { get; init; }
+    
+    /// <summary>
+    /// Legacy property for backward compatibility (maps to MatchedVoice.Name)
+    /// </summary>
+    public string? VoiceName => MatchedVoice?.Name;
+    
+    /// <summary>
+    /// Legacy property for backward compatibility (maps to MatchedVoice.Gender)
+    /// </summary>
+    public string? Gender => MatchedVoice?.Gender.ToString();
 }
