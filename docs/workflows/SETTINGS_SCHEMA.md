@@ -46,13 +46,25 @@ API keys for external services.
 **Storage**: 
 - **At Rest**: Keys are encrypted using platform-specific encryption (DPAPI on Windows, AES-256 on Linux/macOS)
 - **Location**: `%LOCALAPPDATA%\Aura\secure\apikeys.dat` (Windows) or `$HOME/.local/share/Aura/secure/apikeys.dat` (Linux/macOS)
-- **Export**: By default, keys are **NOT** included in exports (redacted)
-- **Export with secrets**: Requires explicit opt-in with per-key selection and warnings
+- **Export**: By default, keys are **NOT** included in exports (secretless by default)
+- **Export with secrets**: Requires explicit opt-in with per-key selection, security warnings, and acknowledgment
+
+**Export API** (`POST /api/settings/export`):
+- **Default behavior**: Exports WITHOUT secrets (secure by default)
+- **Include secrets**: Requires `includeSecrets: true`, `selectedSecretKeys` array, and `acknowledgeWarning: true`
+- **Preview endpoint**: `GET /api/settings/export/preview` shows what would be redacted
+- **Logging**: Consent event logged (no secrets in logs)
+
+**Import API** (`POST /api/settings/import`):
+- **Dry-run mode**: Default `dryRun: true` analyzes conflicts without applying changes
+- **Conflict detection**: Shows what will be overwritten before applying
+- **Explicit approval**: Requires `dryRun: false` and `overwriteExisting: true` to apply changes
+- **Conflict summary**: Returns detailed comparison of current vs. new values
 
 **Managed via**:
-- **API**: `/api/keys/*` endpoints (set, list, test, rotate, delete)
-- **CLI**: `aura keys` commands
-- **UI**: Key management interface with test and masked display
+- **API**: `/api/settings/export`, `/api/settings/import`, `/api/settings/export/preview` endpoints
+- **CLI**: `aura keys` commands for key management
+- **UI**: Settings → Import/Export tab with modal dialogs for safe export/import
 
 ```json
 {
@@ -187,18 +199,30 @@ Premium providers for maximum quality:
 - **Windows**: DPAPI (Data Protection API) with CurrentUser scope
 - **Linux/macOS**: AES-256 with machine-specific key
 
-### Export Security
+### Export Security (Hardened in v1.1)
 
-⚠️ **By default, API keys are NOT exported** - they are redacted from settings exports.
+✅ **Default behavior: Secretless by default** - API keys are automatically excluded from exports for your security.
 
-⚠️ **If you choose to export with secrets**:
-- Requires explicit opt-in with per-key selection
-- Shows redaction preview before export
-- Displays prominent security warnings
-- Exported files contain API keys in **plain text**
+⚠️ **If you choose to export with secrets (opt-in required)**:
+- ✅ Requires explicit `includeSecrets: true` flag in API request
+- ✅ Requires per-key selection via `selectedSecretKeys` array
+- ✅ Requires security warning acknowledgment via `acknowledgeWarning: true`
+- ✅ Shows masked preview of keys before export (`GET /api/settings/export/preview`)
+- ✅ Logs consent event (no secrets in logs)
+- ⚠️ Exported files contain selected API keys in **plain text**
+
+**UI Workflow**:
+1. User clicks "Export Settings" → Opens modal
+2. Modal shows "Default: Secrets Excluded" message
+3. User must toggle "Include API Keys and Secrets" switch
+4. Security warning box appears (yellow/orange, with warning icon)
+5. User selects specific keys via checkboxes (shows masked previews)
+6. User must check "I understand the security risks" acknowledgment
+7. Export button enabled only after all confirmations
+8. Downloaded file name includes `-with-secrets` suffix if secrets included
 
 **Best practices for exported files with secrets**:
-- ✅ Use `.gitignore` to exclude `*-settings.json` files
+- ✅ Use `.gitignore` to exclude `*-with-secrets.json` files
 - ✅ Encrypt exported files before storing in cloud storage
 - ✅ Use a password manager or secure vault for storage
 - ✅ Delete exported files after use
@@ -206,46 +230,149 @@ Premium providers for maximum quality:
 - ❌ Never commit secrets to version control
 - ❌ Never share via email, chat, or public channels
 
-## Import Validation
+## Import Validation (Hardened in v1.1)
 
-When importing settings, the application validates:
+### Dry-Run Mode (Default)
+
+✅ **Import is safe by default** - Uses dry-run mode to preview changes before applying.
+
+**Import workflow**:
+1. User selects settings JSON file
+2. **Dry-run analysis** (`dryRun: true`) runs automatically
+3. Shows conflict summary:
+   - **General Settings**: What will change (theme, language, etc.)
+   - **API Keys**: Which keys will be updated (masked values)
+   - **Provider Paths**: Path changes (may be machine-specific)
+4. User reviews conflicts and decides
+5. User clicks "Apply Import" to execute (`dryRun: false`, `overwriteExisting: true`)
+6. Success message displayed, page refresh recommended
+
+**Validation checks**:
 1. ✓ JSON format is valid
-2. ✓ Schema version is compatible
-3. ✓ Required fields are present
+2. ✓ Schema version is compatible (`version: "1.0.0"`)
+3. ✓ Required fields are present (`settings` object)
 4. ✓ Data types match schema
+5. ✓ Conflicts detected and summarized
+6. ✓ Recommended resolution provided for each conflict
 
-If validation fails, import is rejected with an error message.
+**Conflict Resolution**:
+- **General Settings**: Recommended action is "Use new value"
+- **API Keys**: Recommended action is "Review before overwriting"
+- **Provider Paths**: Recommended action is "Keep current (path may be machine-specific)"
 
-## Programmatic Usage
+If validation fails, import is rejected with an error message. Dry-run analysis prevents accidental overwrites.
 
-### Export
+## Programmatic Usage (v1.1 API)
+
+### Export Preview (Check what would be redacted)
 ```typescript
-const settingsData = {
-  version: '1.0.0',
-  exported: new Date().toISOString(),
-  settings: { /* ... */ },
-  apiKeys: { /* ... */ },
-  providerPaths: { /* ... */ },
-  profiles: [ /* ... */ ]
-};
-
-const blob = new Blob([JSON.stringify(settingsData, null, 2)], { 
-  type: 'application/json' 
-});
-// Download blob as file
+const response = await fetch('/api/settings/export/preview');
+const preview = await response.json();
+// {
+//   totalSecrets: 4,
+//   availableKeys: ['openai', 'anthropic', 'elevenlabs', 'stabilityai'],
+//   redactionPreview: {
+//     'openai': 'sk-p...xyz',
+//     'anthropic': 'sk-a...abc',
+//     'elevenlabs': 'ab12...cd34',
+//     'stabilityai': 'sk-s...789'
+//   }
+// }
 ```
 
-### Import
+### Export WITHOUT secrets (Default, Secure)
+```typescript
+const response = await fetch('/api/settings/export', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    includeSecrets: false,
+    selectedSecretKeys: [],
+    acknowledgeWarning: false
+  })
+});
+
+const data = await response.json();
+// data.settings.apiKeys will be empty or redacted
+// data.metadata.secretsIncluded === false
+
+const blob = new Blob([JSON.stringify(data, null, 2)], { 
+  type: 'application/json' 
+});
+// Download as aura-settings-2025-11-06.json
+```
+
+### Export WITH secrets (Opt-in, Requires Acknowledgment)
+```typescript
+const response = await fetch('/api/settings/export', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    includeSecrets: true,
+    selectedSecretKeys: ['openai', 'anthropic'], // Per-key selection
+    acknowledgeWarning: true // Must acknowledge security risks
+  })
+});
+
+const data = await response.json();
+// data.settings.apiKeys will contain selected keys in plain text
+// data.metadata.secretsIncluded === true
+// data.metadata.includedSecretKeys === ['openai', 'anthropic']
+
+const blob = new Blob([JSON.stringify(data, null, 2)], { 
+  type: 'application/json' 
+});
+// Download as aura-settings-with-secrets-2025-11-06.json
+```
+
+### Import with Dry-Run (Default, Safe)
 ```typescript
 const file = /* File object from input */;
 const text = await file.text();
 const data = JSON.parse(text);
 
-// Validate schema
-if (!data.version || !data.settings) {
-  throw new Error('Invalid settings format');
-}
+// Step 1: Dry-run to check conflicts
+const dryRunResponse = await fetch('/api/settings/import', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    version: data.version,
+    settings: data.settings,
+    dryRun: true, // Default: analyze without applying
+    overwriteExisting: false
+  })
+});
 
-// Apply settings
-applySettings(data);
+const dryRunResult = await dryRunResponse.json();
+// {
+//   success: true,
+//   message: "Found 3 conflicts. Please review and confirm.",
+//   conflicts: {
+//     totalConflicts: 3,
+//     generalSettings: [
+//       { key: 'theme', currentValue: 'dark', newValue: 'light', recommendedResolution: 'UseNew' }
+//     ],
+//     apiKeys: [
+//       { key: 'openai', currentValue: 'sk-p...xyz', newValue: 'sk-n...abc', recommendedResolution: 'KeepCurrent' }
+//     ],
+//     providerPaths: [
+//       { key: 'FFmpegPath', currentValue: '/usr/bin/ffmpeg', newValue: 'C:\\ffmpeg\\bin\\ffmpeg.exe', recommendedResolution: 'KeepCurrent' }
+//     ]
+//   }
+// }
+
+// Step 2: User reviews conflicts, then applies
+const applyResponse = await fetch('/api/settings/import', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    version: data.version,
+    settings: data.settings,
+    dryRun: false, // Apply changes
+    overwriteExisting: true // Resolve conflicts by overwriting
+  })
+});
+
+const result = await applyResponse.json();
+// { success: true, message: "Settings imported successfully" }
 ```
