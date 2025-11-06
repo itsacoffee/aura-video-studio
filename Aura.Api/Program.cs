@@ -197,6 +197,9 @@ builder.Services.AddSingleton<Aura.Core.Configuration.ProviderSettings>();
 builder.Services.AddSingleton<Aura.Core.Services.ISecureStorageService, Aura.Core.Services.SecureStorageService>();
 builder.Services.AddSingleton<Aura.Core.Services.IKeyValidationService, Aura.Core.Services.KeyValidationService>();
 
+// Register settings export/import service
+builder.Services.AddScoped<Aura.Core.Configuration.SettingsExportImportService>();
+
 // Register Ollama service for process control
 builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
 {
