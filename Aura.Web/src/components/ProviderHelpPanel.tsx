@@ -10,7 +10,7 @@ import {
   AccordionHeader,
   AccordionPanel,
 } from '@fluentui/react-components';
-import { Open20Regular, Video20Regular } from '@fluentui/react-icons';
+import { Open20Regular } from '@fluentui/react-icons';
 import { useState } from 'react';
 
 const useStyles = makeStyles({
@@ -197,13 +197,6 @@ export function ProviderHelpPanel({
                   onClick={() => window.open(signupUrl, '_blank')}
                 >
                   Get API Key
-                </Button>
-                <Button
-                  appearance="subtle"
-                  icon={<Video20Regular />}
-                  onClick={() => alert('Video tutorial coming soon!')}
-                >
-                  Show Video Tutorial
                 </Button>
               </div>
             </div>
