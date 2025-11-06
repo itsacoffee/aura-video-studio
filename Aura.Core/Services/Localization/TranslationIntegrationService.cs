@@ -26,7 +26,7 @@ public class TranslationIntegrationService
     private readonly SSMLPlannerService _ssmlPlannerService;
     private readonly CaptionBuilder _captionBuilder;
     private readonly SSMLSubtitleSynchronizer? _subtitleSynchronizer;
-    private readonly VoiceProviderRegistry? _voiceRegistry;
+    private readonly Voice.VoiceProviderRegistry? _voiceRegistry;
 
     public TranslationIntegrationService(
         ILogger<TranslationIntegrationService> logger,
@@ -34,7 +34,7 @@ public class TranslationIntegrationService
         SSMLPlannerService ssmlPlannerService,
         CaptionBuilder captionBuilder,
         SSMLSubtitleSynchronizer? subtitleSynchronizer = null,
-        VoiceProviderRegistry? voiceRegistry = null)
+        Voice.VoiceProviderRegistry? voiceRegistry = null)
     {
         _logger = logger;
         _translationService = translationService;
