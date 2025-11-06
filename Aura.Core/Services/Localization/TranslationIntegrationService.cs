@@ -25,22 +25,19 @@ public class TranslationIntegrationService
     private readonly SSMLPlannerService _ssmlPlannerService;
     private readonly CaptionBuilder _captionBuilder;
     private readonly SSMLSubtitleSynchronizer? _subtitleSynchronizer;
-    private readonly VoiceProviderRegistry? _voiceRegistry;
 
     public TranslationIntegrationService(
         ILogger<TranslationIntegrationService> logger,
         TranslationService translationService,
         SSMLPlannerService ssmlPlannerService,
         CaptionBuilder captionBuilder,
-        SSMLSubtitleSynchronizer? subtitleSynchronizer = null,
-        VoiceProviderRegistry? voiceRegistry = null)
+        SSMLSubtitleSynchronizer? subtitleSynchronizer = null)
     {
         _logger = logger;
         _translationService = translationService;
         _ssmlPlannerService = ssmlPlannerService;
         _captionBuilder = captionBuilder;
         _subtitleSynchronizer = subtitleSynchronizer;
-        _voiceRegistry = voiceRegistry;
     }
 
     /// <summary>
@@ -53,34 +50,6 @@ public class TranslationIntegrationService
         _logger.LogInformation(
             "Starting translation and SSML planning: {Source} → {Target}, Provider: {Provider}",
             request.SourceLanguage, request.TargetLanguage, request.TargetProvider);
-
-        if (_voiceRegistry != null)
-        {
-            var voiceValidation = _voiceRegistry.ValidateVoice(
-                request.TargetProvider,
-                request.TargetLanguage,
-                request.VoiceSpec.VoiceName);
-
-            if (!voiceValidation.IsValid)
-            {
-                _logger.LogWarning(
-                    "Voice validation failed: {Error}. Using fallback.",
-                    voiceValidation.ErrorMessage);
-                
-                if (voiceValidation.FallbackSuggestion != null)
-                {
-                    _logger.LogInformation(
-                        "Fallback voice suggested: {Voice}",
-                        voiceValidation.FallbackSuggestion.VoiceName);
-                }
-            }
-            else
-            {
-                _logger.LogInformation(
-                    "Voice validated: {Voice} for {Language}/{Provider}",
-                    voiceValidation.MatchedVoice?.VoiceName, request.TargetLanguage, request.TargetProvider);
-            }
-        }
 
         var translationRequest = new TranslationRequest
         {
