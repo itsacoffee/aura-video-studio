@@ -29,6 +29,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getJobTelemetry } from '@/api/telemetryClient';
 import type { RunTelemetryCollection, RunTelemetryRecord } from '@/types/telemetry';
+import { ModelSelectionAudit } from '@/components/Jobs';
 
 const useStyles = makeStyles({
   container: {
@@ -386,6 +387,13 @@ const RunDetailsPage: React.FC = () => {
                 ))}
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* Model Selection Audit Trail */}
+      {runId && (
+        <div className={styles.section}>
+          <ModelSelectionAudit jobId={runId} />
         </div>
       )}
 
