@@ -98,9 +98,19 @@ export function ApiKeysSettingsTab({
     }
 
     setTesting((prev) => ({ ...prev, [key]: true }));
+    setTestResults((prev) => ({ ...prev, [key]: undefined })); // Clear previous result
     try {
       const result = await onTestApiKey(provider, apiKey);
       setTestResults((prev) => ({ ...prev, [key]: result }));
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      setTestResults((prev) => ({
+        ...prev,
+        [key]: {
+          success: false,
+          message: `Test failed: ${errorObj.message}`,
+        },
+      }));
     } finally {
       setTesting((prev) => ({ ...prev, [key]: false }));
     }
@@ -163,7 +173,7 @@ export function ApiKeysSettingsTab({
                 </Tooltip>
               </div>
             }
-            hint="For advanced AI script generation. Get your key from platform.openai.com"
+            hint="For advanced AI script generation. Click Test to verify with OpenAI."
           >
             <div className={styles.inputWithButton}>
               <Input
@@ -177,7 +187,7 @@ export function ApiKeysSettingsTab({
                 onClick={() => handleTest('openai', 'openAI')}
                 disabled={!settings.openAI || testing.openAI}
               >
-                {testing.openAI ? 'Testing...' : 'Test'}
+                {testing.openAI ? 'Testing...' : testResults.openAI ? 'Test Again' : 'Test'}
               </Button>
             </div>
             {renderTestResult('openAI')}
