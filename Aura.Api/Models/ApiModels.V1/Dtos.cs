@@ -867,7 +867,8 @@ public record SceneDto(
     string Heading,
     string Script,
     double StartSeconds,
-    double DurationSeconds);
+    double DurationSeconds,
+    List<CitationDto>? Citations = null);
 
 /// <summary>
 /// Brief configuration
@@ -2377,6 +2378,16 @@ public record RagConfigurationDto(
     int MaxContextTokens = 2000,
     bool IncludeCitations = true,
     bool TightenClaims = false);
+
+/// <summary>
+/// Citation reference to a source document
+/// </summary>
+public record CitationDto(
+    int Number,
+    string Source,
+    string? Title = null,
+    string? Section = null,
+    int? PageNumber = null);
 
 /// <summary>
 /// Request for voice validation

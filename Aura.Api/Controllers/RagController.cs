@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Api.Models.ApiModels.V1;
 using Aura.Core.Models.RAG;
 using Aura.Core.Services.RAG;
 using Microsoft.AspNetCore.Http;
@@ -157,14 +158,13 @@ public class RagController : ControllerBase
                     RelevanceScore = c.RelevanceScore,
                     CitationNumber = c.CitationNumber
                 }),
-                Citations = context.Citations.ConvertAll(c => new CitationDto
-                {
-                    Number = c.Number,
-                    Source = c.Source,
-                    Title = c.Title,
-                    Section = c.Section,
-                    PageNumber = c.PageNumber
-                }),
+                Citations = context.Citations.ConvertAll(c => new CitationDto(
+                    Number: c.Number,
+                    Source: c.Source,
+                    Title: c.Title,
+                    Section: c.Section,
+                    PageNumber: c.PageNumber
+                )),
                 TotalTokens = context.TotalTokens
             });
         }
@@ -327,15 +327,6 @@ public record ContextChunkDto
     public int? PageNumber { get; init; }
     public float RelevanceScore { get; init; }
     public int CitationNumber { get; init; }
-}
-
-public record CitationDto
-{
-    public int Number { get; init; }
-    public string Source { get; init; } = string.Empty;
-    public string? Title { get; init; }
-    public string? Section { get; init; }
-    public int? PageNumber { get; init; }
 }
 
 public record IndexStatisticsDto
