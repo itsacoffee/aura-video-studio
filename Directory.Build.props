@@ -11,6 +11,14 @@
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="8.0.0" PrivateAssets="all" />
   </ItemGroup> -->
 
+  <!-- Include custom analyzers for all projects except the analyzer project itself and test projects -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Aura.Analyzers'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Aura.Analyzers\Aura.Analyzers.csproj" 
+                      OutputItemType="Analyzer" 
+                      ReferenceOutputAssembly="false" 
+                      PrivateAssets="all" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Aura.App'">
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
