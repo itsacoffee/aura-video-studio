@@ -27,7 +27,7 @@ import {
   CheckmarkCircle24Regular,
   Info24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import { apiUrl } from '../../config/api';
 
@@ -88,7 +88,7 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose }) => {
   const [preview, setPreview] = useState<Record<string, string> | null>(null);
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
 
-  const loadPreview = async () => {
+  const loadPreview = useCallback(async () => {
     try {
       const response = await fetch(apiUrl('/api/settings/export/preview'));
       if (response.ok) {
@@ -99,7 +99,7 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose }) => {
     } catch (error) {
       console.error('Error loading preview:', error);
     }
-  };
+  }, []);
 
   const handleExport = async () => {
     if (includeSecrets && !acknowledgeWarning) {
@@ -156,7 +156,7 @@ const ExportModal: FC<ExportModalProps> = ({ open, onClose }) => {
     if (open) {
       loadPreview();
     }
-  }, [open]);
+  }, [open, loadPreview]);
 
   return (
     <Dialog open={open} onOpenChange={(_, data) => !data.open && onClose()}>
