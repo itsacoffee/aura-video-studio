@@ -1,6 +1,18 @@
-import { makeStyles, tokens, Title3, Button, Tooltip } from '@fluentui/react-components';
-import { WeatherMoon24Regular, WeatherSunny24Regular } from '@fluentui/react-icons';
-import { ReactNode, useMemo } from 'react';
+import {
+  makeStyles,
+  tokens,
+  Title3,
+  Button,
+  Tooltip,
+  mergeClasses,
+} from '@fluentui/react-components';
+import {
+  WeatherMoon24Regular,
+  WeatherSunny24Regular,
+  PanelLeft24Regular,
+  PanelLeftContract24Regular,
+} from '@fluentui/react-icons';
+import { ReactNode, useMemo, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../App';
 import { useAdvancedMode } from '../hooks/useAdvancedMode';
@@ -25,6 +37,12 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalL,
     gap: tokens.spacingVerticalM,
     boxShadow: '2px 0 8px rgba(0, 0, 0, 0.1)',
+    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    overflow: 'hidden',
+  },
+  sidebarCollapsed: {
+    width: '60px',
+    padding: tokens.spacingVerticalS,
   },
   header: {
     marginBottom: tokens.spacingVerticalM,
@@ -32,6 +50,10 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalS,
+  },
+  headerCollapsed: {
+    paddingLeft: '0',
+    alignItems: 'center',
   },
   nav: {
     display: 'flex',
@@ -52,6 +74,17 @@ const useStyles = makeStyles({
     },
     ':active': {
       transform: 'translateX(2px)',
+    },
+  },
+  navButtonCollapsed: {
+    justifyContent: 'center',
+    paddingLeft: '0',
+    paddingRight: '0',
+    ':hover': {
+      transform: 'scale(1.1)',
+    },
+    ':active': {
+      transform: 'scale(1.05)',
     },
   },
   mainContainer: {
@@ -91,6 +124,10 @@ const useStyles = makeStyles({
     paddingTop: tokens.spacingVerticalM,
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
   },
+  toggleButton: {
+    width: '100%',
+    marginBottom: tokens.spacingVerticalS,
+  },
 });
 
 interface LayoutProps {
@@ -103,16 +140,49 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { isDarkMode, toggleTheme } = useTheme();
   const [advancedMode] = useAdvancedMode();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try {
+      const stored = localStorage.getItem('aura-sidebar-collapsed');
+      return stored ? JSON.parse(stored) : false;
+    } catch {
+      return false;
+    }
+  });
 
   const visibleNavItems = useMemo(() => {
     return navItems.filter((item) => !item.advancedOnly || advancedMode);
   }, [advancedMode]);
 
+  // Persist sidebar collapsed state
+  useEffect(() => {
+    try {
+      localStorage.setItem('aura-sidebar-collapsed', JSON.stringify(isSidebarCollapsed));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [isSidebarCollapsed]);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
   return (
     <div className={styles.container}>
-      <nav className={styles.sidebar}>
-        <div className={styles.header}>
-          <Title3>🎬 Aura Studio</Title3>
+      <nav className={mergeClasses(styles.sidebar, isSidebarCollapsed && styles.sidebarCollapsed)}>
+        <div className={mergeClasses(styles.header, isSidebarCollapsed && styles.headerCollapsed)}>
+          <Tooltip
+            content={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            relationship="label"
+          >
+            <Button
+              appearance="subtle"
+              className={styles.toggleButton}
+              icon={isSidebarCollapsed ? <PanelLeft24Regular /> : <PanelLeftContract24Regular />}
+              onClick={toggleSidebar}
+              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            />
+          </Tooltip>
+          {!isSidebarCollapsed && <Title3>🎬 Aura Studio</Title3>}
         </div>
         <div className={styles.nav}>
           {visibleNavItems.map((item) => {
@@ -122,11 +192,14 @@ export function Layout({ children }: LayoutProps) {
               <Tooltip key={item.key} content={item.name} relationship="label">
                 <Button
                   appearance={isActive ? 'primary' : 'subtle'}
-                  className={styles.navButton}
+                  className={mergeClasses(
+                    styles.navButton,
+                    isSidebarCollapsed && styles.navButtonCollapsed
+                  )}
                   icon={<Icon />}
                   onClick={() => navigate(item.path)}
                 >
-                  {item.name}
+                  {!isSidebarCollapsed && item.name}
                 </Button>
               </Tooltip>
             );
@@ -143,7 +216,7 @@ export function Layout({ children }: LayoutProps) {
               icon={isDarkMode ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
               onClick={toggleTheme}
             >
-              {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+              {!isSidebarCollapsed && (isDarkMode ? 'Light Mode' : 'Dark Mode')}
             </Button>
           </Tooltip>
         </div>
