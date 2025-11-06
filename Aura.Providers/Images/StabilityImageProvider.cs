@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -47,7 +48,7 @@ public class StabilityImageProvider
         try
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image");
-            request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
             request.Headers.Add("Accept", "application/json");
 
             var requestBody = new
@@ -103,7 +104,7 @@ public class StabilityImageProvider
         try
         {
             var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/v1/user/account");
-            request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
             var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
