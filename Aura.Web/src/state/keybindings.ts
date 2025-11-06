@@ -16,11 +16,11 @@ import { generateKeybindingString } from '../utils/keybinding-utils';
 
 /**
  * Default keyboard shortcuts configuration
- * Based on industry-standard video editing shortcuts (Premiere Pro, Final Cut Pro, etc.)
+ * Based on industry-standard video editing shortcuts
  */
 export const defaultKeybindings: KeybindingConfig = {
   // Playback controls (JKL shuttle)
-  // Note: Both Space and K trigger toggle-play (industry standard in Premiere/Avid)
+  // Note: Both Space and K trigger toggle-play (industry standard)
   space: 'toggle-play',
   j: 'seek-backward',
   k: 'toggle-play', // K is pause in JKL shuttle (same as Space)
