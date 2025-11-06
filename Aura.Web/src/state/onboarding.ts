@@ -1,6 +1,7 @@
 // Onboarding state management with state machine for First-Run Wizard
 
 import { apiUrl } from '../config/api';
+import { getDefaultSaveLocation, getDefaultCacheLocation } from '../utils/pathUtils';
 import type { PreflightReport, StageCheck } from './providers';
 
 // Hardware configuration constants
@@ -116,8 +117,8 @@ export const initialOnboardingState: OnboardingState = {
   apiKeyValidationStatus: {},
   apiKeyErrors: {},
   workspacePreferences: {
-    defaultSaveLocation: '',
-    cacheLocation: '',
+    defaultSaveLocation: getDefaultSaveLocation(),
+    cacheLocation: getDefaultCacheLocation(),
     autosaveInterval: 3,
     theme: 'auto',
   },

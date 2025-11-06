@@ -16,3 +16,17 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Extend Window interface for Electron and browser APIs
+interface Window {
+  electron?: {
+    selectFolder: () => Promise<string | null>;
+    openPath: (path: string) => Promise<void>;
+    openExternal: (url: string) => Promise<void>;
+  };
+}
+
+// Extend HTMLInputElement for webkitdirectory attribute
+interface HTMLInputElement {
+  webkitdirectory?: boolean;
+}

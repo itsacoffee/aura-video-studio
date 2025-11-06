@@ -422,17 +422,9 @@ export function FirstRunWizard() {
     dispatch({ type: 'SET_WORKSPACE_PREFERENCES', payload: preferences });
   };
 
-  const handleBrowseFolder = async (type: 'save' | 'cache'): Promise<string | null> => {
-    // For now, return a mock path. In production, this would use Electron's dialog API
-    // or a web-based folder picker
-    const mockPath =
-      type === 'save'
-        ? 'C:\\Users\\YourName\\Videos\\Aura'
-        : 'C:\\Users\\YourName\\AppData\\Local\\Aura\\Cache';
-
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(mockPath), 100);
-    });
+  const handleBrowseFolder = async (): Promise<string | null> => {
+    // Workspace setup component now handles folder picking with real implementation
+    return null;
   };
 
   const handleTemplateSelect = (templateId: string) => {
@@ -549,7 +541,7 @@ export function FirstRunWizard() {
       }
 
       const result = await response.json();
-      
+
       // Navigate to the job page to watch progress
       if (result.jobId) {
         navigate(`/jobs/${result.jobId}`);

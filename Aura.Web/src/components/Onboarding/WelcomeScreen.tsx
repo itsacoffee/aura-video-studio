@@ -120,21 +120,21 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
   const valuePropositions = [
     {
       icon: <VideoClip24Regular className={styles.icon} />,
-      title: 'Create Professional Videos',
+      title: 'Essential Setup Required',
       description:
-        'Transform your ideas into stunning, professional-quality videos in minutes with our intuitive editor',
+        'Configure FFmpeg, AI providers, and your workspace to unlock the full power of video generation',
     },
     {
       icon: <Sparkle24Regular className={styles.icon} />,
       title: 'AI-Powered Automation',
       description:
-        'Leverage cutting-edge AI for script generation, voice synthesis, and custom image creation',
+        'Set up script generation, voice synthesis, and custom image creation with your preferred providers',
     },
     {
       icon: <Clock24Regular className={styles.icon} />,
-      title: 'Save Valuable Time',
+      title: 'Quick Configuration',
       description:
-        'Automate repetitive tasks and focus on what matters - your creative vision and storytelling',
+        'Complete the Setup Wizard in just 3-5 minutes to start creating professional videos',
     },
   ];
 
@@ -149,9 +149,8 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
       <div className={styles.brandContainer}>
         <Title1 className={styles.title}>Welcome to Aura Video Studio!</Title1>
         <Text className={styles.subtitle} size={500}>
-          Your all-in-one platform for creating professional videos with the power of AI. Whether
-          you&apos;re crafting content for YouTube, social media, or professional presentations,
-          Aura Video Studio makes video creation accessible, efficient, and fun.
+          Complete your setup to start generating videos. Run the Setup Wizard now to configure AI
+          providers, FFmpeg, and your workspace. You can update these settings later in Settings.
         </Text>
       </div>
 
@@ -177,7 +176,7 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
           icon={<Play24Regular />}
           onClick={onGetStarted}
         >
-          Get Started
+          Start Setup Wizard
         </Button>
         {onImportProject && (
           <Button

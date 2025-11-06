@@ -254,13 +254,3 @@ export function PostExportActions({
     </Dialog>
   );
 }
-
-// Extend Window interface for Electron APIs
-declare global {
-  interface Window {
-    electron?: {
-      openPath: (path: string) => Promise<void>;
-      openExternal: (url: string) => Promise<void>;
-    };
-  }
-}
