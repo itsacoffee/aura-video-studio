@@ -25,6 +25,7 @@ import {
   Warning20Regular,
   Checkmark20Regular,
   FlashCheckmark20Regular,
+  Info20Regular,
 } from '@fluentui/react-icons';
 import React, { useEffect, useState } from 'react';
 import { useModelSelectionStore } from '../../state/modelSelection';
@@ -101,6 +102,16 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
     isAvailable?: boolean;
   } | null>(null);
   const [isTesting, setIsTesting] = useState<boolean>(false);
+  const [showExplanationDialog, setShowExplanationDialog] = useState<boolean>(false);
+  const [explanation, setExplanation] = useState<{
+    selectedModel: { modelId: string; contextWindow: number; maxTokens: number };
+    recommendedModel: { modelId: string; contextWindow: number; maxTokens: number } | null;
+    selectedIsRecommended: boolean;
+    reasoning: string;
+    tradeoffs: string[];
+    suggestions: string[];
+  } | null>(null);
+  const [isLoadingExplanation, setIsLoadingExplanation] = useState<boolean>(false);
 
   useEffect(() => {
     loadAvailableModels(provider);
@@ -262,6 +273,48 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
     }
   };
 
+  const handleExplainChoice = async () => {
+    if (!selectedModelId) return;
+
+    setShowExplanationDialog(true);
+    setIsLoadingExplanation(true);
+    setExplanation(null);
+
+    try {
+      const response = await fetch('/api/models/explain-choice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          stage,
+          selectedModelId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setExplanation({
+          selectedModel: data.selectedModel,
+          recommendedModel: data.recommendedModel,
+          selectedIsRecommended: data.comparison.selectedIsRecommended,
+          reasoning: data.comparison.reasoning,
+          tradeoffs: data.comparison.tradeoffs,
+          suggestions: data.comparison.suggestions,
+        });
+      } else {
+        alert(`Failed to explain model choice: ${data.error || 'Unknown error'}`);
+        setShowExplanationDialog(false);
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Error explaining model choice: ${errorMessage}`);
+      setShowExplanationDialog(false);
+    } finally {
+      setIsLoadingExplanation(false);
+    }
+  };
+
   if (isLoadingModels) {
     return (
       <div className={styles.container}>
@@ -319,16 +372,29 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
           </Tooltip>
 
           {selectedModel && (
-            <Tooltip content="Test model availability with a lightweight probe" relationship="label">
-              <Button
-                appearance="subtle"
-                icon={<FlashCheckmark20Regular />}
-                onClick={handleTestModel}
-                disabled={isSaving}
-              >
-                Test
-              </Button>
-            </Tooltip>
+            <>
+              <Tooltip content="Test model availability with a lightweight probe" relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={<FlashCheckmark20Regular />}
+                  onClick={handleTestModel}
+                  disabled={isSaving}
+                >
+                  Test
+                </Button>
+              </Tooltip>
+              
+              <Tooltip content="Explain this model choice and compare with recommendations" relationship="label">
+                <Button
+                  appearance="subtle"
+                  icon={<Info20Regular />}
+                  onClick={handleExplainChoice}
+                  disabled={isSaving}
+                >
+                  Explain
+                </Button>
+              </Tooltip>
+            </>
           )}
         </div>
 
@@ -489,6 +555,98 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
               >
                 {isTesting ? <Spinner size="tiny" /> : <FlashCheckmark20Regular />}
                 {isTesting ? 'Testing...' : 'Test Model'}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Explain Choice Dialog */}
+      <Dialog
+        open={showExplanationDialog}
+        onOpenChange={(_, data) => setShowExplanationDialog(data.open)}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Explain Model Choice: {selectedModelId}</DialogTitle>
+            <DialogContent>
+              {isLoadingExplanation ? (
+                <Spinner label="Loading explanation..." />
+              ) : explanation ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+                  <div>
+                    <Text weight="semibold" style={{ display: 'block' }}>Your Selection</Text>
+                    <Text style={{ display: 'block' }}>
+                      {explanation.selectedModel.modelId} - Context: {explanation.selectedModel.contextWindow.toLocaleString()} tokens, 
+                      Max output: {explanation.selectedModel.maxTokens.toLocaleString()} tokens
+                    </Text>
+                  </div>
+
+                  {explanation.recommendedModel && !explanation.selectedIsRecommended && (
+                    <div>
+                      <Text weight="semibold" style={{ display: 'block' }}>Recommended Model</Text>
+                      <Text style={{ display: 'block' }}>
+                        {explanation.recommendedModel.modelId} - Context: {explanation.recommendedModel.contextWindow.toLocaleString()} tokens, 
+                        Max output: {explanation.recommendedModel.maxTokens.toLocaleString()} tokens
+                      </Text>
+                    </div>
+                  )}
+
+                  {explanation.selectedIsRecommended && (
+                    <MessageBar intent="success">
+                      <MessageBarBody>
+                        ✓ Your selection matches the recommended model for this stage.
+                      </MessageBarBody>
+                    </MessageBar>
+                  )}
+
+                  <div>
+                    <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}>
+                      Reasoning
+                    </Text>
+                    <Text>{explanation.reasoning}</Text>
+                  </div>
+
+                  {explanation.tradeoffs.length > 0 && (
+                    <div>
+                      <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}>
+                        Tradeoffs
+                      </Text>
+                      <ul style={{ margin: 0, paddingLeft: tokens.spacingHorizontalL }}>
+                        {explanation.tradeoffs.map((tradeoff, index) => (
+                          <li key={index}>
+                            <Text>{tradeoff}</Text>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {explanation.suggestions.length > 0 && (
+                    <div>
+                      <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}>
+                        Suggestions
+                      </Text>
+                      <ul style={{ margin: 0, paddingLeft: tokens.spacingHorizontalL }}>
+                        {explanation.suggestions.map((suggestion, index) => (
+                          <li key={index}>
+                            <Text>{suggestion}</Text>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Text>No explanation available.</Text>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button
+                appearance="primary"
+                onClick={() => setShowExplanationDialog(false)}
+              >
+                Close
               </Button>
             </DialogActions>
           </DialogBody>
