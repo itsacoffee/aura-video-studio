@@ -409,19 +409,20 @@ public class JobsController : ControllerBase
     
     /// <summary>
     /// Stream Server-Sent Events for job progress updates
-    /// Supports reconnection via Last-Event-ID header
+    /// Supports reconnection via Last-Event-ID header or query parameter
     /// </summary>
     [HttpGet("{jobId}/events")]
-    public async Task GetJobEvents(string jobId, CancellationToken ct = default)
+    public async Task GetJobEvents(string jobId, [FromQuery] string? lastEventId = null, CancellationToken ct = default)
     {
         var correlationId = HttpContext.TraceIdentifier;
         
-        // Check for Last-Event-ID header for reconnection support
-        var lastEventId = Request.Headers["Last-Event-ID"].FirstOrDefault();
-        var isReconnect = !string.IsNullOrEmpty(lastEventId);
+        // Check for Last-Event-ID header or query parameter for reconnection support
+        // Query parameter is used as fallback since EventSource doesn't support custom headers
+        var reconnectEventId = lastEventId ?? Request.Headers["Last-Event-ID"].FirstOrDefault();
+        var isReconnect = !string.IsNullOrEmpty(reconnectEventId);
         
         Log.Information("[{CorrelationId}] SSE stream requested for job {JobId}, reconnect={IsReconnect}, lastEventId={LastEventId}", 
-            correlationId, jobId, isReconnect, lastEventId ?? "none");
+            correlationId, jobId, isReconnect, reconnectEventId ?? "none");
         
         // Set headers for SSE
         Response.Headers.Add("Content-Type", "text/event-stream");

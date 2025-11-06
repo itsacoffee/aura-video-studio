@@ -39,6 +39,46 @@ public record Job
     // Resumability fields
     public string? LastCompletedStep { get; init; }
     public bool CanResume { get; init; } = false;
+    
+    /// <summary>
+    /// Creates a new Job with updated progress, ensuring monotonic invariant (progress never decreases)
+    /// </summary>
+    public Job WithMonotonicProgress(int newPercent)
+    {
+        var safePercent = Math.Max(this.Percent, Math.Clamp(newPercent, 0, 100));
+        return this with { Percent = safePercent };
+    }
+    
+    /// <summary>
+    /// Validates job state transition is legal according to state machine rules
+    /// </summary>
+    public bool CanTransitionTo(JobStatus newStatus)
+    {
+        return (this.Status, newStatus) switch
+        {
+            // Queued can transition to Running or Canceled
+            (JobStatus.Queued, JobStatus.Running) => true,
+            (JobStatus.Queued, JobStatus.Canceled) => true,
+            
+            // Running can transition to Done, Failed, or Canceled
+            (JobStatus.Running, JobStatus.Done) => true,
+            (JobStatus.Running, JobStatus.Succeeded) => true,
+            (JobStatus.Running, JobStatus.Failed) => true,
+            (JobStatus.Running, JobStatus.Canceled) => true,
+            
+            // Terminal states cannot transition
+            (JobStatus.Done, _) => false,
+            (JobStatus.Succeeded, _) => false,
+            (JobStatus.Failed, _) => false,
+            (JobStatus.Canceled, _) => false,
+            
+            // Same state is always valid (no-op)
+            _ when this.Status == newStatus => true,
+            
+            // All other transitions are invalid
+            _ => false
+        };
+    }
 }
 
 /// <summary>

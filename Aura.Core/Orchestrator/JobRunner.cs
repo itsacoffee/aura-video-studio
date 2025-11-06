@@ -473,7 +473,7 @@ public class JobRunner
     }
 
     /// <summary>
-    /// Updates a job and persists changes.
+    /// Updates a job and persists changes with state validation and monotonic progress.
     /// </summary>
     private Job UpdateJob(
         Job job,
@@ -491,11 +491,36 @@ public class JobRunner
         DateTime? completedUtc = null,
         DateTime? canceledUtc = null)
     {
+        // Validate state transition if status is changing
+        var newStatus = status ?? job.Status;
+        if (newStatus != job.Status && !job.CanTransitionTo(newStatus))
+        {
+            _logger.LogWarning("[Job {JobId}] Invalid state transition from {OldStatus} to {NewStatus}, transition rejected",
+                job.Id, job.Status, newStatus);
+            newStatus = job.Status; // Keep old status
+        }
+        
+        // Enforce monotonic progress (never decrease)
+        var newPercent = percent ?? job.Percent;
+        if (newPercent < job.Percent)
+        {
+            _logger.LogDebug("[Job {JobId}] Progress would decrease from {OldPercent}% to {NewPercent}%, keeping old value",
+                job.Id, job.Percent, newPercent);
+            newPercent = job.Percent;
+        }
+        
+        // Ensure EndedUtc is set for terminal states
+        DateTime? endedUtc = job.EndedUtc;
+        if (IsTerminalStatus(newStatus) && endedUtc == null)
+        {
+            endedUtc = completedUtc ?? canceledUtc ?? DateTime.UtcNow;
+        }
+        
         var updated = job with
         {
             Stage = stage ?? job.Stage,
-            Status = status ?? job.Status,
-            Percent = percent ?? job.Percent,
+            Status = newStatus,
+            Percent = Math.Clamp(newPercent, 0, 100),
             Eta = eta ?? job.Eta,
             Artifacts = artifacts ?? job.Artifacts,
             Logs = logs ?? job.Logs,
@@ -504,7 +529,8 @@ public class JobRunner
             FailureDetails = failureDetails ?? job.FailureDetails,
             StartedUtc = startedUtc ?? job.StartedUtc,
             CompletedUtc = completedUtc ?? job.CompletedUtc,
-            CanceledUtc = canceledUtc ?? job.CanceledUtc
+            CanceledUtc = canceledUtc ?? job.CanceledUtc,
+            EndedUtc = endedUtc
         };
 
         _activeJobs[job.Id] = updated;
@@ -528,6 +554,14 @@ public class JobRunner
         JobProgress?.Invoke(this, eventArgs);
 
         return updated;
+    }
+    
+    /// <summary>
+    /// Checks if a status is terminal (no further transitions allowed)
+    /// </summary>
+    private static bool IsTerminalStatus(JobStatus status)
+    {
+        return status is JobStatus.Done or JobStatus.Succeeded or JobStatus.Failed or JobStatus.Canceled;
     }
 
     /// <summary>

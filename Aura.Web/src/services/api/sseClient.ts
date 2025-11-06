@@ -86,7 +86,7 @@ export interface ErrorEvent {
 type EventHandler = (event: SseEvent) => void;
 
 /**
- * SSE Client with auto-reconnect capability
+ * SSE Client with auto-reconnect capability and Last-Event-ID support
  */
 export class SseClient {
   private eventSource: EventSource | null = null;
@@ -98,13 +98,14 @@ export class SseClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private url: string;
   private isManualClose = false;
+  private lastEventId: string | null = null;
 
   constructor(jobId: string) {
     this.url = apiUrl(`/api/jobs/${jobId}/events`);
   }
 
   /**
-   * Connect to the SSE endpoint
+   * Connect to the SSE endpoint with Last-Event-ID support for resumption
    */
   connect(): void {
     if (this.eventSource) {
@@ -113,10 +114,21 @@ export class SseClient {
     }
 
     this.isManualClose = false;
-    logger.debug(`Connecting to ${this.url}`, 'SseClient', 'connect');
+    
+    // Build URL with Last-Event-ID as query parameter for reconnection
+    // Note: Native EventSource doesn't support custom headers, so we use query param
+    const connectionUrl = this.lastEventId 
+      ? `${this.url}?lastEventId=${encodeURIComponent(this.lastEventId)}`
+      : this.url;
+    
+    logger.debug(
+      `Connecting to ${this.url}${this.lastEventId ? ` (resuming from event ${this.lastEventId})` : ''}`,
+      'SseClient',
+      'connect'
+    );
 
     try {
-      this.eventSource = new EventSource(this.url);
+      this.eventSource = new EventSource(connectionUrl);
 
       this.eventSource.onopen = () => {
         logger.debug('Connected successfully', 'SseClient', 'onopen');
@@ -174,6 +186,12 @@ export class SseClient {
     eventTypes.forEach((eventType) => {
       this.eventSource?.addEventListener(eventType, (event: MessageEvent) => {
         try {
+          // Track last event ID for reconnection support
+          if (event.lastEventId) {
+            this.lastEventId = event.lastEventId;
+            logger.debug(`Tracked event ID: ${event.lastEventId}`, 'SseClient', 'onEvent');
+          }
+          
           const data = JSON.parse(event.data);
           logger.debug(`Received ${eventType}`, 'SseClient', 'onEvent', { data });
           this.emit(eventType, data);
