@@ -29,9 +29,9 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { EnginesTab } from '../components/Engines/EnginesTab';
-import { TroubleshootingPanel } from '../components/Engines/TroubleshootingPanel';
 import { OfflineModeRecommendations } from '../components/Engines/OfflineModeRecommendations';
 import { OfflineProviderStatus } from '../components/Engines/OfflineProviderStatus';
+import { TroubleshootingPanel } from '../components/Engines/TroubleshootingPanel';
 import { RouteErrorBoundary } from '../components/ErrorBoundary/RouteErrorBoundary';
 import { useNotifications } from '../components/Notifications/Toasts';
 import { apiUrl } from '../config/api';

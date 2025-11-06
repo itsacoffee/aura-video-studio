@@ -1,4 +1,3 @@
-import { FC, useState, useEffect } from 'react';
 import {
   Button,
   Card,
@@ -12,11 +11,8 @@ import {
   Label,
   Spinner,
 } from '@fluentui/react-components';
-import {
-  Delete24Regular,
-  Settings24Regular,
-  ArrowClockwise24Regular,
-} from '@fluentui/react-icons';
+import { Delete24Regular, Settings24Regular, ArrowClockwise24Regular } from '@fluentui/react-icons';
+import { FC, useState, useEffect } from 'react';
 import { proxyMediaService, type ProxyCacheStats } from '../../services/proxyMediaService';
 
 const useStyles = makeStyles({
@@ -212,7 +208,8 @@ export const ProxyCacheManager: FC<ProxyCacheManagerProps> = ({ onStatsChanged }
       <div className={styles.progressContainer}>
         <div style={{ marginBottom: tokens.spacingVerticalXS }}>
           <Text>
-            Cache Usage: {formatBytes(stats.totalCacheSizeBytes)} / {formatBytes(stats.maxCacheSizeBytes)}
+            Cache Usage: {formatBytes(stats.totalCacheSizeBytes)} /{' '}
+            {formatBytes(stats.maxCacheSizeBytes)}
           </Text>
           {stats.isOverLimit && (
             <Text className={styles.warningText}> (Over Limit - Eviction Recommended)</Text>
