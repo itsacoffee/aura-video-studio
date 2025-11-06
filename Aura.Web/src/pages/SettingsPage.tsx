@@ -900,6 +900,7 @@ export function SettingsPage() {
         {settingsCategories.map((category) => (
           <Card
             key={category.id}
+            data-category={category.id}
             className={`${styles.settingsCard} ${activeTab === category.id ? styles.settingsCardActive : ''}`}
             onClick={() => setActiveTab(category.id)}
             role="button"

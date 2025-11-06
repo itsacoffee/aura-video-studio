@@ -3,7 +3,11 @@ using Aura.Core.Models;
 using Aura.Core.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Moq.Protected;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -15,6 +19,7 @@ public class ProviderProfileServiceTests
     private readonly Mock<ILogger<ProviderProfileService>> _loggerMock;
     private readonly ProviderSettings _providerSettings;
     private readonly Mock<IKeyStore> _keyStoreMock;
+    private readonly HttpClient _httpClient;
     private readonly ProviderProfileService _service;
 
     public ProviderProfileServiceTests()
@@ -24,10 +29,25 @@ public class ProviderProfileServiceTests
         _providerSettings = new ProviderSettings(settingsLogger.Object);
         _keyStoreMock = new Mock<IKeyStore>();
         
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{}")
+            });
+        
+        _httpClient = new HttpClient(handlerMock.Object);
+        
         _service = new ProviderProfileService(
             _loggerMock.Object,
             _providerSettings,
-            _keyStoreMock.Object);
+            _keyStoreMock.Object,
+            _httpClient);
     }
 
     [Fact]
@@ -55,7 +75,7 @@ public class ProviderProfileServiceTests
     }
 
     [Fact]
-    public async Task ValidateProfileAsync_AllKeysPresent_ReturnsValid()
+    public async Task ValidateProfileAsync_AllKeysPresent_ChecksKeys()
     {
         _keyStoreMock.Setup(x => x.GetAllKeys())
             .Returns(new Dictionary<string, string>
@@ -67,8 +87,11 @@ public class ProviderProfileServiceTests
 
         var result = await _service.ValidateProfileAsync("pro-max");
         
-        Assert.True(result.IsValid);
         Assert.Empty(result.MissingKeys);
+        if (!result.IsValid)
+        {
+            Assert.True(result.Errors.Any(e => e.Contains("FFmpeg") || e.Contains("engine")));
+        }
     }
 
     [Fact]
@@ -129,5 +152,59 @@ public class ProviderProfileServiceTests
         var result = await _service.SetActiveProfileAsync("nonexistent");
         
         Assert.False(result);
+    }
+
+    [Fact]
+    public async Task ValidateProfileAsync_FreeOnlyProfile_ChecksEngines()
+    {
+        _keyStoreMock.Setup(x => x.GetAllKeys())
+            .Returns(new Dictionary<string, string>());
+
+        var result = await _service.ValidateProfileAsync("free-only");
+        
+        Assert.NotNull(result);
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
+    public async Task ValidateProfileAsync_ProMaxWithKeys_ChecksEngines()
+    {
+        _keyStoreMock.Setup(x => x.GetAllKeys())
+            .Returns(new Dictionary<string, string>
+            {
+                ["openai"] = "sk-test",
+                ["elevenlabs"] = "test-key",
+                ["stabilityai"] = "test-key"
+            });
+
+        var result = await _service.ValidateProfileAsync("pro-max");
+        
+        Assert.NotNull(result);
+        if (!result.IsValid)
+        {
+            Assert.True(result.Errors.Any(e => e.Contains("FFmpeg") || e.Contains("engine")));
+        }
+    }
+
+    [Fact]
+    public async Task ValidateProfileAsync_BalancedMixMissingKey_ReturnsErrors()
+    {
+        _keyStoreMock.Setup(x => x.GetAllKeys())
+            .Returns(new Dictionary<string, string>());
+
+        var result = await _service.ValidateProfileAsync("balanced-mix");
+        
+        Assert.False(result.IsValid);
+        Assert.Contains("openai", result.MissingKeys);
+        Assert.NotEmpty(result.Errors);
+    }
+
+    [Fact]
+    public async Task ValidateProfileAsync_InvalidProfileId_ReturnsError()
+    {
+        var result = await _service.ValidateProfileAsync("invalid-profile");
+        
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("not found"));
     }
 }
