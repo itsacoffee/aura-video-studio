@@ -442,9 +442,21 @@ export function DiagnosticsPanel({
                   <Body1 style={{ marginTop: tokens.spacingVerticalS }}>{action.description}</Body1>
                   {action.steps.length > 0 && (
                     <div className={styles.stepsContainer}>
-                      <Text weight="semibold" size={200}>
-                        Steps:
-                      </Text>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text weight="semibold" size={200}>
+                          Steps:
+                        </Text>
+                        <Button
+                          size="small"
+                          appearance="subtle"
+                          onClick={() => {
+                            const stepsText = action.steps.map((s, i) => `${i + 1}. ${s}`).join('\n');
+                            navigator.clipboard.writeText(stepsText);
+                          }}
+                        >
+                          Copy Steps
+                        </Button>
+                      </div>
                       <ol style={{ marginTop: tokens.spacingVerticalXS }}>
                         {action.steps.map((step, stepIndex) => (
                           <li key={stepIndex}>
