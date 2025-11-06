@@ -48,6 +48,7 @@ public class KeyValidationService : IKeyValidationService
                 "elevenlabs" => await TestElevenLabsKeyAsync(apiKey, ct),
                 "stabilityai" or "stability" => await TestStabilityAIKeyAsync(apiKey, ct),
                 "playht" => await TestPlayHTKeyAsync(apiKey, ct),
+                "pexels" => await TestPexelsKeyAsync(apiKey, ct),
                 "azure" => await TestAzureKeyAsync(apiKey, ct),
                 _ => new KeyValidationResult
                 {
@@ -428,6 +429,73 @@ public class KeyValidationService : IKeyValidationService
                 Details = new Dictionary<string, string>
                 {
                     ["provider"] = "playht",
+                    ["error"] = ex.GetType().Name
+                }
+            };
+        }
+    }
+
+    private async Task<KeyValidationResult> TestPexelsKeyAsync(string apiKey, CancellationToken ct)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Add("Authorization", apiKey);
+            client.Timeout = TimeSpan.FromSeconds(15);
+
+            // Test with a simple search query (1 result, minimal data transfer)
+            var response = await client.GetAsync(
+                "https://api.pexels.com/v1/search?query=nature&per_page=1",
+                ct);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return new KeyValidationResult
+                {
+                    IsValid = true,
+                    Message = "Pexels API key is valid and working",
+                    Details = new Dictionary<string, string>
+                    {
+                        ["provider"] = "pexels",
+                        ["status"] = "connected"
+                    }
+                };
+            }
+
+            return new KeyValidationResult
+            {
+                IsValid = false,
+                Message = $"Pexels API key validation failed: {response.StatusCode}",
+                Details = new Dictionary<string, string>
+                {
+                    ["provider"] = "pexels",
+                    ["status_code"] = ((int)response.StatusCode).ToString(),
+                    ["reason"] = response.ReasonPhrase ?? "Unknown error"
+                }
+            };
+        }
+        catch (TaskCanceledException)
+        {
+            return new KeyValidationResult
+            {
+                IsValid = false,
+                Message = "Pexels API request timed out. Please check your internet connection.",
+                Details = new Dictionary<string, string>
+                {
+                    ["provider"] = "pexels",
+                    ["error"] = "timeout"
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            return new KeyValidationResult
+            {
+                IsValid = false,
+                Message = $"Error testing Pexels key: {ex.Message}",
+                Details = new Dictionary<string, string>
+                {
+                    ["provider"] = "pexels",
                     ["error"] = ex.GetType().Name
                 }
             };

@@ -236,12 +236,22 @@ export function WelcomePage() {
                 verticalAlign: 'middle',
               }}
             />
-            Start Here: First-Time Setup
+            ⚡ Required First Step: Initial Setup
           </Title3>
           <Text className={styles.calloutText}>
-            Welcome! Before creating your first video, let&apos;s set up Aura Video Studio with a
-            quick 3-5 minute wizard. We&apos;ll configure your workspace, detect your hardware, and
-            ensure everything is ready to go.
+            <strong>Important:</strong> Before you can create videos, please complete the quick 3-5
+            minute setup wizard. This is essential to:
+            <br />
+            <br />
+            ✓ Configure your AI providers (free or paid options)
+            <br />
+            ✓ Detect your hardware capabilities for optimal performance
+            <br />
+            ✓ Set up your workspace and ensure all dependencies are ready
+            <br />
+            <br />
+            The setup wizard is flexible - you can use completely free tools or add API keys for
+            premium services. You&apos;ll have full control over your configuration!
           </Text>
           <Button
             appearance="primary"
@@ -250,7 +260,7 @@ export function WelcomePage() {
             icon={<Rocket24Regular />}
             onClick={() => navigate('/onboarding')}
           >
-            Begin Setup Wizard
+            ▶ Start Required Setup Now
           </Button>
         </div>
       )}

@@ -178,8 +178,10 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Title2>Configure Your Providers</Title2>
-        <Text>Choose which services you want to use. Mix and match free and paid options!</Text>
+        <Title2>Choose Your Workflow</Title2>
+        <Text>
+          Select how you want to start. You can always add, remove, or change providers later!
+        </Text>
       </div>
 
       <Card className={styles.introCard}>
@@ -190,13 +192,14 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
               weight="semibold"
               style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
             >
-              🎯 You have full flexibility!
+              🎯 Complete Flexibility in Provider Selection
             </Text>
             <Text size={200} style={{ display: 'block' }}>
-              This application lets you combine free local tools with any API services you have
-              access to. You can use completely free options, add premium APIs for better quality,
-              or mix both based on your needs. All providers can be configured or changed later in
-              Settings.
+              <strong>Important:</strong> You can mix and match any combination of free and paid
+              providers! For example, use OpenAI for scripts + local TTS for voices, or free Ollama
+              for scripts + ElevenLabs for voices. Choose what works best for your workflow and
+              budget. This initial choice just determines whether we prompt you to configure API
+              keys now or skip that step.
             </Text>
           </div>
         </div>
@@ -280,9 +283,9 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
           className={`${styles.tierCard} ${selectedTier === 'free' ? styles.selectedCard : ''}`}
           onClick={() => onSelectTier('free')}
         >
-          <Title3>🆓 Start with Free Tools</Title3>
+          <Title3>🆓 Skip API Keys for Now</Title3>
           <Text style={{ marginTop: tokens.spacingVerticalS, display: 'block' }}>
-            Get started immediately with zero cost and no API keys required
+            Start with free tools only, configure API keys later if needed
           </Text>
 
           <div style={{ marginTop: tokens.spacingVerticalM }}>
@@ -291,17 +294,17 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
               size={200}
               style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
             >
-              What you&apos;ll use:
+              What this means:
             </Text>
             <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground2 }}>
-              • Windows SAPI or Piper TTS for voices
+              • Skip the API key configuration step in this wizard
               <br />
-              • Rule-based or Ollama for scripts
+              • Use only free, local tools initially (Windows TTS, Ollama, stock images)
               <br />
-              • Stock images from free sources
+              • Add any API keys later in Settings whenever you want
               <br />
               <br />
-              Perfect for testing and learning. You can add API keys anytime later!
+              Perfect for testing the app or if you prefer 100% free/offline options!
             </Text>
           </div>
 
@@ -313,7 +316,7 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
               onSelectTier('free');
             }}
           >
-            {selectedTier === 'free' ? '✓ Selected' : 'Use Free Tools Only'}
+            {selectedTier === 'free' ? '✓ Selected' : 'Skip API Configuration'}
           </Button>
         </Card>
 
@@ -321,9 +324,9 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
           className={`${styles.tierCard} ${selectedTier === 'pro' ? styles.selectedCard : ''}`}
           onClick={() => onSelectTier('pro')}
         >
-          <Title3>⭐ Configure API Keys</Title3>
+          <Title3>⭐ Configure API Keys Now</Title3>
           <Text style={{ marginTop: tokens.spacingVerticalS, display: 'block' }}>
-            Add your API keys for premium services (you choose which ones)
+            Set up your API keys during this wizard (optional, pick what you have)
           </Text>
 
           <div style={{ marginTop: tokens.spacingVerticalM }}>
@@ -332,17 +335,18 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
               size={200}
               style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
             >
-              Available services:
+              What this means:
             </Text>
             <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground2 }}>
-              • OpenAI, Claude, Gemini for scripts
+              • Next step will let you configure API keys for services you have
               <br />
-              • ElevenLabs, PlayHT for pro voices
+              • Pick and choose: OpenAI for scripts, ElevenLabs for voices, etc.
               <br />
-              • Replicate for AI-generated images
+              • You can skip individual providers or add them all
               <br />
               <br />
-              Add only the API keys you have. Free tools remain available as fallbacks!
+              <strong>Remember:</strong> Free tools are always available as fallbacks! Mix premium
+              and free providers however you like.
             </Text>
           </div>
 
@@ -354,7 +358,7 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
               onSelectTier('pro');
             }}
           >
-            {selectedTier === 'pro' ? '✓ Selected' : 'I Have API Keys'}
+            {selectedTier === 'pro' ? '✓ Selected' : 'Configure API Keys Now'}
           </Button>
         </Card>
       </div>
@@ -427,9 +431,10 @@ export function ChooseTierStep({ selectedTier, onSelectTier, hardware }: ChooseT
         }}
       >
         <Text size={200} style={{ display: 'block', textAlign: 'center' }}>
-          💡 <strong>Remember:</strong> You can start with free tools and add API keys later, or mix
-          and match any combination. The application automatically uses available providers and
-          falls back to free options when needed.
+          💡 <strong>Key Point:</strong> This choice only affects the setup wizard flow. In actual
+          usage, you can freely mix any combination of providers! Use OpenAI for scripts with local
+          TTS, or vice versa. The app intelligently uses what you have available and falls back to
+          free options automatically. All providers can be enabled/disabled in Settings anytime.
         </Text>
       </Card>
     </div>

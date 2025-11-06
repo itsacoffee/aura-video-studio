@@ -138,8 +138,8 @@ const providers: ProviderConfig[] = [
     id: 'openai',
     name: 'OpenAI',
     logo: '🤖',
-    description: 'GPT-4 for high-quality script generation',
-    usedFor: 'Script generation with GPT-4, the most advanced AI language model',
+    description: 'Advanced AI models for high-quality script generation',
+    usedFor: 'Script generation with OpenAI GPT models, industry-leading AI language models',
     signupUrl: 'https://platform.openai.com/signup',
     steps: [
       'Create an account at platform.openai.com',
@@ -316,17 +316,19 @@ export function ApiKeySetupStep({
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Title2>Configure API Keys</Title2>
+        <Title2>Configure API Keys (Optional)</Title2>
         <Text>
-          Add your API keys for the services you want to use. You can skip this step and add them
-          later.
+          Add API keys for any premium services you want to use. Pick and choose - add only what you
+          have!
         </Text>
       </div>
 
       <div className={styles.infoCard}>
         <Text size={200}>
-          💡 <strong>Tip:</strong> You don&apos;t need all of these. Add just the ones you plan to
-          use. Each provider has a free tier to get started!
+          💡 <strong>Mix and Match Freely:</strong> You don&apos;t need all of these, or even any!
+          You can use OpenAI for scripts with local TTS for voices, or Ollama for scripts with
+          ElevenLabs for voices - any combination works. The app will use what you configure and
+          fall back to free tools for anything else. All changes can be made in Settings later.
         </Text>
       </div>
 
@@ -396,7 +398,9 @@ export function ApiKeySetupStep({
                           onValidate={() => handleValidate(provider.id)}
                           validationStatus={validationStatus[provider.id] || 'idle'}
                           error={validationErrors[provider.id]}
-                          onSkipValidation={onSkipValidation ? () => onSkipValidation(provider.id) : undefined}
+                          onSkipValidation={
+                            onSkipValidation ? () => onSkipValidation(provider.id) : undefined
+                          }
                         />
                         {provider.requiresMultipleKeys && (
                           <Text size={200} style={{ marginTop: tokens.spacingVerticalS }}>

@@ -180,12 +180,6 @@ export function CompletionScreen({
       link: '/docs',
     },
     {
-      icon: <VideoClip24Regular className={styles.resourceIcon} />,
-      title: 'Video Tutorials',
-      description: 'Watch step-by-step guides and tips',
-      link: '/tutorials',
-    },
-    {
       icon: <QuestionCircle24Regular className={styles.resourceIcon} />,
       title: 'Community & Support',
       description: 'Get help and connect with other creators',
@@ -338,9 +332,7 @@ export function CompletionScreen({
               maxWidth: '700px',
             }}
           >
-            <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
-              🎬 Test Your Setup
-            </Title3>
+            <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>🎬 Test Your Setup</Title3>
             <Text style={{ display: 'block', marginBottom: tokens.spacingVerticalM }}>
               Generate a quick sample video to verify everything is working correctly. This uses
               safe defaults and takes about 30-60 seconds.

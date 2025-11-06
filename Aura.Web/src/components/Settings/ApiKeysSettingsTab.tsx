@@ -163,7 +163,7 @@ export function ApiKeysSettingsTab({
                 </Tooltip>
               </div>
             }
-            hint="For GPT-4 script generation. Get your key from platform.openai.com"
+            hint="For advanced AI script generation. Get your key from platform.openai.com"
           >
             <div className={styles.inputWithButton}>
               <Input
@@ -325,12 +325,22 @@ export function ApiKeysSettingsTab({
             }
             hint="For stock video and images. Get your free key from pexels.com/api"
           >
-            <Input
-              type="password"
-              value={settings.pexels}
-              onChange={(e) => updateSetting('pexels', e.target.value)}
-              placeholder="Optional"
-            />
+            <div className={styles.inputWithButton}>
+              <Input
+                style={{ flex: 1 }}
+                type="password"
+                value={settings.pexels}
+                onChange={(e) => updateSetting('pexels', e.target.value)}
+                placeholder="Optional"
+              />
+              <Button
+                onClick={() => handleTest('pexels', 'pexels')}
+                disabled={!settings.pexels || testing.pexels}
+              >
+                {testing.pexels ? 'Testing...' : 'Test'}
+              </Button>
+            </div>
+            {renderTestResult('pexels')}
           </Field>
 
           <Field
