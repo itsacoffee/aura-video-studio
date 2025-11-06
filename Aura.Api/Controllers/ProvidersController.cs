@@ -19,11 +19,13 @@ public class ProvidersController : ControllerBase
     private readonly ProviderHealthMonitoringService? _healthMonitoringService;
     private readonly ProviderCostTrackingService? _costTrackingService;
     private readonly ProviderSettings _settings;
+    private readonly OpenAIKeyValidationService _openAIValidationService;
 
     public ProvidersController(
         IHardwareDetector hardwareDetector, 
         IKeyStore keyStore,
         ProviderSettings settings,
+        OpenAIKeyValidationService openAIValidationService,
         LlmProviderRecommendationService? recommendationService = null,
         ProviderHealthMonitoringService? healthMonitoringService = null,
         ProviderCostTrackingService? costTrackingService = null)
@@ -31,6 +33,7 @@ public class ProvidersController : ControllerBase
         _hardwareDetector = hardwareDetector;
         _keyStore = keyStore;
         _settings = settings;
+        _openAIValidationService = openAIValidationService;
         _recommendationService = recommendationService;
         _healthMonitoringService = healthMonitoringService;
         _costTrackingService = costTrackingService;
@@ -301,6 +304,122 @@ public class ProvidersController : ControllerBase
         {
             Log.Error(ex, "Error testing provider connection");
             return Problem($"Error testing provider connection: {ex.Message}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Validate OpenAI API key with live network verification
+    /// </summary>
+    [HttpPost("openai/validate")]
+    public async Task<IActionResult> ValidateOpenAIKey(
+        [FromBody] ValidateOpenAIKeyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                return BadRequest(new ProviderValidationResponse(
+                    IsValid: false,
+                    Status: "Invalid",
+                    Message: "API key is required",
+                    CorrelationId: correlationId,
+                    Details: new ValidationDetails(
+                        Provider: "OpenAI",
+                        KeyFormat: "empty",
+                        FormatValid: false)));
+            }
+
+            Log.Information(
+                "Validating OpenAI API key, CorrelationId: {CorrelationId}",
+                correlationId);
+
+            var result = await _openAIValidationService.ValidateKeyAsync(
+                request.ApiKey,
+                request.BaseUrl,
+                request.OrganizationId,
+                request.ProjectId,
+                correlationId,
+                cancellationToken);
+
+            var response = new ProviderValidationResponse(
+                IsValid: result.IsValid,
+                Status: result.Status,
+                Message: result.Message,
+                CorrelationId: correlationId,
+                Details: new ValidationDetails(
+                    Provider: "OpenAI",
+                    KeyFormat: result.FormatValid ? "valid" : "invalid",
+                    FormatValid: result.FormatValid,
+                    NetworkCheckPassed: result.NetworkCheckPassed,
+                    HttpStatusCode: result.HttpStatusCode,
+                    ErrorType: result.ErrorType,
+                    ResponseTimeMs: result.ResponseTimeMs));
+
+            if (result.IsValid)
+            {
+                return Ok(response);
+            }
+            else if (result.Status == "Unauthorized" || result.Status == "Forbidden")
+            {
+                return Unauthorized(new ProblemDetails
+                {
+                    Title = "Invalid API Key",
+                    Detail = result.Message,
+                    Status = 401,
+                    Type = "https://docs.aura.studio/errors/invalid-api-key",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["provider"] = "OpenAI",
+                        ["status"] = result.Status
+                    }
+                });
+            }
+            else if (result.Status == "NetworkError" || result.Status == "Timeout")
+            {
+                return StatusCode(503, new ProblemDetails
+                {
+                    Title = "Network Error",
+                    Detail = result.Message,
+                    Status = 503,
+                    Type = "https://docs.aura.studio/errors/network-error",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["provider"] = "OpenAI",
+                        ["status"] = result.Status
+                    }
+                });
+            }
+            else
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Validation Failed",
+                    Detail = result.Message,
+                    Status = 400,
+                    Type = "https://docs.aura.studio/errors/validation-failed",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["provider"] = "OpenAI",
+                        ["status"] = result.Status
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error validating OpenAI API key, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Validation Error",
+                detail: "An unexpected error occurred while validating the API key.",
+                statusCode: 500,
+                type: "https://docs.aura.studio/errors/validation-error",
+                instance: correlationId);
         }
     }
 

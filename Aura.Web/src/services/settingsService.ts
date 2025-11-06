@@ -155,6 +155,47 @@ export class SettingsService {
     apiKey: string
   ): Promise<{ success: boolean; message: string }> {
     try {
+      // For OpenAI, use the new live validation endpoint
+      if (provider.toLowerCase() === 'openai') {
+        const response = await fetch(apiUrl('/api/providers/openai/validate'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey }),
+        });
+
+        const data = await response.json();
+
+        // Handle different response types
+        if (response.ok) {
+          return {
+            success: data.isValid === true,
+            message: data.message || 'API key is valid and verified with OpenAI.',
+          };
+        }
+
+        // Handle error responses (ProblemDetails format)
+        if (data.detail || data.title) {
+          return {
+            success: false,
+            message: data.detail || data.title || 'Failed to validate API key',
+          };
+        }
+
+        // Handle validation response format
+        if (data.isValid === false) {
+          return {
+            success: false,
+            message: data.message || 'API key validation failed',
+          };
+        }
+
+        return {
+          success: false,
+          message: 'Failed to validate API key',
+        };
+      }
+
+      // For other providers, use the old endpoint
       const response = await fetch(apiUrl(`/api/settings/test-api-key/${provider}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

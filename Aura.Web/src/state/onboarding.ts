@@ -757,7 +757,45 @@ export async function validateApiKeyThunk(
       throw new Error(`Failed to save API key: ${saveResponse.statusText}`);
     }
 
-    // Call the actual backend validation endpoint
+    // For OpenAI, use the new live validation endpoint
+    if (provider.toLowerCase() === 'openai') {
+      const response = await fetch(apiUrl('/api/providers/openai/validate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: apiKey.trim(),
+        }),
+      });
+
+      // Handle both successful validation and error responses
+      const data = await response.json();
+
+      // Check for successful validation (only isValid === true is considered success)
+      if (response.ok && data.isValid === true) {
+        dispatch({
+          type: 'API_KEY_VALID',
+          payload: {
+            provider,
+            accountInfo: data.message || 'API key validated successfully with OpenAI',
+          },
+        });
+        return;
+      }
+
+      // Handle error responses (ProblemDetails or validation response)
+      const errorMessage = data.detail || data.message || data.title || 'API key validation failed';
+
+      dispatch({
+        type: 'API_KEY_INVALID',
+        payload: {
+          provider,
+          error: errorMessage,
+        },
+      });
+      return;
+    }
+
+    // For other providers, use the old validation endpoint
     const response = await fetch(apiUrl('/api/providers/validate'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

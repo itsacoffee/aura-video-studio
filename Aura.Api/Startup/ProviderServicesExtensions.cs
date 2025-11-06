@@ -3,6 +3,7 @@ using Aura.Core.Dependencies;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
+using Aura.Core.Services.Providers;
 using Aura.Providers.Images;
 using Aura.Providers.Llm;
 using Aura.Providers.Tts;
@@ -22,6 +23,16 @@ public static class ProviderServicesExtensions
     {
         // HTTP client for provider communication
         services.AddHttpClient();
+
+        // OpenAI key validation service
+        services.AddSingleton<OpenAIKeyValidationService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<OpenAIKeyValidationService>>();
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(10);
+            return new OpenAIKeyValidationService(logger, httpClient);
+        });
 
         // Model catalog for dynamic model discovery
         services.AddSingleton<Aura.Core.AI.Adapters.ModelCatalog>();
