@@ -96,7 +96,39 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
 
   const handleRetry = () => {
     onClose();
-    // User will need to start a new generation from the main UI
+  };
+
+  const handleInstallFFmpeg = async () => {
+    setRepairing(true);
+    try {
+      const response = await fetch('/api/ffmpeg/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ version: null }),
+      });
+
+      if (response.ok) {
+        showSuccessToast({
+          title: 'FFmpeg Installed',
+          message: 'Managed FFmpeg has been installed successfully. You can now retry video generation.',
+        });
+        onClose();
+      } else {
+        const errorData = await response.json();
+        showFailureToast({
+          title: 'Installation Failed',
+          message: errorData.detail || 'Failed to install FFmpeg. Please check logs.',
+        });
+      }
+    } catch (error) {
+      console.error('Error installing FFmpeg:', error);
+      showFailureToast({
+        title: 'Installation Error',
+        message: 'Error installing FFmpeg. Please check network connection and try again.',
+      });
+    } finally {
+      setRepairing(false);
+    }
   };
 
   const handleRepairFFmpeg = async () => {
@@ -208,18 +240,15 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
           </DialogContent>
         </DialogBody>
         <DialogActions>
-          <Button appearance="secondary" icon={<Folder24Regular />} onClick={handleViewFullLog}>
-            View Full Log
-          </Button>
           {isFFmpegError && (
             <>
               <Button
-                appearance="secondary"
+                appearance="primary"
                 icon={<Wrench24Regular />}
-                onClick={handleRepairFFmpeg}
+                onClick={handleInstallFFmpeg}
                 disabled={repairing}
               >
-                {repairing ? 'Repairing...' : 'Repair FFmpeg'}
+                {repairing ? 'Installing...' : 'Install FFmpeg'}
               </Button>
               <Button
                 appearance="secondary"
@@ -230,8 +259,11 @@ export function FailureModal({ open, onClose, failure, jobId: _jobId }: FailureM
               </Button>
             </>
           )}
-          <Button appearance="primary" icon={<ArrowClockwise24Regular />} onClick={handleRetry}>
-            Close & Retry
+          <Button appearance="secondary" icon={<Folder24Regular />} onClick={handleViewFullLog}>
+            View Full Log
+          </Button>
+          <Button appearance="secondary" icon={<Dismiss24Regular />} onClick={handleRetry}>
+            Dismiss
           </Button>
         </DialogActions>
       </DialogSurface>

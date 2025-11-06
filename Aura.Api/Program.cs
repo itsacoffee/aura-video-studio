@@ -230,6 +230,10 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
     return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDir);
 });
 
+// Register FFmpeg resolver with managed install precedence and caching
+builder.Services.AddSingleton<Aura.Core.Dependencies.FFmpegResolver>();
+builder.Services.AddMemoryCache(); // Required for FFmpegResolver caching
+
 builder.Services.AddHttpClient(); // For LLM providers
 builder.Services.AddSingleton<Aura.Core.Orchestrator.LlmProviderFactory>();
 
