@@ -29,6 +29,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getJobTelemetry } from '@/api/telemetryClient';
 import type { RunTelemetryCollection, RunTelemetryRecord } from '@/types/telemetry';
+import { ModelSelectionAudit } from '@/components/Jobs/ModelSelectionAudit';
 
 const useStyles = makeStyles({
   container: {
@@ -406,6 +407,15 @@ const RunDetailsPage: React.FC = () => {
                 ))}
             </div>
           </Card>
+        </div>
+      )}
+
+      {jobId && (
+        <div className={styles.section}>
+          <Text size={500} weight="semibold" className={styles.sectionTitle}>
+            Model Selection Audit
+          </Text>
+          <ModelSelectionAudit jobId={jobId} />
         </div>
       )}
     </div>
