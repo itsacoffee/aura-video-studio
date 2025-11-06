@@ -13,16 +13,15 @@ public class FFmpegResolverTests : IDisposable
 {
     private readonly FFmpegResolver _resolver;
     private readonly IMemoryCache _cache;
-    private readonly string _testManagedRoot;
+    private readonly string _testDir;
 
     public FFmpegResolverTests()
     {
         _cache = new MemoryCache(new MemoryCacheOptions());
         _resolver = new FFmpegResolver(NullLogger<FFmpegResolver>.Instance, _cache);
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "FFmpegResolverTests_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(tempDir);
-        _testManagedRoot = Path.Combine(tempDir, "ffmpeg");
+        _testDir = Path.Combine(Path.GetTempPath(), "FFmpegResolverTests_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_testDir);
     }
 
     [Fact]
@@ -116,9 +115,9 @@ public class FFmpegResolverTests : IDisposable
     {
         try
         {
-            if (Directory.Exists(_testManagedRoot))
+            if (Directory.Exists(_testDir))
             {
-                Directory.Delete(Path.GetDirectoryName(_testManagedRoot) ?? _testManagedRoot, recursive: true);
+                Directory.Delete(_testDir, recursive: true);
             }
         }
         catch

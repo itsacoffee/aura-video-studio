@@ -156,7 +156,7 @@ public class FFmpegResolver
 
                 if (manifest == null || string.IsNullOrEmpty(manifest.FfmpegPath))
                 {
-                    _logger.LogWarning("Invalid manifest in {Dir}", versionDir);
+                    _logger.LogWarning("Invalid manifest in {Dir}: manifest is null or missing FFmpegPath", versionDir);
                     continue;
                 }
 
@@ -184,6 +184,10 @@ public class FFmpegResolver
                 {
                     _logger.LogWarning("Managed FFmpeg validation failed: {Error}", validation.error);
                 }
+            }
+            catch (JsonException jsonEx)
+            {
+                _logger.LogWarning(jsonEx, "Corrupted manifest file in {Dir}. Delete this directory and reinstall FFmpeg.", versionDir);
             }
             catch (Exception ex)
             {
