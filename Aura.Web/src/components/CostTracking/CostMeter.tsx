@@ -31,11 +31,6 @@ const useStyles = makeStyles({
 
 interface CostMeterProps {
   /**
-   * Job ID being tracked
-   */
-  jobId?: string;
-
-  /**
    * Show detailed breakdown by stage
    */
   showDetails?: boolean;

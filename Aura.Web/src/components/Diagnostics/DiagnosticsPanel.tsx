@@ -154,7 +154,6 @@ interface FailureAnalysis {
 
 interface DiagnosticsPanelProps {
   jobId: string;
-  jobStatus?: string;
   errorMessage?: string;
   errorCode?: string;
   stage?: string;
