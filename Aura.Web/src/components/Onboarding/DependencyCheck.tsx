@@ -65,6 +65,7 @@ const useStyles = makeStyles({
   },
   dependencyDescription: {
     color: tokens.colorNeutralForeground3,
+    display: 'block',
   },
   actionsContainer: {
     display: 'flex',
