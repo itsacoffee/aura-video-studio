@@ -1113,6 +1113,19 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyRescanService>(sp
     return new Aura.Core.Dependencies.DependencyRescanService(logger, ffmpegLocator, componentDownloader);
 });
 
+// Register DependencyScanner and cache for comprehensive system scanning
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<Aura.Core.Diagnostics.DependencyScanCache>();
+builder.Services.AddSingleton<Aura.Core.Diagnostics.DependencyScanner>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Diagnostics.DependencyScanner>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var keyStore = sp.GetRequiredService<Aura.Core.Configuration.IKeyStore>();
+    var ffmpegLocator = sp.GetService<Aura.Core.Dependencies.FfmpegLocator>();
+    var httpClientFactory = sp.GetService<IHttpClientFactory>();
+    return new Aura.Core.Diagnostics.DependencyScanner(logger, providerSettings, keyStore, ffmpegLocator, httpClientFactory);
+});
+
 // Register Setup services
 builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyDetector>(sp =>
 {
