@@ -1,0 +1,315 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag version (e.g., v1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '20'
+
+jobs:
+  validate:
+    name: Pre-Release Validation
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag or input
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ inputs.tag }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid version format: $VERSION"
+            echo "Expected format: vX.Y.Z or vX.Y.Z-prerelease"
+            exit 1
+          fi
+          echo "✓ Version format valid: $VERSION"
+
+      - name: Check for placeholder violations
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run placeholder scan
+        run: node scripts/audit/find-placeholders.js
+
+      - name: Run secret scan
+        run: bash scripts/audit/scan-secrets.sh
+
+  build-artifacts:
+    name: Build Release Artifacts
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install FFmpeg
+        run: |
+          choco install ffmpeg -y
+          ffmpeg -version
+
+      - name: Update version in version.json
+        run: |
+          $VERSION = "${{ needs.validate.outputs.version }}".TrimStart("v")
+          node scripts/release/update-version.js $VERSION
+
+      - name: Restore .NET dependencies
+        run: dotnet restore Aura.sln
+
+      - name: Build .NET projects
+        run: dotnet build Aura.sln --configuration Release --no-restore
+
+      - name: Run .NET tests
+        run: dotnet test Aura.sln --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Install frontend dependencies
+        working-directory: Aura.Web
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: Aura.Web
+        run: npm run build
+
+      - name: Run frontend tests
+        working-directory: Aura.Web
+        run: npm test
+
+      - name: Create portable distribution
+        run: |
+          pwsh scripts/packaging/make_portable_zip.ps1
+
+      - name: Generate SBOM
+        run: |
+          pwsh scripts/packaging/generate-sbom.ps1 -OutputDir artifacts/windows/portable
+
+      - name: Generate release notes
+        run: |
+          # Get previous tag for changelog
+          $PREV_TAG = git describe --tags --abbrev=0 HEAD^ 2>$null
+          if ($PREV_TAG) {
+            node scripts/release/generate-release-notes.js $PREV_TAG HEAD
+          } else {
+            node scripts/release/generate-release-notes.js
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            artifacts/windows/portable/*.zip
+            artifacts/windows/portable/*.sha256
+            artifacts/windows/portable/sbom.json
+            artifacts/windows/portable/attributions.txt
+            RELEASE_NOTES.md
+          retention-days: 90
+
+  test-e2e-windows:
+    name: E2E Tests (Windows)
+    needs: validate
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+
+      - name: Install FFmpeg
+        run: |
+          choco install ffmpeg -y
+          ffmpeg -version
+
+      - name: Restore .NET dependencies
+        run: dotnet restore Aura.sln
+
+      - name: Build API
+        run: dotnet build Aura.Api/Aura.Api.csproj --configuration Release --no-restore
+
+      - name: Install frontend dependencies
+        working-directory: Aura.Web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: Aura.Web
+        run: npm run playwright:install
+
+      - name: Run E2E tests
+        working-directory: Aura.Web
+        run: |
+          npx playwright test --reporter=html,json --workers=1 --retries=2
+        continue-on-error: false
+
+      - name: Upload E2E test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results-windows
+          path: Aura.Web/playwright-report
+          retention-days: 30
+
+  test-e2e-linux:
+    name: E2E Tests (Linux)
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -version
+
+      - name: Restore .NET dependencies
+        run: dotnet restore Aura.sln
+
+      - name: Build API
+        run: dotnet build Aura.Api/Aura.Api.csproj --configuration Release --no-restore
+
+      - name: Install frontend dependencies
+        working-directory: Aura.Web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: Aura.Web
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests (headless)
+        working-directory: Aura.Web
+        run: |
+          npx playwright test --reporter=html,json --workers=1 --retries=2
+        continue-on-error: false
+
+      - name: Upload E2E test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results-linux
+          path: Aura.Web/playwright-report
+          retention-days: 30
+
+  create-release:
+    name: Create GitHub Release
+    needs: [validate, build-artifacts, test-e2e-windows, test-e2e-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: ./release-artifacts
+
+      - name: Read release notes
+        id: release-notes
+        run: |
+          if [ -f "./release-artifacts/RELEASE_NOTES.md" ]; then
+            NOTES=$(cat ./release-artifacts/RELEASE_NOTES.md)
+          else
+            NOTES="Release ${{ needs.validate.outputs.version }}"
+          fi
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.validate.outputs.version }}
+          name: Release ${{ needs.validate.outputs.version }}
+          body: ${{ steps.release-notes.outputs.notes }}
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease || false }}
+          files: |
+            release-artifacts/*.zip
+            release-artifacts/*.sha256
+            release-artifacts/sbom.json
+            release-artifacts/attributions.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        run: |
+          echo "# Release ${{ needs.validate.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Release created successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Portable ZIP" >> $GITHUB_STEP_SUMMARY
+          echo "- SHA-256 checksums" >> $GITHUB_STEP_SUMMARY
+          echo "- SBOM (Software Bill of Materials)" >> $GITHUB_STEP_SUMMARY
+          echo "- Third-party attributions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- E2E Tests (Windows): ✅" >> $GITHUB_STEP_SUMMARY
+          echo "- E2E Tests (Linux): ✅" >> $GITHUB_STEP_SUMMARY
