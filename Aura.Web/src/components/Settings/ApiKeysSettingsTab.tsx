@@ -171,7 +171,7 @@ export function ApiKeysSettingsTab({
                 type="password"
                 value={settings.openAI}
                 onChange={(e) => updateSetting('openAI', e.target.value)}
-                placeholder="sk-... (optional)"
+                placeholder="sk-... / sk-proj-... (optional)"
               />
               <Button
                 onClick={() => handleTest('openai', 'openAI')}

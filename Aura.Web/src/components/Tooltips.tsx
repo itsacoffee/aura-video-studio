@@ -205,7 +205,7 @@ export const TooltipContent = {
 
   // Settings - API Keys / Providers
   apiKeyOpenAI: {
-    text: 'OpenAI API key for GPT models. Get from platform.openai.com. GPT-4: best quality, higher cost. GPT-3.5-Turbo: faster, lower cost.',
+    text: 'OpenAI API key for GPT models (starts with sk- or sk-proj-). Get from platform.openai.com. GPT-4: best quality, higher cost. GPT-3.5-Turbo: faster, lower cost.',
     docLink: 'https://platform.openai.com/api-keys',
   },
   apiKeyAnthropic: {
