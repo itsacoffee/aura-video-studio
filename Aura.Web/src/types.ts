@@ -49,6 +49,7 @@ export interface Brief {
   tone: string;
   language: string;
   aspect: 'Widescreen16x9' | 'Vertical9x16' | 'Square1x1';
+  ragConfiguration?: RagConfiguration;
 }
 
 export interface PlanSpec {
@@ -198,3 +199,45 @@ export interface PlannerRecommendations {
 
 // Re-export Scene from timeline types for backward compatibility
 export type { TimelineScene as Scene } from './types/timeline';
+
+// RAG (Retrieval-Augmented Generation) Configuration
+export interface RagConfiguration {
+  enabled: boolean;
+  topK?: number;
+  minimumScore?: number;
+  maxContextTokens?: number;
+  includeCitations?: boolean;
+  tightenClaims?: boolean;
+}
+
+export interface Citation {
+  number: number;
+  source: string;
+  title?: string;
+  section?: string;
+  pageNumber?: number;
+}
+
+export interface DocumentInfo {
+  documentId: string;
+  source: string;
+  title?: string;
+  chunkCount: number;
+  createdAt: string;
+}
+
+export interface IndexStatistics {
+  totalDocuments: number;
+  totalChunks: number;
+  totalSizeBytes: number;
+  lastUpdated: string;
+  documentsByFormat: Record<string, number>;
+}
+
+export interface IndexingResult {
+  success: boolean;
+  documentId: string;
+  chunksCreated: number;
+  processingTimeMs: number;
+  warnings: string[];
+}
