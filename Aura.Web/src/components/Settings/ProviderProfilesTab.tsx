@@ -11,12 +11,18 @@ import {
   Badge,
   Divider,
   Spinner,
+  Link,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Filled,
   DismissCircle24Filled,
   Lightbulb24Regular,
   Info24Regular,
+  Warning24Regular,
+  ArrowRight24Regular,
 } from '@fluentui/react-icons';
 import { useEffect, useState, useCallback } from 'react';
 import * as providerProfilesApi from '../../api/providerProfiles';
@@ -71,10 +77,37 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalXS,
     marginTop: tokens.spacingVerticalXS,
   },
+  validationDetails: {
+    marginTop: tokens.spacingVerticalS,
+    marginLeft: '32px',
+    padding: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  errorList: {
+    marginTop: tokens.spacingVerticalXS,
+    marginLeft: tokens.spacingHorizontalM,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  fixLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXXS,
+    cursor: 'pointer',
+    color: tokens.colorBrandForeground1,
+  },
   buttonGroup: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
     marginTop: tokens.spacingVerticalL,
+  },
+  changesSummary: {
+    marginTop: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
   },
 });
 
@@ -96,9 +129,11 @@ export function ProviderProfilesTab() {
 
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [validating, setValidating] = useState<Record<string, boolean>>({});
+  const [appliedChanges, setAppliedChanges] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -131,15 +166,50 @@ export function ProviderProfilesTab() {
 
     setLoading(true);
     try {
+      const previousProfile = activeProfile;
       const result = await providerProfilesApi.setActiveProfile(selectedProfileId);
       setActiveProfile(result.profile);
       setError(null);
+
+      const changesDescription = generateChangesDescription(previousProfile, result.profile);
+      setAppliedChanges(changesDescription);
+
+      setTimeout(() => setAppliedChanges(null), 10000);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to apply profile';
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateChangesDescription = (
+    previous: ProviderProfileDto | null,
+    current: ProviderProfileDto
+  ): string => {
+    if (!previous) return `Applied profile: ${current.name}`;
+
+    const changes: string[] = [];
+
+    if (previous.tier !== current.tier) {
+      changes.push(`Tier changed from ${previous.tier} to ${current.tier}`);
+    }
+
+    const previousKeys = new Set(previous.requiredApiKeys);
+    const currentKeys = new Set(current.requiredApiKeys);
+    const addedKeys = [...currentKeys].filter((k) => !previousKeys.has(k));
+    const removedKeys = [...previousKeys].filter((k) => !currentKeys.has(k));
+
+    if (addedKeys.length > 0) {
+      changes.push(`Now requires: ${addedKeys.join(', ')}`);
+    }
+    if (removedKeys.length > 0) {
+      changes.push(`No longer requires: ${removedKeys.join(', ')}`);
+    }
+
+    return changes.length > 0
+      ? `Applied ${current.name}. Changes: ${changes.join('; ')}`
+      : `Applied profile: ${current.name}`;
   };
 
   const handleValidateProfile = useCallback(
@@ -182,6 +252,26 @@ export function ProviderProfilesTab() {
     }
   };
 
+  const navigateToApiKeys = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      const apiKeysCard = document.querySelector('[data-category="apikeys"]');
+      if (apiKeysCard) {
+        (apiKeysCard as HTMLElement).click();
+      }
+    }, 100);
+  };
+
+  const navigateToEngines = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      const enginesCard = document.querySelector('[data-category="localengines"]');
+      if (enginesCard) {
+        (enginesCard as HTMLElement).click();
+      }
+    }, 100);
+  };
+
   const renderValidationStatus = (profile: ProviderProfileDto) => {
     const result = validationResults[profile.id];
     const isValidating = validating[profile.id];
@@ -204,22 +294,83 @@ export function ProviderProfilesTab() {
     }
 
     return (
-      <div className={styles.validationStatus}>
-        {result.isValid ? (
-          <>
-            <CheckmarkCircle24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
-            <Text size={200}>{result.message}</Text>
-          </>
-        ) : (
-          <>
-            <DismissCircle24Filled style={{ color: tokens.colorPaletteRedForeground1 }} />
-            <Text size={200}>{result.message}</Text>
-          </>
+      <>
+        <div className={styles.validationStatus}>
+          {result.isValid ? (
+            <>
+              <CheckmarkCircle24Filled style={{ color: tokens.colorPaletteGreenForeground1 }} />
+              <Text size={200}>{result.message}</Text>
+            </>
+          ) : (
+            <>
+              <DismissCircle24Filled style={{ color: tokens.colorPaletteRedForeground1 }} />
+              <Text size={200}>{result.message}</Text>
+            </>
+          )}
+          <Button size="small" onClick={() => handleValidateProfile(profile.id)}>
+            Re-validate
+          </Button>
+        </div>
+
+        {!result.isValid && (result.errors.length > 0 || result.warnings.length > 0) && (
+          <div className={styles.validationDetails}>
+            {result.errors.length > 0 && (
+              <>
+                <Text
+                  size={200}
+                  weight="semibold"
+                  style={{ color: tokens.colorPaletteRedForeground1 }}
+                >
+                  Issues found:
+                </Text>
+                <div className={styles.errorList}>
+                  {result.errors.map((error, index) => (
+                    <Text key={index} size={200}>
+                      • {error}
+                    </Text>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {result.missingKeys.length > 0 && (
+              <div style={{ marginTop: tokens.spacingVerticalS }}>
+                <Link className={styles.fixLink} onClick={navigateToApiKeys}>
+                  <Text size={200} weight="semibold">
+                    Configure API Keys
+                  </Text>
+                  <ArrowRight24Regular fontSize={16} />
+                </Link>
+              </div>
+            )}
+
+            {result.errors.some(
+              (e) =>
+                e.toLowerCase().includes('engine') ||
+                e.toLowerCase().includes('ollama') ||
+                e.toLowerCase().includes('ffmpeg')
+            ) && (
+              <div style={{ marginTop: tokens.spacingVerticalS }}>
+                <Link className={styles.fixLink} onClick={navigateToEngines}>
+                  <Text size={200} weight="semibold">
+                    Install/Configure Engines
+                  </Text>
+                  <ArrowRight24Regular fontSize={16} />
+                </Link>
+              </div>
+            )}
+
+            {result.warnings.length > 0 && (
+              <div style={{ marginTop: tokens.spacingVerticalS }}>
+                <Warning24Regular style={{ color: tokens.colorPaletteYellowForeground1 }} />
+                <Text size={200} style={{ marginLeft: tokens.spacingHorizontalXS }}>
+                  {result.warnings.join('; ')}
+                </Text>
+              </div>
+            )}
+          </div>
         )}
-        <Button size="small" onClick={() => handleValidateProfile(profile.id)}>
-          Re-validate
-        </Button>
-      </div>
+      </>
     );
   };
 
@@ -243,15 +394,32 @@ export function ProviderProfilesTab() {
         profile offers different trade-offs between cost, quality, and requirements.
       </Text>
 
+      {appliedChanges && (
+        <MessageBar intent="success" style={{ marginBottom: tokens.spacingVerticalL }}>
+          <MessageBarBody>
+            <MessageBarTitle>Profile Applied Successfully</MessageBarTitle>
+            {appliedChanges}
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
       {recommendation && (
         <div className={styles.recommendBox}>
           <Lightbulb24Regular style={{ fontSize: '24px', color: tokens.colorBrandForeground1 }} />
           <div style={{ flex: 1 }}>
             <Text weight="semibold" size={300}>
-              Recommended: {recommendation.recommendedProfileName}
+              Smart Recommendation: {recommendation.recommendedProfileName}
             </Text>
             <br />
             <Text size={200}>{recommendation.reason}</Text>
+            {recommendation.missingKeysForProMax.length > 0 && (
+              <>
+                <br />
+                <Text size={200} style={{ fontStyle: 'italic' }}>
+                  For Pro-Max, you still need: {recommendation.missingKeysForProMax.join(', ')}
+                </Text>
+              </>
+            )}
           </div>
         </div>
       )}
