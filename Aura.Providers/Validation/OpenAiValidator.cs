@@ -34,6 +34,7 @@ public class OpenAiValidator : IProviderValidator
         {
             if (string.IsNullOrWhiteSpace(apiKey))
             {
+                _logger.LogWarning("OpenAI validation failed: No API key provided");
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
@@ -42,6 +43,11 @@ public class OpenAiValidator : IProviderValidator
                     ElapsedMs = sw.ElapsedMilliseconds
                 };
             }
+
+            // Log key format for debugging (masked)
+            var keyPrefix = apiKey.Length > 15 ? apiKey.Substring(0, 15) + "..." : apiKey;
+            _logger.LogInformation("OpenAI validation starting with key prefix: {KeyPrefix}, Length: {Length}", 
+                keyPrefix, apiKey.Length);
 
             // Make a minimal 1-token echo completion to test the API key
             var requestBody = new
@@ -83,12 +89,14 @@ public class OpenAiValidator : IProviderValidator
             }
             else if ((int)response.StatusCode == 401)
             {
-                _logger.LogWarning("OpenAI validation failed: Invalid API key");
+                var errorContent = await response.Content.ReadAsStringAsync(ct);
+                var detailedError = GetErrorMessage(errorContent);
+                _logger.LogWarning("OpenAI validation failed: Invalid API key - {Error}", detailedError);
                 return new ProviderValidationResult
                 {
                     Name = ProviderName,
                     Ok = false,
-                    Details = "Invalid API key",
+                    Details = $"Invalid API key. {detailedError}. Please verify your key at platform.openai.com/api-keys",
                     ElapsedMs = sw.ElapsedMilliseconds
                 };
             }
