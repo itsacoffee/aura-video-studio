@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Aura.Core.Models.Audience;
+using Aura.Core.Models.RAG;
 
 namespace Aura.Core.Models;
 
@@ -37,7 +38,13 @@ public record PlanSpec(
 
 public record VoiceSpec(string VoiceName, double Rate, double Pitch, PauseStyle Pause);
 
-public record Scene(int Index, string Heading, string Script, TimeSpan Start, TimeSpan Duration);
+public record Scene(
+    int Index, 
+    string Heading, 
+    string Script, 
+    TimeSpan Start, 
+    TimeSpan Duration,
+    List<Citation>? Citations = null);
 
 public record ScriptLine(int SceneIndex, string Text, TimeSpan Start, TimeSpan Duration);
 

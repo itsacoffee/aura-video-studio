@@ -39,6 +39,7 @@ import {
   Sparkle24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GenerationPanel } from '../../components/Generation/GenerationPanel';
 import { useNotifications } from '../../components/Notifications/Toasts';
 import { PreflightPanel } from '../../components/PreflightPanel';
@@ -168,6 +169,7 @@ const SETTINGS_STORAGE_KEY = 'aura-wizard-settings';
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Multi-step wizard component with various state management and conditional rendering
 export function CreateWizard() {
   const styles = useStyles();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
 
   // Load settings from localStorage or use defaults
@@ -714,6 +716,124 @@ export function CreateWizard() {
                   <Option value="Square1x1">1:1 Square (Instagram)</Option>
                 </Dropdown>
               </Field>
+            </div>
+
+            {/* RAG Configuration */}
+            <div style={{ marginTop: tokens.spacingVerticalL }}>
+              <Accordion collapsible>
+                <AccordionItem value="rag">
+                  <AccordionHeader icon={<ChevronDown24Regular />} expandIconPosition="end">
+                    <Title3>Document Grounding (Optional)</Title3>
+                  </AccordionHeader>
+                  <AccordionPanel>
+                    <div className={styles.fieldGroup}>
+                      <Text size={300} style={{ marginBottom: tokens.spacingVerticalM }}>
+                        Ground your video script in source documents. Upload PDFs, Word documents,
+                        or other files to ensure factual accuracy and include citations.
+                      </Text>
+
+                      <Field>
+                        <Switch
+                          checked={settings.brief.ragConfiguration?.enabled ?? false}
+                          onChange={(_, data) =>
+                            updateBrief({
+                              ragConfiguration: {
+                                enabled: data.checked,
+                                topK: settings.brief.ragConfiguration?.topK ?? 5,
+                                minimumScore: settings.brief.ragConfiguration?.minimumScore ?? 0.6,
+                                maxContextTokens:
+                                  settings.brief.ragConfiguration?.maxContextTokens ?? 2000,
+                                includeCitations:
+                                  settings.brief.ragConfiguration?.includeCitations ?? true,
+                                tightenClaims:
+                                  settings.brief.ragConfiguration?.tightenClaims ?? false,
+                              },
+                            })
+                          }
+                          label="Use attached source documents"
+                        />
+                      </Field>
+
+                      {settings.brief.ragConfiguration?.enabled && (
+                        <>
+                          <Field
+                            label="Number of source chunks (TopK)"
+                            hint="How many relevant document chunks to retrieve"
+                          >
+                            <Slider
+                              min={1}
+                              max={20}
+                              step={1}
+                              value={settings.brief.ragConfiguration.topK ?? 5}
+                              onChange={(_, data) =>
+                                updateBrief({
+                                  ragConfiguration: {
+                                    ...settings.brief.ragConfiguration,
+                                    enabled: true,
+                                    topK: data.value,
+                                  },
+                                })
+                              }
+                            />
+                            <Text size={200}>
+                              {settings.brief.ragConfiguration.topK ?? 5} chunks
+                            </Text>
+                          </Field>
+
+                          <Field
+                            label="Minimum relevance score"
+                            hint="Filter out less relevant content (0-1)"
+                          >
+                            <Slider
+                              min={0}
+                              max={1}
+                              step={0.1}
+                              value={settings.brief.ragConfiguration.minimumScore ?? 0.6}
+                              onChange={(_, data) =>
+                                updateBrief({
+                                  ragConfiguration: {
+                                    ...settings.brief.ragConfiguration,
+                                    enabled: true,
+                                    minimumScore: data.value,
+                                  },
+                                })
+                              }
+                            />
+                            <Text size={200}>
+                              {(settings.brief.ragConfiguration.minimumScore ?? 0.6).toFixed(1)}
+                            </Text>
+                          </Field>
+
+                          <Field>
+                            <Checkbox
+                              checked={settings.brief.ragConfiguration.includeCitations ?? true}
+                              onChange={(_, data) =>
+                                updateBrief({
+                                  ragConfiguration: {
+                                    ...settings.brief.ragConfiguration,
+                                    enabled: true,
+                                    includeCitations: data.checked === true,
+                                  },
+                                })
+                              }
+                              label="Include citations in script"
+                            />
+                          </Field>
+
+                          <Button
+                            appearance="subtle"
+                            onClick={() => {
+                              navigate('/rag');
+                            }}
+                          >
+                            Manage Documents
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </AccordionPanel>
+                </AccordionItem>
+              </Accordion>
             </div>
 
             {/* Quick Demo Button */}
