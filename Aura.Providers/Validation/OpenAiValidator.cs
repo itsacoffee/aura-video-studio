@@ -60,7 +60,7 @@ public class OpenAiValidator : IProviderValidator
             {
                 Content = content
             };
-            request.Headers.Add("Authorization", $"Bearer {MaskKey(apiKey)}".Replace(MaskKey(apiKey), apiKey));
+            request.Headers.Add("Authorization", $"Bearer {apiKey}");
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));

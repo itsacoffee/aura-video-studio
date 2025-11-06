@@ -55,6 +55,9 @@ public class ProviderValidationService
                 httpClient),
             ["Mimic3"] = new Mimic3Validator(
                 loggerFactory.CreateLogger<Mimic3Validator>(),
+                httpClient),
+            ["Pexels"] = new PexelsValidator(
+                loggerFactory.CreateLogger<PexelsValidator>(),
                 httpClient)
         };
     }
