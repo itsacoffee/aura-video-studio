@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -47,7 +48,7 @@ public class OpenAiLlmValidator : ProviderValidator
         {
             // Simple validation: test models endpoint
             var request = new HttpRequestMessage(HttpMethod.Get, "https://api.openai.com/v1/models");
-            request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
             var response = await _httpClient.SendAsync(request, ct).ConfigureAwait(false);
 

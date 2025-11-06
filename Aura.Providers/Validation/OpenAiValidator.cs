@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -60,7 +61,7 @@ public class OpenAiValidator : IProviderValidator
             {
                 Content = content
             };
-            request.Headers.Add("Authorization", $"Bearer {apiKey}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
