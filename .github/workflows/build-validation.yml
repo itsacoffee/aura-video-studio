@@ -106,7 +106,41 @@ jobs:
             Write-Host "✓ Build completed with no warnings" -ForegroundColor Green
           }
 
-  # Job 3: Lint and Type Check
+  # Job 3: Orchestrator Compliance Check - Enforce analyzer rules
+  orchestrator-compliance:
+    name: Orchestrator Compliance - Direct Provider Usage Check
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Restore dependencies
+        run: dotnet restore Aura.sln
+      
+      - name: Build with AUR001 as error
+        run: dotnet build Aura.sln --configuration Release --no-restore /warnaserror:AUR001
+        id: compliance_check
+      
+      - name: Compliance summary
+        if: always()
+        shell: pwsh
+        run: |
+          if ("${{ steps.compliance_check.outcome }}" -eq "failure") {
+            Write-Host "❌ Direct provider usage detected!" -ForegroundColor Red
+            Write-Host "All provider calls must go through orchestrator layer (LlmStageAdapter, SSMLStageAdapter, VisualStageAdapter)" -ForegroundColor Yellow
+            Write-Host "See ORCHESTRATOR_USAGE_GUIDE.md for migration instructions" -ForegroundColor Yellow
+            exit 1
+          } else {
+            Write-Host "✓ Orchestrator compliance verified - no direct provider usage detected" -ForegroundColor Green
+          }
+
+  # Job 4: Lint and Type Check
   lint-and-typecheck:
     name: Lint and Type Check
     runs-on: ubuntu-latest
@@ -139,7 +173,7 @@ jobs:
         run: npm run format:check
         continue-on-error: true
 
-  # Job 4: Placeholder Scan
+  # Job 5: Placeholder Scan
   placeholder-scan:
     name: Placeholder Marker Scan
     runs-on: ubuntu-latest
@@ -161,7 +195,7 @@ jobs:
           echo "✓ No placeholder markers found"
           echo "Repository is clean and production-ready"
 
-  # Job 5: Environment Validation
+  # Job 6: Environment Validation
   environment-validation:
     name: Environment Validation Test
     runs-on: ubuntu-latest
