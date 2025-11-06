@@ -1,347 +1,415 @@
-/**
- * RunDetailsPage - Displays telemetry breakdown for a job
- */
-
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Card,
-  Title3,
-  Body1,
-  Spinner,
+  makeStyles,
+  tokens,
+  Text,
   Button,
+  Card,
+  Spinner,
+  Badge,
   DataGrid,
-  DataGridHeader,
-  DataGridRow,
-  DataGridHeaderCell,
   DataGridBody,
+  DataGridRow,
+  DataGridHeader,
+  DataGridHeaderCell,
   DataGridCell,
   createTableColumn,
+  TableCellLayout,
   TableColumnDefinition,
-  Badge,
+  Title3,
+  Caption1,
+  Body1,
 } from '@fluentui/react-components';
 import {
   ArrowLeft24Regular,
-  CheckmarkCircle24Regular,
-  ErrorCircle24Regular,
-  Warning24Regular,
+  CheckmarkCircle24Filled,
+  Warning24Filled,
+  ErrorCircle24Filled,
 } from '@fluentui/react-icons';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getJobTelemetry } from '@/api/telemetryClient';
-import { ModelSelectionAudit } from '@/components/Jobs';
-import type {
-  RunTelemetryCollection,
-  RunTelemetryRecord,
-} from '@/types/telemetry';
+import type { RunTelemetryCollection, RunTelemetryRecord } from '@/types/telemetry';
 
-export const RunDetailsPage: React.FC = () => {
+const useStyles = makeStyles({
+  container: {
+    padding: tokens.spacingVerticalXL,
+    maxWidth: '1400px',
+    margin: '0 auto',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: tokens.spacingVerticalL,
+  },
+  backButton: {
+    marginBottom: tokens.spacingVerticalM,
+  },
+  summaryCards: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: tokens.spacingHorizontalM,
+    marginBottom: tokens.spacingVerticalL,
+  },
+  summaryCard: {
+    padding: tokens.spacingVerticalM,
+  },
+  summaryValue: {
+    fontSize: tokens.fontSizeHero700,
+    fontWeight: tokens.fontWeightSemibold,
+    marginTop: tokens.spacingVerticalS,
+  },
+  summaryLabel: {
+    color: tokens.colorNeutralForeground2,
+  },
+  section: {
+    marginBottom: tokens.spacingVerticalXL,
+  },
+  sectionTitle: {
+    marginBottom: tokens.spacingVerticalM,
+  },
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: tokens.spacingVerticalXXXL,
+  },
+  errorContainer: {
+    padding: tokens.spacingVerticalXL,
+    textAlign: 'center',
+  },
+  stageBreakdownCard: {
+    padding: tokens.spacingVerticalM,
+  },
+  costByStageList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  costItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  providersList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  providerItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+  },
+});
+
+interface StageRow {
+  stage: string;
+  status: string;
+  latency: string;
+  cost: string;
+  provider: string;
+  message: string;
+}
+
+const RunDetailsPage: React.FC = () => {
+  const styles = useStyles();
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
-  const [telemetry, setTelemetry] = useState<RunTelemetryCollection | null>(
-    null
-  );
+  const [telemetry, setTelemetry] = useState<RunTelemetryCollection | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!jobId) {
-      setError('No job ID provided');
-      setLoading(false);
-      return;
-    }
-
     const loadTelemetry = async () => {
+      if (!jobId) {
+        setError('Job ID is required');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const data = await getJobTelemetry(jobId);
         setTelemetry(data);
+        setError(null);
       } catch (err: unknown) {
         const errorObj = err instanceof Error ? err : new Error(String(err));
-        setError(errorObj.message || 'Failed to load telemetry');
+        setError(errorObj.message || 'Failed to load telemetry data');
       } finally {
         setLoading(false);
       }
     };
 
-    loadTelemetry();
+    void loadTelemetry();
   }, [jobId]);
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'ok':
-        return <CheckmarkCircle24Regular style={{ color: 'green' }} />;
+        return <CheckmarkCircle24Filled primaryFill={tokens.colorPaletteGreenForeground1} />;
       case 'warn':
-        return <Warning24Regular style={{ color: 'orange' }} />;
+        return <Warning24Filled primaryFill={tokens.colorPaletteYellowForeground1} />;
       case 'error':
-        return <ErrorCircle24Regular style={{ color: 'red' }} />;
+        return <ErrorCircle24Filled primaryFill={tokens.colorPaletteRedForeground1} />;
       default:
         return null;
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const color = status === 'ok' ? 'success' : status === 'warn' ? 'warning' : 'danger';
-    return (
-      <Badge appearance="filled" color={color}>
-        {status.toUpperCase()}
-      </Badge>
-    );
-  };
-
-  const columns: TableColumnDefinition<RunTelemetryRecord>[] = [
-    createTableColumn<RunTelemetryRecord>({
+  const columns: TableColumnDefinition<StageRow>[] = [
+    createTableColumn<StageRow>({
       columnId: 'stage',
+      compare: (a, b) => a.stage.localeCompare(b.stage),
       renderHeaderCell: () => 'Stage',
       renderCell: (item) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {getStatusIcon(item.result_status)}
-          <span style={{ textTransform: 'capitalize' }}>{item.stage}</span>
-        </div>
+        <TableCellLayout>
+          <Text weight="semibold">{item.stage}</Text>
+        </TableCellLayout>
       ),
     }),
-    createTableColumn<RunTelemetryRecord>({
-      columnId: 'provider',
-      renderHeaderCell: () => 'Provider',
-      renderCell: (item) => item.provider || '-',
-    }),
-    createTableColumn<RunTelemetryRecord>({
-      columnId: 'latency',
-      renderHeaderCell: () => 'Latency',
-      renderCell: (item) => `${(item.latency_ms / 1000).toFixed(2)}s`,
-    }),
-    createTableColumn<RunTelemetryRecord>({
-      columnId: 'cost',
-      renderHeaderCell: () => 'Cost',
-      renderCell: (item) =>
-        item.cost_estimate
-          ? `$${item.cost_estimate.toFixed(4)}`
-          : '-',
-    }),
-    createTableColumn<RunTelemetryRecord>({
-      columnId: 'tokens',
-      renderHeaderCell: () => 'Tokens',
-      renderCell: (item) =>
-        item.tokens_in && item.tokens_out
-          ? `${item.tokens_in + item.tokens_out}`
-          : '-',
-    }),
-    createTableColumn<RunTelemetryRecord>({
+    createTableColumn<StageRow>({
       columnId: 'status',
+      compare: (a, b) => a.status.localeCompare(b.status),
       renderHeaderCell: () => 'Status',
-      renderCell: (item) => getStatusBadge(item.result_status),
+      renderCell: (item) => (
+        <TableCellLayout media={getStatusIcon(item.status)}>
+          <Badge appearance={item.status === 'ok' ? 'filled' : 'outline'}>
+            {item.status}
+          </Badge>
+        </TableCellLayout>
+      ),
+    }),
+    createTableColumn<StageRow>({
+      columnId: 'latency',
+      compare: (a, b) => parseFloat(a.latency) - parseFloat(b.latency),
+      renderHeaderCell: () => 'Latency',
+      renderCell: (item) => <TableCellLayout>{item.latency}</TableCellLayout>,
+    }),
+    createTableColumn<StageRow>({
+      columnId: 'cost',
+      compare: (a, b) => parseFloat(a.cost.replace('$', '')) - parseFloat(b.cost.replace('$', '')),
+      renderHeaderCell: () => 'Cost',
+      renderCell: (item) => <TableCellLayout>{item.cost}</TableCellLayout>,
+    }),
+    createTableColumn<StageRow>({
+      columnId: 'provider',
+      compare: (a, b) => a.provider.localeCompare(b.provider),
+      renderHeaderCell: () => 'Provider',
+      renderCell: (item) => <TableCellLayout>{item.provider}</TableCellLayout>,
+    }),
+    createTableColumn<StageRow>({
+      columnId: 'message',
+      compare: (a, b) => a.message.localeCompare(b.message),
+      renderHeaderCell: () => 'Message',
+      renderCell: (item) => (
+        <TableCellLayout>
+          <Caption1>{item.message}</Caption1>
+        </TableCellLayout>
+      ),
     }),
   ];
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '400px',
-        }}
-      >
-        <Spinner label="Loading telemetry..." />
+      <div className={styles.loadingContainer}>
+        <Spinner label="Loading telemetry data..." />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ padding: '24px' }}>
+      <div className={styles.errorContainer}>
+        <ErrorCircle24Filled primaryFill={tokens.colorPaletteRedForeground1} />
+        <Text size={400} weight="semibold" style={{ marginTop: tokens.spacingVerticalM }}>
+          {error}
+        </Text>
         <Button
-          icon={<ArrowLeft24Regular />}
+          appearance="primary"
           onClick={() => navigate('/jobs')}
-          style={{ marginBottom: '16px' }}
+          style={{ marginTop: tokens.spacingVerticalL }}
         >
           Back to Jobs
         </Button>
-        <Card style={{ padding: '24px', textAlign: 'center' }}>
-          <ErrorCircle24Regular style={{ fontSize: '48px', color: 'red' }} />
-          <Title3 style={{ marginTop: '16px' }}>Failed to Load Telemetry</Title3>
-          <Body1 style={{ marginTop: '8px', color: '#666' }}>{error}</Body1>
-        </Card>
       </div>
     );
   }
 
   if (!telemetry) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <Button
-          icon={<ArrowLeft24Regular />}
-          onClick={() => navigate('/jobs')}
-          style={{ marginBottom: '16px' }}
-        >
-          Back to Jobs
-        </Button>
-        <Card style={{ padding: '24px', textAlign: 'center' }}>
-          <Body1>No telemetry data available</Body1>
-        </Card>
-      </div>
-    );
+    return null;
   }
 
   const summary = telemetry.summary;
+  const stageRows: StageRow[] = telemetry.records.map((record: RunTelemetryRecord) => ({
+    stage: record.stage,
+    status: record.result_status,
+    latency: `${(record.latency_ms / 1000).toFixed(2)}s`,
+    cost: record.cost_estimate ? `$${record.cost_estimate.toFixed(4)}` : '$0.0000',
+    provider: record.provider || 'N/A',
+    message: record.message || '',
+  }));
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div className={styles.container}>
       <Button
+        className={styles.backButton}
+        appearance="subtle"
         icon={<ArrowLeft24Regular />}
         onClick={() => navigate('/jobs')}
-        style={{ marginBottom: '16px' }}
       >
         Back to Jobs
       </Button>
 
-      <Title3 style={{ marginBottom: '24px' }}>
-        Run Telemetry: {telemetry.job_id}
-      </Title3>
+      <div className={styles.header}>
+        <Title3>Run Details - {telemetry.job_id}</Title3>
+      </div>
 
       {summary && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '16px',
-            marginBottom: '24px',
-          }}
-        >
-          <Card style={{ padding: '16px' }}>
-            <Body1 style={{ color: '#666', marginBottom: '8px' }}>
-              Total Operations
-            </Body1>
-            <Title3>{summary.total_operations}</Title3>
+        <div className={styles.summaryCards}>
+          <Card className={styles.summaryCard}>
+            <Caption1 className={styles.summaryLabel}>Total Operations</Caption1>
+            <div className={styles.summaryValue}>{summary.total_operations}</div>
           </Card>
-          <Card style={{ padding: '16px' }}>
-            <Body1 style={{ color: '#666', marginBottom: '8px' }}>
-              Total Cost
-            </Body1>
-            <Title3>
-              ${summary.total_cost.toFixed(4)} {summary.currency}
-            </Title3>
-          </Card>
-          <Card style={{ padding: '16px' }}>
-            <Body1 style={{ color: '#666', marginBottom: '8px' }}>
-              Total Latency
-            </Body1>
-            <Title3>{(summary.total_latency_ms / 1000).toFixed(2)}s</Title3>
-          </Card>
-          <Card style={{ padding: '16px' }}>
-            <Body1 style={{ color: '#666', marginBottom: '8px' }}>
-              Success Rate
-            </Body1>
-            <Title3>
-              {(
-                (summary.successful_operations / summary.total_operations) *
-                100
-              ).toFixed(1)}
+
+          <Card className={styles.summaryCard}>
+            <Caption1 className={styles.summaryLabel}>Success Rate</Caption1>
+            <div className={styles.summaryValue}>
+              {summary.total_operations > 0
+                ? ((summary.successful_operations / summary.total_operations) * 100).toFixed(1)
+                : 0}
               %
-            </Title3>
+            </div>
           </Card>
-          <Card style={{ padding: '16px' }}>
-            <Body1 style={{ color: '#666', marginBottom: '8px' }}>
-              Total Tokens
-            </Body1>
-            <Title3>
-              {summary.total_tokens_in + summary.total_tokens_out}
-            </Title3>
+
+          <Card className={styles.summaryCard}>
+            <Caption1 className={styles.summaryLabel}>Total Cost</Caption1>
+            <div className={styles.summaryValue}>
+              ${summary.total_cost.toFixed(4)}
+            </div>
           </Card>
-          <Card style={{ padding: '16px' }}>
-            <Body1 style={{ color: '#666', marginBottom: '8px' }}>
-              Cache Hits
-            </Body1>
-            <Title3>{summary.cache_hits}</Title3>
+
+          <Card className={styles.summaryCard}>
+            <Caption1 className={styles.summaryLabel}>Total Latency</Caption1>
+            <div className={styles.summaryValue}>
+              {(summary.total_latency_ms / 1000).toFixed(2)}s
+            </div>
+          </Card>
+
+          <Card className={styles.summaryCard}>
+            <Caption1 className={styles.summaryLabel}>Total Tokens</Caption1>
+            <div className={styles.summaryValue}>
+              {(summary.total_tokens_in + summary.total_tokens_out).toLocaleString()}
+            </div>
+          </Card>
+
+          <Card className={styles.summaryCard}>
+            <Caption1 className={styles.summaryLabel}>Cache Hits</Caption1>
+            <div className={styles.summaryValue}>{summary.cache_hits}</div>
           </Card>
         </div>
       )}
 
-      <Card style={{ padding: '24px' }}>
-        <Title3 style={{ marginBottom: '16px' }}>Stage Breakdown</Title3>
-        <DataGrid
-          items={telemetry.records}
-          columns={columns}
-          sortable
-          resizableColumns
-        >
-          <DataGridHeader>
-            <DataGridRow>
-              {({ renderHeaderCell }) => (
-                <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
-              )}
-            </DataGridRow>
-          </DataGridHeader>
-          <DataGridBody<RunTelemetryRecord>>
-            {({ item, rowId }) => (
-              <DataGridRow<RunTelemetryRecord> key={rowId}>
-                {({ renderCell }) => (
-                  <DataGridCell>{renderCell(item)}</DataGridCell>
+      <div className={styles.section}>
+        <Text size={500} weight="semibold" className={styles.sectionTitle}>
+          Stage Breakdown
+        </Text>
+        <Card className={styles.stageBreakdownCard}>
+          <DataGrid
+            items={stageRows}
+            columns={columns}
+            sortable
+            resizableColumns
+            columnSizingOptions={{
+              stage: {
+                minWidth: 100,
+                defaultWidth: 120,
+              },
+              status: {
+                minWidth: 80,
+                defaultWidth: 100,
+              },
+              latency: {
+                minWidth: 80,
+                defaultWidth: 100,
+              },
+              cost: {
+                minWidth: 80,
+                defaultWidth: 100,
+              },
+              provider: {
+                minWidth: 100,
+                defaultWidth: 150,
+              },
+              message: {
+                minWidth: 200,
+                defaultWidth: 300,
+              },
+            }}
+          >
+            <DataGridHeader>
+              <DataGridRow>
+                {({ renderHeaderCell }) => (
+                  <DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>
                 )}
               </DataGridRow>
-            )}
-          </DataGridBody>
-        </DataGrid>
-      </Card>
-
-      {summary?.cost_by_stage && (
-        <Card style={{ padding: '24px', marginTop: '24px' }}>
-          <Title3 style={{ marginBottom: '16px' }}>Cost by Stage</Title3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {Object.entries(summary.cost_by_stage).map(([stage, cost]) => (
-              <div
-                key={stage}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px',
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: '4px',
-                }}
-              >
-                <Body1 style={{ textTransform: 'capitalize' }}>{stage}</Body1>
-                <Body1 style={{ fontWeight: 'bold' }}>
-                  ${cost.toFixed(4)} {summary.currency}
-                </Body1>
-              </div>
-            ))}
-          </div>
+            </DataGridHeader>
+            <DataGridBody<StageRow>>
+              {({ item, rowId }) => (
+                <DataGridRow<StageRow> key={rowId}>
+                  {({ renderCell }) => <DataGridCell>{renderCell(item)}</DataGridCell>}
+                </DataGridRow>
+              )}
+            </DataGridBody>
+          </DataGrid>
         </Card>
+      </div>
+
+      {summary?.cost_by_stage && Object.keys(summary.cost_by_stage).length > 0 && (
+        <div className={styles.section}>
+          <Text size={500} weight="semibold" className={styles.sectionTitle}>
+            Cost by Stage
+          </Text>
+          <Card className={styles.stageBreakdownCard}>
+            <div className={styles.costByStageList}>
+              {Object.entries(summary.cost_by_stage)
+                .sort(([, a], [, b]) => b - a)
+                .map(([stage, cost]) => (
+                  <div key={stage} className={styles.costItem}>
+                    <Body1>{stage}</Body1>
+                    <Text weight="semibold">${cost.toFixed(4)}</Text>
+                  </div>
+                ))}
+            </div>
+          </Card>
+        </div>
       )}
 
-      {summary?.operations_by_provider && (
-        <Card style={{ padding: '24px', marginTop: '24px' }}>
-          <Title3 style={{ marginBottom: '16px' }}>Operations by Provider</Title3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {Object.entries(summary.operations_by_provider).map(
-              ([provider, count]) => (
-                <div
-                  key={provider}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px',
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: '4px',
-                  }}
-                >
-                  <Body1>{provider}</Body1>
-                  <Body1 style={{ fontWeight: 'bold' }}>{count} operations</Body1>
-                </div>
-              )
-            )}
-          </div>
-        </Card>
-      )}
-
-      {jobId && (
-        <div style={{ marginTop: '24px' }}>
-          <ModelSelectionAudit jobId={jobId} />
+      {summary?.operations_by_provider && Object.keys(summary.operations_by_provider).length > 0 && (
+        <div className={styles.section}>
+          <Text size={500} weight="semibold" className={styles.sectionTitle}>
+            Operations by Provider
+          </Text>
+          <Card className={styles.stageBreakdownCard}>
+            <div className={styles.providersList}>
+              {Object.entries(summary.operations_by_provider)
+                .sort(([, a], [, b]) => b - a)
+                .map(([provider, count]) => (
+                  <div key={provider} className={styles.providerItem}>
+                    <Body1>{provider}</Body1>
+                    <Text weight="semibold">{count} operations</Text>
+                  </div>
+                ))}
+            </div>
+          </Card>
         </div>
       )}
     </div>
   );
 };
 
-export default RunDetailsPage;
+export { RunDetailsPage };
