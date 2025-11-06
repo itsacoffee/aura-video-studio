@@ -9,6 +9,15 @@ import { loggingService as logger } from '../loggingService';
 export interface SseEvent {
   type: string;
   data: unknown;
+  eventId?: string;
+}
+
+export type SseConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
+
+export interface SseConnectionState {
+  status: SseConnectionStatus;
+  reconnectAttempt: number;
+  lastEventId: string | null;
 }
 
 export interface JobStatusEvent {
@@ -99,9 +108,48 @@ export class SseClient {
   private url: string;
   private isManualClose = false;
   private lastEventId: string | null = null;
+  private connectionStatus: SseConnectionStatus = 'disconnected';
+  private statusChangeHandlers: Array<(state: SseConnectionState) => void> = [];
 
   constructor(jobId: string) {
     this.url = apiUrl(`/api/jobs/${jobId}/events`);
+  }
+
+  /**
+   * Subscribe to connection status changes
+   */
+  onStatusChange(handler: (state: SseConnectionState) => void): void {
+    this.statusChangeHandlers.push(handler);
+  }
+
+  /**
+   * Get current connection state
+   */
+  getConnectionState(): SseConnectionState {
+    return {
+      status: this.connectionStatus,
+      reconnectAttempt: this.reconnectAttempts,
+      lastEventId: this.lastEventId,
+    };
+  }
+
+  /**
+   * Notify status change handlers
+   */
+  private notifyStatusChange(): void {
+    const state = this.getConnectionState();
+    this.statusChangeHandlers.forEach((handler) => {
+      try {
+        handler(state);
+      } catch (error) {
+        logger.error(
+          'Error in status change handler',
+          error instanceof Error ? error : new Error(String(error)),
+          'SseClient',
+          'notifyStatusChange'
+        );
+      }
+    });
   }
 
   /**
@@ -114,6 +162,8 @@ export class SseClient {
     }
 
     this.isManualClose = false;
+    this.connectionStatus = this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting';
+    this.notifyStatusChange();
     
     // Build URL with Last-Event-ID as query parameter for reconnection
     // Note: Native EventSource doesn't support custom headers, so we use query param
@@ -134,6 +184,8 @@ export class SseClient {
         logger.debug('Connected successfully', 'SseClient', 'onopen');
         this.reconnectAttempts = 0;
         this.reconnectDelay = 1000;
+        this.connectionStatus = 'connected';
+        this.notifyStatusChange();
       };
 
       this.eventSource.onerror = (error) => {
@@ -146,9 +198,13 @@ export class SseClient {
 
         if (this.eventSource?.readyState === EventSource.CLOSED) {
           logger.debug('Connection closed by server', 'SseClient', 'onerror');
+          this.connectionStatus = 'disconnected';
+          this.notifyStatusChange();
           this.handleConnectionError();
         } else if (this.eventSource?.readyState === EventSource.CONNECTING) {
           logger.debug('Reconnecting...', 'SseClient', 'onerror');
+          this.connectionStatus = 'reconnecting';
+          this.notifyStatusChange();
         }
       };
 
@@ -161,6 +217,8 @@ export class SseClient {
         'SseClient',
         'connect'
       );
+      this.connectionStatus = 'error';
+      this.notifyStatusChange();
       this.handleConnectionError();
     }
   }
@@ -194,7 +252,9 @@ export class SseClient {
           
           const data = JSON.parse(event.data);
           logger.debug(`Received ${eventType}`, 'SseClient', 'onEvent', { data });
-          this.emit(eventType, data);
+          
+          // Emit event with event ID for tracking
+          this.emit(eventType, data, event.lastEventId);
         } catch (error) {
           logger.error(
             `Failed to parse ${eventType} event`,
@@ -273,12 +333,12 @@ export class SseClient {
   /**
    * Emit an event to all registered handlers
    */
-  private emit(eventType: string, data: unknown): void {
+  private emit(eventType: string, data: unknown, eventId?: string): void {
     const handlers = this.handlers.get(eventType);
     if (handlers) {
       handlers.forEach((handler) => {
         try {
-          handler({ type: eventType, data });
+          handler({ type: eventType, data, eventId });
         } catch (error) {
           logger.error(
             'Error in event handler',
@@ -309,7 +369,10 @@ export class SseClient {
     }
 
     this.handlers.clear();
+    this.statusChangeHandlers = [];
     this.reconnectAttempts = 0;
+    this.connectionStatus = 'disconnected';
+    this.notifyStatusChange();
   }
 
   /**

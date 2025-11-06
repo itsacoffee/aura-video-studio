@@ -94,7 +94,7 @@ public class TelemetryIntegrationTests : IDisposable
         var llmTelemetry = new LlmOperationTelemetry
         {
             SessionId = jobId,
-            OperationType = LlmOperationType.Script,
+            OperationType = LlmOperationType.Scripting,
             ProviderName = "OpenAI",
             ModelName = "gpt-4",
             TokensIn = 500,
@@ -139,7 +139,7 @@ public class TelemetryIntegrationTests : IDisposable
         var llmTelemetry = new LlmOperationTelemetry
         {
             SessionId = jobId,
-            OperationType = LlmOperationType.Script,
+            OperationType = LlmOperationType.Scripting,
             ProviderName = "OpenAI",
             ModelName = "gpt-4",
             TokensIn = 100,
@@ -205,7 +205,7 @@ public class TelemetryIntegrationTests : IDisposable
         var llmTelemetry = new LlmOperationTelemetry
         {
             SessionId = jobId,
-            OperationType = LlmOperationType.Brief,
+            OperationType = LlmOperationType.Planning,
             ProviderName = "OpenAI",
             ModelName = "gpt-4",
             TokensIn = 50,
@@ -228,7 +228,7 @@ public class TelemetryIntegrationTests : IDisposable
         var llmTelemetry = new LlmOperationTelemetry
         {
             SessionId = jobId,
-            OperationType = LlmOperationType.Plan,
+            OperationType = LlmOperationType.Planning,
             ProviderName = "OpenAI",
             ModelName = "gpt-4",
             TokensIn = 200,
@@ -251,7 +251,7 @@ public class TelemetryIntegrationTests : IDisposable
         var llmTelemetry = new LlmOperationTelemetry
         {
             SessionId = jobId,
-            OperationType = LlmOperationType.Script,
+            OperationType = LlmOperationType.Scripting,
             ProviderName = "OpenAI",
             ModelName = "gpt-4",
             TokensIn = 500,

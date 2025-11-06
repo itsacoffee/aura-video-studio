@@ -132,17 +132,21 @@ export const RunCostSummary: React.FC<RunCostSummaryProps> = ({ jobId, open, onC
                 <Caption1>Duration</Caption1>
                 <Caption1>{report.durationSeconds.toFixed(1)}s</Caption1>
               </div>
+              <div className={styles.row}>
+                <Caption1>Pricing Accuracy</Caption1>
+                <Caption1>Telemetry v1 (actual costs)</Caption1>
+              </div>
               {report.budgetLimit && (
                 <div className={styles.row}>
                   <Caption1>Budget Status</Caption1>
                   <Caption1>
                     {report.withinBudget ? (
                       <span style={{ color: tokens.colorPaletteGreenForeground1 }}>
-                        Within budget (${report.budgetLimit.toFixed(2)})
+                        ✓ Within budget (${report.budgetLimit.toFixed(2)})
                       </span>
                     ) : (
                       <span style={{ color: tokens.colorPaletteRedForeground1 }}>
-                        Over budget (${report.budgetLimit.toFixed(2)})
+                        ⚠ Over budget (${report.budgetLimit.toFixed(2)})
                       </span>
                     )}
                   </Caption1>

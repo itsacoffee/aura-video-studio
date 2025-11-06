@@ -937,6 +937,8 @@ builder.Services.AddSingleton<ConfigurationValidator>();
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.ErrorAggregationService>();
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.PerformanceTrackingService>();
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.DiagnosticReportGenerator>();
+builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.DiagnosticBundleService>();
+builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.FailureAnalysisService>();
 
 // Register Startup Initialization Service - runs first to ensure critical services are ready
 builder.Services.AddHostedService<Aura.Api.HostedServices.StartupInitializationService>();

@@ -28,6 +28,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getJobTelemetry } from '@/api/telemetryClient';
+import { ModelSelectionAudit } from '@/components/Jobs';
 import type { RunTelemetryCollection, RunTelemetryRecord } from '@/types/telemetry';
 
 const useStyles = makeStyles({
@@ -178,9 +179,7 @@ const RunDetailsPage: React.FC = () => {
       renderHeaderCell: () => 'Status',
       renderCell: (item) => (
         <TableCellLayout media={getStatusIcon(item.status)}>
-          <Badge appearance={item.status === 'ok' ? 'filled' : 'outline'}>
-            {item.status}
-          </Badge>
+          <Badge appearance={item.status === 'ok' ? 'filled' : 'outline'}>{item.status}</Badge>
         </TableCellLayout>
       ),
     }),
@@ -288,9 +287,7 @@ const RunDetailsPage: React.FC = () => {
 
           <Card className={styles.summaryCard}>
             <Caption1 className={styles.summaryLabel}>Total Cost</Caption1>
-            <div className={styles.summaryValue}>
-              ${summary.total_cost.toFixed(4)}
-            </div>
+            <div className={styles.summaryValue}>${summary.total_cost.toFixed(4)}</div>
           </Card>
 
           <Card className={styles.summaryCard}>
@@ -389,25 +386,33 @@ const RunDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {summary?.operations_by_provider && Object.keys(summary.operations_by_provider).length > 0 && (
+      {/* Model Selection Audit Trail */}
+      {jobId && (
         <div className={styles.section}>
-          <Text size={500} weight="semibold" className={styles.sectionTitle}>
-            Operations by Provider
-          </Text>
-          <Card className={styles.stageBreakdownCard}>
-            <div className={styles.providersList}>
-              {Object.entries(summary.operations_by_provider)
-                .sort(([, a], [, b]) => b - a)
-                .map(([provider, count]) => (
-                  <div key={provider} className={styles.providerItem}>
-                    <Body1>{provider}</Body1>
-                    <Text weight="semibold">{count} operations</Text>
-                  </div>
-                ))}
-            </div>
-          </Card>
+          <ModelSelectionAudit jobId={jobId} />
         </div>
       )}
+
+      {summary?.operations_by_provider &&
+        Object.keys(summary.operations_by_provider).length > 0 && (
+          <div className={styles.section}>
+            <Text size={500} weight="semibold" className={styles.sectionTitle}>
+              Operations by Provider
+            </Text>
+            <Card className={styles.stageBreakdownCard}>
+              <div className={styles.providersList}>
+                {Object.entries(summary.operations_by_provider)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([provider, count]) => (
+                    <div key={provider} className={styles.providerItem}>
+                      <Body1>{provider}</Body1>
+                      <Text weight="semibold">{count} operations</Text>
+                    </div>
+                  ))}
+              </div>
+            </Card>
+          </div>
+        )}
     </div>
   );
 };

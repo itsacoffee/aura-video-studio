@@ -884,10 +884,10 @@ public class LocalizationController : ControllerBase
                 });
             }
 
-            var registry = new Aura.Core.Services.TTS.VoiceProviderRegistry(
-                _loggerFactory.CreateLogger<Aura.Core.Services.TTS.VoiceProviderRegistry>());
+            var registry = new Aura.Core.Services.Voice.VoiceProviderRegistry(
+                _loggerFactory.CreateLogger<Aura.Core.Services.Voice.VoiceProviderRegistry>());
 
-            var result = registry.ValidateVoice(provider, request.TargetLanguage, request.VoiceName);
+            var result = registry.ValidateVoice(provider.ToString(), request.TargetLanguage, request.VoiceName);
 
             var dto = new VoiceValidationDto(
                 request.TargetLanguage,
@@ -896,18 +896,18 @@ public class LocalizationController : ControllerBase
                 result.IsValid,
                 result.ErrorMessage,
                 result.MatchedVoice != null ? new VoiceInfoDto(
-                    result.MatchedVoice.VoiceName,
-                    result.MatchedVoice.VoiceId,
-                    result.MatchedVoice.Gender,
-                    result.MatchedVoice.Style,
-                    result.MatchedVoice.Quality
+                    result.MatchedVoice.Name,
+                    result.MatchedVoice.Id,
+                    result.MatchedVoice.Gender.ToString(),
+                    string.Empty,
+                    result.MatchedVoice.VoiceType.ToString()
                 ) : null,
                 result.FallbackSuggestion != null ? new VoiceInfoDto(
-                    result.FallbackSuggestion.VoiceName,
-                    result.FallbackSuggestion.VoiceId,
-                    result.FallbackSuggestion.Gender,
-                    result.FallbackSuggestion.Style,
-                    result.FallbackSuggestion.Quality
+                    result.FallbackSuggestion.Name,
+                    result.FallbackSuggestion.Id,
+                    result.FallbackSuggestion.Gender.ToString(),
+                    string.Empty,
+                    result.FallbackSuggestion.VoiceType.ToString()
                 ) : null
             );
 

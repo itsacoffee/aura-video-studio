@@ -5,39 +5,111 @@ namespace Aura.Core.Models;
 
 /// <summary>
 /// Represents a video generation job with stage-by-stage progress tracking.
+/// 
+/// State Machine Invariants:
+/// - Queued → Running → (Done | Failed | Canceled)
+/// - Terminal states (Done, Failed, Canceled) cannot transition to any other state
+/// - Progress (Percent) must be monotonically increasing (never decreases)
+/// - EndedUtc must be set when entering any terminal state
+/// 
+/// Timestamp Invariants:
+/// - CreatedUtc: Set on job creation, never changes
+/// - QueuedUtc: Set when job enters Queued state (same as CreatedUtc for new jobs)
+/// - StartedUtc: Set when job transitions from Queued to Running
+/// - CompletedUtc: Set when job transitions to Done/Succeeded
+/// - CanceledUtc: Set when job transitions to Canceled
+/// - EndedUtc: Set to CompletedUtc, CanceledUtc, or FailedAt when entering terminal state
+/// 
+/// Resumability Rules:
+/// - Jobs can only be resumed if CanResume is true
+/// - Resume is supported for jobs that failed at specific checkpoints
+/// - LastCompletedStep indicates the last successful checkpoint
+/// - Not all stages support resumption (e.g., rendering is atomic)
 /// </summary>
 public record Job
 {
+    /// <summary>Unique identifier for the job</summary>
     public string Id { get; init; } = Guid.NewGuid().ToString();
+    
+    /// <summary>Current stage of execution (Script, Voice, Visuals, Rendering, Complete)</summary>
     public string Stage { get; init; } = "Plan";
+    
+    /// <summary>Current status following state machine rules</summary>
     public JobStatus Status { get; init; } = JobStatus.Queued;
+    
+    /// <summary>Progress percentage (0-100), monotonically increasing</summary>
     public int Percent { get; init; } = 0;
+    
+    /// <summary>Estimated time remaining for completion</summary>
     public TimeSpan? Eta { get; init; }
+    
+    /// <summary>Artifacts produced during job execution (video, subtitles, etc.)</summary>
     public List<JobArtifact> Artifacts { get; init; } = new();
+    
+    /// <summary>Execution logs for debugging and progress tracking</summary>
     public List<string> Logs { get; init; } = new();
+    
+    /// <summary>Legacy: When job started execution (use StartedUtc instead)</summary>
     public DateTime StartedAt { get; init; } = DateTime.UtcNow;
+    
+    /// <summary>Legacy: When job finished (use EndedUtc instead)</summary>
     public DateTime? FinishedAt { get; init; }
+    
+    /// <summary>Correlation ID for request tracing</summary>
     public string? CorrelationId { get; init; }
+    
+    /// <summary>User-friendly error message if job failed</summary>
     public string? ErrorMessage { get; init; }
+    
+    /// <summary>Detailed failure information if job failed</summary>
     public JobFailure? FailureDetails { get; init; }
+    
+    /// <summary>Original brief for the job</summary>
     public Brief? Brief { get; init; }
+    
+    /// <summary>Plan specification for the job</summary>
     public PlanSpec? PlanSpec { get; init; }
+    
+    /// <summary>Voice specification for the job</summary>
     public VoiceSpec? VoiceSpec { get; init; }
+    
+    /// <summary>Render specification for the job</summary>
     public RenderSpec? RenderSpec { get; init; }
     
-    // Enhanced fields for new jobs API with proper timestamps
+    /// <summary>UTC timestamp when job was created (immutable)</summary>
     public DateTime CreatedUtc { get; init; } = DateTime.UtcNow;
+    
+    /// <summary>UTC timestamp when job was added to queue (typically same as CreatedUtc)</summary>
+    public DateTime QueuedUtc { get; init; } = DateTime.UtcNow;
+    
+    /// <summary>UTC timestamp when job started running (Queued → Running transition)</summary>
     public DateTime? StartedUtc { get; init; }
+    
+    /// <summary>UTC timestamp when job completed successfully (Running → Done transition)</summary>
     public DateTime? CompletedUtc { get; init; }
+    
+    /// <summary>UTC timestamp when job was canceled (Running → Canceled transition)</summary>
     public DateTime? CanceledUtc { get; init; }
+    
+    /// <summary>UTC timestamp when job reached terminal state (Done, Failed, or Canceled)</summary>
     public DateTime? EndedUtc { get; init; }
+    
+    /// <summary>Individual steps within the job for granular tracking</summary>
     public List<JobStep> Steps { get; init; } = new();
+    
+    /// <summary>Final output information for completed jobs</summary>
     public JobOutput? Output { get; init; }
+    
+    /// <summary>Non-fatal warnings collected during execution</summary>
     public List<string> Warnings { get; init; } = new();
+    
+    /// <summary>Errors collected during execution (may include recoverable errors)</summary>
     public List<JobStepError> Errors { get; init; } = new();
     
-    // Resumability fields
+    /// <summary>Last successfully completed step for resume support</summary>
     public string? LastCompletedStep { get; init; }
+    
+    /// <summary>Whether this job can be resumed from LastCompletedStep</summary>
     public bool CanResume { get; init; } = false;
     
     /// <summary>
@@ -50,8 +122,24 @@ public record Job
     }
     
     /// <summary>
-    /// Validates job state transition is legal according to state machine rules
+    /// Validates job state transition is legal according to state machine rules.
+    /// 
+    /// Valid State Transitions:
+    /// - Queued → Running (job starts execution)
+    /// - Queued → Canceled (job canceled before starting)
+    /// - Running → Done/Succeeded (job completed successfully)
+    /// - Running → Failed (job encountered an error)
+    /// - Running → Canceled (job canceled during execution)
+    /// 
+    /// Terminal States (no outbound transitions):
+    /// - Done/Succeeded
+    /// - Failed
+    /// - Canceled
+    /// 
+    /// Note: Same state transition is always allowed (idempotent updates)
     /// </summary>
+    /// <param name="newStatus">The target status to transition to</param>
+    /// <returns>True if transition is valid, false otherwise</returns>
     public bool CanTransitionTo(JobStatus newStatus)
     {
         return (this.Status, newStatus) switch
@@ -78,6 +166,15 @@ public record Job
             // All other transitions are invalid
             _ => false
         };
+    }
+    
+    /// <summary>
+    /// Checks if the current job status is a terminal state
+    /// </summary>
+    /// <returns>True if the job is in a terminal state (Done, Failed, or Canceled)</returns>
+    public bool IsTerminal()
+    {
+        return Status is JobStatus.Done or JobStatus.Succeeded or JobStatus.Failed or JobStatus.Canceled;
     }
 }
 

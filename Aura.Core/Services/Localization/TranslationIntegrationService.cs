@@ -25,7 +25,7 @@ public class TranslationIntegrationService
     private readonly SSMLPlannerService _ssmlPlannerService;
     private readonly CaptionBuilder _captionBuilder;
     private readonly SSMLSubtitleSynchronizer? _subtitleSynchronizer;
-    private readonly VoiceProviderRegistry? _voiceRegistry;
+    private readonly Voice.VoiceProviderRegistry? _voiceRegistry;
 
     public TranslationIntegrationService(
         ILogger<TranslationIntegrationService> logger,
@@ -33,7 +33,7 @@ public class TranslationIntegrationService
         SSMLPlannerService ssmlPlannerService,
         CaptionBuilder captionBuilder,
         SSMLSubtitleSynchronizer? subtitleSynchronizer = null,
-        VoiceProviderRegistry? voiceRegistry = null)
+        Voice.VoiceProviderRegistry? voiceRegistry = null)
     {
         _logger = logger;
         _translationService = translationService;
@@ -57,7 +57,7 @@ public class TranslationIntegrationService
         if (_voiceRegistry != null)
         {
             var voiceValidation = _voiceRegistry.ValidateVoice(
-                request.TargetProvider,
+                request.TargetProvider.ToString(),
                 request.TargetLanguage,
                 request.VoiceSpec.VoiceName);
 
@@ -71,14 +71,14 @@ public class TranslationIntegrationService
                 {
                     _logger.LogInformation(
                         "Fallback voice suggested: {Voice}",
-                        voiceValidation.FallbackSuggestion.VoiceName);
+                        voiceValidation.FallbackSuggestion.Name);
                 }
             }
             else
             {
                 _logger.LogInformation(
                     "Voice validated: {Voice} for {Language}/{Provider}",
-                    voiceValidation.MatchedVoice?.VoiceName, request.TargetLanguage, request.TargetProvider);
+                    voiceValidation.MatchedVoice?.Name, request.TargetLanguage, request.TargetProvider);
             }
         }
 

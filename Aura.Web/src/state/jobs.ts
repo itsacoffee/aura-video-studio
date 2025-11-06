@@ -8,6 +8,7 @@ import {
   type JobCompletedEvent,
   type JobFailedEvent,
   type JobCancelledEvent,
+  type SseConnectionState,
 } from '../services/api/sseClient';
 import { loggingService as logger } from '../services/loggingService';
 
@@ -58,6 +59,9 @@ interface JobsState {
   // Loading states
   loading: boolean;
   streaming: boolean; // Tracks if SSE is active
+  
+  // SSE connection state
+  connectionState: SseConnectionState | null;
 
   // Actions
   createJob: (
@@ -69,6 +73,7 @@ interface JobsState {
   getJob: (jobId: string) => Promise<void>;
   getFailureDetails: (jobId: string) => Promise<JobFailure | null>;
   listJobs: () => Promise<void>;
+  cancelJob: (jobId: string) => Promise<void>;
   setActiveJob: (job: Job | null) => void;
   startStreaming: (jobId: string) => void;
   stopStreaming: () => void;
@@ -82,6 +87,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   jobs: [],
   loading: false,
   streaming: false,
+  connectionState: null,
 
   createJob: async (brief, planSpec, voiceSpec, renderSpec) => {
     set({ loading: true });
@@ -181,6 +187,37 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     set({ activeJob: job });
   },
 
+  cancelJob: async (jobId: string) => {
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/cancel`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel job');
+      }
+
+      logger.debug(`Job ${jobId} cancellation requested`, 'JobsStore', 'cancelJob');
+      
+      // Update active job to reflect cancellation in progress
+      const state = get();
+      if (state.activeJob && state.activeJob.id === jobId) {
+        get().updateJobFromSse({
+          status: 'Canceled',
+          errorMessage: 'Job cancellation in progress...',
+        });
+      }
+    } catch (error) {
+      logger.error(
+        'Error canceling job',
+        error instanceof Error ? error : new Error(String(error)),
+        'JobsStore',
+        'cancelJob'
+      );
+      throw error;
+    }
+  },
+
   updateJobFromSse: (updates: Partial<Job>) => {
     const state = get();
     if (state.activeJob) {
@@ -198,10 +235,16 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     get().stopStreaming();
 
     logger.debug(`Starting SSE streaming for job: ${jobId}`, 'JobsStore', 'startStreaming');
-    set({ streaming: true });
+    set({ streaming: true, connectionState: { status: 'connecting', reconnectAttempt: 0, lastEventId: null } });
 
     // Create new SSE client
     sseClient = createSseClient(jobId);
+
+    // Track connection status changes
+    sseClient.onStatusChange((state) => {
+      logger.debug('SSE connection status changed', 'JobsStore', 'statusChange', { state });
+      set({ connectionState: state });
+    });
 
     // Handle job status updates
     sseClient.on('job-status', (event) => {
