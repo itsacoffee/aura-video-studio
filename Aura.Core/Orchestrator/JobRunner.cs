@@ -65,6 +65,7 @@ public class JobRunner
         VoiceSpec voiceSpec,
         RenderSpec renderSpec,
         string? correlationId = null,
+        bool isQuickDemo = false,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(brief);
@@ -73,7 +74,8 @@ public class JobRunner
         ArgumentNullException.ThrowIfNull(renderSpec);
         
         var jobId = Guid.NewGuid().ToString();
-        _logger.LogInformation("Creating new job with ID: {JobId}, Topic: {Topic}", jobId, brief.Topic);
+        _logger.LogInformation("Creating new job with ID: {JobId}, Topic: {Topic}, IsQuickDemo: {IsQuickDemo}", 
+            jobId, brief.Topic, isQuickDemo);
         
         var nowUtc = DateTime.UtcNow;
         var job = new Job
@@ -87,7 +89,8 @@ public class JobRunner
             VoiceSpec = voiceSpec,
             RenderSpec = renderSpec,
             CreatedUtc = nowUtc,
-            QueuedUtc = nowUtc
+            QueuedUtc = nowUtc,
+            IsQuickDemo = isQuickDemo
         };
 
         _activeJobs[job.Id] = job;
@@ -257,7 +260,8 @@ public class JobRunner
                 progress,
                 ct,
                 jobId,
-                job.CorrelationId
+                job.CorrelationId,
+                job.IsQuickDemo
             ).ConfigureAwait(false);
 
             // Add final artifact
@@ -284,12 +288,13 @@ public class JobRunner
                 _logger.LogInformation("Telemetry data persisted to {Path}", telemetryPath);
             }
 
-            // Mark as done
+            // Mark as done with output path
             job = UpdateJob(job, 
                 status: JobStatus.Done, 
                 percent: 100, 
                 stage: "Complete",
                 artifacts: artifacts,
+                outputPath: outputPath,
                 finishedAt: DateTime.UtcNow,
                 completedUtc: DateTime.UtcNow);
 
@@ -502,7 +507,8 @@ public class JobRunner
         string? progressMessage = null,
         DateTime? startedUtc = null,
         DateTime? completedUtc = null,
-        DateTime? canceledUtc = null)
+        DateTime? canceledUtc = null,
+        string? outputPath = null)
     {
         // Validate state transition if status is changing
         var newStatus = status ?? job.Status;
@@ -543,7 +549,8 @@ public class JobRunner
             StartedUtc = startedUtc ?? job.StartedUtc,
             CompletedUtc = completedUtc ?? job.CompletedUtc,
             CanceledUtc = canceledUtc ?? job.CanceledUtc,
-            EndedUtc = endedUtc
+            EndedUtc = endedUtc,
+            OutputPath = outputPath ?? job.OutputPath
         };
 
         _activeJobs[job.Id] = updated;
