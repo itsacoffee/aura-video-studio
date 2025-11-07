@@ -1081,10 +1081,18 @@ public class VideoOrchestrator
         _logger.LogInformation("Generating safe fallback script for topic: {Topic}, duration: {Duration}s", 
             topic, targetDuration.TotalSeconds);
         
+        // Sanitize topic to prevent script injection - remove any markdown/special characters
+        var safeTopic = System.Text.RegularExpressions.Regex.Replace(topic, @"[#*_\[\]<>]", "");
+        safeTopic = safeTopic.Trim();
+        if (string.IsNullOrWhiteSpace(safeTopic))
+        {
+            safeTopic = "Aura Video Studio";
+        }
+        
         // Create a simple 2-scene script that's always valid
         var script = $@"## Introduction
 
-Welcome to {topic}. This is a demonstration video created with Aura Video Studio.
+Welcome to {safeTopic}. This is a demonstration video created with Aura Video Studio.
 
 ## Overview
 

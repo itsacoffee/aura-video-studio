@@ -54,30 +54,33 @@ public class QuickController : ControllerBase
                 Log.Warning("[{CorrelationId}] FFmpeg not ready. Installed={Installed}, Valid={Valid}, Version={Version}, VersionMeets={VersionMeets}",
                     correlationId, ffmpegStatus.Installed, ffmpegStatus.Valid, ffmpegStatus.Version, ffmpegStatus.VersionMeetsRequirement);
                 
-                return Conflict(new
+                return Conflict(new Microsoft.AspNetCore.Mvc.ProblemDetails
                 {
-                    type = "https://docs.aura.studio/errors/E302-FFMPEG_NOT_READY",
-                    title = "FFmpeg Not Ready",
-                    status = 409,
-                    detail = "FFmpeg is not properly installed or configured. Quick Demo requires a working FFmpeg installation to render videos.",
-                    correlationId,
-                    ffmpegStatus = new
+                    Type = "https://docs.aura.studio/errors/E302-FFMPEG_NOT_READY",
+                    Title = "FFmpeg Not Ready",
+                    Status = 409,
+                    Detail = "FFmpeg is not properly installed or configured. Quick Demo requires a working FFmpeg installation to render videos.",
+                    Extensions =
                     {
-                        installed = ffmpegStatus.Installed,
-                        valid = ffmpegStatus.Valid,
-                        version = ffmpegStatus.Version,
-                        versionMeetsRequirement = ffmpegStatus.VersionMeetsRequirement,
-                        minimumVersion = ffmpegStatus.MinimumVersion,
-                        path = ffmpegStatus.Path,
-                        source = ffmpegStatus.Source,
-                        error = ffmpegStatus.Error
-                    },
-                    suggestedActions = new[]
-                    {
-                        "Install Managed FFmpeg from the Downloads page",
-                        "Verify FFmpeg is in your system PATH",
-                        "Check FFmpeg status on the Dependencies page",
-                        "Ensure FFmpeg version is 4.0 or higher"
+                        ["correlationId"] = correlationId,
+                        ["ffmpegStatus"] = new
+                        {
+                            installed = ffmpegStatus.Installed,
+                            valid = ffmpegStatus.Valid,
+                            version = ffmpegStatus.Version,
+                            versionMeetsRequirement = ffmpegStatus.VersionMeetsRequirement,
+                            minimumVersion = ffmpegStatus.MinimumVersion,
+                            path = ffmpegStatus.Path,
+                            source = ffmpegStatus.Source,
+                            error = ffmpegStatus.Error
+                        },
+                        ["suggestedActions"] = new[]
+                        {
+                            "Install Managed FFmpeg from the Downloads page",
+                            "Verify FFmpeg is in your system PATH",
+                            "Check FFmpeg status on the Dependencies page",
+                            "Ensure FFmpeg version is 4.0 or higher"
+                        }
                     }
                 });
             }
