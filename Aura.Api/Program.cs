@@ -236,6 +236,40 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
 builder.Services.AddSingleton<Aura.Core.Dependencies.FFmpegResolver>();
 builder.Services.AddMemoryCache(); // Required for FFmpegResolver caching
 
+// Configure distributed caching with Redis fallback to in-memory
+var cachingConfig = builder.Configuration.GetSection("Caching").Get<Aura.Core.Configuration.CachingConfiguration>() 
+    ?? new Aura.Core.Configuration.CachingConfiguration();
+
+if (cachingConfig.Enabled)
+{
+    if (cachingConfig.UseRedis && !string.IsNullOrEmpty(cachingConfig.RedisConnection))
+    {
+        try
+        {
+            builder.Services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = cachingConfig.RedisConnection;
+                options.InstanceName = "Aura:";
+            });
+            Log.Information("Redis distributed cache configured");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to configure Redis, falling back to in-memory cache");
+            builder.Services.AddDistributedMemoryCache();
+        }
+    }
+    else
+    {
+        builder.Services.AddDistributedMemoryCache();
+        Log.Information("In-memory distributed cache configured");
+    }
+
+    builder.Services.AddSingleton<Aura.Core.Services.Caching.IDistributedCacheService, 
+        Aura.Core.Services.Caching.DistributedCacheService>();
+    builder.Services.AddSingleton(cachingConfig);
+}
+
 // Provider mixing configuration
 builder.Services.AddSingleton(sp =>
 {
