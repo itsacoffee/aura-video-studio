@@ -87,7 +87,7 @@ export async function openFolder(filePath: string): Promise<boolean> {
  */
 export function getDirectoryPath(filePath: string): string {
   const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
-  return lastSlash > 0 ? filePath.substring(0, lastSlash) : filePath;
+  return lastSlash >= 0 ? filePath.substring(0, lastSlash) : filePath;
 }
 
 /**

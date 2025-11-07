@@ -109,6 +109,14 @@ describe('fileSystemUtils', () => {
       );
     });
 
+    it('should handle file in root directory (Unix)', () => {
+      expect(getDirectoryPath('/file.txt')).toBe('');
+    });
+
+    it('should handle file in root directory (Windows)', () => {
+      expect(getDirectoryPath('C:\\file.txt')).toBe('C:');
+    });
+
     it('should handle path with no directory separator', () => {
       expect(getDirectoryPath('output.mp4')).toBe('output.mp4');
     });
