@@ -358,58 +358,7 @@ public class ProvidersController : ControllerBase
                     ErrorType: result.ErrorType,
                     ResponseTimeMs: result.ResponseTimeMs));
 
-            if (result.IsValid)
-            {
-                return Ok(response);
-            }
-            else if (result.Status == "Unauthorized" || result.Status == "Forbidden")
-            {
-                return Unauthorized(new ProblemDetails
-                {
-                    Title = "Invalid API Key",
-                    Detail = result.Message,
-                    Status = 401,
-                    Type = "https://docs.aura.studio/errors/invalid-api-key",
-                    Extensions =
-                    {
-                        ["correlationId"] = correlationId,
-                        ["provider"] = "OpenAI",
-                        ["status"] = result.Status
-                    }
-                });
-            }
-            else if (result.Status == "NetworkError" || result.Status == "Timeout")
-            {
-                return StatusCode(503, new ProblemDetails
-                {
-                    Title = "Network Error",
-                    Detail = result.Message,
-                    Status = 503,
-                    Type = "https://docs.aura.studio/errors/network-error",
-                    Extensions =
-                    {
-                        ["correlationId"] = correlationId,
-                        ["provider"] = "OpenAI",
-                        ["status"] = result.Status
-                    }
-                });
-            }
-            else
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Validation Failed",
-                    Detail = result.Message,
-                    Status = 400,
-                    Type = "https://docs.aura.studio/errors/validation-failed",
-                    Extensions =
-                    {
-                        ["correlationId"] = correlationId,
-                        ["provider"] = "OpenAI",
-                        ["status"] = result.Status
-                    }
-                });
-            }
+            return Ok(response);
         }
         catch (Exception ex)
         {
