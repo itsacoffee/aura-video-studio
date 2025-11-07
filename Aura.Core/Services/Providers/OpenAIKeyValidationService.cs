@@ -96,6 +96,11 @@ public class OpenAIKeyValidationService
             var effectiveBaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? DefaultBaseUrl : baseUrl;
             var requestUri = $"{effectiveBaseUrl.TrimEnd('/')}/v1/models";
 
+            _logger.LogDebug(
+                "Sending OpenAI validation request to {RequestUri} with key {MaskedKey}",
+                requestUri,
+                maskedKey);
+
             var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
@@ -103,10 +108,12 @@ public class OpenAIKeyValidationService
             if (!string.IsNullOrWhiteSpace(organizationId))
             {
                 request.Headers.Add("OpenAI-Organization", organizationId);
+                _logger.LogDebug("Added OpenAI-Organization header: {OrgId}", organizationId);
             }
             if (!string.IsNullOrWhiteSpace(projectId))
             {
                 request.Headers.Add("OpenAI-Project", projectId);
+                _logger.LogDebug("Added OpenAI-Project header: {ProjectId}", projectId);
             }
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -205,6 +212,12 @@ public class OpenAIKeyValidationService
             {
                 errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 
+                _logger.LogDebug(
+                    "OpenAI API response body: {ResponseBody}, Status: {StatusCode}, Key: {MaskedKey}",
+                    errorBody,
+                    response.StatusCode,
+                    maskedKey);
+                
                 using var jsonDoc = JsonDocument.Parse(errorBody);
                 if (jsonDoc.RootElement.TryGetProperty("error", out var errorObj))
                 {
@@ -216,7 +229,7 @@ public class OpenAIKeyValidationService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to parse error response from OpenAI");
+                _logger.LogWarning(ex, "Failed to parse error response from OpenAI, Raw body: {ErrorBody}", errorBody);
             }
 
             // Handle specific error codes

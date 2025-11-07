@@ -771,6 +771,14 @@ export async function validateApiKeyThunk(
       // Handle both successful validation and error responses
       const data = await response.json();
 
+      console.log('[OpenAI Validation] Response:', {
+        ok: response.ok,
+        status: response.status,
+        isValid: data.isValid,
+        message: data.message,
+        fullData: data,
+      });
+
       // Check for successful validation (only isValid === true is considered success)
       if (response.ok && data.isValid === true) {
         dispatch({

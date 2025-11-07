@@ -100,7 +100,35 @@ export function FFmpegDependencyCard({
         onInstallComplete?.();
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to check FFmpeg status';
+      let errorMessage = 'Failed to check FFmpeg status';
+
+      if (err && typeof err === 'object') {
+        const axiosError = err as {
+          response?: {
+            data?: {
+              message?: string;
+              detail?: string;
+              error?: string;
+            };
+            status?: number;
+          };
+          message?: string;
+        };
+
+        if (axiosError.response?.data) {
+          const data = axiosError.response.data;
+          errorMessage = data.message || data.detail || data.error || errorMessage;
+
+          if (axiosError.response.status === 428) {
+            errorMessage = `Setup required: ${errorMessage}. Please complete the setup wizard first.`;
+          }
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -141,7 +169,31 @@ export function FFmpegDependencyCard({
         throw new Error(result.message || 'Installation failed');
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Installation failed';
+      let errorMessage = 'Installation failed';
+
+      if (err && typeof err === 'object') {
+        const axiosError = err as {
+          response?: {
+            data?: {
+              message?: string;
+              detail?: string;
+              error?: string;
+            };
+            status?: number;
+          };
+          message?: string;
+        };
+
+        if (axiosError.response?.data) {
+          const data = axiosError.response.data;
+          errorMessage = data.message || data.detail || data.error || errorMessage;
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
       setError(errorMessage);
     } finally {
       setIsInstalling(false);
@@ -295,6 +347,17 @@ export function FFmpegDependencyCard({
               >
                 FFmpeg is not installed or not ready. Install managed FFmpeg to continue.
               </Text>
+              {status.error && (
+                <Text
+                  style={{
+                    color: tokens.colorPaletteRedForeground1,
+                    marginBottom: tokens.spacingVerticalM,
+                    fontWeight: 'semibold',
+                  }}
+                >
+                  Error: {status.error}
+                </Text>
+              )}
               <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' }}>
                 <Button
                   appearance="primary"
