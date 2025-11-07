@@ -21,18 +21,15 @@ public class VideoController : ControllerBase
 {
     private readonly ILogger<VideoController> _logger;
     private readonly JobRunner _jobRunner;
-    private readonly ProgressService _progressService;
     private readonly SseService _sseService;
 
     public VideoController(
         ILogger<VideoController> logger,
         JobRunner jobRunner,
-        ProgressService progressService,
         SseService sseService)
     {
         _logger = logger;
         _jobRunner = jobRunner;
-        _progressService = progressService;
         _sseService = sseService;
     }
 
@@ -57,27 +54,6 @@ public class VideoController : ControllerBase
             _logger.LogInformation(
                 "[{CorrelationId}] POST /api/videos/generate - Brief: {Brief}, Duration: {Duration}m",
                 correlationId, request.Brief.Substring(0, Math.Min(50, request.Brief.Length)), request.DurationMinutes);
-
-            // Validate request
-            if (string.IsNullOrWhiteSpace(request.Brief))
-            {
-                return BadRequest(CreateProblemDetails(
-                    "Invalid Request",
-                    "Brief is required and cannot be empty",
-                    StatusCodes.Status400BadRequest,
-                    correlationId,
-                    "Brief"));
-            }
-
-            if (request.DurationMinutes <= 0 || request.DurationMinutes > 10)
-            {
-                return BadRequest(CreateProblemDetails(
-                    "Invalid Request",
-                    "Duration must be between 0 and 10 minutes",
-                    StatusCodes.Status400BadRequest,
-                    correlationId,
-                    "DurationMinutes"));
-            }
 
             // Create brief from request
             var brief = new Brief(

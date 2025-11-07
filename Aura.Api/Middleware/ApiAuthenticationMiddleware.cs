@@ -91,7 +91,14 @@ public class ApiAuthenticationMiddleware
     {
         if (_options.ValidApiKeys == null || _options.ValidApiKeys.Length == 0)
         {
-            return true; // No API keys configured, allow through
+            // No API keys configured
+            // If authentication is required, this should fail
+            if (_options.RequireAuthentication && _options.EnableApiKeyAuthentication)
+            {
+                _logger.LogWarning("API key authentication is enabled but no valid keys are configured");
+                return false;
+            }
+            return true; // Allow through if authentication not required
         }
 
         var apiKey = context.Request.Headers[_options.ApiKeyHeaderName].FirstOrDefault();
