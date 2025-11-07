@@ -298,7 +298,7 @@ public class FFmpegService : IFFmpegService
     /// <summary>
     /// Parse duration from FFmpeg output (typically from input file info)
     /// </summary>
-    private TimeSpan? ParseDuration(string line)
+    internal TimeSpan? ParseDuration(string line)
     {
         // FFmpeg duration format: Duration: 00:01:23.45, start: 0.000000, bitrate: 1234 kb/s
         var durationMatch = System.Text.RegularExpressions.Regex.Match(line, @"Duration:\s*(\d{2}):(\d{2}):(\d{2}\.\d{2})");
@@ -319,7 +319,7 @@ public class FFmpegService : IFFmpegService
         return null;
     }
     
-    private FFmpegProgress? ParseProgress(string line, TimeSpan? totalDuration = null)
+    internal FFmpegProgress? ParseProgress(string line, TimeSpan? totalDuration = null)
     {
         // FFmpeg progress format: frame=  123 fps= 45 q=28.0 size=    1024kB time=00:00:05.12 bitrate=1638.4kbits/s speed=1.5x
         
@@ -378,8 +378,8 @@ public class FFmpegService : IFFmpegService
                 progress = progress with { Bitrate = double.Parse(bitrateMatch.Groups[1].Value) };
             }
             
-            // Parse size
-            var sizeMatch = System.Text.RegularExpressions.Regex.Match(line, @"size=\s*(\d+)");
+            // Parse size (with optional kB/MB units)
+            var sizeMatch = System.Text.RegularExpressions.Regex.Match(line, @"size=\s*(\d+)(?:kB)?");
             if (sizeMatch.Success)
             {
                 progress = progress with { Size = long.Parse(sizeMatch.Groups[1].Value) };

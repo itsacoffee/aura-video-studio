@@ -188,21 +188,15 @@ public class FFmpegServiceProgressTests
         return new FFmpegService(mockLocator.Object, mockLogger.Object);
     }
     
-    // Helper method to invoke private ParseProgress method via reflection
+    // Helper methods to test internal methods - no reflection needed with InternalsVisibleTo
     private FFmpegProgress? InvokeParseProgress(FFmpegService service, string line, TimeSpan? totalDuration)
     {
-        var method = typeof(FFmpegService).GetMethod("ParseProgress", 
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        
-        return method?.Invoke(service, new object?[] { line, totalDuration }) as FFmpegProgress;
+        return service.ParseProgress(line, totalDuration);
     }
     
-    // Helper method to invoke private ParseDuration method via reflection
+    // Helper method to invoke internal ParseDuration method
     private TimeSpan? InvokeParseDuration(FFmpegService service, string line)
     {
-        var method = typeof(FFmpegService).GetMethod("ParseDuration", 
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        
-        return method?.Invoke(service, new object[] { line }) as TimeSpan?;
+        return service.ParseDuration(line);
     }
 }

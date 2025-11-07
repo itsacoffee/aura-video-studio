@@ -57,7 +57,7 @@ public class FfmpegVideoComposer : IVideoComposer
             Directory.CreateDirectory(_logsDirectory);
         }
         
-        // Initialize hardware encoder with resolved ffmpeg path (will be updated at render time)
+        // Initialize placeholder - actual hardware encoder will be created at render time with proper path
         _hardwareEncoder = new HardwareEncoder(
             Microsoft.Extensions.Logging.Abstractions.NullLogger<HardwareEncoder>.Instance, 
             "ffmpeg");
@@ -443,13 +443,10 @@ public class FfmpegVideoComposer : IVideoComposer
         );
         
         // Detect hardware capabilities and select best encoder
-        // Create a logger factory to properly instantiate HardwareEncoder
-        using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
-        {
-            builder.SetMinimumLevel(LogLevel.Information);
-        });
-        var hardwareLogger = loggerFactory.CreateLogger<HardwareEncoder>();
-        var hardwareEncoderWithPath = new HardwareEncoder(hardwareLogger, ffmpegPath);
+        // Create hardware encoder with ffmpeg path (use NullLogger since we log from FfmpegVideoComposer)
+        var hardwareEncoderWithPath = new HardwareEncoder(
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<HardwareEncoder>.Instance, 
+            ffmpegPath);
         EncoderConfig encoderConfig;
         
         try
