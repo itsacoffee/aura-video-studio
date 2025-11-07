@@ -458,6 +458,9 @@ builder.Services.AddSingleton<AspNetCoreRateLimit.IRateLimitConfiguration, AspNe
 builder.Services.AddSingleton<AspNetCoreRateLimit.IProcessingStrategy, AspNetCoreRateLimit.AsyncKeyLockProcessingStrategy>();
 builder.Services.AddInMemoryRateLimiting();
 
+// Register Authentication services
+builder.Services.Configure<Aura.Api.Security.ApiAuthenticationOptions>(builder.Configuration.GetSection("Authentication"));
+
 // Register Performance Telemetry services
 builder.Services.AddSingleton<Aura.Api.Telemetry.PerformanceMetrics>();
 
@@ -1101,6 +1104,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyInstaller>(sp =
 });
 
 builder.Services.AddSingleton<Aura.Api.Services.SseService>();
+builder.Services.AddSingleton<Aura.Api.Services.ProgressService>();
 
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
@@ -1478,6 +1482,9 @@ app.UseCors();
 
 // Add routing BEFORE static files (API routes take precedence)
 app.UseRouting();
+
+// Authentication middleware (after routing)
+app.UseApiAuthentication();
 
 // Add first-run wizard check middleware (checks if setup is completed)
 app.UseFirstRunCheck();
