@@ -58,8 +58,10 @@ export interface SuccessToastOptions {
   duration?: string;
   jobId?: string;
   artifactPath?: string;
+  outputPath?: string; // Primary output file path to display
   onViewResults?: () => void;
-  onOpenFolder?: () => void;
+  onOpenFile?: () => void; // Open the output file
+  onOpenFolder?: () => void; // Open the folder containing output
   timeout?: number; // Auto-dismiss timeout in ms (default 5000)
 }
 
@@ -178,7 +180,16 @@ export function useNotifications() {
   const styles = useStyles();
 
   const showSuccessToast = (options: SuccessToastOptions) => {
-    const { title, message, duration, onViewResults, onOpenFolder, timeout = 5000 } = options;
+    const {
+      title,
+      message,
+      duration,
+      outputPath,
+      onViewResults,
+      onOpenFile,
+      onOpenFolder,
+      timeout = 5000,
+    } = options;
 
     const toastId = `toast-success-${Date.now()}`;
 
@@ -212,6 +223,19 @@ export function useNotifications() {
           <ToastBody>
             <div>
               <div>{message}</div>
+              {outputPath && (
+                <div
+                  style={{
+                    marginTop: tokens.spacingVerticalS,
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    opacity: 0.8,
+                    wordBreak: 'break-all',
+                  }}
+                >
+                  {outputPath}
+                </div>
+              )}
               {duration && (
                 <div
                   style={{ marginTop: tokens.spacingVerticalXS, fontSize: '12px', opacity: 0.8 }}
@@ -221,16 +245,16 @@ export function useNotifications() {
               )}
             </div>
           </ToastBody>
-          {(onViewResults || onOpenFolder) && (
+          {(onViewResults || onOpenFile || onOpenFolder) && (
             <ToastFooter className={styles.toastFooter}>
-              {onViewResults && (
+              {onOpenFile && (
                 <Button
                   size="small"
                   appearance="primary"
                   icon={<Open24Regular />}
-                  onClick={onViewResults}
+                  onClick={onOpenFile}
                 >
-                  View results
+                  Open File
                 </Button>
               )}
               {onOpenFolder && (
@@ -240,7 +264,17 @@ export function useNotifications() {
                   icon={<Folder24Regular />}
                   onClick={onOpenFolder}
                 >
-                  Open folder
+                  Open Folder
+                </Button>
+              )}
+              {onViewResults && (
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={<Open24Regular />}
+                  onClick={onViewResults}
+                >
+                  View results
                 </Button>
               )}
             </ToastFooter>
