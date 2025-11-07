@@ -529,6 +529,12 @@ public class SettingsController : ControllerBase
         {
             _logger.LogDebug("User settings file not found, using defaults");
             settings = new UserSettings();
+            
+            if (string.IsNullOrWhiteSpace(settings.General.DefaultProjectSaveLocation))
+            {
+                settings.General.DefaultProjectSaveLocation = Aura.Core.Services.DefaultPathProvider.GetDefaultSaveLocation();
+                _logger.LogInformation("Initialized default save location: {Location}", settings.General.DefaultProjectSaveLocation);
+            }
         }
         else
         {
@@ -542,6 +548,12 @@ public class SettingsController : ControllerBase
                 _logger.LogWarning(ex, "Error reading user settings file, using defaults");
                 settings = new UserSettings();
             }
+        }
+
+        if (string.IsNullOrWhiteSpace(settings.General.DefaultProjectSaveLocation))
+        {
+            settings.General.DefaultProjectSaveLocation = Aura.Core.Services.DefaultPathProvider.GetDefaultSaveLocation();
+            _logger.LogInformation("Default save location not configured, initialized to: {Location}", settings.General.DefaultProjectSaveLocation);
         }
 
         // Load API keys from secure encrypted storage (never from settings file)
