@@ -127,11 +127,29 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
         canSave: false,
       };
 
+    case 'Cancelled':
+      return {
+        isValid: false,
+        status: 'NetworkError',
+        message: response.message || 'Validation was cancelled.',
+        canSave: false,
+      };
+
+    case 'Error':
+      return {
+        isValid: false,
+        status: 'NetworkError',
+        message: response.message || 'An error occurred during validation. Please try again.',
+        canSave: false,
+      };
+
     default:
       return {
         isValid: false,
         status: 'NetworkError',
-        message: response.message || 'The requested operation could not be completed.',
+        message:
+          response.message ||
+          'Unexpected response from validation service. Please try again or check server logs.',
         canSave: false,
       };
   }
