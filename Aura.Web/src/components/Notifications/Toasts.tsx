@@ -27,11 +27,11 @@ const useStyles = makeStyles({
     alignItems: 'center',
   },
   progressBar: {
-    height: '3px',
+    height: '4px',
     backgroundColor: tokens.colorNeutralBackground3,
-    borderRadius: '1px',
+    borderRadius: '2px',
     overflow: 'hidden',
-    marginTop: tokens.spacingVerticalXS,
+    marginTop: tokens.spacingVerticalS,
   },
   progressFill: {
     height: '100%',
@@ -40,6 +40,15 @@ const useStyles = makeStyles({
   },
   closeButton: {
     marginLeft: 'auto',
+  },
+  toastHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalS,
+  },
+  toastTitleContent: {
+    flex: 1,
   },
 });
 
@@ -180,13 +189,26 @@ export function useNotifications() {
     dispatchToast(
       <ToastWithProgress timeout={timeout} onDismiss={handleDismiss}>
         <Toast>
-          <ToastTitle
-            action={
-              <CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
-            }
-          >
-            {title}
-          </ToastTitle>
+          <div className={styles.toastHeader}>
+            <div className={styles.toastTitleContent}>
+              <ToastTitle
+                action={
+                  <CheckmarkCircle24Regular
+                    style={{ color: tokens.colorPaletteGreenForeground1 }}
+                  />
+                }
+              >
+                {title}
+              </ToastTitle>
+            </div>
+            <Button
+              size="small"
+              appearance="transparent"
+              icon={<Dismiss24Regular />}
+              onClick={handleDismiss}
+              aria-label="Dismiss notification"
+            />
+          </div>
           <ToastBody>
             <div>
               <div>{message}</div>
@@ -199,36 +221,30 @@ export function useNotifications() {
               )}
             </div>
           </ToastBody>
-          <ToastFooter className={styles.toastFooter}>
-            {onViewResults && (
-              <Button
-                size="small"
-                appearance="primary"
-                icon={<Open24Regular />}
-                onClick={onViewResults}
-              >
-                View results
-              </Button>
-            )}
-            {onOpenFolder && (
-              <Button
-                size="small"
-                appearance="subtle"
-                icon={<Folder24Regular />}
-                onClick={onOpenFolder}
-              >
-                Open folder
-              </Button>
-            )}
-            <Button
-              size="small"
-              appearance="transparent"
-              icon={<Dismiss24Regular />}
-              onClick={handleDismiss}
-              className={styles.closeButton}
-              aria-label="Dismiss notification"
-            />
-          </ToastFooter>
+          {(onViewResults || onOpenFolder) && (
+            <ToastFooter className={styles.toastFooter}>
+              {onViewResults && (
+                <Button
+                  size="small"
+                  appearance="primary"
+                  icon={<Open24Regular />}
+                  onClick={onViewResults}
+                >
+                  View results
+                </Button>
+              )}
+              {onOpenFolder && (
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={<Folder24Regular />}
+                  onClick={onOpenFolder}
+                >
+                  Open folder
+                </Button>
+              )}
+            </ToastFooter>
+          )}
         </Toast>
       </ToastWithProgress>,
       { intent: 'success', toastId }
@@ -258,11 +274,24 @@ export function useNotifications() {
     dispatchToast(
       <ToastWithProgress timeout={timeout} onDismiss={handleDismiss}>
         <Toast>
-          <ToastTitle
-            action={<ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />}
-          >
-            {title}
-          </ToastTitle>
+          <div className={styles.toastHeader}>
+            <div className={styles.toastTitleContent}>
+              <ToastTitle
+                action={
+                  <ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
+                }
+              >
+                {title}
+              </ToastTitle>
+            </div>
+            <Button
+              size="small"
+              appearance="transparent"
+              icon={<Dismiss24Regular />}
+              onClick={handleDismiss}
+              aria-label="Dismiss notification"
+            />
+          </div>
           <ToastBody>
             <div>
               <div>{message}</div>
@@ -294,31 +323,25 @@ export function useNotifications() {
               )}
             </div>
           </ToastBody>
-          <ToastFooter className={styles.toastFooter}>
-            {onRetry && (
-              <Button size="small" appearance="primary" onClick={onRetry}>
-                Retry
-              </Button>
-            )}
-            {onOpenLogs && (
-              <Button
-                size="small"
-                appearance="subtle"
-                icon={<DocumentBulletList24Regular />}
-                onClick={onOpenLogs}
-              >
-                View Logs
-              </Button>
-            )}
-            <Button
-              size="small"
-              appearance="transparent"
-              icon={<Dismiss24Regular />}
-              onClick={handleDismiss}
-              className={styles.closeButton}
-              aria-label="Dismiss notification"
-            />
-          </ToastFooter>
+          {(onRetry || onOpenLogs) && (
+            <ToastFooter className={styles.toastFooter}>
+              {onRetry && (
+                <Button size="small" appearance="primary" onClick={onRetry}>
+                  Retry
+                </Button>
+              )}
+              {onOpenLogs && (
+                <Button
+                  size="small"
+                  appearance="subtle"
+                  icon={<DocumentBulletList24Regular />}
+                  onClick={onOpenLogs}
+                >
+                  View Logs
+                </Button>
+              )}
+            </ToastFooter>
+          )}
         </Toast>
       </ToastWithProgress>,
       { intent: 'error', toastId }
