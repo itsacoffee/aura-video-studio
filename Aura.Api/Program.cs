@@ -9,6 +9,7 @@ using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Planner;
 using Aura.Core.Providers;
+using Aura.Providers;
 using Aura.Providers.Images;
 using Aura.Providers.Llm;
 using Aura.Providers.Tts;
@@ -234,9 +235,6 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
 builder.Services.AddSingleton<Aura.Core.Dependencies.FFmpegResolver>();
 builder.Services.AddMemoryCache(); // Required for FFmpegResolver caching
 
-builder.Services.AddHttpClient(); // For LLM providers
-builder.Services.AddSingleton<Aura.Core.Orchestrator.LlmProviderFactory>();
-
 // Provider mixing configuration
 builder.Services.AddSingleton(sp =>
 {
@@ -252,9 +250,8 @@ builder.Services.AddSingleton(sp =>
 // Provider mixer
 builder.Services.AddSingleton<Aura.Core.Orchestrator.ProviderMixer>();
 
-// Provider recommendation, health monitoring, and cost tracking services
-builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
-builder.Services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
+// Provider recommendation, cost tracking and monitoring services
+// Note: Basic provider health/cost services registered via AddProviderHealthServices() above
 builder.Services.AddSingleton<Aura.Core.Services.CostTracking.EnhancedCostTrackingService>();
 builder.Services.AddSingleton<Aura.Core.Services.CostTracking.TokenTrackingService>();
 builder.Services.AddSingleton<Aura.Core.Services.CostTracking.RunCostReportService>();
@@ -281,14 +278,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommenda
         providers);
 });
 
-// Register Health monitoring services with circuit breaker support
-builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>(sp =>
-{
-    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Health.ProviderHealthMonitor>>();
-    var circuitBreakerSettings = sp.GetRequiredService<Aura.Core.Configuration.CircuitBreakerSettings>();
-    return new Aura.Core.Services.Health.ProviderHealthMonitor(logger, circuitBreakerSettings);
-});
-builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthService>();
+// Register system health checker
 builder.Services.AddSingleton<Aura.Core.Services.Health.SystemHealthChecker>();
 
 // Script orchestrator with lazy provider creation
@@ -501,34 +491,16 @@ builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
 builder.Services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
 builder.Services.AddSingleton<Aura.Core.Services.Audio.NarrationOptimizationService>();
 
-// Register TTS providers with safe DI resolution
+// Register HTTP client factory (required by providers)
 builder.Services.AddHttpClient();
 
-// Register NullTtsProvider (always available as final fallback)
-builder.Services.AddSingleton<ITtsProvider, NullTtsProvider>();
+// Register all providers using centralized extension methods from Aura.Providers
+// This ensures consistent DI registration across LLM, TTS, and Image providers
+builder.Services.AddAuraProviders();
+builder.Services.AddProviderFactories();
+builder.Services.AddProviderHealthServices();
 
-// Register WindowsTtsProvider (platform-dependent, may not be available on Linux)
-// Only register if we can create it successfully
-if (OperatingSystem.IsWindows())
-{
-    builder.Services.AddSingleton<ITtsProvider, WindowsTtsProvider>();
-}
-
-// Register TTS provider factory
-builder.Services.AddSingleton<Aura.Core.Providers.TtsProviderFactory>();
-
-// Register Azure TTS provider and voice discovery
-builder.Services.AddSingleton<Aura.Providers.Tts.AzureTtsProvider>(sp =>
-{
-    var logger = sp.GetRequiredService<ILogger<Aura.Providers.Tts.AzureTtsProvider>>();
-    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-    var apiKey = providerSettings.GetAzureSpeechKey();
-    var region = providerSettings.GetAzureSpeechRegion();
-    var offlineOnly = providerSettings.IsOfflineOnly();
-    
-    return new Aura.Providers.Tts.AzureTtsProvider(logger, apiKey, region, offlineOnly);
-});
-
+// Register Azure TTS voice discovery (additional service beyond basic provider)
 builder.Services.AddSingleton<Aura.Providers.Tts.AzureVoiceDiscovery>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Providers.Tts.AzureVoiceDiscovery>>();
@@ -539,9 +511,6 @@ builder.Services.AddSingleton<Aura.Providers.Tts.AzureVoiceDiscovery>(sp =>
     
     return new Aura.Providers.Tts.AzureVoiceDiscovery(logger, httpClient, region, apiKey);
 });
-
-// Register Image provider factory
-builder.Services.AddSingleton<Aura.Core.Providers.ImageProviderFactory>();
 
 // DO NOT resolve default provider during startup - let it be resolved lazily when first needed
 // This prevents startup crashes due to provider resolution issues
@@ -562,9 +531,6 @@ builder.Services.AddSingleton<Aura.Core.Validation.ScriptValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.TtsOutputValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.ImageOutputValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.LlmOutputValidator>();
-
-// Register pipeline reliability services
-builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
 
 // Register latency management services
 builder.Services.Configure<Aura.Core.Services.Performance.LlmTimeoutPolicy>(
@@ -1240,8 +1206,7 @@ builder.Services.AddSingleton<Aura.Core.Telemetry.RunTelemetryCollector>(sp =>
 });
 builder.Services.AddSingleton<Aura.Core.Telemetry.TelemetryIntegration>();
 
-// Register Provider Health Monitoring services
-builder.Services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
+// Register Smart Provider Selector
 builder.Services.AddSingleton<Aura.Core.Services.Providers.SmartProviderSelector>();
 
 // Register ML Training services
