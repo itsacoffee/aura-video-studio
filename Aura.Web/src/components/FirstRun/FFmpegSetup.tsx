@@ -95,12 +95,70 @@ export const FFmpegSetup: FC<FFmpegSetupProps> = ({ onStatusChange }) => {
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/api/system/ffmpeg/status`);
+
+      if (!response.ok) {
+        // Handle HTTP errors with detailed messages
+        const errorText = await response.text();
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // If not JSON, use the text response or default message
+          errorMessage = errorText || errorMessage;
+        }
+
+        console.error('FFmpeg status check failed:', errorMessage);
+
+        // Set a minimal status object with error information
+        setStatus({
+          installed: false,
+          valid: false,
+          version: undefined,
+          path: undefined,
+          source: 'None',
+          error: `Unable to check FFmpeg status: ${errorMessage}`,
+          versionMeetsRequirement: false,
+          minimumVersion: '4.0',
+          hardwareAcceleration: {
+            nvencSupported: false,
+            amfSupported: false,
+            quickSyncSupported: false,
+            videoToolboxSupported: false,
+            availableEncoders: [],
+          },
+        });
+        onStatusChange?.(false);
+        return;
+      }
+
       const data = await response.json();
       setStatus(data);
       onStatusChange?.(data.installed && data.valid);
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Failed to check FFmpeg status:', errorObj.message);
+
+      // Set error status on network or parse errors
+      setStatus({
+        installed: false,
+        valid: false,
+        version: undefined,
+        path: undefined,
+        source: 'None',
+        error: `Network error: ${errorObj.message}`,
+        versionMeetsRequirement: false,
+        minimumVersion: '4.0',
+        hardwareAcceleration: {
+          nvencSupported: false,
+          amfSupported: false,
+          quickSyncSupported: false,
+          videoToolboxSupported: false,
+          availableEncoders: [],
+        },
+      });
+      onStatusChange?.(false);
     } finally {
       setLoading(false);
     }
