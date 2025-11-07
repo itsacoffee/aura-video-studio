@@ -1101,6 +1101,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyInstaller>(sp =
 });
 
 builder.Services.AddSingleton<Aura.Api.Services.SseService>();
+builder.Services.AddSingleton<Aura.Api.Services.ProgressService>();
 
 // Register Audio/Caption services
 builder.Services.AddSingleton<Aura.Core.Audio.AudioProcessor>();
