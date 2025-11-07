@@ -17,6 +17,7 @@ public class SampleAssetsService
     private readonly ILogger<SampleAssetsService> _logger;
     private readonly string _samplesPath;
     private readonly AssetLibraryService _assetLibrary;
+    private readonly SampleImageGenerator? _imageGenerator;
 
     private List<BriefTemplate>? _briefTemplates;
     private List<VoiceConfiguration>? _voiceConfigs;
@@ -25,11 +26,13 @@ public class SampleAssetsService
     public SampleAssetsService(
         ILogger<SampleAssetsService> logger,
         string samplesPath,
-        AssetLibraryService assetLibrary)
+        AssetLibraryService assetLibrary,
+        SampleImageGenerator? imageGenerator = null)
     {
         _logger = logger;
         _samplesPath = samplesPath;
         _assetLibrary = assetLibrary;
+        _imageGenerator = imageGenerator;
     }
 
     /// <summary>
@@ -193,13 +196,23 @@ public class SampleAssetsService
         if (!Directory.Exists(imagesPath))
         {
             _logger.LogWarning("Sample images directory not found: {Path}", imagesPath);
-            return;
+            Directory.CreateDirectory(imagesPath);
         }
 
         var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp" };
         var imageFiles = Directory.GetFiles(imagesPath)
             .Where(f => imageExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
             .ToList();
+
+        if (imageFiles.Count == 0 && _imageGenerator != null)
+        {
+            _logger.LogInformation("No sample images found, generating placeholder images");
+            _imageGenerator.GenerateSampleImages(imagesPath);
+            
+            imageFiles = Directory.GetFiles(imagesPath)
+                .Where(f => imageExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .ToList();
+        }
 
         _logger.LogInformation("Found {Count} sample images", imageFiles.Count);
 
