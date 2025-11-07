@@ -1181,6 +1181,7 @@ builder.Services.AddSingleton<Aura.Core.Services.AIEditing.SpeechRecognitionServ
 
 // Register Export services
 builder.Services.AddSingleton<Aura.Core.Services.FFmpeg.IFFmpegService, Aura.Core.Services.FFmpeg.FFmpegService>();
+builder.Services.AddSingleton<Aura.Core.Services.FFmpeg.IFFmpegStatusService, Aura.Core.Services.FFmpeg.FFmpegStatusService>();
 builder.Services.AddSingleton<Aura.Core.Services.Export.IFormatConversionService, Aura.Core.Services.Export.FormatConversionService>();
 builder.Services.AddSingleton<Aura.Core.Services.Export.IResolutionService, Aura.Core.Services.Export.ResolutionService>();
 builder.Services.AddSingleton<Aura.Core.Services.Export.IBitrateOptimizationService, Aura.Core.Services.Export.BitrateOptimizationService>();
