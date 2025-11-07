@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for PR-aware changed-only scanning
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
