@@ -552,6 +552,7 @@ builder.Services.AddSingleton<Aura.Core.Services.ResourceCleanupManager>();
 builder.Services.AddSingleton<Aura.Core.Services.Resources.TemporaryFileCleanupService>();
 builder.Services.AddSingleton<Aura.Core.Services.Resources.DiskSpaceChecker>();
 builder.Services.AddSingleton<Aura.Core.Services.Resources.SystemResourceMonitor>();
+builder.Services.AddSingleton<Aura.Core.Services.Resources.ResourceThrottler>();
 
 // Register smart orchestration services
 builder.Services.AddSingleton<Aura.Core.Services.Generation.ResourceMonitor>();

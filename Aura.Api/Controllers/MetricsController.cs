@@ -14,12 +14,14 @@ public class MetricsController : ControllerBase
 {
     private readonly PerformanceMetrics _metrics;
     private readonly SystemResourceMonitor? _resourceMonitor;
+    private readonly ResourceThrottler? _resourceThrottler;
     private readonly ILogger<MetricsController> _logger;
 
     public MetricsController(
         PerformanceMetrics metrics, 
         ILogger<MetricsController> logger,
-        SystemResourceMonitor? resourceMonitor = null)
+        SystemResourceMonitor? resourceMonitor = null,
+        ResourceThrottler? resourceThrottler = null)
     {
         _metrics = metrics;
         _logger = logger;
@@ -267,6 +269,29 @@ public class MetricsController : ControllerBase
         {
             _logger.LogError(ex, "Error generating Prometheus metrics");
             return StatusCode(500, new { error = "Failed to generate Prometheus metrics" });
+        }
+    }
+
+    /// <summary>
+    /// Get resource utilization statistics
+    /// </summary>
+    [HttpGet("utilization")]
+    public ActionResult GetUtilization()
+    {
+        try
+        {
+            if (_resourceThrottler == null)
+            {
+                return StatusCode(503, new { error = "Resource throttling is not available" });
+            }
+
+            var stats = _resourceThrottler.GetUtilizationStats();
+            return Ok(stats);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving resource utilization");
+            return StatusCode(500, new { error = "Failed to retrieve resource utilization" });
         }
     }
 }
