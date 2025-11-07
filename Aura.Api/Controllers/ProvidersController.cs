@@ -20,12 +20,16 @@ public class ProvidersController : ControllerBase
     private readonly ProviderCostTrackingService? _costTrackingService;
     private readonly ProviderSettings _settings;
     private readonly OpenAIKeyValidationService _openAIValidationService;
+    private readonly Aura.Core.Services.IKeyValidationService _keyValidationService;
+    private readonly Aura.Core.Services.ISecureStorageService _secureStorageService;
 
     public ProvidersController(
         IHardwareDetector hardwareDetector, 
         IKeyStore keyStore,
         ProviderSettings settings,
         OpenAIKeyValidationService openAIValidationService,
+        Aura.Core.Services.IKeyValidationService keyValidationService,
+        Aura.Core.Services.ISecureStorageService secureStorageService,
         LlmProviderRecommendationService? recommendationService = null,
         ProviderHealthMonitoringService? healthMonitoringService = null,
         ProviderCostTrackingService? costTrackingService = null)
@@ -34,6 +38,8 @@ public class ProvidersController : ControllerBase
         _keyStore = keyStore;
         _settings = settings;
         _openAIValidationService = openAIValidationService;
+        _keyValidationService = keyValidationService;
+        _secureStorageService = secureStorageService;
         _recommendationService = recommendationService;
         _healthMonitoringService = healthMonitoringService;
         _costTrackingService = costTrackingService;
@@ -368,6 +374,196 @@ public class ProvidersController : ControllerBase
                 detail: "An unexpected error occurred while validating the API key.",
                 statusCode: 500,
                 type: "https://docs.aura.studio/errors/validation-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Validate ElevenLabs API key with live network verification
+    /// </summary>
+    [HttpPost("elevenlabs/validate")]
+    public async Task<IActionResult> ValidateElevenLabsKey(
+        [FromBody] ValidateElevenLabsKeyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                return BadRequest(new ProviderValidationResponse(
+                    IsValid: false,
+                    Status: "Invalid",
+                    Message: "API key is required",
+                    CorrelationId: correlationId,
+                    Details: new ValidationDetails(
+                        Provider: "ElevenLabs",
+                        KeyFormat: "empty",
+                        FormatValid: false)));
+            }
+
+            Log.Information(
+                "Validating ElevenLabs API key, CorrelationId: {CorrelationId}",
+                correlationId);
+
+            var startTime = DateTime.UtcNow;
+            var result = await _keyValidationService.TestApiKeyAsync("elevenlabs", request.ApiKey, cancellationToken);
+            var responseTime = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
+
+            var response = new ProviderValidationResponse(
+                IsValid: result.IsValid,
+                Status: result.IsValid ? "Valid" : "Invalid",
+                Message: result.Message,
+                CorrelationId: correlationId,
+                Details: new ValidationDetails(
+                    Provider: "ElevenLabs",
+                    KeyFormat: "valid",
+                    FormatValid: true,
+                    NetworkCheckPassed: result.IsValid,
+                    ResponseTimeMs: responseTime));
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error validating ElevenLabs API key, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Validation Error",
+                detail: "An unexpected error occurred while validating the API key.",
+                statusCode: 500,
+                type: "https://docs.aura.studio/errors/validation-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Validate PlayHT API key with live network verification
+    /// </summary>
+    [HttpPost("playht/validate")]
+    public async Task<IActionResult> ValidatePlayHTKey(
+        [FromBody] ValidatePlayHTKeyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                return BadRequest(new ProviderValidationResponse(
+                    IsValid: false,
+                    Status: "Invalid",
+                    Message: "API key is required",
+                    CorrelationId: correlationId,
+                    Details: new ValidationDetails(
+                        Provider: "PlayHT",
+                        KeyFormat: "empty",
+                        FormatValid: false)));
+            }
+
+            Log.Information(
+                "Validating PlayHT API key, CorrelationId: {CorrelationId}",
+                correlationId);
+
+            var startTime = DateTime.UtcNow;
+            var result = await _keyValidationService.TestApiKeyAsync("playht", request.ApiKey, cancellationToken);
+            var responseTime = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
+
+            var response = new ProviderValidationResponse(
+                IsValid: result.IsValid,
+                Status: result.IsValid ? "Valid" : "Invalid",
+                Message: result.Message,
+                CorrelationId: correlationId,
+                Details: new ValidationDetails(
+                    Provider: "PlayHT",
+                    KeyFormat: "valid",
+                    FormatValid: true,
+                    NetworkCheckPassed: result.IsValid,
+                    ResponseTimeMs: responseTime));
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error validating PlayHT API key, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Validation Error",
+                detail: "An unexpected error occurred while validating the API key.",
+                statusCode: 500,
+                type: "https://docs.aura.studio/errors/validation-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Get provider status dashboard showing which providers are configured
+    /// </summary>
+    [HttpGet("status")]
+    public async Task<IActionResult> GetProviderStatus()
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            Log.Information("Getting provider status, CorrelationId: {CorrelationId}", correlationId);
+
+            var configuredProviders = await _secureStorageService.GetConfiguredProvidersAsync();
+            
+            var providerStatuses = new List<ProviderStatusDto>
+            {
+                new ProviderStatusDto(
+                    Name: "OpenAI",
+                    IsConfigured: configuredProviders.Contains("openai"),
+                    IsAvailable: configuredProviders.Contains("openai"),
+                    Status: configuredProviders.Contains("openai") ? "Configured" : "Not Configured"),
+                new ProviderStatusDto(
+                    Name: "Anthropic",
+                    IsConfigured: configuredProviders.Contains("anthropic"),
+                    IsAvailable: configuredProviders.Contains("anthropic"),
+                    Status: configuredProviders.Contains("anthropic") ? "Configured" : "Not Configured"),
+                new ProviderStatusDto(
+                    Name: "Gemini",
+                    IsConfigured: configuredProviders.Contains("gemini") || configuredProviders.Contains("google"),
+                    IsAvailable: configuredProviders.Contains("gemini") || configuredProviders.Contains("google"),
+                    Status: configuredProviders.Contains("gemini") || configuredProviders.Contains("google") ? "Configured" : "Not Configured"),
+                new ProviderStatusDto(
+                    Name: "ElevenLabs",
+                    IsConfigured: configuredProviders.Contains("elevenlabs"),
+                    IsAvailable: configuredProviders.Contains("elevenlabs"),
+                    Status: configuredProviders.Contains("elevenlabs") ? "Configured" : "Not Configured"),
+                new ProviderStatusDto(
+                    Name: "PlayHT",
+                    IsConfigured: configuredProviders.Contains("playht"),
+                    IsAvailable: configuredProviders.Contains("playht"),
+                    Status: configuredProviders.Contains("playht") ? "Configured" : "Not Configured"),
+                new ProviderStatusDto(
+                    Name: "Pexels",
+                    IsConfigured: configuredProviders.Contains("pexels"),
+                    IsAvailable: configuredProviders.Contains("pexels"),
+                    Status: configuredProviders.Contains("pexels") ? "Configured" : "Not Configured"),
+                new ProviderStatusDto(
+                    Name: "StabilityAI",
+                    IsConfigured: configuredProviders.Contains("stabilityai") || configuredProviders.Contains("stability"),
+                    IsAvailable: configuredProviders.Contains("stabilityai") || configuredProviders.Contains("stability"),
+                    Status: configuredProviders.Contains("stabilityai") || configuredProviders.Contains("stability") ? "Configured" : "Not Configured"),
+                new ProviderStatusDto(
+                    Name: "RuleBased",
+                    IsConfigured: true,
+                    IsAvailable: true,
+                    Status: "Always Available (Offline)")
+            };
+
+            return Ok(providerStatuses);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting provider status, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Provider Status Error",
+                detail: "An unexpected error occurred while getting provider status.",
+                statusCode: 500,
+                type: "https://docs.aura.studio/errors/provider-status-error",
                 instance: correlationId);
         }
     }
