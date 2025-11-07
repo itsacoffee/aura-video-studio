@@ -8,6 +8,7 @@ using Aura.Core.Models.Narrative;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
+using Aura.Core.Templates;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Llm;
@@ -105,123 +106,45 @@ public class RuleBasedLlmProvider : ILlmProvider
 
     private string GenerateScript(Brief brief, PlanSpec spec, int sceneCount, int wordsPerScene)
     {
-        var script = new List<string>();
+        // Determine video type from topic keywords
+        var videoType = ScriptTemplates.DetermineVideoType(brief.Topic);
         
-        // Add title
-        script.Add($"# {brief.Topic}");
-        script.Add("");
+        _logger.LogInformation("Detected video type: {VideoType} for topic: {Topic}", 
+            videoType, brief.Topic);
         
-        // Introduction
-        script.Add("## Introduction");
-        script.Add(GenerateIntroduction(brief));
-        script.Add("");
+        // Calculate target word count
+        int targetWordCount = sceneCount * wordsPerScene;
         
-        // Body sections
-        for (int i = 1; i <= sceneCount - 2; i++)
+        // Use template-based generation for professional content
+        string templateScript = ScriptTemplates.GenerateFromTemplate(videoType, brief.Topic, targetWordCount);
+        
+        // If template is too short, supplement with additional content
+        if (CountWords(templateScript) < targetWordCount)
         {
-            string heading = $"## Section {i}";
-            string content = GenerateSection(brief, i, wordsPerScene);
-            
-            script.Add(heading);
-            script.Add(content);
-            script.Add("");
+            templateScript = ExpandScriptToTargetLength(templateScript, brief, targetWordCount);
         }
         
-        // Conclusion
-        script.Add("## Conclusion");
-        script.Add(GenerateConclusion(brief));
-        
-        return string.Join("\n", script);
+        return templateScript;
     }
-
-    private string GenerateIntroduction(Brief brief)
+    
+    private string ExpandScriptToTargetLength(string script, Brief brief, int targetWordCount)
     {
-        List<string> hooks = new()
-        {
-            "Have you ever wondered about {0}? It's a fascinating topic that deserves exploration.",
-            "In today's video, we're diving deep into {0}. This is something that affects many people.",
-            "{0} has become increasingly important in recent years. Let's explore why.",
-            "Welcome back! Today we're looking at {0}, a subject that's been requested by many viewers."
-        };
-
-        List<string> promises = new()
-        {
-            "By the end of this video, you'll understand the key aspects of this topic and how it can benefit you.",
-            "We'll cover everything you need to know, from the basics to more advanced concepts.",
-            "I'm going to break this down into simple, actionable steps that anyone can follow.",
-            "We'll explore the what, why, and how so you'll have a complete understanding."
-        };
-
-        string hook = hooks[_random.Next(hooks.Count)];
-        string promise = promises[_random.Next(promises.Count)];
+        var currentWords = CountWords(script);
         
-        return string.Format(hook, brief.Topic) + " " + promise;
-    }
-
-    private string GenerateSection(Brief brief, int sectionNumber, int targetWords)
-    {
-        List<string> templates = new()
+        if (currentWords >= targetWordCount)
         {
-            "One important aspect of {0} is worth highlighting. This relates to how it functions in everyday scenarios.",
-            "When we look closely at {0}, we can see several key factors at play. These elements work together to create the overall effect.",
-            "Let's examine {0} from a different perspective. This approach reveals insights that might otherwise be missed.",
-            "The history of {0} provides valuable context for our discussion. Understanding its development helps explain its current state."
-        };
-
-        List<string> midSentences = new()
-        {
-            "This is particularly relevant when considering the broader implications.",
-            "Many experts in the field have noted this pattern over time.",
-            "Research has consistently shown this to be the case across different contexts.",
-            "It's worth taking a moment to appreciate the complexity here."
-        };
-
-        List<string> closingSentences = new()
-        {
-            "This points us toward the next important consideration.",
-            "With that understanding, we can now move to the next topic.",
-            "These insights form a foundation for what comes next.",
-            "Keeping these points in mind will help as we continue our exploration."
-        };
-
-        string template = templates[_random.Next(templates.Count)];
-        string midSentence = midSentences[_random.Next(midSentences.Count)];
-        string closingSentence = closingSentences[_random.Next(closingSentences.Count)];
-        
-        string baseContent = string.Format(template, brief.Topic) + " " + midSentence + " " + closingSentence;
-        
-        // Expand content to reach target word count if needed
-        while (CountWords(baseContent) < targetWords)
-        {
-            string filler = midSentences[_random.Next(midSentences.Count)];
-            baseContent += " " + filler;
+            return script;
         }
         
-        return baseContent;
-    }
-
-    private string GenerateConclusion(Brief brief)
-    {
-        List<string> conclusions = new()
-        {
-            "In conclusion, {0} represents an important area that continues to evolve. The concepts we've covered today should give you a solid foundation.",
-            "To summarize what we've learned about {0}: it's a multifaceted topic with several key considerations that we've explored together.",
-            "As we wrap up our discussion on {0}, remember the main points we've covered and consider how they might apply to your situation.",
-            "That brings us to the end of our exploration of {0}. I hope you've gained some valuable insights that you can apply going forward."
-        };
-
-        List<string> callsToAction = new()
-        {
-            "If you found this video helpful, please like and subscribe for more content like this. Let me know in the comments what topics you'd like to see next!",
-            "Don't forget to subscribe and hit the notification bell so you never miss an upload. Share this video with someone who might find it useful!",
-            "Thanks for watching! If you have questions, leave them in the comments below, and I'll do my best to answer them in a future video.",
-            "Remember to like, share, and subscribe for more content. Your support helps the channel grow and allows me to create more videos like this one."
-        };
-
-        string conclusion = conclusions[_random.Next(conclusions.Count)];
-        string cta = callsToAction[_random.Next(callsToAction.Count)];
+        var sections = new List<string> { script };
         
-        return string.Format(conclusion, brief.Topic) + " " + cta;
+        sections.Add("");
+        sections.Add("## Additional Insights");
+        sections.Add($"Let's explore some additional aspects of {brief.Topic} that enhance our understanding. These supplementary points provide extra context and depth to what we've already covered.");
+        sections.Add("");
+        sections.Add("The broader implications are worth considering. When we look at the bigger picture, we can see how this topic connects to related areas and affects various aspects of our work or lives.");
+        
+        return string.Join("\n", sections);
     }
 
     private int CountWords(string text)
