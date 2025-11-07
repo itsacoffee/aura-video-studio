@@ -8,15 +8,6 @@ using Microsoft.Extensions.Logging;
 namespace Aura.Providers.Rendering;
 
 /// <summary>
-/// User tier for determining rendering priority
-/// </summary>
-public enum UserTier
-{
-    Free = 0,
-    Premium = 1
-}
-
-/// <summary>
 /// Service for selecting the best available rendering provider based on system capabilities and user tier
 /// </summary>
 public class RenderingProviderSelector
@@ -35,20 +26,20 @@ public class RenderingProviderSelector
     /// <summary>
     /// Selects the best available provider based on user tier and hardware capabilities
     /// </summary>
-    /// <param name="userTier">User's subscription tier</param>
+    /// <param name="isPremium">Whether the user is premium (gets hardware priority)</param>
     /// <param name="preferHardware">Whether to prefer hardware acceleration (default true for premium)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The best available provider</returns>
     public async Task<IRenderingProvider> SelectBestProviderAsync(
-        UserTier userTier = UserTier.Free,
+        bool isPremium = false,
         bool? preferHardware = null,
         CancellationToken cancellationToken = default)
     {
-        var useHardware = preferHardware ?? (userTier == UserTier.Premium);
+        var useHardware = preferHardware ?? isPremium;
         
         _logger.LogInformation(
-            "Selecting rendering provider (UserTier={UserTier}, PreferHardware={PreferHardware})",
-            userTier, useHardware);
+            "Selecting rendering provider (IsPremium={IsPremium}, PreferHardware={PreferHardware})",
+            isPremium, useHardware);
 
         var orderedProviders = _providers
             .OrderByDescending(p => p.Priority)
@@ -134,7 +125,7 @@ public class RenderingProviderSelector
         Core.Providers.Timeline timeline,
         Core.Models.RenderSpec spec,
         IProgress<Core.Models.RenderProgress> progress,
-        UserTier userTier = UserTier.Free,
+        bool isPremium = false,
         CancellationToken cancellationToken = default)
     {
         var providers = await GetAvailableProvidersAsync(cancellationToken);
@@ -144,7 +135,7 @@ public class RenderingProviderSelector
             throw new InvalidOperationException("No rendering providers available");
         }
 
-        var preferHardware = userTier == UserTier.Premium;
+        var preferHardware = isPremium;
         var orderedProviders = providers
             .OrderByDescending(p => preferHardware ? (p.Capabilities.IsHardwareAccelerated ? 1 : 0) : 0)
             .ThenByDescending(p => p.Provider.Priority)

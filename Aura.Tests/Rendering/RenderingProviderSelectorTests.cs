@@ -32,7 +32,7 @@ public class RenderingProviderSelectorTests
         var selector = new RenderingProviderSelector(_mockLogger.Object, providers);
 
         // Act
-        var result = await selector.SelectBestProviderAsync(UserTier.Premium, preferHardware: true);
+        var result = await selector.SelectBestProviderAsync(isPremium: true, preferHardware: true);
 
         // Assert
         Assert.NotNull(result);
@@ -51,7 +51,7 @@ public class RenderingProviderSelectorTests
         var selector = new RenderingProviderSelector(_mockLogger.Object, providers);
 
         // Act
-        var result = await selector.SelectBestProviderAsync(UserTier.Free, preferHardware: false);
+        var result = await selector.SelectBestProviderAsync(isPremium: false, preferHardware: false);
 
         // Assert
         Assert.NotNull(result);
@@ -69,7 +69,7 @@ public class RenderingProviderSelectorTests
         var selector = new RenderingProviderSelector(_mockLogger.Object, providers);
 
         // Act
-        var result = await selector.SelectBestProviderAsync(UserTier.Premium, preferHardware: true);
+        var result = await selector.SelectBestProviderAsync(isPremium: true, preferHardware: true);
 
         // Assert
         Assert.NotNull(result);
@@ -85,7 +85,7 @@ public class RenderingProviderSelectorTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => selector.SelectBestProviderAsync(UserTier.Premium));
+            () => selector.SelectBestProviderAsync(isPremium: true));
     }
 
     [Fact]
@@ -127,7 +127,7 @@ public class RenderingProviderSelectorTests
         var selector = new RenderingProviderSelector(_mockLogger.Object, providers);
 
         // Act
-        var result = await selector.RenderWithFallbackAsync(timeline, spec, progress, UserTier.Premium);
+        var result = await selector.RenderWithFallbackAsync(timeline, spec, progress, isPremium: true);
 
         // Assert
         Assert.Equal("/output/video.mp4", result);
@@ -164,7 +164,7 @@ public class RenderingProviderSelectorTests
         var selector = new RenderingProviderSelector(_mockLogger.Object, providers);
 
         // Act
-        var result = await selector.RenderWithFallbackAsync(timeline, spec, progress, UserTier.Premium);
+        var result = await selector.RenderWithFallbackAsync(timeline, spec, progress, isPremium: true);
 
         // Assert
         Assert.Equal("/output/video.mp4", result);
@@ -202,7 +202,7 @@ public class RenderingProviderSelectorTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => selector.RenderWithFallbackAsync(timeline, spec, progress, UserTier.Premium));
+            () => selector.RenderWithFallbackAsync(timeline, spec, progress, isPremium: true));
     }
 
     private Mock<IRenderingProvider> CreateMockProvider(
