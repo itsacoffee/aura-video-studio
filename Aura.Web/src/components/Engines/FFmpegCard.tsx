@@ -108,12 +108,25 @@ export function FFmpegCard() {
     setError(null);
     try {
       const response = await fetch(apiUrl('/api/system/ffmpeg/status'));
-      if (response.ok) {
-        const data = await response.json();
-        setStatus(data);
-      } else {
-        throw new Error('Failed to fetch FFmpeg status');
+
+      if (!response.ok) {
+        // Handle HTTP errors with detailed messages
+        const errorText = await response.text();
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // If not JSON, use the text response or default message
+          errorMessage = errorText || errorMessage;
+        }
+
+        throw new Error(errorMessage);
       }
+
+      const data = await response.json();
+      setStatus(data);
     } catch (err) {
       console.error('Failed to load FFmpeg status:', err);
       setError(err instanceof Error ? err.message : 'Failed to load status');
