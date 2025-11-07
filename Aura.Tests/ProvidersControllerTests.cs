@@ -6,6 +6,7 @@ using Aura.Api.Controllers;
 using Aura.Core.Configuration;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
+using Aura.Core.Services;
 using Aura.Core.Services.Providers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -28,6 +29,16 @@ public class ProvidersControllerTests
         var mockLogger = new NullLogger<OpenAIKeyValidationService>();
         var httpClient = new HttpClient();
         return new OpenAIKeyValidationService(mockLogger, httpClient);
+    }
+    
+    private static Mock<IKeyValidationService> CreateMockKeyValidationService()
+    {
+        return new Mock<IKeyValidationService>();
+    }
+    
+    private static Mock<ISecureStorageService> CreateMockSecureStorageService()
+    {
+        return new Mock<ISecureStorageService>();
     }
 
     [Fact]
@@ -58,7 +69,13 @@ public class ProvidersControllerTests
             .Returns((string?)null);
 
         var mockSettings = CreateMockProviderSettings();
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object, CreateMockOpenAIValidationService());
+        var controller = new ProvidersController(
+            mockHardwareDetector.Object, 
+            mockKeyStore.Object, 
+            mockSettings.Object, 
+            CreateMockOpenAIValidationService(),
+            CreateMockKeyValidationService().Object,
+            CreateMockSecureStorageService().Object);
 
         // Act
         var result = await controller.GetCapabilities();
@@ -96,7 +113,13 @@ public class ProvidersControllerTests
             .Returns((string?)null);
 
         var mockSettings = CreateMockProviderSettings();
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object, CreateMockOpenAIValidationService());
+        var controller = new ProvidersController(
+            mockHardwareDetector.Object, 
+            mockKeyStore.Object, 
+            mockSettings.Object, 
+            CreateMockOpenAIValidationService(),
+            CreateMockKeyValidationService().Object,
+            CreateMockSecureStorageService().Object);
 
         // Act
         var result = await controller.GetCapabilities();
@@ -134,7 +157,13 @@ public class ProvidersControllerTests
             .Returns("test-key");
 
         var mockSettings = CreateMockProviderSettings();
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object, CreateMockOpenAIValidationService());
+        var controller = new ProvidersController(
+            mockHardwareDetector.Object, 
+            mockKeyStore.Object, 
+            mockSettings.Object, 
+            CreateMockOpenAIValidationService(),
+            CreateMockKeyValidationService().Object,
+            CreateMockSecureStorageService().Object);
 
         // Act
         var result = await controller.GetCapabilities();
@@ -172,7 +201,13 @@ public class ProvidersControllerTests
             .Returns("test-key-12345");
 
         var mockSettings = CreateMockProviderSettings();
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object, CreateMockOpenAIValidationService());
+        var controller = new ProvidersController(
+            mockHardwareDetector.Object, 
+            mockKeyStore.Object, 
+            mockSettings.Object, 
+            CreateMockOpenAIValidationService(),
+            CreateMockKeyValidationService().Object,
+            CreateMockSecureStorageService().Object);
 
         // Act
         var result = await controller.GetCapabilities();
@@ -208,7 +243,13 @@ public class ProvidersControllerTests
             .Returns((string?)null);
 
         var mockSettings = CreateMockProviderSettings();
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object, CreateMockOpenAIValidationService());
+        var controller = new ProvidersController(
+            mockHardwareDetector.Object, 
+            mockKeyStore.Object, 
+            mockSettings.Object, 
+            CreateMockOpenAIValidationService(),
+            CreateMockKeyValidationService().Object,
+            CreateMockSecureStorageService().Object);
 
         // Act
         var result = await controller.GetCapabilities();
@@ -250,7 +291,13 @@ public class ProvidersControllerTests
             .Returns((string?)null);
 
         var mockSettings = CreateMockProviderSettings();
-        var controller = new ProvidersController(mockHardwareDetector.Object, mockKeyStore.Object, mockSettings.Object, CreateMockOpenAIValidationService());
+        var controller = new ProvidersController(
+            mockHardwareDetector.Object, 
+            mockKeyStore.Object, 
+            mockSettings.Object, 
+            CreateMockOpenAIValidationService(),
+            CreateMockKeyValidationService().Object,
+            CreateMockSecureStorageService().Object);
 
         // Act
         var result = await controller.GetCapabilities();
