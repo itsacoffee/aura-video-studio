@@ -214,7 +214,7 @@ public class ProviderPipelineArchitectureTests
         public Task<string> RenderAsync(TimelineModel timeline, RenderSpec spec, IProgress<RenderProgress> progress, CancellationToken ct)
         {
             _executionOrder.Add("Video: Render");
-            progress?.Report(new RenderProgress(100, "Complete", null));
+            progress?.Report(new RenderProgress(100, TimeSpan.Zero, TimeSpan.Zero, "Complete"));
             return Task.FromResult("/tmp/test-output.mp4");
         }
     }
