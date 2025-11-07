@@ -34,6 +34,12 @@ public class PlaceholderProvider : BaseVisualProvider
 
     public override bool RequiresApiKey => false;
 
+    /// <summary>
+    /// Generates a single image from a prompt.
+    /// Note: This implementation generates text-based placeholder files to avoid
+    /// cross-platform graphics library dependencies. In production, replace with
+    /// a proper image generation library like SkiaSharp or ImageSharp.
+    /// </summary>
     public override Task<string?> GenerateImageAsync(
         string prompt,
         VisualGenerationOptions options,

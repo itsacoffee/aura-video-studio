@@ -19,13 +19,16 @@ public class VisualsController : ControllerBase
 {
     private readonly ILogger<VisualsController> _logger;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILoggerFactory _loggerFactory;
 
     public VisualsController(
         ILogger<VisualsController> logger,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        ILoggerFactory loggerFactory)
     {
         _logger = logger;
         _httpClientFactory = httpClientFactory;
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -223,7 +226,7 @@ public class VisualsController : ControllerBase
         if (apiKeys.TryGetValue("openai", out var openaiKey) && !string.IsNullOrWhiteSpace(openaiKey))
         {
             providers.Add(new DallE3Provider(
-                Microsoft.Extensions.Logging.LoggerFactory.Create(b => { }).CreateLogger<DallE3Provider>(),
+                _loggerFactory.CreateLogger<DallE3Provider>(),
                 httpClient,
                 openaiKey));
         }
@@ -231,7 +234,7 @@ public class VisualsController : ControllerBase
         if (apiKeys.TryGetValue("stabilityai", out var stabilityKey) && !string.IsNullOrWhiteSpace(stabilityKey))
         {
             providers.Add(new StabilityAiProvider(
-                Microsoft.Extensions.Logging.LoggerFactory.Create(b => { }).CreateLogger<StabilityAiProvider>(),
+                _loggerFactory.CreateLogger<StabilityAiProvider>(),
                 httpClient,
                 stabilityKey));
         }
@@ -239,25 +242,25 @@ public class VisualsController : ControllerBase
         if (apiKeys.TryGetValue("midjourney", out var midjourneyKey) && !string.IsNullOrWhiteSpace(midjourneyKey))
         {
             providers.Add(new MidjourneyProvider(
-                Microsoft.Extensions.Logging.LoggerFactory.Create(b => { }).CreateLogger<MidjourneyProvider>(),
+                _loggerFactory.CreateLogger<MidjourneyProvider>(),
                 httpClient,
                 midjourneyKey));
         }
 
         providers.Add(new LocalStableDiffusionProvider(
-            Microsoft.Extensions.Logging.LoggerFactory.Create(b => { }).CreateLogger<LocalStableDiffusionProvider>(),
+            _loggerFactory.CreateLogger<LocalStableDiffusionProvider>(),
             httpClient));
 
         if (apiKeys.TryGetValue("unsplash", out var unsplashKey) && !string.IsNullOrWhiteSpace(unsplashKey))
         {
             providers.Add(new UnsplashVisualProvider(
-                Microsoft.Extensions.Logging.LoggerFactory.Create(b => { }).CreateLogger<UnsplashVisualProvider>(),
+                _loggerFactory.CreateLogger<UnsplashVisualProvider>(),
                 httpClient,
                 unsplashKey));
         }
 
         providers.Add(new PlaceholderProvider(
-            Microsoft.Extensions.Logging.LoggerFactory.Create(b => { }).CreateLogger<PlaceholderProvider>()));
+            _loggerFactory.CreateLogger<PlaceholderProvider>()));
 
         return providers;
     }

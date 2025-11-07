@@ -18,6 +18,8 @@ public class DallE3Provider : BaseVisualProvider
     private readonly HttpClient _httpClient;
     private readonly string? _apiKey;
     private readonly string _baseUrl;
+    private const int MaxPromptLength = 1000;
+    private const int PromptTruncateLength = 997;
     private const decimal CostPerImageStandard = 0.040m;
     private const decimal CostPerImageHD = 0.080m;
 
@@ -152,9 +154,9 @@ public class DallE3Provider : BaseVisualProvider
     {
         var adapted = prompt;
 
-        if (adapted.Length > 1000)
+        if (adapted.Length > MaxPromptLength)
         {
-            adapted = adapted.Substring(0, 997) + "...";
+            adapted = adapted.Substring(0, PromptTruncateLength) + "...";
         }
 
         if (options.Style == "vivid" && !adapted.Contains("vivid"))
