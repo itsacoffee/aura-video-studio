@@ -129,18 +129,7 @@ export function OllamaCard() {
                 </Badge>
               </div>
             </div>
-            <div className={styles.actions}>
-              {getStatusBadge()}
-              <Button
-                appearance="subtle"
-                size="small"
-                icon={<ArrowSync24Regular />}
-                onClick={() => detect()}
-                disabled={isChecking}
-              >
-                Auto-Detect
-              </Button>
-            </div>
+            <div className={styles.actions}>{getStatusBadge()}</div>
           </div>
         }
         description={
@@ -163,12 +152,33 @@ export function OllamaCard() {
           </div>
         </div>
 
+        <div
+          style={{
+            display: 'flex',
+            gap: tokens.spacingHorizontalS,
+            alignItems: 'center',
+            marginTop: tokens.spacingVerticalS,
+          }}
+        >
+          <Button
+            appearance="primary"
+            size="medium"
+            icon={<ArrowSync24Regular />}
+            onClick={() => detect()}
+            disabled={isChecking}
+          >
+            {isChecking ? 'Detecting...' : 'Auto-Detect'}
+          </Button>
+          {getStatusBadge()}
+        </div>
+
         {isDetected === true && (
           <div
             style={{
               padding: tokens.spacingVerticalS,
               backgroundColor: tokens.colorPaletteGreenBackground1,
               borderRadius: tokens.borderRadiusMedium,
+              marginTop: tokens.spacingVerticalS,
             }}
           >
             <Text size={200} style={{ color: tokens.colorPaletteGreenForeground1 }}>
@@ -184,6 +194,7 @@ export function OllamaCard() {
               padding: tokens.spacingVerticalS,
               backgroundColor: tokens.colorNeutralBackground2,
               borderRadius: tokens.borderRadiusMedium,
+              marginTop: tokens.spacingVerticalS,
             }}
           >
             <Text
