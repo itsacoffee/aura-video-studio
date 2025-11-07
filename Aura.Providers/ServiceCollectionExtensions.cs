@@ -31,7 +31,7 @@ public static class ServiceCollectionExtensions
 
     /// <summary>
     /// Registers all LLM providers with their dependencies
-    /// Providers are registered as ITtsProvider implementations for factory enumeration
+    /// Only registers providers if their required configuration (API keys, etc.) is available
     /// </summary>
     public static IServiceCollection AddLlmProviders(this IServiceCollection services)
     {
@@ -43,6 +43,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Register Ollama provider (local, requires Ollama installation)
+        // Always register since it can fail gracefully
         services.AddSingleton<ILlmProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<OllamaLlmProvider>>();
@@ -61,21 +62,22 @@ public static class ServiceCollectionExtensions
             );
         });
 
-        // Register OpenAI provider (requires API key)
+        // Register OpenAI provider conditionally (only if API key is available)
         services.AddSingleton<ILlmProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<OpenAiLlmProvider>>();
-            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var settings = sp.GetRequiredService<ProviderSettings>();
             var apiKey = settings.GetOpenAiApiKey();
             
-            // Only create if API key is available
+            // Only create if API key is available - do NOT register null providers
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                logger.LogDebug("OpenAI API key not configured, skipping provider registration");
+                logger.LogDebug("OpenAI API key not configured, provider will not be available");
+                // Return a marker object that will be filtered out
                 return null!;
             }
             
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             return new OpenAiLlmProvider(
                 logger,
                 httpClient,
@@ -84,11 +86,10 @@ public static class ServiceCollectionExtensions
             );
         });
 
-        // Register Azure OpenAI provider (requires API key and endpoint)
+        // Register Azure OpenAI provider conditionally (only if credentials are available)
         services.AddSingleton<ILlmProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<AzureOpenAiLlmProvider>>();
-            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var settings = sp.GetRequiredService<ProviderSettings>();
             var apiKey = settings.GetAzureOpenAiApiKey();
             var endpoint = settings.GetAzureOpenAiEndpoint();
@@ -96,10 +97,11 @@ public static class ServiceCollectionExtensions
             // Only create if both API key and endpoint are available
             if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(endpoint))
             {
-                logger.LogDebug("Azure OpenAI credentials not configured, skipping provider registration");
+                logger.LogDebug("Azure OpenAI credentials not configured, provider will not be available");
                 return null!;
             }
             
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             return new AzureOpenAiLlmProvider(
                 logger,
                 httpClient,
@@ -109,21 +111,21 @@ public static class ServiceCollectionExtensions
             );
         });
 
-        // Register Gemini provider (requires API key)
+        // Register Gemini provider conditionally (only if API key is available)
         services.AddSingleton<ILlmProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<GeminiLlmProvider>>();
-            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var settings = sp.GetRequiredService<ProviderSettings>();
             var apiKey = settings.GetGeminiApiKey();
             
             // Only create if API key is available
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                logger.LogDebug("Gemini API key not configured, skipping provider registration");
+                logger.LogDebug("Gemini API key not configured, provider will not be available");
                 return null!;
             }
             
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             return new GeminiLlmProvider(
                 logger,
                 httpClient,
