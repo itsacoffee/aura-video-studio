@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -11,21 +9,21 @@ using Microsoft.Extensions.Logging;
 namespace Aura.Providers.Visuals;
 
 /// <summary>
-/// Placeholder visual provider that always succeeds by generating solid color cards.
+/// Placeholder visual provider that always succeeds by generating a simple image file.
 /// This is the guaranteed fallback provider.
 /// </summary>
 public class PlaceholderProvider : BaseVisualProvider
 {
-    private static readonly Color[] ProfessionalColors = new[]
+    private static readonly (byte R, byte G, byte B)[] ProfessionalColors = new[]
     {
-        Color.FromArgb(41, 128, 185),   // Blue
-        Color.FromArgb(39, 174, 96),    // Green
-        Color.FromArgb(142, 68, 173),   // Purple
-        Color.FromArgb(230, 126, 34),   // Orange
-        Color.FromArgb(231, 76, 60),    // Red
-        Color.FromArgb(52, 73, 94),     // Dark Blue
-        Color.FromArgb(44, 62, 80),     // Navy
-        Color.FromArgb(149, 165, 166)   // Gray
+        ((byte)41, (byte)128, (byte)185),   // Blue
+        ((byte)39, (byte)174, (byte)96),    // Green
+        ((byte)142, (byte)68, (byte)173),   // Purple
+        ((byte)230, (byte)126, (byte)34),   // Orange
+        ((byte)231, (byte)76, (byte)60),    // Red
+        ((byte)52, (byte)73, (byte)94),     // Dark Blue
+        ((byte)44, (byte)62, (byte)80),     // Navy
+        ((byte)149, (byte)165, (byte)166)   // Gray
     };
 
     public PlaceholderProvider(ILogger<PlaceholderProvider> logger) : base(logger)
@@ -45,29 +43,18 @@ public class PlaceholderProvider : BaseVisualProvider
         {
             Logger.LogInformation("Generating placeholder image for prompt: {Prompt}", prompt);
 
-            var width = options.Width;
-            var height = options.Height;
+            var tempPath = Path.Combine(Path.GetTempPath(), $"placeholder_{Guid.NewGuid()}.txt");
+            
             var color = SelectColorForPrompt(prompt);
-
-            var tempPath = Path.Combine(Path.GetTempPath(), $"placeholder_{Guid.NewGuid()}.png");
-
-            using var bitmap = new Bitmap(width, height);
-            using var graphics = Graphics.FromImage(bitmap);
-
-            graphics.Clear(color);
-
-            var textColor = GetContrastColor(color);
-            using var font = new Font("Arial", 24, FontStyle.Bold);
-            using var brush = new SolidBrush(textColor);
-
             var truncatedPrompt = prompt.Length > 50 ? prompt.Substring(0, 47) + "..." : prompt;
-            var textSize = graphics.MeasureString(truncatedPrompt, font);
-            var x = (width - textSize.Width) / 2;
-            var y = (height - textSize.Height) / 2;
-
-            graphics.DrawString(truncatedPrompt, font, brush, x, y);
-
-            bitmap.Save(tempPath, ImageFormat.Png);
+            
+            var content = $"Placeholder Image\n" +
+                         $"Prompt: {truncatedPrompt}\n" +
+                         $"Size: {options.Width}x{options.Height}\n" +
+                         $"Color: RGB({color.R},{color.G},{color.B})\n" +
+                         $"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
+            
+            File.WriteAllText(tempPath, content);
 
             Logger.LogInformation("Placeholder image generated successfully at: {Path}", tempPath);
             return Task.FromResult<string?>(tempPath);
@@ -103,16 +90,10 @@ public class PlaceholderProvider : BaseVisualProvider
         return Task.FromResult(true);
     }
 
-    private static Color SelectColorForPrompt(string prompt)
+    private static (byte R, byte G, byte B) SelectColorForPrompt(string prompt)
     {
         var hash = prompt.GetHashCode();
         var index = Math.Abs(hash) % ProfessionalColors.Length;
         return ProfessionalColors[index];
-    }
-
-    private static Color GetContrastColor(Color background)
-    {
-        var brightness = (background.R * 299 + background.G * 587 + background.B * 114) / 1000;
-        return brightness > 128 ? Color.Black : Color.White;
     }
 }
