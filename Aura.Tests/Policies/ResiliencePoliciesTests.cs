@@ -94,8 +94,12 @@ public class ResiliencePoliciesTests
             await policy.ExecuteAsync(async (ct) =>
             {
                 attemptCount++;
+                await Task.CompletedTask;
                 throw new InvalidOperationException("Local provider error");
-            });
+#pragma warning disable CS0162 // Unreachable code detected
+                return string.Empty;
+#pragma warning restore CS0162 // Unreachable code detected
+            }, CancellationToken.None);
         });
 
         Assert.Equal(1, attemptCount);

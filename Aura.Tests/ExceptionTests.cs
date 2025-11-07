@@ -55,7 +55,7 @@ public class ExceptionTests
             correlationId: "corr-789");
 
         // Assert
-        Assert.Equal(ProviderType.TTS, exception.Stage);
+        Assert.Equal("TTS", exception.Stage);
         Assert.Contains("Voice synthesis failed", exception.Message);
         Assert.Contains("audio narration", exception.UserMessage.ToLower());
     }
@@ -69,7 +69,7 @@ public class ExceptionTests
             correlationId: "corr-101");
 
         // Assert
-        Assert.Equal(ProviderType.Visual, exception.Stage);
+        Assert.Equal("Visual", exception.Stage);
         Assert.Contains("Image API unavailable", exception.Message);
         Assert.Contains("visuals", exception.UserMessage.ToLower());
     }
@@ -93,7 +93,7 @@ public class ExceptionTests
     {
         // Arrange
         var exception = new PipelineException(
-            ProviderType.TTS,
+            "TTS",
             "Audio generation failed",
             completedTasks: 2,
             totalTasks: 4);
@@ -291,7 +291,7 @@ public class ExceptionTests
         // Arrange & Act
         var pipelineEx = new PipelineException("Test", "Test");
         var configEx = new ConfigurationException("Test", "Test");
-        var providerEx = new ProviderException("Test", "Test", "Test");
+        var providerEx = new ProviderException("Test", ProviderType.LLM, "Test");
 
         // Assert
         Assert.IsAssignableFrom<AuraException>(pipelineEx);
@@ -305,7 +305,7 @@ public class ExceptionTests
         // Arrange & Act
         var pipelineEx = PipelineException.ScriptGenerationFailed("test");
         var configEx = ConfigurationException.MissingRequired("test");
-        var providerEx = ProviderException.MissingApiKey("test", "test", "test");
+        var providerEx = ProviderException.MissingApiKey("test", ProviderType.LLM, "test");
 
         // Assert
         Assert.NotEmpty(pipelineEx.SuggestedActions);
@@ -321,7 +321,7 @@ public class ExceptionTests
         {
             new PipelineException("Test", "Test"),
             new ConfigurationException("Test", "Test"),
-            new ProviderException("Test", "Test", "Test")
+            new ProviderException("Test", ProviderType.LLM, "Test")
         };
 
         // Act & Assert
