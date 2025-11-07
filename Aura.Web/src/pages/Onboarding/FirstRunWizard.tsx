@@ -16,11 +16,13 @@ import {
 } from '@fluentui/react-icons';
 import { useEffect, useReducer, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useNotifications } from '../../components/Notifications/Toasts';
 import { CompletionScreen } from '../../components/Onboarding/CompletionScreen';
 import type { Dependency } from '../../components/Onboarding/DependencyCheck';
 import { DependencyCheck } from '../../components/Onboarding/DependencyCheck';
+import { FFmpegDependencyCard } from '../../components/Onboarding/FFmpegDependencyCard';
 import { FileLocationsSummary } from '../../components/Onboarding/FileLocationsSummary';
-import { QuickTutorial, defaultTutorialSteps } from '../../components/Onboarding/QuickTutorial';
+import { OllamaDependencyCard } from '../../components/Onboarding/OllamaDependencyCard';
 import { TemplateSelection, defaultTemplates } from '../../components/Onboarding/TemplateSelection';
 import { WelcomeScreen } from '../../components/Onboarding/WelcomeScreen';
 import type { WorkspacePreferences } from '../../components/Onboarding/WorkspaceSetup';
@@ -131,8 +133,14 @@ export function FirstRunWizard() {
   const [isGeneratingSample, setIsGeneratingSample] = useState(false);
   const [sampleGenerationError, setSampleGenerationError] = useState<string | null>(null);
 
+  // FFmpeg status state
+  const [ffmpegReady, setFfmpegReady] = useState(false);
+
+  // Notifications hook
+  const { showSuccessToast, showFailureToast } = useNotifications();
+
   // Enhanced step labels for the new wizard flow
-  const totalSteps = 10;
+  const totalSteps = 9;
   const stepLabels = [
     'Welcome',
     'Configure Providers',
@@ -142,7 +150,6 @@ export function FirstRunWizard() {
     'Templates',
     'Hardware',
     'Validation',
-    'Tutorial',
     'Complete',
   ];
 
@@ -266,14 +273,14 @@ export function FirstRunWizard() {
       return;
     }
 
-    // Step 7: Validation -> Step 8: Tutorial
+    // Step 7: Validation -> Step 8: Completion
     if (state.step === 7) {
       // Run validation only if not already valid
       if (state.status === 'idle' || state.status === 'installed') {
         await runValidationThunk(state, dispatch);
         return; // Don't advance yet, wait for validation result
       } else if (state.status === 'valid' || state.status === 'ready') {
-        // Already validated, move to tutorial
+        // Already validated, move to completion
         dispatch({ type: 'SET_STEP', payload: 8 });
         return;
       } else if (state.status === 'invalid') {
@@ -283,14 +290,7 @@ export function FirstRunWizard() {
       }
     }
 
-    // Step 8: Tutorial -> Step 9: Completion
-    // Tutorial has its own buttons (handled by tutorial component)
-    if (state.step === 8) {
-      dispatch({ type: 'SET_STEP', payload: 9 });
-      return;
-    }
-
-    // Step 9: Completion - handled by completion step buttons
+    // Step 8: Completion - handled by completion step buttons
   };
 
   const handleBack = () => {
@@ -443,24 +443,6 @@ export function FirstRunWizard() {
     handleNext();
   };
 
-  const handleStartTutorial = () => {
-    dispatch({ type: 'TOGGLE_TUTORIAL' });
-    wizardAnalytics.tutorialStarted();
-  };
-
-  const handleCompleteTutorial = () => {
-    dispatch({ type: 'COMPLETE_TUTORIAL' });
-    wizardAnalytics.tutorialCompleted();
-    handleNext(); // Auto-advance after tutorial
-  };
-
-  const handleSkipTutorial = () => {
-    const currentTutorialStep = 0; // Simplified for now
-    wizardAnalytics.tutorialSkipped(currentTutorialStep);
-    dispatch({ type: 'COMPLETE_TUTORIAL' });
-    handleNext();
-  };
-
   const handleDependencyAutoInstall = async (dependencyId: string): Promise<void> => {
     wizardAnalytics.dependencyInstalled(dependencyId, 'auto');
     await installItemThunk(dependencyId, dispatch);
@@ -542,9 +524,15 @@ export function FirstRunWizard() {
 
       const result = await response.json();
 
-      // Navigate to the job page to watch progress
       if (result.jobId) {
-        navigate(`/jobs/${result.jobId}`);
+        // Show success toast
+        showSuccessToast({
+          title: 'Sample Video Started',
+          message: 'Your sample video is being generated.',
+          onViewResults: () => {
+            navigate(`/jobs/${result.jobId}`);
+          },
+        });
       } else {
         setSampleGenerationError('Sample generation started but no job ID was returned');
       }
@@ -553,6 +541,15 @@ export function FirstRunWizard() {
         error instanceof Error ? error.message : 'Unknown error generating sample video';
       console.error('Sample generation failed:', errorMessage);
       setSampleGenerationError(errorMessage);
+
+      showFailureToast({
+        title: 'Sample Video Failed',
+        message: errorMessage,
+        onOpenLogs: () => {
+          navigate('/logs');
+        },
+        timeout: 5000,
+      });
     } finally {
       setIsGeneratingSample(false);
     }
@@ -601,39 +598,66 @@ export function FirstRunWizard() {
     />
   );
 
-  // Render step 3: Dependencies with new DependencyCheck component
+  // Render step 3: Dependencies with FFmpeg and Ollama cards
   const renderStep3 = () => {
-    const dependencies: Dependency[] = state.installItems.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description || '',
-      required: item.required,
-      status: state.isScanningDependencies
-        ? 'checking'
-        : item.installing
+    const otherDependencies: Dependency[] = state.installItems
+      .filter((item) => item.id !== 'ffmpeg' && item.id !== 'ollama')
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description || '',
+        required: item.required,
+        status: state.isScanningDependencies
           ? 'checking'
-          : item.installed
-            ? 'installed'
-            : item.skipped
-              ? 'skipped'
-              : 'missing',
-      canAutoInstall: true,
-      installing: item.installing,
-      installProgress: item.installing ? 50 : undefined,
-    }));
+          : item.installing
+            ? 'checking'
+            : item.installed
+              ? 'installed'
+              : item.skipped
+                ? 'skipped'
+                : 'missing',
+        canAutoInstall: true,
+        installing: item.installing,
+        installProgress: item.installing ? 50 : undefined,
+      }));
 
     return (
-      <DependencyCheck
-        dependencies={dependencies}
-        onAutoInstall={handleDependencyAutoInstall}
-        onManualInstall={handleDependencyManualInstall}
-        onSkip={handleDependencySkip}
-        onAssignPath={handleDependencyAssignPath}
-        onRescan={async () => {
-          await checkAllInstallationStatusesThunk(dispatch);
-        }}
-        isScanning={state.isScanningDependencies}
-      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
+        <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
+          <Title2>Dependency Validation</Title2>
+          <Text>
+            Checking for required components to ensure the best experience. We&apos;ll help you
+            install anything that&apos;s missing.
+          </Text>
+        </div>
+
+        {/* FFmpeg - Required */}
+        <FFmpegDependencyCard
+          autoCheck={true}
+          onInstallComplete={() => {
+            setFfmpegReady(true);
+            dispatch({ type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
+          }}
+        />
+
+        {/* Ollama - Optional with auto-detect */}
+        <OllamaDependencyCard autoDetect={true} />
+
+        {/* Other dependencies */}
+        {otherDependencies.length > 0 && (
+          <DependencyCheck
+            dependencies={otherDependencies}
+            onAutoInstall={handleDependencyAutoInstall}
+            onManualInstall={handleDependencyManualInstall}
+            onSkip={handleDependencySkip}
+            onAssignPath={handleDependencyAssignPath}
+            onRescan={async () => {
+              await checkAllInstallationStatusesThunk(dispatch);
+            }}
+            isScanning={state.isScanningDependencies}
+          />
+        )}
+      </div>
     );
   };
 
@@ -850,139 +874,238 @@ export function FirstRunWizard() {
     );
   };
 
-  // Render step 7: Validation & Preflight Checks
-  const renderStep7 = () => (
-    <>
-      <Title2>Validation & Preflight Checks</Title2>
+  // Render step 7: Validation & Preflight Checks with real readiness
+  const renderStep7 = () => {
+    // Check real readiness:
+    // 1. FFmpeg installed, valid, and has version
+    // 2. At least one TTS provider OR demo TTS skip
+    // 3. At least one image provider OR stock/fallback visuals enabled
+    const hasTtsProvider = state.installItems.some(
+      (item) => item.id.includes('tts') && item.installed
+    );
+    const hasImageProvider = state.installItems.some(
+      (item) => item.id.includes('stable-diffusion') && item.installed
+    );
 
-      {state.status === 'validating' ? (
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-            <Spinner size="small" />
-            <Text>Running preflight checks...</Text>
-          </div>
-        </Card>
-      ) : state.status === 'valid' || state.status === 'ready' ? (
-        <>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-              <Checkmark24Regular
-                style={{ fontSize: '32px', color: tokens.colorPaletteGreenForeground1 }}
-              />
-              <div>
-                <Title2>All Checks Passed!</Title2>
-                <Text>Your system is ready to create videos.</Text>
-              </div>
-            </div>
-          </Card>
-
-          <FileLocationsSummary />
-        </>
-      ) : state.status === 'invalid' && state.lastValidation ? (
-        <>
-          <Card className={styles.errorCard}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-              <Warning24Regular
-                style={{ fontSize: '32px', color: tokens.colorPaletteRedForeground1 }}
-              />
-              <div>
-                <Title2>Validation Failed</Title2>
-                <Text>
-                  Some providers are not available. Please fix the issues below or click Next to
-                  continue anyway.
-                </Text>
-              </div>
-            </div>
-          </Card>
-
-          {state.lastValidation.failedStages.map((stage, index) => (
-            <Card key={index}>
-              <Title2>{stage.stage} Stage</Title2>
-              <Text>
-                <strong>Provider:</strong> {stage.provider}
-              </Text>
-              <Text>
-                <strong>Issue:</strong> {stage.message}
-              </Text>
-              {stage.hint && (
-                <Text style={{ marginTop: tokens.spacingVerticalS, fontStyle: 'italic' }}>
-                  💡 {stage.hint}
-                </Text>
-              )}
-
-              {stage.suggestions && stage.suggestions.length > 0 && (
-                <div style={{ marginTop: tokens.spacingVerticalM }}>
-                  <Text weight="semibold">Suggestions:</Text>
-                  <ul style={{ marginTop: tokens.spacingVerticalXS }}>
-                    {stage.suggestions.map((suggestion, i) => (
-                      <li key={i}>
-                        <Text size={200}>{suggestion}</Text>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {stage.fixActions && stage.fixActions.length > 0 && (
-                <div className={styles.fixActionsContainer}>
-                  <Text weight="semibold">Quick Fixes:</Text>
-                  {stage.fixActions.map((action, i) => (
-                    <Button
-                      key={i}
-                      appearance="secondary"
-                      onClick={() => handleFixAction(action)}
-                      style={{ justifyContent: 'flex-start' }}
-                    >
-                      {action.label}
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </Card>
-          ))}
-        </>
-      ) : (
-        <Card>
-          <Text>
-            Click Validate to check your setup and ensure all providers are working correctly.
-          </Text>
-        </Card>
-      )}
-    </>
-  );
-
-  // Render step 8: Quick Tutorial
-  const renderStep8 = () => {
-    if (state.showTutorial) {
-      return (
-        <QuickTutorial
-          steps={defaultTutorialSteps}
-          onComplete={handleCompleteTutorial}
-          onSkip={handleSkipTutorial}
-        />
-      );
-    }
+    // For now, we'll allow proceeding if FFmpeg is ready
+    // Full TTS/Image validation will be done via the backend preflight API
+    const isReady = ffmpegReady;
 
     return (
-      <div style={{ textAlign: 'center', padding: tokens.spacingVerticalXXL }}>
-        <Title2 style={{ marginBottom: tokens.spacingVerticalL }}>Quick Tutorial</Title2>
-        <Text style={{ marginBottom: tokens.spacingVerticalXL }}>
-          Would you like a quick tour of the main features? This will only take 2-3 minutes.
-        </Text>
-        <div style={{ display: 'flex', gap: tokens.spacingHorizontalL, justifyContent: 'center' }}>
-          <Button appearance="primary" onClick={handleStartTutorial}>
-            Show Me Around
-          </Button>
-          <Button appearance="secondary" onClick={handleSkipTutorial}>
-            Skip Tutorial
-          </Button>
-        </div>
-      </div>
+      <>
+        <Title2>Validation & Preflight Checks</Title2>
+
+        {state.status === 'validating' ? (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+              <Spinner size="small" />
+              <Text>Running preflight checks...</Text>
+            </div>
+          </Card>
+        ) : isReady && (state.status === 'valid' || state.status === 'ready') ? (
+          <>
+            <Card>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}
+              >
+                <Checkmark24Regular
+                  style={{ fontSize: '32px', color: tokens.colorPaletteGreenForeground1 }}
+                />
+                <div>
+                  <Title2>All Checks Passed!</Title2>
+                  <Text>Your system is ready to create videos.</Text>
+                </div>
+              </div>
+            </Card>
+
+            <FileLocationsSummary />
+          </>
+        ) : !isReady ? (
+          <>
+            <Card
+              style={{
+                padding: tokens.spacingVerticalL,
+                backgroundColor: tokens.colorPaletteYellowBackground1,
+              }}
+            >
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}
+              >
+                <Warning24Regular
+                  style={{ fontSize: '32px', color: tokens.colorPaletteYellowForeground1 }}
+                />
+                <div>
+                  <Title2>Not Ready</Title2>
+                  <Text>Some components need attention before you can generate videos.</Text>
+                </div>
+              </div>
+            </Card>
+
+            {/* Show specific CTAs */}
+            <Card style={{ padding: tokens.spacingVerticalL }}>
+              <Title2 style={{ marginBottom: tokens.spacingVerticalM }}>Required Actions:</Title2>
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}
+              >
+                {!ffmpegReady && (
+                  <div>
+                    <Text
+                      weight="semibold"
+                      style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+                    >
+                      ⚠ FFmpeg Not Ready
+                    </Text>
+                    <Text
+                      size={200}
+                      style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+                    >
+                      FFmpeg is required for video rendering. Install it from the Dependencies step.
+                    </Text>
+                    <Button
+                      appearance="primary"
+                      onClick={() => dispatch({ type: 'SET_STEP', payload: 3 })}
+                    >
+                      Go to Dependencies
+                    </Button>
+                  </div>
+                )}
+                {!hasTtsProvider && (
+                  <div>
+                    <Text
+                      weight="semibold"
+                      style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+                    >
+                      ℹ No TTS Provider
+                    </Text>
+                    <Text
+                      size={200}
+                      style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+                    >
+                      You can use Windows TTS (built-in) or configure other providers in Settings.
+                    </Text>
+                    <Button
+                      appearance="secondary"
+                      onClick={() => window.open('/settings?tab=providers', '_blank')}
+                    >
+                      Configure TTS
+                    </Button>
+                  </div>
+                )}
+                {!hasImageProvider && (
+                  <div>
+                    <Text
+                      weight="semibold"
+                      style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+                    >
+                      ℹ No Image Provider
+                    </Text>
+                    <Text
+                      size={200}
+                      style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+                    >
+                      You can use stock visuals (built-in) or configure image providers in Settings.
+                    </Text>
+                    <Button
+                      appearance="secondary"
+                      onClick={() => window.open('/settings?tab=providers', '_blank')}
+                    >
+                      Configure Images
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </>
+        ) : state.status === 'invalid' && state.lastValidation ? (
+          <>
+            <Card
+              style={{
+                padding: tokens.spacingVerticalL,
+                backgroundColor: tokens.colorPaletteRedBackground1,
+              }}
+            >
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}
+              >
+                <Warning24Regular
+                  style={{ fontSize: '32px', color: tokens.colorPaletteRedForeground1 }}
+                />
+                <div>
+                  <Title2>Validation Failed</Title2>
+                  <Text>
+                    Some providers are not available. Please fix the issues below or click Next to
+                    continue anyway.
+                  </Text>
+                </div>
+              </div>
+            </Card>
+
+            {state.lastValidation.failedStages.map((stage, index) => (
+              <Card key={index}>
+                <Title2>{stage.stage} Stage</Title2>
+                <Text>
+                  <strong>Provider:</strong> {stage.provider}
+                </Text>
+                <Text>
+                  <strong>Issue:</strong> {stage.message}
+                </Text>
+                {stage.hint && (
+                  <Text style={{ marginTop: tokens.spacingVerticalS, fontStyle: 'italic' }}>
+                    💡 {stage.hint}
+                  </Text>
+                )}
+
+                {stage.suggestions && stage.suggestions.length > 0 && (
+                  <div style={{ marginTop: tokens.spacingVerticalM }}>
+                    <Text weight="semibold">Suggestions:</Text>
+                    <ul style={{ marginTop: tokens.spacingVerticalXS }}>
+                      {stage.suggestions.map((suggestion, i) => (
+                        <li key={i}>
+                          <Text size={200}>{suggestion}</Text>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {stage.fixActions && stage.fixActions.length > 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: tokens.spacingVerticalM,
+                      marginTop: tokens.spacingVerticalL,
+                    }}
+                  >
+                    <Text weight="semibold">Quick Fixes:</Text>
+                    {stage.fixActions.map((action, i) => (
+                      <Button
+                        key={i}
+                        appearance="secondary"
+                        onClick={() => handleFixAction(action)}
+                        style={{ justifyContent: 'flex-start' }}
+                      >
+                        {action.label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            ))}
+          </>
+        ) : (
+          <Card>
+            <Text>
+              Click Validate to check your setup and ensure all providers are working correctly.
+            </Text>
+          </Card>
+        )}
+      </>
     );
   };
 
-  // Render step 9: Enhanced Completion
-  const renderStep9 = () => {
+  // Render step 8: Enhanced Completion with Quick Demo
+  const renderStep8 = () => {
     const validApiKeys = Object.entries(state.apiKeyValidationStatus)
       .filter(([_, status]) => status === 'valid')
       .map(([provider]) => provider);
@@ -1003,7 +1126,7 @@ export function FirstRunWizard() {
           hardwareDetected: !!state.hardware,
           componentsInstalled: installedComponents,
           workspaceConfigured: true,
-          tutorialCompleted: state.tutorialCompleted,
+          tutorialCompleted: false,
           templateSelected: templateName,
         }}
         onCreateFirstVideo={completeOnboarding}
@@ -1021,7 +1144,7 @@ export function FirstRunWizard() {
             api_keys_count: validApiKeys.length,
             components_installed: installedComponents.length,
             template_selected: !!state.selectedTemplate,
-            tutorial_completed: state.tutorialCompleted,
+            tutorial_completed: false,
           });
 
           navigate('/');
@@ -1052,8 +1175,6 @@ export function FirstRunWizard() {
         return renderStep7();
       case 8:
         return renderStep8();
-      case 9:
-        return renderStep9();
       default:
         return null;
     }
