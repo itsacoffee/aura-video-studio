@@ -14,17 +14,20 @@ import {
   ErrorCircle24Regular,
   Folder24Regular,
   Open24Regular,
+  Dismiss24Regular,
+  DocumentBulletList24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const useStyles = makeStyles({
   toastFooter: {
     display: 'flex',
     gap: tokens.spacingHorizontalS,
     marginTop: tokens.spacingVerticalS,
+    alignItems: 'center',
   },
   progressBar: {
-    height: '2px',
+    height: '3px',
     backgroundColor: tokens.colorNeutralBackground3,
     borderRadius: '1px',
     overflow: 'hidden',
@@ -34,6 +37,9 @@ const useStyles = makeStyles({
     height: '100%',
     backgroundColor: tokens.colorBrandBackground,
     transition: 'width 100ms linear',
+  },
+  closeButton: {
+    marginLeft: 'auto',
   },
 });
 
@@ -66,7 +72,8 @@ export interface FailureToastOptions {
 const TOASTER_ID = 'notifications-toaster';
 
 /**
- * Toast component with auto-dismiss progress bar
+ * Toast component with auto-dismiss progress bar and close button
+ * Supports ESC key to dismiss and mouse hover to pause auto-dismiss
  */
 function ToastWithProgress({
   children,
@@ -79,38 +86,77 @@ function ToastWithProgress({
 }) {
   const styles = useStyles();
   const [progress, setProgress] = useState(100);
+  const [isPaused, setIsPaused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const remainingTimeRef = useRef<number>(timeout);
 
   useEffect(() => {
     if (timeout <= 0) {
       return;
     }
 
-    const interval = 100; // Update every 100ms
-    const step = (interval / timeout) * 100;
-    let currentProgress = 100;
+    const startTimer = () => {
+      startTimeRef.current = Date.now();
+      const interval = 100;
+      const step = (interval / remainingTimeRef.current) * 100;
+      let currentProgress = progress;
 
-    const timer = setInterval(() => {
-      currentProgress -= step;
-      if (currentProgress <= 0) {
-        clearInterval(timer);
-        onDismiss?.();
-      } else {
-        setProgress(currentProgress);
+      timerRef.current = setInterval(() => {
+        if (!isPaused) {
+          currentProgress -= step;
+          if (currentProgress <= 0) {
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+            }
+            onDismiss?.();
+          } else {
+            setProgress(currentProgress);
+          }
+        }
+      }, interval);
+    };
+
+    startTimer();
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        const elapsed = Date.now() - startTimeRef.current;
+        remainingTimeRef.current = Math.max(0, remainingTimeRef.current - elapsed);
       }
-    }, interval);
+    };
+  }, [timeout, onDismiss, isPaused, progress]);
 
-    return () => clearInterval(timer);
-  }, [timeout, onDismiss]);
+  // ESC key handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onDismiss?.();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onDismiss]);
+
+  const handleMouseEnter = () => {
+    setIsPaused(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsPaused(false);
+  };
 
   return (
-    <>
+    <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       {children}
       {timeout > 0 && (
         <div className={styles.progressBar}>
           <div className={styles.progressFill} style={{ width: `${progress}%` }} />
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -119,14 +165,20 @@ function ToastWithProgress({
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function useNotifications() {
-  const { dispatchToast } = useToastController(TOASTER_ID);
+  const { dispatchToast, dismissToast } = useToastController(TOASTER_ID);
   const styles = useStyles();
 
   const showSuccessToast = (options: SuccessToastOptions) => {
     const { title, message, duration, onViewResults, onOpenFolder, timeout = 5000 } = options;
 
+    const toastId = `toast-success-${Date.now()}`;
+
+    const handleDismiss = () => {
+      dismissToast(toastId);
+    };
+
     dispatchToast(
-      <ToastWithProgress timeout={timeout} onDismiss={() => {}}>
+      <ToastWithProgress timeout={timeout} onDismiss={handleDismiss}>
         <Toast>
           <ToastTitle
             action={
@@ -147,34 +199,42 @@ export function useNotifications() {
               )}
             </div>
           </ToastBody>
-          {(onViewResults || onOpenFolder) && (
-            <ToastFooter className={styles.toastFooter}>
-              {onViewResults && (
-                <Button
-                  size="small"
-                  appearance="primary"
-                  icon={<Open24Regular />}
-                  onClick={onViewResults}
-                >
-                  View results
-                </Button>
-              )}
-              {onOpenFolder && (
-                <Button
-                  size="small"
-                  appearance="subtle"
-                  icon={<Folder24Regular />}
-                  onClick={onOpenFolder}
-                >
-                  Open folder
-                </Button>
-              )}
-            </ToastFooter>
-          )}
+          <ToastFooter className={styles.toastFooter}>
+            {onViewResults && (
+              <Button
+                size="small"
+                appearance="primary"
+                icon={<Open24Regular />}
+                onClick={onViewResults}
+              >
+                View results
+              </Button>
+            )}
+            {onOpenFolder && (
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<Folder24Regular />}
+                onClick={onOpenFolder}
+              >
+                Open folder
+              </Button>
+            )}
+            <Button
+              size="small"
+              appearance="transparent"
+              icon={<Dismiss24Regular />}
+              onClick={handleDismiss}
+              className={styles.closeButton}
+              aria-label="Dismiss notification"
+            />
+          </ToastFooter>
         </Toast>
       </ToastWithProgress>,
-      { intent: 'success' }
+      { intent: 'success', toastId }
     );
+
+    return toastId;
   };
 
   const showFailureToast = (options: FailureToastOptions) => {
@@ -189,8 +249,14 @@ export function useNotifications() {
       timeout = 5000,
     } = options;
 
+    const toastId = `toast-error-${Date.now()}`;
+
+    const handleDismiss = () => {
+      dismissToast(toastId);
+    };
+
     dispatchToast(
-      <ToastWithProgress timeout={timeout} onDismiss={() => {}}>
+      <ToastWithProgress timeout={timeout} onDismiss={handleDismiss}>
         <Toast>
           <ToastTitle
             action={<ErrorCircle24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />}
@@ -235,15 +301,30 @@ export function useNotifications() {
               </Button>
             )}
             {onOpenLogs && (
-              <Button size="small" appearance="subtle" onClick={onOpenLogs}>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={<DocumentBulletList24Regular />}
+                onClick={onOpenLogs}
+              >
                 View Logs
               </Button>
             )}
+            <Button
+              size="small"
+              appearance="transparent"
+              icon={<Dismiss24Regular />}
+              onClick={handleDismiss}
+              className={styles.closeButton}
+              aria-label="Dismiss notification"
+            />
           </ToastFooter>
         </Toast>
       </ToastWithProgress>,
-      { intent: 'error' }
+      { intent: 'error', toastId }
     );
+
+    return toastId;
   };
 
   return { showSuccessToast, showFailureToast };
