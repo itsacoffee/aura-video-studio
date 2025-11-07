@@ -2,54 +2,27 @@
  * Unit tests for Video API methods
  */
 
-import axios from 'axios';
-import MockAdapter from 'axios-mock-adapter';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as apiClient from '../apiClient';
 import * as videoApi from '../videoApi';
 import type { VideoGenerationRequest, VideoGenerationResponse, VideoStatus } from '../videoApi';
 
+// Mock apiClient methods
+vi.mock('../apiClient', async () => {
+  const actual = await vi.importActual('../apiClient');
+  return {
+    ...actual,
+    post: vi.fn(),
+    get: vi.fn(),
+    createAbortController: actual.createAbortController,
+    resetCircuitBreaker: vi.fn(),
+    clearDeduplicationCache: vi.fn(),
+  };
+});
+
 describe('videoApi', () => {
-  let mockAxios: MockAdapter;
-
   beforeEach(() => {
-    mockAxios = new MockAdapter(axios);
-
-    // Reset circuit breaker before each test
-    apiClient.resetCircuitBreaker();
-
-    // Mock localStorage for circuit breaker
-    const localStorageMock = {
-      getItem: vi.fn(),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-      clear: vi.fn(),
-      length: 0,
-      key: vi.fn(),
-    };
-    vi.stubGlobal('localStorage', localStorageMock);
-
-    // Mock sessionStorage for correlation IDs
-    const sessionStorageMock = {
-      getItem: vi.fn(),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-      clear: vi.fn(),
-      length: 0,
-      key: vi.fn(),
-    };
-    vi.stubGlobal('sessionStorage', sessionStorageMock);
-
-    // Mock crypto.randomUUID
-    vi.stubGlobal('crypto', {
-      randomUUID: () => 'test-correlation-id',
-    });
-  });
-
-  afterEach(() => {
-    mockAxios.reset();
-    apiClient.resetCircuitBreaker();
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   describe('generateVideo', () => {
@@ -94,12 +67,16 @@ describe('videoApi', () => {
         correlationId: 'test-correlation-id',
       };
 
-      mockAxios.onPost('/api/jobs').reply(200, response);
+      vi.mocked(apiClient.post).mockResolvedValue(response);
 
-      const result = await videoApi.generateVideo(request);
+      const result = await videoApi.generateVideo(request, {
+        _skipRetry: true,
+        _skipDeduplication: true,
+      });
 
       expect(result).toEqual(response);
       expect(result.jobId).toBe('job-123');
+      expect(apiClient.post).toHaveBeenCalledWith('/api/jobs', request, expect.anything());
     });
 
     it('should handle validation errors', async () => {
@@ -136,13 +113,11 @@ describe('videoApi', () => {
         },
       };
 
-      mockAxios.onPost('/api/jobs').reply(400, {
-        title: 'Invalid Request',
-        detail: 'Topic is required',
-        status: 400,
-      });
+      vi.mocked(apiClient.post).mockRejectedValue(new Error('Invalid Request'));
 
-      await expect(videoApi.generateVideo(request)).rejects.toThrow();
+      await expect(
+        videoApi.generateVideo(request, { _skipRetry: true, _skipDeduplication: true })
+      ).rejects.toThrow();
     });
   });
 
@@ -158,41 +133,47 @@ describe('videoApi', () => {
         startedAt: '2024-01-01T00:00:00Z',
       };
 
-      mockAxios.onGet('/api/jobs/job-123').reply(200, status);
+      vi.mocked(apiClient.get).mockResolvedValue(status);
 
-      const result = await videoApi.getVideoStatus('job-123');
+      const result = await videoApi.getVideoStatus('job-123', { _skipRetry: true });
 
       expect(result).toEqual(status);
       expect(result.status).toBe('Running');
       expect(result.percent).toBe(25);
+      expect(apiClient.get).toHaveBeenCalledWith('/api/jobs/job-123', expect.anything());
     });
 
     it('should handle 404 for non-existent job', async () => {
-      mockAxios.onGet('/api/jobs/non-existent').reply(404, {
-        title: 'Not Found',
-        detail: 'Job not found',
-        status: 404,
-      });
+      vi.mocked(apiClient.get).mockRejectedValue(new Error('Not Found'));
 
-      await expect(videoApi.getVideoStatus('non-existent')).rejects.toThrow();
+      await expect(videoApi.getVideoStatus('non-existent', { _skipRetry: true })).rejects.toThrow();
     });
   });
 
   describe('cancelVideoGeneration', () => {
     it('should successfully cancel a job', async () => {
-      mockAxios.onPost('/api/jobs/job-123/cancel').reply(200);
+      vi.mocked(apiClient.post).mockResolvedValue(undefined);
 
-      await expect(videoApi.cancelVideoGeneration('job-123')).resolves.not.toThrow();
+      await expect(
+        videoApi.cancelVideoGeneration('job-123', {
+          _skipRetry: true,
+          _skipDeduplication: true,
+        })
+      ).resolves.not.toThrow();
+
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/api/jobs/job-123/cancel',
+        undefined,
+        expect.anything()
+      );
     });
 
     it('should handle errors when cancelling', async () => {
-      mockAxios.onPost('/api/jobs/job-123/cancel').reply(500, {
-        title: 'Internal Server Error',
-        detail: 'Failed to cancel job',
-        status: 500,
-      });
+      vi.mocked(apiClient.post).mockRejectedValue(new Error('Internal Server Error'));
 
-      await expect(videoApi.cancelVideoGeneration('job-123')).rejects.toThrow();
+      await expect(
+        videoApi.cancelVideoGeneration('job-123', { _skipRetry: true, _skipDeduplication: true })
+      ).rejects.toThrow();
     });
   });
 
@@ -220,13 +201,14 @@ describe('videoApi', () => {
         },
       ];
 
-      mockAxios.onGet('/api/jobs').reply(200, { jobs });
+      vi.mocked(apiClient.get).mockResolvedValue({ jobs });
 
-      const result = await videoApi.listJobs();
+      const result = await videoApi.listJobs({ _skipRetry: true });
 
       expect(result.jobs).toHaveLength(2);
       expect(result.jobs[0].id).toBe('job-1');
       expect(result.jobs[1].id).toBe('job-2');
+      expect(apiClient.get).toHaveBeenCalledWith('/api/jobs', expect.anything());
     });
   });
 
