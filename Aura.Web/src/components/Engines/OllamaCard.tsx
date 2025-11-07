@@ -72,6 +72,16 @@ const useStyles = makeStyles({
   statusMessageNeutral: {
     backgroundColor: tokens.colorNeutralBackground2,
   },
+  successText: {
+    color: tokens.colorPaletteGreenForeground1,
+  },
+  monospaceText: {
+    fontFamily: 'monospace',
+  },
+  neutralText: {
+    color: tokens.colorNeutralForeground3,
+    marginBottom: tokens.spacingVerticalS,
+  },
 });
 
 /**
@@ -184,23 +194,16 @@ export function OllamaCard() {
 
         {isDetected === true && (
           <div className={`${styles.statusMessage} ${styles.statusMessageSuccess}`}>
-            <Text size={200} style={{ color: tokens.colorPaletteGreenForeground1 }}>
+            <Text size={200} className={styles.successText}>
               ✓ Ollama is running and available at{' '}
-              <strong style={{ fontFamily: 'monospace' }}>http://localhost:11434</strong>
+              <strong className={styles.monospaceText}>http://localhost:11434</strong>
             </Text>
           </div>
         )}
 
         {isDetected === false && (
           <div className={`${styles.statusMessage} ${styles.statusMessageNeutral}`}>
-            <Text
-              size={200}
-              style={{
-                color: tokens.colorNeutralForeground3,
-                marginBottom: tokens.spacingVerticalS,
-              }}
-              block
-            >
+            <Text size={200} className={styles.neutralText} block>
               Ollama is not currently running. It&apos;s optional and can be configured later in
               Settings if you want to use local AI models.
             </Text>
