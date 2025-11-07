@@ -55,6 +55,23 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
     borderLeft: `3px solid ${tokens.colorBrandForeground1}`,
   },
+  actionArea: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    alignItems: 'center',
+    marginTop: tokens.spacingVerticalS,
+  },
+  statusMessage: {
+    padding: tokens.spacingVerticalS,
+    borderRadius: tokens.borderRadiusMedium,
+    marginTop: tokens.spacingVerticalS,
+  },
+  statusMessageSuccess: {
+    backgroundColor: tokens.colorPaletteGreenBackground1,
+  },
+  statusMessageNeutral: {
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
 });
 
 /**
@@ -152,14 +169,7 @@ export function OllamaCard() {
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: tokens.spacingHorizontalS,
-            alignItems: 'center',
-            marginTop: tokens.spacingVerticalS,
-          }}
-        >
+        <div className={styles.actionArea}>
           <Button
             appearance="primary"
             size="medium"
@@ -173,14 +183,7 @@ export function OllamaCard() {
         </div>
 
         {isDetected === true && (
-          <div
-            style={{
-              padding: tokens.spacingVerticalS,
-              backgroundColor: tokens.colorPaletteGreenBackground1,
-              borderRadius: tokens.borderRadiusMedium,
-              marginTop: tokens.spacingVerticalS,
-            }}
-          >
+          <div className={`${styles.statusMessage} ${styles.statusMessageSuccess}`}>
             <Text size={200} style={{ color: tokens.colorPaletteGreenForeground1 }}>
               ✓ Ollama is running and available at{' '}
               <strong style={{ fontFamily: 'monospace' }}>http://localhost:11434</strong>
@@ -189,14 +192,7 @@ export function OllamaCard() {
         )}
 
         {isDetected === false && (
-          <div
-            style={{
-              padding: tokens.spacingVerticalS,
-              backgroundColor: tokens.colorNeutralBackground2,
-              borderRadius: tokens.borderRadiusMedium,
-              marginTop: tokens.spacingVerticalS,
-            }}
-          >
+          <div className={`${styles.statusMessage} ${styles.statusMessageNeutral}`}>
             <Text
               size={200}
               style={{
