@@ -294,4 +294,36 @@ public class MetricsController : ControllerBase
             return StatusCode(500, new { error = "Failed to retrieve resource utilization" });
         }
     }
+
+    /// <summary>
+    /// Get cache performance metrics
+    /// </summary>
+    [HttpGet("cache")]
+    public ActionResult GetCacheMetrics([FromServices] Aura.Core.Services.Caching.IDistributedCacheService? cacheService = null)
+    {
+        try
+        {
+            if (cacheService == null)
+            {
+                return Ok(new { message = "Caching is not enabled or not configured", enabled = false });
+            }
+
+            var stats = cacheService.GetStatistics();
+            return Ok(new
+            {
+                enabled = true,
+                hits = stats.Hits,
+                misses = stats.Misses,
+                errors = stats.Errors,
+                hitRate = stats.HitRate,
+                backendType = stats.BackendType,
+                timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving cache metrics");
+            return StatusCode(500, new { error = "Failed to retrieve cache metrics" });
+        }
+    }
 }
