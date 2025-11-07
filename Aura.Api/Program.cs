@@ -153,7 +153,8 @@ builder.Services.AddSwaggerGen(options =>
 // Add health checks
 builder.Services.AddHealthChecks()
     .AddCheck<Aura.Api.HealthChecks.DependencyHealthCheck>("Dependencies")
-    .AddCheck<Aura.Api.HealthChecks.DiskSpaceHealthCheck>("DiskSpace");
+    .AddCheck<Aura.Api.HealthChecks.DiskSpaceHealthCheck>("DiskSpace")
+    .AddCheck<Aura.Api.HealthChecks.ProviderHealthCheck>("Providers");
 
 // Configure database with WAL mode for better concurrency
 const string MigrationsAssembly = "Aura.Api";

@@ -1,0 +1,196 @@
+using System;
+using System.Collections.Generic;
+
+namespace Aura.Core.Errors;
+
+/// <summary>
+/// Exception thrown when a video generation pipeline encounters an error
+/// </summary>
+public class PipelineException : AuraException
+{
+    /// <summary>
+    /// The stage of the pipeline where the error occurred
+    /// </summary>
+    public string PipelineStage { get; }
+
+    /// <summary>
+    /// Number of tasks completed before failure
+    /// </summary>
+    public int CompletedTasks { get; }
+
+    /// <summary>
+    /// Total number of tasks in the pipeline
+    /// </summary>
+    public int TotalTasks { get; }
+
+    public PipelineException(
+        string pipelineStage,
+        string message,
+        int completedTasks = 0,
+        int totalTasks = 0,
+        string? userMessage = null,
+        string? correlationId = null,
+        bool isTransient = false,
+        string[]? suggestedActions = null,
+        Exception? innerException = null)
+        : base(
+            message,
+            GenerateErrorCode(pipelineStage),
+            userMessage ?? GenerateUserMessage(pipelineStage, message, completedTasks, totalTasks),
+            correlationId,
+            suggestedActions ?? GenerateDefaultSuggestedActions(pipelineStage, isTransient),
+            isTransient,
+            innerException)
+    {
+        PipelineStage = pipelineStage;
+        CompletedTasks = completedTasks;
+        TotalTasks = totalTasks;
+
+        WithContext("pipelineStage", pipelineStage);
+        WithContext("completedTasks", completedTasks);
+        WithContext("totalTasks", totalTasks);
+    }
+
+    private static string GenerateErrorCode(string pipelineStage)
+    {
+        return pipelineStage.ToUpperInvariant() switch
+        {
+            "SCRIPT" => "E101",
+            "TTS" => "E201",
+            "VISUAL" => "E401",
+            "COMPOSITION" => "E501",
+            "RENDER" => "E502",
+            _ => "E600"
+        };
+    }
+
+    private static string GenerateUserMessage(string pipelineStage, string message, int completedTasks, int totalTasks)
+    {
+        if (totalTasks > 0)
+        {
+            return $"Video generation failed at {pipelineStage} stage ({completedTasks}/{totalTasks} tasks completed): {message}";
+        }
+        return $"Video generation failed at {pipelineStage} stage: {message}";
+    }
+
+    private static string[] GenerateDefaultSuggestedActions(string pipelineStage, bool isTransient)
+    {
+        if (isTransient)
+        {
+            return new[]
+            {
+                "Retry the video generation",
+                "Check your internet connection if using cloud providers",
+                "Verify all required providers are configured",
+                "Try with simpler settings or shorter duration"
+            };
+        }
+
+        return pipelineStage.ToUpperInvariant() switch
+        {
+            "SCRIPT" => new[]
+            {
+                "Check LLM provider configuration and API keys",
+                "Try a different LLM provider",
+                "Simplify your creative brief",
+                "Check provider service status"
+            },
+            "TTS" => new[]
+            {
+                "Check TTS provider configuration and API keys",
+                "Try a different TTS provider or voice",
+                "Verify audio output directory has write permissions",
+                "Check TTS provider service status"
+            },
+            "VISUAL" => new[]
+            {
+                "Check image provider configuration",
+                "Try a different image provider",
+                "Verify sufficient disk space for images",
+                "Check image provider service status"
+            },
+            "RENDER" or "COMPOSITION" => new[]
+            {
+                "Verify FFmpeg is installed and accessible",
+                "Check output directory has write permissions",
+                "Verify sufficient disk space (at least 1GB free)",
+                "Try with lower resolution or quality settings"
+            },
+            _ => new[]
+            {
+                "Check system logs for more details",
+                "Verify all required dependencies are installed",
+                "Try with different settings",
+                "Contact support if the issue persists"
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates a PipelineException for script generation failure
+    /// </summary>
+    public static PipelineException ScriptGenerationFailed(string message, string? correlationId = null, Exception? innerException = null)
+    {
+        return new PipelineException(
+            "Script",
+            message,
+            userMessage: $"Failed to generate video script: {message}",
+            correlationId: correlationId,
+            isTransient: false,
+            innerException: innerException);
+    }
+
+    /// <summary>
+    /// Creates a PipelineException for TTS synthesis failure
+    /// </summary>
+    public static PipelineException TtsFailed(string message, string? correlationId = null, Exception? innerException = null)
+    {
+        return new PipelineException(
+            "TTS",
+            message,
+            userMessage: $"Failed to generate audio narration: {message}",
+            correlationId: correlationId,
+            isTransient: false,
+            innerException: innerException);
+    }
+
+    /// <summary>
+    /// Creates a PipelineException for visual generation failure
+    /// </summary>
+    public static PipelineException VisualGenerationFailed(string message, string? correlationId = null, Exception? innerException = null)
+    {
+        return new PipelineException(
+            "Visual",
+            message,
+            userMessage: $"Failed to generate or fetch visuals: {message}",
+            correlationId: correlationId,
+            isTransient: false,
+            innerException: innerException);
+    }
+
+    /// <summary>
+    /// Creates a PipelineException for render failure
+    /// </summary>
+    public static PipelineException RenderFailed(string message, string? correlationId = null, Exception? innerException = null)
+    {
+        return new PipelineException(
+            "Render",
+            message,
+            userMessage: $"Failed to render final video: {message}",
+            correlationId: correlationId,
+            isTransient: false,
+            innerException: innerException);
+    }
+
+    public override Dictionary<string, object> ToErrorResponse()
+    {
+        var response = base.ToErrorResponse();
+        response["pipeline"] = new
+        {
+            stage = PipelineStage,
+            completedTasks = CompletedTasks,
+            totalTasks = TotalTasks
+        };
+        return response;
+    }
+}
