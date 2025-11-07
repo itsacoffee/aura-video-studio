@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Aura.Core.Errors;
 
@@ -11,7 +12,7 @@ public class PipelineException : AuraException
     /// <summary>
     /// The stage of the pipeline where the error occurred
     /// </summary>
-    public string PipelineStage { get; }
+    public string Stage { get; }
 
     /// <summary>
     /// Number of tasks completed before failure
@@ -23,8 +24,18 @@ public class PipelineException : AuraException
     /// </summary>
     public int TotalTasks { get; }
 
+    /// <summary>
+    /// Provider failures that led to this pipeline exception
+    /// </summary>
+    public List<ProviderException> ProviderFailures { get; }
+
+    /// <summary>
+    /// Time elapsed before failure occurred
+    /// </summary>
+    public TimeSpan ElapsedBeforeFailure { get; }
+
     public PipelineException(
-        string pipelineStage,
+        string stage,
         string message,
         int completedTasks = 0,
         int totalTasks = 0,
@@ -32,23 +43,29 @@ public class PipelineException : AuraException
         string? correlationId = null,
         bool isTransient = false,
         string[]? suggestedActions = null,
+        List<ProviderException>? providerFailures = null,
+        TimeSpan? elapsedBeforeFailure = null,
         Exception? innerException = null)
         : base(
             message,
-            GenerateErrorCode(pipelineStage),
-            userMessage ?? GenerateUserMessage(pipelineStage, message, completedTasks, totalTasks),
+            GenerateErrorCode(stage),
+            userMessage ?? GenerateUserMessage(stage, message, completedTasks, totalTasks),
             correlationId,
-            suggestedActions ?? GenerateDefaultSuggestedActions(pipelineStage, isTransient),
+            suggestedActions ?? GenerateDefaultSuggestedActions(stage, isTransient),
             isTransient,
             innerException)
     {
-        PipelineStage = pipelineStage;
+        Stage = stage;
         CompletedTasks = completedTasks;
         TotalTasks = totalTasks;
+        ProviderFailures = providerFailures ?? new List<ProviderException>();
+        ElapsedBeforeFailure = elapsedBeforeFailure ?? TimeSpan.Zero;
 
-        WithContext("pipelineStage", pipelineStage);
+        WithContext("stage", stage);
         WithContext("completedTasks", completedTasks);
         WithContext("totalTasks", totalTasks);
+        WithContext("providerFailureCount", ProviderFailures.Count);
+        WithContext("elapsedSeconds", ElapsedBeforeFailure.TotalSeconds);
     }
 
     private static string GenerateErrorCode(string pipelineStage)
@@ -187,9 +204,17 @@ public class PipelineException : AuraException
         var response = base.ToErrorResponse();
         response["pipeline"] = new
         {
-            stage = PipelineStage,
+            stage = Stage,
             completedTasks = CompletedTasks,
-            totalTasks = TotalTasks
+            totalTasks = TotalTasks,
+            providerFailures = ProviderFailures.Select(pf => new
+            {
+                providerName = pf.ProviderName,
+                providerType = pf.Type.ToString(),
+                errorCode = pf.SpecificErrorCode,
+                message = pf.UserMessage
+            }).ToList(),
+            elapsedSeconds = ElapsedBeforeFailure.TotalSeconds
         };
         return response;
     }

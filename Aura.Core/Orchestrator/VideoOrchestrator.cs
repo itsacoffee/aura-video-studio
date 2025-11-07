@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Aura.Core.Errors;
 using Aura.Core.Models;
 using Aura.Core.Models.Audio;
 using Aura.Core.Models.Generation;
@@ -132,6 +133,9 @@ public class VideoOrchestrator
         ArgumentNullException.ThrowIfNull(renderSpec);
         ArgumentNullException.ThrowIfNull(systemProfile);
         
+        var startTime = DateTime.UtcNow;
+        var providerFailures = new List<ProviderException>();
+        
         try
         {
             // Pre-generation validation
@@ -164,10 +168,24 @@ public class VideoOrchestrator
 
             if (!result.Succeeded)
             {
+                var elapsedTime = DateTime.UtcNow - startTime;
                 var reasons = string.Join("; ", result.FailureReasons);
-                throw new InvalidOperationException(
-                    $"Generation failed: {result.FailedTasks}/{result.TotalTasks} tasks failed. Reasons: {reasons}"
-                );
+                
+                _logger.LogError(
+                    "Pipeline failed after {ElapsedSeconds}s: {FailedTasks}/{TotalTasks} tasks failed. Reasons: {Reasons}",
+                    elapsedTime.TotalSeconds,
+                    result.FailedTasks,
+                    result.TotalTasks,
+                    reasons);
+                
+                throw new PipelineException(
+                    "Generation",
+                    $"Generation failed: {result.FailedTasks}/{result.TotalTasks} tasks failed. Reasons: {reasons}",
+                    completedTasks: result.TotalTasks - result.FailedTasks,
+                    totalTasks: result.TotalTasks,
+                    correlationId: correlationId,
+                    providerFailures: providerFailures,
+                    elapsedBeforeFailure: elapsedTime);
             }
 
             // Extract final video path from composition task result
@@ -189,10 +207,44 @@ public class VideoOrchestrator
             // Re-throw validation exceptions without wrapping
             throw;
         }
+        catch (ProviderException providerEx)
+        {
+            // Track provider failures and re-throw as pipeline exception
+            providerFailures.Add(providerEx);
+            var elapsedTime = DateTime.UtcNow - startTime;
+            
+            _logger.LogError(
+                providerEx,
+                "Provider {ProviderName} ({ProviderType}) failed with error code {ErrorCode}",
+                providerEx.ProviderName,
+                providerEx.Type,
+                providerEx.SpecificErrorCode);
+            
+            throw new PipelineException(
+                "Provider",
+                $"Provider {providerEx.ProviderName} failed: {providerEx.Message}",
+                correlationId: correlationId,
+                providerFailures: providerFailures,
+                elapsedBeforeFailure: elapsedTime,
+                innerException: providerEx);
+        }
+        catch (PipelineException)
+        {
+            // Re-throw pipeline exceptions without wrapping
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during smart video generation");
-            throw;
+            var elapsedTime = DateTime.UtcNow - startTime;
+            _logger.LogError(ex, "Error during smart video generation after {ElapsedSeconds}s", elapsedTime.TotalSeconds);
+            
+            throw new PipelineException(
+                "Unknown",
+                $"Unexpected error during video generation: {ex.Message}",
+                correlationId: correlationId,
+                providerFailures: providerFailures,
+                elapsedBeforeFailure: elapsedTime,
+                innerException: ex);
         }
         finally
         {
