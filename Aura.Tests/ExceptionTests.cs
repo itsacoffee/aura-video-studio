@@ -22,7 +22,7 @@ public class ExceptionTests
             correlationId: "test-123");
 
         // Assert
-        Assert.Equal("Script", exception.PipelineStage);
+        Assert.Equal("Script", exception.Stage);
         Assert.Equal("Failed to generate script", exception.Message);
         Assert.Equal(0, exception.CompletedTasks);
         Assert.Equal(5, exception.TotalTasks);
@@ -40,7 +40,7 @@ public class ExceptionTests
             correlationId: "corr-456");
 
         // Assert
-        Assert.Equal("Script", exception.PipelineStage);
+        Assert.Equal("Script", exception.Stage);
         Assert.Contains("LLM provider timeout", exception.Message);
         Assert.Equal("corr-456", exception.CorrelationId);
         Assert.Contains("script", exception.UserMessage.ToLower());
@@ -55,7 +55,7 @@ public class ExceptionTests
             correlationId: "corr-789");
 
         // Assert
-        Assert.Equal("TTS", exception.PipelineStage);
+        Assert.Equal(ProviderType.TTS, exception.Stage);
         Assert.Contains("Voice synthesis failed", exception.Message);
         Assert.Contains("audio narration", exception.UserMessage.ToLower());
     }
@@ -69,7 +69,7 @@ public class ExceptionTests
             correlationId: "corr-101");
 
         // Assert
-        Assert.Equal("Visual", exception.PipelineStage);
+        Assert.Equal(ProviderType.Visual, exception.Stage);
         Assert.Contains("Image API unavailable", exception.Message);
         Assert.Contains("visuals", exception.UserMessage.ToLower());
     }
@@ -83,7 +83,7 @@ public class ExceptionTests
             correlationId: "corr-202");
 
         // Assert
-        Assert.Equal("Render", exception.PipelineStage);
+        Assert.Equal("Render", exception.Stage);
         Assert.Contains("FFmpeg crashed", exception.Message);
         Assert.Contains("render", exception.UserMessage.ToLower());
     }
@@ -93,7 +93,7 @@ public class ExceptionTests
     {
         // Arrange
         var exception = new PipelineException(
-            "TTS",
+            ProviderType.TTS,
             "Audio generation failed",
             completedTasks: 2,
             totalTasks: 4);
@@ -235,7 +235,7 @@ public class ExceptionTests
         // Arrange & Act
         var exception = ProviderException.MissingApiKey(
             "OpenAI",
-            "LLM",
+            ProviderType.LLM,
             "OPENAI_API_KEY");
 
         // Assert
@@ -249,7 +249,7 @@ public class ExceptionTests
         // Arrange & Act
         var exception = ProviderException.RateLimited(
             "OpenAI",
-            "LLM",
+            ProviderType.LLM,
             retryAfterSeconds: 60);
 
         // Assert
@@ -264,7 +264,7 @@ public class ExceptionTests
         // Arrange & Act
         var exception = ProviderException.NetworkError(
             "OpenAI",
-            "LLM");
+            ProviderType.LLM);
 
         // Assert
         Assert.True(exception.IsTransient);
@@ -277,7 +277,7 @@ public class ExceptionTests
         // Arrange & Act
         var exception = ProviderException.Timeout(
             "OpenAI",
-            "LLM",
+            ProviderType.LLM,
             timeoutSeconds: 120);
 
         // Assert
