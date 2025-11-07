@@ -1607,6 +1607,43 @@ export interface GenerateSubtitlesRequest {
 }
 
 // ============================================================================
+// PROVIDER VALIDATION
+// ============================================================================
+
+/**
+ * Request to validate OpenAI API key
+ */
+export interface ValidateOpenAIKeyRequest {
+  apiKey: string;
+  baseUrl?: string;
+  organizationId?: string;
+  projectId?: string;
+}
+
+/**
+ * Response from provider validation with detailed status
+ */
+export interface ProviderValidationResponse {
+  isValid: boolean;
+  status: string;
+  message?: string;
+  correlationId?: string;
+  details?: ValidationDetails;
+}
+
+/**
+ * Detailed validation information
+ */
+export interface ValidationDetails {
+  provider: string;
+  keyFormat: string;
+  formatValid: boolean;
+  networkCheckPassed?: boolean;
+  httpStatusCode?: number;
+  errorType?: string;
+  responseTimeMs?: number;
+}
+
 // VERSION INFO
 // ============================================================================
 

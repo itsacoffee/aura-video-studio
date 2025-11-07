@@ -41,9 +41,15 @@ public class OpenAIKeyValidationService
         // OpenAI keys can start with:
         // - "sk-" for regular keys
         // - "sk-proj-" for project-scoped keys
-        if (!(apiKey.StartsWith("sk-", StringComparison.Ordinal) && apiKey.Length >= 20))
+        // - "sk-live-" for live environment keys
+        // Must be at least 20 characters long
+        var hasValidPrefix = apiKey.StartsWith("sk-", StringComparison.Ordinal) ||
+                            apiKey.StartsWith("sk-proj-", StringComparison.Ordinal) ||
+                            apiKey.StartsWith("sk-live-", StringComparison.Ordinal);
+        
+        if (!hasValidPrefix || apiKey.Length < 20)
         {
-            return (false, "Invalid OpenAI API key format. Must start with 'sk-' or 'sk-proj-' and be at least 20 characters.");
+            return (false, "Invalid OpenAI API key format. Must start with 'sk-', 'sk-proj-', or 'sk-live-' and be at least 20 characters.");
         }
 
         return (true, "Format looks correct; verifying with OpenAI…");
@@ -214,33 +220,97 @@ public class OpenAIKeyValidationService
             }
 
             // Handle specific error codes
-            if (response.StatusCode == HttpStatusCode.Unauthorized || 
-                response.StatusCode == HttpStatusCode.Forbidden)
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                var message = response.StatusCode == HttpStatusCode.Unauthorized
-                    ? "Invalid API key or authentication failed."
-                    : "API key is valid but lacks required permissions or project scope.";
-
-                if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    message = errorMessage;
-                }
+                var message = !string.IsNullOrEmpty(errorMessage)
+                    ? errorMessage
+                    : "Invalid API key. Please check the value and try again.";
 
                 _logger.LogWarning(
-                    "OpenAI API key validation failed: {StatusCode}, Key: {MaskedKey}, Error: {ErrorMessage}",
-                    response.StatusCode,
+                    "OpenAI API key validation failed: Unauthorized, Key: {MaskedKey}, Error: {ErrorMessage}",
                     maskedKey,
                     errorMessage);
 
                 return new OpenAIValidationResult
                 {
                     IsValid = false,
-                    Status = response.StatusCode == HttpStatusCode.Unauthorized ? "Unauthorized" : "Forbidden",
+                    Status = "Invalid",
                     Message = message,
                     FormatValid = true,
                     NetworkCheckPassed = true,
                     HttpStatusCode = statusCode,
-                    ErrorType = response.StatusCode.ToString(),
+                    ErrorType = "Unauthorized",
+                    ResponseTimeMs = (long)elapsed2
+                };
+            }
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                var message = !string.IsNullOrEmpty(errorMessage)
+                    ? errorMessage
+                    : "Access denied. Check organization/project permissions or billing.";
+
+                _logger.LogWarning(
+                    "OpenAI API key validation failed: Forbidden, Key: {MaskedKey}, Error: {ErrorMessage}",
+                    maskedKey,
+                    errorMessage);
+
+                return new OpenAIValidationResult
+                {
+                    IsValid = false,
+                    Status = "PermissionDenied",
+                    Message = message,
+                    FormatValid = true,
+                    NetworkCheckPassed = true,
+                    HttpStatusCode = statusCode,
+                    ErrorType = "Forbidden",
+                    ResponseTimeMs = (long)elapsed2
+                };
+            }
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                var message = !string.IsNullOrEmpty(errorMessage)
+                    ? errorMessage
+                    : "Rate limited. Your key is valid, but you've hit a limit. Try again later.";
+
+                _logger.LogInformation(
+                    "OpenAI API key validation rate limited (key valid): Key: {MaskedKey}",
+                    maskedKey);
+
+                return new OpenAIValidationResult
+                {
+                    IsValid = true,
+                    Status = "RateLimited",
+                    Message = message,
+                    FormatValid = true,
+                    NetworkCheckPassed = true,
+                    HttpStatusCode = statusCode,
+                    ErrorType = "RateLimited",
+                    ResponseTimeMs = (long)elapsed2
+                };
+            }
+
+            if ((int)response.StatusCode >= 500)
+            {
+                var message = !string.IsNullOrEmpty(errorMessage)
+                    ? $"OpenAI service issue: {errorMessage}"
+                    : "OpenAI service issue. Your key may be valid; please retry shortly.";
+
+                _logger.LogWarning(
+                    "OpenAI service error during validation: {StatusCode}, Key: {MaskedKey}",
+                    response.StatusCode,
+                    maskedKey);
+
+                return new OpenAIValidationResult
+                {
+                    IsValid = false,
+                    Status = "ServiceIssue",
+                    Message = message,
+                    FormatValid = true,
+                    NetworkCheckPassed = true,
+                    HttpStatusCode = statusCode,
+                    ErrorType = "ServiceError",
                     ResponseTimeMs = (long)elapsed2
                 };
             }
