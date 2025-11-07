@@ -74,7 +74,6 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
       };
 
     case 'Invalid':
-    case 'Unauthorized':
       return {
         isValid: false,
         status: 'Invalid',
@@ -83,7 +82,6 @@ function mapValidationResponse(response: ProviderValidationResponse): OpenAIVali
       };
 
     case 'PermissionDenied':
-    case 'Forbidden':
       return {
         isValid: false,
         status: 'PermissionDenied',

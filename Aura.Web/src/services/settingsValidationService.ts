@@ -78,17 +78,18 @@ async function checkFFmpegStatus(): Promise<{ available: boolean; path?: string 
 
 /**
  * Get the platform-specific default save location
+ * Note: Browser cannot access actual home directory for security reasons,
+ * so we return placeholder paths that the backend will resolve properly
  */
 function getPlatformDefaultSaveLocation(): string {
   const platform = navigator.platform.toLowerCase();
-  const userHome = '';
 
   if (platform.includes('win')) {
-    return `${userHome || 'C:\\Users\\'}\\Videos\\Aura`;
+    return '%USERPROFILE%\\Videos\\Aura';
   } else if (platform.includes('mac')) {
-    return `${userHome || '~/'}Movies/Aura`;
+    return '~/Movies/Aura';
   } else {
-    return `${userHome || '~/'}Videos/Aura`;
+    return '~/Videos/Aura';
   }
 }
 
