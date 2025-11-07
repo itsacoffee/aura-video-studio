@@ -53,13 +53,13 @@ public class PipelineException : AuraException
 
     private static string GenerateErrorCode(string pipelineStage)
     {
-        return pipelineStage.ToUpperInvariant() switch
+        return pipelineStage switch
         {
-            "SCRIPT" => "E101",
-            "TTS" => "E201",
-            "VISUAL" => "E401",
-            "COMPOSITION" => "E501",
-            "RENDER" => "E502",
+            "Script" or "script" or "SCRIPT" => "E101",
+            "TTS" or "tts" or "Tts" => "E201",
+            "Visual" or "visual" or "VISUAL" => "E401",
+            "Composition" or "composition" or "COMPOSITION" => "E501",
+            "Render" or "render" or "RENDER" => "E502",
             _ => "E600"
         };
     }
@@ -86,30 +86,30 @@ public class PipelineException : AuraException
             };
         }
 
-        return pipelineStage.ToUpperInvariant() switch
+        return pipelineStage switch
         {
-            "SCRIPT" => new[]
+            "Script" or "script" or "SCRIPT" => new[]
             {
                 "Check LLM provider configuration and API keys",
                 "Try a different LLM provider",
                 "Simplify your creative brief",
                 "Check provider service status"
             },
-            "TTS" => new[]
+            "TTS" or "tts" or "Tts" => new[]
             {
                 "Check TTS provider configuration and API keys",
                 "Try a different TTS provider or voice",
                 "Verify audio output directory has write permissions",
                 "Check TTS provider service status"
             },
-            "VISUAL" => new[]
+            "Visual" or "visual" or "VISUAL" => new[]
             {
                 "Check image provider configuration",
                 "Try a different image provider",
                 "Verify sufficient disk space for images",
                 "Check image provider service status"
             },
-            "RENDER" or "COMPOSITION" => new[]
+            "Render" or "render" or "RENDER" or "Composition" or "composition" or "COMPOSITION" => new[]
             {
                 "Verify FFmpeg is installed and accessible",
                 "Check output directory has write permissions",

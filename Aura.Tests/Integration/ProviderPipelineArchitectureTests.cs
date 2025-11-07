@@ -77,7 +77,7 @@ public class ProviderPipelineArchitectureTests
     {
         // Arrange - Create a failing LLM provider
         var failingLlm = new FailingMockLlmProvider();
-        var brief = new Brief("Test", null, null, "Professional", "English", Aspect.Widescreen16x9);
+        var brief = new Brief("Test", "General", "Inform", "Professional", "English", Aspect.Widescreen16x9);
         var planSpec = new PlanSpec(TimeSpan.FromSeconds(30), Pacing.Conversational, Density.Balanced, "Modern");
 
         // Act & Assert - Verify proper exception is thrown
@@ -99,7 +99,7 @@ public class ProviderPipelineArchitectureTests
 
         // Act - Simulate provider selection (first available)
         var selectedProvider = providers.First();
-        var brief = new Brief("Test", null, null, "Professional", "English", Aspect.Widescreen16x9);
+        var brief = new Brief("Test", "General", "Inform", "Professional", "English", Aspect.Widescreen16x9);
         var planSpec = new PlanSpec(TimeSpan.FromSeconds(30), Pacing.Conversational, Density.Balanced, "Modern");
         var script = await selectedProvider.DraftScriptAsync(brief, planSpec, CancellationToken.None);
 

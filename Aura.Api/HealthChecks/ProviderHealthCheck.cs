@@ -36,12 +36,10 @@ public class ProviderHealthCheck : IHealthCheck
         _videoComposer = videoComposer;
     }
 
-    public async Task<HealthCheckResult> CheckHealthAsync(
+    public Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
-    {
-        await Task.CompletedTask;
-        
+    {        
         try
         {
             var data = new Dictionary<string, object>();
@@ -82,29 +80,29 @@ public class ProviderHealthCheck : IHealthCheck
 
             if (_videoComposer == null)
             {
-                return HealthCheckResult.Unhealthy(
+                return Task.FromResult(HealthCheckResult.Unhealthy(
                     "Video composer not available - critical for rendering",
-                    data: data);
+                    data: data));
             }
 
             if (warnings.Count > 0)
             {
                 data["warnings"] = warnings.ToArray();
-                return HealthCheckResult.Degraded(
+                return Task.FromResult(HealthCheckResult.Degraded(
                     $"Provider configuration has {warnings.Count} warning(s)",
-                    data: data);
+                    data: data));
             }
 
-            return HealthCheckResult.Healthy(
+            return Task.FromResult(HealthCheckResult.Healthy(
                 "All provider types are properly configured",
-                data: data);
+                data: data));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking provider health");
-            return HealthCheckResult.Unhealthy(
+            return Task.FromResult(HealthCheckResult.Unhealthy(
                 "Error checking provider configuration",
-                exception: ex);
+                exception: ex));
         }
     }
 
