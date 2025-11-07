@@ -27,6 +27,8 @@ export interface Job {
   failureDetails?: JobFailure;
   phase?: string; // Current phase: plan, tts, visuals, compose, render
   progressMessage?: string; // Latest progress message
+  outputPath?: string; // Primary output video path
+  subtitlePath?: string; // Subtitle file path
 }
 
 export interface JobFailure {
@@ -59,7 +61,7 @@ interface JobsState {
   // Loading states
   loading: boolean;
   streaming: boolean; // Tracks if SSE is active
-  
+
   // SSE connection state
   connectionState: SseConnectionState | null;
 
@@ -198,7 +200,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       }
 
       logger.debug(`Job ${jobId} cancellation requested`, 'JobsStore', 'cancelJob');
-      
+
       // Update active job to reflect cancellation in progress
       const state = get();
       if (state.activeJob && state.activeJob.id === jobId) {
@@ -235,7 +237,10 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     get().stopStreaming();
 
     logger.debug(`Starting SSE streaming for job: ${jobId}`, 'JobsStore', 'startStreaming');
-    set({ streaming: true, connectionState: { status: 'connecting', reconnectAttempt: 0, lastEventId: null } });
+    set({
+      streaming: true,
+      connectionState: { status: 'connecting', reconnectAttempt: 0, lastEventId: null },
+    });
 
     // Create new SSE client
     sseClient = createSseClient(jobId);
@@ -293,6 +298,8 @@ export const useJobsStore = create<JobsState>((set, get) => ({
           sizeBytes: a.sizeBytes,
           createdAt: new Date().toISOString(),
         })),
+        outputPath: data.output?.videoPath,
+        subtitlePath: data.output?.subtitlePath,
         finishedAt: new Date().toISOString(),
       });
       get().stopStreaming();
