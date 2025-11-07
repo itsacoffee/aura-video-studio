@@ -28,6 +28,11 @@ public class ScriptsController : ControllerBase
     private readonly ScriptCacheService _cacheService;
     private readonly ProviderMixer _providerMixer;
     
+    /// <summary>
+    /// In-memory script storage for MVP/demo purposes.
+    /// In production, this should be replaced with persistent storage (database, cache server, etc.)
+    /// to support application restarts and load-balanced deployments.
+    /// </summary>
     private static readonly ConcurrentDictionary<string, Script> _scriptStore = new();
 
     public ScriptsController(

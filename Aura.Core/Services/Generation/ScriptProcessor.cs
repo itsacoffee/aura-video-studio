@@ -14,6 +14,11 @@ namespace Aura.Core.Services.Generation;
 public class ScriptProcessor
 {
     private readonly ILogger<ScriptProcessor> _logger;
+    
+    private static readonly Regex MultipleSpacesRegex = new(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex SentenceSpacingRegex = new(@"([.!?])\s*([A-Z])", RegexOptions.Compiled);
+    private static readonly Regex PunctuationSpacingRegex = new(@"([,;:])\s*", RegexOptions.Compiled);
+    private static readonly Regex WordRegex = new(@"\b[a-zA-Z]{3,}\b", RegexOptions.Compiled);
 
     public ScriptProcessor(ILogger<ScriptProcessor> logger)
     {
@@ -74,10 +79,10 @@ public class ScriptProcessor
         {
             var narration = scene.Narration;
             
-            narration = Regex.Replace(narration, @"\s+", " ");
+            narration = MultipleSpacesRegex.Replace(narration, " ");
             narration = narration.Trim();
-            narration = Regex.Replace(narration, @"([.!?])\s*([A-Z])", "$1 $2");
-            narration = Regex.Replace(narration, @"([,;:])\s*", "$1 ");
+            narration = SentenceSpacingRegex.Replace(narration, "$1 $2");
+            narration = PunctuationSpacingRegex.Replace(narration, "$1 ");
             
             return scene with { Narration = narration };
         }).ToList();
@@ -250,7 +255,7 @@ public class ScriptProcessor
             "these", "those", "it", "its"
         };
 
-        var words = Regex.Matches(text, @"\b[a-zA-Z]{3,}\b")
+        var words = WordRegex.Matches(text)
             .Cast<Match>()
             .Select(m => m.Value.ToLowerInvariant())
             .Where(w => !commonWords.Contains(w))

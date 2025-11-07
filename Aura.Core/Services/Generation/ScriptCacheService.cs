@@ -14,12 +14,13 @@ namespace Aura.Core.Services.Generation;
 /// <summary>
 /// Caches generated scripts to reduce API calls and improve performance
 /// </summary>
-public class ScriptCacheService
+public class ScriptCacheService : IDisposable
 {
     private readonly ILogger<ScriptCacheService> _logger;
     private readonly ConcurrentDictionary<string, CachedScript> _cache;
     private readonly ConcurrentDictionary<string, int> _cacheHits;
     private Timer? _cleanupTimer;
+    private bool _disposed;
 
     public ScriptCacheService(ILogger<ScriptCacheService> logger)
     {
@@ -228,7 +229,20 @@ public class ScriptCacheService
 
     public void Dispose()
     {
-        _cleanupTimer?.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                _cleanupTimer?.Dispose();
+            }
+            _disposed = true;
+        }
     }
 }
 
