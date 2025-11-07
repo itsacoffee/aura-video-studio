@@ -16,7 +16,7 @@ describe('Toasts - Error UX', () => {
     expect(typeof result.current.showFailureToast).toBe('function');
   });
 
-  it('should support Open Logs button in failure toasts', () => {
+  it('should support View Logs button in failure toasts', () => {
     const { result } = renderHook(() => useNotifications(), { wrapper });
 
     const mockOnRetry = vi.fn();
@@ -29,9 +29,10 @@ describe('Toasts - Error UX', () => {
       onOpenLogs: mockOnOpenLogs,
     };
 
-    // This will create the toast but we can&apos;t easily assert the UI without full component rendering
-    // We&apos;re verifying the API shape is correct
-    expect(() => result.current.showFailureToast(options)).not.toThrow();
+    // This will create the toast and return a toast ID
+    const toastId = result.current.showFailureToast(options);
+    expect(toastId).toBeDefined();
+    expect(typeof toastId).toBe('string');
   });
 
   it('should accept correlationId in failure toast options', () => {
@@ -47,7 +48,8 @@ describe('Toasts - Error UX', () => {
       onOpenLogs: vi.fn(),
     };
 
-    expect(() => result.current.showFailureToast(options)).not.toThrow();
+    const toastId = result.current.showFailureToast(options);
+    expect(toastId).toBeDefined();
   });
 
   it('should work without optional callbacks', () => {
@@ -58,13 +60,31 @@ describe('Toasts - Error UX', () => {
       message: 'Test error message',
     };
 
-    expect(() => result.current.showFailureToast(options)).not.toThrow();
+    const toastId = result.current.showFailureToast(options);
+    expect(toastId).toBeDefined();
   });
 
-  it('should return toasterId for Toaster component', () => {
+  it('should return toastId from showSuccessToast', () => {
     const { result } = renderHook(() => useNotifications(), { wrapper });
 
-    expect(result.current.toasterId).toBeDefined();
-    expect(typeof result.current.toasterId).toBe('string');
+    const toastId = result.current.showSuccessToast({
+      title: 'Success',
+      message: 'Operation completed successfully',
+    });
+
+    expect(toastId).toBeDefined();
+    expect(typeof toastId).toBe('string');
+  });
+
+  it('should support auto-dismiss timeout configuration', () => {
+    const { result } = renderHook(() => useNotifications(), { wrapper });
+
+    const toastId = result.current.showFailureToast({
+      title: 'Test Error',
+      message: 'Test error message',
+      timeout: 10000, // 10 seconds
+    });
+
+    expect(toastId).toBeDefined();
   });
 });
