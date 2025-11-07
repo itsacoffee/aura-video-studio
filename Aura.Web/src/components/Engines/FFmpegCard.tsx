@@ -71,10 +71,21 @@ const useStyles = makeStyles({
 });
 
 interface FFmpegStatus {
-  state: string;
-  ffmpegPath?: string;
-  version?: string;
-  validationOutput?: string;
+  installed: boolean;
+  valid: boolean;
+  version: string | null;
+  path: string | null;
+  source: string;
+  error: string | null;
+  versionMeetsRequirement: boolean;
+  minimumVersion: string;
+  hardwareAcceleration: {
+    nvencSupported: boolean;
+    amfSupported: boolean;
+    quickSyncSupported: boolean;
+    videoToolboxSupported: boolean;
+    availableEncoders: string[];
+  };
 }
 
 export function FFmpegCard() {
@@ -96,7 +107,7 @@ export function FFmpegCard() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(apiUrl('/api/downloads/ffmpeg/status'));
+      const response = await fetch(apiUrl('/api/system/ffmpeg/status'));
       if (response.ok) {
         const data = await response.json();
         setStatus(data);
@@ -115,10 +126,10 @@ export function FFmpegCard() {
     setIsProcessing(true);
     setError(null);
     try {
-      const response = await fetch(apiUrl('/api/downloads/ffmpeg/install'), {
+      const response = await fetch(apiUrl('/api/ffmpeg/install'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'managed' }),
+        body: JSON.stringify({ version: 'latest' }),
       });
 
       if (response.ok) {
@@ -221,7 +232,7 @@ export function FFmpegCard() {
   };
 
   const handleOpenFolder = async () => {
-    if (!status?.ffmpegPath) {
+    if (!status?.path) {
       showFailureToast({
         title: 'Path Not Available',
         message: 'FFmpeg path not available',
@@ -240,14 +251,14 @@ export function FFmpegCard() {
         // Fallback: just show the path
         showSuccessToast({
           title: 'FFmpeg Location',
-          message: `FFmpeg location: ${status.ffmpegPath}`,
+          message: `FFmpeg location: ${status.path}`,
         });
       }
     } catch (err) {
       console.error('Failed to open folder:', err);
       showSuccessToast({
         title: 'FFmpeg Location',
-        message: `FFmpeg location: ${status.ffmpegPath}`,
+        message: `FFmpeg location: ${status.path}`,
       });
     }
   };
@@ -255,28 +266,44 @@ export function FFmpegCard() {
   const getStatusBadge = () => {
     if (isLoading) return null;
 
-    switch (status?.state) {
-      case 'Installed':
-      case 'ExternalAttached':
-        return (
-          <Badge appearance="filled" color="success">
-            Installed
-          </Badge>
-        );
-      case 'NotInstalled':
-        return <Badge appearance="outline">Not Installed</Badge>;
-      case 'PartiallyFailed':
-        return (
-          <Badge appearance="filled" color="warning">
-            Needs Attention
-          </Badge>
-        );
-      default:
-        return <Badge appearance="outline">Unknown</Badge>;
+    if (!status) {
+      return <Badge appearance="outline">Unknown</Badge>;
     }
+
+    // Only show "Installed" if FFmpeg is both installed AND valid AND has a version
+    if (status.installed && status.valid && status.version) {
+      return (
+        <Badge appearance="filled" color="success">
+          Installed
+        </Badge>
+      );
+    }
+
+    // Show "Invalid" for installed but not working FFmpeg
+    if (status.installed && !status.valid) {
+      return (
+        <Badge appearance="filled" color="danger">
+          Invalid
+        </Badge>
+      );
+    }
+
+    // Show version warning if version doesn't meet requirements
+    if (status.installed && status.version && !status.versionMeetsRequirement) {
+      return (
+        <Badge appearance="filled" color="warning">
+          Outdated
+        </Badge>
+      );
+    }
+
+    // Not installed
+    return <Badge appearance="outline">Not Installed</Badge>;
   };
 
-  const isInstalled = status?.state === 'Installed' || status?.state === 'ExternalAttached';
+  // FFmpeg is "ready" only if installed, valid, has version, and meets minimum version requirement
+  const isReady =
+    status?.installed && status?.valid && status?.version && status?.versionMeetsRequirement;
 
   return (
     <>
@@ -311,7 +338,15 @@ export function FFmpegCard() {
             <Spinner label="Loading FFmpeg status..." size="small" />
           ) : (
             <>
-              {isInstalled && status?.ffmpegPath && (
+              {/* Show error message if present */}
+              {status?.error && (
+                <MessageBar intent="warning">
+                  <MessageBarBody>{status.error}</MessageBarBody>
+                </MessageBar>
+              )}
+
+              {/* Display details when FFmpeg is found */}
+              {status?.path && (
                 <div>
                   <Text
                     size={300}
@@ -321,7 +356,8 @@ export function FFmpegCard() {
                   >
                     Path:
                   </Text>
-                  <div className={styles.pathDisplay}>{status.ffmpegPath}</div>
+                  <div className={styles.pathDisplay}>{status.path}</div>
+
                   {status.version && (
                     <Text
                       className={styles.metadata}
@@ -329,6 +365,42 @@ export function FFmpegCard() {
                       style={{ marginTop: tokens.spacingVerticalXXS }}
                     >
                       Version: {status.version}
+                      {status.versionMeetsRequirement ? (
+                        <Badge
+                          appearance="outline"
+                          color="success"
+                          style={{ marginLeft: tokens.spacingHorizontalS }}
+                        >
+                          ✓ {status.minimumVersion}+
+                        </Badge>
+                      ) : (
+                        <Badge
+                          appearance="outline"
+                          color="warning"
+                          style={{ marginLeft: tokens.spacingHorizontalS }}
+                        >
+                          Requires {status.minimumVersion}+
+                        </Badge>
+                      )}
+                    </Text>
+                  )}
+
+                  {status.source && (
+                    <Text
+                      className={styles.metadata}
+                      block
+                      style={{ marginTop: tokens.spacingVerticalXXS }}
+                    >
+                      Source:{' '}
+                      <Badge appearance="outline">
+                        {status.source === 'Managed'
+                          ? 'Managed Installation'
+                          : status.source === 'PATH'
+                            ? 'System PATH'
+                            : status.source === 'Configured'
+                              ? 'User Configured'
+                              : status.source}
+                      </Badge>
                     </Text>
                   )}
                 </div>
@@ -336,7 +408,7 @@ export function FFmpegCard() {
 
               <div className={styles.row}>
                 <div className={styles.actions}>
-                  {!isInstalled && (
+                  {!isReady && (
                     <>
                       <Button
                         appearance="primary"
@@ -344,7 +416,7 @@ export function FFmpegCard() {
                         onClick={handleInstall}
                         disabled={isProcessing}
                       >
-                        {isProcessing ? <Spinner size="tiny" /> : 'Install'}
+                        {isProcessing ? <Spinner size="tiny" /> : 'Install Managed FFmpeg'}
                       </Button>
                       <Button
                         appearance="secondary"
@@ -366,7 +438,7 @@ export function FFmpegCard() {
                   )}
 
                   <Button
-                    appearance={isInstalled ? 'secondary' : 'primary'}
+                    appearance={isReady ? 'secondary' : 'subtle'}
                     icon={<ArrowSync24Regular />}
                     onClick={handleRescan}
                     disabled={isProcessing}
@@ -375,7 +447,7 @@ export function FFmpegCard() {
                     {isProcessing ? <Spinner size="tiny" /> : 'Rescan'}
                   </Button>
 
-                  {isInstalled && (
+                  {isReady && (
                     <>
                       <Button
                         appearance="subtle"
