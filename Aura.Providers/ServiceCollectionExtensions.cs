@@ -17,7 +17,7 @@ namespace Aura.Providers;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers all provider services including LLM, TTS, and Image providers
+    /// Registers all provider services including LLM, TTS, Image, and Rendering providers
     /// This is the single entry point for provider registration
     /// </summary>
     public static IServiceCollection AddAuraProviders(this IServiceCollection services)
@@ -25,6 +25,7 @@ public static class ServiceCollectionExtensions
         services.AddLlmProviders();
         services.AddTtsProviders();
         services.AddImageProviders();
+        services.AddRenderingProviders();
         
         return services;
     }
@@ -295,6 +296,56 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthService>();
         
+        return services;
+    }
+
+    /// <summary>
+    /// Registers all rendering providers with their dependencies
+    /// Providers are registered with IRenderingProvider interface for selector enumeration
+    /// </summary>
+    public static IServiceCollection AddRenderingProviders(this IServiceCollection services)
+    {
+        // Register all rendering providers as IRenderingProvider
+        // Priority order: FFmpegProvider (auto-detect) > NVENC > AMF > QSV > BasicFFmpeg
+        
+        services.AddSingleton<Rendering.IRenderingProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Rendering.FFmpegProvider>>();
+            var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
+            return new Rendering.FFmpegProvider(logger, ffmpegLocator);
+        });
+
+        services.AddSingleton<Rendering.IRenderingProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Rendering.FFmpegNvidiaProvider>>();
+            var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
+            return new Rendering.FFmpegNvidiaProvider(logger, ffmpegLocator);
+        });
+
+        services.AddSingleton<Rendering.IRenderingProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Rendering.FFmpegAmdProvider>>();
+            var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
+            return new Rendering.FFmpegAmdProvider(logger, ffmpegLocator);
+        });
+
+        services.AddSingleton<Rendering.IRenderingProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Rendering.FFmpegIntelProvider>>();
+            var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
+            return new Rendering.FFmpegIntelProvider(logger, ffmpegLocator);
+        });
+
+        services.AddSingleton<Rendering.IRenderingProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Rendering.BasicFFmpegProvider>>();
+            var ffmpegLocator = sp.GetRequiredService<Aura.Core.Dependencies.IFfmpegLocator>();
+            return new Rendering.BasicFFmpegProvider(logger, ffmpegLocator);
+        });
+
+        // Register the selector service
+        services.AddSingleton<Rendering.RenderingProviderSelector>();
+
         return services;
     }
 }
