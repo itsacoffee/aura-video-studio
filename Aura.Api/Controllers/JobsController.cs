@@ -533,13 +533,21 @@ public class JobsController : ControllerBase
                 if (job.Percent != lastPercent)
                 {
                     var latestLog = job.Logs.LastOrDefault() ?? "";
-                    await SendSseEventWithId("step-progress", new { 
+                    var progressData = new { 
                         step = job.Stage, 
                         phase = MapStageToPhase(job.Stage),
                         progressPct = job.Percent,
                         message = latestLog,
-                        correlationId 
-                    }, GenerateEventId(++eventIdCounter));
+                        correlationId,
+                        // Include detailed progress fields if available
+                        substageDetail = job.CurrentProgress?.SubstageDetail,
+                        currentItem = job.CurrentProgress?.CurrentItem,
+                        totalItems = job.CurrentProgress?.TotalItems,
+                        elapsedTime = job.CurrentProgress?.ElapsedTime?.ToString(@"hh\:mm\:ss"),
+                        estimatedTimeRemaining = job.CurrentProgress?.EstimatedTimeRemaining?.ToString(@"hh\:mm\:ss")
+                    };
+                    
+                    await SendSseEventWithId("step-progress", progressData, GenerateEventId(++eventIdCounter));
                     lastPercent = job.Percent;
                     lastProgressMessage = latestLog;
                 }

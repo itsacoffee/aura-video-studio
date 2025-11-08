@@ -319,7 +319,28 @@ public class JobRunner
                     eta: eta);
             });
 
-            // Execute orchestrator with system profile
+            // Create detailed progress reporter
+            var detailedProgress = new Progress<GenerationProgress>(generationProgress =>
+            {
+                _logger.LogInformation("[Job {JobId}] Stage: {Stage}, Overall: {Overall}%, {Message}", 
+                    jobId, generationProgress.Stage, generationProgress.OverallPercent, generationProgress.Message);
+                
+                // Update job with detailed progress
+                job = UpdateJobWithProgress(job, generationProgress);
+                
+                // Raise event for SSE streaming
+                JobProgress?.Invoke(this, new JobProgressEventArgs 
+                { 
+                    JobId = jobId,
+                    Stage = generationProgress.Stage,
+                    Progress = (int)Math.Round(generationProgress.OverallPercent),
+                    Status = job.Status,
+                    Message = generationProgress.Message,
+                    CorrelationId = job.CorrelationId ?? string.Empty
+                });
+            });
+
+            // Execute orchestrator with system profile and detailed progress
             var outputPath = await _orchestrator.GenerateVideoAsync(
                 job.Brief!,
                 job.PlanSpec!,
@@ -327,6 +348,7 @@ public class JobRunner
                 job.RenderSpec!,
                 systemProfile,
                 progress,
+                detailedProgress,
                 ct,
                 jobId,
                 job.CorrelationId,
@@ -607,11 +629,17 @@ public class JobRunner
         );
         
         // Add progress history and current progress
-        return updatedJob with
+        var finalJob = updatedJob with
         {
             ProgressHistory = updatedHistory,
             CurrentProgress = generationProgress
         };
+        
+        // Update active jobs and persist
+        _activeJobs[finalJob.Id] = finalJob;
+        _artifactManager.SaveJob(finalJob);
+        
+        return finalJob;
     }
 
     /// <summary>
