@@ -15,6 +15,8 @@ import {
 import { CheckmarkCircle24Regular, ErrorCircle24Regular } from '@fluentui/react-icons';
 import { useEffect, useState, useCallback } from 'react';
 import type { FC } from 'react';
+import { ttsService } from '../../../services/ttsService';
+import type { TtsProvider, TtsVoice } from '../../../services/ttsService';
 import type { StyleData, BriefData, StepValidation } from '../types';
 import { getVisualsClient } from '@/api/visualsClient';
 import type { VisualProvider } from '@/api/visualsClient';
