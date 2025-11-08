@@ -12,6 +12,8 @@ import {
   Badge,
   Tooltip,
   Divider,
+  MessageBar,
+  MessageBarBody,
 } from '@fluentui/react-components';
 import {
   Sparkle24Regular,
@@ -21,6 +23,7 @@ import {
   TextGrammarCheckmark24Regular,
   DocumentText24Regular,
   ArrowDownload24Regular,
+  Speaker224Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC } from 'react';
@@ -34,7 +37,8 @@ import {
   type ProviderInfoDto,
   type ScriptSceneDto,
 } from '../../../services/api/scriptApi';
-import type { ScriptData, BriefData, StyleData, StepValidation } from '../types';
+import { ttsService } from '../../../services/ttsService';
+import type { ScriptData, BriefData, StyleData, StepValidation, ScriptScene } from '../types';
 
 const useStyles = makeStyles({
   container: {
@@ -133,6 +137,12 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: tokens.spacingHorizontalS,
   },
+  audioRegenerateButton: {
+    marginTop: tokens.spacingVerticalS,
+  },
+  messageBar: {
+    marginTop: tokens.spacingVerticalS,
+  },
 });
 
 interface ScriptReviewProps {
@@ -145,7 +155,9 @@ interface ScriptReviewProps {
 }
 
 export const ScriptReview: FC<ScriptReviewProps> = ({
+  data,
   briefData,
+  styleData,
   onChange,
   onValidationChange,
 }) => {
@@ -156,6 +168,10 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
   const [generatedScript, setGeneratedScript] = useState<GenerateScriptResponse | null>(null);
   const [editingScenes, setEditingScenes] = useState<Record<number, string>>({});
   const [regeneratingScenes, setRegeneratingScenes] = useState<Record<number, boolean>>({});
+  const [regeneratingAudio, setRegeneratingAudio] = useState<Record<string, boolean>>({});
+  const [audioMessages, setAudioMessages] = useState<
+    Record<string, { type: 'success' | 'error'; message: string }>
+  >({});
   const autoSaveTimeouts = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
@@ -165,10 +181,17 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
   useEffect(() => {
     if (generatedScript && generatedScript.scenes.length > 0) {
       onValidationChange({ isValid: true, errors: [] });
+    } else if (data && data.scenes.length > 0) {
+      const hasEmptyScene = data.scenes.some((scene) => !scene.text || scene.text.trim() === '');
+      if (hasEmptyScene) {
+        onValidationChange({ isValid: false, errors: ['All scenes must have text'] });
+      } else {
+        onValidationChange({ isValid: true, errors: [] });
+      }
     } else {
-      onValidationChange({ isValid: false, errors: ['Generate a script to continue'] });
+      onValidationChange({ isValid: false, errors: ['No script scenes available'] });
     }
-  }, [generatedScript, onValidationChange]);
+  }, [generatedScript, data, onValidationChange]);
 
   const loadProviders = async () => {
     try {
@@ -331,6 +354,41 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
     }, 0);
   };
 
+  const handleRegenerateAudio = async (scene: ScriptScene, sceneIndex: number) => {
+    setRegeneratingAudio((prev) => ({ ...prev, [scene.id]: true }));
+    setAudioMessages((prev) => {
+      const newMessages = { ...prev };
+      delete newMessages[scene.id];
+      return newMessages;
+    });
+
+    try {
+      const response = await ttsService.regenerateAudio({
+        sceneIndex,
+        text: scene.text,
+        startSeconds: scene.timestamp,
+        durationSeconds: scene.duration,
+        provider: styleData.voiceProvider,
+        voiceName: styleData.voiceName,
+      });
+
+      if (response.success) {
+        setAudioMessages((prev) => ({
+          ...prev,
+          [scene.id]: { type: 'success', message: 'Audio generated successfully' },
+        }));
+      }
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      setAudioMessages((prev) => ({
+        ...prev,
+        [scene.id]: { type: 'error', message: `Failed: ${errorObj.message}` },
+      }));
+    } finally {
+      setRegeneratingAudio((prev) => ({ ...prev, [scene.id]: false }));
+    }
+  };
+
   const calculateReadingSpeed = (wordCount: number, durationSeconds: number): number => {
     if (durationSeconds === 0) return 0;
     return Math.round((wordCount / durationSeconds) * 60);
@@ -360,7 +418,7 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
     );
   }
 
-  if (!generatedScript) {
+  if (!generatedScript && (!data || data.scenes.length === 0)) {
     return (
       <div className={styles.container}>
         <div className={styles.header}>
@@ -400,6 +458,107 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
         </div>
       </div>
     );
+  }
+
+  if (!generatedScript && data && data.scenes.length > 0) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Title2>Script Review</Title2>
+          <Text>Review and edit the AI-generated script before proceeding.</Text>
+        </div>
+
+        <div className={styles.scenesContainer}>
+          {data.scenes.map((scene, index) => (
+            <Card key={scene.id} className={styles.sceneCard}>
+              <div className={styles.sceneHeader}>
+                <div className={styles.sceneNumber}>
+                  <Badge appearance="filled" color="brand">
+                    Scene {index + 1}
+                  </Badge>
+                </div>
+                <div className={styles.sceneActions}>
+                  <Tooltip content="Regenerate audio for this scene" relationship="label">
+                    <Button
+                      size="small"
+                      icon={<Speaker224Regular />}
+                      onClick={() => handleRegenerateAudio(scene, index)}
+                      disabled={
+                        regeneratingAudio[scene.id] || !scene.text || scene.text.trim() === ''
+                      }
+                    >
+                      {regeneratingAudio[scene.id] ? 'Regenerating...' : 'Regenerate Audio'}
+                    </Button>
+                  </Tooltip>
+                </div>
+              </div>
+
+              <Field className={styles.narrationField} label="Narration">
+                <Textarea
+                  value={scene.text}
+                  onChange={(e) => {
+                    const updatedScenes = [...data.scenes];
+                    updatedScenes[index] = { ...scene, text: e.target.value };
+                    onChange({
+                      ...data,
+                      scenes: updatedScenes,
+                    });
+                  }}
+                  rows={4}
+                  resize="vertical"
+                />
+              </Field>
+
+              <div className={styles.sceneMetadata}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+                >
+                  <Clock24Regular />
+                  <Text>
+                    {Math.floor(scene.timestamp / 60)}:
+                    {String(Math.floor(scene.timestamp % 60)).padStart(2, '0')} -{' '}
+                    {Math.floor((scene.timestamp + scene.duration) / 60)}:
+                    {String(Math.floor((scene.timestamp + scene.duration) % 60)).padStart(2, '0')}
+                  </Text>
+                </div>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+                >
+                  <TextGrammarCheckmark24Regular />
+                  <Text>
+                    {scene.text.split(/\s+/).filter((word) => word.length > 0).length} words
+                  </Text>
+                </div>
+              </div>
+
+              {audioMessages[scene.id] && (
+                <MessageBar
+                  intent={audioMessages[scene.id].type === 'success' ? 'success' : 'error'}
+                  className={styles.messageBar}
+                >
+                  <MessageBarBody>{audioMessages[scene.id].message}</MessageBarBody>
+                </MessageBar>
+              )}
+
+              <Divider
+                style={{
+                  marginTop: tokens.spacingVerticalM,
+                  marginBottom: tokens.spacingVerticalM,
+                }}
+              />
+
+              <Field label="Visual Prompt">
+                <Text size={200}>{scene.visualDescription}</Text>
+              </Field>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!generatedScript) {
+    return null;
   }
 
   const wordCount = calculateWordCount(generatedScript.scenes);
