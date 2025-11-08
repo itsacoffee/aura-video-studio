@@ -49,7 +49,7 @@ export interface PreviewData {
 export interface ExportData {
   quality: 'low' | 'medium' | 'high' | 'ultra';
   format: 'mp4' | 'webm' | 'mov';
-  resolution: '720p' | '1080p' | '4k';
+  resolution: '480p' | '720p' | '1080p' | '4k';
   includeCaptions: boolean;
 }
 
