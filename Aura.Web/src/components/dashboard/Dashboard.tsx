@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDashboardStore } from '../../state/dashboard';
 import type { ProjectSummary } from '../../state/dashboard';
+import RecentProjectsList from '../RecentProjectsList';
 import { DashboardCustomizationButton } from './DashboardCustomization';
 import { DashboardWidgets } from './DashboardWidgets';
 import { NotificationToaster } from './NotificationToaster';
@@ -380,6 +381,17 @@ export function Dashboard() {
                   </Card>
                 ))}
               </div>
+            </div>
+
+            {/* Recent Projects Section */}
+            <div className={styles.recentBriefsSection}>
+              <Title2 style={{ marginBottom: tokens.spacingVerticalM }}>Recent Projects</Title2>
+              <RecentProjectsList
+                maxItems={5}
+                onOpenProject={(project) => {
+                  navigate(`/create?projectId=${project.id}`);
+                }}
+              />
             </div>
 
             {/* Recent Briefs Section */}
