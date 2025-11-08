@@ -228,6 +228,123 @@ public class ScriptsController : ControllerBase
     }
 
     /// <summary>
+    /// Regenerate a specific scene in a script
+    /// </summary>
+    [HttpPost("{id}/scenes/{sceneNumber}/regenerate")]
+    public async Task<IActionResult> RegenerateScene(
+        string id,
+        int sceneNumber,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        if (!_scriptStore.TryGetValue(id, out var script))
+        {
+            return NotFound(new ProblemDetails
+            {
+                Type = "https://docs.aura.studio/errors/E404",
+                Title = "Script Not Found",
+                Status = 404,
+                Detail = $"Script with ID '{id}' was not found",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+
+        var scene = script.Scenes.FirstOrDefault(s => s.Number == sceneNumber);
+        if (scene == null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Type = "https://docs.aura.studio/errors/E404",
+                Title = "Scene Not Found",
+                Status = 404,
+                Detail = $"Scene {sceneNumber} not found in script '{id}'",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+
+        _logger.LogInformation(
+            "[{CorrelationId}] Regenerating scene {SceneNumber} in script {ScriptId}",
+            correlationId, sceneNumber, id);
+
+        try
+        {
+            var brief = new Brief(
+                Topic: scene.Narration.Length > 100 
+                    ? scene.Narration.Substring(0, 100) + "..." 
+                    : scene.Narration,
+                Audience: null,
+                Goal: "Regenerate this scene with fresh content",
+                Tone: "Conversational",
+                Language: "en",
+                Aspect: Core.Models.Aspect.Widescreen16x9);
+
+            var planSpec = new PlanSpec(
+                TargetDuration: scene.Duration,
+                Pacing: Core.Models.Pacing.Conversational,
+                Density: Core.Models.Density.Balanced,
+                Style: "Modern");
+
+            var result = await _scriptOrchestrator.GenerateScriptAsync(
+                brief, planSpec, script.Metadata.ProviderName, offlineOnly: false, ct);
+
+            if (!result.Success || result.Script == null)
+            {
+                _logger.LogWarning(
+                    "[{CorrelationId}] Scene regeneration failed: {ErrorCode} - {ErrorMessage}",
+                    correlationId, result.ErrorCode, result.ErrorMessage);
+
+                return StatusCode(500, new ProblemDetails
+                {
+                    Type = "https://docs.aura.studio/errors/E300",
+                    Title = "Scene Regeneration Failed",
+                    Status = 500,
+                    Detail = result.ErrorMessage ?? "Failed to regenerate scene",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["errorCode"] = result.ErrorCode
+                    }
+                });
+            }
+
+            var lines = result.Script.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var newNarration = lines.FirstOrDefault(l => l.Length > 10)?.Trim() ?? scene.Narration;
+
+            var updatedScene = scene with 
+            { 
+                Narration = newNarration,
+                VisualPrompt = $"Visual for: {newNarration.Substring(0, Math.Min(50, newNarration.Length))}"
+            };
+
+            var updatedScenes = script.Scenes.Select(s => s.Number == sceneNumber ? updatedScene : s).ToList();
+            var updatedScript = script with { Scenes = updatedScenes };
+            
+            _scriptStore[id] = updatedScript;
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Scene {SceneNumber} regenerated successfully in script {ScriptId}",
+                correlationId, sceneNumber, id);
+
+            var response = MapScriptToResponse(id, updatedScript);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error regenerating scene", correlationId);
+            
+            return StatusCode(500, new ProblemDetails
+            {
+                Type = "https://docs.aura.studio/errors/E500",
+                Title = "Internal Server Error",
+                Status = 500,
+                Detail = "An error occurred while regenerating the scene",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+    }
+
+    /// <summary>
     /// Regenerate a script with same or different provider
     /// </summary>
     [HttpPost("{id}/regenerate")]

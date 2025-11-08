@@ -148,6 +148,21 @@ export async function regenerateScript(
 }
 
 /**
+ * Regenerate a specific scene in a script
+ */
+export async function regenerateScene(
+  scriptId: string,
+  sceneNumber: number,
+  config?: ExtendedAxiosRequestConfig
+): Promise<GenerateScriptResponse> {
+  return post<GenerateScriptResponse>(
+    `/api/scripts/${scriptId}/scenes/${sceneNumber}/regenerate`,
+    {},
+    config
+  );
+}
+
+/**
  * List available LLM providers and their status
  */
 export async function listProviders(

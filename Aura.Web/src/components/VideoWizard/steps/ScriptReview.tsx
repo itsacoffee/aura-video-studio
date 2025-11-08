@@ -29,6 +29,7 @@ import {
   updateScene,
   listProviders,
   exportScript,
+  regenerateScene,
   type GenerateScriptResponse,
   type ProviderInfoDto,
   type ScriptSceneDto,
@@ -154,6 +155,7 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
   const [selectedProvider, setSelectedProvider] = useState<string | undefined>();
   const [generatedScript, setGeneratedScript] = useState<GenerateScriptResponse | null>(null);
   const [editingScenes, setEditingScenes] = useState<Record<number, string>>({});
+  const [regeneratingScenes, setRegeneratingScenes] = useState<Record<number, boolean>>({});
   const autoSaveTimeouts = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
@@ -288,6 +290,38 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
       document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to export script:', error);
+    }
+  };
+
+  const handleRegenerateScene = async (sceneNumber: number) => {
+    if (!generatedScript) return;
+
+    setRegeneratingScenes((prev) => ({ ...prev, [sceneNumber]: true }));
+
+    try {
+      const response = await regenerateScene(generatedScript.scriptId, sceneNumber);
+
+      setGeneratedScript(response);
+
+      const scriptScenes = response.scenes.map((scene) => ({
+        id: `scene-${scene.number}`,
+        text: scene.narration,
+        duration: scene.durationSeconds,
+        visualDescription: scene.visualPrompt,
+        timestamp: response.scenes
+          .slice(0, scene.number - 1)
+          .reduce((sum, s) => sum + s.durationSeconds, 0),
+      }));
+
+      onChange({
+        content: response.scenes.map((s) => s.narration).join('\n\n'),
+        scenes: scriptScenes,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to regenerate scene:', error);
+    } finally {
+      setRegeneratingScenes((prev) => ({ ...prev, [sceneNumber]: false }));
     }
   };
 
@@ -452,6 +486,18 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
                       Too Long
                     </Badge>
                   )}
+                </div>
+                <div className={styles.sceneActions}>
+                  <Tooltip content="Regenerate this scene" relationship="label">
+                    <Button
+                      size="small"
+                      icon={<ArrowClockwise24Regular />}
+                      onClick={() => handleRegenerateScene(scene.number)}
+                      disabled={regeneratingScenes[scene.number]}
+                    >
+                      {regeneratingScenes[scene.number] ? 'Regenerating...' : 'Regenerate'}
+                    </Button>
+                  </Tooltip>
                 </div>
               </div>
 
