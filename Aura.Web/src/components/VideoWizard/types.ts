@@ -49,7 +49,7 @@ export interface PreviewData {
 export interface ExportData {
   quality: 'low' | 'medium' | 'high' | 'ultra';
   format: 'mp4' | 'webm' | 'mov';
-  resolution: '720p' | '1080p' | '4k';
+  resolution: '480p' | '720p' | '1080p' | '4k';
   includeCaptions: boolean;
 }
 
@@ -100,4 +100,24 @@ export interface CostBreakdown {
     costPerUnit: number;
     subtotal: number;
   }[];
+}
+
+export interface WizardDraft {
+  id: string;
+  name: string;
+  data: WizardData;
+  createdAt: Date;
+  updatedAt: Date;
+  currentStep: number;
+  progress: number;
+}
+
+export interface DraftMetadata {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  currentStep: number;
+  progress: number;
+  briefSummary: string;
 }
