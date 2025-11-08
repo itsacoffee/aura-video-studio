@@ -98,4 +98,25 @@ describe('ProjectCard', () => {
 
     expect(screen.queryByText(/views/)).toBeNull();
   });
+
+  it('displays video preview on hover when videoUrl is available', () => {
+    const projectWithVideo = { ...mockProject, videoUrl: 'https://example.com/video.mp4' };
+    const { container } = render(<ProjectCard project={projectWithVideo} />);
+
+    const videoElement = container.querySelector('video');
+    expect(videoElement).toBeDefined();
+    expect(videoElement?.src).toBe('https://example.com/video.mp4');
+  });
+
+  it('does not display video preview when status is not complete', () => {
+    const processingProject = {
+      ...mockProject,
+      status: 'processing' as const,
+      videoUrl: 'https://example.com/video.mp4',
+    };
+    const { container } = render(<ProjectCard project={processingProject} />);
+
+    const videoElement = container.querySelector('video');
+    expect(videoElement).toBeNull();
+  });
 });

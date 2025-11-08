@@ -47,7 +47,19 @@ describe('Dashboard', () => {
         peakUsageHours: 'N/A',
         favoriteVoice: 'N/A',
       },
+      recentBriefs: [],
       loading: false,
+      layout: {
+        showStats: true,
+        showProjects: true,
+        showAnalytics: true,
+        showProviderHealth: true,
+        showQuickInsights: true,
+        showRecentBriefs: true,
+        projectGridColumns: 3,
+        view: 'default',
+      },
+      fetchDashboardData: vi.fn(), // Mock the fetch function
     });
   });
 
@@ -87,7 +99,9 @@ describe('Dashboard', () => {
   });
 
   it('displays projects when available', async () => {
+    const currentState = useDashboardStore.getState();
     useDashboardStore.setState({
+      ...currentState,
       projects: [
         {
           id: '1',
@@ -126,7 +140,8 @@ describe('Dashboard', () => {
   });
 
   it('shows loading spinner when loading', async () => {
-    useDashboardStore.setState({ loading: true, projects: [] });
+    const currentState = useDashboardStore.getState();
+    useDashboardStore.setState({ ...currentState, loading: true, projects: [] });
 
     render(
       <BrowserRouter>
@@ -148,6 +163,16 @@ describe('Dashboard', () => {
       providerHealth: [
         { name: 'OpenAI', status: 'healthy' as const, responseTime: 120, errorRate: 0 },
       ],
+      layout: {
+        showStats: true,
+        showProjects: true,
+        showAnalytics: true,
+        showProviderHealth: true,
+        showQuickInsights: true,
+        showRecentBriefs: true,
+        projectGridColumns: 3,
+        view: 'default',
+      },
     });
 
     render(
@@ -159,5 +184,61 @@ describe('Dashboard', () => {
     expect(screen.getByText('API Usage')).toBeDefined();
     expect(screen.getByText('Provider Health')).toBeDefined();
     expect(screen.getByText('Quick Insights')).toBeDefined();
+  });
+
+  it('hides sections based on layout settings', () => {
+    useDashboardStore.setState({
+      layout: {
+        showStats: false,
+        showProjects: false,
+        showAnalytics: false,
+        showProviderHealth: false,
+        showQuickInsights: false,
+        showRecentBriefs: false,
+        projectGridColumns: 3,
+        view: 'default',
+      },
+    });
+
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
+
+    expect(screen.queryByText('Videos Today')).toBeNull();
+    expect(screen.queryByText('Recent Projects')).toBeNull();
+  });
+
+  it('displays recent briefs when available', () => {
+    useDashboardStore.setState({
+      recentBriefs: [
+        {
+          id: '1',
+          title: 'Test Brief',
+          topic: 'Test Topic',
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      layout: {
+        showStats: true,
+        showProjects: true,
+        showAnalytics: true,
+        showProviderHealth: true,
+        showQuickInsights: true,
+        showRecentBriefs: true,
+        projectGridColumns: 3,
+        view: 'default',
+      },
+    });
+
+    render(
+      <BrowserRouter>
+        <Dashboard />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText('Recent Briefs')).toBeDefined();
+    expect(screen.getByText('Test Brief')).toBeDefined();
   });
 });
