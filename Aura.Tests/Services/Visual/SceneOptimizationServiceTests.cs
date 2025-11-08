@@ -21,7 +21,7 @@ public class SceneOptimizationServiceTests
 
     public SceneOptimizationServiceTests()
     {
-        var cinematography = new CinematographyKnowledgeBase(NullLogger<CinematographyKnowledgeBase>.Instance);
+        var cinematography = new CinematographyKnowledgeBase();
         var continuity = new VisualContinuityEngine(NullLogger<VisualContinuityEngine>.Instance);
         var optimizer = new PromptOptimizer(NullLogger<PromptOptimizer>.Instance);
         
@@ -240,25 +240,26 @@ public class SceneOptimizationServiceTests
         var scenes = new List<Scene>();
         for (int i = 0; i < count; i++)
         {
-            scenes.Add(new Scene
-            {
-                Index = i,
-                Script = $"This is scene {i + 1} with some interesting content.",
-                Duration = 5.0
-            });
+            scenes.Add(new Scene(
+                Index: i,
+                Heading: $"Scene {i + 1}",
+                Script: $"This is scene {i + 1} with some interesting content.",
+                Start: TimeSpan.FromSeconds(i * 5),
+                Duration: TimeSpan.FromSeconds(5)
+            ));
         }
         return scenes;
     }
 
     private Brief CreateTestBrief()
     {
-        return new Brief
-        {
-            Topic = "Test Video Topic",
-            Audience = "General Audience",
-            Goal = "To inform and engage",
-            Tone = "Professional",
-            Duration = 60
-        };
+        return new Brief(
+            Topic: "Test Video Topic",
+            Audience: "General Audience",
+            Goal: "To inform and engage",
+            Tone: "Professional",
+            Language: "English",
+            Aspect: Aspect.Widescreen16x9
+        );
     }
 }
