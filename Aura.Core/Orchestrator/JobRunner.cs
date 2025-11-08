@@ -491,6 +491,46 @@ public class JobRunner
     }
 
     /// <summary>
+    /// Updates a job with detailed progress information and persists changes.
+    /// </summary>
+    private Job UpdateJobWithProgress(
+        Job job,
+        GenerationProgress generationProgress)
+    {
+        // Add to progress history
+        var updatedHistory = new List<GenerationProgress>(job.ProgressHistory) { generationProgress };
+        
+        // Calculate percent from overall progress
+        var percent = (int)Math.Round(generationProgress.OverallPercent);
+        
+        // Build log message from progress
+        var logMessage = generationProgress.SubstageDetail != null 
+            ? $"{generationProgress.Message} - {generationProgress.SubstageDetail}"
+            : generationProgress.Message;
+        var logs = new List<string>(job.Logs) 
+        { 
+            $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {logMessage}" 
+        };
+        
+        // Update using existing method
+        var updatedJob = UpdateJob(
+            job,
+            stage: generationProgress.Stage,
+            percent: percent,
+            logs: logs,
+            progressMessage: generationProgress.Message,
+            eta: generationProgress.EstimatedTimeRemaining
+        );
+        
+        // Add progress history and current progress
+        return updatedJob with
+        {
+            ProgressHistory = updatedHistory,
+            CurrentProgress = generationProgress
+        };
+    }
+
+    /// <summary>
     /// Updates a job and persists changes with state validation and monotonic progress.
     /// </summary>
     private Job UpdateJob(

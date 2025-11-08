@@ -127,6 +127,30 @@ public class VideoOrchestrator
         string? correlationId = null,
         bool isQuickDemo = false)
     {
+        // Call overload without detailed progress for backward compatibility
+        return await GenerateVideoAsync(
+            brief, planSpec, voiceSpec, renderSpec, systemProfile,
+            progress, null, ct, jobId, correlationId, isQuickDemo
+        ).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Generates a complete video from the provided brief and specifications using smart orchestration.
+    /// Includes detailed progress reporting via GenerationProgress.
+    /// </summary>
+    public async Task<string> GenerateVideoAsync(
+        Brief brief,
+        PlanSpec planSpec,
+        VoiceSpec voiceSpec,
+        RenderSpec renderSpec,
+        SystemProfile systemProfile,
+        IProgress<string>? progress = null,
+        IProgress<GenerationProgress>? detailedProgress = null,
+        CancellationToken ct = default,
+        string? jobId = null,
+        string? correlationId = null,
+        bool isQuickDemo = false)
+    {
         ArgumentNullException.ThrowIfNull(brief);
         ArgumentNullException.ThrowIfNull(planSpec);
         ArgumentNullException.ThrowIfNull(voiceSpec);
@@ -139,7 +163,10 @@ public class VideoOrchestrator
         try
         {
             // Pre-generation validation
-            progress?.Report("Validating system readiness...");
+            var validationMsg = "Validating system readiness...";
+            progress?.Report(validationMsg);
+            detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(0, validationMsg, correlationId));
+            
             var validationResult = await _preGenerationValidator.ValidateSystemReadyAsync(brief, planSpec, ct).ConfigureAwait(false);
             if (!validationResult.IsValid)
             {
@@ -148,8 +175,13 @@ public class VideoOrchestrator
                 throw new ValidationException("System validation failed", validationResult.Issues);
             }
             _logger.LogInformation("Pre-generation validation passed");
+            
+            detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(50, "System validation passed", correlationId));
 
-            progress?.Report("Starting smart video generation pipeline...");
+            var pipelineMsg = "Starting smart video generation pipeline...";
+            progress?.Report(pipelineMsg);
+            detailedProgress?.Report(ProgressBuilder.CreateBriefProgress(100, pipelineMsg, correlationId));
+            
             _logger.LogInformation("Using smart orchestration for topic: {Topic}, IsQuickDemo: {IsQuickDemo}", brief.Topic, isQuickDemo);
 
             // Create task executor that maps generation tasks to providers
