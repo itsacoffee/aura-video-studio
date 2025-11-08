@@ -1,6 +1,7 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { ReactNode } from 'react';
 import { useTheme } from '../App';
+import { Breadcrumbs } from './Breadcrumbs';
 import { ResultsTray } from './ResultsTray';
 import { Sidebar } from './Sidebar';
 import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
@@ -40,9 +41,23 @@ const useStyles = makeStyles({
 
 interface LayoutProps {
   children: ReactNode;
+  showBreadcrumbs?: boolean;
+  statusBadge?: {
+    text: string;
+    appearance?: 'filled' | 'outline' | 'tint' | 'ghost';
+    color?:
+      | 'brand'
+      | 'danger'
+      | 'important'
+      | 'informative'
+      | 'severe'
+      | 'subtle'
+      | 'success'
+      | 'warning';
+  };
 }
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, showBreadcrumbs = true, statusBadge }: LayoutProps) {
   const styles = useStyles();
   const { isDarkMode, toggleTheme } = useTheme();
 
@@ -50,6 +65,7 @@ export function Layout({ children }: LayoutProps) {
     <div className={styles.container}>
       <Sidebar isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
       <div className={styles.mainContainer}>
+        {showBreadcrumbs && <Breadcrumbs statusBadge={statusBadge} />}
         <div className={styles.topBar}>
           <UndoRedoButtons />
           <ResultsTray />
