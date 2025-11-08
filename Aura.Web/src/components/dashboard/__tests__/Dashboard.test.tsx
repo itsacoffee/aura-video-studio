@@ -59,6 +59,7 @@ describe('Dashboard', () => {
         projectGridColumns: 3,
         view: 'default',
       },
+      fetchDashboardData: vi.fn(), // Mock the fetch function
     });
   });
 
@@ -98,7 +99,9 @@ describe('Dashboard', () => {
   });
 
   it('displays projects when available', async () => {
+    const currentState = useDashboardStore.getState();
     useDashboardStore.setState({
+      ...currentState,
       projects: [
         {
           id: '1',
@@ -137,7 +140,8 @@ describe('Dashboard', () => {
   });
 
   it('shows loading spinner when loading', async () => {
-    useDashboardStore.setState({ loading: true, projects: [] });
+    const currentState = useDashboardStore.getState();
+    useDashboardStore.setState({ ...currentState, loading: true, projects: [] });
 
     render(
       <BrowserRouter>
