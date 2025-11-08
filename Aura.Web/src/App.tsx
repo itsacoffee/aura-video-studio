@@ -72,6 +72,9 @@ import { useJobState } from './state/jobState';
 const LogViewerPage = lazy(() =>
   import('./pages/LogViewerPage').then((m) => ({ default: m.LogViewerPage }))
 );
+const DiagnosticDashboardPage = lazy(() =>
+  import('./pages/DiagnosticDashboardPage').then((m) => ({ default: m.DiagnosticDashboardPage }))
+);
 const ActivityDemoPage = lazy(() =>
   import('./pages/ActivityDemoPage').then((m) => ({ default: m.ActivityDemoPage }))
 );
@@ -476,6 +479,15 @@ function App() {
                         <Route path="/quality-validation" element={<QualityValidationPage />} />
                         <Route path="/validation" element={<ValidationPage />} />
                         <Route path="/verification" element={<VerificationPage />} />
+                        {/* Diagnostics and system information */}
+                        <Route
+                          path="/diagnostics"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <DiagnosticDashboardPage />
+                            </Suspense>
+                          }
+                        />
                         {/* Logs page - always available for diagnostics */}
                         <Route
                           path="/logs"
