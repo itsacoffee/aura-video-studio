@@ -2456,3 +2456,97 @@ public record VoiceInfoDto(
     string Style,
     string Quality);
 
+/// <summary>
+/// Request to save a wizard project at any step
+/// </summary>
+public record SaveWizardProjectRequest(
+    Guid? Id,
+    string Name,
+    string? Description,
+    int CurrentStep,
+    string? BriefJson,
+    string? PlanSpecJson,
+    string? VoiceSpecJson,
+    string? RenderSpecJson);
+
+/// <summary>
+/// Response after saving a wizard project
+/// </summary>
+public record SaveWizardProjectResponse(
+    Guid Id,
+    string Name,
+    DateTime LastModifiedAt);
+
+/// <summary>
+/// Wizard project list item for dashboard
+/// </summary>
+public record WizardProjectListItemDto(
+    Guid Id,
+    string Name,
+    string? Description,
+    string Status,
+    int ProgressPercent,
+    int CurrentStep,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    string? JobId,
+    bool HasGeneratedContent);
+
+/// <summary>
+/// Full wizard project details for loading
+/// </summary>
+public record WizardProjectDetailsDto(
+    Guid Id,
+    string Name,
+    string? Description,
+    string Status,
+    int ProgressPercent,
+    int CurrentStep,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    string? BriefJson,
+    string? PlanSpecJson,
+    string? VoiceSpecJson,
+    string? RenderSpecJson,
+    string? JobId,
+    List<GeneratedAssetDto> GeneratedAssets);
+
+/// <summary>
+/// Information about a generated asset (script, audio, image, video)
+/// </summary>
+public record GeneratedAssetDto(
+    string AssetType,
+    string FilePath,
+    long FileSizeBytes,
+    DateTime CreatedAt);
+
+/// <summary>
+/// Request to duplicate a wizard project
+/// </summary>
+public record DuplicateProjectRequest(
+    string NewName);
+
+/// <summary>
+/// Project export bundle (JSON format)
+/// </summary>
+public record ProjectExportDto(
+    string Version,
+    WizardProjectDetailsDto Project,
+    DateTime ExportedAt);
+
+/// <summary>
+/// Request to import a project from JSON
+/// </summary>
+public record ProjectImportRequest(
+    string ProjectJson,
+    string? NewName);
+
+/// <summary>
+/// Request to clear generated content but keep settings
+/// </summary>
+public record ClearGeneratedContentRequest(
+    bool KeepScript,
+    bool KeepAudio,
+    bool KeepImages,
+    bool KeepVideo);
+

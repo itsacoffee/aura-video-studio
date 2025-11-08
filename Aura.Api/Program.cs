@@ -190,6 +190,9 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
 builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
 builder.Services.AddScoped<Aura.Core.Services.CheckpointManager>();
 
+// Register wizard project management service
+builder.Services.AddScoped<Aura.Core.Services.WizardProjectService>();
+
 // Register project versioning services
 builder.Services.AddScoped<Aura.Core.Data.ProjectVersionRepository>();
 builder.Services.AddScoped<Aura.Core.Services.ProjectVersionService>();
