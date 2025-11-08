@@ -12,6 +12,10 @@ export interface StyleData {
   visualStyle: 'modern' | 'minimal' | 'cinematic' | 'playful' | 'professional';
   musicGenre: 'ambient' | 'upbeat' | 'dramatic' | 'none';
   musicEnabled: boolean;
+  imageProvider?: string;
+  imageStyle?: string;
+  imageQuality?: number;
+  imageAspectRatio?: string;
 }
 
 export interface ScriptScene {
@@ -32,6 +36,13 @@ export interface PreviewThumbnail {
   sceneId: string;
   imageUrl: string;
   caption: string;
+  provider?: string;
+  generatedAt?: string;
+  quality?: number;
+  clipScore?: number;
+  variations?: PreviewThumbnail[];
+  isPlaceholder?: boolean;
+  failureReason?: string;
 }
 
 export interface AudioSample {
@@ -44,6 +55,8 @@ export interface AudioSample {
 export interface PreviewData {
   thumbnails: PreviewThumbnail[];
   audioSamples: AudioSample[];
+  imageGenerationProgress?: number;
+  imageProvider?: string;
 }
 
 export interface ExportData {

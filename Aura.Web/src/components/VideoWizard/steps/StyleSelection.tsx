@@ -1,22 +1,82 @@
 import {
-  Title2,
-  Text,
-  Field,
-  Label,
-  Dropdown,
-  Option,
-  Button,
   makeStyles,
   tokens,
-  Spinner,
+  Title2,
+  Title3,
+  Text,
+  Dropdown,
+  Option,
+  Field,
+  Slider,
   Card,
+  Badge,
+  Spinner,
 } from '@fluentui/react-components';
-import { PlayRegular, StopRegular } from '@fluentui/react-icons';
+import { CheckmarkCircle24Regular, ErrorCircle24Regular } from '@fluentui/react-icons';
 import { useEffect, useState, useCallback } from 'react';
 import type { FC } from 'react';
 import { ttsService } from '../../../services/ttsService';
 import type { TtsProvider, TtsVoice } from '../../../services/ttsService';
 import type { StyleData, BriefData, StepValidation } from '../types';
+import { getVisualsClient } from '@/api/visualsClient';
+import type { VisualProvider } from '@/api/visualsClient';
+
+const useStyles = makeStyles({
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXL,
+  },
+  section: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    gap: tokens.spacingHorizontalL,
+  },
+  providerCard: {
+    padding: tokens.spacingVerticalL,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    ':hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: tokens.shadow8,
+    },
+  },
+  selectedCard: {
+    border: `2px solid ${tokens.colorBrandStroke1}`,
+  },
+  providerHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: tokens.spacingVerticalS,
+  },
+  providerDetails: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  formRow: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalL,
+    flexWrap: 'wrap',
+  },
+  formField: {
+    flex: 1,
+    minWidth: '200px',
+  },
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: tokens.spacingVerticalXXL,
+  },
+});
 
 interface StyleSelectionProps {
   data: StyleData;
@@ -26,257 +86,303 @@ interface StyleSelectionProps {
   onValidationChange: (validation: StepValidation) => void;
 }
 
-const useStyles = makeStyles({
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
-  },
-  section: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalM,
-  },
-  fieldRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: tokens.spacingHorizontalM,
-  },
-  voicePreviewCard: {
-    padding: tokens.spacingVerticalM,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
-  },
-  previewButton: {
-    width: 'fit-content',
-  },
-  loadingText: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: tokens.fontSizeBase200,
-  },
-});
-
 export const StyleSelection: FC<StyleSelectionProps> = ({
   data,
-  briefData,
   advancedMode,
   onChange,
   onValidationChange,
 }) => {
   const styles = useStyles();
-  const [providers, setProviders] = useState<TtsProvider[]>([]);
-  const [voices, setVoices] = useState<TtsVoice[]>([]);
-  const [loadingProviders, setLoadingProviders] = useState(true);
-  const [loadingVoices, setLoadingVoices] = useState(false);
-  const [playingPreview, setPlayingPreview] = useState(false);
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const visualsClient = getVisualsClient();
+  const [providers, setProviders] = useState<VisualProvider[]>([]);
+  const [availableStyles, setAvailableStyles] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProviders = async () => {
-      try {
-        setLoadingProviders(true);
-        const availableProviders = await ttsService.getAvailableProviders();
-        setProviders(availableProviders);
-
-        if (availableProviders.length > 0 && !data.voiceProvider) {
-          const defaultProvider = availableProviders.find(
-            (p) => p.name === 'ElevenLabs' || p.name === 'EdgeTTS'
-          );
-          if (defaultProvider) {
-            onChange({ ...data, voiceProvider: defaultProvider.name as never });
-          } else {
-            onChange({ ...data, voiceProvider: availableProviders[0].name as never });
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load TTS providers:', error);
-      } finally {
-        setLoadingProviders(false);
-      }
-    };
-
-    fetchProviders();
+    loadProviders();
+    loadStyles();
   }, []);
 
-  useEffect(() => {
-    const fetchVoices = async () => {
-      if (!data.voiceProvider) return;
+  const loadProviders = useCallback(async () => {
+    try {
+      const response = await visualsClient.getProviders();
+      setProviders(response.providers);
 
-      try {
-        setLoadingVoices(true);
-        const availableVoices = await ttsService.getVoicesForProvider(data.voiceProvider);
-        setVoices(availableVoices);
-
-        if (availableVoices.length > 0 && !data.voiceName) {
-          onChange({ ...data, voiceName: availableVoices[0].name });
+      if (!data.imageProvider) {
+        const availableProvider = response.providers.find((p) => p.isAvailable);
+        if (availableProvider) {
+          onChange({
+            ...data,
+            imageProvider: availableProvider.name,
+          });
         }
-      } catch (error) {
-        console.error('Failed to load voices:', error);
-        setVoices([]);
-      } finally {
-        setLoadingVoices(false);
       }
-    };
+    } catch (error) {
+      console.error('Failed to load providers:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [visualsClient, data, onChange]);
 
-    fetchVoices();
-  }, [data.voiceProvider]);
+  const loadStyles = useCallback(async () => {
+    try {
+      const response = await visualsClient.getStyles();
+      setAvailableStyles(response.allStyles);
+
+      if (!data.imageStyle && response.allStyles.length > 0) {
+        onChange({
+          ...data,
+          imageStyle: response.allStyles[0],
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load styles:', error);
+      setAvailableStyles(['photorealistic', 'artistic', 'cinematic', 'minimalist']);
+    }
+  }, [visualsClient, data, onChange]);
 
   useEffect(() => {
-    const isValid = !!(data.voiceProvider && data.voiceName && data.visualStyle);
+    const isValid = !!data.voiceProvider && !!data.visualStyle && !!data.imageProvider;
+
     onValidationChange({
       isValid,
-      errors: isValid ? [] : ['Please select voice and visual style'],
+      errors: isValid ? [] : ['Please select voice and image providers'],
     });
   }, [data, onValidationChange]);
 
-  const handlePlayPreview = useCallback(async () => {
-    if (playingPreview && audio) {
-      audio.pause();
-      setPlayingPreview(false);
-      return;
-    }
-
-    if (!data.voiceProvider || !data.voiceName) {
-      return;
-    }
-
-    try {
-      setPlayingPreview(true);
-      const sampleText = briefData.topic
-        ? `Here's a preview of my voice reading about ${briefData.topic}.`
-        : 'Hello, this is a sample of my voice. How does it sound?';
-
-      const preview = await ttsService.generatePreview({
-        provider: data.voiceProvider,
-        voice: data.voiceName,
-        sampleText,
+  const handleProviderSelect = useCallback(
+    (providerName: string) => {
+      onChange({
+        ...data,
+        imageProvider: providerName,
       });
+    },
+    [data, onChange]
+  );
 
-      const audioElement = new Audio(preview.audioPath);
-      audioElement.onended = () => {
-        setPlayingPreview(false);
-        setAudio(null);
-      };
-      audioElement.onerror = () => {
-        setPlayingPreview(false);
-        setAudio(null);
-        console.error('Failed to play audio preview');
-      };
+  const handleStyleChange = useCallback(
+    (field: keyof StyleData, value: string | number | boolean) => {
+      onChange({
+        ...data,
+        [field]: value,
+      });
+    },
+    [data, onChange]
+  );
 
-      setAudio(audioElement);
-      await audioElement.play();
-    } catch (error) {
-      console.error('Failed to generate preview:', error);
-      setPlayingPreview(false);
-      setAudio(null);
-    }
-  }, [playingPreview, audio, data.voiceProvider, data.voiceName, briefData.topic]);
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <Title2>Style Selection</Title2>
+        <div className={styles.loadingContainer}>
+          <Spinner size="large" label="Loading providers..." />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
-      <div>
-        <Title2>Voice & Style Selection</Title2>
-        <Text>Configure the voice, visual style, and music for your video.</Text>
+      <div className={styles.section}>
+        <Title2>Style Selection</Title2>
+        <Text>Configure voice, visual style, and music preferences for your video.</Text>
       </div>
 
       <div className={styles.section}>
-        <Field label="Voice Provider">
-          {loadingProviders ? (
-            <div>
-              <Spinner size="tiny" />
-              <Text className={styles.loadingText}>Loading providers...</Text>
-            </div>
-          ) : (
+        <Title3>Voice Settings</Title3>
+        <div className={styles.formRow}>
+          <Field label="Voice Provider" className={styles.formField}>
             <Dropdown
-              placeholder="Select a TTS provider"
               value={data.voiceProvider}
               selectedOptions={[data.voiceProvider]}
               onOptionSelect={(_, option) => {
-                onChange({ ...data, voiceProvider: option.optionValue as never, voiceName: '' });
+                if (option.optionValue) {
+                  handleStyleChange('voiceProvider', option.optionValue as string);
+                }
               }}
             >
-              {providers.map((provider) => (
-                <Option key={provider.name} value={provider.name} text={provider.name}>
-                  {provider.name} ({provider.tier})
-                </Option>
-              ))}
+              <Option value="ElevenLabs">ElevenLabs</Option>
+              <Option value="PlayHT">PlayHT</Option>
+              <Option value="Windows">Windows</Option>
+              <Option value="Piper">Piper</Option>
             </Dropdown>
-          )}
-        </Field>
+          </Field>
 
-        {data.voiceProvider && (
-          <Field label="Voice">
-            {loadingVoices ? (
-              <div>
-                <Spinner size="tiny" />
-                <Text className={styles.loadingText}>Loading voices...</Text>
+          <Field label="Voice Name" className={styles.formField}>
+            <Dropdown
+              placeholder="Select a voice"
+              value={data.voiceName}
+              selectedOptions={data.voiceName ? [data.voiceName] : []}
+              onOptionSelect={(_, option) => {
+                if (option.optionValue) {
+                  handleStyleChange('voiceName', option.optionValue as string);
+                }
+              }}
+            >
+              <Option value="default">Default</Option>
+              <Option value="professional">Professional</Option>
+              <Option value="friendly">Friendly</Option>
+              <Option value="energetic">Energetic</Option>
+            </Dropdown>
+          </Field>
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <Title3>Image Generation Provider</Title3>
+        <Text>Select the AI provider for generating scene images</Text>
+
+        <div className={styles.grid}>
+          {providers.map((provider) => (
+            <Card
+              key={provider.name}
+              className={`${styles.providerCard} ${
+                data.imageProvider === provider.name ? styles.selectedCard : ''
+              }`}
+              onClick={() => provider.isAvailable && handleProviderSelect(provider.name)}
+              style={{
+                opacity: provider.isAvailable ? 1 : 0.5,
+                cursor: provider.isAvailable ? 'pointer' : 'not-allowed',
+              }}
+            >
+              <div className={styles.providerHeader}>
+                <Title3>{provider.name}</Title3>
+                {data.imageProvider === provider.name && (
+                  <Badge appearance="filled" color="success">
+                    Selected
+                  </Badge>
+                )}
               </div>
-            ) : (
+
+              <div className={styles.providerDetails}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+                >
+                  {provider.isAvailable ? (
+                    <CheckmarkCircle24Regular
+                      style={{ color: tokens.colorPaletteGreenForeground1, fontSize: '16px' }}
+                    />
+                  ) : (
+                    <ErrorCircle24Regular
+                      style={{ color: tokens.colorPaletteRedForeground1, fontSize: '16px' }}
+                    />
+                  )}
+                  <Text size={200}>{provider.isAvailable ? 'Available' : 'Not Available'}</Text>
+                </div>
+
+                {provider.capabilities && (
+                  <>
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                      {provider.capabilities.tier} •{' '}
+                      {provider.capabilities.isFree
+                        ? 'Free'
+                        : `$${provider.capabilities.costPerImage}/image`}
+                    </Text>
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                      Max: {provider.capabilities.maxWidth}x{provider.capabilities.maxHeight}
+                    </Text>
+                    {provider.capabilities.supportedStyles.length > 0 && (
+                      <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                        {provider.capabilities.supportedStyles.length} styles supported
+                      </Text>
+                    )}
+                  </>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <Title3>Visual Style Settings</Title3>
+        <div className={styles.formRow}>
+          <Field label="Visual Style" className={styles.formField}>
+            <Dropdown
+              value={data.visualStyle}
+              selectedOptions={[data.visualStyle]}
+              onOptionSelect={(_, option) => {
+                if (option.optionValue) {
+                  handleStyleChange('visualStyle', option.optionValue as string);
+                }
+              }}
+            >
+              <Option value="modern">Modern</Option>
+              <Option value="minimal">Minimal</Option>
+              <Option value="cinematic">Cinematic</Option>
+              <Option value="playful">Playful</Option>
+              <Option value="professional">Professional</Option>
+            </Dropdown>
+          </Field>
+
+          {availableStyles.length > 0 && (
+            <Field label="Image Style" className={styles.formField}>
               <Dropdown
-                placeholder="Select a voice"
-                value={data.voiceName}
-                selectedOptions={[data.voiceName]}
+                placeholder="Select image style"
+                value={data.imageStyle}
+                selectedOptions={data.imageStyle ? [data.imageStyle] : []}
                 onOptionSelect={(_, option) => {
-                  onChange({ ...data, voiceName: option.optionValue as string });
+                  if (option.optionValue) {
+                    handleStyleChange('imageStyle', option.optionValue as string);
+                  }
                 }}
-                disabled={voices.length === 0}
               >
-                {voices.map((voice) => (
-                  <Option key={voice.name} value={voice.name} text={voice.name}>
-                    {voice.name}
-                    {voice.gender && ` (${voice.gender})`}
+                {availableStyles.map((style) => (
+                  <Option key={style} value={style}>
+                    {style.charAt(0).toUpperCase() + style.slice(1)}
                   </Option>
                 ))}
               </Dropdown>
-            )}
-          </Field>
-        )}
+            </Field>
+          )}
+        </div>
 
-        {data.voiceProvider && data.voiceName && (
-          <Card className={styles.voicePreviewCard}>
-            <Label>Voice Preview</Label>
-            <Button
-              appearance="secondary"
-              icon={playingPreview ? <StopRegular /> : <PlayRegular />}
-              onClick={handlePlayPreview}
-              disabled={!data.voiceName}
-              className={styles.previewButton}
+        {advancedMode && (
+          <div className={styles.formRow}>
+            <Field label="Aspect Ratio" className={styles.formField}>
+              <Dropdown
+                value={data.imageAspectRatio || '16:9'}
+                selectedOptions={[data.imageAspectRatio || '16:9']}
+                onOptionSelect={(_, option) => {
+                  if (option.optionValue) {
+                    handleStyleChange('imageAspectRatio', option.optionValue as string);
+                  }
+                }}
+              >
+                <Option value="16:9">16:9 (Widescreen)</Option>
+                <Option value="9:16">9:16 (Portrait)</Option>
+                <Option value="1:1">1:1 (Square)</Option>
+                <Option value="4:3">4:3 (Standard)</Option>
+              </Dropdown>
+            </Field>
+
+            <Field
+              label={`Image Quality: ${data.imageQuality || 80}%`}
+              className={styles.formField}
             >
-              {playingPreview ? 'Stop Preview' : 'Play Preview'}
-            </Button>
-          </Card>
+              <Slider
+                value={data.imageQuality || 80}
+                min={50}
+                max={100}
+                step={10}
+                onChange={(_, sliderData) => handleStyleChange('imageQuality', sliderData.value)}
+              />
+            </Field>
+          </div>
         )}
       </div>
 
       <div className={styles.section}>
-        <Field label="Visual Style">
-          <Dropdown
-            placeholder="Select visual style"
-            value={data.visualStyle}
-            selectedOptions={[data.visualStyle]}
-            onOptionSelect={(_, option) => {
-              onChange({ ...data, visualStyle: option.optionValue as never });
-            }}
-          >
-            <Option value="modern">Modern</Option>
-            <Option value="minimal">Minimal</Option>
-            <Option value="cinematic">Cinematic</Option>
-            <Option value="playful">Playful</Option>
-            <Option value="professional">Professional</Option>
-          </Dropdown>
-        </Field>
-      </div>
-
-      {advancedMode && (
-        <div className={styles.section}>
-          <Field label="Music Genre">
+        <Title3>Music Settings</Title3>
+        <div className={styles.formRow}>
+          <Field label="Music Genre" className={styles.formField}>
             <Dropdown
-              placeholder="Select music genre"
               value={data.musicGenre}
               selectedOptions={[data.musicGenre]}
               onOptionSelect={(_, option) => {
-                onChange({ ...data, musicGenre: option.optionValue as never });
+                if (option.optionValue) {
+                  handleStyleChange('musicGenre', option.optionValue as string);
+                }
               }}
             >
               <Option value="ambient">Ambient</Option>
@@ -286,7 +392,7 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
             </Dropdown>
           </Field>
         </div>
-      )}
+      </div>
     </div>
   );
 };
