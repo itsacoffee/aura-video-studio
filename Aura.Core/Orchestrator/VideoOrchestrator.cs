@@ -187,10 +187,21 @@ public class VideoOrchestrator
             // Create task executor that maps generation tasks to providers
             var taskExecutor = CreateTaskExecutor(brief, planSpec, voiceSpec, renderSpec, ct, isQuickDemo);
 
-            // Map progress events
+            // Map progress events from orchestration to both string and detailed progress
             var orchestrationProgress = new Progress<OrchestrationProgress>(p =>
             {
                 progress?.Report($"{p.CurrentStage}: {p.ProgressPercentage:F1}%");
+                
+                // Map to detailed progress with stage-specific information
+                if (detailedProgress != null)
+                {
+                    var genProgress = MapOrchestrationProgressToDetailed(
+                        p, 
+                        p.CompletedTasks, 
+                        p.TotalTasks, 
+                        correlationId);
+                    detailedProgress.Report(genProgress);
+                }
             });
 
             // Execute smart orchestration
@@ -1183,5 +1194,41 @@ Welcome to {safeTopic}. This is a demonstration video created with Aura Video St
 Aura Video Studio helps you create professional videos quickly and easily. Thank you for trying our Quick Demo feature.";
         
         return script;
+    }
+
+    /// <summary>
+    /// Maps OrchestrationProgress from smart orchestrator to detailed GenerationProgress
+    /// </summary>
+    private static GenerationProgress MapOrchestrationProgressToDetailed(
+        OrchestrationProgress orchestrationProgress,
+        int currentItem,
+        int totalItems,
+        string? correlationId)
+    {
+        // Map stage name to GenerationProgress stage format
+        var stage = orchestrationProgress.CurrentStage.ToLowerInvariant() switch
+        {
+            var s when s.Contains("script") => "Script",
+            var s when s.Contains("audio") || s.Contains("tts") || s.Contains("narration") => "TTS",
+            var s when s.Contains("image") || s.Contains("visual") || s.Contains("asset") => "Images",
+            var s when s.Contains("render") || s.Contains("compose") || s.Contains("composition") => "Rendering",
+            var s when s.Contains("post") => "PostProcess",
+            _ => "Processing"
+        };
+        
+        // Calculate stage-specific percent
+        var stagePercent = orchestrationProgress.ProgressPercentage;
+        
+        return new GenerationProgress
+        {
+            Stage = stage,
+            OverallPercent = StageWeights.CalculateOverallProgress(stage, stagePercent),
+            StagePercent = stagePercent,
+            Message = orchestrationProgress.CurrentStage,
+            CurrentItem = currentItem,
+            TotalItems = totalItems,
+            ElapsedTime = orchestrationProgress.ElapsedTime,
+            CorrelationId = correlationId
+        };
     }
 }

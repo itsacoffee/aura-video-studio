@@ -30,6 +30,11 @@ export interface Job {
   progressMessage?: string; // Latest progress message
   outputPath?: string; // Primary output video path
   subtitlePath?: string; // Subtitle file path
+  substageDetail?: string; // Detailed substage info (e.g., "Synthesizing scene 3 of 5")
+  currentItem?: number; // Current item being processed
+  totalItems?: number; // Total items to process
+  elapsedTime?: string; // Elapsed time in format hh:mm:ss
+  estimatedTimeRemaining?: string; // Estimated time remaining in format hh:mm:ss
 }
 
 export interface JobFailure {
@@ -271,6 +276,11 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         phase: data.phase,
         percent: data.progressPct,
         progressMessage: data.message,
+        substageDetail: data.substageDetail,
+        currentItem: data.currentItem,
+        totalItems: data.totalItems,
+        elapsedTime: data.elapsedTime,
+        estimatedTimeRemaining: data.estimatedTimeRemaining,
       });
     });
 
