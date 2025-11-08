@@ -216,6 +216,95 @@ public class VisualsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// POST /api/visuals/batch - Generate multiple images in batch
+    /// </summary>
+    [HttpPost("batch")]
+    public async Task<IActionResult> BatchGenerate(
+        [FromBody] BatchGenerateRequest request,
+        CancellationToken ct)
+    {
+        if (request.Prompts == null || request.Prompts.Length == 0)
+        {
+            return BadRequest(new { error = "At least one prompt is required" });
+        }
+
+        try
+        {
+            _logger.LogInformation("Batch generating {Count} images", request.Prompts.Length);
+
+            var options = new VisualGenerationOptions
+            {
+                Width = request.Width ?? 1024,
+                Height = request.Height ?? 1024,
+                Style = request.Style ?? "photorealistic",
+                AspectRatio = request.AspectRatio ?? "16:9",
+                Quality = request.Quality ?? 80,
+                NegativePrompts = request.NegativePrompts
+            };
+
+            var providers = CreateAllProviders();
+            var results = new List<GeneratedImageResult>();
+            var failedCount = 0;
+            string? usedProvider = null;
+
+            foreach (var provider in providers)
+            {
+                var isAvailable = await provider.IsAvailableAsync(ct).ConfigureAwait(false);
+                if (!isAvailable)
+                {
+                    _logger.LogDebug("Provider {Provider} not available, trying next", provider.ProviderName);
+                    continue;
+                }
+
+                _logger.LogInformation("Attempting batch generation with provider: {Provider}", provider.ProviderName);
+                
+                var batchResults = await provider.BatchGenerateAsync(
+                    request.Prompts.ToList(),
+                    options,
+                    null,
+                    ct).ConfigureAwait(false);
+
+                if (batchResults != null && batchResults.Count > 0)
+                {
+                    usedProvider = provider.ProviderName;
+                    
+                    for (int i = 0; i < batchResults.Count; i++)
+                    {
+                        results.Add(new GeneratedImageResult
+                        {
+                            ImagePath = batchResults[i],
+                            Prompt = i < request.Prompts.Length ? request.Prompts[i] : "",
+                            GeneratedAt = DateTime.UtcNow
+                        });
+                    }
+                    
+                    failedCount = request.Prompts.Length - batchResults.Count;
+                    break;
+                }
+            }
+
+            if (results.Count == 0)
+            {
+                return Problem("All visual providers failed to generate images", statusCode: 500);
+            }
+
+            return Ok(new
+            {
+                images = results,
+                totalGenerated = results.Count,
+                failedCount = failedCount,
+                provider = usedProvider,
+                completedAt = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in batch image generation");
+            return Problem("Failed to generate images in batch", statusCode: 500);
+        }
+    }
+
     private List<BaseVisualProvider> CreateAllProviders()
     {
         var httpClient = _httpClientFactory.CreateClient();
@@ -298,6 +387,26 @@ public class VisualsController : ControllerBase
         public string? AspectRatio { get; set; }
         public int? Quality { get; set; }
         public string[]? NegativePrompts { get; set; }
+    }
+
+    public class BatchGenerateRequest
+    {
+        public string[] Prompts { get; set; } = Array.Empty<string>();
+        public int? Width { get; set; }
+        public int? Height { get; set; }
+        public string? Style { get; set; }
+        public string? AspectRatio { get; set; }
+        public int? Quality { get; set; }
+        public string[]? NegativePrompts { get; set; }
+    }
+
+    public class GeneratedImageResult
+    {
+        public string ImagePath { get; set; } = string.Empty;
+        public string Prompt { get; set; } = string.Empty;
+        public DateTime GeneratedAt { get; set; }
+        public int? Quality { get; set; }
+        public double? ClipScore { get; set; }
     }
 
     public class ValidateRequest
