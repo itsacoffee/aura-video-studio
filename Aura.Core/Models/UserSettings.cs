@@ -26,6 +26,9 @@ public class UserSettings
     // UI Settings
     public UISettings UI { get; set; } = new();
     
+    // Visual Generation Settings
+    public VisualGenerationSettings VisualGeneration { get; set; } = new();
+    
     // Advanced Settings (legacy)
     public AdvancedSettings Advanced { get; set; } = new();
     
@@ -117,6 +120,47 @@ public class UISettings
     public int Scale { get; set; } = 100;
     public bool CompactMode { get; set; } = false;
     public string ColorScheme { get; set; } = "default";
+}
+
+/// <summary>
+/// Visual generation and content safety settings
+/// </summary>
+public class VisualGenerationSettings
+{
+    /// <summary>
+    /// Enable NSFW content detection and filtering during image generation
+    /// </summary>
+    public bool EnableNsfwDetection { get; set; } = true;
+
+    /// <summary>
+    /// Content safety level for negative prompts
+    /// </summary>
+    public string ContentSafetyLevel { get; set; } = "Moderate"; // None, Basic, Moderate, Strict
+
+    /// <summary>
+    /// Number of image variations to generate per scene
+    /// </summary>
+    public int VariationsPerScene { get; set; } = 3;
+
+    /// <summary>
+    /// Enable CLIP scoring for prompt adherence
+    /// </summary>
+    public bool EnableClipScoring { get; set; } = true;
+
+    /// <summary>
+    /// Enable quality checks (blur, artifacts detection)
+    /// </summary>
+    public bool EnableQualityChecks { get; set; } = true;
+
+    /// <summary>
+    /// Default aspect ratio for video generation
+    /// </summary>
+    public string DefaultAspectRatio { get; set; } = "16:9";
+
+    /// <summary>
+    /// Visual style continuity strength (0.0 to 1.0)
+    /// </summary>
+    public double ContinuityStrength { get; set; } = 0.7;
 }
 
 /// <summary>
