@@ -18,6 +18,7 @@ import { NotificationsToaster } from './components/Notifications/Toasts';
 import { PlatformDashboard } from './components/Platform';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
 import { ActionHistoryPanel } from './components/UndoRedo/ActionHistoryPanel';
+import { VideoCreationWizard } from './components/VideoWizard/VideoCreationWizard';
 import { env } from './config/env';
 import { useGlobalUndoShortcuts } from './hooks/useGlobalUndoShortcuts';
 import { AestheticsPage } from './pages/Aesthetics/AestheticsPage';
@@ -439,6 +440,7 @@ function App() {
                         <Route path="/trending" element={<TrendingTopicsExplorer />} />
                         <Route path="/content-planning" element={<ContentPlanningDashboard />} />
                         <Route path="/create" element={<CreateWizard />} />
+                        <Route path="/create/new" element={<VideoCreationWizard />} />
                         <Route path="/create/legacy" element={<CreatePage />} />
                         <Route path="/templates" element={<TemplatesLibrary />} />
                         <Route path="/templates/custom" element={<CustomTemplatesPage />} />
