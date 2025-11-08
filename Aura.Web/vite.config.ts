@@ -134,6 +134,10 @@ export default defineConfig(({ mode }) => {
           drop_console: isProduction, // Remove console.logs in production
           drop_debugger: isProduction, // Remove debugger statements in production
           pure_funcs: isProduction ? ['console.log', 'console.info', 'console.debug'] : [],
+          passes: 2, // Multiple passes for better optimization
+        },
+        mangle: {
+          safari10: true, // Support Safari 10+
         },
       },
       rollupOptions: {
@@ -141,9 +145,7 @@ export default defineConfig(({ mode }) => {
           entryFileNames: 'assets/[name]-[hash].js',
           chunkFileNames: 'assets/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash].[ext]',
-          // Improved code splitting strategy
-          // Don't manually chunk React or Fluent UI - let Vite handle them automatically
-          // to avoid module initialization order issues
+          // Improved code splitting strategy with route-based chunks
           manualChunks: (id) => {
             // FFmpeg - large library, keep separate
             if (id.includes('@ffmpeg')) {
@@ -153,18 +155,49 @@ export default defineConfig(({ mode }) => {
             if (id.includes('wavesurfer')) {
               return 'audio-vendor';
             }
+            // React core - separate chunk
+            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+              return 'react-vendor';
+            }
+            // Fluent UI components - separate chunk
+            if (id.includes('@fluentui/react-components')) {
+              return 'fluent-components';
+            }
+            // Fluent UI icons - separate chunk (can be lazy loaded)
+            if (id.includes('@fluentui/react-icons')) {
+              return 'fluent-icons';
+            }
+            // Router - separate chunk
+            if (id.includes('react-router')) {
+              return 'router-vendor';
+            }
+            // State management
+            if (id.includes('zustand') || id.includes('@tanstack/react-query')) {
+              return 'state-vendor';
+            }
             // All other node_modules go to vendor chunk
-            // This includes React, React-DOM, Fluent UI, and other dependencies
-            // Automatic bundling ensures proper module initialization order
             if (id.includes('node_modules')) {
               return 'vendor';
             }
           },
         },
+        treeshake: {
+          moduleSideEffects: 'no-external', // Enable aggressive tree shaking
+          propertyReadSideEffects: false,
+          tryCatchDeoptimization: false,
+        },
       },
       // Asset optimization
       assetsInlineLimit: 4096, // Inline assets smaller than 4KB as base64
       cssCodeSplit: true, // Split CSS into separate files per chunk
+      // Optimize dependencies
+      commonjsOptions: {
+        include: [/node_modules/],
+        extensions: ['.js', '.cjs'],
+      },
+      // Performance optimizations
+      reportCompressedSize: isProduction,
+      chunkSizeWarningLimit: 600,
     },
     test: {
       globals: true,

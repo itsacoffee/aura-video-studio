@@ -99,6 +99,26 @@ builder.Host.UseSerilog();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// Configure response compression (Brotli + Gzip)
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+    options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+    options.MimeTypes = Microsoft.AspNetCore.ResponseCompression.ResponseCompressionDefaults.MimeTypes.Concat(
+        new[] { "application/json", "text/json", "text/plain", "text/css", "text/html", "application/javascript", "text/javascript" });
+});
+
+builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProviderOptions>(options =>
+{
+    options.Level = System.IO.Compression.CompressionLevel.Fastest;
+});
+
+builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProviderOptions>(options =>
+{
+    options.Level = System.IO.Compression.CompressionLevel.Fastest;
+});
+
 // Configure form options for large file uploads (100GB support)
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
 {
@@ -235,6 +255,40 @@ builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
 // Register FFmpeg resolver with managed install precedence and caching
 builder.Services.AddSingleton<Aura.Core.Dependencies.FFmpegResolver>();
 builder.Services.AddMemoryCache(); // Required for FFmpegResolver caching
+
+// Configure distributed caching with Redis fallback to in-memory
+var cachingConfig = builder.Configuration.GetSection("Caching").Get<Aura.Core.Configuration.CachingConfiguration>() 
+    ?? new Aura.Core.Configuration.CachingConfiguration();
+
+if (cachingConfig.Enabled)
+{
+    if (cachingConfig.UseRedis && !string.IsNullOrEmpty(cachingConfig.RedisConnection))
+    {
+        try
+        {
+            builder.Services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = cachingConfig.RedisConnection;
+                options.InstanceName = "Aura:";
+            });
+            Log.Information("Redis distributed cache configured");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to configure Redis, falling back to in-memory cache");
+            builder.Services.AddDistributedMemoryCache();
+        }
+    }
+    else
+    {
+        builder.Services.AddDistributedMemoryCache();
+        Log.Information("In-memory distributed cache configured");
+    }
+
+    builder.Services.AddSingleton<Aura.Core.Services.Caching.IDistributedCacheService, 
+        Aura.Core.Services.Caching.DistributedCacheService>();
+    builder.Services.AddSingleton(cachingConfig);
+}
 
 // Provider mixing configuration
 builder.Services.AddSingleton(sp =>
@@ -1453,6 +1507,12 @@ catch (Exception ex)
 
 // Add correlation ID middleware early in the pipeline
 app.UseCorrelationId();
+
+// Add response compression (before most other middleware)
+app.UseResponseCompression();
+
+// Add response caching headers middleware
+app.UseMiddleware<Aura.Api.Middleware.ResponseCachingMiddleware>();
 
 // Add performance tracking middleware (after correlation ID)
 app.UsePerformanceTracking();
