@@ -188,7 +188,9 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
 
 // Register ProjectStateRepository for state persistence
 builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
-builder.Services.AddScoped<Aura.Core.Services.CheckpointManager>();
+// CheckpointManager is scoped but cannot be injected into singleton JobRunner
+// It will be passed as null to JobRunner's optional parameter
+// builder.Services.AddScoped<Aura.Core.Services.CheckpointManager>();
 
 // Register wizard project management service
 builder.Services.AddScoped<Aura.Core.Services.WizardProjectService>();
@@ -196,8 +198,10 @@ builder.Services.AddScoped<Aura.Core.Services.WizardProjectService>();
 // Register project versioning services
 builder.Services.AddScoped<Aura.Core.Data.ProjectVersionRepository>();
 builder.Services.AddScoped<Aura.Core.Services.ProjectVersionService>();
-builder.Services.AddSingleton<Aura.Api.HostedServices.ProjectAutosaveService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Api.HostedServices.ProjectAutosaveService>());
+// ProjectAutosaveService cannot inject scoped ProjectVersionService as singleton
+// Commenting out until refactored to use IServiceScopeFactory
+// builder.Services.AddSingleton<Aura.Api.HostedServices.ProjectAutosaveService>();
+// builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Api.HostedServices.ProjectAutosaveService>());
 
 // Register ActionService for server-side undo/redo
 builder.Services.AddScoped<Aura.Core.Services.IActionService, Aura.Core.Services.ActionService>();
