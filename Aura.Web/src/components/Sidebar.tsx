@@ -116,9 +116,16 @@ interface NavItem {
 interface SidebarProps {
   isDarkMode: boolean;
   onToggleTheme: () => void;
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function Sidebar({ isDarkMode, onToggleTheme }: SidebarProps) {
+export function Sidebar({
+  isDarkMode,
+  onToggleTheme,
+  isMobileOpen: _isMobileOpen,
+  onMobileClose: _onMobileClose,
+}: SidebarProps) {
   const styles = useStyles();
   const navigate = useNavigate();
   const location = useLocation();
