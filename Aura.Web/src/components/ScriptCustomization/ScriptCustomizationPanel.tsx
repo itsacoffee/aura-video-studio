@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   Button,
   Card,
@@ -14,6 +13,7 @@ import {
   Sparkle24Regular,
   Star24Regular,
 } from '@fluentui/react-icons';
+import React, { useState } from 'react';
 
 interface Scene {
   number: number;
@@ -51,7 +51,7 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
   const [editingNarration, setEditingNarration] = useState('');
   const [improvementGoal, setImprovementGoal] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   // Customization controls
   const [formalityLevel, setFormalityLevel] = useState(50);
   const [pacingSpeed, setPacingSpeed] = useState(50);
@@ -70,7 +70,7 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
 
   const handleSceneClick = (sceneNumber: number) => {
     setSelectedScene(sceneNumber);
-    const scene = script.scenes.find(s => s.number === sceneNumber);
+    const scene = script.scenes.find((s) => s.number === sceneNumber);
     if (scene) {
       setEditingNarration(scene.narration);
     }
@@ -79,10 +79,8 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
   const handleSaveScene = () => {
     if (selectedScene === null) return;
 
-    const updatedScenes = script.scenes.map(scene =>
-      scene.number === selectedScene
-        ? { ...scene, narration: editingNarration }
-        : scene
+    const updatedScenes = script.scenes.map((scene) =>
+      scene.number === selectedScene ? { ...scene, narration: editingNarration } : scene
     );
 
     onScriptUpdate({ ...script, scenes: updatedScenes });
@@ -91,7 +89,7 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
 
   const handleImproveScript = async () => {
     if (!improvementGoal) return;
-    
+
     setIsProcessing(true);
     try {
       await onImproveScript(improvementGoal);
@@ -112,7 +110,7 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
 
   const handleRegenerateScene = async () => {
     if (selectedScene === null) return;
-    
+
     setIsProcessing(true);
     try {
       await onRegenerateScene(selectedScene, improvementGoal || 'Improve overall quality');
@@ -144,15 +142,12 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
     <div className="script-customization-panel">
       <Card className="customization-controls">
         <h3>Script Customization</h3>
-        
+
         {/* Style Preset Selector */}
         <div className="control-group">
           <Label>Style Preset</Label>
-          <Select
-            value={stylePreset}
-            onChange={(_, data) => setStylePreset(data.value)}
-          >
-            {stylePresets.map(preset => (
+          <Select value={stylePreset} onChange={(_, data) => setStylePreset(data.value)}>
+            {stylePresets.map((preset) => (
               <option key={preset.key} value={preset.key}>
                 {preset.text}
               </option>
@@ -218,7 +213,7 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
           >
             Optimize Hook
           </Button>
-          
+
           <Button
             appearance="secondary"
             icon={<ArrowRotateClockwise24Regular />}
@@ -232,8 +227,8 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
       {/* Scene List */}
       <Card className="scene-list">
         <h3>Scenes ({script.scenes.length})</h3>
-        
-        {script.scenes.map(scene => (
+
+        {script.scenes.map((scene) => (
           <Card
             key={scene.number}
             className={`scene-card ${selectedScene === scene.number ? 'selected' : ''}`}
@@ -243,12 +238,12 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
               <Text weight="semibold">Scene {scene.number}</Text>
               <Text size={200}>{scene.duration}s</Text>
             </div>
-            
+
             <Text className="scene-narration">
               {scene.narration.substring(0, 100)}
               {scene.narration.length > 100 ? '...' : ''}
             </Text>
-            
+
             <Text size={200} className="scene-visual">
               Visual: {scene.visualPrompt}
             </Text>
@@ -260,7 +255,7 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
       {selectedScene !== null && (
         <Card className="scene-editor">
           <h3>Edit Scene {selectedScene}</h3>
-          
+
           <Label>Narration</Label>
           <Textarea
             value={editingNarration}
@@ -268,16 +263,12 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
             rows={6}
             resize="vertical"
           />
-          
+
           <div className="editor-actions">
-            <Button
-              appearance="primary"
-              onClick={handleSaveScene}
-              disabled={isProcessing}
-            >
+            <Button appearance="primary" onClick={handleSaveScene} disabled={isProcessing}>
               Save Changes
             </Button>
-            
+
             <Button
               appearance="secondary"
               icon={<ArrowRotateClockwise24Regular />}
@@ -286,11 +277,8 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
             >
               Regenerate Scene
             </Button>
-            
-            <Button
-              onClick={() => setSelectedScene(null)}
-              disabled={isProcessing}
-            >
+
+            <Button onClick={() => setSelectedScene(null)} disabled={isProcessing}>
               Cancel
             </Button>
           </div>
@@ -300,7 +288,7 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
       {/* Improvement Panel */}
       <Card className="improvement-panel">
         <h3>Script Improvement</h3>
-        
+
         <Label>What would you like to improve?</Label>
         <Textarea
           value={improvementGoal}
@@ -308,7 +296,7 @@ export const ScriptCustomizationPanel: React.FC<ScriptCustomizationPanelProps> =
           placeholder="E.g., 'Make the opening more engaging' or 'Add more specific examples'"
           rows={3}
         />
-        
+
         <Button
           appearance="primary"
           icon={<Star24Regular />}

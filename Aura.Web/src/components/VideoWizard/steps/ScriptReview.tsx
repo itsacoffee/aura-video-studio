@@ -1,26 +1,139 @@
 import {
-  Title2,
-  Text,
-  Card,
-  Textarea,
-  Button,
-  Field,
-  Label,
-  Spinner,
   makeStyles,
   tokens,
+  Title2,
+  Title3,
+  Text,
+  Button,
+  Spinner,
+  Card,
+  Field,
+  Textarea,
+  Badge,
+  Tooltip,
+  Divider,
 } from '@fluentui/react-components';
 import {
-  ArrowSyncRegular,
-  PlayRegular,
-  CheckmarkCircleRegular,
-  DismissCircleRegular,
+  Sparkle24Regular,
+  ArrowClockwise24Regular,
+  DocumentBulletList24Regular,
+  Clock24Regular,
+  TextGrammarCheckmark24Regular,
+  DocumentText24Regular,
+  ArrowDownload24Regular,
 } from '@fluentui/react-icons';
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC } from 'react';
-import { ttsService } from '../../../services/ttsService';
-import type { RegenerateAudioRequest } from '../../../services/ttsService';
-import type { ScriptData, BriefData, StyleData, StepValidation, ScriptScene } from '../types';
+import {
+  generateScript,
+  updateScene,
+  listProviders,
+  exportScript,
+  regenerateScene,
+  type GenerateScriptResponse,
+  type ProviderInfoDto,
+  type ScriptSceneDto,
+} from '../../../services/api/scriptApi';
+import type { ScriptData, BriefData, StyleData, StepValidation } from '../types';
+
+const useStyles = makeStyles({
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXL,
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: tokens.spacingVerticalM,
+  },
+  headerActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    alignItems: 'center',
+  },
+  statsBar: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalXL,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    marginBottom: tokens.spacingVerticalL,
+  },
+  stat: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  statLabel: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+  },
+  statValue: {
+    fontSize: tokens.fontSizeBase400,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
+  },
+  scenesContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalL,
+  },
+  sceneCard: {
+    padding: tokens.spacingVerticalL,
+    position: 'relative',
+  },
+  sceneHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: tokens.spacingVerticalM,
+  },
+  sceneNumber: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+  },
+  sceneActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+  },
+  narrationField: {
+    marginBottom: tokens.spacingVerticalM,
+  },
+  sceneMetadata: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalL,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    marginTop: tokens.spacingVerticalS,
+  },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: tokens.spacingVerticalXXXL,
+    gap: tokens.spacingVerticalL,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: tokens.spacingVerticalXXXL,
+    gap: tokens.spacingVerticalL,
+  },
+  providerSelect: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+  },
+});
 
 interface ScriptReviewProps {
   data: ScriptData;
@@ -31,296 +144,408 @@ interface ScriptReviewProps {
   onValidationChange: (validation: StepValidation) => void;
 }
 
-const useStyles = makeStyles({
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalL,
-  },
-  header: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
-  },
-  scenesContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalM,
-  },
-  sceneCard: {
-    padding: tokens.spacingVerticalM,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
-  },
-  sceneHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: tokens.spacingVerticalXS,
-  },
-  sceneTitle: {
-    fontWeight: tokens.fontWeightSemibold,
-    fontSize: tokens.fontSizeBase300,
-  },
-  sceneTiming: {
-    color: tokens.colorNeutralForeground3,
-    fontSize: tokens.fontSizeBase200,
-  },
-  sceneActions: {
-    display: 'flex',
-    gap: tokens.spacingHorizontalS,
-    marginTop: tokens.spacingVerticalXS,
-  },
-  statusMessage: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalXS,
-    fontSize: tokens.fontSizeBase200,
-    padding: tokens.spacingVerticalXS,
-  },
-  successMessage: {
-    color: tokens.colorPaletteGreenForeground1,
-  },
-  errorMessage: {
-    color: tokens.colorPaletteRedForeground1,
-  },
-  textarea: {
-    minHeight: '80px',
-  },
-});
-
 export const ScriptReview: FC<ScriptReviewProps> = ({
-  data,
-  styleData,
+  briefData,
   onChange,
   onValidationChange,
 }) => {
   const styles = useStyles();
-  const [regeneratingScenes, setRegeneratingScenes] = useState<Set<string>>(new Set());
-  const [audioResults, setAudioResults] = useState<
-    Map<string, { success: boolean; error?: string }>
-  >(new Map());
-  const [audioElements, setAudioElements] = useState<Map<string, HTMLAudioElement>>(new Map());
-  const [playingScenes, setPlayingScenes] = useState<Set<string>>(new Set());
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [providers, setProviders] = useState<ProviderInfoDto[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string | undefined>();
+  const [generatedScript, setGeneratedScript] = useState<GenerateScriptResponse | null>(null);
+  const [editingScenes, setEditingScenes] = useState<Record<number, string>>({});
+  const [regeneratingScenes, setRegeneratingScenes] = useState<Record<number, boolean>>({});
+  const autoSaveTimeouts = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
-    const hasScenes = data.scenes && data.scenes.length > 0;
-    const allScenesHaveText = data.scenes?.every((scene) => scene.text.trim().length > 0) ?? false;
+    loadProviders();
+  }, []);
 
-    onValidationChange({
-      isValid: hasScenes && allScenesHaveText,
-      errors: !hasScenes
-        ? ['No script scenes available']
-        : !allScenesHaveText
-          ? ['All scenes must have text']
-          : [],
-    });
-  }, [data.scenes, onValidationChange]);
+  useEffect(() => {
+    if (generatedScript && generatedScript.scenes.length > 0) {
+      onValidationChange({ isValid: true, errors: [] });
+    } else {
+      onValidationChange({ isValid: false, errors: ['Generate a script to continue'] });
+    }
+  }, [generatedScript, onValidationChange]);
 
-  const handleSceneTextChange = useCallback(
-    (sceneId: string, newText: string) => {
-      const updatedScenes = data.scenes.map((scene) =>
-        scene.id === sceneId ? { ...scene, text: newText } : scene
-      );
-      onChange({ ...data, scenes: updatedScenes });
-    },
-    [data, onChange]
-  );
-
-  const handleRegenerateAudio = useCallback(
-    async (scene: ScriptScene) => {
-      if (!styleData.voiceProvider || !styleData.voiceName) {
-        console.error('Voice provider and voice name are required for audio generation');
-        setAudioResults((prev) =>
-          new Map(prev).set(scene.id, {
-            success: false,
-            error: 'Voice settings not configured',
-          })
-        );
-        return;
+  const loadProviders = async () => {
+    try {
+      const response = await listProviders();
+      setProviders(response.providers);
+      const availableProvider = response.providers.find((p) => p.isAvailable);
+      if (availableProvider) {
+        setSelectedProvider(availableProvider.name);
       }
+    } catch (error) {
+      console.error('Failed to load providers:', error);
+    }
+  };
 
-      setRegeneratingScenes((prev) => new Set(prev).add(scene.id));
-      setAudioResults((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(scene.id);
-        return newMap;
+  const handleGenerateScript = async () => {
+    setIsGenerating(true);
+    try {
+      const response = await generateScript({
+        topic: briefData.topic,
+        audience: briefData.targetAudience,
+        goal: briefData.keyMessage,
+        tone: 'Conversational',
+        language: 'en',
+        aspect: '16:9',
+        targetDurationSeconds: briefData.duration,
+        pacing: 'Conversational',
+        density: 'Balanced',
+        style: 'Modern',
+        preferredProvider: selectedProvider,
       });
 
-      try {
-        const request: RegenerateAudioRequest = {
-          sceneIndex: data.scenes.findIndex((s) => s.id === scene.id),
-          text: scene.text,
-          startSeconds: scene.timestamp,
-          durationSeconds: scene.duration,
-          provider: styleData.voiceProvider,
-          voiceName: styleData.voiceName,
-        };
+      setGeneratedScript(response);
 
-        const response = await ttsService.regenerateAudio(request);
+      const scriptScenes = response.scenes.map((scene) => ({
+        id: `scene-${scene.number}`,
+        text: scene.narration,
+        duration: scene.durationSeconds,
+        visualDescription: scene.visualPrompt,
+        timestamp: response.scenes
+          .slice(0, scene.number - 1)
+          .reduce((sum, s) => sum + s.durationSeconds, 0),
+      }));
 
-        setAudioResults((prev) => new Map(prev).set(scene.id, { success: true }));
-
-        const audioElement = new Audio(response.audioPath);
-        setAudioElements((prev) => new Map(prev).set(scene.id, audioElement));
-      } catch (error: unknown) {
-        const errorObj = error instanceof Error ? error : new Error(String(error));
-        console.error(`Failed to regenerate audio for scene ${scene.id}:`, errorObj.message);
-        setAudioResults((prev) =>
-          new Map(prev).set(scene.id, {
-            success: false,
-            error: errorObj.message,
-          })
-        );
-      } finally {
-        setRegeneratingScenes((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(scene.id);
-          return newSet;
-        });
-      }
-    },
-    [data.scenes, styleData]
-  );
-
-  const handlePlayAudio = useCallback(
-    (sceneId: string) => {
-      const audioElement = audioElements.get(sceneId);
-      if (!audioElement) return;
-
-      const isPlaying = playingScenes.has(sceneId);
-
-      if (isPlaying) {
-        audioElement.pause();
-        audioElement.currentTime = 0;
-        setPlayingScenes((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(sceneId);
-          return newSet;
-        });
-      } else {
-        audioElement.onended = () => {
-          setPlayingScenes((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(sceneId);
-            return newSet;
-          });
-        };
-        audioElement.play().catch((error: unknown) => {
-          const errorObj = error instanceof Error ? error : new Error(String(error));
-          console.error('Failed to play audio:', errorObj.message);
-          setPlayingScenes((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(sceneId);
-            return newSet;
-          });
-        });
-        setPlayingScenes((prev) => new Set(prev).add(sceneId));
-      }
-    },
-    [audioElements, playingScenes]
-  );
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+      onChange({
+        content: response.scenes.map((s) => s.narration).join('\n\n'),
+        scenes: scriptScenes,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Script generation failed:', error);
+    } finally {
+      setIsGenerating(false);
+    }
   };
+
+  const handleSceneEdit = useCallback(
+    (sceneNumber: number, newNarration: string) => {
+      setEditingScenes((prev) => ({
+        ...prev,
+        [sceneNumber]: newNarration,
+      }));
+
+      if (autoSaveTimeouts.current[sceneNumber]) {
+        clearTimeout(autoSaveTimeouts.current[sceneNumber]);
+      }
+
+      autoSaveTimeouts.current[sceneNumber] = setTimeout(async () => {
+        if (!generatedScript) return;
+
+        try {
+          await updateScene(generatedScript.scriptId, sceneNumber, {
+            narration: newNarration,
+          });
+
+          const updatedScenes = generatedScript.scenes.map((scene) =>
+            scene.number === sceneNumber ? { ...scene, narration: newNarration } : scene
+          );
+
+          setGeneratedScript({
+            ...generatedScript,
+            scenes: updatedScenes,
+          });
+
+          const scriptScenes = updatedScenes.map((scene) => ({
+            id: `scene-${scene.number}`,
+            text: scene.narration,
+            duration: scene.durationSeconds,
+            visualDescription: scene.visualPrompt,
+            timestamp: updatedScenes
+              .slice(0, scene.number - 1)
+              .reduce((sum, s) => sum + s.durationSeconds, 0),
+          }));
+
+          onChange({
+            content: updatedScenes.map((s) => s.narration).join('\n\n'),
+            scenes: scriptScenes,
+            generatedAt: new Date(),
+          });
+        } catch (error) {
+          console.error('Failed to save scene:', error);
+        }
+      }, 2000);
+    },
+    [generatedScript, onChange]
+  );
+
+  const handleExportScript = async (format: 'text' | 'markdown') => {
+    if (!generatedScript) return;
+
+    try {
+      const blob = await exportScript(generatedScript.scriptId, format);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${generatedScript.title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.${format === 'markdown' ? 'md' : 'txt'}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Failed to export script:', error);
+    }
+  };
+
+  const handleRegenerateScene = async (sceneNumber: number) => {
+    if (!generatedScript) return;
+
+    setRegeneratingScenes((prev) => ({ ...prev, [sceneNumber]: true }));
+
+    try {
+      const response = await regenerateScene(generatedScript.scriptId, sceneNumber);
+
+      setGeneratedScript(response);
+
+      const scriptScenes = response.scenes.map((scene) => ({
+        id: `scene-${scene.number}`,
+        text: scene.narration,
+        duration: scene.durationSeconds,
+        visualDescription: scene.visualPrompt,
+        timestamp: response.scenes
+          .slice(0, scene.number - 1)
+          .reduce((sum, s) => sum + s.durationSeconds, 0),
+      }));
+
+      onChange({
+        content: response.scenes.map((s) => s.narration).join('\n\n'),
+        scenes: scriptScenes,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to regenerate scene:', error);
+    } finally {
+      setRegeneratingScenes((prev) => ({ ...prev, [sceneNumber]: false }));
+    }
+  };
+
+  const calculateWordCount = (scenes: ScriptSceneDto[]): number => {
+    return scenes.reduce((total, scene) => {
+      return total + scene.narration.split(/\s+/).filter((word) => word.length > 0).length;
+    }, 0);
+  };
+
+  const calculateReadingSpeed = (wordCount: number, durationSeconds: number): number => {
+    if (durationSeconds === 0) return 0;
+    return Math.round((wordCount / durationSeconds) * 60);
+  };
+
+  const isSceneDurationAppropriate = (scene: ScriptSceneDto): 'short' | 'good' | 'long' => {
+    const wordCount = scene.narration.split(/\s+/).filter((word) => word.length > 0).length;
+    const wpm = calculateReadingSpeed(wordCount, scene.durationSeconds);
+
+    if (wpm < 120) return 'short';
+    if (wpm > 180) return 'long';
+    return 'good';
+  };
+
+  if (isGenerating) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Title2>Script Review</Title2>
+        </div>
+        <div className={styles.loadingContainer}>
+          <Spinner size="extra-large" />
+          <Title3>Generating your script...</Title3>
+          <Text>This may take a few moments. We&apos;re crafting the perfect narrative.</Text>
+        </div>
+      </div>
+    );
+  }
+
+  if (!generatedScript) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Title2>Script Review</Title2>
+          <div className={styles.headerActions}>
+            <div className={styles.providerSelect}>
+              <Text size={200}>Provider:</Text>
+              {providers.length > 0 && (
+                <Badge
+                  appearance="outline"
+                  color={
+                    providers.find((p) => p.name === selectedProvider)?.isAvailable
+                      ? 'success'
+                      : 'warning'
+                  }
+                >
+                  {selectedProvider || 'Auto'}
+                </Badge>
+              )}
+            </div>
+            <Button
+              appearance="primary"
+              icon={<Sparkle24Regular />}
+              onClick={handleGenerateScript}
+              disabled={!briefData.topic}
+            >
+              Generate Script
+            </Button>
+          </div>
+        </div>
+        <div className={styles.emptyState}>
+          <DocumentBulletList24Regular />
+          <Title3>No script generated yet</Title3>
+          <Text>
+            Click &quot;Generate Script&quot; to create an AI-powered script based on your brief.
+          </Text>
+        </div>
+      </div>
+    );
+  }
+
+  const wordCount = calculateWordCount(generatedScript.scenes);
+  const wpm = calculateReadingSpeed(wordCount, generatedScript.totalDurationSeconds);
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Title2>Script Review</Title2>
-        <Text>
-          Review and edit the AI-generated script. You can modify the text for each scene and
-          regenerate audio if needed.
-        </Text>
+        <Title2>{generatedScript.title}</Title2>
+        <div className={styles.headerActions}>
+          <Tooltip content="Export as text file" relationship="label">
+            <Button icon={<DocumentText24Regular />} onClick={() => handleExportScript('text')}>
+              Export Text
+            </Button>
+          </Tooltip>
+          <Tooltip content="Export as markdown file" relationship="label">
+            <Button
+              icon={<ArrowDownload24Regular />}
+              onClick={() => handleExportScript('markdown')}
+            >
+              Export Markdown
+            </Button>
+          </Tooltip>
+          <Tooltip content="Regenerate entire script" relationship="label">
+            <Button icon={<ArrowClockwise24Regular />} onClick={handleGenerateScript}>
+              Regenerate
+            </Button>
+          </Tooltip>
+        </div>
       </div>
 
-      {!data.scenes || data.scenes.length === 0 ? (
-        <Card>
-          <Text>No script scenes available. Please generate a script in the previous step.</Text>
-        </Card>
-      ) : (
-        <div className={styles.scenesContainer}>
-          {data.scenes.map((scene, index) => {
-            const isRegenerating = regeneratingScenes.has(scene.id);
-            const result = audioResults.get(scene.id);
-            const hasAudio = audioElements.has(scene.id);
-            const isPlaying = playingScenes.has(scene.id);
+      <div className={styles.statsBar}>
+        <div className={styles.stat}>
+          <Text className={styles.statLabel}>Total Duration</Text>
+          <Text className={styles.statValue}>
+            {Math.floor(generatedScript.totalDurationSeconds / 60)}:
+            {String(Math.floor(generatedScript.totalDurationSeconds % 60)).padStart(2, '0')}
+          </Text>
+        </div>
+        <div className={styles.stat}>
+          <Text className={styles.statLabel}>Word Count</Text>
+          <Text className={styles.statValue}>{wordCount}</Text>
+        </div>
+        <div className={styles.stat}>
+          <Text className={styles.statLabel}>Reading Speed</Text>
+          <Text className={styles.statValue}>
+            {wpm} WPM
+            {wpm < 120 && ' (Slow)'}
+            {wpm >= 120 && wpm <= 180 && ' (Good)'}
+            {wpm > 180 && ' (Fast)'}
+          </Text>
+        </div>
+        <div className={styles.stat}>
+          <Text className={styles.statLabel}>Scenes</Text>
+          <Text className={styles.statValue}>{generatedScript.scenes.length}</Text>
+        </div>
+        <div className={styles.stat}>
+          <Text className={styles.statLabel}>Provider</Text>
+          <Badge appearance="tint" color="brand">
+            {generatedScript.metadata.providerName}
+          </Badge>
+        </div>
+      </div>
 
-            return (
-              <Card key={scene.id} className={styles.sceneCard}>
-                <div className={styles.sceneHeader}>
-                  <div>
-                    <Label className={styles.sceneTitle}>Scene {index + 1}</Label>
-                    <Text className={styles.sceneTiming}>
-                      {formatTime(scene.timestamp)} - {formatTime(scene.timestamp + scene.duration)}
-                      ({scene.duration}s)
-                    </Text>
-                  </div>
-                </div>
+      <div className={styles.scenesContainer}>
+        {generatedScript.scenes.map((scene) => {
+          const durationStatus = isSceneDurationAppropriate(scene);
+          const currentNarration = editingScenes[scene.number] ?? scene.narration;
 
-                <Field label="Scene Text">
-                  <Textarea
-                    className={styles.textarea}
-                    value={scene.text}
-                    onChange={(_, data) => handleSceneTextChange(scene.id, data.value)}
-                    resize="vertical"
-                  />
-                </Field>
-
-                {scene.visualDescription && (
-                  <Field label="Visual Description">
-                    <Text>{scene.visualDescription}</Text>
-                  </Field>
-                )}
-
-                <div className={styles.sceneActions}>
-                  <Button
-                    appearance="secondary"
-                    icon={isRegenerating ? <Spinner size="tiny" /> : <ArrowSyncRegular />}
-                    onClick={() => handleRegenerateAudio(scene)}
-                    disabled={isRegenerating || !scene.text.trim()}
-                  >
-                    {isRegenerating ? 'Generating...' : 'Regenerate Audio'}
-                  </Button>
-
-                  {hasAudio && (
-                    <Button
-                      appearance="primary"
-                      icon={<PlayRegular />}
-                      onClick={() => handlePlayAudio(scene.id)}
-                      disabled={isRegenerating}
-                    >
-                      {isPlaying ? 'Stop' : 'Play Audio'}
-                    </Button>
+          return (
+            <Card key={scene.number} className={styles.sceneCard}>
+              <div className={styles.sceneHeader}>
+                <div className={styles.sceneNumber}>
+                  <Badge appearance="filled" color="brand">
+                    Scene {scene.number}
+                  </Badge>
+                  {durationStatus === 'short' && (
+                    <Badge appearance="outline" color="warning">
+                      Too Short
+                    </Badge>
+                  )}
+                  {durationStatus === 'long' && (
+                    <Badge appearance="outline" color="danger">
+                      Too Long
+                    </Badge>
                   )}
                 </div>
+                <div className={styles.sceneActions}>
+                  <Tooltip content="Regenerate this scene" relationship="label">
+                    <Button
+                      size="small"
+                      icon={<ArrowClockwise24Regular />}
+                      onClick={() => handleRegenerateScene(scene.number)}
+                      disabled={regeneratingScenes[scene.number]}
+                    >
+                      {regeneratingScenes[scene.number] ? 'Regenerating...' : 'Regenerate'}
+                    </Button>
+                  </Tooltip>
+                </div>
+              </div>
 
-                {result && (
-                  <div
-                    className={`${styles.statusMessage} ${result.success ? styles.successMessage : styles.errorMessage}`}
-                  >
-                    {result.success ? (
-                      <>
-                        <CheckmarkCircleRegular />
-                        <Text>Audio generated successfully</Text>
-                      </>
-                    ) : (
-                      <>
-                        <DismissCircleRegular />
-                        <Text>Failed: {result.error}</Text>
-                      </>
-                    )}
-                  </div>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-      )}
+              <Field className={styles.narrationField} label="Narration">
+                <Textarea
+                  value={currentNarration}
+                  onChange={(e) => handleSceneEdit(scene.number, e.target.value)}
+                  rows={4}
+                  resize="vertical"
+                />
+              </Field>
+
+              <div className={styles.sceneMetadata}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+                >
+                  <Clock24Regular />
+                  <Text>{scene.durationSeconds.toFixed(1)}s</Text>
+                </div>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+                >
+                  <TextGrammarCheckmark24Regular />
+                  <Text>
+                    {scene.narration.split(/\s+/).filter((word) => word.length > 0).length} words
+                  </Text>
+                </div>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+                >
+                  <Text>Transition: {scene.transition}</Text>
+                </div>
+              </div>
+
+              <Divider
+                style={{
+                  marginTop: tokens.spacingVerticalM,
+                  marginBottom: tokens.spacingVerticalM,
+                }}
+              />
+
+              <Field label="Visual Prompt">
+                <Text size={200}>{scene.visualPrompt}</Text>
+              </Field>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 };
