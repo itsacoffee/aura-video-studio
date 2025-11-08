@@ -71,6 +71,19 @@ public static class ProviderServicesExtensions
             return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, baseUrl);
         });
         
+        // Stable Diffusion detection service
+        services.AddSingleton<Aura.Core.Services.Providers.StableDiffusionDetectionService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.StableDiffusionDetectionService>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+            var baseUrl = settings.GetStableDiffusionUrl();
+            return new Aura.Core.Services.Providers.StableDiffusionDetectionService(logger, httpClient, baseUrl);
+        });
+        
+        // Image provider fallback service
+        services.AddSingleton<Aura.Core.Services.Providers.ImageProviderFallbackService>();
+        
         services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommendationService>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.LlmProviderRecommendationService>>();
