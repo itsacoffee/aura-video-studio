@@ -1513,7 +1513,34 @@ public record OllamaModelsListResponse(
 public record OllamaModelDto(
     string Name,
     string? Size,
-    string? ModifiedAt);
+    string? ModifiedAt)
+{
+    public string? SizeFormatted { get; init; }
+    public string? Digest { get; init; }
+}
+
+/// <summary>
+/// Detailed information about an Ollama model
+/// </summary>
+public record OllamaModelInfoDto
+{
+    public string Name { get; init; } = "";
+    public string? Parameters { get; init; }
+    public string? Modelfile { get; init; }
+    public int ContextWindow { get; init; }
+}
+
+/// <summary>
+/// Ollama service status information
+/// </summary>
+public record OllamaStatusDto
+{
+    public bool IsRunning { get; init; }
+    public bool IsInstalled { get; init; }
+    public string? Version { get; init; }
+    public string BaseUrl { get; init; } = "";
+    public string? ErrorMessage { get; init; }
+}
 
 // ============================================================================
 // COST TRACKING DTOs

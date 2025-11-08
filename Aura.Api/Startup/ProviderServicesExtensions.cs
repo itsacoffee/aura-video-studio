@@ -59,6 +59,17 @@ public static class ProviderServicesExtensions
         services.AddSingleton<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
         services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
         services.AddSingleton<Aura.Core.Services.CostTracking.EnhancedCostTrackingService>();
+        
+        // Ollama detection service
+        services.AddSingleton<Aura.Core.Services.Providers.OllamaDetectionService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.OllamaDetectionService>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+            var baseUrl = settings.GetOllamaUrl();
+            return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, baseUrl);
+        });
+        
         services.AddSingleton<Aura.Core.Services.Providers.LlmProviderRecommendationService>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.LlmProviderRecommendationService>>();
