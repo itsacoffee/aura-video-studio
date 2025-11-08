@@ -174,7 +174,20 @@ public class ImageVariationService
 
             var qualityScore = await _qualityChecker.CheckQualityAsync(variation.ImageUrl, ct);
             
-            var nsfwCheck = await _nsfwDetection.DetectNsfwAsync(variation.ImageUrl, ct);
+            NsfwDetectionResult nsfwCheck;
+            if (config.EnableNsfwDetection)
+            {
+                nsfwCheck = await _nsfwDetection.DetectNsfwAsync(variation.ImageUrl, ct);
+            }
+            else
+            {
+                nsfwCheck = new NsfwDetectionResult
+                {
+                    IsNsfw = false,
+                    Confidence = 0.0,
+                    Categories = Array.Empty<string>()
+                };
+            }
 
             var clipScore = 0.0;
             if (_clipScoring != null && config.UseClipScoring)
@@ -213,7 +226,7 @@ public class ImageVariationService
             {
                 rejectionReasons.AddRange(qualityScore.Issues);
             }
-            if (nsfwCheck.IsNsfw)
+            if (nsfwCheck.IsNsfw && config.EnableNsfwDetection)
             {
                 rejectionReasons.Add($"NSFW content detected (confidence: {nsfwCheck.Confidence:F2})");
             }
@@ -436,6 +449,11 @@ public record ImageVariationConfig
     /// Whether to use CLIP scoring for prompt adherence
     /// </summary>
     public bool UseClipScoring { get; init; } = true;
+
+    /// <summary>
+    /// Whether to enable NSFW content detection and filtering
+    /// </summary>
+    public bool EnableNsfwDetection { get; init; } = true;
 
     /// <summary>
     /// Number of inference steps for generation
