@@ -21,18 +21,21 @@ import {
   Settings24Regular,
   DismissCircle24Regular,
   Lightbulb24Regular,
+  DocumentMultiple24Regular,
+  Clock24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WizardProgress } from '../WizardProgress';
 import { CostEstimator } from './CostEstimator';
+import { DraftManager } from './DraftManager';
 import { BriefInput } from './steps/BriefInput';
 import { FinalExport } from './steps/FinalExport';
 import { PreviewGeneration } from './steps/PreviewGeneration';
 import { ScriptReview } from './steps/ScriptReview';
 import { StyleSelection } from './steps/StyleSelection';
-import type { WizardData, StepValidation, VideoTemplate } from './types';
+import type { WizardData, StepValidation, VideoTemplate, WizardDraft } from './types';
 import { VideoTemplates } from './VideoTemplates';
 
 const useStyles = makeStyles({
@@ -94,12 +97,21 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalS,
     color: tokens.colorNeutralForeground2,
   },
+  autoSaveIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+  },
 });
 
 const STEP_LABELS = ['Brief', 'Style', 'Script', 'Preview', 'Export'];
 const STEP_TIME_ESTIMATES = ['2 min', '3 min', '5 min', '3 min', '2 min'];
 const STORAGE_KEY = 'aura-wizard-data';
 const ADVANCED_MODE_KEY = 'aura-wizard-advanced-mode';
+const AUTO_SAVE_INTERVAL = 30000;
 
 export const VideoCreationWizard: FC = () => {
   const styles = useStyles();
@@ -109,6 +121,9 @@ export const VideoCreationWizard: FC = () => {
     return localStorage.getItem(ADVANCED_MODE_KEY) === 'true';
   });
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showDraftManager, setShowDraftManager] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const autoSaveTimerRef = useRef<number | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [wizardData, setWizardData] = useState<WizardData>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -168,6 +183,21 @@ export const VideoCreationWizard: FC = () => {
   // Save wizard data to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(wizardData));
+    setLastSaved(new Date());
+  }, [wizardData]);
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    autoSaveTimerRef.current = window.setInterval(() => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(wizardData));
+      setLastSaved(new Date());
+    }, AUTO_SAVE_INTERVAL);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        window.clearInterval(autoSaveTimerRef.current);
+      }
+    };
   }, [wizardData]);
 
   // Save advanced mode preference
@@ -262,6 +292,21 @@ export const VideoCreationWizard: FC = () => {
     setShowTemplates(false);
   }, []);
 
+  const handleLoadDraft = useCallback((draft: WizardDraft) => {
+    setWizardData(draft.data);
+    setCurrentStep(draft.currentStep);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const getTimeSinceLastSave = useCallback(() => {
+    if (!lastSaved) return '';
+    const seconds = Math.floor((Date.now() - lastSaved.getTime()) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes === 1) return '1 minute ago';
+    return `${minutes} minutes ago`;
+  }, [lastSaved]);
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
@@ -330,6 +375,12 @@ export const VideoCreationWizard: FC = () => {
           <Text className={styles.keyboardHint}>
             Use Tab to navigate, Ctrl+Enter to continue, Escape to save and exit
           </Text>
+          {lastSaved && (
+            <div className={styles.autoSaveIndicator}>
+              <Clock24Regular style={{ fontSize: '14px', color: tokens.colorBrandForeground1 }} />
+              <Text size={200}>Auto-saved {getTimeSinceLastSave()}</Text>
+            </div>
+          )}
         </div>
         <div className={styles.headerRight}>
           <Tooltip content="Browse video templates" relationship="label">
@@ -339,6 +390,15 @@ export const VideoCreationWizard: FC = () => {
               onClick={() => setShowTemplates(true)}
             >
               Templates
+            </Button>
+          </Tooltip>
+          <Tooltip content="Manage drafts" relationship="label">
+            <Button
+              appearance="secondary"
+              icon={<DocumentMultiple24Regular />}
+              onClick={() => setShowDraftManager(true)}
+            >
+              Drafts
             </Button>
           </Tooltip>
           <div className={styles.advancedToggle}>
@@ -465,6 +525,14 @@ export const VideoCreationWizard: FC = () => {
           </DialogBody>
         </DialogSurface>
       </Dialog>
+
+      <DraftManager
+        open={showDraftManager}
+        onClose={() => setShowDraftManager(false)}
+        onLoadDraft={handleLoadDraft}
+        currentData={wizardData}
+        currentStep={currentStep}
+      />
     </div>
   );
 };

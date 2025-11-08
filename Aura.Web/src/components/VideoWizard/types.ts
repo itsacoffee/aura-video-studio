@@ -101,3 +101,23 @@ export interface CostBreakdown {
     subtotal: number;
   }[];
 }
+
+export interface WizardDraft {
+  id: string;
+  name: string;
+  data: WizardData;
+  createdAt: Date;
+  updatedAt: Date;
+  currentStep: number;
+  progress: number;
+}
+
+export interface DraftMetadata {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  currentStep: number;
+  progress: number;
+  briefSummary: string;
+}
