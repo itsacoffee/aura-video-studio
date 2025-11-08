@@ -113,7 +113,18 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
     <div className={styles.container} ref={swipeRef as React.RefObject<HTMLDivElement>}>
       {/* Mobile sidebar overlay */}
       {isMobileSidebarOpen && (
-        <div className={styles.sidebarOverlay} onClick={() => setIsMobileSidebarOpen(false)} />
+        <div
+          className={styles.sidebarOverlay}
+          onClick={() => setIsMobileSidebarOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setIsMobileSidebarOpen(false);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close sidebar overlay"
+        />
       )}
 
       {/* Sidebar */}

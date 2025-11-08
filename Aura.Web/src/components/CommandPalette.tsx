@@ -179,286 +179,289 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Define all available commands
-  const baseCommands: Command[] = [
-    // Navigation
-    {
-      id: 'nav-create',
-      name: 'New Video',
-      description: 'Start creating a new video',
-      category: 'Actions',
-      icon: VideoClip24Regular,
-      shortcut: '⌘N',
-      action: () => navigate('/create'),
-      weight: getCommandWeight('nav-create'),
-    },
-    {
-      id: 'action-open-project',
-      name: 'Open Project',
-      description: 'Open an existing project',
-      category: 'Actions',
-      icon: Folder24Regular,
-      shortcut: '⌘O',
-      action: () => navigate('/projects'),
-      weight: getCommandWeight('action-open-project'),
-    },
-    {
-      id: 'action-export',
-      name: 'Export Video',
-      description: 'Render and export current video',
-      category: 'Actions',
-      icon: Play24Regular,
-      shortcut: '⌘M',
-      action: () => navigate('/render'),
-      weight: getCommandWeight('action-export'),
-    },
-    {
-      id: 'action-toggle-sidebar',
-      name: 'Toggle Sidebar',
-      description: 'Show or hide the sidebar',
-      category: 'Actions',
-      icon: PanelLeft24Regular,
-      action: () => {
-        const collapsed = localStorage.getItem('aura-sidebar-collapsed');
-        localStorage.setItem('aura-sidebar-collapsed', collapsed === 'true' ? 'false' : 'true');
-        window.location.reload();
+  const baseCommands: Command[] = useMemo(
+    () => [
+      // Navigation
+      {
+        id: 'nav-create',
+        name: 'New Video',
+        description: 'Start creating a new video',
+        category: 'Actions',
+        icon: VideoClip24Regular,
+        shortcut: '⌘N',
+        action: () => navigate('/create'),
+        weight: getCommandWeight('nav-create'),
       },
-      weight: getCommandWeight('action-toggle-sidebar'),
-    },
-    {
-      id: 'action-change-theme',
-      name: 'Change Theme',
-      description: 'Toggle between light and dark mode',
-      category: 'Actions',
-      icon: WeatherMoon24Regular,
-      action: () => toggleTheme(),
-      weight: getCommandWeight('action-change-theme'),
-    },
-    {
-      id: 'action-view-shortcuts',
-      name: 'View Shortcuts',
-      description: 'Show keyboard shortcuts',
-      category: 'Actions',
-      icon: Keyboard24Regular,
-      shortcut: '?',
-      action: () => {
-        onClose();
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }));
+      {
+        id: 'action-open-project',
+        name: 'Open Project',
+        description: 'Open an existing project',
+        category: 'Actions',
+        icon: Folder24Regular,
+        shortcut: '⌘O',
+        action: () => navigate('/projects'),
+        weight: getCommandWeight('action-open-project'),
       },
-      weight: getCommandWeight('action-view-shortcuts'),
-    },
-    {
-      id: 'nav-home',
-      name: 'Home',
-      description: 'Go to home dashboard',
-      category: 'Navigation',
-      icon: Document24Regular,
-      action: () => navigate('/'),
-      weight: getCommandWeight('nav-home'),
-    },
-    {
-      id: 'nav-projects',
-      name: 'Projects',
-      description: 'View all projects',
-      category: 'Navigation',
-      icon: Folder24Regular,
-      action: () => navigate('/projects'),
-      weight: getCommandWeight('nav-projects'),
-    },
-    {
-      id: 'nav-timeline',
-      name: 'Timeline Editor',
-      description: 'Open timeline editor',
-      category: 'Navigation',
-      icon: Timeline24Regular,
-      action: () => navigate('/timeline'),
-      weight: getCommandWeight('nav-timeline'),
-    },
-    {
-      id: 'nav-render',
-      name: 'Render & Export',
-      description: 'Configure and render videos',
-      category: 'Navigation',
-      icon: Play24Regular,
-      action: () => navigate('/render'),
-      weight: getCommandWeight('nav-render'),
-    },
-    {
-      id: 'nav-assets',
-      name: 'Asset Library',
-      description: 'Manage video assets',
-      category: 'Navigation',
-      icon: Image24Regular,
-      action: () => navigate('/assets'),
-      weight: getCommandWeight('nav-assets'),
-    },
-    {
-      id: 'nav-downloads',
-      name: 'Program Dependencies',
-      description: 'Manage program dependencies and engines',
-      category: 'Navigation',
-      icon: CloudArrowDown24Regular,
-      action: () => navigate('/downloads'),
-      weight: getCommandWeight('nav-downloads'),
-    },
-    {
-      id: 'nav-health',
-      name: 'Provider Health',
-      description: 'Check provider status',
-      category: 'Navigation',
-      icon: HeartPulse24Regular,
-      action: () => navigate('/health'),
-      weight: getCommandWeight('nav-health'),
-    },
-    {
-      id: 'nav-ideation',
-      name: 'Ideation',
-      description: 'Generate video ideas',
-      category: 'Navigation',
-      icon: Lightbulb24Regular,
-      action: () => navigate('/ideation'),
-      weight: getCommandWeight('nav-ideation'),
-    },
-    {
-      id: 'nav-settings',
-      name: 'Settings',
-      description: 'Open settings',
-      category: 'Navigation',
-      icon: Settings24Regular,
-      shortcut: '⌘,',
-      action: () => navigate('/settings'),
-      weight: getCommandWeight('nav-settings'),
-    },
+      {
+        id: 'action-export',
+        name: 'Export Video',
+        description: 'Render and export current video',
+        category: 'Actions',
+        icon: Play24Regular,
+        shortcut: '⌘M',
+        action: () => navigate('/render'),
+        weight: getCommandWeight('action-export'),
+      },
+      {
+        id: 'action-toggle-sidebar',
+        name: 'Toggle Sidebar',
+        description: 'Show or hide the sidebar',
+        category: 'Actions',
+        icon: PanelLeft24Regular,
+        action: () => {
+          const collapsed = localStorage.getItem('aura-sidebar-collapsed');
+          localStorage.setItem('aura-sidebar-collapsed', collapsed === 'true' ? 'false' : 'true');
+          window.location.reload();
+        },
+        weight: getCommandWeight('action-toggle-sidebar'),
+      },
+      {
+        id: 'action-change-theme',
+        name: 'Change Theme',
+        description: 'Toggle between light and dark mode',
+        category: 'Actions',
+        icon: WeatherMoon24Regular,
+        action: () => toggleTheme(),
+        weight: getCommandWeight('action-change-theme'),
+      },
+      {
+        id: 'action-view-shortcuts',
+        name: 'View Shortcuts',
+        description: 'Show keyboard shortcuts',
+        category: 'Actions',
+        icon: Keyboard24Regular,
+        shortcut: '?',
+        action: () => {
+          onClose();
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }));
+        },
+        weight: getCommandWeight('action-view-shortcuts'),
+      },
+      {
+        id: 'nav-home',
+        name: 'Home',
+        description: 'Go to home dashboard',
+        category: 'Navigation',
+        icon: Document24Regular,
+        action: () => navigate('/'),
+        weight: getCommandWeight('nav-home'),
+      },
+      {
+        id: 'nav-projects',
+        name: 'Projects',
+        description: 'View all projects',
+        category: 'Navigation',
+        icon: Folder24Regular,
+        action: () => navigate('/projects'),
+        weight: getCommandWeight('nav-projects'),
+      },
+      {
+        id: 'nav-timeline',
+        name: 'Timeline Editor',
+        description: 'Open timeline editor',
+        category: 'Navigation',
+        icon: Timeline24Regular,
+        action: () => navigate('/timeline'),
+        weight: getCommandWeight('nav-timeline'),
+      },
+      {
+        id: 'nav-render',
+        name: 'Render & Export',
+        description: 'Configure and render videos',
+        category: 'Navigation',
+        icon: Play24Regular,
+        action: () => navigate('/render'),
+        weight: getCommandWeight('nav-render'),
+      },
+      {
+        id: 'nav-assets',
+        name: 'Asset Library',
+        description: 'Manage video assets',
+        category: 'Navigation',
+        icon: Image24Regular,
+        action: () => navigate('/assets'),
+        weight: getCommandWeight('nav-assets'),
+      },
+      {
+        id: 'nav-downloads',
+        name: 'Program Dependencies',
+        description: 'Manage program dependencies and engines',
+        category: 'Navigation',
+        icon: CloudArrowDown24Regular,
+        action: () => navigate('/downloads'),
+        weight: getCommandWeight('nav-downloads'),
+      },
+      {
+        id: 'nav-health',
+        name: 'Provider Health',
+        description: 'Check provider status',
+        category: 'Navigation',
+        icon: HeartPulse24Regular,
+        action: () => navigate('/health'),
+        weight: getCommandWeight('nav-health'),
+      },
+      {
+        id: 'nav-ideation',
+        name: 'Ideation',
+        description: 'Generate video ideas',
+        category: 'Navigation',
+        icon: Lightbulb24Regular,
+        action: () => navigate('/ideation'),
+        weight: getCommandWeight('nav-ideation'),
+      },
+      {
+        id: 'nav-settings',
+        name: 'Settings',
+        description: 'Open settings',
+        category: 'Navigation',
+        icon: Settings24Regular,
+        shortcut: '⌘,',
+        action: () => navigate('/settings'),
+        weight: getCommandWeight('nav-settings'),
+      },
 
-    // Provider Actions
-    {
-      id: 'provider-ollama',
-      name: 'Use Ollama',
-      description: 'Switch to Ollama as LLM provider',
-      category: 'Providers',
-      icon: DatabaseLink24Regular,
-      action: async () => {
-        try {
-          await fetch('/api/settings/provider', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ provider: 'ollama' }),
-          });
-          alert('Switched to Ollama');
-        } catch {
-          alert('Failed to switch provider');
-        }
+      // Provider Actions
+      {
+        id: 'provider-ollama',
+        name: 'Use Ollama',
+        description: 'Switch to Ollama as LLM provider',
+        category: 'Providers',
+        icon: DatabaseLink24Regular,
+        action: async () => {
+          try {
+            await fetch('/api/settings/provider', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ provider: 'ollama' }),
+            });
+            alert('Switched to Ollama');
+          } catch {
+            alert('Failed to switch provider');
+          }
+        },
+        weight: getCommandWeight('provider-ollama'),
       },
-      weight: getCommandWeight('provider-ollama'),
-    },
-    {
-      id: 'provider-openai',
-      name: 'Use OpenAI',
-      description: 'Switch to OpenAI as LLM provider',
-      category: 'Providers',
-      icon: CloudSync24Regular,
-      action: async () => {
-        try {
-          await fetch('/api/settings/provider', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ provider: 'openai' }),
-          });
-          alert('Switched to OpenAI');
-        } catch {
-          alert('Failed to switch provider');
-        }
+      {
+        id: 'provider-openai',
+        name: 'Use OpenAI',
+        description: 'Switch to OpenAI as LLM provider',
+        category: 'Providers',
+        icon: CloudSync24Regular,
+        action: async () => {
+          try {
+            await fetch('/api/settings/provider', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ provider: 'openai' }),
+            });
+            alert('Switched to OpenAI');
+          } catch {
+            alert('Failed to switch provider');
+          }
+        },
+        weight: getCommandWeight('provider-openai'),
       },
-      weight: getCommandWeight('provider-openai'),
-    },
 
-    // Settings
-    {
-      id: 'settings-output',
-      name: 'Output Settings',
-      description: 'Configure video output parameters',
-      category: 'Settings',
-      icon: Settings24Regular,
-      action: () => {
-        navigate('/settings');
-        setTimeout(() => {
-          const tab = document.querySelector('[value="output"]') as HTMLElement;
-          tab?.click();
-        }, 100);
+      // Settings
+      {
+        id: 'settings-output',
+        name: 'Output Settings',
+        description: 'Configure video output parameters',
+        category: 'Settings',
+        icon: Settings24Regular,
+        action: () => {
+          navigate('/settings');
+          setTimeout(() => {
+            const tab = document.querySelector('[value="output"]') as HTMLElement;
+            tab?.click();
+          }, 100);
+        },
+        weight: getCommandWeight('settings-output'),
       },
-      weight: getCommandWeight('settings-output'),
-    },
-    {
-      id: 'settings-performance',
-      name: 'Performance Settings',
-      description: 'Optimize rendering performance',
-      category: 'Settings',
-      icon: Settings24Regular,
-      action: () => {
-        navigate('/settings');
-        setTimeout(() => {
-          const tab = document.querySelector('[value="performance"]') as HTMLElement;
-          tab?.click();
-        }, 100);
+      {
+        id: 'settings-performance',
+        name: 'Performance Settings',
+        description: 'Optimize rendering performance',
+        category: 'Settings',
+        icon: Settings24Regular,
+        action: () => {
+          navigate('/settings');
+          setTimeout(() => {
+            const tab = document.querySelector('[value="performance"]') as HTMLElement;
+            tab?.click();
+          }, 100);
+        },
+        weight: getCommandWeight('settings-performance'),
       },
-      weight: getCommandWeight('settings-performance'),
-    },
-    {
-      id: 'settings-shortcuts',
-      name: 'Keyboard Shortcuts',
-      description: 'Customize keyboard shortcuts',
-      category: 'Settings',
-      icon: Keyboard24Regular,
-      action: () => {
-        navigate('/settings');
-        setTimeout(() => {
-          const tab = document.querySelector('[value="shortcuts"]') as HTMLElement;
-          tab?.click();
-        }, 100);
+      {
+        id: 'settings-shortcuts',
+        name: 'Keyboard Shortcuts',
+        description: 'Customize keyboard shortcuts',
+        category: 'Settings',
+        icon: Keyboard24Regular,
+        action: () => {
+          navigate('/settings');
+          setTimeout(() => {
+            const tab = document.querySelector('[value="shortcuts"]') as HTMLElement;
+            tab?.click();
+          }, 100);
+        },
+        weight: getCommandWeight('settings-shortcuts'),
       },
-      weight: getCommandWeight('settings-shortcuts'),
-    },
-    {
-      id: 'settings-providers',
-      name: 'Provider Settings',
-      description: 'Configure AI providers',
-      category: 'Settings',
-      icon: Settings24Regular,
-      action: () => {
-        navigate('/settings');
-        setTimeout(() => {
-          const tab = document.querySelector('[value="providers"]') as HTMLElement;
-          tab?.click();
-        }, 100);
+      {
+        id: 'settings-providers',
+        name: 'Provider Settings',
+        description: 'Configure AI providers',
+        category: 'Settings',
+        icon: Settings24Regular,
+        action: () => {
+          navigate('/settings');
+          setTimeout(() => {
+            const tab = document.querySelector('[value="providers"]') as HTMLElement;
+            tab?.click();
+          }, 100);
+        },
+        weight: getCommandWeight('settings-providers'),
       },
-      weight: getCommandWeight('settings-providers'),
-    },
 
-    // Quick Actions
-    {
-      id: 'action-validate-providers',
-      name: 'Validate Providers',
-      description: 'Test all provider connections',
-      category: 'Quick Actions',
-      action: async () => {
-        await fetch('/api/providers/validate', { method: 'POST' });
-        alert('Provider validation complete');
+      // Quick Actions
+      {
+        id: 'action-validate-providers',
+        name: 'Validate Providers',
+        description: 'Test all provider connections',
+        category: 'Quick Actions',
+        action: async () => {
+          await fetch('/api/providers/validate', { method: 'POST' });
+          alert('Provider validation complete');
+        },
+        weight: getCommandWeight('action-validate-providers'),
       },
-      weight: getCommandWeight('action-validate-providers'),
-    },
-    {
-      id: 'action-clear-cache',
-      name: 'Clear Cache',
-      description: 'Clear preview and render cache',
-      category: 'Quick Actions',
-      action: async () => {
-        if (confirm('Clear all cache?')) {
-          await fetch('/api/cache/clear', { method: 'POST' });
-          alert('Cache cleared');
-        }
+      {
+        id: 'action-clear-cache',
+        name: 'Clear Cache',
+        description: 'Clear preview and render cache',
+        category: 'Quick Actions',
+        action: async () => {
+          if (confirm('Clear all cache?')) {
+            await fetch('/api/cache/clear', { method: 'POST' });
+            alert('Cache cleared');
+          }
+        },
+        weight: getCommandWeight('action-clear-cache'),
       },
-      weight: getCommandWeight('action-clear-cache'),
-    },
-  ];
+    ],
+    [navigate, toggleTheme, onClose]
+  );
 
   // Combine base commands with recent projects
   const allCommands = useMemo(() => {
