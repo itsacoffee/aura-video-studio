@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Audio;
 using Aura.Core.Models.Voice;
+using EmphasisLevel = Aura.Core.Models.Voice.EmphasisLevel;
 
 namespace Aura.Core.Services.Audio.Mappers;
 

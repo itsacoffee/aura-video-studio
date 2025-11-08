@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Task;
+using System.Threading.Tasks;
 using System.Xml;
 using Aura.Core.Models;
 using Aura.Core.Models.Audio;
 using Aura.Core.Models.Voice;
+using EmphasisLevel = Aura.Core.Models.Voice.EmphasisLevel;
 
 namespace Aura.Core.Services.Audio.Mappers;
 
@@ -223,7 +224,24 @@ public class AzureSSMLMapper : ISSMLMapper
 
     private string ProcessTextWithEmphasisAndPauses(string text, ProsodyAdjustments adjustments)
     {
-        var result = text;
+        var result = XmlEscape(text);
+        
+        if (adjustments.Pauses != null && adjustments.Pauses.Any())
+        {
+            var sortedPauses = adjustments.Pauses.OrderByDescending(kvp => kvp.Key).ToList();
+            
+            foreach (var pause in sortedPauses)
+            {
+                if (pause.Key >= 0 && pause.Key <= text.Length)
+                {
+                    var adjustedPos = CalculateAdjustedPosition(text, pause.Key, result);
+                    if (adjustedPos >= 0 && adjustedPos <= result.Length)
+                    {
+                        result = result.Insert(adjustedPos, $"<break time=\"{pause.Value}ms\"/>");
+                    }
+                }
+            }
+        }
         
         if (adjustments.Emphasis != null && adjustments.Emphasis.Any())
         {
@@ -232,42 +250,85 @@ public class AzureSSMLMapper : ISSMLMapper
             foreach (var emphasis in sortedEmphasis)
             {
                 if (emphasis.StartPosition >= 0 && 
-                    emphasis.StartPosition + emphasis.Length <= result.Length)
+                    emphasis.StartPosition + emphasis.Length <= text.Length)
                 {
-                    var before = result.Substring(0, emphasis.StartPosition);
-                    var emphText = result.Substring(emphasis.StartPosition, emphasis.Length);
-                    var after = result.Substring(emphasis.StartPosition + emphasis.Length);
+                    var emphText = text.Substring(emphasis.StartPosition, emphasis.Length);
+                    var escapedEmphText = XmlEscape(emphText);
                     
-                    var level = emphasis.Level switch
+                    var startPos = CalculateAdjustedPosition(text, emphasis.StartPosition, result);
+                    if (startPos >= 0)
                     {
-                        EmphasisLevel.Strong => "strong",
-                        EmphasisLevel.Moderate => "moderate",
-                        EmphasisLevel.Reduced => "reduced",
-                        _ => "moderate"
-                    };
-                    
-                    result = $"{before}<emphasis level=\"{level}\">{XmlEscape(emphText)}</emphasis>{after}";
+                        var endPos = startPos + escapedEmphText.Length;
+                        if (endPos <= result.Length && result.Substring(startPos, escapedEmphText.Length) == escapedEmphText)
+                        {
+                            var level = emphasis.Level switch
+                            {
+                                EmphasisLevel.Strong => "strong",
+                                EmphasisLevel.Moderate => "moderate",
+                                EmphasisLevel.Reduced => "reduced",
+                                _ => "moderate"
+                            };
+                            
+                            result = result.Remove(startPos, escapedEmphText.Length);
+                            result = result.Insert(startPos, $"<emphasis level=\"{level}\">{escapedEmphText}</emphasis>");
+                        }
+                    }
                 }
             }
         }
         
-        if (adjustments.Pauses != null && adjustments.Pauses.Any())
+        return result;
+    }
+
+    private int CalculateAdjustedPosition(string originalText, int originalPosition, string escapedText)
+    {
+        var adjustedPos = 0;
+        var originalPos = 0;
+        
+        while (originalPos < originalPosition && adjustedPos < escapedText.Length)
         {
-            var sortedPauses = adjustments.Pauses.OrderByDescending(kvp => kvp.Key).ToList();
+            var origChar = originalText[originalPos];
             
-            foreach (var pause in sortedPauses)
+            if (origChar == '&')
             {
-                if (pause.Key >= 0 && pause.Key <= result.Length)
+                if (escapedText.Substring(adjustedPos).StartsWith("&amp;"))
                 {
-                    var before = result.Substring(0, pause.Key);
-                    var after = result.Substring(pause.Key);
-                    
-                    result = $"{before}<break time=\"{pause.Value}ms\"/>{after}";
+                    adjustedPos += 5;
+                }
+                else if (escapedText.Substring(adjustedPos).StartsWith("&apos;"))
+                {
+                    adjustedPos += 6;
+                }
+                else
+                {
+                    adjustedPos++;
                 }
             }
+            else if (origChar == '<' && escapedText.Substring(adjustedPos).StartsWith("&lt;"))
+            {
+                adjustedPos += 4;
+            }
+            else if (origChar == '>' && escapedText.Substring(adjustedPos).StartsWith("&gt;"))
+            {
+                adjustedPos += 4;
+            }
+            else if (origChar == '"' && escapedText.Substring(adjustedPos).StartsWith("&quot;"))
+            {
+                adjustedPos += 6;
+            }
+            else if (origChar == '\'' && escapedText.Substring(adjustedPos).StartsWith("&apos;"))
+            {
+                adjustedPos += 6;
+            }
+            else
+            {
+                adjustedPos++;
+            }
+            
+            originalPos++;
         }
         
-        return XmlEscape(result);
+        return adjustedPos;
     }
 
     private void ValidateProsodyAttributes(XmlNode node, List<string> warnings, List<SSMLRepairSuggestion> suggestions)
@@ -370,14 +431,4 @@ public class AzureSSMLMapper : ISSMLMapper
             .Replace("\"", "&quot;")
             .Replace("'", "&apos;");
     }
-}
-
-/// <summary>
-/// Emphasis level enumeration
-/// </summary>
-public enum EmphasisLevel
-{
-    Strong,
-    Moderate,
-    Reduced
 }
