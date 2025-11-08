@@ -57,9 +57,11 @@ import { LocalEngines } from '../components/Settings/LocalEngines';
 import { LoggingSettingsTab } from '../components/Settings/LoggingSettingsTab';
 import { OutputSettingsTab } from '../components/Settings/OutputSettingsTab';
 import { PerformanceSettingsTab } from '../components/Settings/PerformanceSettingsTab';
+import { ProviderConfigurationPanel } from '../components/Settings/ProviderConfigurationPanel';
 import { ProviderProfilesTab } from '../components/Settings/ProviderProfilesTab';
 import { ProviderRecommendationsTab } from '../components/Settings/ProviderRecommendationsTab';
 import { ProvidersTable } from '../components/Settings/ProvidersTable';
+import { QualityConfigurationPanel } from '../components/Settings/QualityConfigurationPanel';
 import { SecuritySettingsTab } from '../components/Settings/SecuritySettingsTab';
 import { SettingsExportImportTab } from '../components/Settings/SettingsExportImportTab';
 import { ThemeCustomizationTab } from '../components/Settings/ThemeCustomizationTab';
@@ -92,6 +94,18 @@ const settingsCategories: SettingsCategory[] = [
     title: 'General',
     description: 'Basic application behavior and preferences',
     icon: <Settings24Regular />,
+  },
+  {
+    id: 'providerconfig',
+    title: 'Provider Configuration',
+    description: 'Configure API keys, priorities, and cost limits for all providers',
+    icon: <Cloud24Regular />,
+  },
+  {
+    id: 'qualityconfig',
+    title: 'Quality Settings',
+    description: 'Video resolution, audio quality, and subtitle configuration',
+    icon: <Video24Regular />,
   },
   {
     id: 'apikeys',
@@ -962,6 +976,8 @@ export function SettingsPage() {
         onTabSelect={(_, data) => setActiveTab(data.value as string)}
       >
         <Tab value="general">General</Tab>
+        <Tab value="providerconfig">Provider Configuration</Tab>
+        <Tab value="qualityconfig">Quality Settings</Tab>
         <Tab value="apikeys">API Keys</Tab>
         <Tab value="security">Security</Tab>
         <Tab value="aimodels">AI Models</Tab>
@@ -997,6 +1013,14 @@ export function SettingsPage() {
             onSave={saveUserSettings}
             hasChanges={hasUnsavedChanges}
           />
+        )}
+
+        {activeTab === 'providerconfig' && (
+          <ProviderConfigurationPanel onSave={() => setHasUnsavedChanges(false)} />
+        )}
+
+        {activeTab === 'qualityconfig' && (
+          <QualityConfigurationPanel onSave={() => setHasUnsavedChanges(false)} />
         )}
 
         {activeTab === 'apikeys' && (
