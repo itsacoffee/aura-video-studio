@@ -313,8 +313,13 @@ function App() {
         e.preventDefault();
         window.location.href = '/logs';
       }
-      // Ctrl+K or Cmd+K for shortcuts panel (preferred)
+      // Ctrl+K or Cmd+K for command palette
       else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(true);
+      }
+      // Ctrl+Shift+K for shortcuts panel (alternative)
+      else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'K') {
         e.preventDefault();
         setShowShortcutsPanel(true);
       }
@@ -326,7 +331,7 @@ function App() {
           setShowShortcutsPanel(true);
         }
       }
-      // Ctrl+P or Cmd+P for command palette
+      // Ctrl+P or Cmd+P for quick open (alternative)
       else if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
         setShowCommandPalette(true);
