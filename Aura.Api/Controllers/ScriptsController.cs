@@ -254,14 +254,76 @@ public class ScriptsController : ControllerBase
             "[{CorrelationId}] Regenerating script {ScriptId} with provider {Provider}",
             correlationId, id, request.PreferredProvider ?? "auto");
 
-        return StatusCode(501, new ProblemDetails
+        try
         {
-            Type = "https://docs.aura.studio/errors/E501",
-            Title = "Not Implemented",
-            Status = 501,
-            Detail = "Script regeneration is not yet implemented",
-            Extensions = { ["correlationId"] = correlationId }
-        });
+            var brief = new Brief(
+                Topic: oldScript.Title,
+                Audience: null,
+                Goal: null,
+                Tone: "Conversational",
+                Language: "en",
+                Aspect: Core.Models.Aspect.Widescreen16x9);
+
+            var planSpec = new PlanSpec(
+                TargetDuration: oldScript.TotalDuration,
+                Pacing: Core.Models.Pacing.Conversational,
+                Density: Core.Models.Density.Balanced,
+                Style: "Modern");
+
+            var preferredTier = request.PreferredProvider ?? oldScript.Metadata.ProviderName;
+            
+            var result = await _scriptOrchestrator.GenerateScriptAsync(
+                brief, planSpec, preferredTier, offlineOnly: false, ct);
+
+            if (!result.Success || result.Script == null)
+            {
+                _logger.LogWarning(
+                    "[{CorrelationId}] Script regeneration failed: {ErrorCode} - {ErrorMessage}",
+                    correlationId, result.ErrorCode, result.ErrorMessage);
+
+                return StatusCode(500, new ProblemDetails
+                {
+                    Type = "https://docs.aura.studio/errors/E300",
+                    Title = "Script Regeneration Failed",
+                    Status = 500,
+                    Detail = result.ErrorMessage ?? "Failed to regenerate script",
+                    Extensions =
+                    {
+                        ["correlationId"] = correlationId,
+                        ["errorCode"] = result.ErrorCode
+                    }
+                });
+            }
+
+            var script = ParseScriptFromText(result.Script, planSpec, result.ProviderUsed ?? "Unknown");
+            script = script with { CorrelationId = correlationId };
+            
+            script = _scriptProcessor.ValidateSceneTiming(script, planSpec.TargetDuration);
+            script = _scriptProcessor.OptimizeNarrationFlow(script);
+            script = _scriptProcessor.ApplyTransitions(script, planSpec.Style);
+
+            _scriptStore[id] = script;
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Script regenerated successfully with provider {Provider}, ID: {ScriptId}",
+                correlationId, result.ProviderUsed, id);
+
+            var response = MapScriptToResponse(id, script);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error regenerating script", correlationId);
+            
+            return StatusCode(500, new ProblemDetails
+            {
+                Type = "https://docs.aura.studio/errors/E500",
+                Title = "Internal Server Error",
+                Status = 500,
+                Detail = "An error occurred while regenerating the script",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
     }
 
     /// <summary>
@@ -448,5 +510,106 @@ public class ScriptsController : ControllerBase
             "dense" => Core.Models.Density.Dense,
             _ => Core.Models.Density.Balanced
         };
+    }
+
+    /// <summary>
+    /// Export script as text or markdown
+    /// </summary>
+    [HttpGet("{id}/export")]
+    public IActionResult ExportScript(string id, [FromQuery] string format = "text")
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        if (!_scriptStore.TryGetValue(id, out var script))
+        {
+            return NotFound(new ProblemDetails
+            {
+                Type = "https://docs.aura.studio/errors/E404",
+                Title = "Script Not Found",
+                Status = 404,
+                Detail = $"Script with ID '{id}' was not found",
+                Extensions = { ["correlationId"] = correlationId }
+            });
+        }
+
+        var content = format.ToLowerInvariant() switch
+        {
+            "markdown" => ExportAsMarkdown(script),
+            "text" => ExportAsText(script),
+            _ => ExportAsText(script)
+        };
+
+        var filename = $"{script.Title.Replace(" ", "_")}_{DateTime.UtcNow:yyyyMMdd}.{(format == "markdown" ? "md" : "txt")}";
+        
+        _logger.LogInformation(
+            "[{CorrelationId}] Exporting script {ScriptId} as {Format}",
+            correlationId, id, format);
+
+        return File(
+            System.Text.Encoding.UTF8.GetBytes(content),
+            "text/plain",
+            filename);
+    }
+
+    private string ExportAsText(Script script)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine(script.Title);
+        sb.AppendLine(new string('=', script.Title.Length));
+        sb.AppendLine();
+        sb.AppendLine($"Total Duration: {script.TotalDuration.TotalMinutes:F2} minutes");
+        sb.AppendLine($"Provider: {script.Metadata.ProviderName}");
+        sb.AppendLine($"Generated: {script.Metadata.GeneratedAt:yyyy-MM-dd HH:mm:ss} UTC");
+        sb.AppendLine();
+        sb.AppendLine(new string('-', 60));
+        sb.AppendLine();
+
+        foreach (var scene in script.Scenes)
+        {
+            sb.AppendLine($"Scene {scene.Number} ({scene.Duration.TotalSeconds:F1}s)");
+            sb.AppendLine();
+            sb.AppendLine(scene.Narration);
+            sb.AppendLine();
+            sb.AppendLine($"Visual: {scene.VisualPrompt}");
+            sb.AppendLine();
+            sb.AppendLine(new string('-', 60));
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
+    private string ExportAsMarkdown(Script script)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"# {script.Title}");
+        sb.AppendLine();
+        sb.AppendLine("## Metadata");
+        sb.AppendLine();
+        sb.AppendLine($"- **Duration**: {script.TotalDuration.TotalMinutes:F2} minutes");
+        sb.AppendLine($"- **Provider**: {script.Metadata.ProviderName}");
+        sb.AppendLine($"- **Model**: {script.Metadata.ModelUsed}");
+        sb.AppendLine($"- **Generated**: {script.Metadata.GeneratedAt:yyyy-MM-dd HH:mm:ss} UTC");
+        sb.AppendLine();
+        sb.AppendLine("---");
+        sb.AppendLine();
+
+        foreach (var scene in script.Scenes)
+        {
+            sb.AppendLine($"## Scene {scene.Number}");
+            sb.AppendLine();
+            sb.AppendLine($"**Duration**: {scene.Duration.TotalSeconds:F1}s | **Transition**: {scene.Transition}");
+            sb.AppendLine();
+            sb.AppendLine("### Narration");
+            sb.AppendLine();
+            sb.AppendLine(scene.Narration);
+            sb.AppendLine();
+            sb.AppendLine("### Visual");
+            sb.AppendLine();
+            sb.AppendLine($"> {scene.VisualPrompt}");
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
     }
 }
