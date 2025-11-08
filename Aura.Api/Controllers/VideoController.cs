@@ -338,6 +338,149 @@ public class VideoController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Download the generated video file
+    /// </summary>
+    /// <param name="id">Job ID</param>
+    /// <returns>Video file stream</returns>
+    [HttpGet("{id}/download")]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public IActionResult DownloadVideo(string id)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] GET /api/videos/{Id}/download", correlationId, id);
+
+            var job = _jobRunner.GetJob(id);
+            if (job == null)
+            {
+                return NotFound(CreateProblemDetails(
+                    "Job Not Found",
+                    $"Video generation job {id} was not found",
+                    StatusCodes.Status404NotFound,
+                    correlationId));
+            }
+
+            if (job.Status != JobStatus.Done)
+            {
+                return BadRequest(CreateProblemDetails(
+                    "Video Not Ready",
+                    $"Video is not ready for download. Current status: {job.Status}",
+                    StatusCodes.Status400BadRequest,
+                    correlationId));
+            }
+
+            if (string.IsNullOrEmpty(job.OutputPath) || !System.IO.File.Exists(job.OutputPath))
+            {
+                return NotFound(CreateProblemDetails(
+                    "Video File Not Found",
+                    "The video file was not found on disk. It may have been cleaned up.",
+                    StatusCodes.Status404NotFound,
+                    correlationId));
+            }
+
+            var fileStream = System.IO.File.OpenRead(job.OutputPath);
+            var fileName = $"video-{id}.mp4";
+            
+            _logger.LogInformation("[{CorrelationId}] Serving video file: {Path}", correlationId, job.OutputPath);
+            
+            return File(fileStream, "video/mp4", fileName, enableRangeProcessing: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error downloading video for {Id}", correlationId, id);
+            
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                CreateProblemDetails(
+                    "Download Failed",
+                    "An error occurred while downloading the video",
+                    StatusCodes.Status500InternalServerError,
+                    correlationId));
+        }
+    }
+
+    /// <summary>
+    /// Get metadata about the generated video
+    /// </summary>
+    /// <param name="id">Job ID</param>
+    /// <returns>Video metadata</returns>
+    [HttpGet("{id}/metadata")]
+    [ProducesResponseType(typeof(VideoMetadata), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public IActionResult GetVideoMetadata(string id)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] GET /api/videos/{Id}/metadata", correlationId, id);
+
+            var job = _jobRunner.GetJob(id);
+            if (job == null)
+            {
+                return NotFound(CreateProblemDetails(
+                    "Job Not Found",
+                    $"Video generation job {id} was not found",
+                    StatusCodes.Status404NotFound,
+                    correlationId));
+            }
+
+            if (job.Status != JobStatus.Done || string.IsNullOrEmpty(job.OutputPath))
+            {
+                return BadRequest(CreateProblemDetails(
+                    "Video Not Ready",
+                    $"Video metadata is not available. Current status: {job.Status}",
+                    StatusCodes.Status400BadRequest,
+                    correlationId));
+            }
+
+            long fileSize = 0;
+            if (System.IO.File.Exists(job.OutputPath))
+            {
+                fileSize = new System.IO.FileInfo(job.OutputPath).Length;
+            }
+
+            var metadata = new VideoMetadata(
+                JobId: job.Id,
+                OutputPath: job.OutputPath,
+                FileSizeBytes: fileSize,
+                CreatedAt: job.CreatedUtc,
+                CompletedAt: job.CompletedUtc ?? DateTime.UtcNow,
+                Duration: job.PlanSpec?.TargetDuration ?? TimeSpan.Zero,
+                Resolution: job.RenderSpec != null 
+                    ? $"{job.RenderSpec.Res.Width}x{job.RenderSpec.Res.Height}"
+                    : "Unknown",
+                Codec: job.RenderSpec?.Codec ?? "Unknown",
+                Fps: job.RenderSpec?.Fps ?? 0,
+                Artifacts: job.Artifacts.Select(a => new ArtifactInfo(
+                    a.Name,
+                    a.Path,
+                    a.Type,
+                    a.SizeBytes
+                )).ToList(),
+                CorrelationId: correlationId
+            );
+
+            return Ok(metadata);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error getting video metadata for {Id}", correlationId, id);
+            
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                CreateProblemDetails(
+                    "Error Retrieving Metadata",
+                    "An error occurred while retrieving video metadata",
+                    StatusCodes.Status500InternalServerError,
+                    correlationId));
+        }
+    }
+
     private async Task SendSseEvent(string eventType, object data, CancellationToken ct)
     {
         var json = System.Text.Json.JsonSerializer.Serialize(data);
