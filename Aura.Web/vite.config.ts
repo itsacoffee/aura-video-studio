@@ -12,8 +12,7 @@ function performanceBudgetPlugin(): Plugin {
   // Performance budgets in KB
   const budgets = {
     'react-vendor': 200,
-    'fluent-components': 250,
-    'fluent-icons': 150,
+    'fluent-ui': 400, // Combined budget for components and icons
     'ffmpeg-vendor': 500,
     'audio-vendor': 100,
     vendor: 300,
@@ -159,13 +158,9 @@ export default defineConfig(({ mode }) => {
             if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
               return 'react-vendor';
             }
-            // Fluent UI components - separate chunk
-            if (id.includes('@fluentui/react-components')) {
-              return 'fluent-components';
-            }
-            // Fluent UI icons - separate chunk (can be lazy loaded)
-            if (id.includes('@fluentui/react-icons')) {
-              return 'fluent-icons';
+            // Fluent UI - keep components and icons together to avoid circular dependencies
+            if (id.includes('@fluentui/react-components') || id.includes('@fluentui/react-icons')) {
+              return 'fluent-ui';
             }
             // Router - separate chunk
             if (id.includes('react-router')) {
@@ -197,7 +192,6 @@ export default defineConfig(({ mode }) => {
       },
       // Performance optimizations
       reportCompressedSize: isProduction,
-      chunkSizeWarningLimit: 600,
     },
     test: {
       globals: true,
