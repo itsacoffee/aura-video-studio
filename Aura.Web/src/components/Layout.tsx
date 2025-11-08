@@ -3,6 +3,7 @@ import { ReactNode, useState } from 'react';
 import { useTheme } from '../App';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import { Breadcrumbs } from './Breadcrumbs';
+import { NotificationCenter } from './dashboard/NotificationCenter';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileFAB } from './MobileFAB';
 import { ResultsTray } from './ResultsTray';
@@ -37,6 +38,11 @@ const useStyles = makeStyles({
     '@media (max-width: 768px)': {
       padding: tokens.spacingVerticalS,
     },
+  },
+  topBarActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
   },
   content: {
     flex: 1,
@@ -141,7 +147,10 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
         {showBreadcrumbs && <Breadcrumbs statusBadge={statusBadge} />}
         <div className={styles.topBar}>
           <UndoRedoButtons />
-          <ResultsTray />
+          <div className={styles.topBarActions}>
+            <NotificationCenter />
+            <ResultsTray />
+          </div>
         </div>
         <main className={styles.content}>{children}</main>
       </div>
