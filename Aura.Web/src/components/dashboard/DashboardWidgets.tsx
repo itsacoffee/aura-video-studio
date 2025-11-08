@@ -31,6 +31,7 @@ import {
   Legend,
 } from 'recharts';
 import type { ProviderHealth, UsageData, QuickInsights } from '../../state/dashboard';
+import { ProviderDetailsModal } from './ProviderDetailsModal';
 
 const useStyles = makeStyles({
   widgetContainer: {
@@ -200,6 +201,14 @@ interface ProviderHealthWidgetProps {
 
 export function ProviderHealthWidget({ providers, onProviderClick }: ProviderHealthWidgetProps) {
   const styles = useStyles();
+  const [selectedProvider, setSelectedProvider] = useState<ProviderHealth | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleProviderClick = (provider: ProviderHealth) => {
+    setSelectedProvider(provider);
+    setModalOpen(true);
+    onProviderClick?.(provider);
+  };
 
   const getStatusIcon = (status: ProviderHealth['status']) => {
     switch (status) {
@@ -239,49 +248,56 @@ export function ProviderHealthWidget({ providers, onProviderClick }: ProviderHea
   };
 
   return (
-    <Card className={styles.card}>
-      <div className={styles.cardHeader}>
-        <Title3>Provider Health</Title3>
-      </div>
-      <div className={styles.providerList}>
-        {providers.map((provider) => (
-          <div
-            key={provider.name}
-            className={styles.providerItem}
-            onClick={() => onProviderClick?.(provider)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onProviderClick?.(provider);
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label={`View ${provider.name} details`}
-          >
-            <div className={styles.providerInfo}>
-              {getStatusIcon(provider.status)}
-              <div>
-                <Text weight="semibold">{provider.name}</Text>
-                <div className={styles.providerMetrics}>
-                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                    Response: {provider.responseTime}ms
-                  </Text>
-                  {provider.errorRate > 1 && (
-                    <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
-                      Error rate: {provider.errorRate.toFixed(1)}%
+    <>
+      <Card className={styles.card}>
+        <div className={styles.cardHeader}>
+          <Title3>Provider Health</Title3>
+        </div>
+        <div className={styles.providerList}>
+          {providers.map((provider) => (
+            <div
+              key={provider.name}
+              className={styles.providerItem}
+              onClick={() => handleProviderClick(provider)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleProviderClick(provider);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`View ${provider.name} details`}
+            >
+              <div className={styles.providerInfo}>
+                {getStatusIcon(provider.status)}
+                <div>
+                  <Text weight="semibold">{provider.name}</Text>
+                  <div className={styles.providerMetrics}>
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                      Response: {provider.responseTime}ms
                     </Text>
-                  )}
+                    {provider.errorRate > 1 && (
+                      <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+                        Error rate: {provider.errorRate.toFixed(1)}%
+                      </Text>
+                    )}
+                  </div>
                 </div>
               </div>
+              <Badge appearance="filled" color={getStatusColor(provider.status)}>
+                {provider.status}
+              </Badge>
             </div>
-            <Badge appearance="filled" color={getStatusColor(provider.status)}>
-              {provider.status}
-            </Badge>
-          </div>
-        ))}
-      </div>
-    </Card>
+          ))}
+        </div>
+      </Card>
+      <ProviderDetailsModal
+        provider={selectedProvider}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+      />
+    </>
   );
 }
 
@@ -335,9 +351,11 @@ export function DashboardWidgets({
 
   return (
     <div className={styles.widgetContainer}>
-      <UsageChart data={usageData} onExport={onExportUsage} />
-      <ProviderHealthWidget providers={providerHealth} onProviderClick={onProviderClick} />
-      <QuickInsightsWidget insights={quickInsights} />
+      {usageData.length > 0 && <UsageChart data={usageData} onExport={onExportUsage} />}
+      {providerHealth.length > 0 && (
+        <ProviderHealthWidget providers={providerHealth} onProviderClick={onProviderClick} />
+      )}
+      {quickInsights.mostUsedTemplate && <QuickInsightsWidget insights={quickInsights} />}
     </div>
   );
 }

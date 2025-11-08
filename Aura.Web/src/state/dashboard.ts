@@ -6,6 +6,7 @@ export interface ProjectSummary {
   name: string;
   description?: string;
   thumbnail?: string;
+  videoUrl?: string;
   status: 'draft' | 'processing' | 'complete' | 'failed';
   createdAt: string;
   lastModifiedAt: string;
@@ -41,12 +42,23 @@ export interface QuickInsights {
   favoriteVoice: string;
 }
 
+export interface RecentBrief {
+  id: string;
+  title: string;
+  topic: string;
+  audience?: string;
+  goal?: string;
+  tone?: string;
+  createdAt: string;
+}
+
 export interface DashboardLayout {
   showStats: boolean;
   showProjects: boolean;
   showAnalytics: boolean;
   showProviderHealth: boolean;
   showQuickInsights: boolean;
+  showRecentBriefs: boolean;
   projectGridColumns: number;
   view: 'default' | 'compact' | 'analytics';
 }
@@ -64,6 +76,7 @@ interface DashboardState {
   providerHealth: ProviderHealth[];
   usageData: UsageData[];
   quickInsights: QuickInsights;
+  recentBriefs: RecentBrief[];
   layout: DashboardLayout;
   filter: DashboardFilter;
   loading: boolean;
@@ -78,6 +91,8 @@ interface DashboardState {
   setProviderHealth: (health: ProviderHealth[]) => void;
   setUsageData: (data: UsageData[]) => void;
   setQuickInsights: (insights: QuickInsights) => void;
+  setRecentBriefs: (briefs: RecentBrief[]) => void;
+  addRecentBrief: (brief: RecentBrief) => void;
   updateLayout: (updates: Partial<DashboardLayout>) => void;
   setFilter: (filter: DashboardFilter) => void;
   clearFilter: () => void;
@@ -90,6 +105,7 @@ const defaultLayout: DashboardLayout = {
   showAnalytics: true,
   showProviderHealth: true,
   showQuickInsights: true,
+  showRecentBriefs: true,
   projectGridColumns: 3,
   view: 'default',
 };
@@ -115,6 +131,7 @@ export const useDashboardStore = create<DashboardState>()(
       providerHealth: [],
       usageData: [],
       quickInsights: defaultInsights,
+      recentBriefs: [],
       layout: defaultLayout,
       filter: {},
       loading: false,
@@ -153,6 +170,13 @@ export const useDashboardStore = create<DashboardState>()(
       setUsageData: (data) => set({ usageData: data }),
 
       setQuickInsights: (insights) => set({ quickInsights: insights }),
+
+      setRecentBriefs: (briefs) => set({ recentBriefs: briefs }),
+
+      addRecentBrief: (brief) =>
+        set((state) => ({
+          recentBriefs: [brief, ...state.recentBriefs].slice(0, 5),
+        })),
 
       updateLayout: (updates) =>
         set((state) => ({

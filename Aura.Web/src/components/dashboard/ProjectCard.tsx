@@ -22,7 +22,7 @@ import {
   Share24Regular,
   Delete24Regular,
 } from '@fluentui/react-icons';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ProjectSummary } from '../../state/dashboard';
 
 const useStyles = makeStyles({
@@ -63,11 +63,25 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    pointerEvents: 'none',
   },
   previewHover: {
     ':hover .play-overlay': {
       opacity: 1,
     },
+  },
+  videoPreview: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    opacity: 0,
+    transition: 'opacity 0.3s ease',
+  },
+  videoPreviewVisible: {
+    opacity: 1,
   },
   header: {
     display: 'flex',
@@ -177,6 +191,42 @@ export function ProjectCard({
 }: ProjectCardProps) {
   const styles = useStyles();
   const [isDragging, setIsDragging] = useState(false);
+  const [showVideoPreview, setShowVideoPreview] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const previewTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => {
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    if (project.videoUrl && project.status === 'complete') {
+      previewTimeoutRef.current = setTimeout(() => {
+        setShowVideoPreview(true);
+        if (videoRef.current) {
+          videoRef.current.currentTime = 0;
+          videoRef.current.play().catch(() => {
+            // Ignore play errors (autoplay restrictions)
+          });
+        }
+      }, 500);
+    }
+  }, [project.videoUrl, project.status]);
+
+  const handleMouseLeave = useCallback(() => {
+    setShowVideoPreview(false);
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current);
+    }
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  }, []);
 
   const handleDragStart = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -292,6 +342,8 @@ export function ProjectCard({
       <CardPreview
         className={mergeClasses(styles.preview, styles.previewHover)}
         onClick={() => onPreview?.(project)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
         {project.thumbnail ? (
           <img src={project.thumbnail} alt={project.name} className={styles.thumbnail} />
@@ -307,6 +359,27 @@ export function ProjectCard({
           >
             <Text>No Preview</Text>
           </div>
+        )}
+        {project.videoUrl && project.status === 'complete' && (
+          <video
+            ref={videoRef}
+            src={project.videoUrl}
+            className={mergeClasses(
+              styles.videoPreview,
+              showVideoPreview && styles.videoPreviewVisible
+            )}
+            muted
+            loop
+            playsInline
+            onEnded={() => {
+              if (videoRef.current) {
+                videoRef.current.currentTime = 0;
+                videoRef.current.play().catch(() => {
+                  // Ignore play errors
+                });
+              }
+            }}
+          />
         )}
         <div className={mergeClasses(styles.playOverlay, 'play-overlay')}>
           <Play24Regular style={{ color: 'white', fontSize: '32px' }} />
