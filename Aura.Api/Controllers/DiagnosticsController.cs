@@ -893,6 +893,90 @@ public class DiagnosticsController : ControllerBase
             _ => TimeSpan.FromHours(24)
         };
     }
+
+    /// <summary>
+    /// Check provider availability (Ollama, Stable Diffusion, etc.)
+    /// </summary>
+    [HttpGet("providers/availability")]
+    public async Task<IActionResult> CheckProviderAvailability(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Checking provider availability");
+
+        try
+        {
+            var service = new Aura.Core.Services.Setup.ProviderAvailabilityService(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Services.Setup.ProviderAvailabilityService>.Instance,
+                new System.Net.Http.HttpClient());
+
+            var report = await service.CheckAllProvidersAsync(ct);
+
+            return Ok(new
+            {
+                success = true,
+                timestamp = report.Timestamp,
+                providers = report.Providers,
+                ollamaAvailable = report.OllamaAvailable,
+                stableDiffusionAvailable = report.StableDiffusionAvailable,
+                databaseAvailable = report.DatabaseAvailable,
+                networkConnected = report.NetworkConnected
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check provider availability");
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get auto-configuration recommendations based on system capabilities
+    /// </summary>
+    [HttpGet("auto-config")]
+    public async Task<IActionResult> GetAutoConfiguration(CancellationToken ct = default)
+    {
+        _logger.LogInformation("Getting auto-configuration recommendations");
+
+        try
+        {
+            var dependencyDetector = new Aura.Core.Services.Setup.DependencyDetector(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Services.Setup.DependencyDetector>.Instance,
+                null,
+                new System.Net.Http.HttpClient());
+
+            var service = new Aura.Core.Services.Setup.AutoConfigurationService(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<Aura.Core.Services.Setup.AutoConfigurationService>.Instance,
+                _hardwareDetector,
+                dependencyDetector);
+
+            var config = await service.DetectOptimalSettingsAsync(ct);
+
+            return Ok(new
+            {
+                success = true,
+                recommendedThreadCount = config.RecommendedThreadCount,
+                recommendedMemoryLimitMB = config.RecommendedMemoryLimitMB,
+                recommendedQualityPreset = config.RecommendedQualityPreset,
+                useHardwareAcceleration = config.UseHardwareAcceleration,
+                hardwareAccelerationMethod = config.HardwareAccelerationMethod,
+                enableLocalProviders = config.EnableLocalProviders,
+                recommendedTier = config.RecommendedTier,
+                configuredProviders = config.ConfiguredProviders
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get auto-configuration");
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message
+            });
+        }
+    }
 }
 
 /// <summary>
