@@ -160,7 +160,8 @@ export default defineConfig(({ mode }) => {
               return 'react-vendor';
             }
             // Fluent UI Components - separate from icons to avoid circular dependencies
-            if (id.includes('@fluentui/react-components')) {
+            // This includes all @fluentui/react-* packages except react-icons
+            if (id.includes('@fluentui/react-') && !id.includes('@fluentui/react-icons')) {
               return 'fluentui-components';
             }
             // Fluent UI Icons - separate chunk
