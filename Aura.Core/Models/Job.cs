@@ -118,6 +118,12 @@ public record Job
     /// <summary>Final output path for the rendered video (populated after successful render)</summary>
     public string? OutputPath { get; init; }
     
+    /// <summary>Progress history for recovery and replay</summary>
+    public List<GenerationProgress> ProgressHistory { get; init; } = new();
+    
+    /// <summary>Current detailed progress information</summary>
+    public GenerationProgress? CurrentProgress { get; init; }
+    
     /// <summary>
     /// Creates a new Job with updated progress, ensuring monotonic invariant (progress never decreases)
     /// </summary>
