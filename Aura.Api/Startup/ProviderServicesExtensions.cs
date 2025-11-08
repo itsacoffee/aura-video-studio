@@ -57,6 +57,7 @@ public static class ProviderServicesExtensions
 
         // Provider recommendation, health monitoring, and cost tracking
         services.AddSingleton<Aura.Core.Services.Providers.ProviderHealthMonitoringService>();
+        services.AddSingleton<Aura.Core.Services.Providers.ProviderCircuitBreakerService>();
         services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
         services.AddSingleton<Aura.Core.Services.CostTracking.EnhancedCostTrackingService>();
         
