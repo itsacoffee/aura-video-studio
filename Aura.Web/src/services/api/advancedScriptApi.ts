@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import apiClient from './apiClient';
 
 export interface Brief {
   topic: string;
@@ -206,11 +206,7 @@ export const advancedScriptApi = {
   /**
    * Optimize the opening hook
    */
-  async optimizeHook(
-    script: Script,
-    brief: Brief,
-    targetSeconds: number = 3
-  ): Promise<Script> {
+  async optimizeHook(script: Script, brief: Brief, targetSeconds: number = 3): Promise<Script> {
     const response = await apiClient.post('/api/advanced-script/optimize-hook', {
       script,
       brief,
