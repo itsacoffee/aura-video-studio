@@ -531,4 +531,333 @@ public class RuleBasedLlmProvider : ILlmProvider
             .Where(w => w.Length > 3 && !stopWords.Contains(w))
             .ToList();
     }
+
+    /// <summary>
+    /// Generate a complete Script object with scenes from a brief string and duration.
+    /// This is the simplified offline fallback API that works without any external dependencies.
+    /// Execution time is guaranteed to be under 1 second.
+    /// Never throws exceptions - always returns a valid script.
+    /// </summary>
+    /// <param name="brief">Creative brief describing the video content</param>
+    /// <param name="durationSeconds">Target duration in seconds</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Complete Script object with all scenes populated</returns>
+    public Task<Core.Models.Generation.Script> GenerateScriptAsync(string brief, int durationSeconds, CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation("RuleBased provider generating script for {Duration}s video", durationSeconds);
+            
+            var startTime = DateTime.UtcNow;
+            
+            var keywords = ExtractKeywords(brief);
+            var videoType = DetectVideoType(keywords, brief);
+            
+            var sceneCount = Math.Max(3, Math.Min(20, durationSeconds / 10));
+            _logger.LogInformation("RuleBased provider generated {SceneCount} scenes for {Duration}s video", sceneCount, durationSeconds);
+            
+            var scenes = new List<Core.Models.Generation.ScriptScene>();
+            var sceneDurations = CalculateSceneDurations(sceneCount, durationSeconds);
+            
+            for (int i = 0; i < sceneCount; i++)
+            {
+                var sceneNumber = i + 1;
+                var isFirst = i == 0;
+                var isLast = i == sceneCount - 1;
+                
+                var narration = GenerateSceneNarration(videoType, sceneNumber, sceneCount, isFirst, isLast, keywords, brief);
+                var visualPrompt = GenerateVisualPrompt(narration, keywords);
+                var sceneDuration = sceneDurations[i];
+                var transition = DetermineTransition(isLast);
+                
+                var scene = new Core.Models.Generation.ScriptScene
+                {
+                    Number = sceneNumber,
+                    Narration = narration,
+                    VisualPrompt = visualPrompt,
+                    Duration = TimeSpan.FromSeconds(sceneDuration),
+                    Transition = transition
+                };
+                
+                scenes.Add(scene);
+            }
+            
+            var totalDuration = TimeSpan.FromSeconds(durationSeconds);
+            var mainTopic = keywords.FirstOrDefault() ?? "content";
+            
+            var executionTime = DateTime.UtcNow - startTime;
+            
+            var script = new Core.Models.Generation.Script
+            {
+                Title = $"{mainTopic} - AI Generated Video",
+                Scenes = scenes,
+                TotalDuration = totalDuration,
+                Metadata = new Core.Models.Generation.ScriptMetadata
+                {
+                    GeneratedAt = DateTime.UtcNow,
+                    ProviderName = "RuleBased",
+                    ModelUsed = "Template-Based",
+                    TokensUsed = 0,
+                    EstimatedCost = 0m,
+                    Tier = Core.Models.Generation.ProviderTier.Free,
+                    GenerationTime = executionTime
+                },
+                CorrelationId = Guid.NewGuid().ToString()
+            };
+            
+            _logger.LogInformation("RuleBased script generation completed in {Ms}ms", executionTime.TotalMilliseconds);
+            
+            return Task.FromResult(script);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error in RuleBased script generation, returning fallback");
+            
+            var fallbackScene = new Core.Models.Generation.ScriptScene
+            {
+                Number = 1,
+                Narration = "Welcome. This is a brief video about the requested topic.",
+                VisualPrompt = "abstract gradient background, blue and purple colors",
+                Duration = TimeSpan.FromSeconds(durationSeconds),
+                Transition = Core.Models.Generation.TransitionType.Cut
+            };
+            
+            return Task.FromResult(new Core.Models.Generation.Script
+            {
+                Title = "Generated Video",
+                Scenes = new List<Core.Models.Generation.ScriptScene> { fallbackScene },
+                TotalDuration = TimeSpan.FromSeconds(durationSeconds),
+                Metadata = new Core.Models.Generation.ScriptMetadata
+                {
+                    GeneratedAt = DateTime.UtcNow,
+                    ProviderName = "RuleBased",
+                    ModelUsed = "Template-Based-Fallback",
+                    TokensUsed = 0,
+                    EstimatedCost = 0m,
+                    Tier = Core.Models.Generation.ProviderTier.Free,
+                    GenerationTime = TimeSpan.FromMilliseconds(1)
+                },
+                CorrelationId = Guid.NewGuid().ToString()
+            });
+        }
+    }
+
+    /// <summary>
+    /// Extract top 5 keywords from brief using frequency analysis.
+    /// Filters out stop words and keeps words with length >= 4.
+    /// </summary>
+    private List<string> ExtractKeywords(string brief)
+    {
+        if (string.IsNullOrWhiteSpace(brief) || brief.Length < 10)
+        {
+            return new List<string> { "video", "content", "information" };
+        }
+        
+        var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "for", 
+            "of", "and", "or", "but", "this", "that", "with", "from", "by", "about"
+        };
+        
+        var words = brief.Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '!', '?', ';', ':', '-', '_' }, 
+            StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => w.ToLowerInvariant())
+            .Where(w => w.Length >= 4 && !stopWords.Contains(w))
+            .ToList();
+        
+        var wordFrequency = words
+            .GroupBy(w => w)
+            .OrderByDescending(g => g.Count())
+            .Take(5)
+            .Select(g => g.Key)
+            .ToList();
+        
+        if (wordFrequency.Count == 0)
+        {
+            return new List<string> { "video", "content", "information" };
+        }
+        
+        return wordFrequency;
+    }
+
+    /// <summary>
+    /// Detect video type from keywords and brief content.
+    /// Returns Tutorial, Marketing, Review, or General based on keyword analysis.
+    /// </summary>
+    private string DetectVideoType(List<string> keywords, string brief)
+    {
+        var briefLower = brief.ToLowerInvariant();
+        var keywordsStr = string.Join(" ", keywords).ToLowerInvariant();
+        var combinedText = $"{briefLower} {keywordsStr}";
+        
+        var tutorialKeywords = new[] { "tutorial", "how", "learn", "guide", "teach", "lesson", "course", "training" };
+        var marketingKeywords = new[] { "product", "buy", "sale", "offer", "discount", "deal", "purchase", "customer" };
+        var reviewKeywords = new[] { "review", "opinion", "thoughts", "rating", "recommend", "experience", "pros", "cons" };
+        
+        var tutorialCount = tutorialKeywords.Count(kw => combinedText.Contains(kw));
+        var marketingCount = marketingKeywords.Count(kw => combinedText.Contains(kw));
+        var reviewCount = reviewKeywords.Count(kw => combinedText.Contains(kw));
+        
+        string detectedType;
+        if (tutorialCount > marketingCount && tutorialCount > reviewCount)
+        {
+            detectedType = "Tutorial";
+        }
+        else if (marketingCount > reviewCount)
+        {
+            detectedType = "Marketing";
+        }
+        else if (reviewCount > 0)
+        {
+            detectedType = "Review";
+        }
+        else
+        {
+            detectedType = "General";
+        }
+        
+        _logger.LogInformation("Detected video type: {Type}", detectedType);
+        return detectedType;
+    }
+
+    /// <summary>
+    /// Generate narration for a specific scene using templates based on video type.
+    /// </summary>
+    private string GenerateSceneNarration(string videoType, int sceneNumber, int totalScenes, 
+        bool isFirst, bool isLast, List<string> keywords, string originalBrief)
+    {
+        var mainTopic = keywords.FirstOrDefault() ?? "topic";
+        var keyword1 = keywords.ElementAtOrDefault(1) ?? "concepts";
+        var keyword2 = keywords.ElementAtOrDefault(2) ?? "ideas";
+        var keyword = keywords.ElementAtOrDefault(sceneNumber % keywords.Count) ?? "aspect";
+        
+        if (isFirst)
+        {
+            return videoType switch
+            {
+                "Tutorial" => $"Welcome! Today we'll learn about {mainTopic}. We'll cover {keyword1}, {keyword2}, and more.",
+                "Marketing" => $"Looking for the best {mainTopic}? You're in the right place!",
+                "Review" => $"Today I'm reviewing {mainTopic}. Let's see if it lives up to the hype.",
+                _ => $"Welcome. Today we're discussing {mainTopic}."
+            };
+        }
+        
+        if (isLast)
+        {
+            return videoType switch
+            {
+                "Tutorial" => $"That's everything about {mainTopic}. Thanks for watching, and happy learning!",
+                "Marketing" => $"Ready to get started with {mainTopic}? Click the link below!",
+                "Review" => $"Overall, {mainTopic} is worth considering. My rating: recommended.",
+                _ => $"That concludes our look at {mainTopic}. Thank you for watching."
+            };
+        }
+        
+        var relatedConcept = keywords.ElementAtOrDefault((sceneNumber + 1) % keywords.Count) ?? "related concepts";
+        var benefit = keywords.ElementAtOrDefault((sceneNumber + 2) % keywords.Count) ?? "advantages";
+        var reason = $"it provides {benefit}";
+        
+        return videoType switch
+        {
+            "Tutorial" => $"Let's explore {keyword}. This is important because it helps you understand {relatedConcept}.",
+            "Marketing" => $"Here's why {keyword} matters. Our solution offers {benefit}.",
+            "Review" => $"The {keyword} feature is impressive because {reason}.",
+            _ => $"An important aspect is {keyword}. This relates to {relatedConcept}."
+        };
+    }
+
+    /// <summary>
+    /// Generate visual prompt for scene based on narration and keywords.
+    /// Keeps prompts under 100 characters with professional style descriptors.
+    /// </summary>
+    private string GenerateVisualPrompt(string narration, List<string> keywords)
+    {
+        if (string.IsNullOrWhiteSpace(narration) && keywords.Count == 0)
+        {
+            return "abstract gradient background, blue and purple colors";
+        }
+        
+        var narrationWords = narration.Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '!', '?', ';', ':' }, 
+            StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length > 4)
+            .Take(5)
+            .ToList();
+        
+        var mainNoun = narrationWords.FirstOrDefault() ?? keywords.FirstOrDefault() ?? "scene";
+        
+        var styleDescriptor = _random.Next(2) == 0 ? "professional photograph of" : "modern illustration of";
+        var subject = mainNoun.ToLowerInvariant();
+        var context = "clean white background, studio lighting, high quality";
+        
+        var prompt = $"{styleDescriptor} {subject}, {context}";
+        
+        if (prompt.Length > 100)
+        {
+            prompt = $"{styleDescriptor} {subject}";
+        }
+        
+        return prompt;
+    }
+
+    /// <summary>
+    /// Calculate duration for each scene with proper intro/outro weighting.
+    /// Intro gets 15%, outro gets 15%, middle scenes split remaining 70%.
+    /// Includes 1 second buffer for transitions.
+    /// </summary>
+    private List<double> CalculateSceneDurations(int sceneCount, int totalDurationSeconds)
+    {
+        var durations = new List<double>();
+        
+        if (sceneCount == 1)
+        {
+            durations.Add(totalDurationSeconds);
+            return durations;
+        }
+        
+        if (sceneCount == 2)
+        {
+            durations.Add(totalDurationSeconds * 0.5);
+            durations.Add(totalDurationSeconds * 0.5);
+            return durations;
+        }
+        
+        var introDuration = totalDurationSeconds * 0.15;
+        var outroDuration = totalDurationSeconds * 0.15;
+        var middleTotalDuration = totalDurationSeconds * 0.70;
+        var middleSceneCount = sceneCount - 2;
+        var middleSceneDuration = middleTotalDuration / middleSceneCount;
+        
+        durations.Add(introDuration);
+        
+        for (int i = 0; i < middleSceneCount; i++)
+        {
+            durations.Add(middleSceneDuration);
+        }
+        
+        durations.Add(outroDuration);
+        
+        var currentSum = durations.Sum();
+        var difference = totalDurationSeconds - currentSum;
+        
+        if (Math.Abs(difference) > totalDurationSeconds * 0.05)
+        {
+            var adjustment = difference / sceneCount;
+            durations = durations.Select(d => d + adjustment).ToList();
+        }
+        
+        return durations;
+    }
+
+    /// <summary>
+    /// Determine appropriate transition type for scene.
+    /// </summary>
+    private Core.Models.Generation.TransitionType DetermineTransition(bool isLast)
+    {
+        if (isLast)
+        {
+            return Core.Models.Generation.TransitionType.Fade;
+        }
+        
+        return Core.Models.Generation.TransitionType.Cut;
+    }
 }
