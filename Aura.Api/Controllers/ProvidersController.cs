@@ -426,6 +426,138 @@ public class ProvidersController : ControllerBase
     }
 
     /// <summary>
+    /// Get available OpenAI models for a validated API key
+    /// </summary>
+    [HttpPost("openai/models")]
+    public async Task<IActionResult> GetOpenAIModels(
+        [FromBody] ValidateOpenAIKeyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = "API key is required",
+                    correlationId
+                });
+            }
+
+            Log.Information(
+                "Fetching OpenAI models, CorrelationId: {CorrelationId}",
+                correlationId);
+
+            var result = await _openAIValidationService.GetAvailableModelsAsync(
+                request.ApiKey,
+                request.BaseUrl,
+                request.OrganizationId,
+                request.ProjectId,
+                cancellationToken);
+
+            if (!result.Success)
+            {
+                return Ok(new { 
+                    success = false,
+                    message = result.ErrorMessage,
+                    correlationId
+                });
+            }
+
+            return Ok(new { 
+                success = true,
+                models = result.Models,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error fetching OpenAI models, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Models Fetch Error",
+                detail: "An unexpected error occurred while fetching models.",
+                statusCode: 500,
+                type: "https://docs.aura.studio/errors/models-fetch-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Test OpenAI script generation with a simple prompt
+    /// </summary>
+    [HttpPost("openai/test-generation")]
+    public async Task<IActionResult> TestOpenAIGeneration(
+        [FromBody] TestOpenAIGenerationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = "API key is required",
+                    correlationId
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Model))
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = "Model is required",
+                    correlationId
+                });
+            }
+
+            Log.Information(
+                "Testing OpenAI script generation with model {Model}, CorrelationId: {CorrelationId}",
+                request.Model,
+                correlationId);
+
+            var result = await _openAIValidationService.TestScriptGenerationAsync(
+                request.ApiKey,
+                request.Model,
+                request.BaseUrl,
+                request.OrganizationId,
+                request.ProjectId,
+                cancellationToken);
+
+            if (!result.Success)
+            {
+                return Ok(new { 
+                    success = false,
+                    message = result.ErrorMessage,
+                    responseTimeMs = result.ResponseTimeMs,
+                    correlationId
+                });
+            }
+
+            return Ok(new { 
+                success = true,
+                generatedText = result.GeneratedText,
+                model = result.Model,
+                responseTimeMs = result.ResponseTimeMs,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error testing OpenAI generation, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Generation Test Error",
+                detail: "An unexpected error occurred while testing script generation.",
+                statusCode: 500,
+                type: "https://docs.aura.studio/errors/generation-test-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
     /// Validate ElevenLabs API key with live network verification
     /// </summary>
     [HttpPost("elevenlabs/validate")]
