@@ -5,6 +5,7 @@
  * Provides mechanisms to detect and fix corrupted configurations
  */
 
+import { env } from '../config/env';
 import { loggingService } from './loggingService';
 
 export interface ConfigValidationResult {
@@ -195,7 +196,7 @@ class ConfigurationRecoveryService {
 
       const defaultConfig = {
         theme: 'dark',
-        apiUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005',
+        apiUrl: env.apiBaseUrl,
         ffmpegPath: '',
         providers: {
           llm: 'RuleBased',

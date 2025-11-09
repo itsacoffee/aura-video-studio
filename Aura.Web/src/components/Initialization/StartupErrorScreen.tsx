@@ -22,6 +22,7 @@ import {
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
 import type { InitializationError } from './InitializationScreen';
+import { env } from '../../config/env';
 
 interface StartupErrorScreenProps {
   error: InitializationError;
@@ -64,7 +65,7 @@ export function StartupErrorScreen({
       details: error.details,
       userAgent: navigator.userAgent,
       url: window.location.href,
-      apiUrl: import.meta.env.VITE_API_BASE_URL,
+      apiUrl: env.apiBaseUrl,
       platform: navigator.platform,
     };
 
