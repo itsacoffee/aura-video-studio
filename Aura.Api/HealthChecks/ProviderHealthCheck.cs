@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Configuration;
+using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -18,20 +19,23 @@ public class ProviderHealthCheck : IHealthCheck
 {
     private readonly ILogger<ProviderHealthCheck> _logger;
     private readonly ProviderSettings _providerSettings;
-    private readonly IEnumerable<ILlmProvider> _llmProviders;
+    private readonly LlmProviderFactory _llmProviderFactory;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly IEnumerable<ITtsProvider> _ttsProviders;
     private readonly IVideoComposer _videoComposer;
 
     public ProviderHealthCheck(
         ILogger<ProviderHealthCheck> logger,
         ProviderSettings providerSettings,
-        IEnumerable<ILlmProvider> llmProviders,
+        LlmProviderFactory llmProviderFactory,
+        ILoggerFactory loggerFactory,
         IEnumerable<ITtsProvider> ttsProviders,
         IVideoComposer videoComposer)
     {
         _logger = logger;
         _providerSettings = providerSettings;
-        _llmProviders = llmProviders;
+        _llmProviderFactory = llmProviderFactory;
+        _loggerFactory = loggerFactory;
         _ttsProviders = ttsProviders;
         _videoComposer = videoComposer;
     }
@@ -45,18 +49,16 @@ public class ProviderHealthCheck : IHealthCheck
             var data = new Dictionary<string, object>();
             var warnings = new List<string>();
 
-            var llmProvidersFiltered = _llmProviders.Where(p => p != null).ToList();
+            var llmProviders = _llmProviderFactory.CreateAvailableProviders(_loggerFactory);
             var ttsProvidersFiltered = _ttsProviders.Where(p => p != null).ToList();
 
-            data["llm_providers_available"] = llmProvidersFiltered.Count;
+            data["llm_providers_available"] = llmProviders.Count;
             data["tts_providers_available"] = ttsProvidersFiltered.Count;
             data["video_composer_available"] = _videoComposer != null;
 
-            if (llmProvidersFiltered.Count > 0)
+            if (llmProviders.Count > 0)
             {
-                data["llm_providers"] = llmProvidersFiltered
-                    .Select(p => p.GetType().Name.Replace("Provider", ""))
-                    .ToArray();
+                data["llm_providers"] = llmProviders.Keys.ToArray();
             }
 
             if (ttsProvidersFiltered.Count > 0)
@@ -68,7 +70,7 @@ public class ProviderHealthCheck : IHealthCheck
 
             CheckApiKeys(data, warnings);
 
-            if (llmProvidersFiltered.Count == 0)
+            if (llmProviders.Count == 0)
             {
                 warnings.Add("No LLM providers configured - script generation will not work");
             }
