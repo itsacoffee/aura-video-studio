@@ -60,6 +60,7 @@ import { VideoEditorPage } from './pages/VideoEditorPage';
 import VoiceEnhancementPage from './pages/VoiceEnhancement/VoiceEnhancementPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { CreateWizard } from './pages/Wizard/CreateWizard';
+import { setupApi } from './services/api/setupApi';
 import { errorReportingService } from './services/errorReportingService';
 import {
   hasCompletedFirstRun,
@@ -138,7 +139,22 @@ function App() {
         // Migrate settings if needed (e.g., placeholder paths)
         await migrateSettingsIfNeeded();
 
-        // Check if user has completed first-run wizard
+        // Check system setup status from backend (primary source of truth)
+        try {
+          const systemStatus = await setupApi.getSystemStatus();
+          if (!systemStatus.isComplete) {
+            setShouldShowOnboarding(true);
+            setIsCheckingFirstRun(false);
+            return;
+          }
+        } catch (error) {
+          console.warn(
+            'Could not check system setup status, falling back to user wizard status:',
+            error
+          );
+        }
+
+        // Check if user has completed first-run wizard (secondary check)
         const completed = await hasCompletedFirstRun();
         setShouldShowOnboarding(!completed);
       } catch (error) {
