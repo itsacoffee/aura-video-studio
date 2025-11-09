@@ -42,6 +42,7 @@ import {
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getWizardProject } from '../../api/wizardProjects';
+import { AutoSaveIndicator } from '../../components/AutoSaveIndicator';
 import { GenerationPanel } from '../../components/Generation/GenerationPanel';
 import { useNotifications } from '../../components/Notifications/Toasts';
 import { PreflightPanel } from '../../components/PreflightPanel';
@@ -50,6 +51,7 @@ import SaveProjectDialog from '../../components/SaveProjectDialog';
 import { TooltipContent, TooltipWithLink } from '../../components/Tooltips';
 import { ProviderSelection } from '../../components/Wizard/ProviderSelection';
 import { apiUrl } from '../../config/api';
+import { useWizardAutoSave } from '../../hooks/useWizardAutoSave';
 import { postCancellable, isAbortError } from '../../services/api/cancellableRequests';
 import { loggingService as logger } from '../../services/loggingService';
 import { useJobState } from '../../state/jobState';
@@ -220,12 +222,40 @@ export function CreateWizard() {
   // Save project dialog state
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [searchParams] = useSearchParams();
-  const { setCurrentProject } = useWizardProjectStore();
+  const { setCurrentProject, currentProject } = useWizardProjectStore();
 
   // Request cancellation state
   const currentRequestRef = useRef<{ cancel: () => void } | null>(null);
 
   const { showFailureToast, showSuccessToast } = useNotifications();
+
+  // Auto-save functionality
+  const {
+    triggerManualSave,
+    isSaving: isAutoSaving,
+    lastSaveTime,
+    saveError: autoSaveError,
+  } = useWizardAutoSave({
+    enabled: !!currentProject && currentStep > 0,
+    intervalMs: 30000, // 30 seconds
+    projectId: currentProject?.id,
+    projectName: currentProject?.name || 'Untitled Project',
+    currentStep: currentStep - 1, // Convert from 1-indexed to 0-indexed
+    briefJson: JSON.stringify(settings.brief),
+    planSpecJson: JSON.stringify(settings.planSpec),
+    voiceSpecJson: undefined, // Add when voice settings are implemented
+    renderSpecJson: undefined, // Add when render settings are implemented
+    onSaveSuccess: (projectId) => {
+      // Update or create current project
+      if (currentProject) {
+        setCurrentProject({
+          ...currentProject,
+          id: projectId,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    },
+  });
 
   // Update provider selection
   const updateProviderSelection = (selection: PerStageProviderSelection) => {
@@ -651,13 +681,32 @@ export function CreateWizard() {
       <div className={styles.header}>
         <div className={styles.headerRow}>
           <Title1>Create Video</Title1>
-          <Button
-            icon={<Save20Regular />}
-            onClick={() => setSaveDialogOpen(true)}
-            appearance="subtle"
-          >
-            Save Project
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
+            {currentProject && (
+              <AutoSaveIndicator
+                status={
+                  isAutoSaving
+                    ? 'saving'
+                    : autoSaveError
+                      ? 'error'
+                      : lastSaveTime
+                        ? 'saved'
+                        : 'idle'
+                }
+                lastSavedAt={lastSaveTime || undefined}
+                error={autoSaveError?.message}
+                onRetry={() => triggerManualSave()}
+                onManualSave={() => triggerManualSave()}
+              />
+            )}
+            <Button
+              icon={<Save20Regular />}
+              onClick={() => setSaveDialogOpen(true)}
+              appearance="subtle"
+            >
+              Save Project
+            </Button>
+          </div>
         </div>
         <Text className={styles.subtitle}>Step {currentStep} of 3</Text>
         <Text className={styles.keyboardHint}>
