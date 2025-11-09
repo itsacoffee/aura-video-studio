@@ -67,6 +67,11 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<ContentBlobEntity> ContentBlobs { get; set; } = null!;
 
+    /// <summary>
+    /// Application configuration stored in database
+    /// </summary>
+    public DbSet<ConfigurationEntity> Configurations { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -200,6 +205,18 @@ public class AuraDbContext : DbContext
             entity.HasIndex(e => e.ContentType);
             entity.HasIndex(e => e.LastReferencedAt);
             entity.HasIndex(e => e.ReferenceCount);
+        });
+
+        // Configure ConfigurationEntity
+        modelBuilder.Entity<ConfigurationEntity>(entity =>
+        {
+            entity.HasKey(e => e.Key);
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.IsSensitive);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.UpdatedAt);
+            entity.HasIndex(e => new { e.Category, e.IsActive });
+            entity.HasIndex(e => new { e.Category, e.UpdatedAt });
         });
     }
 }
