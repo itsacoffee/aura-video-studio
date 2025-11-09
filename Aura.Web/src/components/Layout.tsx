@@ -8,6 +8,7 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { MobileFAB } from './MobileFAB';
 import { ResultsTray } from './ResultsTray';
 import { Sidebar } from './Sidebar';
+import { SystemStatusIndicator } from './SystemStatus';
 import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
 
 const useStyles = makeStyles({
@@ -148,6 +149,7 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
         <div className={styles.topBar}>
           <UndoRedoButtons />
           <div className={styles.topBarActions}>
+            <SystemStatusIndicator />
             <NotificationCenter />
             <ResultsTray />
           </div>

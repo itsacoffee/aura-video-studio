@@ -10,6 +10,8 @@ import { ContentPlanningDashboard } from './components/contentPlanning/ContentPl
 import { QualityDashboard } from './components/dashboard';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { GlobalStatusFooter } from './components/GlobalStatusFooter';
+import { InitializationScreen, StartupErrorScreen } from './components/Initialization';
+import type { InitializationError } from './components/Initialization';
 import { JobProgressDrawer } from './components/JobProgressDrawer';
 import { KeyboardShortcutsPanel } from './components/KeyboardShortcuts/KeyboardShortcutsPanel';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
@@ -113,16 +115,16 @@ function App() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const toasterId = 'notifications-toaster'; // Hardcoded to avoid hook context issues
+  const toasterId = 'notifications-toaster';
 
-  // Initialize global undo/redo shortcuts
   useGlobalUndoShortcuts();
 
-  // First-run detection state
   const [isCheckingFirstRun, setIsCheckingFirstRun] = useState(true);
   const [shouldShowOnboarding, setShouldShowOnboarding] = useState(false);
 
-  // Job state for status bar
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initializationError, setInitializationError] = useState<InitializationError | null>(null);
+
   const { currentJobId, status, progress, message } = useJobState();
   const [showDrawer, setShowDrawer] = useState(false);
 
@@ -424,7 +426,6 @@ function App() {
     );
   }
 
-  // Show mandatory first-run wizard as full-screen overlay if not completed
   if (shouldShowOnboarding) {
     return (
       <QueryClientProvider client={queryClient}>
@@ -441,6 +442,38 @@ function App() {
           </FluentProvider>
         </ThemeContext.Provider>
       </QueryClientProvider>
+    );
+  }
+
+  if (isInitializing && !initializationError) {
+    return (
+      <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+        <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+          <InitializationScreen
+            onComplete={() => setIsInitializing(false)}
+            onError={(error) => setInitializationError(error)}
+            enableSafeMode={true}
+          />
+        </FluentProvider>
+      </ThemeContext.Provider>
+    );
+  }
+
+  if (initializationError) {
+    return (
+      <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+        <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+          <StartupErrorScreen
+            error={initializationError}
+            onRetry={() => {
+              setInitializationError(null);
+              setIsInitializing(true);
+            }}
+            enableSafeMode={true}
+            enableOfflineMode={true}
+          />
+        </FluentProvider>
+      </ThemeContext.Provider>
     );
   }
 
