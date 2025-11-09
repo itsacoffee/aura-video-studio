@@ -5,27 +5,134 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Providers;
 
 /// <summary>
-/// Service for detecting and managing Ollama installation and models
+/// Background service for detecting and managing Ollama installation and models with caching
 /// </summary>
-public class OllamaDetectionService
+public class OllamaDetectionService : IHostedService, IDisposable
 {
     private readonly ILogger<OllamaDetectionService> _logger;
     private readonly HttpClient _httpClient;
+    private readonly IMemoryCache _cache;
     private readonly string _baseUrl;
+    private Timer? _refreshTimer;
+    private readonly TimeSpan _refreshInterval = TimeSpan.FromMinutes(5);
+    private bool _disposed;
+
+    private const string StatusCacheKey = "ollama:status";
+    private const string ModelsCacheKey = "ollama:models";
 
     public OllamaDetectionService(
         ILogger<OllamaDetectionService> logger,
         HttpClient httpClient,
+        IMemoryCache cache,
         string baseUrl = "http://localhost:11434")
     {
         _logger = logger;
         _httpClient = httpClient;
+        _cache = cache;
         _baseUrl = baseUrl;
+    }
+
+    /// <summary>
+    /// Start the background detection service
+    /// </summary>
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("OllamaDetectionService starting background detection");
+        
+        // Initial detection (fire and forget to not block startup)
+        _ = Task.Run(async () => await RefreshDetectionAsync(CancellationToken.None), cancellationToken);
+        
+        // Setup periodic refresh every 5 minutes
+        _refreshTimer = new Timer(
+            async _ => await RefreshDetectionAsync(CancellationToken.None),
+            null,
+            _refreshInterval,
+            _refreshInterval);
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Stop the background detection service
+    /// </summary>
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("OllamaDetectionService stopping background detection");
+        _refreshTimer?.Change(Timeout.Infinite, 0);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Refresh detection of Ollama service and models
+    /// </summary>
+    private async Task RefreshDetectionAsync(CancellationToken ct)
+    {
+        try
+        {
+            var status = await DetectOllamaAsync(ct);
+            _cache.Set(StatusCacheKey, status, TimeSpan.FromMinutes(5));
+
+            if (status.IsRunning)
+            {
+                var models = await ListModelsAsync(ct);
+                _cache.Set(ModelsCacheKey, models, TimeSpan.FromMinutes(5));
+                
+                if (models.Count > 0)
+                {
+                    _logger.LogInformation("Ollama: {Count} models available", models.Count);
+                }
+                else
+                {
+                    _logger.LogInformation("Ollama: service running but no models installed");
+                }
+            }
+            else
+            {
+                _cache.Set(ModelsCacheKey, new List<OllamaModel>(), TimeSpan.FromMinutes(5));
+                _logger.LogInformation("Ollama: service not running");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error refreshing Ollama detection");
+        }
+    }
+
+    /// <summary>
+    /// Get cached Ollama status or perform fresh detection
+    /// </summary>
+    public async Task<OllamaStatus> GetStatusAsync(CancellationToken ct = default)
+    {
+        if (_cache.TryGetValue<OllamaStatus>(StatusCacheKey, out var cachedStatus) && cachedStatus != null)
+        {
+            return cachedStatus;
+        }
+
+        var status = await DetectOllamaAsync(ct);
+        _cache.Set(StatusCacheKey, status, TimeSpan.FromMinutes(5));
+        return status;
+    }
+
+    /// <summary>
+    /// Get cached list of models or fetch fresh list
+    /// </summary>
+    public async Task<List<OllamaModel>> GetModelsAsync(CancellationToken ct = default)
+    {
+        if (_cache.TryGetValue<List<OllamaModel>>(ModelsCacheKey, out var cachedModels) && cachedModels != null)
+        {
+            return cachedModels;
+        }
+
+        var models = await ListModelsAsync(ct);
+        _cache.Set(ModelsCacheKey, models, TimeSpan.FromMinutes(5));
+        return models;
     }
 
     /// <summary>
@@ -316,6 +423,19 @@ public class OllamaDetectionService
             _logger.LogError(ex, "Error getting Ollama model info for: {ModelName}", modelName);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Dispose resources
+    /// </summary>
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _refreshTimer?.Dispose();
+            _disposed = true;
+        }
+        GC.SuppressFinalize(this);
     }
 }
 
