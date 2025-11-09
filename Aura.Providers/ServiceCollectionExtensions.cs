@@ -299,6 +299,27 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthService>();
         
+        // Ollama detection service (for background detection and caching)
+        services.AddSingleton<Aura.Core.Services.Providers.OllamaDetectionService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.OllamaDetectionService>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+            var baseUrl = settings.GetOllamaUrl();
+            return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, cache, baseUrl);
+        });
+        
+        // Stable Diffusion detection service
+        services.AddSingleton<Aura.Core.Services.Providers.StableDiffusionDetectionService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.StableDiffusionDetectionService>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+            var baseUrl = settings.GetStableDiffusionUrl();
+            return new Aura.Core.Services.Providers.StableDiffusionDetectionService(logger, httpClient, baseUrl);
+        });
+        
         return services;
     }
 
