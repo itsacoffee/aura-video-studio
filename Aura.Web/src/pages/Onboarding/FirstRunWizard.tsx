@@ -234,14 +234,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
     // Step 1: FFmpeg Installation -> Step 2: Provider Configuration
     if (state.step === 1) {
-      // Must have FFmpeg installed to proceed
-      if (!ffmpegReady) {
-        showFailureToast({
-          title: 'FFmpeg Required',
-          message: 'Please install FFmpeg before continuing. It is required for video generation.',
-        });
-        return;
-      }
+      // Allow proceeding even without FFmpeg (user can skip)
+      // The warning is already shown in the UI
       dispatch({ type: 'SET_STEP', payload: 2 });
       return;
     }
@@ -424,6 +418,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       <FFmpegDependencyCard
         autoCheck={true}
+        autoExpandDetails={true}
         onInstallComplete={async () => {
           setFfmpegReady(true);
           dispatch({ type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
@@ -439,6 +434,54 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           }
         }}
       />
+
+      {!ffmpegReady && (
+        <Card
+          style={{
+            padding: tokens.spacingVerticalL,
+            backgroundColor: tokens.colorPaletteYellowBackground1,
+            borderLeft: `4px solid ${tokens.colorPaletteYellowBorder1}`,
+          }}
+        >
+          <Text
+            weight="semibold"
+            style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+          >
+            <Warning24Regular /> Want to install FFmpeg manually?
+          </Text>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+            If you prefer to install FFmpeg yourself or already have it installed, you can skip this
+            step. However, video generation will not work until FFmpeg is properly installed.
+          </Text>
+          <div
+            style={{
+              marginTop: tokens.spacingVerticalM,
+              display: 'flex',
+              gap: tokens.spacingHorizontalS,
+            }}
+          >
+            <Button
+              appearance="secondary"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'Are you sure you want to skip FFmpeg installation? Video generation will not work without FFmpeg. You can install it later from Settings.'
+                  )
+                ) {
+                  setFfmpegReady(true);
+                  showSuccessToast({
+                    title: 'FFmpeg Skipped',
+                    message:
+                      'Remember to install FFmpeg before creating videos. You can do this from Settings.',
+                  });
+                }
+              }}
+            >
+              Skip for Now
+            </Button>
+          </div>
+        </Card>
+      )}
     </div>
   );
 
@@ -653,7 +696,6 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   const buttonLabel = 'Next';
   const buttonDisabled =
-    (state.step === 1 && !ffmpegReady) ||
     (state.step === 2 && !hasAtLeastOneProvider) ||
     state.status === 'validating' ||
     state.status === 'installing';

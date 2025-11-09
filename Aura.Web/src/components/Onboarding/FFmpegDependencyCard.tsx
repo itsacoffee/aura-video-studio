@@ -75,11 +75,13 @@ const useStyles = makeStyles({
 export interface FFmpegDependencyCardProps {
   onInstallComplete?: () => void;
   autoCheck?: boolean;
+  autoExpandDetails?: boolean;
 }
 
 export function FFmpegDependencyCard({
   onInstallComplete,
   autoCheck = true,
+  autoExpandDetails = false,
 }: FFmpegDependencyCardProps) {
   const styles = useStyles();
   const [status, setStatus] = useState<FFmpegStatus | null>(null);
@@ -87,7 +89,7 @@ export function FFmpegDependencyCard({
   const [isInstalling, setIsInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
+  const [showDetails, setShowDetails] = useState(autoExpandDetails);
 
   const checkStatus = async () => {
     setIsLoading(true);
@@ -142,6 +144,13 @@ export function FFmpegDependencyCard({
     // Intentionally only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoCheck]);
+
+  // Auto-expand details if FFmpeg is not ready and autoExpandDetails is true
+  useEffect(() => {
+    if (autoExpandDetails && status && (!status.installed || !status.valid || !status.version)) {
+      setShowDetails(true);
+    }
+  }, [status, autoExpandDetails]);
 
   const handleInstall = async () => {
     setIsInstalling(true);
