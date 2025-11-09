@@ -745,6 +745,22 @@ builder.Services.AddSingleton<Aura.Core.Services.Orchestration.PipelineOrchestra
 
 builder.Services.AddSingleton<VideoOrchestrator>();
 
+// Register pipeline stages for orchestration
+builder.Services.AddSingleton<Aura.Core.Orchestrator.Stages.BriefStage>();
+builder.Services.AddSingleton<Aura.Core.Orchestrator.Stages.ScriptStage>();
+builder.Services.AddSingleton<Aura.Core.Orchestrator.Stages.VoiceStage>();
+builder.Services.AddSingleton<Aura.Core.Orchestrator.Stages.VisualsStage>();
+builder.Services.AddSingleton<Aura.Core.Orchestrator.Stages.CompositionStage>();
+
+// Register orchestrator configuration options
+builder.Services.AddSingleton(sp => 
+{
+    var env = sp.GetRequiredService<IWebHostEnvironment>();
+    return env.IsDevelopment() 
+        ? Aura.Core.Orchestrator.OrchestratorOptions.CreateDebug()
+        : Aura.Core.Orchestrator.OrchestratorOptions.CreateDefault();
+});
+
 // Register AI pacing and rhythm optimization services
 builder.Services.AddSingleton<Aura.Core.AI.Pacing.RhythmDetector>();
 builder.Services.AddSingleton<Aura.Core.AI.Pacing.RetentionOptimizer>();
