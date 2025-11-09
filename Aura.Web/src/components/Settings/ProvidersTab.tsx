@@ -19,7 +19,8 @@ import {
   ArrowSort24Regular,
 } from '@fluentui/react-icons';
 import { useState } from 'react';
-import type { ApiKeysSettings } from '../../types/settings';
+import type { ApiKeysSettings, AdvancedSettings } from '../../types/settings';
+import { OllamaProviderConfig } from './OllamaProviderConfig';
 import { OpenAIProviderConfig } from './OpenAIProviderConfig';
 
 const useStyles = makeStyles({
@@ -81,6 +82,8 @@ const useStyles = makeStyles({
 interface ProvidersTabProps {
   apiKeys: ApiKeysSettings;
   onApiKeysChange: (settings: ApiKeysSettings) => void;
+  advanced: AdvancedSettings;
+  onAdvancedChange: (settings: AdvancedSettings) => void;
   onTestApiKey: (
     provider: string,
     apiKey: string
@@ -101,7 +104,13 @@ interface ProviderPriority {
   priority: number;
 }
 
-export function ProvidersTab({ apiKeys, onApiKeysChange, onTestApiKey }: ProvidersTabProps) {
+export function ProvidersTab({
+  apiKeys,
+  onApiKeysChange,
+  advanced,
+  onAdvancedChange,
+  onTestApiKey,
+}: ProvidersTabProps) {
   const styles = useStyles();
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
@@ -265,6 +274,21 @@ export function ProvidersTab({ apiKeys, onApiKeysChange, onTestApiKey }: Provide
             apiKey={apiKeys.openAI}
             onApiKeyChange={(newKey) => updateApiKey('openAI', newKey)}
           />
+
+          <Divider />
+
+          <div style={{ marginTop: tokens.spacingVerticalL }}>
+            <Title3>Ollama (Local LLM)</Title3>
+            <Text size={200} style={{ marginBottom: tokens.spacingVerticalM }}>
+              Run AI models locally on your machine without API keys
+            </Text>
+            <OllamaProviderConfig
+              selectedModel={advanced.ollamaModel}
+              onModelChange={(model) => onAdvancedChange({ ...advanced, ollamaModel: model })}
+            />
+          </div>
+
+          <Divider />
 
           {renderApiKeyField(
             'anthropic',

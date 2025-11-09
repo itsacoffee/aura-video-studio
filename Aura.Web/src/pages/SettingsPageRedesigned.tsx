@@ -397,6 +397,8 @@ export function SettingsPageRedesigned() {
           <ProvidersTab
             apiKeys={userSettings.apiKeys}
             onApiKeysChange={(apiKeys) => setUserSettings({ ...userSettings, apiKeys })}
+            advanced={userSettings.advanced}
+            onAdvancedChange={(advanced) => setUserSettings({ ...userSettings, advanced })}
             onTestApiKey={async (provider, apiKey) => settingsService.testApiKey(provider, apiKey)}
           />
         )}
