@@ -188,6 +188,12 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
 
 // Register ProjectStateRepository for state persistence
 builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
+
+// Register configuration management services
+builder.Services.AddScoped<Aura.Core.Data.ConfigurationRepository>();
+builder.Services.AddSingleton<Aura.Core.Services.ConfigurationManager>();
+builder.Services.AddSingleton<Aura.Core.Services.DatabaseInitializationService>();
+
 // CheckpointManager is scoped but cannot be injected into singleton JobRunner
 // It will be passed as null to JobRunner's optional parameter
 // builder.Services.AddScoped<Aura.Core.Services.CheckpointManager>();
@@ -1307,36 +1313,49 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 var app = builder.Build();
 
 // Apply database migrations
-Log.Information("Applying database migrations...");
+// Initialize database with enhanced error handling and recovery
+Log.Information("Initializing database system...");
 try
 {
-    using (var scope = app.Services.CreateScope())
+    var dbInitService = app.Services.GetRequiredService<Aura.Core.Services.DatabaseInitializationService>();
+    var initResult = await dbInitService.InitializeAsync();
+
+    if (initResult.Success)
     {
-        var db = scope.ServiceProvider.GetRequiredService<Aura.Core.Data.AuraDbContext>();
-        db.Database.Migrate();
-        
-        // Configure WAL mode for better concurrency during state persistence
-        try
+        Log.Information(
+            "Database initialization completed successfully in {Duration}ms. WAL mode: {WalMode}, Integrity: {Integrity}",
+            initResult.DurationMs, initResult.WalModeEnabled, initResult.IntegrityCheck);
+
+        if (initResult.RepairAttempted)
         {
-            db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
-            db.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL;");
-            Log.Information("SQLite WAL mode configured successfully");
+            Log.Warning("Database repair was performed during initialization");
         }
-        catch (Exception walEx)
+
+        // Initialize configuration system with defaults
+        var configManager = app.Services.GetRequiredService<Aura.Core.Services.ConfigurationManager>();
+        await configManager.InitializeAsync();
+        Log.Information("Configuration system initialized successfully");
+    }
+    else
+    {
+        Log.Error(
+            "Database initialization failed: {Error}. Path writable: {PathWritable}, Exists: {Exists}",
+            initResult.Error, initResult.PathWritable, initResult.DatabaseExists);
+        
+        if (!initResult.PathWritable)
         {
-            Log.Warning(walEx, "Failed to configure SQLite WAL mode, using default journal mode");
+            Log.Error(
+                "Database path is not writable: {Path}. Please check file system permissions.",
+                initResult.DatabasePath);
         }
     }
-    Log.Information("Database migrations applied successfully");
 }
 catch (Exception ex)
 {
-    Log.Error(ex, "Failed to apply database migrations. The application may not function correctly.");
-    Log.Warning("Database error details: {ErrorMessage}", ex.Message);
-    Log.Warning("Please check database permissions and ensure the application has write access to: {DbPath}", 
-        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db"));
-    // Continue startup - database features may be degraded but core functionality should work
+    Log.Error(ex, "Critical error during database initialization");
+    Log.Warning("Application will continue with degraded database functionality");
 }
+
 
 Log.Information("=== Aura Video Studio API Starting ===");
 Log.Information("Initialization Phase 1: Service Registration Complete");
