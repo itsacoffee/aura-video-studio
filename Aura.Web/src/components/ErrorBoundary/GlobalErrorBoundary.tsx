@@ -3,9 +3,9 @@
  * Catches unhandled errors in the entire application
  */
 
-import { Button } from '@fluentui/react-components';
 import { Component, ReactNode } from 'react';
 import { loggingService } from '../../services/loggingService';
+import { EnhancedErrorFallback } from './EnhancedErrorFallback';
 
 interface Props {
   children: ReactNode;
@@ -18,9 +18,6 @@ interface State {
   errorInfo: React.ErrorInfo | null;
 }
 
-/**
- * Global error boundary component
- */
 export class GlobalErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -39,7 +36,6 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // Log error to logging service
     loggingService.error('Uncaught error in application', error, 'ErrorBoundary', 'global', {
       componentStack: errorInfo.componentStack,
     });
@@ -62,57 +58,17 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     const { children, fallback } = this.props;
 
     if (hasError && error) {
-      // Use custom fallback if provided
       if (fallback && errorInfo) {
         return fallback(error, errorInfo, this.handleReset);
       }
 
-      // Default error UI
       return (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '100vh',
-            padding: '2rem',
-            textAlign: 'center',
-          }}
-        >
-          <h1 style={{ fontSize: '2rem', marginBottom: '1rem', color: '#d13438' }}>
-            Something went wrong
-          </h1>
-          <p style={{ marginBottom: '1rem', maxWidth: '600px' }}>
-            An unexpected error occurred in the application. The error has been logged and
-            we&apos;ll look into it.
-          </p>
-          <details style={{ marginBottom: '1rem', textAlign: 'left', maxWidth: '600px' }}>
-            <summary style={{ cursor: 'pointer', marginBottom: '0.5rem' }}>
-              Error Details (for developers)
-            </summary>
-            <pre
-              style={{
-                padding: '1rem',
-                background: '#f5f5f5',
-                borderRadius: '4px',
-                overflow: 'auto',
-                fontSize: '0.875rem',
-              }}
-            >
-              {error.toString()}
-              {errorInfo?.componentStack}
-            </pre>
-          </details>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <Button appearance="primary" onClick={this.handleReset}>
-              Try Again
-            </Button>
-            <Button appearance="secondary" onClick={() => window.location.reload()}>
-              Reload Page
-            </Button>
-          </div>
-        </div>
+        <EnhancedErrorFallback
+          error={error}
+          errorInfo={errorInfo ?? undefined}
+          reset={this.handleReset}
+          showDetails={true}
+        />
       );
     }
 
