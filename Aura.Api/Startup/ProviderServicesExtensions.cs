@@ -39,7 +39,7 @@ public static class ProviderServicesExtensions
 
         // LLM providers
         services.AddSingleton<LlmProviderFactory>();
-        services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
+        services.AddSingleton<ILlmProvider, CompositeLlmProvider>();
 
         // Provider mixing configuration
         services.AddSingleton(sp =>
