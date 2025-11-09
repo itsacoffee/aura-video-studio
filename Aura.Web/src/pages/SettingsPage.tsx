@@ -1119,12 +1119,12 @@ export function SettingsPage() {
                   onClick={async () => {
                     if (
                       confirm(
-                        'This will reset the first-run wizard and restart onboarding. You will be redirected to the onboarding wizard. Continue?'
+                        'This will reset the setup wizard. You will be redirected to the setup wizard. Continue?'
                       )
                     ) {
                       try {
                         await resetFirstRunStatus();
-                        window.location.href = '/onboarding';
+                        window.location.href = '/setup';
                       } catch (error) {
                         console.error('Error resetting first-run status:', error);
                         alert('Failed to reset first-run status. Check console for details.');

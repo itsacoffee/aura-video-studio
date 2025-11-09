@@ -19,7 +19,7 @@ interface ConfigurationGateProps {
 /**
  * Routes that don't require configuration to be complete
  */
-const ALLOWED_ROUTES = ['/onboarding', '/setup', '/settings', '/logs', '/health'];
+const ALLOWED_ROUTES = ['/setup', '/settings', '/logs', '/health'];
 
 /**
  * Check if a route is allowed without setup completion
@@ -49,8 +49,8 @@ export function ConfigurationGate({ children }: ConfigurationGateProps) {
         const firstRunComplete = await hasCompletedFirstRun();
 
         if (!firstRunComplete) {
-          // Redirect to onboarding
-          navigate('/onboarding', { replace: true });
+          // Redirect to setup wizard
+          navigate('/setup', { replace: true });
           return;
         }
 
