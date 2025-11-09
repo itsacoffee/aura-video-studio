@@ -5,13 +5,10 @@ import {
   Tooltip,
   mergeClasses,
   Title3,
+  Divider,
+  Text,
 } from '@fluentui/react-components';
 import {
-  Home24Regular,
-  VideoClip24Regular,
-  Folder24Regular,
-  Book24Regular,
-  Settings24Regular,
   PanelLeft24Regular,
   PanelLeftContract24Regular,
   WeatherMoon24Regular,
@@ -19,6 +16,7 @@ import {
 } from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { navItems, type NavItem } from '../navigation';
 
 const useStyles = makeStyles({
   sidebar: {
@@ -58,6 +56,25 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: tokens.spacingVerticalXS,
     flex: 1,
+    overflowY: 'auto',
+    overflowX: 'hidden',
+  },
+  section: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXXS,
+    marginBottom: tokens.spacingVerticalM,
+  },
+  sectionLabel: {
+    paddingLeft: tokens.spacingHorizontalM,
+    paddingBottom: tokens.spacingVerticalXXS,
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground3,
+  },
+  sectionLabelCollapsed: {
+    paddingLeft: '0',
+    textAlign: 'center',
   },
   navButton: {
     justifyContent: 'flex-start',
@@ -103,15 +120,11 @@ const useStyles = makeStyles({
     width: '100%',
     marginBottom: tokens.spacingVerticalS,
   },
+  divider: {
+    marginTop: tokens.spacingVerticalXS,
+    marginBottom: tokens.spacingVerticalXS,
+  },
 });
-
-interface NavItem {
-  key: string;
-  name: string;
-  icon: React.ComponentType;
-  path: string;
-  tooltip?: string;
-}
 
 interface SidebarProps {
   isDarkMode: boolean;
@@ -161,43 +174,67 @@ export function Sidebar({
     }
   }, [isCollapsed]);
 
-  const coreNavItems: NavItem[] = [
-    {
-      key: 'home',
-      name: 'Home',
-      icon: Home24Regular,
-      path: '/',
-      tooltip: 'Dashboard - View your projects and recent activity',
-    },
-    {
-      key: 'create',
-      name: 'Create',
-      icon: VideoClip24Regular,
-      path: '/create',
-      tooltip: 'Video Studio - Create and edit videos',
-    },
-    {
-      key: 'library',
-      name: 'Library',
-      icon: Folder24Regular,
-      path: '/projects',
-      tooltip: 'Projects & Assets - Browse your library',
-    },
-    {
-      key: 'learn',
-      name: 'Learn',
-      icon: Book24Regular,
-      path: '/learning',
-      tooltip: 'Tutorials & Docs - Get help and learn',
-    },
-    {
-      key: 'settings',
-      name: 'Settings',
-      icon: Settings24Regular,
-      path: '/settings',
-      tooltip: 'Settings - Configure your workspace',
-    },
-  ];
+  // Organize navigation items into logical sections
+  const homeItems = navItems.filter((item) => ['home', 'dashboard'].includes(item.key));
+
+  const creationItems = navItems.filter((item) =>
+    ['ideation', 'trending', 'content-planning', 'create', 'templates'].includes(item.key)
+  );
+
+  const editingItems = navItems.filter((item) =>
+    ['editor', 'projects', 'assets', 'pacing', 'render'].includes(item.key)
+  );
+
+  const optimizationItems = navItems.filter((item) =>
+    ['platform', 'quality', 'ai-editing', 'aesthetics'].includes(item.key)
+  );
+
+  const managementItems = navItems.filter((item) =>
+    [
+      'jobs',
+      'downloads',
+      'health',
+      'models',
+      'localization',
+      'prompt-management',
+      'rag',
+      'voice-enhancement',
+      'performance-analytics',
+      'ml-lab',
+      'quality-validation',
+      'validation',
+      'verification',
+    ].includes(item.key)
+  );
+
+  const systemItems = navItems.filter((item) =>
+    ['diagnostics', 'logs', 'settings'].includes(item.key)
+  );
+
+  const renderNavItems = (items: NavItem[], showDivider = false) => (
+    <>
+      {items.map((item) => {
+        const Icon = item.icon;
+        const isActive = location.pathname === item.path;
+        const tooltipContent = item.advancedOnly ? `${item.name} (Advanced Mode)` : item.name;
+
+        return (
+          <Tooltip key={item.key} content={tooltipContent} relationship="label">
+            <Button
+              appearance={isActive ? 'primary' : 'subtle'}
+              className={mergeClasses(styles.navButton, isCollapsed && styles.navButtonCollapsed)}
+              icon={<Icon />}
+              onClick={() => navigate(item.path)}
+              aria-label={item.name}
+            >
+              {!isCollapsed && item.name}
+            </Button>
+          </Tooltip>
+        );
+      })}
+      {showDivider && items.length > 0 && <Divider className={styles.divider} />}
+    </>
+  );
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -218,22 +255,38 @@ export function Sidebar({
         {!isCollapsed && <Title3>🎬 Aura Studio</Title3>}
       </div>
       <div className={styles.nav}>
-        {coreNavItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          return (
-            <Tooltip key={item.key} content={item.tooltip || item.name} relationship="label">
-              <Button
-                appearance={isActive ? 'primary' : 'subtle'}
-                className={mergeClasses(styles.navButton, isCollapsed && styles.navButtonCollapsed)}
-                icon={<Icon />}
-                onClick={() => navigate(item.path)}
-              >
-                {!isCollapsed && item.name}
-              </Button>
-            </Tooltip>
-          );
-        })}
+        {/* Home Section */}
+        {renderNavItems(homeItems, true)}
+
+        {/* Creation Tools */}
+        {!isCollapsed && creationItems.length > 0 && (
+          <Text className={styles.sectionLabel}>Creation</Text>
+        )}
+        {renderNavItems(creationItems, true)}
+
+        {/* Editing Tools */}
+        {!isCollapsed && editingItems.length > 0 && (
+          <Text className={styles.sectionLabel}>Editing</Text>
+        )}
+        {renderNavItems(editingItems, true)}
+
+        {/* Optimization Tools */}
+        {!isCollapsed && optimizationItems.length > 0 && (
+          <Text className={styles.sectionLabel}>Optimization</Text>
+        )}
+        {renderNavItems(optimizationItems, true)}
+
+        {/* Management & Tools */}
+        {!isCollapsed && managementItems.length > 0 && (
+          <Text className={styles.sectionLabel}>Management</Text>
+        )}
+        {renderNavItems(managementItems, true)}
+
+        {/* System */}
+        {!isCollapsed && systemItems.length > 0 && (
+          <Text className={styles.sectionLabel}>System</Text>
+        )}
+        {renderNavItems(systemItems, false)}
       </div>
       <div className={styles.footer}>
         <Tooltip
