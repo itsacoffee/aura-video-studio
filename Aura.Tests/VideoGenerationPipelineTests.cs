@@ -1,8 +1,14 @@
 using System;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Artifacts;
+using Aura.Core.Dependencies;
 using Aura.Core.Models;
+using Aura.Core.Models.Visual;
 using Aura.Core.Orchestrator;
 using Aura.Tests.TestSupport;
 using Microsoft.Extensions.Logging;
@@ -305,5 +311,208 @@ public class VideoGenerationPipelineTests
         // Create an orchestrator that takes time to execute
         // This allows testing cancellation
         return CreateMockOrchestrator();
+    }
+
+    private sealed class MockLlmProvider : ILlmProvider
+    {
+        public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
+        {
+            return Task.FromResult($"Script for {brief.Topic}");
+        }
+
+        public Task<string> CompleteAsync(string prompt, CancellationToken ct)
+        {
+            return Task.FromResult("Completed prompt response");
+        }
+
+        public Task<SceneAnalysisResult?> AnalyzeSceneImportanceAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<SceneAnalysisResult?>(null);
+        }
+
+        public Task<VisualPromptResult?> GenerateVisualPromptAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoTone,
+            VisualStyle targetStyle,
+            CancellationToken ct)
+        {
+            return Task.FromResult<VisualPromptResult?>(null);
+        }
+
+        public Task<ContentComplexityAnalysisResult?> AnalyzeContentComplexityAsync(
+            string sceneText,
+            string? previousSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<ContentComplexityAnalysisResult?>(null);
+        }
+
+        public Task<SceneCoherenceResult?> AnalyzeSceneCoherenceAsync(
+            string fromSceneText,
+            string toSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<SceneCoherenceResult?>(null);
+        }
+
+        public Task<NarrativeArcResult?> ValidateNarrativeArcAsync(
+            IReadOnlyList<string> sceneTexts,
+            string videoGoal,
+            string videoType,
+            CancellationToken ct)
+        {
+            return Task.FromResult<NarrativeArcResult?>(null);
+        }
+
+        public Task<string?> GenerateTransitionTextAsync(
+            string fromSceneText,
+            string toSceneText,
+            string videoGoal,
+            CancellationToken ct)
+        {
+            return Task.FromResult<string?>(null);
+        }
+    }
+
+    private sealed class TestMockTtsProvider : ITtsProvider
+    {
+        public bool SynthesizeCalled { get; private set; }
+
+        public Task<IReadOnlyList<string>> GetAvailableVoicesAsync()
+        {
+            return Task.FromResult<IReadOnlyList<string>>(new List<string> { "en-US-AriaNeural" });
+        }
+
+        public async Task<string> SynthesizeAsync(IEnumerable<ScriptLine> lines, VoiceSpec spec, CancellationToken ct)
+        {
+            SynthesizeCalled = true;
+
+            var outputPath = Path.Combine(Path.GetTempPath(), $"test-audio-{Guid.NewGuid()}.wav");
+
+            var sampleRate = 44100;
+            var channels = 1;
+            var bitsPerSample = 16;
+            var duration = 1.0;
+            var numSamples = (int)(sampleRate * duration);
+            var dataSize = numSamples * channels * (bitsPerSample / 8);
+
+            await using var fs = new FileStream(outputPath, FileMode.Create);
+            await using var writer = new BinaryWriter(fs);
+
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
+            writer.Write(36 + dataSize);
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
+
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
+            writer.Write(16);
+            writer.Write((short)1);
+            writer.Write((short)channels);
+            writer.Write(sampleRate);
+            writer.Write(sampleRate * channels * (bitsPerSample / 8));
+            writer.Write((short)(channels * (bitsPerSample / 8)));
+            writer.Write((short)bitsPerSample);
+
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
+            writer.Write(dataSize);
+
+            for (int i = 0; i < numSamples; i++)
+            {
+                writer.Write((short)0);
+            }
+
+            writer.Flush();
+            return await Task.FromResult(outputPath);
+        }
+    }
+
+    private sealed class MockVideoComposer : IVideoComposer
+    {
+        public bool RenderCalled { get; private set; }
+
+        public Task<string> RenderAsync(Aura.Core.Providers.Timeline timeline, RenderSpec spec, IProgress<RenderProgress> progress, CancellationToken ct)
+        {
+            RenderCalled = true;
+            progress?.Report(new RenderProgress(100, TimeSpan.FromSeconds(1), TimeSpan.Zero, "Complete"));
+            return Task.FromResult(Path.Combine(Path.GetTempPath(), $"test-video-{Guid.NewGuid()}.mp4"));
+        }
+    }
+
+    private sealed class MockFfmpegLocator : IFfmpegLocator
+    {
+        private readonly string _mockPath;
+
+        public MockFfmpegLocator()
+        {
+            _mockPath = Path.GetTempFileName();
+        }
+
+        public Task<string> GetEffectiveFfmpegPathAsync(string? configuredPath = null, CancellationToken ct = default)
+        {
+            return Task.FromResult(_mockPath);
+        }
+
+        public Task<FfmpegValidationResult> CheckAllCandidatesAsync(string? configuredPath = null, CancellationToken ct = default)
+        {
+            return Task.FromResult(new FfmpegValidationResult
+            {
+                Found = true,
+                FfmpegPath = _mockPath,
+                VersionString = "4.4.0",
+                ValidationOutput = "ffmpeg version 4.4.0",
+                Reason = "Mock FFmpeg",
+                HasX264 = true,
+                Source = "Mock"
+            });
+        }
+
+        public Task<FfmpegValidationResult> ValidatePathAsync(string ffmpegPath, CancellationToken ct = default)
+        {
+            return Task.FromResult(new FfmpegValidationResult
+            {
+                Found = true,
+                FfmpegPath = ffmpegPath,
+                VersionString = "4.4.0",
+                ValidationOutput = "ffmpeg version 4.4.0",
+                Reason = "Mock FFmpeg",
+                HasX264 = true,
+                Source = "Mock"
+            });
+        }
+    }
+
+    private sealed class MockHardwareDetector : Aura.Core.Hardware.IHardwareDetector
+    {
+        public Task<SystemProfile> DetectSystemAsync()
+        {
+            return Task.FromResult(new SystemProfile
+            {
+                AutoDetect = true,
+                LogicalCores = 8,
+                PhysicalCores = 4,
+                RamGB = 16,
+                Gpu = new GpuInfo("NVIDIA", "GTX 1080", 8, "10"),
+                Tier = HardwareTier.B,
+                EnableNVENC = true,
+                EnableSD = true,
+                OfflineOnly = false
+            });
+        }
+
+        public SystemProfile ApplyManualOverrides(SystemProfile detected, HardwareOverrides overrides)
+        {
+            return detected;
+        }
+
+        public Task RunHardwareProbeAsync()
+        {
+            return Task.CompletedTask;
+        }
     }
 }
