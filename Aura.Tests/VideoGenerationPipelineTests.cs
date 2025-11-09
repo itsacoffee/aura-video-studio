@@ -10,7 +10,7 @@ using Aura.Core.Dependencies;
 using Aura.Core.Models;
 using Aura.Core.Models.Visual;
 using Aura.Core.Orchestrator;
-using Aura.Core.Providers;
+using Aura.Tests.TestSupport;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
