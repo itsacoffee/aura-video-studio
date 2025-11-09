@@ -124,7 +124,7 @@ export function ProviderConfigurationPanel({ onSave }: ProviderConfigurationPane
 
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<
-    Record<string, { success: boolean; message: string }>
+    Record<string, { success: boolean; message: string; responseTimeMs?: number }>
   >({});
   const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
 
@@ -168,32 +168,50 @@ export function ProviderConfigurationPanel({ onSave }: ProviderConfigurationPane
     if (!provider.apiKey) {
       setTestResults({
         ...testResults,
-        [provider.name]: { success: false, message: 'API key is required' },
+        [provider.name]: { success: false, message: 'API key is required', responseTimeMs: 0 },
       });
       return;
     }
 
     setTestingProvider(provider.name);
+    const startTime = Date.now();
+
     try {
-      const response = await apiClient.post('/api/providers/validate', {
-        provider: provider.name,
+      const response = await apiClient.post('/api/providers/test-connection', {
+        providerName: provider.name,
         apiKey: provider.apiKey,
       });
 
-      const result = response.data as { isValid: boolean; message?: string };
+      const result = response.data as {
+        success: boolean;
+        message?: string;
+        responseTimeMs?: number;
+        details?: Record<string, unknown>;
+      };
+
+      const responseTime = result.responseTimeMs || Date.now() - startTime;
+
       setTestResults({
         ...testResults,
         [provider.name]: {
-          success: result.isValid,
+          success: result.success,
           message:
-            result.message || (result.isValid ? 'Connection successful' : 'Connection failed'),
+            result.message ||
+            (result.success ? `Connection successful (${responseTime}ms)` : 'Connection failed'),
+          responseTimeMs: responseTime,
         },
       });
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
+      const responseTime = Date.now() - startTime;
+
       setTestResults({
         ...testResults,
-        [provider.name]: { success: false, message: error.message },
+        [provider.name]: {
+          success: false,
+          message: error.message || 'Connection test failed',
+          responseTimeMs: responseTime,
+        },
       });
     } finally {
       setTestingProvider(null);

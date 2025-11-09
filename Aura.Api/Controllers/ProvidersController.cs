@@ -296,20 +296,67 @@ public class ProvidersController : ControllerBase
     /// Test provider connection with API key
     /// </summary>
     [HttpPost("test-connection")]
-    public async Task<IActionResult> TestConnection([FromBody] TestProviderConnectionRequest request)
+    public async Task<IActionResult> TestConnection([FromBody] TestProviderConnectionRequest request, CancellationToken cancellationToken)
     {
+        var correlationId = HttpContext.TraceIdentifier;
+        
         try
         {
+            if (string.IsNullOrWhiteSpace(request.ProviderName))
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = "Provider name is required",
+                    correlationId
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ApiKey))
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = "API key is required",
+                    correlationId
+                });
+            }
+
+            Log.Information(
+                "Testing provider connection for {Provider}, CorrelationId: {CorrelationId}",
+                request.ProviderName,
+                correlationId);
+
+            var startTime = DateTime.UtcNow;
+            var result = await _keyValidationService.TestApiKeyAsync(
+                request.ProviderName.ToLowerInvariant(),
+                request.ApiKey,
+                cancellationToken);
+            var responseTime = (long)(DateTime.UtcNow - startTime).TotalMilliseconds;
+
+            Log.Information(
+                "Provider connection test completed for {Provider}, Success: {Success}, ResponseTime: {ResponseTime}ms, CorrelationId: {CorrelationId}",
+                request.ProviderName,
+                result.IsValid,
+                responseTime,
+                correlationId);
+
             return Ok(new { 
-                message = "Provider connection test - implementation in progress",
-                provider = request.ProviderName,
-                hasApiKey = !string.IsNullOrEmpty(request.ApiKey)
+                success = result.IsValid,
+                message = result.Message,
+                details = result.Details,
+                responseTimeMs = responseTime,
+                correlationId
             });
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error testing provider connection");
-            return Problem($"Error testing provider connection: {ex.Message}", statusCode: 500);
+            Log.Error(ex, "Error testing provider connection for {Provider}, CorrelationId: {CorrelationId}", 
+                request.ProviderName, correlationId);
+            return Problem(
+                title: "Connection Test Error",
+                detail: $"An error occurred while testing the connection: {ex.Message}",
+                statusCode: 500,
+                type: "https://docs.aura.studio/errors/connection-test-error",
+                instance: correlationId);
         }
     }
 
@@ -631,6 +678,234 @@ public class ProvidersController : ControllerBase
             return Problem($"Error updating provider preferences: {ex.Message}", statusCode: 500);
         }
     }
+
+    /// <summary>
+    /// Get status of all configured providers
+    /// </summary>
+    [HttpGet("status")]
+    public async Task<IActionResult> GetProviderStatus(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            Log.Information("Fetching provider status, CorrelationId: {CorrelationId}", correlationId);
+
+            var statuses = new List<ProviderStatusDto>();
+            var configuredProviders = await _secureStorageService.GetConfiguredProvidersAsync();
+
+            var providerNames = new[] { "OpenAI", "Anthropic", "Google", "Ollama", "ElevenLabs", "PlayHT", "Windows", "StabilityAI", "StableDiffusion", "Stock" };
+
+            foreach (var provider in providerNames)
+            {
+                var isConfigured = configuredProviders.Contains(provider, StringComparer.OrdinalIgnoreCase);
+                var hasKey = await _secureStorageService.HasApiKeyAsync(provider);
+
+                var status = new ProviderStatusDto(
+                    Name: provider,
+                    IsConfigured: isConfigured || hasKey,
+                    IsAvailable: isConfigured || hasKey || IsLocalProvider(provider),
+                    Status: GetProviderStatus(provider, hasKey),
+                    LastValidated: null,
+                    ErrorMessage: null
+                );
+
+                statuses.Add(status);
+            }
+
+            return Ok(statuses);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error fetching provider status, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Provider Status Error",
+                detail: "An error occurred while fetching provider status.",
+                statusCode: 500,
+                type: "https://docs.aura.studio/errors/provider-status-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Get provider priorities
+    /// </summary>
+    [HttpGet("priorities")]
+    public async Task<IActionResult> GetProviderPriorities(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            Log.Information("Fetching provider priorities, CorrelationId: {CorrelationId}", correlationId);
+
+            var configPath = Path.Combine(
+                _settings.GetAuraDataDirectory(),
+                "configurations",
+                "provider-config.json");
+
+            if (!System.IO.File.Exists(configPath))
+            {
+                var defaultPriorities = new Dictionary<string, int>
+                {
+                    { "OpenAI", 1 },
+                    { "Anthropic", 2 },
+                    { "Google", 3 },
+                    { "Ollama", 4 },
+                    { "ElevenLabs", 1 },
+                    { "PlayHT", 2 },
+                    { "Windows", 3 },
+                    { "StabilityAI", 1 },
+                    { "StableDiffusion", 2 },
+                    { "Stock", 3 }
+                };
+                
+                return Ok(defaultPriorities);
+            }
+
+            var json = await System.IO.File.ReadAllTextAsync(configPath, cancellationToken);
+            var config = System.Text.Json.JsonSerializer.Deserialize<ProviderConfigurationResponse>(json);
+            
+            var priorities = config?.Providers?.ToDictionary(
+                p => p.Name,
+                p => p.Priority
+            ) ?? new Dictionary<string, int>();
+
+            return Ok(priorities);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error fetching provider priorities, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Provider Priorities Error",
+                detail: "An error occurred while fetching provider priorities.",
+                statusCode: 500,
+                type: "https://docs.aura.studio/errors/provider-priorities-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Update provider priorities
+    /// </summary>
+    [HttpPut("priorities")]
+    public async Task<IActionResult> UpdateProviderPriorities(
+        [FromBody] Dictionary<string, int> priorities,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            if (priorities == null || priorities.Count == 0)
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = "Priorities dictionary is required",
+                    correlationId
+                });
+            }
+
+            Log.Information("Updating provider priorities, CorrelationId: {CorrelationId}", correlationId);
+
+            var configPath = Path.Combine(
+                _settings.GetAuraDataDirectory(),
+                "configurations",
+                "provider-config.json");
+
+            if (!System.IO.File.Exists(configPath))
+            {
+                return NotFound(new { 
+                    success = false,
+                    message = "Provider configuration not found",
+                    correlationId
+                });
+            }
+
+            var json = await System.IO.File.ReadAllTextAsync(configPath, cancellationToken);
+            var config = System.Text.Json.JsonSerializer.Deserialize<ProviderConfigurationResponse>(json);
+
+            if (config?.Providers == null)
+            {
+                return Problem(
+                    title: "Invalid Configuration",
+                    detail: "Provider configuration is invalid or empty.",
+                    statusCode: 500);
+            }
+
+            foreach (var provider in config.Providers)
+            {
+                if (priorities.TryGetValue(provider.Name, out var priority))
+                {
+                    provider.Priority = priority;
+                }
+            }
+
+            var updatedJson = System.Text.Json.JsonSerializer.Serialize(config, new System.Text.Json.JsonSerializerOptions 
+            { 
+                WriteIndented = true 
+            });
+            await System.IO.File.WriteAllTextAsync(configPath, updatedJson, cancellationToken);
+
+            Log.Information("Provider priorities updated successfully, CorrelationId: {CorrelationId}", correlationId);
+
+            return Ok(new { 
+                success = true,
+                message = "Priorities updated successfully",
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error updating provider priorities, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Provider Priorities Update Error",
+                detail: $"An error occurred while updating provider priorities: {ex.Message}",
+                statusCode: 500,
+                type: "https://docs.aura.studio/errors/provider-priorities-update-error",
+                instance: correlationId);
+        }
+    }
+
+    private static bool IsLocalProvider(string provider)
+    {
+        return provider.ToLowerInvariant() switch
+        {
+            "ollama" => true,
+            "windows" => true,
+            "stock" => true,
+            "stablediffusion" => true,
+            _ => false
+        };
+    }
+
+    private static string GetProviderStatus(string provider, bool hasKey)
+    {
+        if (IsLocalProvider(provider))
+        {
+            return "Available";
+        }
+        return hasKey ? "Configured" : "Not configured";
+    }
+}
+
+/// <summary>
+/// Provider configuration response for JSON deserialization
+/// </summary>
+internal class ProviderConfigurationResponse
+{
+    public List<ProviderItem> Providers { get; set; } = new();
+}
+
+/// <summary>
+/// Provider item for JSON deserialization
+/// </summary>
+internal class ProviderItem
+{
+    public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public bool Enabled { get; set; }
+    public int Priority { get; set; }
 }
 
 /// <summary>

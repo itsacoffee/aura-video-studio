@@ -122,6 +122,12 @@ export function ProviderStatusDashboard() {
 
   useEffect(() => {
     refreshProviderStatuses();
+
+    const pollInterval = setInterval(() => {
+      refreshProviderStatuses();
+    }, 30000);
+
+    return () => clearInterval(pollInterval);
   }, [refreshProviderStatuses]);
 
   if (isLoadingStatuses) {
@@ -147,8 +153,8 @@ export function ProviderStatusDashboard() {
         </Button>
       </div>
       <Text size={200} style={{ marginBottom: tokens.spacingVerticalL }}>
-        View the status of all configured providers. Green checkmarks indicate configured providers
-        with valid API keys.
+        View the status of all configured providers. Status updates automatically every 30 seconds.
+        Green checkmarks indicate configured providers with valid API keys.
       </Text>
       <div className={styles.grid}>
         {providerStatuses.map((provider) => (
