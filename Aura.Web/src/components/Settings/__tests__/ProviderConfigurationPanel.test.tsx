@@ -122,4 +122,91 @@ describe('ProviderConfigurationPanel', () => {
       expect(screen.getAllByRole('button', { name: /move down/i })).toHaveLength(2);
     });
   });
+
+  it('tests provider connection with API key', async () => {
+    const providersWithKey = {
+      providers: [
+        {
+          ...mockProviders.providers[0],
+          apiKey: 'test-key-123',
+        },
+      ],
+    };
+
+    vi.mocked(apiClient.get).mockResolvedValue({ data: providersWithKey });
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { success: true, message: 'Connection successful', responseTimeMs: 150 },
+    });
+
+    render(<ProviderConfigurationPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('OpenAI')).toBeInTheDocument();
+    });
+
+    const testButton = screen.getByRole('button', { name: /test connection/i });
+    fireEvent.click(testButton);
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith('/api/providers/test-connection', {
+        providerName: 'OpenAI',
+        apiKey: 'test-key-123',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/connection successful/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows model selection dropdown for LLM and TTS providers', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: mockProviders });
+
+    render(<ProviderConfigurationPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('OpenAI')).toBeInTheDocument();
+      expect(screen.getByText('ElevenLabs')).toBeInTheDocument();
+    });
+
+    const modelFields = screen.getAllByText('Model Selection');
+    expect(modelFields).toHaveLength(2);
+  });
+
+  it('clears API key with confirmation', async () => {
+    const providersWithKey = {
+      providers: [
+        {
+          ...mockProviders.providers[0],
+          apiKey: 'test-key-123',
+        },
+      ],
+    };
+
+    vi.mocked(apiClient.get).mockResolvedValue({ data: providersWithKey });
+
+    render(<ProviderConfigurationPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('OpenAI')).toBeInTheDocument();
+    });
+
+    const clearButtons = screen.getAllByRole('button', { name: /clear api key/i });
+    expect(clearButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(clearButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/are you sure you want to clear the api key/i)).toBeInTheDocument();
+    });
+
+    const confirmButton = screen.getByRole('button', { name: /^clear key$/i });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/are you sure you want to clear the api key/i)
+      ).not.toBeInTheDocument();
+    });
+  });
 });

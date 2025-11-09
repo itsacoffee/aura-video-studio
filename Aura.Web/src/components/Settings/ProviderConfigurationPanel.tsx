@@ -19,6 +19,14 @@ import {
   MessageBarBody,
   MessageBarTitle,
   Tooltip,
+  Dropdown,
+  Option,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogActions,
+  DialogContent,
 } from '@fluentui/react-components';
 import {
   Save24Regular,
@@ -28,6 +36,7 @@ import {
   ArrowDown24Regular,
   Eye24Regular,
   EyeOff24Regular,
+  Delete24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import apiClient from '../../services/api/apiClient';
@@ -127,6 +136,15 @@ export function ProviderConfigurationPanel({ onSave }: ProviderConfigurationPane
     Record<string, { success: boolean; message: string; responseTimeMs?: number }>
   >({});
   const [showApiKeys, setShowApiKeys] = useState<Record<string, boolean>>({});
+  const [availableModels, setAvailableModels] = useState<
+    Record<
+      string,
+      Array<{ id: string; name: string; description?: string; estimatedCostPer1kTokens?: number }>
+    >
+  >({});
+  const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({});
+  const [clearKeyDialogOpen, setClearKeyDialogOpen] = useState(false);
+  const [providerToClear, setProviderToClear] = useState<string | null>(null);
 
   useEffect(() => {
     loadProviders();
@@ -230,6 +248,57 @@ export function ProviderConfigurationPanel({ onSave }: ProviderConfigurationPane
       ...showApiKeys,
       [providerName]: !showApiKeys[providerName],
     });
+  };
+
+  const loadAvailableModels = async (providerName: string) => {
+    if (availableModels[providerName] || loadingModels[providerName]) {
+      return;
+    }
+
+    setLoadingModels({ ...loadingModels, [providerName]: true });
+    try {
+      const response = await apiClient.get(
+        `/api/providerconfiguration/models/${providerName.toLowerCase()}`
+      );
+      const data = response.data as {
+        availableModels: Array<{
+          id: string;
+          name: string;
+          description?: string;
+          estimatedCostPer1kTokens?: number;
+        }>;
+      };
+      setAvailableModels({
+        ...availableModels,
+        [providerName]: data.availableModels || [],
+      });
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      console.error(`Failed to load models for ${providerName}:`, error);
+      setAvailableModels({
+        ...availableModels,
+        [providerName]: [],
+      });
+    } finally {
+      setLoadingModels({ ...loadingModels, [providerName]: false });
+    }
+  };
+
+  const handleClearKeyConfirm = (providerName: string) => {
+    setProviderToClear(providerName);
+    setClearKeyDialogOpen(true);
+  };
+
+  const clearApiKey = () => {
+    if (providerToClear) {
+      updateProvider(providerToClear, { apiKey: null });
+      setTestResults({
+        ...testResults,
+        [providerToClear]: undefined as never,
+      });
+      setClearKeyDialogOpen(false);
+      setProviderToClear(null);
+    }
   };
 
   if (isLoading) {
@@ -348,12 +417,86 @@ export function ProviderConfigurationPanel({ onSave }: ProviderConfigurationPane
                   >
                     {testingProvider === provider.name ? 'Testing...' : 'Test Connection'}
                   </Button>
+                  {provider.apiKey && (
+                    <Tooltip content="Clear API key" relationship="label">
+                      <Button
+                        appearance="subtle"
+                        icon={<Delete24Regular />}
+                        onClick={() => handleClearKeyConfirm(provider.name)}
+                      />
+                    </Tooltip>
+                  )}
                 </div>
 
                 {testResults[provider.name] && (
                   <MessageBar intent={testResults[provider.name].success ? 'success' : 'error'}>
                     <MessageBarBody>{testResults[provider.name].message}</MessageBarBody>
                   </MessageBar>
+                )}
+
+                {(provider.type === 'LLM' || provider.type === 'TTS') && (
+                  <Field label="Model Selection" hint="Select the model to use for this provider">
+                    <Dropdown
+                      placeholder="Select a model"
+                      value={provider.additionalSettings?.selectedModel || ''}
+                      selectedOptions={
+                        provider.additionalSettings?.selectedModel
+                          ? [provider.additionalSettings.selectedModel]
+                          : []
+                      }
+                      onOptionSelect={(_, data) => {
+                        updateProvider(provider.name, {
+                          additionalSettings: {
+                            ...provider.additionalSettings,
+                            selectedModel: data.optionValue as string,
+                          },
+                        });
+                      }}
+                      onOpenChange={(_, data) => {
+                        if (data.open && !availableModels[provider.name]) {
+                          loadAvailableModels(provider.name);
+                        }
+                      }}
+                      disabled={loadingModels[provider.name]}
+                    >
+                      {loadingModels[provider.name] ? (
+                        <Option value="">Loading models...</Option>
+                      ) : availableModels[provider.name]?.length > 0 ? (
+                        availableModels[provider.name].map((model) => (
+                          <Option key={model.id} value={model.id} text={model.name}>
+                            <div>
+                              <Text weight="semibold">{model.name}</Text>
+                              {model.description && (
+                                <Text
+                                  size={200}
+                                  style={{
+                                    display: 'block',
+                                    color: tokens.colorNeutralForeground3,
+                                  }}
+                                >
+                                  {model.description}
+                                </Text>
+                              )}
+                              {model.estimatedCostPer1kTokens !== undefined &&
+                                model.estimatedCostPer1kTokens > 0 && (
+                                  <Text
+                                    size={200}
+                                    style={{
+                                      display: 'block',
+                                      color: tokens.colorNeutralForeground3,
+                                    }}
+                                  >
+                                    ${model.estimatedCostPer1kTokens.toFixed(3)}/1k tokens
+                                  </Text>
+                                )}
+                            </div>
+                          </Option>
+                        ))
+                      ) : (
+                        <Option value="">No models available</Option>
+                      )}
+                    </Dropdown>
+                  </Field>
                 )}
 
                 <Field label="Cost Limit (USD/month)" hint="Leave empty for no limit">
@@ -372,6 +515,29 @@ export function ProviderConfigurationPanel({ onSave }: ProviderConfigurationPane
             </Card>
           ))}
       </div>
+
+      <Dialog
+        open={clearKeyDialogOpen}
+        onOpenChange={(_, data) => setClearKeyDialogOpen(data.open)}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Clear API Key</DialogTitle>
+            <DialogContent>
+              Are you sure you want to clear the API key for {providerToClear}? This action cannot
+              be undone.
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setClearKeyDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button appearance="primary" onClick={clearApiKey}>
+                Clear Key
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }
