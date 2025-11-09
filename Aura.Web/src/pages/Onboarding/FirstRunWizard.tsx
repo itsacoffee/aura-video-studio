@@ -27,7 +27,9 @@ import type { WorkspacePreferences } from '../../components/Onboarding/Workspace
 import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
 import { WizardProgress } from '../../components/WizardProgress';
 import { wizardAnalytics } from '../../services/analytics';
+import type { FFmpegStatus } from '../../services/api/ffmpegClient';
 import { setupApi } from '../../services/api/setupApi';
+import { dependencyChecker } from '../../services/dependencyChecker';
 import { markFirstRunCompleted } from '../../services/firstRunService';
 import {
   onboardingReducer,
@@ -37,10 +39,8 @@ import {
   loadWizardStateFromStorage,
   clearWizardStateFromStorage,
 } from '../../state/onboarding';
-import { ApiKeySetupStep } from './ApiKeySetupStep';
-import type { FFmpegStatus } from '../../services/api/ffmpegClient';
-import { dependencyChecker } from '../../services/dependencyChecker';
 import { pickFolder } from '../../utils/pathUtils';
+import { ApiKeySetupStep } from './ApiKeySetupStep';
 
 const useStyles = makeStyles({
   container: {
@@ -291,7 +291,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       return;
     }
 
-    // Step 1: FFmpeg Check -> Step 2: FFmpeg Install  
+    // Step 1: FFmpeg Check -> Step 2: FFmpeg Install
     if (state.step === 1) {
       dispatch({ type: 'SET_STEP', payload: 2 });
       return;
@@ -461,7 +461,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         setFfmpegPath((previousPath) => {
           if (status.path && previousPath !== status.path) {
             setFfmpegPathInput((currentInput) =>
-              currentInput.trim().length === 0 || currentInput === previousPath ? status.path! : currentInput
+              currentInput.trim().length === 0 || currentInput === previousPath
+                ? status.path!
+                : currentInput
             );
           }
           return status.path;
@@ -599,7 +601,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       console.error('Failed to validate FFmpeg path:', error);
       showFailureToast({
         title: 'Validation Error',
-        message: error instanceof Error ? error.message : 'Unexpected error validating FFmpeg path.',
+        message:
+          error instanceof Error ? error.message : 'Unexpected error validating FFmpeg path.',
       });
     } finally {
       setIsValidatingFfmpegPath(false);
@@ -708,7 +711,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
         <Title2>FFmpeg Setup</Title2>
         <Text style={{ display: 'block', marginTop: tokens.spacingVerticalM }}>
-          FFmpeg powers Aura&apos;s rendering pipeline. Install the managed build or point Aura to an existing installation.
+          FFmpeg powers Aura&apos;s rendering pipeline. Install the managed build or point Aura to
+          an existing installation.
         </Text>
         <Card
           style={{
@@ -740,7 +744,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         <div className={styles.manualHeader}>
           <Title3>Use an Existing FFmpeg</Title3>
           <Text size={200}>
-            Already have FFmpeg installed? Provide the executable path so Aura can use it right away.
+            Already have FFmpeg installed? Provide the executable path so Aura can use it right
+            away.
           </Text>
         </div>
 
@@ -791,7 +796,11 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
         <div className={styles.statusSummary}>
           {ffmpegReady && ffmpegPath ? (
-            <Text size={200} weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+            <Text
+              size={200}
+              weight="semibold"
+              style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+            >
               <Checkmark24Regular /> Using FFmpeg at {ffmpegPath}
             </Text>
           ) : (
@@ -799,8 +808,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
               {ffmpegStatus?.error
                 ? `Last check: ${ffmpegStatus.error}`
                 : ffmpegStatus?.path
-                ? `Last detected path: ${ffmpegStatus.path}`
-                : 'FFmpeg not detected yet. Validate an executable path or install the managed build.'}
+                  ? `Last detected path: ${ffmpegStatus.path}`
+                  : 'FFmpeg not detected yet. Validate an executable path or install the managed build.'}
             </Text>
           )}
         </div>
@@ -821,7 +830,8 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             <Warning24Regular /> FFmpeg is required before you can render videos
           </Text>
           <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
-            Install the managed build or validate the path to an existing installation to continue. You can always re-run this step later from Settings.
+            Install the managed build or validate the path to an existing installation to continue.
+            You can always re-run this step later from Settings.
           </Text>
         </Card>
       )}
