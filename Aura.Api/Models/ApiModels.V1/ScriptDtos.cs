@@ -264,3 +264,146 @@ public record ProviderInfoDto
     /// </summary>
     public List<string> AvailableModels { get; init; } = new();
 }
+
+/// <summary>
+/// Request to enhance/improve a script with adjustments
+/// </summary>
+public record ScriptEnhancementRequest
+{
+    /// <summary>
+    /// Enhancement goal (e.g., "Make more engaging", "Improve pacing")
+    /// </summary>
+    public string Goal { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Tone adjustment (-1.0 to 1.0, 0 is neutral)
+    /// </summary>
+    public double? ToneAdjustment { get; init; }
+
+    /// <summary>
+    /// Pacing adjustment (-1.0 to 1.0, 0 is neutral)
+    /// </summary>
+    public double? PacingAdjustment { get; init; }
+
+    /// <summary>
+    /// Style preset to apply
+    /// </summary>
+    public string? StylePreset { get; init; }
+}
+
+/// <summary>
+/// Request to reorder scenes
+/// </summary>
+public record ReorderScenesRequest
+{
+    /// <summary>
+    /// New scene order (scene numbers)
+    /// </summary>
+    public List<int> SceneOrder { get; init; } = new();
+}
+
+/// <summary>
+/// Request to merge scenes
+/// </summary>
+public record MergeScenesRequest
+{
+    /// <summary>
+    /// Scene numbers to merge
+    /// </summary>
+    public List<int> SceneNumbers { get; init; } = new();
+
+    /// <summary>
+    /// Separator for merged narration
+    /// </summary>
+    public string Separator { get; init; } = " ";
+}
+
+/// <summary>
+/// Request to split a scene
+/// </summary>
+public record SplitSceneRequest
+{
+    /// <summary>
+    /// Position to split at (character index in narration)
+    /// </summary>
+    public int SplitPosition { get; init; }
+}
+
+/// <summary>
+/// Script version DTO
+/// </summary>
+public record ScriptVersionDto
+{
+    /// <summary>
+    /// Version ID
+    /// </summary>
+    public string VersionId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Version number
+    /// </summary>
+    public int VersionNumber { get; init; }
+
+    /// <summary>
+    /// When this version was created
+    /// </summary>
+    public DateTime CreatedAt { get; init; }
+
+    /// <summary>
+    /// Version notes/comment
+    /// </summary>
+    public string? Notes { get; init; }
+
+    /// <summary>
+    /// Script snapshot
+    /// </summary>
+    public GenerateScriptResponse Script { get; init; } = new();
+}
+
+/// <summary>
+/// Response with version history
+/// </summary>
+public record ScriptVersionHistoryResponse
+{
+    /// <summary>
+    /// List of versions
+    /// </summary>
+    public List<ScriptVersionDto> Versions { get; init; } = new();
+
+    /// <summary>
+    /// Current version ID
+    /// </summary>
+    public string CurrentVersionId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Correlation ID
+    /// </summary>
+    public string CorrelationId { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Request to revert to a version
+/// </summary>
+public record RevertToVersionRequest
+{
+    /// <summary>
+    /// Version ID to revert to
+    /// </summary>
+    public string VersionId { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Request to regenerate a scene with context
+/// </summary>
+public record RegenerateSceneRequest
+{
+    /// <summary>
+    /// Optional improvement goal
+    /// </summary>
+    public string? ImprovementGoal { get; init; }
+
+    /// <summary>
+    /// Whether to include context from surrounding scenes
+    /// </summary>
+    public bool IncludeContext { get; init; } = true;
+}

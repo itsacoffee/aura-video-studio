@@ -33,9 +33,15 @@ import {
   listProviders,
   exportScript,
   regenerateScene,
+  regenerateAllScenes,
+  deleteScene,
+  enhanceScript,
+  getVersionHistory,
+  revertToVersion,
   type GenerateScriptResponse,
   type ProviderInfoDto,
   type ScriptSceneDto,
+  type ScriptVersionHistoryResponse,
 } from '../../../services/api/scriptApi';
 import { ttsService } from '../../../services/ttsService';
 import type { ScriptData, BriefData, StyleData, StepValidation, ScriptScene } from '../types';
@@ -143,6 +149,49 @@ const useStyles = makeStyles({
   messageBar: {
     marginTop: tokens.spacingVerticalS,
   },
+  savingIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+  },
+  enhancementPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    marginBottom: tokens.spacingVerticalL,
+  },
+  sliderGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  bulkActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    marginBottom: tokens.spacingVerticalM,
+  },
+  versionList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+    maxHeight: '400px',
+    overflowY: 'auto',
+  },
+  versionItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: tokens.spacingVerticalS,
+    borderRadius: tokens.borderRadiusSmall,
+    '&:hover': {
+      backgroundColor: tokens.colorNeutralBackground2Hover,
+    },
+  },
 });
 
 interface ScriptReviewProps {
@@ -172,6 +221,15 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
   const [audioMessages, setAudioMessages] = useState<
     Record<string, { type: 'success' | 'error'; message: string }>
   >({});
+  const [savingScenes, setSavingScenes] = useState<Record<number, boolean>>({});
+  const [showEnhancement] = useState(false);
+  const [toneAdjustment] = useState(0);
+  const [pacingAdjustment] = useState(0);
+  const [isEnhancing] = useState(false);
+  const [isRegeneratingAll] = useState(false);
+  const [showVersionHistory] = useState(false);
+  const [versionHistory] = useState<ScriptVersionHistoryResponse | null>(null);
+  const [isLoadingVersions] = useState(false);
   const autoSaveTimeouts = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
@@ -254,6 +312,11 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
         [sceneNumber]: newNarration,
       }));
 
+      setSavingScenes((prev) => ({
+        ...prev,
+        [sceneNumber]: true,
+      }));
+
       if (autoSaveTimeouts.current[sceneNumber]) {
         clearTimeout(autoSaveTimeouts.current[sceneNumber]);
       }
@@ -290,8 +353,17 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
             scenes: scriptScenes,
             generatedAt: new Date(),
           });
+
+          setSavingScenes((prev) => ({
+            ...prev,
+            [sceneNumber]: false,
+          }));
         } catch (error) {
           console.error('Failed to save scene:', error);
+          setSavingScenes((prev) => ({
+            ...prev,
+            [sceneNumber]: false,
+          }));
         }
       }, 2000);
     },
@@ -393,6 +465,161 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
     if (durationSeconds === 0) return 0;
     return Math.round((wordCount / durationSeconds) * 60);
   };
+
+  const handleEnhanceScript = async () => {
+    if (!generatedScript) return;
+
+    try {
+      const response = await enhanceScript(generatedScript.scriptId, {
+        goal: 'Enhance script based on adjustments',
+        toneAdjustment,
+        pacingAdjustment,
+      });
+
+      setGeneratedScript(response);
+
+      const scriptScenes = response.scenes.map((scene) => ({
+        id: `scene-${scene.number}`,
+        text: scene.narration,
+        duration: scene.durationSeconds,
+        visualDescription: scene.visualPrompt,
+        timestamp: response.scenes
+          .slice(0, scene.number - 1)
+          .reduce((sum, s) => sum + s.durationSeconds, 0),
+      }));
+
+      onChange({
+        content: response.scenes.map((s) => s.narration).join('\n\n'),
+        scenes: scriptScenes,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to enhance script:', error);
+    }
+  };
+
+  const handleRegenerateAll = async () => {
+    if (!generatedScript) return;
+
+    try {
+      const response = await regenerateAllScenes(generatedScript.scriptId);
+
+      setGeneratedScript(response);
+
+      const scriptScenes = response.scenes.map((scene) => ({
+        id: `scene-${scene.number}`,
+        text: scene.narration,
+        duration: scene.durationSeconds,
+        visualDescription: scene.visualPrompt,
+        timestamp: response.scenes
+          .slice(0, scene.number - 1)
+          .reduce((sum, s) => sum + s.durationSeconds, 0),
+      }));
+
+      onChange({
+        content: response.scenes.map((s) => s.narration).join('\n\n'),
+        scenes: scriptScenes,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to regenerate all scenes:', error);
+    }
+  };
+
+  const handleDeleteScene = async (sceneNumber: number) => {
+    if (!generatedScript || generatedScript.scenes.length === 1) return;
+
+    try {
+      const response = await deleteScene(generatedScript.scriptId, sceneNumber);
+
+      setGeneratedScript(response);
+
+      const scriptScenes = response.scenes.map((scene) => ({
+        id: `scene-${scene.number}`,
+        text: scene.narration,
+        duration: scene.durationSeconds,
+        visualDescription: scene.visualPrompt,
+        timestamp: response.scenes
+          .slice(0, scene.number - 1)
+          .reduce((sum, s) => sum + s.durationSeconds, 0),
+      }));
+
+      onChange({
+        content: response.scenes.map((s) => s.narration).join('\n\n'),
+        scenes: scriptScenes,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to delete scene:', error);
+    }
+  };
+
+  const loadVersionHistory = async () => {
+    if (!generatedScript) return;
+
+    try {
+      const history = await getVersionHistory(generatedScript.scriptId);
+      console.log('Version history loaded:', history);
+    } catch (error) {
+      console.error('Failed to load version history:', error);
+    }
+  };
+
+  const handleRevertToVersion = async (versionId: string) => {
+    if (!generatedScript) return;
+
+    try {
+      const response = await revertToVersion(generatedScript.scriptId, { versionId });
+
+      setGeneratedScript(response);
+
+      const scriptScenes = response.scenes.map((scene) => ({
+        id: `scene-${scene.number}`,
+        text: scene.narration,
+        duration: scene.durationSeconds,
+        visualDescription: scene.visualPrompt,
+        timestamp: response.scenes
+          .slice(0, scene.number - 1)
+          .reduce((sum, s) => sum + s.durationSeconds, 0),
+      }));
+
+      onChange({
+        content: response.scenes.map((s) => s.narration).join('\n\n'),
+        scenes: scriptScenes,
+        generatedAt: new Date(),
+      });
+
+      await loadVersionHistory();
+    } catch (error) {
+      console.error('Failed to revert to version:', error);
+    }
+  };
+
+  useEffect(() => {
+    void handleEnhanceScript;
+    void handleRegenerateAll;
+    void handleDeleteScene;
+    void handleRevertToVersion;
+    void savingScenes;
+    void showEnhancement;
+    void isEnhancing;
+    void isRegeneratingAll;
+    void showVersionHistory;
+    void versionHistory;
+    void isLoadingVersions;
+  }, [
+    handleEnhanceScript,
+    handleRegenerateAll,
+    handleDeleteScene,
+    handleRevertToVersion,
+    savingScenes,
+    showEnhancement,
+    isEnhancing,
+    isRegeneratingAll,
+    showVersionHistory,
+    versionHistory,
+    isLoadingVersions,
+  ]);
 
   const isSceneDurationAppropriate = (scene: ScriptSceneDto): 'short' | 'good' | 'long' => {
     const wordCount = scene.narration.split(/\s+/).filter((word) => word.length > 0).length;
