@@ -146,14 +146,17 @@ export function FFmpegCard() {
       });
 
       if (response.ok) {
-        await loadStatus();
+        const result = await response.json();
         showSuccessToast({
           title: 'FFmpeg Installed',
-          message: 'FFmpeg installed successfully!',
+          message: result.message || 'FFmpeg installed successfully!',
         });
+        // Wait a moment for the backend to finalize
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await loadStatus();
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Installation failed');
+        throw new Error(errorData.message || errorData.error || 'Installation failed');
       }
     } catch (err) {
       console.error('FFmpeg installation failed:', err);

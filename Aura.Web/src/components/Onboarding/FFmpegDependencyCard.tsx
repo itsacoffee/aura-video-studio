@@ -17,6 +17,7 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ffmpegClient, type FFmpegStatus } from '../../services/api/ffmpegClient';
+import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
   card: {
@@ -89,6 +90,7 @@ export function FFmpegDependencyCard({
   refreshSignal,
 }: FFmpegDependencyCardProps) {
   const styles = useStyles();
+  const { showSuccessToast, showFailureToast } = useNotifications();
   const [status, setStatus] = useState<FFmpegStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
@@ -193,6 +195,13 @@ export function FFmpegDependencyCard({
       setInstallProgress(100);
 
       if (result.success) {
+        showSuccessToast({
+          title: 'FFmpeg Installed Successfully',
+          message: result.message || 'FFmpeg has been installed and is ready to use.',
+        });
+        
+        // Wait a moment for the backend to finalize, then check status
+        await new Promise(resolve => setTimeout(resolve, 1000));
         await checkStatus();
       } else {
         throw new Error(result.message || 'Installation failed');
@@ -224,6 +233,10 @@ export function FFmpegDependencyCard({
       }
 
       setError(errorMessage);
+      showFailureToast({
+        title: 'Installation Failed',
+        message: errorMessage,
+      });
     } finally {
       setIsInstalling(false);
       setInstallProgress(0);
@@ -306,13 +319,33 @@ export function FFmpegDependencyCard({
           <div className={styles.actionsContainer}>
             {getStatusBadge()}
             {!isReady && (
+              <>
+                <Button
+                  appearance="primary"
+                  icon={<ArrowDownload24Regular />}
+                  onClick={handleInstall}
+                  disabled={isInstalling || isLoading}
+                >
+                  Install Managed FFmpeg
+                </Button>
+                <Button
+                  appearance="secondary"
+                  icon={<ArrowClockwise24Regular />}
+                  onClick={checkStatus}
+                  disabled={isInstalling || isLoading}
+                >
+                  {isLoading ? 'Scanning...' : 'Re-scan'}
+                </Button>
+              </>
+            )}
+            {isReady && (
               <Button
-                appearance="primary"
-                icon={<ArrowDownload24Regular />}
-                onClick={handleInstall}
-                disabled={isInstalling || isLoading}
+                appearance="secondary"
+                icon={<ArrowClockwise24Regular />}
+                onClick={checkStatus}
+                disabled={isLoading}
               >
-                Install Managed FFmpeg
+                {isLoading ? 'Scanning...' : 'Re-scan'}
               </Button>
             )}
           </div>
@@ -430,17 +463,6 @@ export function FFmpegDependencyCard({
         >
           {showDetails ? 'Hide Details' : 'Show Details'}
         </Button>
-        {status && (
-          <Button
-            appearance="subtle"
-            size="small"
-              icon={<ArrowClockwise24Regular />}
-            onClick={checkStatus}
-            disabled={isInstalling || isLoading}
-          >
-              Re-scan
-          </Button>
-        )}
       </div>
     </Card>
   );
