@@ -371,9 +371,9 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
     return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, loggerFactory, mixer, providers);
 });
 
-// Keep backward compatibility - single ILlmProvider for simple use cases
+// Keep backward compatibility - secure key store and composite LLM provider
 builder.Services.AddSingleton<Aura.Core.Configuration.IKeyStore, Aura.Core.Configuration.KeyStore>();
-builder.Services.AddSingleton<ILlmProvider, RuleBasedLlmProvider>();
+builder.Services.AddSingleton<ILlmProvider, CompositeLlmProvider>();
 
 // Register provider profile and validation services
 builder.Services.AddSingleton<Aura.Core.Services.ProviderProfileService>();

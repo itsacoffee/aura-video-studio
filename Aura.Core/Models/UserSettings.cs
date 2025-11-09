@@ -171,6 +171,7 @@ public class AdvancedSettings
     public bool OfflineMode { get; set; } = false;
     public string StableDiffusionUrl { get; set; } = "http://127.0.0.1:7860";
     public string OllamaUrl { get; set; } = "http://127.0.0.1:11434";
+    public string OllamaModel { get; set; } = "llama3.1:8b-q4_k_m";
     public bool EnableTelemetry { get; set; } = false;
     public bool EnableCrashReports { get; set; } = false;
 }
