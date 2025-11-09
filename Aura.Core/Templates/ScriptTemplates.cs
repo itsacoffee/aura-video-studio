@@ -203,15 +203,19 @@ public static class ScriptTemplates
         sections.Add("");
         
         sections.Add("## Getting Started");
-        sections.Add("Getting started is simple. Just describe your video concept, choose your preferences, and let the AI do the heavy lifting. You can use this Quick Demo feature without any API keys or complex setup. It works right out of the box.");
+        sections.Add("Getting started is simple. Just describe your video concept, choose your preferences, and let the AI do the heavy lifting. You can use this Quick Demo feature without any API keys or complex setup. It works right out of the box in offline mode.");
         sections.Add("");
         
         sections.Add("## Key Features");
-        sections.Add("Aura Video Studio includes multiple AI providers for maximum flexibility. Script generation, text-to-speech synthesis, image generation, and video rendering all work together seamlessly. The offline mode ensures you can work even without internet connectivity.");
+        sections.Add("Aura Video Studio includes multiple AI providers for maximum flexibility. Script generation, text-to-speech synthesis, image generation, and video rendering all work together seamlessly. The offline mode with rule-based script generation and local TTS ensures you can work even without internet connectivity or API keys.");
+        sections.Add("");
+        
+        sections.Add("## Offline Mode Benefits");
+        sections.Add("Running in offline mode means no API costs, complete privacy, and independence from external services. While AI providers offer more sophisticated results, offline mode provides consistent, reliable video generation that works anywhere, anytime. It's perfect for testing, prototyping, and situations where connectivity is limited.");
         sections.Add("");
         
         sections.Add("## Next Steps");
-        sections.Add("Now that you've seen what's possible, try creating your own video. Explore the different options, experiment with settings, and discover the full potential of AI-powered video creation. We can't wait to see what you create. Welcome aboard!");
+        sections.Add("Now that you've seen what's possible, try creating your own video. Explore the different options, experiment with settings, and discover the full potential of AI-powered video creation. When you're ready, you can configure online providers for even more advanced capabilities. We can't wait to see what you create. Welcome aboard!");
         
         return string.Join("\n", sections);
     }
