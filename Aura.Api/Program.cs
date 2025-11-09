@@ -568,6 +568,21 @@ builder.Services.AddSingleton<Aura.Core.Services.ContentSafety.SafetyIntegration
 builder.Services.AddSingleton<Aura.Core.Audio.WavValidator>();
 builder.Services.AddSingleton<Aura.Core.Audio.SilentWavGenerator>();
 builder.Services.AddSingleton<Aura.Core.Services.Audio.NarrationOptimizationService>();
+builder.Services.AddSingleton<Aura.Core.Services.AudioIntelligence.LicensingService>();
+
+// Register AI Editing services
+builder.Services.AddSingleton<Aura.Core.Services.AIEditing.SceneDetectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.AIEditing.HighlightDetectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.AIEditing.BeatDetectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.AIEditing.AutoFramingService>();
+builder.Services.AddSingleton<Aura.Core.Services.AIEditing.SpeechRecognitionService>();
+
+// Register Voice Enhancement services
+builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.NoiseReductionService>();
+builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.EqualizeService>();
+builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.ProsodyAdjustmentService>();
+builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.EmotionDetectionService>();
+builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.VoiceProcessingService>();
 
 // Register HTTP client factory (required by providers)
 builder.Services.AddHttpClient();
@@ -609,6 +624,11 @@ builder.Services.AddSingleton<Aura.Core.Validation.ScriptValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.TtsOutputValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.ImageOutputValidator>();
 builder.Services.AddSingleton<Aura.Core.Validation.LlmOutputValidator>();
+
+// Register Model Selection services
+builder.Services.AddSingleton<Aura.Core.AI.Adapters.ModelCatalog>();
+builder.Services.AddSingleton<Aura.Core.Services.ModelSelection.ModelSelectionStore>();
+builder.Services.AddSingleton<Aura.Core.Services.ModelSelection.ModelSelectionService>();
 
 // Register latency management services
 builder.Services.Configure<Aura.Core.Services.Performance.LlmTimeoutPolicy>(

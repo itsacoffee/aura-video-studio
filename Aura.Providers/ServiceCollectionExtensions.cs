@@ -20,7 +20,7 @@ namespace Aura.Providers;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers all provider services including LLM, TTS, Image, and Rendering providers
+    /// Registers all provider services including LLM, TTS, Image, Music, SFX, and Rendering providers
     /// This is the single entry point for provider registration
     /// </summary>
     public static IServiceCollection AddAuraProviders(this IServiceCollection services)
@@ -28,6 +28,8 @@ public static class ServiceCollectionExtensions
         services.AddLlmProviders();
         services.AddTtsProviders();
         services.AddImageProviders();
+        services.AddMusicProviders();
+        services.AddSfxProviders();
         services.AddRenderingProviders();
         
         return services;
@@ -187,6 +189,45 @@ public static class ServiceCollectionExtensions
         // based on API keys available in ProviderSettings
         // No direct registration needed here - factory handles instantiation
         
+        return services;
+    }
+
+    /// <summary>
+    /// Registers all Music providers with their dependencies
+    /// Providers are registered as IMusicProvider implementations for enumeration
+    /// </summary>
+    public static IServiceCollection AddMusicProviders(this IServiceCollection services)
+    {
+        // Register Local Stock Music Provider (always available for local libraries)
+        services.AddSingleton<Aura.Core.Providers.IMusicProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Music.LocalStockMusicProvider>>();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+            var musicLibraryPath = System.IO.Path.Combine(settings.GetAuraDataDirectory(), "Music");
+            return new Music.LocalStockMusicProvider(logger, musicLibraryPath);
+        });
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers all SFX (Sound Effects) providers with their dependencies
+    /// Providers are registered as ISfxProvider implementations for enumeration
+    /// </summary>
+    public static IServiceCollection AddSfxProviders(this IServiceCollection services)
+    {
+        // Register Freesound SFX Provider (requires API key)
+        services.AddSingleton<Aura.Core.Providers.ISfxProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Sfx.FreesoundSfxProvider>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var configuration = sp.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+            var apiKey = configuration["Audio:FreesoundApiKey"];
+            
+            // Create provider even without API key (will return IsAvailable = false)
+            return new Sfx.FreesoundSfxProvider(logger, httpClient, apiKey);
+        });
+
         return services;
     }
 
