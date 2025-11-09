@@ -148,16 +148,25 @@ export async function regenerateScript(
 }
 
 /**
+ * Regenerate scene request
+ */
+export interface RegenerateSceneRequest {
+  improvementGoal?: string;
+  includeContext?: boolean;
+}
+
+/**
  * Regenerate a specific scene in a script
  */
 export async function regenerateScene(
   scriptId: string,
   sceneNumber: number,
+  request?: RegenerateSceneRequest,
   config?: ExtendedAxiosRequestConfig
 ): Promise<GenerateScriptResponse> {
   return post<GenerateScriptResponse>(
     `/api/scripts/${scriptId}/scenes/${sceneNumber}/regenerate`,
-    {},
+    request || {},
     config
   );
 }
@@ -183,4 +192,142 @@ export async function exportScript(
     ...config,
     responseType: 'blob',
   });
+}
+
+/**
+ * Enhance a script with tone/pacing adjustments
+ */
+export interface ScriptEnhancementRequest {
+  goal: string;
+  toneAdjustment?: number;
+  pacingAdjustment?: number;
+  stylePreset?: string;
+}
+
+export async function enhanceScript(
+  scriptId: string,
+  request: ScriptEnhancementRequest,
+  config?: ExtendedAxiosRequestConfig
+): Promise<GenerateScriptResponse> {
+  return post<GenerateScriptResponse>(`/api/scripts/${scriptId}/enhance`, request, config);
+}
+
+/**
+ * Reorder scenes in a script
+ */
+export interface ReorderScenesRequest {
+  sceneOrder: number[];
+}
+
+export async function reorderScenes(
+  scriptId: string,
+  request: ReorderScenesRequest,
+  config?: ExtendedAxiosRequestConfig
+): Promise<GenerateScriptResponse> {
+  return post<GenerateScriptResponse>(`/api/scripts/${scriptId}/reorder`, request, config);
+}
+
+/**
+ * Merge multiple scenes into one
+ */
+export interface MergeScenesRequest {
+  sceneNumbers: number[];
+  separator?: string;
+}
+
+export async function mergeScenes(
+  scriptId: string,
+  request: MergeScenesRequest,
+  config?: ExtendedAxiosRequestConfig
+): Promise<GenerateScriptResponse> {
+  return post<GenerateScriptResponse>(`/api/scripts/${scriptId}/merge`, request, config);
+}
+
+/**
+ * Split a scene into two
+ */
+export interface SplitSceneRequest {
+  splitPosition: number;
+}
+
+export async function splitScene(
+  scriptId: string,
+  sceneNumber: number,
+  request: SplitSceneRequest,
+  config?: ExtendedAxiosRequestConfig
+): Promise<GenerateScriptResponse> {
+  return post<GenerateScriptResponse>(
+    `/api/scripts/${scriptId}/scenes/${sceneNumber}/split`,
+    request,
+    config
+  );
+}
+
+/**
+ * Delete a scene from a script
+ */
+export async function deleteScene(
+  scriptId: string,
+  sceneNumber: number,
+  config?: ExtendedAxiosRequestConfig
+): Promise<GenerateScriptResponse> {
+  return await get<GenerateScriptResponse>(`/api/scripts/${scriptId}/scenes/${sceneNumber}`, {
+    ...config,
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Regenerate all scenes in a script
+ */
+export async function regenerateAllScenes(
+  scriptId: string,
+  config?: ExtendedAxiosRequestConfig
+): Promise<GenerateScriptResponse> {
+  return post<GenerateScriptResponse>(`/api/scripts/${scriptId}/regenerate-all`, {}, config);
+}
+
+/**
+ * Script version DTO
+ */
+export interface ScriptVersionDto {
+  versionId: string;
+  versionNumber: number;
+  createdAt: string;
+  notes?: string;
+  script: GenerateScriptResponse;
+}
+
+/**
+ * Version history response
+ */
+export interface ScriptVersionHistoryResponse {
+  versions: ScriptVersionDto[];
+  currentVersionId: string;
+  correlationId: string;
+}
+
+/**
+ * Get version history for a script
+ */
+export async function getVersionHistory(
+  scriptId: string,
+  config?: ExtendedAxiosRequestConfig
+): Promise<ScriptVersionHistoryResponse> {
+  return get<ScriptVersionHistoryResponse>(`/api/scripts/${scriptId}/versions`, config);
+}
+
+/**
+ * Revert to a previous version
+ */
+export interface RevertToVersionRequest {
+  versionId: string;
+}
+
+export async function revertToVersion(
+  scriptId: string,
+  request: RevertToVersionRequest,
+  config?: ExtendedAxiosRequestConfig
+): Promise<GenerateScriptResponse> {
+  return post<GenerateScriptResponse>(`/api/scripts/${scriptId}/versions/revert`, request, config);
 }
