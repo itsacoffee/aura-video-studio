@@ -2,7 +2,8 @@ import { makeStyles, tokens, Button, Tooltip } from '@fluentui/react-components'
 import {
   Home24Regular,
   VideoClip24Regular,
-  Folder24Regular,
+  Lightbulb24Regular,
+  VideoClipMultiple24Regular,
   Settings24Regular,
 } from '@fluentui/react-icons';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -68,8 +69,9 @@ export function MobileBottomNav() {
 
   const navItems: NavItem[] = [
     { key: 'home', label: 'Home', icon: Home24Regular, path: '/' },
+    { key: 'ideation', label: 'Ideation', icon: Lightbulb24Regular, path: '/ideation' },
     { key: 'create', label: 'Create', icon: VideoClip24Regular, path: '/create' },
-    { key: 'library', label: 'Library', icon: Folder24Regular, path: '/projects' },
+    { key: 'editor', label: 'Editor', icon: VideoClipMultiple24Regular, path: '/editor' },
     { key: 'settings', label: 'Settings', icon: Settings24Regular, path: '/settings' },
   ];
 

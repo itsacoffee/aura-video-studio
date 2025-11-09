@@ -244,6 +244,24 @@ function App() {
         },
       },
       {
+        id: 'open-ideation',
+        keys: 'Ctrl+I',
+        description: 'Open Ideation',
+        context: 'global',
+        handler: () => {
+          window.location.href = '/ideation';
+        },
+      },
+      {
+        id: 'open-editor',
+        keys: 'Ctrl+E',
+        description: 'Open Video Editor',
+        context: 'global',
+        handler: () => {
+          window.location.href = '/editor';
+        },
+      },
+      {
         id: 'save-project',
         keys: 'Ctrl+S',
         description: 'Save Project',
