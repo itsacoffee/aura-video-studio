@@ -1019,6 +1019,224 @@ public class ProvidersController : ControllerBase
         }
         return hasKey ? "Configured" : "Not configured";
     }
+
+    /// <summary>
+    /// Get Ollama service status with version and model count
+    /// </summary>
+    [HttpGet("ollama/status")]
+    public async Task<IActionResult> GetOllamaStatus(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            var ollamaDetectionService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.OllamaDetectionService)) 
+                as Aura.Core.Services.Providers.OllamaDetectionService;
+
+            if (ollamaDetectionService == null)
+            {
+                return Ok(new
+                {
+                    isAvailable = false,
+                    version = (string?)null,
+                    modelsCount = 0,
+                    message = "Ollama detection service not initialized",
+                    correlationId
+                });
+            }
+
+            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken);
+            var models = status.IsRunning 
+                ? await ollamaDetectionService.GetModelsAsync(cancellationToken)
+                : new List<Aura.Core.Services.Providers.OllamaModel>();
+
+            Log.Information(
+                "Ollama status check: Available={Available}, Models={ModelsCount}, CorrelationId: {CorrelationId}",
+                status.IsRunning,
+                models.Count,
+                correlationId);
+
+            return Ok(new
+            {
+                isAvailable = status.IsRunning,
+                version = status.Version,
+                modelsCount = models.Count,
+                message = status.IsRunning 
+                    ? $"Ollama running with {models.Count} models"
+                    : status.ErrorMessage ?? "Ollama service not running",
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error checking Ollama status, CorrelationId: {CorrelationId}", correlationId);
+            return Ok(new
+            {
+                isAvailable = false,
+                version = (string?)null,
+                modelsCount = 0,
+                message = $"Error checking Ollama: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get list of available Ollama models
+    /// </summary>
+    [HttpGet("ollama/models")]
+    public async Task<IActionResult> GetOllamaModels(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            var ollamaDetectionService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.OllamaDetectionService)) 
+                as Aura.Core.Services.Providers.OllamaDetectionService;
+
+            if (ollamaDetectionService == null)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    message = "Ollama detection service not initialized",
+                    installationInstructions = "Install Ollama: curl -fsSL https://ollama.com/install.sh | sh",
+                    correlationId
+                });
+            }
+
+            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken);
+            
+            if (!status.IsRunning)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    message = "Ollama service not running",
+                    installationInstructions = "Start Ollama: ollama serve (or install: curl -fsSL https://ollama.com/install.sh | sh)",
+                    correlationId
+                });
+            }
+
+            var models = await ollamaDetectionService.GetModelsAsync(cancellationToken);
+
+            Log.Information(
+                "Ollama models fetched: {ModelsCount} models, CorrelationId: {CorrelationId}",
+                models.Count,
+                correlationId);
+
+            return Ok(new
+            {
+                success = true,
+                models = models.Select(m => new
+                {
+                    name = m.Name,
+                    size = m.Size,
+                    sizeFormatted = FormatBytes(m.Size),
+                    modified = m.ModifiedAt,
+                    modifiedFormatted = m.ModifiedAt != null 
+                        ? DateTime.Parse(m.ModifiedAt).ToString("yyyy-MM-dd HH:mm:ss")
+                        : null
+                }).ToList(),
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error fetching Ollama models, CorrelationId: {CorrelationId}", correlationId);
+            return StatusCode(503, new
+            {
+                success = false,
+                message = $"Error fetching Ollama models: {ex.Message}",
+                installationInstructions = "Install Ollama: curl -fsSL https://ollama.com/install.sh | sh",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Validate Ollama service availability
+    /// </summary>
+    [HttpPost("ollama/validate")]
+    public async Task<IActionResult> ValidateOllama(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            var ollamaDetectionService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.OllamaDetectionService)) 
+                as Aura.Core.Services.Providers.OllamaDetectionService;
+
+            if (ollamaDetectionService == null)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    message = "Ollama detection service not initialized",
+                    isAvailable = false,
+                    modelsCount = 0,
+                    models = Array.Empty<object>(),
+                    correlationId
+                });
+            }
+
+            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken);
+            var models = status.IsRunning 
+                ? await ollamaDetectionService.GetModelsAsync(cancellationToken)
+                : new List<Aura.Core.Services.Providers.OllamaModel>();
+
+            Log.Information(
+                "Ollama validation: Available={Available}, Models={ModelsCount}, CorrelationId: {CorrelationId}",
+                status.IsRunning,
+                models.Count,
+                correlationId);
+
+            return Ok(new
+            {
+                success = status.IsRunning,
+                message = status.IsRunning 
+                    ? $"Ollama is available with {models.Count} models"
+                    : status.ErrorMessage ?? "Ollama service not available",
+                isAvailable = status.IsRunning,
+                version = status.Version,
+                modelsCount = models.Count,
+                models = models.Select(m => new
+                {
+                    name = m.Name,
+                    size = m.Size,
+                    sizeFormatted = FormatBytes(m.Size),
+                    modified = m.ModifiedAt
+                }).ToList(),
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error validating Ollama, CorrelationId: {CorrelationId}", correlationId);
+            return Ok(new
+            {
+                success = false,
+                message = $"Error validating Ollama: {ex.Message}",
+                isAvailable = false,
+                modelsCount = 0,
+                models = Array.Empty<object>(),
+                correlationId
+            });
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
 }
 
 /// <summary>
