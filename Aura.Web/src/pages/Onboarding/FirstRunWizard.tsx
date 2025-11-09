@@ -2,18 +2,23 @@ import {
   makeStyles,
   tokens,
   Title2,
+  Title3,
   Text,
   Button,
   Card,
   Spinner,
+  Field,
+  Input,
 } from '@fluentui/react-components';
 import {
   Checkmark24Regular,
   ChevronRight24Regular,
   ChevronLeft24Regular,
   Warning24Regular,
+  ArrowClockwise24Regular,
+  FolderOpen24Regular,
 } from '@fluentui/react-icons';
-import { useEffect, useReducer, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../../components/Notifications/Toasts';
 import { FFmpegDependencyCard } from '../../components/Onboarding/FFmpegDependencyCard';
@@ -33,6 +38,9 @@ import {
   clearWizardStateFromStorage,
 } from '../../state/onboarding';
 import { ApiKeySetupStep } from './ApiKeySetupStep';
+import type { FFmpegStatus } from '../../services/api/ffmpegClient';
+import { dependencyChecker } from '../../services/dependencyChecker';
+import { pickFolder } from '../../utils/pathUtils';
 
 const useStyles = makeStyles({
   container: {
@@ -103,6 +111,34 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalM,
     marginTop: tokens.spacingVerticalL,
   },
+  manualAttachCard: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalL,
+  },
+  manualHeader: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: tokens.spacingVerticalXS,
+  },
+  pathInputRow: {
+    display: 'flex',
+    flexDirection: 'row' as const,
+    gap: tokens.spacingHorizontalS,
+    alignItems: 'center',
+  },
+  manualActions: {
+    display: 'flex',
+    flexDirection: 'row' as const,
+    gap: tokens.spacingHorizontalS,
+    flexWrap: 'wrap' as const,
+  },
+  statusSummary: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: tokens.spacingVerticalXS,
+  },
 });
 
 export interface FirstRunWizardProps {
@@ -119,6 +155,28 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   // FFmpeg status state
   const [ffmpegReady, setFfmpegReady] = useState(false);
   const [ffmpegPath, setFfmpegPath] = useState<string | null>(null);
+  const [ffmpegStatus, setFfmpegStatus] = useState<FFmpegStatus | null>(null);
+  const [ffmpegPathInput, setFfmpegPathInput] = useState('');
+  const [isBrowsingForFfmpeg, setIsBrowsingForFfmpeg] = useState(false);
+  const [isValidatingFfmpegPath, setIsValidatingFfmpegPath] = useState(false);
+  const [isRescanningFfmpeg, setIsRescanningFfmpeg] = useState(false);
+  const [ffmpegRefreshSignal, setFfmpegRefreshSignal] = useState(0);
+  const pendingRescanRef = useRef(false);
+  const [ffmpegManualOverride, setFfmpegManualOverride] = useState(false);
+  const defaultFfmpegPlaceholder = useMemo(() => {
+    if (typeof navigator === 'undefined' || !navigator.platform) {
+      return '/usr/bin/ffmpeg';
+    }
+
+    const platform = navigator.platform.toLowerCase();
+    if (platform.includes('win')) {
+      return 'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe';
+    }
+    if (platform.includes('mac')) {
+      return '/opt/homebrew/bin/ffmpeg';
+    }
+    return '/usr/bin/ffmpeg';
+  }, []);
 
   // Provider validation state
   const [hasAtLeastOneProvider, setHasAtLeastOneProvider] = useState(false);
@@ -386,6 +444,168 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     return null;
   };
 
+  const handleFfmpegStatusUpdate = useCallback(
+    (status: FFmpegStatus | null) => {
+      setFfmpegStatus(status);
+
+      const isReady = Boolean(status?.installed && status?.valid);
+      if (isReady) {
+        setFfmpegManualOverride(false);
+        setFfmpegReady(true);
+        dispatch({ type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
+      } else if (!ffmpegManualOverride) {
+        setFfmpegReady(false);
+      }
+
+      if (isReady && status?.path) {
+        setFfmpegPath((previousPath) => {
+          if (status.path && previousPath !== status.path) {
+            setFfmpegPathInput((currentInput) =>
+              currentInput.trim().length === 0 || currentInput === previousPath ? status.path! : currentInput
+            );
+          }
+          return status.path;
+        });
+      }
+
+      if (pendingRescanRef.current) {
+        pendingRescanRef.current = false;
+        setIsRescanningFfmpeg(false);
+
+        if (isReady) {
+          showSuccessToast({
+            title: 'FFmpeg Detected',
+            message: `FFmpeg is ready${status?.path ? ` at ${status.path}` : ''}.`,
+          });
+        } else {
+          showFailureToast({
+            title: 'FFmpeg Not Found',
+            message:
+              status?.error ||
+              'Aura could not detect FFmpeg. Provide the executable path below or install the managed version.',
+          });
+        }
+      }
+    },
+    [dispatch, ffmpegManualOverride, showFailureToast, showSuccessToast]
+  );
+
+  const handleRescanFfmpeg = () => {
+    if (isRescanningFfmpeg) {
+      return;
+    }
+    pendingRescanRef.current = true;
+    setIsRescanningFfmpeg(true);
+    setFfmpegRefreshSignal((prev) => prev + 1);
+  };
+
+  const handleBrowseForFfmpeg = useCallback(async () => {
+    setIsBrowsingForFfmpeg(true);
+    try {
+      let selectedPath: string | null = null;
+
+      if (window.electron?.selectFolder) {
+        selectedPath = await window.electron.selectFolder();
+      }
+
+      if (!selectedPath) {
+        selectedPath = await pickFolder();
+      }
+
+      if (selectedPath) {
+        let normalized = selectedPath.trim();
+        if (normalized.length === 0) {
+          return;
+        }
+
+        normalized = normalized.replace(/[\\/]+$/, '');
+        const usesWindowsSeparators = normalized.includes('\\') && !normalized.includes('/');
+        const separator = usesWindowsSeparators ? '\\' : '/';
+        const executableName = usesWindowsSeparators ? 'ffmpeg.exe' : 'ffmpeg';
+        const lower = normalized.toLowerCase();
+
+        if (lower.endsWith(executableName)) {
+          // already points to executable
+        } else if (lower.endsWith(`${separator}bin`.toLowerCase())) {
+          normalized = `${normalized}${separator}${executableName}`;
+        } else if (lower.endsWith(`${separator}ffmpeg`)) {
+          normalized = `${normalized}${separator}bin${separator}${executableName}`;
+        } else {
+          normalized = `${normalized}${separator}${executableName}`;
+        }
+
+        setFfmpegReady(false);
+        setFfmpegManualOverride(false);
+        setFfmpegPathInput(normalized);
+      }
+    } catch (error) {
+      console.error('Failed to browse for FFmpeg:', error);
+      showFailureToast({
+        title: 'Browse Failed',
+        message: 'Unable to open the system file picker. Enter the FFmpeg path manually instead.',
+      });
+    } finally {
+      setIsBrowsingForFfmpeg(false);
+    }
+  }, [showFailureToast]);
+
+  const handleValidateFfmpegPath = useCallback(async () => {
+    const trimmedPath = ffmpegPathInput.trim();
+    if (trimmedPath.length === 0) {
+      showFailureToast({
+        title: 'Path Required',
+        message: 'Enter the full path to your FFmpeg executable before validating.',
+      });
+      return;
+    }
+
+    setIsValidatingFfmpegPath(true);
+    try {
+      const result = await dependencyChecker.validatePath('ffmpeg', trimmedPath);
+      if (result.valid) {
+        const resolvedPath = result.path ?? trimmedPath;
+        setFfmpegReady(true);
+        setFfmpegPath(resolvedPath);
+        setFfmpegPathInput(resolvedPath);
+        setFfmpegManualOverride(true);
+        dispatch({ type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
+        setFfmpegStatus((prev) =>
+          prev
+            ? {
+                ...prev,
+                installed: true,
+                valid: true,
+                path: resolvedPath,
+                version: result.version ?? prev.version,
+                error: null,
+              }
+            : prev
+        );
+        showSuccessToast({
+          title: 'FFmpeg Attached',
+          message: `Aura will use FFmpeg at ${resolvedPath}.`,
+        });
+        setFfmpegRefreshSignal((prev) => prev + 1);
+      } else {
+        setFfmpegReady(false);
+        showFailureToast({
+          title: 'Invalid FFmpeg Path',
+          message:
+            result.error ||
+            'The selected location does not contain a valid FFmpeg executable. Select the binary and try again.',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to validate FFmpeg path:', error);
+      showFailureToast({
+        title: 'Validation Error',
+        message: error instanceof Error ? error.message : 'Unexpected error validating FFmpeg path.',
+      });
+    } finally {
+      setIsValidatingFfmpegPath(false);
+    }
+  }, [dispatch, ffmpegPathInput, showFailureToast, showSuccessToast]);
+
   const renderStep0 = () => (
     <WelcomeScreen
       onGetStarted={handleNext}
@@ -426,20 +646,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       <FFmpegDependencyCard
         autoCheck={true}
         autoExpandDetails={true}
-        onInstallComplete={async () => {
-          setFfmpegReady(true);
-          dispatch({ type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
-
-          // Also check with new setup API to get path
-          try {
-            const ffmpegCheck = await setupApi.checkFFmpeg();
-            if (ffmpegCheck.isInstalled && ffmpegCheck.path) {
-              setFfmpegPath(ffmpegCheck.path);
-            }
-          } catch (error) {
-            console.warn('Could not get FFmpeg path from setup API:', error);
-          }
-        }}
+        refreshSignal={ffmpegRefreshSignal}
+        onInstallComplete={handleFfmpegStatusUpdate}
+        onStatusChange={handleFfmpegStatusUpdate}
       />
 
       {!ffmpegReady && (
@@ -476,6 +685,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
                   )
                 ) {
                   setFfmpegReady(true);
+                  setFfmpegManualOverride(true);
                   showSuccessToast({
                     title: 'FFmpeg Skipped',
                     message:
@@ -496,9 +706,9 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   const renderStep2FFmpeg = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
       <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
-        <Title2>FFmpeg Installation</Title2>
+        <Title2>FFmpeg Setup</Title2>
         <Text style={{ display: 'block', marginTop: tokens.spacingVerticalM }}>
-          FFmpeg is required for video generation. We&apos;ll check if it&apos;s installed and help you install it if needed.
+          FFmpeg powers Aura&apos;s rendering pipeline. Install the managed build or point Aura to an existing installation.
         </Text>
         <Card
           style={{
@@ -521,21 +731,80 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       <FFmpegDependencyCard
         autoCheck={true}
         autoExpandDetails={true}
-        onInstallComplete={async () => {
-          setFfmpegReady(true);
-          dispatch({ type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
-
-          // Also check with new setup API to get path
-          try {
-            const ffmpegCheck = await setupApi.checkFFmpeg();
-            if (ffmpegCheck.isInstalled && ffmpegCheck.path) {
-              setFfmpegPath(ffmpegCheck.path);
-            }
-          } catch (error) {
-            console.warn('Could not get FFmpeg path from setup API:', error);
-          }
-        }}
+        refreshSignal={ffmpegRefreshSignal}
+        onInstallComplete={handleFfmpegStatusUpdate}
+        onStatusChange={handleFfmpegStatusUpdate}
       />
+
+      <Card className={styles.manualAttachCard}>
+        <div className={styles.manualHeader}>
+          <Title3>Use an Existing FFmpeg</Title3>
+          <Text size={200}>
+            Already have FFmpeg installed? Provide the executable path so Aura can use it right away.
+          </Text>
+        </div>
+
+        <Field label="FFmpeg executable path">
+          <div className={styles.pathInputRow}>
+            <Input
+              value={ffmpegPathInput}
+              onChange={(event) => {
+                const value = event.target.value;
+                setFfmpegPathInput(value);
+                if (ffmpegReady && value.trim() !== (ffmpegPath ?? '')) {
+                  setFfmpegReady(false);
+                }
+                if (ffmpegManualOverride && value.trim() !== (ffmpegPath ?? '')) {
+                  setFfmpegManualOverride(false);
+                }
+              }}
+              placeholder={defaultFfmpegPlaceholder}
+            />
+            <Button
+              appearance="secondary"
+              icon={<FolderOpen24Regular />}
+              onClick={handleBrowseForFfmpeg}
+              disabled={isBrowsingForFfmpeg}
+            >
+              {isBrowsingForFfmpeg ? 'Browsing...' : 'Browse'}
+            </Button>
+          </div>
+        </Field>
+
+        <div className={styles.manualActions}>
+          <Button
+            appearance="primary"
+            onClick={handleValidateFfmpegPath}
+            disabled={isValidatingFfmpegPath || ffmpegPathInput.trim().length === 0}
+          >
+            {isValidatingFfmpegPath ? 'Validating...' : 'Validate Path'}
+          </Button>
+          <Button
+            appearance="secondary"
+            icon={<ArrowClockwise24Regular />}
+            onClick={handleRescanFfmpeg}
+            disabled={isRescanningFfmpeg}
+          >
+            {isRescanningFfmpeg ? 'Re-scanning...' : 'Re-scan'}
+          </Button>
+        </div>
+
+        <div className={styles.statusSummary}>
+          {ffmpegReady && ffmpegPath ? (
+            <Text size={200} weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+              <Checkmark24Regular /> Using FFmpeg at {ffmpegPath}
+            </Text>
+          ) : (
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+              {ffmpegStatus?.error
+                ? `Last check: ${ffmpegStatus.error}`
+                : ffmpegStatus?.path
+                ? `Last detected path: ${ffmpegStatus.path}`
+                : 'FFmpeg not detected yet. Validate an executable path or install the managed build.'}
+            </Text>
+          )}
+        </div>
+      </Card>
 
       {!ffmpegReady && (
         <Card
@@ -549,39 +818,11 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             weight="semibold"
             style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
           >
-            <Warning24Regular /> Want to install FFmpeg manually?
+            <Warning24Regular /> FFmpeg is required before you can render videos
           </Text>
           <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
-            If you prefer to install FFmpeg yourself or already have it installed, you can skip this
-            step. However, video generation will not work until FFmpeg is properly installed.
+            Install the managed build or validate the path to an existing installation to continue. You can always re-run this step later from Settings.
           </Text>
-          <div
-            style={{
-              marginTop: tokens.spacingVerticalM,
-              display: 'flex',
-              gap: tokens.spacingHorizontalS,
-            }}
-          >
-            <Button
-              appearance="secondary"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    'Are you sure you want to skip FFmpeg installation? Video generation will not work without FFmpeg. You can install it later from Settings.'
-                  )
-                ) {
-                  setFfmpegReady(true);
-                  showSuccessToast({
-                    title: 'FFmpeg Skipped',
-                    message:
-                      'Remember to install FFmpeg before creating videos. You can do this from Settings.',
-                  });
-                }
-              }}
-            >
-              Skip for Now
-            </Button>
-          </div>
         </Card>
       )}
     </div>

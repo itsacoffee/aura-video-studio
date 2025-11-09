@@ -13,9 +13,9 @@ import {
   Checkmark24Regular,
   Warning24Regular,
   ArrowDownload24Regular,
-  Settings24Regular,
+  ArrowClockwise24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ffmpegClient, type FFmpegStatus } from '../../services/api/ffmpegClient';
 
 const useStyles = makeStyles({
@@ -55,6 +55,7 @@ const useStyles = makeStyles({
     display: 'flex',
     gap: tokens.spacingHorizontalS,
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   detailsSection: {
     marginTop: tokens.spacingVerticalM,
@@ -73,15 +74,19 @@ const useStyles = makeStyles({
 });
 
 export interface FFmpegDependencyCardProps {
-  onInstallComplete?: () => void;
+  onInstallComplete?: (status: FFmpegStatus) => void;
+  onStatusChange?: (status: FFmpegStatus | null) => void;
   autoCheck?: boolean;
   autoExpandDetails?: boolean;
+  refreshSignal?: number;
 }
 
 export function FFmpegDependencyCard({
   onInstallComplete,
+  onStatusChange,
   autoCheck = true,
   autoExpandDetails = false,
+  refreshSignal,
 }: FFmpegDependencyCardProps) {
   const styles = useStyles();
   const [status, setStatus] = useState<FFmpegStatus | null>(null);
@@ -90,17 +95,20 @@ export function FFmpegDependencyCard({
   const [installProgress, setInstallProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(autoExpandDetails);
+  const lastRefreshSignal = useRef<number | undefined>(refreshSignal);
 
-  const checkStatus = async () => {
+  const checkStatus = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const ffmpegStatus = await ffmpegClient.getStatus();
       setStatus(ffmpegStatus);
 
-      if (ffmpegStatus.installed && ffmpegStatus.valid && ffmpegStatus.version) {
-        onInstallComplete?.();
-      }
+        if (ffmpegStatus.installed && ffmpegStatus.valid) {
+          onInstallComplete?.(ffmpegStatus);
+        }
+
+        onStatusChange?.(ffmpegStatus);
     } catch (err: unknown) {
       let errorMessage = 'Failed to check FFmpeg status';
 
@@ -131,26 +139,38 @@ export function FFmpegDependencyCard({
         errorMessage = err.message;
       }
 
-      setError(errorMessage);
+        setError(errorMessage);
+        onStatusChange?.(null);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onInstallComplete, onStatusChange]);
 
   useEffect(() => {
     if (autoCheck) {
       void checkStatus();
     }
-    // Intentionally only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoCheck]);
+  }, [autoCheck, checkStatus]);
 
   // Auto-expand details if FFmpeg is not ready and autoExpandDetails is true
   useEffect(() => {
-    if (autoExpandDetails && status && (!status.installed || !status.valid || !status.version)) {
+    if (autoExpandDetails && status && (!status.installed || !status.valid)) {
       setShowDetails(true);
     }
   }, [status, autoExpandDetails]);
+
+  useEffect(() => {
+    if (refreshSignal === undefined) {
+      return;
+    }
+
+    if (lastRefreshSignal.current === refreshSignal) {
+      return;
+    }
+
+    lastRefreshSignal.current = refreshSignal;
+    void checkStatus();
+  }, [refreshSignal, checkStatus]);
 
   const handleInstall = async () => {
     setIsInstalling(true);
@@ -215,7 +235,7 @@ export function FFmpegDependencyCard({
       return <Spinner size="medium" className={styles.statusIcon} />;
     }
 
-    if (!status || !status.installed || !status.valid || !status.version) {
+    if (!status || !status.installed || !status.valid) {
       return (
         <Warning24Regular
           className={styles.statusIcon}
@@ -245,7 +265,7 @@ export function FFmpegDependencyCard({
       return <Badge appearance="outline">Checking...</Badge>;
     }
 
-    if (!status || !status.installed || !status.valid || !status.version) {
+    if (!status || !status.installed || !status.valid) {
       return (
         <Badge appearance="filled" color="warning">
           Not Ready
@@ -260,7 +280,7 @@ export function FFmpegDependencyCard({
     );
   };
 
-  const isReady = status?.installed && status?.valid && status?.version !== null;
+  const isReady = Boolean(status?.installed && status?.valid);
 
   return (
     <Card className={styles.card}>
@@ -283,7 +303,19 @@ export function FFmpegDependencyCard({
             </Text>
           </div>
         </div>
-        <div className={styles.actionsContainer}>{getStatusBadge()}</div>
+          <div className={styles.actionsContainer}>
+            {getStatusBadge()}
+            {!isReady && (
+              <Button
+                appearance="primary"
+                icon={<ArrowDownload24Regular />}
+                onClick={handleInstall}
+                disabled={isInstalling || isLoading}
+              >
+                Install Managed FFmpeg
+              </Button>
+            )}
+          </div>
       </div>
 
       {isInstalling && installProgress !== undefined && (
@@ -369,14 +401,6 @@ export function FFmpegDependencyCard({
               )}
               <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' }}>
                 <Button
-                  appearance="primary"
-                  icon={<ArrowDownload24Regular />}
-                  onClick={handleInstall}
-                  disabled={isInstalling || isLoading}
-                >
-                  Install Managed FFmpeg
-                </Button>
-                <Button
                   appearance="secondary"
                   onClick={() => {
                     window.open('/downloads', '_blank');
@@ -410,11 +434,11 @@ export function FFmpegDependencyCard({
           <Button
             appearance="subtle"
             size="small"
-            icon={<Settings24Regular />}
+              icon={<ArrowClockwise24Regular />}
             onClick={checkStatus}
             disabled={isInstalling || isLoading}
           >
-            Refresh Status
+              Re-scan
           </Button>
         )}
       </div>
