@@ -256,6 +256,10 @@ builder.Services.Configure<Aura.Core.Configuration.CircuitBreakerSettings>(
 builder.Services.AddSingleton(sp => 
     sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Configuration.CircuitBreakerSettings>>().Value);
 
+// Configure OpenAI provider options from appsettings
+builder.Services.Configure<Aura.Core.Configuration.OpenAIConfiguration>(
+    builder.Configuration.GetSection("Providers:OpenAI"));
+
 // Register FFmpeg locator for centralized FFmpeg path resolution
 builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
 {
