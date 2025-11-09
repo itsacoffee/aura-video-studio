@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Artifacts;
+using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Models.Events;
 using Aura.Core.Providers;
@@ -22,7 +23,7 @@ public class JobRunner
     private readonly ILogger<JobRunner> _logger;
     private readonly ArtifactManager _artifactManager;
     private readonly VideoOrchestrator _orchestrator;
-    private readonly Aura.Core.Hardware.HardwareDetector _hardwareDetector;
+    private readonly IHardwareDetector _hardwareDetector;
     private readonly Services.CheckpointManager? _checkpointManager;
     private readonly Services.CleanupService? _cleanupService;
     private readonly RunTelemetryCollector _telemetryCollector;
@@ -38,7 +39,7 @@ public class JobRunner
         ILogger<JobRunner> logger,
         ArtifactManager artifactManager,
         VideoOrchestrator orchestrator,
-        Aura.Core.Hardware.HardwareDetector hardwareDetector,
+        IHardwareDetector hardwareDetector,
         RunTelemetryCollector telemetryCollector,
         Services.CheckpointManager? checkpointManager = null,
         Services.CleanupService? cleanupService = null,

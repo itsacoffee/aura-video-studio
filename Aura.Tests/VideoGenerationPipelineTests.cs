@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Aura.Core.Artifacts;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
+using Aura.Tests.TestSupport;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
