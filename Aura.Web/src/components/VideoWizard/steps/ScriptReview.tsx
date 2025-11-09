@@ -14,6 +14,14 @@ import {
   Divider,
   MessageBar,
   MessageBarBody,
+  Dialog,
+  DialogSurface,
+  DialogTitle,
+  DialogBody,
+  DialogActions,
+  DialogContent,
+  Slider,
+  Label,
 } from '@fluentui/react-components';
 import {
   Sparkle24Regular,
@@ -24,6 +32,9 @@ import {
   DocumentText24Regular,
   ArrowDownload24Regular,
   Speaker224Regular,
+  Delete24Regular,
+  History24Regular,
+  Save24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC } from 'react';
@@ -222,14 +233,14 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
     Record<string, { type: 'success' | 'error'; message: string }>
   >({});
   const [savingScenes, setSavingScenes] = useState<Record<number, boolean>>({});
-  const [showEnhancement] = useState(false);
-  const [toneAdjustment] = useState(0);
-  const [pacingAdjustment] = useState(0);
-  const [isEnhancing] = useState(false);
-  const [isRegeneratingAll] = useState(false);
-  const [showVersionHistory] = useState(false);
-  const [versionHistory] = useState<ScriptVersionHistoryResponse | null>(null);
-  const [isLoadingVersions] = useState(false);
+  const [showEnhancement, setShowEnhancement] = useState(false);
+  const [toneAdjustment, setToneAdjustment] = useState(0);
+  const [pacingAdjustment, setPacingAdjustment] = useState(0);
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isRegeneratingAll, setIsRegeneratingAll] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [versionHistory, setVersionHistory] = useState<ScriptVersionHistoryResponse | null>(null);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
   const autoSaveTimeouts = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
@@ -469,6 +480,7 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
   const handleEnhanceScript = async () => {
     if (!generatedScript) return;
 
+    setIsEnhancing(true);
     try {
       const response = await enhanceScript(generatedScript.scriptId, {
         goal: 'Enhance script based on adjustments',
@@ -495,12 +507,15 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
       });
     } catch (error) {
       console.error('Failed to enhance script:', error);
+    } finally {
+      setIsEnhancing(false);
     }
   };
 
   const handleRegenerateAll = async () => {
     if (!generatedScript) return;
 
+    setIsRegeneratingAll(true);
     try {
       const response = await regenerateAllScenes(generatedScript.scriptId);
 
@@ -523,6 +538,8 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
       });
     } catch (error) {
       console.error('Failed to regenerate all scenes:', error);
+    } finally {
+      setIsRegeneratingAll(false);
     }
   };
 
@@ -557,11 +574,14 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
   const loadVersionHistory = async () => {
     if (!generatedScript) return;
 
+    setIsLoadingVersions(true);
     try {
       const history = await getVersionHistory(generatedScript.scriptId);
-      console.log('Version history loaded:', history);
+      setVersionHistory(history);
     } catch (error) {
       console.error('Failed to load version history:', error);
+    } finally {
+      setIsLoadingVersions(false);
     }
   };
 
@@ -594,32 +614,6 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
       console.error('Failed to revert to version:', error);
     }
   };
-
-  useEffect(() => {
-    void handleEnhanceScript;
-    void handleRegenerateAll;
-    void handleDeleteScene;
-    void handleRevertToVersion;
-    void savingScenes;
-    void showEnhancement;
-    void isEnhancing;
-    void isRegeneratingAll;
-    void showVersionHistory;
-    void versionHistory;
-    void isLoadingVersions;
-  }, [
-    handleEnhanceScript,
-    handleRegenerateAll,
-    handleDeleteScene,
-    handleRevertToVersion,
-    savingScenes,
-    showEnhancement,
-    isEnhancing,
-    isRegeneratingAll,
-    showVersionHistory,
-    versionHistory,
-    isLoadingVersions,
-  ]);
 
   const isSceneDurationAppropriate = (scene: ScriptSceneDto): 'short' | 'good' | 'long' => {
     const wordCount = scene.narration.split(/\s+/).filter((word) => word.length > 0).length;
@@ -850,6 +844,166 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
         </div>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      <div className={styles.bulkActions}>
+        <Tooltip content="Regenerate all scenes in the script" relationship="label">
+          <Button
+            icon={<ArrowClockwise24Regular />}
+            onClick={handleRegenerateAll}
+            disabled={isRegeneratingAll}
+          >
+            {isRegeneratingAll ? 'Regenerating All...' : 'Regenerate All'}
+          </Button>
+        </Tooltip>
+        <Tooltip content="Adjust tone and pacing" relationship="label">
+          <Button
+            appearance="subtle"
+            icon={<Sparkle24Regular />}
+            onClick={() => setShowEnhancement(!showEnhancement)}
+          >
+            Enhance Script
+          </Button>
+        </Tooltip>
+        <Tooltip content="View version history" relationship="label">
+          <Button
+            appearance="subtle"
+            icon={<History24Regular />}
+            onClick={() => {
+              setShowVersionHistory(true);
+              void loadVersionHistory();
+            }}
+          >
+            Version History
+          </Button>
+        </Tooltip>
+      </div>
+
+      {/* Enhancement Panel */}
+      {showEnhancement && (
+        <Card className={styles.enhancementPanel}>
+          <Title3>Script Enhancement</Title3>
+          <Text>Adjust tone and pacing to refine your script</Text>
+
+          <div className={styles.sliderGroup}>
+            <Label>Tone Adjustment</Label>
+            <Text size={200}>
+              {toneAdjustment < 0 && 'More Calm'}
+              {toneAdjustment === 0 && 'Neutral'}
+              {toneAdjustment > 0 && 'More Energetic'}
+            </Text>
+            <Slider
+              min={-1}
+              max={1}
+              step={0.1}
+              value={toneAdjustment}
+              onChange={(_, data) => setToneAdjustment(data.value)}
+            />
+          </div>
+
+          <div className={styles.sliderGroup}>
+            <Label>Pacing Adjustment</Label>
+            <Text size={200}>
+              {pacingAdjustment < 0 && 'Slower'}
+              {pacingAdjustment === 0 && 'Neutral'}
+              {pacingAdjustment > 0 && 'Faster'}
+            </Text>
+            <Slider
+              min={-1}
+              max={1}
+              step={0.1}
+              value={pacingAdjustment}
+              onChange={(_, data) => setPacingAdjustment(data.value)}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+            <Button
+              appearance="primary"
+              onClick={handleEnhanceScript}
+              disabled={isEnhancing || (toneAdjustment === 0 && pacingAdjustment === 0)}
+            >
+              {isEnhancing ? 'Applying...' : 'Apply Enhancement'}
+            </Button>
+            <Button
+              appearance="subtle"
+              onClick={() => {
+                setToneAdjustment(0);
+                setPacingAdjustment(0);
+              }}
+            >
+              Reset
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Version History Dialog */}
+      <Dialog
+        open={showVersionHistory}
+        onOpenChange={(_, data) => setShowVersionHistory(data.open)}
+      >
+        <DialogSurface>
+          <DialogTitle>Version History</DialogTitle>
+          <DialogBody>
+            <DialogContent>
+              {isLoadingVersions && (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    padding: tokens.spacingVerticalL,
+                  }}
+                >
+                  <Spinner size="medium" />
+                </div>
+              )}
+              {!isLoadingVersions && versionHistory && versionHistory.versions.length === 0 && (
+                <Text>No version history available yet.</Text>
+              )}
+              {!isLoadingVersions && versionHistory && versionHistory.versions.length > 0 && (
+                <div className={styles.versionList}>
+                  {versionHistory.versions.map((version) => (
+                    <div key={version.versionId} className={styles.versionItem}>
+                      <div>
+                        <Text weight="semibold">Version {version.versionNumber}</Text>
+                        <Text
+                          size={200}
+                          style={{ display: 'block', color: tokens.colorNeutralForeground3 }}
+                        >
+                          {new Date(version.createdAt).toLocaleString()}
+                        </Text>
+                        {version.notes && (
+                          <Text
+                            size={200}
+                            style={{ display: 'block', marginTop: tokens.spacingVerticalXXS }}
+                          >
+                            {version.notes}
+                          </Text>
+                        )}
+                      </div>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          void handleRevertToVersion(version.versionId);
+                          setShowVersionHistory(false);
+                        }}
+                      >
+                        Revert
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DialogContent>
+          </DialogBody>
+          <DialogActions>
+            <Button appearance="secondary" onClick={() => setShowVersionHistory(false)}>
+              Close
+            </Button>
+          </DialogActions>
+        </DialogSurface>
+      </Dialog>
+
       <div className={styles.scenesContainer}>
         {generatedScript.scenes.map((scene) => {
           const durationStatus = isSceneDurationAppropriate(scene);
@@ -872,6 +1026,13 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
                       Too Long
                     </Badge>
                   )}
+                  {savingScenes[scene.number] && (
+                    <div className={styles.savingIndicator}>
+                      <Spinner size="tiny" />
+                      <Save24Regular />
+                      <Text size={200}>Saving...</Text>
+                    </div>
+                  )}
                 </div>
                 <div className={styles.sceneActions}>
                   <Tooltip content="Regenerate this scene" relationship="label">
@@ -884,6 +1045,16 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
                       {regeneratingScenes[scene.number] ? 'Regenerating...' : 'Regenerate'}
                     </Button>
                   </Tooltip>
+                  {generatedScript.scenes.length > 1 && (
+                    <Tooltip content="Delete this scene" relationship="label">
+                      <Button
+                        size="small"
+                        appearance="subtle"
+                        icon={<Delete24Regular />}
+                        onClick={() => void handleDeleteScene(scene.number)}
+                      />
+                    </Tooltip>
+                  )}
                 </div>
               </div>
 
