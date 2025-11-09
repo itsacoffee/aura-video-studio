@@ -72,6 +72,11 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<ConfigurationEntity> Configurations { get; set; } = null!;
 
+    /// <summary>
+    /// System-wide configuration and setup status
+    /// </summary>
+    public DbSet<SystemConfigurationEntity> SystemConfigurations { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -217,6 +222,27 @@ public class AuraDbContext : DbContext
             entity.HasIndex(e => e.UpdatedAt);
             entity.HasIndex(e => new { e.Category, e.IsActive });
             entity.HasIndex(e => new { e.Category, e.UpdatedAt });
+        });
+
+        // Configure SystemConfigurationEntity
+        modelBuilder.Entity<SystemConfigurationEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            // Seed default record
+            entity.HasData(new SystemConfigurationEntity
+            {
+                Id = 1,
+                IsSetupComplete = false,
+                FFmpegPath = null,
+                OutputDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "AuraVideoStudio",
+                    "Output"
+                ),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
         });
     }
 }

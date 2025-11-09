@@ -1180,6 +1180,9 @@ builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyInstaller>(sp =
     return new Aura.Core.Services.Setup.DependencyInstaller(logger, httpClient);
 });
 
+// Register FFmpeg detection service with caching
+builder.Services.AddSingleton<Aura.Core.Services.Setup.IFFmpegDetectionService, Aura.Core.Services.Setup.FFmpegDetectionService>();
+
 builder.Services.AddSingleton<Aura.Api.Services.SseService>();
 builder.Services.AddSingleton<Aura.Api.Services.ProgressService>();
 
