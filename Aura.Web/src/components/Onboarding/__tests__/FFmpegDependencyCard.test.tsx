@@ -1,15 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, beforeEach, vi, it } from 'vitest';
+import type { FFmpegStatus } from '../../../services/api/ffmpegClient';
+import { ffmpegClient } from '../../../services/api/ffmpegClient';
+import { FFmpegDependencyCard } from '../FFmpegDependencyCard';
+
 vi.mock('../../../services/api/ffmpegClient', () => ({
   ffmpegClient: {
     getStatus: vi.fn(),
     install: vi.fn(),
   },
 }));
-
-import { FFmpegDependencyCard } from '../FFmpegDependencyCard';
-import type { FFmpegStatus } from '../../../services/api/ffmpegClient';
-import { ffmpegClient } from '../../../services/api/ffmpegClient';
 
 const createStatus = (overrides: Partial<FFmpegStatus> = {}): FFmpegStatus => ({
   installed: false,
