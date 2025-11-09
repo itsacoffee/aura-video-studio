@@ -50,7 +50,6 @@ import RagDocumentManager from './pages/RAG/RagDocumentManager';
 import { RecentJobsPage } from './pages/RecentJobsPage';
 import { RenderPage } from './pages/RenderPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { SetupWizard } from './pages/Setup/SetupWizard';
 import CustomTemplatesPage from './pages/Templates/CustomTemplatesPage';
 import TemplatesLibrary from './pages/Templates/TemplatesLibrary';
 import ValidationPage from './pages/Validation/ValidationPage';
@@ -463,14 +462,13 @@ function App() {
                   <ErrorBoundary>
                     <ConfigurationGate>
                       <Routes>
-                        {/* First-run onboarding route - for re-entry via settings */}
-                        <Route path="/onboarding" element={<FirstRunWizard />} />
+                        {/* Setup wizard - unified entry point for first-run and reconfiguration */}
+                        <Route path="/setup" element={<FirstRunWizard />} />
+                        {/* Legacy route redirect for backward compatibility */}
+                        <Route path="/onboarding" element={<Navigate to="/setup" replace />} />
 
                         {/* Main routes */}
                         <Route path="/" element={<WelcomePage />} />
-
-                        {/* All other routes */}
-                        <Route path="/setup" element={<SetupWizard />} />
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/ideation" element={<IdeationDashboard />} />
                         <Route path="/trending" element={<TrendingTopicsExplorer />} />
