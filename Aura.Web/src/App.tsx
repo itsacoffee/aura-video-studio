@@ -143,15 +143,35 @@ function App() {
         try {
           const systemStatus = await setupApi.getSystemStatus();
           if (!systemStatus.isComplete) {
+            // Backend says setup is not complete - clear any stale localStorage flags
+            localStorage.removeItem('hasCompletedFirstRun');
+            localStorage.removeItem('hasSeenOnboarding');
+            
             setShouldShowOnboarding(true);
             setIsCheckingFirstRun(false);
             return;
+          } else {
+            // Backend says setup IS complete - ensure localStorage is synced
+            localStorage.setItem('hasCompletedFirstRun', 'true');
           }
         } catch (error) {
           console.warn(
             'Could not check system setup status, falling back to user wizard status:',
             error
           );
+          
+          // If backend check fails, fall back to localStorage but be cautious
+          // If we can't reach the backend, don't force the wizard unnecessarily
+          const localStatus =
+            localStorage.getItem('hasCompletedFirstRun') === 'true' ||
+            localStorage.getItem('hasSeenOnboarding') === 'true';
+          
+          if (!localStatus) {
+            // No local completion flag and can't reach backend - assume first run
+            setShouldShowOnboarding(true);
+            setIsCheckingFirstRun(false);
+            return;
+          }
         }
 
         // Check if user has completed first-run wizard (secondary check)

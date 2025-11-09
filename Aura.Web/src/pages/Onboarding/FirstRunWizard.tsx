@@ -126,11 +126,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   // Notifications hook
   const { showSuccessToast, showFailureToast } = useNotifications();
 
-  // Simplified mandatory setup flow - 5 core steps
-  const totalSteps = 5;
+  // Simplified mandatory setup flow - 6 core steps
+  const totalSteps = 6;
   const stepLabels = [
     'Welcome',
-    'FFmpeg Installation',
+    'FFmpeg Check',
+    'FFmpeg Install',
     'Provider Configuration',
     'Workspace Setup',
     'Complete',
@@ -232,16 +233,22 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       return;
     }
 
-    // Step 1: FFmpeg Installation -> Step 2: Provider Configuration
+    // Step 1: FFmpeg Check -> Step 2: FFmpeg Install  
     if (state.step === 1) {
-      // Allow proceeding even without FFmpeg (user can skip)
-      // The warning is already shown in the UI
       dispatch({ type: 'SET_STEP', payload: 2 });
       return;
     }
 
-    // Step 2: Provider Configuration -> Step 3: Workspace Setup
+    // Step 2: FFmpeg Install -> Step 3: Provider Configuration
     if (state.step === 2) {
+      // Allow proceeding even without FFmpeg (user can skip)
+      // The warning is already shown in the UI
+      dispatch({ type: 'SET_STEP', payload: 3 });
+      return;
+    }
+
+    // Step 3: Provider Configuration -> Step 4: Workspace Setup
+    if (state.step === 3) {
       // Must have at least one provider configured
       if (!hasAtLeastOneProvider) {
         showFailureToast({
@@ -250,12 +257,12 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         });
         return;
       }
-      dispatch({ type: 'SET_STEP', payload: 3 });
+      dispatch({ type: 'SET_STEP', payload: 4 });
       return;
     }
 
-    // Step 3: Workspace Setup -> Step 4: Complete
-    if (state.step === 3) {
+    // Step 4: Workspace Setup -> Step 5: Complete
+    if (state.step === 4) {
       // Validate workspace is configured
       if (!state.workspacePreferences?.defaultSaveLocation) {
         showFailureToast({
@@ -264,11 +271,11 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
         });
         return;
       }
-      dispatch({ type: 'SET_STEP', payload: 4 });
+      dispatch({ type: 'SET_STEP', payload: 5 });
       return;
     }
 
-    // Step 4: Completion - handled by completion step buttons
+    // Step 5: Completion - handled by completion step buttons
   };
 
   const handleBack = () => {
@@ -485,8 +492,103 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     </div>
   );
 
-  // Step 2: Provider Configuration (At least one required)
-  const renderStep2Providers = () => (
+  // Step 2: FFmpeg Installation Check with Download Button
+  const renderStep2FFmpeg = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
+      <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
+        <Title2>FFmpeg Installation</Title2>
+        <Text style={{ display: 'block', marginTop: tokens.spacingVerticalM }}>
+          FFmpeg is required for video generation. We&apos;ll check if it&apos;s installed and help you install it if needed.
+        </Text>
+        <Card
+          style={{
+            marginTop: tokens.spacingVerticalL,
+            padding: tokens.spacingVerticalM,
+            backgroundColor: tokens.colorNeutralBackground3,
+          }}
+        >
+          <Text size={300}>
+            <strong>Why is this required?</strong>
+          </Text>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+            FFmpeg is the industry-standard tool for video processing. Aura uses it to render your
+            videos, add transitions, apply effects, and export in various formats. Without FFmpeg,
+            video generation cannot proceed.
+          </Text>
+        </Card>
+      </div>
+
+      <FFmpegDependencyCard
+        autoCheck={true}
+        autoExpandDetails={true}
+        onInstallComplete={async () => {
+          setFfmpegReady(true);
+          dispatch({ type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
+
+          // Also check with new setup API to get path
+          try {
+            const ffmpegCheck = await setupApi.checkFFmpeg();
+            if (ffmpegCheck.isInstalled && ffmpegCheck.path) {
+              setFfmpegPath(ffmpegCheck.path);
+            }
+          } catch (error) {
+            console.warn('Could not get FFmpeg path from setup API:', error);
+          }
+        }}
+      />
+
+      {!ffmpegReady && (
+        <Card
+          style={{
+            padding: tokens.spacingVerticalL,
+            backgroundColor: tokens.colorPaletteYellowBackground1,
+            borderLeft: `4px solid ${tokens.colorPaletteYellowBorder1}`,
+          }}
+        >
+          <Text
+            weight="semibold"
+            style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}
+          >
+            <Warning24Regular /> Want to install FFmpeg manually?
+          </Text>
+          <Text style={{ display: 'block', marginTop: tokens.spacingVerticalS }}>
+            If you prefer to install FFmpeg yourself or already have it installed, you can skip this
+            step. However, video generation will not work until FFmpeg is properly installed.
+          </Text>
+          <div
+            style={{
+              marginTop: tokens.spacingVerticalM,
+              display: 'flex',
+              gap: tokens.spacingHorizontalS,
+            }}
+          >
+            <Button
+              appearance="secondary"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'Are you sure you want to skip FFmpeg installation? Video generation will not work without FFmpeg. You can install it later from Settings.'
+                  )
+                ) {
+                  setFfmpegReady(true);
+                  showSuccessToast({
+                    title: 'FFmpeg Skipped',
+                    message:
+                      'Remember to install FFmpeg before creating videos. You can do this from Settings.',
+                  });
+                }
+              }}
+            >
+              Skip for Now
+            </Button>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+
+  // Step 3: Provider Configuration (At least one required)
+  const renderStep3Providers = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
       <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
         <Title2>Provider Configuration</Title2>
@@ -682,12 +784,14 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
       case 0:
         return renderStep0(); // Welcome
       case 1:
-        return renderStep1FFmpeg(); // FFmpeg Installation
+        return renderStep1FFmpeg(); // FFmpeg Check
       case 2:
-        return renderStep2Providers(); // Provider Configuration
+        return renderStep2FFmpeg(); // FFmpeg Install
       case 3:
-        return renderStep3Workspace(); // Workspace Setup
+        return renderStep3Providers(); // Provider Configuration
       case 4:
+        return renderStep3Workspace(); // Workspace Setup
+      case 5:
         return renderStep4Complete(); // Complete
       default:
         return null;
@@ -696,7 +800,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   const buttonLabel = 'Next';
   const buttonDisabled =
-    (state.step === 2 && !hasAtLeastOneProvider) ||
+    (state.step === 3 && !hasAtLeastOneProvider) ||
     state.status === 'validating' ||
     state.status === 'installing';
 
