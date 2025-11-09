@@ -153,7 +153,7 @@ export class SettingsService {
   async testApiKey(
     provider: string,
     apiKey: string
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; message: string; responseTimeMs?: number }> {
     try {
       // For OpenAI, use the new live validation endpoint
       if (provider.toLowerCase() === 'openai') {
@@ -170,6 +170,7 @@ export class SettingsService {
           return {
             success: data.isValid === true,
             message: data.message || 'API key is valid and verified with OpenAI.',
+            responseTimeMs: data.details?.responseTimeMs,
           };
         }
 
@@ -209,6 +210,75 @@ export class SettingsService {
       return {
         success: false,
         message: 'Failed to test API key',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Network error: ${error}`,
+      };
+    }
+  }
+
+  /**
+   * Get available models for OpenAI API key
+   */
+  async getOpenAIModels(apiKey: string): Promise<{ success: boolean; models?: string[]; message?: string }> {
+    try {
+      const response = await fetch(apiUrl('/api/providers/openai/models'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          models: data.models || [],
+        };
+      }
+
+      return {
+        success: false,
+        message: data.message || 'Failed to fetch models',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Network error: ${error}`,
+      };
+    }
+  }
+
+  /**
+   * Test OpenAI script generation with a specific model
+   */
+  async testOpenAIGeneration(
+    apiKey: string,
+    model: string
+  ): Promise<{ success: boolean; generatedText?: string; responseTimeMs?: number; message?: string }> {
+    try {
+      const response = await fetch(apiUrl('/api/providers/openai/test-generation'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, model }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return {
+          success: true,
+          generatedText: data.generatedText,
+          responseTimeMs: data.responseTimeMs,
+        };
+      }
+
+      return {
+        success: false,
+        message: data.message || 'Failed to test generation',
+        responseTimeMs: data.responseTimeMs,
       };
     } catch (error) {
       return {

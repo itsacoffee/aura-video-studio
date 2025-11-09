@@ -10,6 +10,16 @@ public record ValidateOpenAIKeyRequest(
     string? ProjectId = null);
 
 /// <summary>
+/// Request model for testing OpenAI script generation
+/// </summary>
+public record TestOpenAIGenerationRequest(
+    string ApiKey,
+    string Model = "gpt-4o-mini",
+    string? BaseUrl = null,
+    string? OrganizationId = null,
+    string? ProjectId = null);
+
+/// <summary>
 /// Request model for validating ElevenLabs API key
 /// </summary>
 public record ValidateElevenLabsKeyRequest(string ApiKey);

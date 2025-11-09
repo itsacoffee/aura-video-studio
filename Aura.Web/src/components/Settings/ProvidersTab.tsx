@@ -20,6 +20,7 @@ import {
 } from '@fluentui/react-icons';
 import { useState } from 'react';
 import type { ApiKeysSettings } from '../../types/settings';
+import { OpenAIProviderConfig } from './OpenAIProviderConfig';
 
 const useStyles = makeStyles({
   section: {
@@ -260,12 +261,10 @@ export function ProvidersTab({ apiKeys, onApiKeysChange, onTestApiKey }: Provide
             </Text>
           </div>
 
-          {renderApiKeyField(
-            'openAI',
-            'OpenAI API Key',
-            'For GPT-4, GPT-3.5 models',
-            'https://platform.openai.com/api-keys'
-          )}
+          <OpenAIProviderConfig
+            apiKey={apiKeys.openAI}
+            onApiKeyChange={(newKey) => updateApiKey('openAI', newKey)}
+          />
 
           {renderApiKeyField(
             'anthropic',

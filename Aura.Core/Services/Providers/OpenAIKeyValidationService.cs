@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -124,7 +126,7 @@ public class OpenAIKeyValidationService
             {
                 response = await _httpClient.SendAsync(request, cts.Token);
             }
-            catch (TaskCanceledException ex)
+            catch (TaskCanceledException)
             {
                 var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
                 
@@ -369,6 +371,230 @@ public class OpenAIKeyValidationService
     }
 
     /// <summary>
+    /// Get available models for the validated API key
+    /// </summary>
+    public async Task<OpenAIModelsResult> GetAvailableModelsAsync(
+        string apiKey,
+        string? baseUrl = null,
+        string? organizationId = null,
+        string? projectId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var maskedKey = MaskApiKey(apiKey);
+        
+        _logger.LogInformation(
+            "Fetching available models for OpenAI API key (masked: {MaskedKey})",
+            maskedKey);
+
+        try
+        {
+            var effectiveBaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? DefaultBaseUrl : baseUrl;
+            var requestUri = $"{effectiveBaseUrl.TrimEnd('/')}/v1/models";
+
+            var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            if (!string.IsNullOrWhiteSpace(organizationId))
+            {
+                request.Headers.Add("OpenAI-Organization", organizationId);
+            }
+            if (!string.IsNullOrWhiteSpace(projectId))
+            {
+                request.Headers.Add("OpenAI-Project", projectId);
+            }
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(TotalTimeoutSeconds));
+
+            var response = await _httpClient.SendAsync(request, cts.Token);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Failed to fetch models: HTTP {StatusCode}, Key: {MaskedKey}",
+                    response.StatusCode,
+                    maskedKey);
+                
+                return new OpenAIModelsResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Failed to fetch models: HTTP {response.StatusCode}"
+                };
+            }
+
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            
+            using var jsonDoc = JsonDocument.Parse(responseBody);
+            var models = new List<string>();
+            
+            if (jsonDoc.RootElement.TryGetProperty("data", out var dataArray))
+            {
+                foreach (var model in dataArray.EnumerateArray())
+                {
+                    if (model.TryGetProperty("id", out var idProp))
+                    {
+                        var modelId = idProp.GetString();
+                        if (!string.IsNullOrEmpty(modelId))
+                        {
+                            models.Add(modelId);
+                        }
+                    }
+                }
+            }
+
+            _logger.LogInformation(
+                "Fetched {Count} models successfully for key {MaskedKey}",
+                models.Count,
+                maskedKey);
+
+            return new OpenAIModelsResult
+            {
+                Success = true,
+                Models = models
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching models for key {MaskedKey}", maskedKey);
+            return new OpenAIModelsResult
+            {
+                Success = false,
+                ErrorMessage = $"Error fetching models: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// Test script generation with a simple prompt to verify the API key works for completions
+    /// </summary>
+    public async Task<OpenAITestGenerationResult> TestScriptGenerationAsync(
+        string apiKey,
+        string model = "gpt-4o-mini",
+        string? baseUrl = null,
+        string? organizationId = null,
+        string? projectId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var maskedKey = MaskApiKey(apiKey);
+        
+        _logger.LogInformation(
+            "Testing script generation with model {Model} for key {MaskedKey}",
+            model,
+            maskedKey);
+
+        var startTime = DateTime.UtcNow;
+
+        try
+        {
+            var effectiveBaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? DefaultBaseUrl : baseUrl;
+            var requestUri = $"{effectiveBaseUrl.TrimEnd('/')}/v1/chat/completions";
+
+            var requestBody = new
+            {
+                model = model,
+                messages = new[]
+                {
+                    new { role = "user", content = "Say hello" }
+                },
+                max_tokens = 10
+            };
+
+            var jsonContent = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+            var request = new HttpRequestMessage(HttpMethod.Post, requestUri)
+            {
+                Content = content
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            if (!string.IsNullOrWhiteSpace(organizationId))
+            {
+                request.Headers.Add("OpenAI-Organization", organizationId);
+            }
+            if (!string.IsNullOrWhiteSpace(projectId))
+            {
+                request.Headers.Add("OpenAI-Project", projectId);
+            }
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(TotalTimeoutSeconds));
+
+            var response = await _httpClient.SendAsync(request, cts.Token);
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                
+                _logger.LogWarning(
+                    "Script generation test failed: HTTP {StatusCode}, Key: {MaskedKey}",
+                    response.StatusCode,
+                    maskedKey);
+
+                return new OpenAITestGenerationResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Generation test failed: HTTP {response.StatusCode}",
+                    ResponseTimeMs = (long)elapsed
+                };
+            }
+
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            
+            using var jsonDoc = JsonDocument.Parse(responseBody);
+            string? generatedText = null;
+            
+            if (jsonDoc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+            {
+                var firstChoice = choices[0];
+                if (firstChoice.TryGetProperty("message", out var message) &&
+                    message.TryGetProperty("content", out var contentProp))
+                {
+                    generatedText = contentProp.GetString();
+                }
+            }
+
+            _logger.LogInformation(
+                "Script generation test successful in {ElapsedMs}ms, Key: {MaskedKey}",
+                elapsed,
+                maskedKey);
+
+            return new OpenAITestGenerationResult
+            {
+                Success = true,
+                GeneratedText = generatedText ?? string.Empty,
+                Model = model,
+                ResponseTimeMs = (long)elapsed
+            };
+        }
+        catch (TaskCanceledException ex)
+        {
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            _logger.LogWarning(ex, "Script generation test timed out for key {MaskedKey}", maskedKey);
+            
+            return new OpenAITestGenerationResult
+            {
+                Success = false,
+                ErrorMessage = "Request timed out",
+                ResponseTimeMs = (long)elapsed
+            };
+        }
+        catch (Exception ex)
+        {
+            var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            _logger.LogError(ex, "Error testing script generation for key {MaskedKey}", maskedKey);
+            
+            return new OpenAITestGenerationResult
+            {
+                Success = false,
+                ErrorMessage = $"Error: {ex.Message}",
+                ResponseTimeMs = (long)elapsed
+            };
+        }
+    }
+
+    /// <summary>
     /// Mask API key for logging (show first 6 and last 4 characters)
     /// </summary>
     private static string MaskApiKey(string apiKey)
@@ -404,4 +630,26 @@ public class OpenAIValidationResult
     public int? HttpStatusCode { get; set; }
     public string? ErrorType { get; set; }
     public long ResponseTimeMs { get; set; }
+}
+
+/// <summary>
+/// Result of fetching available models
+/// </summary>
+public class OpenAIModelsResult
+{
+    public bool Success { get; set; }
+    public List<string> Models { get; set; } = new();
+    public string? ErrorMessage { get; set; }
+}
+
+/// <summary>
+/// Result of testing script generation
+/// </summary>
+public class OpenAITestGenerationResult
+{
+    public bool Success { get; set; }
+    public string? GeneratedText { get; set; }
+    public string? Model { get; set; }
+    public long ResponseTimeMs { get; set; }
+    public string? ErrorMessage { get; set; }
 }
