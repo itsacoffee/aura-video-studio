@@ -66,9 +66,10 @@ public static class ProviderServicesExtensions
         {
             var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.OllamaDetectionService>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
             var settings = sp.GetRequiredService<ProviderSettings>();
             var baseUrl = settings.GetOllamaUrl();
-            return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, baseUrl);
+            return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, cache, baseUrl);
         });
         
         // Stable Diffusion detection service

@@ -246,6 +246,10 @@ builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
     return new Aura.Core.Services.OllamaService(logger, httpClient, logsDirectory);
 });
 
+// Note: OllamaDetectionService is registered in ProviderServicesExtensions.cs
+// Register OllamaDetectionService as a hosted service for background detection
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Core.Services.Providers.OllamaDetectionService>());
+
 // Configure FFmpeg options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.FFmpegOptions>(
     builder.Configuration.GetSection("FFmpeg"));
