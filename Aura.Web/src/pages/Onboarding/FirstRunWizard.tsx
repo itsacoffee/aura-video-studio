@@ -22,6 +22,7 @@ import type { WorkspacePreferences } from '../../components/Onboarding/Workspace
 import { WorkspaceSetup } from '../../components/Onboarding/WorkspaceSetup';
 import { WizardProgress } from '../../components/WizardProgress';
 import { wizardAnalytics } from '../../services/analytics';
+import { setupApi } from '../../services/api/setupApi';
 import { markFirstRunCompleted } from '../../services/firstRunService';
 import {
   onboardingReducer,
@@ -117,6 +118,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
   // FFmpeg status state
   const [ffmpegReady, setFfmpegReady] = useState(false);
+  const [ffmpegPath, setFfmpegPath] = useState<string | null>(null);
 
   // Provider validation state
   const [hasAtLeastOneProvider, setHasAtLeastOneProvider] = useState(false);
@@ -188,6 +190,41 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     setHasAtLeastOneProvider(validProviders.length > 0 || hasOfflineMode);
   }, [state.apiKeyValidationStatus, state.selectedTier, state.mode]);
 
+  // Navigation protection: Prevent leaving page during setup
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only show warning if setup is not complete (not on final step)
+      if (state.step < totalSteps - 1) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [state.step, totalSteps]);
+
+  // Prevent browser back button during setup
+  useEffect(() => {
+    const preventBackNavigation = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    // Push initial state
+    window.history.pushState(null, '', window.location.href);
+
+    // Listen for popstate (back/forward button)
+    window.addEventListener('popstate', preventBackNavigation);
+
+    return () => {
+      window.removeEventListener('popstate', preventBackNavigation);
+    };
+  }, []);
+
   const handleNext = async () => {
     // Step 0: Welcome -> Step 1: FFmpeg Installation
     if (state.step === 0) {
@@ -254,29 +291,57 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   };
 
   const completeOnboarding = async () => {
-    clearWizardStateFromStorage();
-    await markFirstRunCompleted();
+    try {
+      // Call backend API to complete setup and persist to database
+      const setupResult = await setupApi.completeSetup({
+        ffmpegPath: ffmpegPath,
+        outputDirectory: state.workspacePreferences?.defaultSaveLocation,
+      });
 
-    // Track completion
-    const totalTime = (Date.now() - wizardStartTime) / 1000;
-    const validApiKeys = Object.entries(state.apiKeyValidationStatus)
-      .filter(([_, status]) => status === 'valid')
-      .map(([provider]) => provider);
+      if (!setupResult.success) {
+        showFailureToast({
+          title: 'Setup Validation Failed',
+          message: setupResult.errors?.join(', ') || 'Please ensure all requirements are met.',
+        });
+        return;
+      }
 
-    wizardAnalytics.completed(totalTime, {
-      tier: state.selectedTier || 'free',
-      api_keys_count: validApiKeys.length,
-      components_installed: ffmpegReady ? 1 : 0,
-      template_selected: false,
-      tutorial_completed: false,
-    });
+      // Clear wizard state and mark local completion
+      clearWizardStateFromStorage();
+      await markFirstRunCompleted();
 
-    // Call the onComplete callback if provided
-    if (onComplete) {
-      await onComplete();
-    } else {
-      // Fallback to navigation
-      navigate('/');
+      // Track completion
+      const totalTime = (Date.now() - wizardStartTime) / 1000;
+      const validApiKeys = Object.entries(state.apiKeyValidationStatus)
+        .filter(([_, status]) => status === 'valid')
+        .map(([provider]) => provider);
+
+      wizardAnalytics.completed(totalTime, {
+        tier: state.selectedTier || 'free',
+        api_keys_count: validApiKeys.length,
+        components_installed: ffmpegReady ? 1 : 0,
+        template_selected: false,
+        tutorial_completed: false,
+      });
+
+      showSuccessToast({
+        title: 'Setup Complete',
+        message: "Welcome to Aura Video Studio! Let's create your first video.",
+      });
+
+      // Call the onComplete callback if provided
+      if (onComplete) {
+        await onComplete();
+      } else {
+        // Fallback to navigation
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Error completing setup:', error);
+      showFailureToast({
+        title: 'Setup Error',
+        message: 'Failed to complete setup. Please try again.',
+      });
     }
   };
 
@@ -296,8 +361,23 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     dispatch({ type: 'SKIP_API_KEY_VALIDATION', payload: provider });
   };
 
-  const handleWorkspacePreferencesChange = (preferences: WorkspacePreferences) => {
+  const handleWorkspacePreferencesChange = async (preferences: WorkspacePreferences) => {
     dispatch({ type: 'SET_WORKSPACE_PREFERENCES', payload: preferences });
+
+    // Validate directory with backend
+    if (preferences.defaultSaveLocation) {
+      try {
+        const dirCheck = await setupApi.checkDirectory({ path: preferences.defaultSaveLocation });
+        if (!dirCheck.isValid) {
+          showFailureToast({
+            title: 'Invalid Directory',
+            message: dirCheck.error || 'The selected directory is not writable.',
+          });
+        }
+      } catch (error) {
+        console.warn('Could not validate directory with backend:', error);
+      }
+    }
   };
 
   const handleBrowseFolder = async (): Promise<string | null> => {
@@ -344,9 +424,19 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
       <FFmpegDependencyCard
         autoCheck={true}
-        onInstallComplete={() => {
+        onInstallComplete={async () => {
           setFfmpegReady(true);
           dispatch({ type: 'INSTALL_COMPLETE', payload: 'ffmpeg' });
+
+          // Also check with new setup API to get path
+          try {
+            const ffmpegCheck = await setupApi.checkFFmpeg();
+            if (ffmpegCheck.isInstalled && ffmpegCheck.path) {
+              setFfmpegPath(ffmpegCheck.path);
+            }
+          } catch (error) {
+            console.warn('Could not get FFmpeg path from setup API:', error);
+          }
         }}
       />
     </div>
