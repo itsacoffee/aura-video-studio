@@ -60,7 +60,11 @@ import VoiceEnhancementPage from './pages/VoiceEnhancement/VoiceEnhancementPage'
 import { WelcomePage } from './pages/WelcomePage';
 import { CreateWizard } from './pages/Wizard/CreateWizard';
 import { errorReportingService } from './services/errorReportingService';
-import { hasCompletedFirstRun, migrateLegacyFirstRunStatus } from './services/firstRunService';
+import {
+  hasCompletedFirstRun,
+  migrateLegacyFirstRunStatus,
+  markFirstRunCompleted,
+} from './services/firstRunService';
 import { healthMonitorService } from './services/healthMonitorService';
 import { keyboardShortcutManager } from './services/keyboardShortcutManager';
 import { loggingService } from './services/loggingService';
@@ -403,6 +407,26 @@ function App() {
     );
   }
 
+  // Show mandatory first-run wizard as full-screen overlay if not completed
+  if (shouldShowOnboarding) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+          <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+            <BrowserRouter>
+              <FirstRunWizard
+                onComplete={async () => {
+                  setShouldShowOnboarding(false);
+                  await markFirstRunCompleted();
+                }}
+              />
+            </BrowserRouter>
+          </FluentProvider>
+        </ThemeContext.Provider>
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
@@ -421,20 +445,11 @@ function App() {
                   <ErrorBoundary>
                     <ConfigurationGate>
                       <Routes>
-                        {/* First-run onboarding route - highest priority */}
+                        {/* First-run onboarding route - for re-entry via settings */}
                         <Route path="/onboarding" element={<FirstRunWizard />} />
 
-                        {/* Redirect to onboarding if first run */}
-                        <Route
-                          path="/"
-                          element={
-                            shouldShowOnboarding ? (
-                              <Navigate to="/onboarding" replace />
-                            ) : (
-                              <WelcomePage />
-                            )
-                          }
-                        />
+                        {/* Main routes */}
+                        <Route path="/" element={<WelcomePage />} />
 
                         {/* All other routes */}
                         <Route path="/setup" element={<SetupWizard />} />
