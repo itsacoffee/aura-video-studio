@@ -22,6 +22,8 @@ import {
   DialogContent,
   Slider,
   Label,
+  Checkbox,
+  Input,
 } from '@fluentui/react-components';
 import {
   Sparkle24Regular,
@@ -35,6 +37,8 @@ import {
   Delete24Regular,
   History24Regular,
   Save24Regular,
+  Merge24Regular,
+  SplitVertical24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC } from 'react';
@@ -49,6 +53,9 @@ import {
   enhanceScript,
   getVersionHistory,
   revertToVersion,
+  mergeScenes,
+  splitScene,
+  reorderScenes,
   type GenerateScriptResponse,
   type ProviderInfoDto,
   type ScriptSceneDto,
@@ -203,6 +210,35 @@ const useStyles = makeStyles({
       backgroundColor: tokens.colorNeutralBackground2Hover,
     },
   },
+  sceneCardDragging: {
+    opacity: 0.5,
+    cursor: 'grabbing',
+  },
+  sceneCardDraggable: {
+    cursor: 'grab',
+    '&:active': {
+      cursor: 'grabbing',
+    },
+  },
+  sceneSelection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    marginRight: tokens.spacingHorizontalS,
+  },
+  mergeActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalS,
+    marginBottom: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalS,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusSmall,
+  },
+  splitDialog: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
 });
 
 interface ScriptReviewProps {
@@ -241,6 +277,13 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [versionHistory, setVersionHistory] = useState<ScriptVersionHistoryResponse | null>(null);
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+  const [selectedScenes, setSelectedScenes] = useState<Set<number>>(new Set());
+  const [showSplitDialog, setShowSplitDialog] = useState(false);
+  const [splitSceneNumber, setSplitSceneNumber] = useState<number | null>(null);
+  const [splitPosition, setSplitPosition] = useState('');
+  const [draggedSceneIndex, setDraggedSceneIndex] = useState<number | null>(null);
+  const [isMerging, setIsMerging] = useState(false);
+  const [isSplitting, setIsSplitting] = useState(false);
   const autoSaveTimeouts = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
@@ -615,6 +658,137 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
     }
   };
 
+  const handleSceneSelection = (sceneNumber: number, checked: boolean) => {
+    setSelectedScenes((prev) => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(sceneNumber);
+      } else {
+        newSet.delete(sceneNumber);
+      }
+      return newSet;
+    });
+  };
+
+  const handleMergeScenes = async () => {
+    if (!generatedScript || selectedScenes.size < 2) return;
+
+    setIsMerging(true);
+    try {
+      const sceneNumbers = Array.from(selectedScenes).sort((a, b) => a - b);
+      const response = await mergeScenes(generatedScript.scriptId, {
+        sceneNumbers,
+        separator: ' ',
+      });
+
+      setGeneratedScript(response);
+      setSelectedScenes(new Set());
+
+      const scriptScenes = response.scenes.map((scene) => ({
+        id: `scene-${scene.number}`,
+        text: scene.narration,
+        duration: scene.durationSeconds,
+        visualDescription: scene.visualPrompt,
+        timestamp: response.scenes
+          .slice(0, scene.number - 1)
+          .reduce((sum, s) => sum + s.durationSeconds, 0),
+      }));
+
+      onChange({
+        content: response.scenes.map((s) => s.narration).join('\n\n'),
+        scenes: scriptScenes,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to merge scenes:', error);
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  const handleSplitScene = async () => {
+    if (!generatedScript || splitSceneNumber === null || !splitPosition) return;
+
+    const position = parseInt(splitPosition, 10);
+    if (isNaN(position) || position <= 0) return;
+
+    setIsSplitting(true);
+    try {
+      const response = await splitScene(generatedScript.scriptId, splitSceneNumber, {
+        splitPosition: position,
+      });
+
+      setGeneratedScript(response);
+      setShowSplitDialog(false);
+      setSplitSceneNumber(null);
+      setSplitPosition('');
+
+      const scriptScenes = response.scenes.map((scene) => ({
+        id: `scene-${scene.number}`,
+        text: scene.narration,
+        duration: scene.durationSeconds,
+        visualDescription: scene.visualPrompt,
+        timestamp: response.scenes
+          .slice(0, scene.number - 1)
+          .reduce((sum, s) => sum + s.durationSeconds, 0),
+      }));
+
+      onChange({
+        content: response.scenes.map((s) => s.narration).join('\n\n'),
+        scenes: scriptScenes,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Failed to split scene:', error);
+    } finally {
+      setIsSplitting(false);
+    }
+  };
+
+  const handleDragStart = (index: number) => () => {
+    setDraggedSceneIndex(index);
+  };
+
+  const handleDragOver = (index: number) => async (e: React.DragEvent) => {
+    e.preventDefault();
+    if (draggedSceneIndex !== null && draggedSceneIndex !== index && generatedScript) {
+      const scenes = [...generatedScript.scenes];
+      const draggedScene = scenes[draggedSceneIndex];
+      scenes.splice(draggedSceneIndex, 1);
+      scenes.splice(index, 0, draggedScene);
+
+      const sceneOrder = scenes.map((scene) => scene.number);
+
+      try {
+        const response = await reorderScenes(generatedScript.scriptId, { sceneOrder });
+        setGeneratedScript(response);
+        setDraggedSceneIndex(index);
+
+        const scriptScenes = response.scenes.map((scene) => ({
+          id: `scene-${scene.number}`,
+          text: scene.narration,
+          duration: scene.durationSeconds,
+          visualDescription: scene.visualPrompt,
+          timestamp: response.scenes
+            .slice(0, scene.number - 1)
+            .reduce((sum, s) => sum + s.durationSeconds, 0),
+        }));
+
+        onChange({
+          content: response.scenes.map((s) => s.narration).join('\n\n'),
+          scenes: scriptScenes,
+          generatedAt: new Date(),
+        });
+      } catch (error) {
+        console.error('Failed to reorder scenes:', error);
+      }
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedSceneIndex(null);
+  };
+
   const isSceneDurationAppropriate = (scene: ScriptSceneDto): 'short' | 'good' | 'long' => {
     const wordCount = scene.narration.split(/\s+/).filter((word) => word.length > 0).length;
     const wpm = calculateReadingSpeed(wordCount, scene.durationSeconds);
@@ -876,7 +1050,38 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
             Version History
           </Button>
         </Tooltip>
+        <Tooltip
+          content={
+            selectedScenes.size < 2
+              ? 'Select at least 2 scenes to merge'
+              : `Merge ${selectedScenes.size} selected scenes`
+          }
+          relationship="label"
+        >
+          <Button
+            appearance="subtle"
+            icon={<Merge24Regular />}
+            onClick={handleMergeScenes}
+            disabled={selectedScenes.size < 2 || isMerging}
+          >
+            {isMerging
+              ? 'Merging...'
+              : `Merge Scenes${selectedScenes.size > 0 ? ` (${selectedScenes.size})` : ''}`}
+          </Button>
+        </Tooltip>
       </div>
+
+      {/* Merge Actions Helper */}
+      {selectedScenes.size > 0 && (
+        <div className={styles.mergeActions}>
+          <Text size={200}>
+            {selectedScenes.size} scene{selectedScenes.size > 1 ? 's' : ''} selected
+          </Text>
+          <Button size="small" appearance="subtle" onClick={() => setSelectedScenes(new Set())}>
+            Clear Selection
+          </Button>
+        </div>
+      )}
 
       {/* Enhancement Panel */}
       {showEnhancement && (
@@ -1004,15 +1209,96 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
         </DialogSurface>
       </Dialog>
 
+      {/* Split Scene Dialog */}
+      <Dialog open={showSplitDialog} onOpenChange={(_, data) => setShowSplitDialog(data.open)}>
+        <DialogSurface>
+          <DialogTitle>Split Scene {splitSceneNumber}</DialogTitle>
+          <DialogBody>
+            <DialogContent>
+              <div className={styles.splitDialog}>
+                <Text>
+                  Enter the character position where you want to split the scene. The scene will be
+                  divided into two parts at this position.
+                </Text>
+                {splitSceneNumber !== null && generatedScript && (
+                  <div>
+                    <Text
+                      weight="semibold"
+                      style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
+                    >
+                      Scene Text (
+                      {
+                        generatedScript.scenes.find((s) => s.number === splitSceneNumber)?.narration
+                          .length
+                      }{' '}
+                      characters):
+                    </Text>
+                    <Text
+                      size={200}
+                      style={{
+                        display: 'block',
+                        fontFamily: 'monospace',
+                        padding: tokens.spacingVerticalS,
+                        backgroundColor: tokens.colorNeutralBackground2,
+                        borderRadius: tokens.borderRadiusSmall,
+                      }}
+                    >
+                      {generatedScript.scenes.find((s) => s.number === splitSceneNumber)?.narration}
+                    </Text>
+                  </div>
+                )}
+                <Field label="Split Position (character index)">
+                  <Input
+                    type="number"
+                    value={splitPosition}
+                    onChange={(e) => setSplitPosition(e.target.value)}
+                    placeholder="e.g., 50"
+                  />
+                </Field>
+              </div>
+            </DialogContent>
+          </DialogBody>
+          <DialogActions>
+            <Button appearance="secondary" onClick={() => setShowSplitDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              appearance="primary"
+              onClick={handleSplitScene}
+              disabled={!splitPosition || isSplitting}
+            >
+              {isSplitting ? 'Splitting...' : 'Split Scene'}
+            </Button>
+          </DialogActions>
+        </DialogSurface>
+      </Dialog>
+
       <div className={styles.scenesContainer}>
-        {generatedScript.scenes.map((scene) => {
+        {generatedScript.scenes.map((scene, index) => {
           const durationStatus = isSceneDurationAppropriate(scene);
           const currentNarration = editingScenes[scene.number] ?? scene.narration;
+          const isSelected = selectedScenes.has(scene.number);
+          const isDragging = draggedSceneIndex === index;
 
           return (
-            <Card key={scene.number} className={styles.sceneCard}>
+            <Card
+              key={scene.number}
+              className={`${styles.sceneCard} ${isDragging ? styles.sceneCardDragging : ''} ${styles.sceneCardDraggable}`}
+              draggable
+              onDragStart={handleDragStart(index)}
+              onDragOver={handleDragOver(index)}
+              onDragEnd={handleDragEnd}
+            >
               <div className={styles.sceneHeader}>
                 <div className={styles.sceneNumber}>
+                  <div className={styles.sceneSelection}>
+                    <Checkbox
+                      checked={isSelected}
+                      onChange={(_, data) =>
+                        handleSceneSelection(scene.number, data.checked === true)
+                      }
+                    />
+                  </div>
                   <Badge appearance="filled" color="brand">
                     Scene {scene.number}
                   </Badge>
@@ -1044,6 +1330,17 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
                     >
                       {regeneratingScenes[scene.number] ? 'Regenerating...' : 'Regenerate'}
                     </Button>
+                  </Tooltip>
+                  <Tooltip content="Split this scene" relationship="label">
+                    <Button
+                      size="small"
+                      appearance="subtle"
+                      icon={<SplitVertical24Regular />}
+                      onClick={() => {
+                        setSplitSceneNumber(scene.number);
+                        setShowSplitDialog(true);
+                      }}
+                    />
                   </Tooltip>
                   {generatedScript.scenes.length > 1 && (
                     <Tooltip content="Delete this scene" relationship="label">
