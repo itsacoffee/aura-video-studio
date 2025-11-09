@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - aura-network
+
+  # FFmpeg service (for video processing without local installation)
+  ffmpeg:
+    image: jrottenberg/ffmpeg:6.1-alpine
+    volumes:
+      - ./temp-media:/media
+    entrypoint: /bin/sh
+    command: -c "while true; do sleep 3600; done"
+    networks:
+      - aura-network
+
+  # Aura API Backend
+  api:
+    build:
+      context: .
+      dockerfile: Aura.Api/Dockerfile
+    ports:
+      - "5005:5005"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5005
+      - AURA_DATABASE_PATH=/app/data/aura.db
+      - AURA_REDIS_CONNECTION=redis:6379
+      - AURA_FFMPEG_PATH=/usr/bin/ffmpeg
+      - AURA_ENABLE_CORS=true
+      - AURA_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+      - AURA_LOG_LEVEL=Information
+      - AURA_OFFLINE_MODE=false
+      # Provider configurations (optional, override in .env)
+      - AURA_OPENAI_API_KEY=${AURA_OPENAI_API_KEY:-}
+      - AURA_STABILITY_API_KEY=${AURA_STABILITY_API_KEY:-}
+      - AURA_RUNWAY_API_KEY=${AURA_RUNWAY_API_KEY:-}
+      - AURA_PIXABAY_API_KEY=${AURA_PIXABAY_API_KEY:-}
+      - AURA_PEXELS_API_KEY=${AURA_PEXELS_API_KEY:-}
+      - AURA_UNSPLASH_API_KEY=${AURA_UNSPLASH_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./temp-media:/app/temp-media
+      - ./appsettings.json:/app/appsettings.json:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5005/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - aura-network
+
+  # Aura Web Frontend
+  web:
+    build:
+      context: ./Aura.Web
+      dockerfile: Dockerfile.dev
+      args:
+        - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5005
+      - VITE_APP_VERSION=1.0.0-dev
+      - VITE_APP_NAME=Aura Video Studio (Dev)
+      - VITE_ENV=development
+      - VITE_ENABLE_ANALYTICS=false
+      - VITE_ENABLE_DEBUG=true
+      - VITE_ENABLE_DEV_TOOLS=true
+    volumes:
+      - ./Aura.Web/src:/app/src
+      - ./Aura.Web/public:/app/public
+      - /app/node_modules
+    depends_on:
+      api:
+        condition: service_healthy
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+    networks:
+      - aura-network
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  aura-network:
+    driver: bridge

@@ -1,0 +1,70 @@
+{
+  "folders": [
+    {
+      "name": "Root",
+      "path": ".."
+    },
+    {
+      "name": "API",
+      "path": "../Aura.Api"
+    },
+    {
+      "name": "Web",
+      "path": "../Aura.Web"
+    },
+    {
+      "name": "Core",
+      "path": "../Aura.Core"
+    },
+    {
+      "name": "Providers",
+      "path": "../Aura.Providers"
+    },
+    {
+      "name": "Tests",
+      "path": "../Aura.Tests"
+    },
+    {
+      "name": "E2E",
+      "path": "../Aura.E2E"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/bin": true,
+      "**/obj": true,
+      "**/node_modules": true,
+      "**/.git": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-dotnettools.csharp",
+      "ms-dotnettools.csdevkit",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "ms-azuretools.vscode-docker",
+      "eamodio.gitlens"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [],
+    "compounds": []
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Start All Services",
+        "type": "shell",
+        "command": "make dev",
+        "problemMatcher": [],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        }
+      }
+    ]
+  }
+}

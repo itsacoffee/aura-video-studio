@@ -1,0 +1,48 @@
+{
+  "recommendations": [
+    // C# and .NET
+    "ms-dotnettools.csharp",
+    "ms-dotnettools.csdevkit",
+    "ms-dotnettools.vscode-dotnet-runtime",
+    
+    // TypeScript and JavaScript
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    
+    // React
+    "dsznajder.es7-react-js-snippets",
+    
+    // Docker
+    "ms-azuretools.vscode-docker",
+    
+    // Git
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    
+    // Database
+    "qwtel.sqlite-viewer",
+    
+    // Testing
+    "hbenl.vscode-test-explorer",
+    "ms-playwright.playwright",
+    
+    // Markdown
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+    
+    // YAML/JSON
+    "redhat.vscode-yaml",
+    
+    // Utilities
+    "christian-kohler.path-intellisense",
+    "visualstudioexptteam.vscodeintellicode",
+    "ms-vscode.makefile-tools",
+    "editorconfig.editorconfig",
+    
+    // REST Client
+    "humao.rest-client",
+    
+    // Live Share (for collaboration)
+    "ms-vsliveshare.vsliveshare"
+  ]
+}

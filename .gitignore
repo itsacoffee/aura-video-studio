@@ -142,3 +142,10 @@ diagnostics-*.tar.gz
 
 # Docker test volumes
 test-data/
+
+# Local development environment (PR #1)
+.env
+.env.local
+data/
+logs/
+temp-media/

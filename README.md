@@ -35,9 +35,49 @@ Create high-quality videos fast with an AI-first workflow designed for everyone.
 
 ## Quick start (Development)
 
-Windows 11 is recommended for full functionality. Backend and web build/test work on Linux/macOS; Windows-specific providers are optional for dev.
+### One-Command Setup
 
-```powershell
+Get a complete local development environment running in minutes:
+
+```bash
+# 1. Run the setup script
+./scripts/setup-local.sh   # Linux/macOS
+# OR
+.\scripts\setup-local.ps1  # Windows PowerShell
+
+# 2. Start all services (API, Web, Redis, FFmpeg)
+make dev
+
+# 3. Open your browser to http://localhost:3000
+```
+
+That's it! The setup script checks prerequisites, installs dependencies, and configures everything automatically.
+
+### What You Get
+
+- ✅ **API** running at `http://localhost:5005` with health checks
+- ✅ **Web UI** at `http://localhost:3000` with hot reload
+- ✅ **Redis** for caching and sessions
+- ✅ **FFmpeg** container for video rendering
+- ✅ **SQLite database** with test data
+- ✅ **Structured logging** to `./logs/`
+
+### Common Commands
+
+```bash
+make help         # Show all available commands
+make logs         # View all service logs
+make health       # Check service health
+make stop         # Stop all services
+make clean        # Remove all containers and data
+make test         # Run all tests
+```
+
+### Manual Setup (Alternative)
+
+If you prefer to run services individually:
+
+```bash
 # Backend API
 cd Aura.Api
 dotnet restore
@@ -50,6 +90,14 @@ npm run dev
 
 # Open http://localhost:5173
 ```
+
+**Note:** Manual setup requires Redis and FFmpeg installed locally. See [DEVELOPMENT.md](DEVELOPMENT.md) for details.
+
+### Next Steps
+
+- 📖 Read [DEVELOPMENT.md](DEVELOPMENT.md) for architecture and workflows
+- 🔧 Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) if you encounter issues
+- 🚀 See [FIRST_RUN_GUIDE.md](FIRST_RUN_GUIDE.md) for initial configuration
 
 ## Quick start (End users)
 

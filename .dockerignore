@@ -1,0 +1,84 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+CHANGELOG.md
+LICENSE
+
+# CI/CD
+.github/
+.vscode/
+.editorconfig
+
+# Build artifacts
+**/bin/
+**/obj/
+**/dist/
+**/node_modules/
+**/coverage/
+**/.vite/
+**/.next/
+**/.nuxt/
+
+# Test files
+**/*.Test.csproj
+**/*.Tests.csproj
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/tests/
+**/test/
+**/__tests__/
+**/__mocks__/
+
+# Local development
+.env
+.env.local
+.env.*.local
+*.db
+*.db-shm
+*.db-wal
+data/
+logs/
+temp-media/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.cache
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.npm/
+.yarn/
+
+# Docker
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile
+Dockerfile.*
+.dockerignore
