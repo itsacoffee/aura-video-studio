@@ -65,3 +65,28 @@ public record VideoStatus(
     string? ErrorMessage,
     List<string> ProcessingSteps,
     string CorrelationId);
+
+/// <summary>
+/// Video metadata information
+/// </summary>
+public record VideoMetadata(
+    string JobId,
+    string OutputPath,
+    long FileSizeBytes,
+    DateTime CreatedAt,
+    DateTime CompletedAt,
+    TimeSpan Duration,
+    string Resolution,
+    string Codec,
+    int Fps,
+    List<ArtifactInfo> Artifacts,
+    string CorrelationId);
+
+/// <summary>
+/// Information about a generated artifact
+/// </summary>
+public record ArtifactInfo(
+    string Name,
+    string Path,
+    string Type,
+    long SizeBytes);
