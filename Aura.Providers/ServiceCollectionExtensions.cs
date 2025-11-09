@@ -295,6 +295,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Aura.Core.Services.Providers.ProviderCostTrackingService>();
         services.AddSingleton<Aura.Core.Services.Providers.ProviderStatusService>();
         services.AddSingleton<Aura.Core.Services.Providers.ProviderCircuitBreakerService>();
+        services.AddSingleton<Aura.Core.Services.Providers.ProviderFallbackService>();
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthService>();
         
