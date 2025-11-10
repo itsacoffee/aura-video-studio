@@ -19,13 +19,16 @@ public class ProjectManagementController : ControllerBase
 {
     private readonly ProjectManagementService _projectService;
     private readonly ProjectVersionRepository _versionRepository;
+    private readonly ProjectExportImportService _exportImportService;
 
     public ProjectManagementController(
         ProjectManagementService projectService,
-        ProjectVersionRepository versionRepository)
+        ProjectVersionRepository versionRepository,
+        ProjectExportImportService exportImportService)
     {
         _projectService = projectService;
         _versionRepository = versionRepository;
+        _exportImportService = exportImportService;
     }
 
     /// <summary>
@@ -648,6 +651,243 @@ public class ProjectManagementController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// Export a project to JSON
+    /// </summary>
+    [HttpPost("projects/{projectId:guid}/export")]
+    public async Task<IActionResult> ExportProject(Guid projectId, CancellationToken ct = default)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] POST /api/project-management/projects/{ProjectId}/export", 
+                correlationId, projectId);
+
+            var project = await _projectService.GetProjectByIdAsync(projectId, ct);
+            if (project == null)
+            {
+                return NotFound(new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
+                    title = "Project Not Found",
+                    status = 404,
+                    detail = $"Project {projectId} does not exist",
+                    correlationId
+                });
+            }
+
+            var tempPath = Path.Combine(Path.GetTempPath(), $"aura_export_{projectId}.json");
+            var exportPath = await _exportImportService.ExportProjectAsync(projectId, tempPath, ct);
+
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(exportPath, ct);
+            System.IO.File.Delete(exportPath);
+
+            return File(fileBytes, "application/json", $"{project.Title}.aura.json");
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Failed to export project {ProjectId}", correlationId, projectId);
+            return StatusCode(500, new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                title = "Server Error",
+                status = 500,
+                detail = "Failed to export project",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Export a project package (with assets)
+    /// </summary>
+    [HttpPost("projects/{projectId:guid}/export-package")]
+    public async Task<IActionResult> ExportProjectPackage(
+        Guid projectId,
+        [FromQuery] bool includeAssets = true,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] POST /api/project-management/projects/{ProjectId}/export-package", 
+                correlationId, projectId);
+
+            var project = await _projectService.GetProjectByIdAsync(projectId, ct);
+            if (project == null)
+            {
+                return NotFound(new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
+                    title = "Project Not Found",
+                    status = 404,
+                    detail = $"Project {projectId} does not exist",
+                    correlationId
+                });
+            }
+
+            var tempPath = Path.Combine(Path.GetTempPath(), $"aura_package_{projectId}.zip");
+            var packagePath = await _exportImportService.ExportProjectPackageAsync(projectId, tempPath, includeAssets, ct);
+
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(packagePath, ct);
+            System.IO.File.Delete(packagePath);
+
+            return File(fileBytes, "application/zip", $"{project.Title}.aura.zip");
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Failed to export project package {ProjectId}", correlationId, projectId);
+            return StatusCode(500, new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                title = "Server Error",
+                status = 500,
+                detail = "Failed to export project package",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Import a project from JSON
+    /// </summary>
+    [HttpPost("projects/import")]
+    public async Task<IActionResult> ImportProject(
+        [FromBody] ImportProjectRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] POST /api/project-management/projects/import", correlationId);
+
+            if (string.IsNullOrWhiteSpace(request.FilePath))
+            {
+                return BadRequest(new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
+                    title = "Invalid Request",
+                    status = 400,
+                    detail = "File path is required",
+                    correlationId
+                });
+            }
+
+            var project = await _exportImportService.ImportProjectAsync(
+                request.FilePath,
+                request.NewTitle,
+                ct);
+
+            return CreatedAtAction(
+                nameof(GetProject),
+                new { projectId = project.Id },
+                new
+                {
+                    id = project.Id,
+                    title = project.Title,
+                    status = project.Status,
+                    createdAt = project.CreatedAt
+                });
+        }
+        catch (FileNotFoundException ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Warning(ex, "[{CorrelationId}] Import file not found", correlationId);
+            return NotFound(new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
+                title = "File Not Found",
+                status = 404,
+                detail = ex.Message,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Failed to import project", correlationId);
+            return StatusCode(500, new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                title = "Server Error",
+                status = 500,
+                detail = "Failed to import project",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Import a project package
+    /// </summary>
+    [HttpPost("projects/import-package")]
+    public async Task<IActionResult> ImportProjectPackage(
+        [FromBody] ImportProjectPackageRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Information("[{CorrelationId}] POST /api/project-management/projects/import-package", correlationId);
+
+            if (string.IsNullOrWhiteSpace(request.PackagePath))
+            {
+                return BadRequest(new
+                {
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
+                    title = "Invalid Request",
+                    status = 400,
+                    detail = "Package path is required",
+                    correlationId
+                });
+            }
+
+            var project = await _exportImportService.ImportProjectPackageAsync(
+                request.PackagePath,
+                request.NewTitle,
+                ct);
+
+            return CreatedAtAction(
+                nameof(GetProject),
+                new { projectId = project.Id },
+                new
+                {
+                    id = project.Id,
+                    title = project.Title,
+                    status = project.Status,
+                    createdAt = project.CreatedAt
+                });
+        }
+        catch (FileNotFoundException ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Warning(ex, "[{CorrelationId}] Package file not found", correlationId);
+            return NotFound(new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
+                title = "File Not Found",
+                status = 404,
+                detail = ex.Message,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            var correlationId = HttpContext.TraceIdentifier;
+            Log.Error(ex, "[{CorrelationId}] Failed to import project package", correlationId);
+            return StatusCode(500, new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                title = "Server Error",
+                status = 500,
+                detail = "Failed to import project package",
+                correlationId
+            });
+        }
+    }
 }
 
 // Request/Response DTOs
@@ -684,4 +924,16 @@ public record AutoSaveProjectRequest
 public record BulkDeleteRequest
 {
     public List<Guid> ProjectIds { get; init; } = new();
+}
+
+public record ImportProjectRequest
+{
+    public string FilePath { get; init; } = string.Empty;
+    public string? NewTitle { get; init; }
+}
+
+public record ImportProjectPackageRequest
+{
+    public string PackagePath { get; init; } = string.Empty;
+    public string? NewTitle { get; init; }
 }
