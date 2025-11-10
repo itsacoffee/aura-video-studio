@@ -36,6 +36,9 @@ public static class MediaServicesExtensions
         // Core media service
         services.AddScoped<IMediaService, MediaService>();
 
+        // Media generation integration
+        services.AddScoped<IMediaGenerationIntegrationService, MediaGenerationIntegrationService>();
+
         return services;
     }
 }
