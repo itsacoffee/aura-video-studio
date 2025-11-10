@@ -1,4 +1,5 @@
 using Aura.Core.Errors;
+using Aura.Core.Resilience.ErrorTracking;
 using Aura.Core.Validation;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
@@ -14,11 +15,16 @@ public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+    private readonly ErrorMetricsCollector? _metricsCollector;
 
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    public ExceptionHandlingMiddleware(
+        RequestDelegate next, 
+        ILogger<ExceptionHandlingMiddleware> logger,
+        ErrorMetricsCollector? metricsCollector = null)
     {
         _next = next;
         _logger = logger;
+        _metricsCollector = metricsCollector;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -37,6 +43,10 @@ public class ExceptionHandlingMiddleware
     {
         // Get correlation ID from context (set by CorrelationIdMiddleware)
         var correlationId = context.Items["CorrelationId"]?.ToString() ?? Guid.NewGuid().ToString("N");
+
+        // Record error in metrics collector
+        var serviceName = context.Request.Path.ToString().Split('/')[1]; // Extract service from path
+        _metricsCollector?.RecordError(serviceName, exception, correlationId);
 
         // Determine status code and error response based on exception type
         var (statusCode, errorResponse) = MapExceptionToResponse(exception, correlationId);
