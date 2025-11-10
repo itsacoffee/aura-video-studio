@@ -1,0 +1,266 @@
+# Aura Video Studio - Desktop Application
+
+> **🎬 One-click installable AI-powered video generation studio**
+
+This directory contains the Electron desktop application that wraps Aura Video Studio into a native app for Windows, macOS, and Linux.
+
+## ✨ Features
+
+- **🚀 One-Click Installation**: Native installers for all platforms
+- **🔧 Auto-Configuration**: Automatic dependency detection and installation
+- **📦 Self-Contained**: Bundled .NET backend, no manual setup required
+- **🔄 Auto-Updates**: Seamless background updates
+- **🎯 System Tray**: Quick access from taskbar/menu bar
+- **⚙️ Native Integration**: File associations, notifications, OS integration
+
+## 📥 Download
+
+Get the latest release for your platform:
+
+- **Windows**: `Aura-Video-Studio-Setup-1.0.0.exe`
+- **macOS**: `Aura-Video-Studio-1.0.0-universal.dmg`
+- **Linux**: `Aura-Video-Studio-1.0.0.AppImage`
+
+[📦 Download Latest Release →](https://github.com/coffee285/aura-video-studio/releases/latest)
+
+## 🚀 Quick Start
+
+### For Users
+
+1. Download the installer for your platform
+2. Run the installer
+3. Launch Aura Video Studio
+4. Follow the first-run setup wizard
+5. Start creating videos! 🎥
+
+See [INSTALLATION.md](../INSTALLATION.md) for detailed instructions.
+
+### For Developers
+
+#### Prerequisites
+
+- Node.js 18+
+- .NET 8.0 SDK
+- npm 9+
+
+#### Development Mode
+
+```bash
+# Install dependencies
+npm install
+
+# Build the frontend
+cd ../Aura.Web
+npm install
+npm run build
+
+# Start Electron in dev mode
+cd ../Aura.Desktop
+npm start
+```
+
+See [DESKTOP_APP_GUIDE.md](../DESKTOP_APP_GUIDE.md) for development documentation.
+
+## 🏗️ Building
+
+### Build for All Platforms
+
+```bash
+# Using shell script (Linux/macOS)
+./build-desktop.sh
+
+# Using PowerShell (Windows)
+.\build-desktop.ps1
+```
+
+### Build for Specific Platform
+
+```bash
+# Windows
+npm run build:win
+
+# macOS
+npm run build:mac
+
+# Linux
+npm run build:linux
+```
+
+Output will be in the `dist/` directory.
+
+## 📁 Project Structure
+
+```
+Aura.Desktop/
+├── electron.js              # Main process (app lifecycle, backend spawning)
+├── preload.js              # Preload script (secure IPC bridge)
+├── package.json            # Dependencies and build configuration
+├── build-desktop.sh        # Build script (Linux/macOS)
+├── build-desktop.ps1       # Build script (Windows)
+│
+├── assets/
+│   ├── splash.html         # Startup splash screen
+│   └── icons/              # Platform-specific app icons
+│       ├── icon.ico        # Windows
+│       ├── icon.icns       # macOS
+│       └── icon.png        # Linux
+│
+├── build/
+│   ├── installer.nsh       # Windows NSIS installer customization
+│   ├── entitlements.mac.plist  # macOS security permissions
+│   └── dmg-background.png  # macOS DMG background image
+│
+├── backend/                # Bundled .NET backend (generated during build)
+└── dist/                   # Build output (installers, packages)
+```
+
+## 🔧 Configuration
+
+### electron.js
+
+Main process configuration:
+- Backend spawning on random port
+- Window management
+- System tray creation
+- Auto-update handling
+- IPC handlers
+
+### package.json
+
+Build configuration:
+- Platform targets (Windows, macOS, Linux)
+- Installer options (NSIS, DMG, AppImage, DEB, RPM, Snap)
+- Code signing configuration
+- Auto-update settings
+
+## 🔐 Security
+
+The desktop app follows Electron security best practices:
+
+- ✅ **Context Isolation**: Renderer process is sandboxed
+- ✅ **No Node Integration**: Renderer can't access Node.js directly
+- ✅ **Secure IPC**: All communication via contextBridge
+- ✅ **Web Security**: Prevents loading arbitrary remote content
+- ✅ **Encrypted Storage**: Sensitive config encrypted with OS keychain
+
+## 🎨 Customization
+
+### Icons
+
+Replace icons in `assets/icons/`:
+- `icon.ico` - Windows (256x256 multi-size)
+- `icon.icns` - macOS (1024x1024 multi-size)
+- `icon.png` - Linux (512x512)
+- `tray.png` - System tray (16x16 or 22x22)
+
+See [assets/icons/README.md](assets/icons/README.md) for details.
+
+### Splash Screen
+
+Edit `assets/splash.html` to customize the startup splash screen.
+
+### Installer Branding
+
+- **Windows**: Edit `build/installer.nsh` for NSIS customization
+- **macOS**: Replace `build/dmg-background.png` for DMG background
+- **Linux**: Icons and desktop file configured in `package.json`
+
+## 📦 Distribution
+
+### GitHub Releases
+
+The easiest way to distribute:
+
+1. Tag a release: `git tag v1.0.0 && git push origin v1.0.0`
+2. Build all platforms: `npm run build:all`
+3. Create GitHub Release and upload artifacts
+4. Users get auto-update notifications
+
+### Platform Stores
+
+- **Microsoft Store**: Use `appx` target
+- **Mac App Store**: Use `mas` target (requires review)
+- **Snap Store**: `snapcraft upload dist/*.snap`
+- **Flathub**: Submit PR to flathub/aura-video-studio
+
+## 🐛 Troubleshooting
+
+### Build Issues
+
+**"Backend not found"**
+```bash
+cd ../Aura.Api
+dotnet publish -c Release -r win-x64 --self-contained
+```
+
+**"Frontend not found"**
+```bash
+cd ../Aura.Web
+npm run build
+```
+
+**Clear cache and rebuild**
+```bash
+rm -rf dist/ node_modules/
+npm install
+npm run build
+```
+
+### Runtime Issues
+
+**App won't start**
+- Check logs in user data directory
+- Run from terminal to see errors
+- Verify all dependencies are bundled
+
+**Backend fails to start**
+- Check if port is available
+- Verify backend has execute permissions
+- Check firewall/antivirus isn't blocking
+
+**Auto-update not working**
+- Verify GitHub releases are published
+- Check network connectivity
+- Enable debug logging in electron.js
+
+See [DESKTOP_APP_GUIDE.md](../DESKTOP_APP_GUIDE.md#troubleshooting) for more.
+
+## 📚 Documentation
+
+- **[INSTALLATION.md](../INSTALLATION.md)** - End-user installation guide
+- **[DESKTOP_APP_GUIDE.md](../DESKTOP_APP_GUIDE.md)** - Developer guide
+- **[BUILD_GUIDE.md](../BUILD_GUIDE.md)** - General build instructions
+
+## 🤝 Contributing
+
+We welcome contributions! When working on the desktop app:
+
+1. Follow Electron security best practices
+2. Test on all three platforms (Windows, macOS, Linux)
+3. Update documentation for new features
+4. Test both development and production builds
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
+
+## 📝 License
+
+MIT License - see [LICENSE.txt](LICENSE.txt) for details.
+
+## 🙏 Credits
+
+Built with:
+- [Electron](https://www.electronjs.org/) - Cross-platform desktop apps
+- [electron-builder](https://www.electron.build/) - Complete solution to package Electron apps
+- [electron-updater](https://www.electron.build/auto-update) - Auto-update support
+- [electron-store](https://github.com/sindresorhus/electron-store) - Persistent storage
+
+## 🔗 Links
+
+- [Website](https://aura-video-studio.com)
+- [Documentation](https://docs.aura-video-studio.com)
+- [GitHub](https://github.com/coffee285/aura-video-studio)
+- [Discord](https://discord.gg/aura-video-studio)
+
+---
+
+**Made with ❤️ by the Aura Video Studio team**
