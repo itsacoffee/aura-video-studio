@@ -197,28 +197,49 @@ const string MigrationsAssembly = "Aura.Api";
 var databaseProvider = builder.Configuration.GetValue<string>("Database:Provider") ?? "SQLite";
 var usePostgreSQL = string.Equals(databaseProvider, "PostgreSQL", StringComparison.OrdinalIgnoreCase);
 
+// Configure database performance options
+var dbPerfOptions = builder.Configuration.GetSection("Database:Performance").Get<Aura.Api.Configuration.DatabasePerformanceOptions>() 
+    ?? new Aura.Api.Configuration.DatabasePerformanceOptions();
+
 builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
 {
     if (usePostgreSQL)
     {
-        // PostgreSQL configuration for production environments
-        var connectionString = builder.Configuration.GetConnectionString("PostgreSQL") 
+        // PostgreSQL configuration for production environments with connection pooling
+        var baseConnectionString = builder.Configuration.GetConnectionString("PostgreSQL") 
             ?? builder.Configuration.GetValue<string>("Database:ConnectionString")
             ?? throw new InvalidOperationException("PostgreSQL connection string not configured. Please set 'Database:ConnectionString' or 'ConnectionStrings:PostgreSQL' in appsettings.json");
+        
+        // Add connection pooling parameters
+        var connectionStringBuilder = new Npgsql.NpgsqlConnectionStringBuilder(baseConnectionString)
+        {
+            MaxPoolSize = dbPerfOptions.MaxPoolSize,
+            MinPoolSize = dbPerfOptions.MinPoolSize,
+            ConnectionLifetime = dbPerfOptions.ConnectionLifetimeSeconds,
+            CommandTimeout = dbPerfOptions.CommandTimeoutSeconds,
+            Pooling = true
+        };
+        
+        var connectionString = connectionStringBuilder.ToString();
         
         options.UseNpgsql(connectionString, 
             npgsqlOptions => 
             {
                 npgsqlOptions.MigrationsAssembly(MigrationsAssembly);
                 npgsqlOptions.EnableRetryOnFailure(
-                    maxRetryCount: 5,
-                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    maxRetryCount: dbPerfOptions.MaxRetryCount,
+                    maxRetryDelay: TimeSpan.FromSeconds(dbPerfOptions.MaxRetryDelaySeconds),
                     errorCodesToAdd: null);
-                npgsqlOptions.CommandTimeout(60);
+                npgsqlOptions.CommandTimeout(dbPerfOptions.CommandTimeoutSeconds);
+                
+                if (dbPerfOptions.EnableQuerySplitting)
+                {
+                    npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                }
             });
         
-        Log.Information("Using PostgreSQL database at {Server}", 
-            new Npgsql.NpgsqlConnectionStringBuilder(connectionString).Host);
+        Log.Information("Using PostgreSQL database at {Server} with connection pooling (Min: {Min}, Max: {Max})", 
+            connectionStringBuilder.Host, dbPerfOptions.MinPoolSize, dbPerfOptions.MaxPoolSize);
     }
     else
     {
@@ -226,11 +247,15 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
         var dbPath = builder.Configuration.GetValue<string>("Database:SQLitePath") 
             ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
         
+        var walEnabled = dbPerfOptions.SqliteEnableWAL;
+        var cacheSize = -dbPerfOptions.SqliteCacheSizeKB;
+        var pageSize = dbPerfOptions.SqlitePageSize;
+        
         var connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;" +
-            "Journal Mode=WAL;" +              // Write-Ahead Logging for better concurrency
+            $"Journal Mode={(walEnabled ? "WAL" : "DELETE")};" +  // Write-Ahead Logging for better concurrency
             "Synchronous=NORMAL;" +            // Faster writes with good reliability
-            "Page Size=4096;" +                // Optimal page size for modern systems
-            "Cache Size=-64000;" +             // 64MB cache (negative = KB)
+            $"Page Size={pageSize};" +         // Optimal page size for modern systems
+            $"Cache Size={cacheSize};" +       // Cache size (negative = KB)
             "Temp Store=MEMORY;" +             // Store temp tables in memory
             "Locking Mode=NORMAL;" +           // Allow multiple connections
             "Foreign Keys=True;";              // Enforce FK constraints
@@ -238,7 +263,8 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
         options.UseSqlite(connectionString, 
             sqliteOptions => sqliteOptions.MigrationsAssembly(MigrationsAssembly));
         
-        Log.Information("Using SQLite database at {Path}", dbPath);
+        Log.Information("Using SQLite database at {Path} (WAL: {WAL}, Cache: {CacheKB}KB)", 
+            dbPath, walEnabled, dbPerfOptions.SqliteCacheSizeKB);
     }
     
     // Common options for both providers
@@ -1286,6 +1312,9 @@ builder.Services.AddHostedService<Aura.Api.HostedServices.ActionCleanupService>(
 // Register resilience monitoring service
 builder.Services.AddHostedService<ResilienceMonitoringService>();
 
+// Add cache warming service
+builder.Services.AddHostedService<Aura.Api.HostedServices.CacheWarmingService>();
+
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
 builder.Services.AddSingleton<Aura.Core.Dependencies.DependencyManager>(sp =>
@@ -1827,6 +1856,12 @@ app.UseResponseCompression();
 
 // Add response caching headers middleware
 app.UseMiddleware<Aura.Api.Middleware.ResponseCachingMiddleware>();
+
+// Add ETag middleware for conditional requests
+app.UseMiddleware<Aura.Api.Middleware.ETagMiddleware>();
+
+// Add query performance monitoring middleware
+app.UseMiddleware<Aura.Api.Middleware.QueryPerformanceMiddleware>();
 
 // Add performance tracking middleware (after correlation ID)
 app.UsePerformanceTracking();

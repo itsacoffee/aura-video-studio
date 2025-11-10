@@ -1,12 +1,13 @@
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Net.Http.Headers;
 
 namespace Aura.Api.Middleware;
 
 /// <summary>
-/// Middleware for setting response caching headers based on endpoint
+/// Middleware to add appropriate cache-control headers to API responses
 /// </summary>
 public class ResponseCachingMiddleware
 {
@@ -21,59 +22,94 @@ public class ResponseCachingMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
-        var method = context.Request.Method;
-
-        if (method == "GET")
+        context.Response.OnStarting(() =>
         {
-            if (path.StartsWith("/api/health") || path.StartsWith("/health"))
+            if (context.Response.StatusCode == 200)
             {
-                context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-                context.Response.Headers["Pragma"] = "no-cache";
-                context.Response.Headers["Expires"] = "0";
-            }
-            else if (path.StartsWith("/api/settings") || path.StartsWith("/api/providers"))
-            {
-                context.Response.Headers["Cache-Control"] = "private, max-age=300";
-                context.Response.Headers["Vary"] = "Accept, Accept-Encoding";
-            }
-            else if (path.StartsWith("/api/jobs") && path.Contains("/status"))
-            {
-                context.Response.Headers["Cache-Control"] = "private, max-age=5";
-            }
-            else if (path.StartsWith("/api/assets") || path.StartsWith("/api/stock"))
-            {
-                context.Response.Headers["Cache-Control"] = "public, max-age=3600";
-                context.Response.Headers["Vary"] = "Accept, Accept-Encoding";
-            }
-            else if (path.StartsWith("/api/"))
-            {
-                context.Response.Headers["Cache-Control"] = "private, max-age=60";
-                context.Response.Headers["Vary"] = "Accept, Accept-Encoding";
-            }
+                var path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+                var method = context.Request.Method;
 
-            context.Response.OnStarting(() =>
-            {
-                if (context.Response.StatusCode == 200)
+                // Determine cache strategy based on endpoint
+                var cacheControl = DetermineCacheControl(path, method);
+                
+                if (!string.IsNullOrEmpty(cacheControl) && 
+                    !context.Response.Headers.ContainsKey(HeaderNames.CacheControl))
                 {
-                    var etag = GenerateETag(context.Request.Path, context.Request.QueryString.ToString());
-                    context.Response.Headers["ETag"] = etag;
+                    context.Response.Headers[HeaderNames.CacheControl] = cacheControl;
+                    _logger.LogDebug("Added Cache-Control header: {CacheControl} for {Path}", cacheControl, path);
                 }
-                return Task.CompletedTask;
-            });
-        }
-        else
-        {
-            context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-        }
+
+                // Add Vary header for content negotiation
+                if (!context.Response.Headers.ContainsKey(HeaderNames.Vary))
+                {
+                    context.Response.Headers[HeaderNames.Vary] = "Accept, Accept-Encoding";
+                }
+            }
+
+            return Task.CompletedTask;
+        });
 
         await _next(context);
     }
 
-    private static string GenerateETag(string path, string query)
+    private static string DetermineCacheControl(string path, string method)
     {
-        var content = $"{path}{query}";
-        var hash = content.GetHashCode();
-        return $"\"{hash:X}\"";
+        // No caching for non-GET requests
+        if (method != HttpMethods.Get && method != HttpMethods.Head)
+        {
+            return "no-store";
+        }
+
+        // Configuration endpoints - cache for 5 minutes
+        if (path.Contains("/api/configuration") || 
+            path.Contains("/api/settings") ||
+            path.Contains("/api/system"))
+        {
+            return "private, max-age=300"; // 5 minutes
+        }
+
+        // Provider profiles - cache for 10 minutes
+        if (path.Contains("/api/providers") || 
+            path.Contains("/api/profiles"))
+        {
+            return "private, max-age=600"; // 10 minutes
+        }
+
+        // Template endpoints - cache for 1 hour
+        if (path.Contains("/api/templates"))
+        {
+            return "private, max-age=3600"; // 1 hour
+        }
+
+        // Health checks - cache for 30 seconds
+        if (path.Contains("/health") || path.Contains("/api/health"))
+        {
+            return "public, max-age=30";
+        }
+
+        // Static metadata - cache for 24 hours
+        if (path.Contains("/api/models") || 
+            path.Contains("/api/version"))
+        {
+            return "public, max-age=86400"; // 24 hours
+        }
+
+        // Media library - cache for 5 minutes
+        if (path.Contains("/api/media"))
+        {
+            return "private, max-age=300";
+        }
+
+        // Job/queue endpoints - no caching (real-time data)
+        if (path.Contains("/api/jobs") || 
+            path.Contains("/api/queue") ||
+            path.Contains("/api/render") ||
+            path.Contains("/api/export"))
+        {
+            return "no-cache, no-store, must-revalidate";
+        }
+
+        // Default: short-lived cache
+        return "private, max-age=60"; // 1 minute
     }
 }
