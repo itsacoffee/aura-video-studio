@@ -751,6 +751,10 @@ builder.Services.AddSignalR(options =>
     EnumJsonConverters.AddToOptions(options.PayloadSerializerOptions);
 });
 
+// Register Background Job Queue Services
+builder.Services.AddJobQueueServices();
+Log.Information("Background job queue services registered");
+
 // Register Hangfire for background job processing (optional, requires configuration)
 var hangfireConnectionString = builder.Configuration.GetConnectionString("Hangfire");
 if (!string.IsNullOrEmpty(hangfireConnectionString))
@@ -4451,7 +4455,8 @@ apiGroup.MapPost("/providers/validate", async (
 // Note: Create hub classes in Aura.Api/Hubs/ as needed (e.g., GenerationProgressHub, NotificationHub)
 // app.MapHub<GenerationProgressHub>("/hubs/generation-progress");
 // app.MapHub<NotificationHub>("/hubs/notifications");
-Log.Information("SignalR hubs configured (add hub mappings as needed)");
+app.MapHub<Aura.Api.Hubs.JobQueueHub>("/hubs/job-queue");
+Log.Information("SignalR hubs configured (JobQueueHub mapped to /hubs/job-queue)");
 
 // Root health endpoint for startup readiness checks
 app.MapGet("/healthz", () => 
@@ -4489,6 +4494,10 @@ if (Directory.Exists(wwwrootPath) && File.Exists(Path.Combine(wwwrootPath, "inde
     app.MapFallbackToFile("index.html");
     Log.Information("SPA fallback configured: All unmatched routes will serve index.html for client-side routing");
 }
+
+// Wire up background job queue events to SignalR notifications
+app.Services.WireJobQueueEvents();
+Log.Information("Background job queue events wired to SignalR notifications");
 
 // Start Engine Lifecycle Manager and Provider Health Monitoring
 // These are started after the application begins to ensure all services are initialized
