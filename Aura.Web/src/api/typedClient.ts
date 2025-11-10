@@ -365,3 +365,15 @@ export const typedApiClient = new TypedApiClient({
   retryAttempts: 3,
   retryDelay: 1000,
 });
+
+// Export aliases for backwards compatibility
+export const typedClient = typedApiClient;
+export const apiClient = typedApiClient;
+export const typedFetch = <T = any>(urlOrConfig: string | AxiosRequestConfig, config?: AxiosRequestConfig): Promise<T> => {
+  if (typeof urlOrConfig === 'string') {
+    return typedApiClient.get<T>(urlOrConfig, config);
+  } else {
+    const url = urlOrConfig.url || '';
+    return typedApiClient.get<T>(url, urlOrConfig);
+  }
+};

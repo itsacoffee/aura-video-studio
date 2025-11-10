@@ -120,10 +120,10 @@ const AccessibilitySettingsPage = lazy(() =>
 const CustomTemplatesPage = lazy(() => import('./pages/Templates/CustomTemplatesPage'));
 const TemplatesLibrary = lazy(() => import('./pages/Templates/TemplatesLibrary'));
 const ValidationPage = lazy(() =>
-  import('./pages/Validation/ValidationPage').then((m) => ({ default: m.ValidationPage }))
+  import('./pages/Validation/ValidationPage')
 );
 const VerificationPage = lazy(() =>
-  import('./pages/Verification/VerificationPage').then((m) => ({ default: m.VerificationPage }))
+  import('./pages/Verification/VerificationPage')
 );
 const VideoEditorPage = lazy(() =>
   import('./pages/VideoEditorPage').then((m) => ({ default: m.VideoEditorPage }))

@@ -27,7 +27,7 @@ import {
 import {
   DataUsage24Regular,
   Money24Regular,
-  SpeedHigh24Regular,
+  // SpeedHigh24Regular, // Not available in this version
   ArrowDownload24Regular,
   Settings24Regular,
   Delete24Regular,

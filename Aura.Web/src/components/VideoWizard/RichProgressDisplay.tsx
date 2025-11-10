@@ -125,8 +125,8 @@ const useStyles = makeStyles({
   },
   completionBadge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
+    top: '4px',
+    right: '4px',
     backgroundColor: tokens.colorPaletteGreenBackground2,
     color: tokens.colorPaletteGreenForeground1,
     borderRadius: '50%',

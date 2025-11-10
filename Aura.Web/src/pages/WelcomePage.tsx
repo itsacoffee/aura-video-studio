@@ -145,7 +145,7 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXXL,
     marginBottom: tokens.spacingVerticalXXL,
     borderRadius: tokens.borderRadiusLarge,
-    background: `linear-gradient(135deg, ${tokens.colorPaletteRedBackground1} 0%, ${tokens.colorPaletteOrangeBackground1} 100%)`,
+    background: `linear-gradient(135deg, ${tokens.colorPaletteRedBackground1} 0%, ${tokens.colorPaletteDarkOrangeBackground1} 100%)`,
     border: `3px solid ${tokens.colorPaletteRedBorder2}`,
     textAlign: 'center',
     animation: 'pulseGlow 2s ease-in-out infinite',

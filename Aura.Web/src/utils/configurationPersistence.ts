@@ -154,7 +154,7 @@ export function exportConfiguration(
   const exportData: ConfigurationExport = {
     version: '1.0.0',
     exportDate: new Date().toISOString(),
-    includesSecrets,
+    includesSecrets: includeSecrets,
     configuration: {
       providers: includeSecrets ? providersConfig : maskSecrets(providersConfig),
       workspace: workspaceConfig,

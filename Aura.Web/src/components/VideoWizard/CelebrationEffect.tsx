@@ -86,11 +86,11 @@ export const CelebrationEffect: FC<CelebrationEffectProps> = ({
       // Generate confetti particles
       if (type === 'confetti' || type === 'both') {
         const colors = [
-          tokens.colorPaletteBlueForeground1,
+          tokens.colorPaletteBlueForeground2,
           tokens.colorPaletteGreenForeground1,
           tokens.colorPaletteYellowForeground1,
           tokens.colorPaletteRedForeground1,
-          tokens.colorPalettePurpleForeground1,
+          tokens.colorPalettePurpleForeground2,
         ];
 
         const particles: ConfettiParticle[] = [];
