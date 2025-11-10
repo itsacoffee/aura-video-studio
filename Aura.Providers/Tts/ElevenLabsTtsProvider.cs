@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -25,6 +26,8 @@ public class ElevenLabsTtsProvider : ITtsProvider
     private readonly string? _apiKey;
     private readonly string _outputDirectory;
     private readonly bool _offlineOnly;
+    private readonly VoiceCache? _voiceCache;
+    private readonly string? _ffmpegPath;
 
     private const string BaseUrl = "https://api.elevenlabs.io/v1";
 
@@ -32,12 +35,16 @@ public class ElevenLabsTtsProvider : ITtsProvider
         ILogger<ElevenLabsTtsProvider> logger, 
         HttpClient httpClient,
         string? apiKey,
-        bool offlineOnly = false)
+        bool offlineOnly = false,
+        VoiceCache? voiceCache = null,
+        string? ffmpegPath = null)
     {
         _logger = logger;
         _httpClient = httpClient;
         _apiKey = apiKey;
         _offlineOnly = offlineOnly;
+        _voiceCache = voiceCache;
+        _ffmpegPath = ffmpegPath;
         _outputDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "TTS");
         
         // Ensure output directory exists
@@ -118,7 +125,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
         // Get the voice ID with validation
         string voiceId = await GetVoiceIdAsync(spec.VoiceName, ct);
         
-        // Process each line
+        // Process each line (with caching support)
         var lineOutputs = new List<string>();
         int lineIndex = 0;
 
@@ -129,66 +136,107 @@ public class ElevenLabsTtsProvider : ITtsProvider
             _logger.LogDebug("Synthesizing line {Index}: {Text}", line.SceneIndex, 
                 line.Text.Length > 30 ? line.Text.Substring(0, 30) + "..." : line.Text);
             
-            // Create the request payload
-            var payload = new
+            // Check cache first
+            string? cachedAudio = null;
+            if (_voiceCache != null)
             {
-                text = line.Text,
-                model_id = "eleven_monolingual_v1", // Default model
-                voice_settings = new
-                {
-                    stability = 0.5,
-                    similarity_boost = 0.75,
-                    style = 0.0,
-                    use_speaker_boost = true
-                }
-            };
+                cachedAudio = _voiceCache.TryGetCached(
+                    "ElevenLabs",
+                    spec.VoiceName,
+                    line.Text,
+                    spec.Rate,
+                    spec.Pitch);
+            }
 
-            // Make the API request
-            var content = new StringContent(
-                JsonSerializer.Serialize(payload),
-                Encoding.UTF8,
-                "application/json");
-
-            var response = await _httpClient.PostAsync(
-                $"{BaseUrl}/text-to-speech/{voiceId}",
-                content,
-                ct);
-
-            // Handle specific error cases
-            if (!response.IsSuccessStatusCode)
+            string tempFile;
+            if (cachedAudio != null)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
-                
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                _logger.LogDebug("Using cached audio for line {Index}", line.SceneIndex);
+                tempFile = cachedAudio;
+            }
+            else
+            {
+                // Create the request payload
+                var payload = new
                 {
-                    throw new InvalidOperationException("ElevenLabs API key is invalid. Please check your API key in settings.");
+                    text = line.Text,
+                    model_id = "eleven_monolingual_v1", // Default model
+                    voice_settings = new
+                    {
+                        stability = 0.5,
+                        similarity_boost = 0.75,
+                        style = 0.0,
+                        use_speaker_boost = true
+                    }
+                };
+
+                // Make the API request
+                var content = new StringContent(
+                    JsonSerializer.Serialize(payload),
+                    Encoding.UTF8,
+                    "application/json");
+
+                var response = await _httpClient.PostAsync(
+                    $"{BaseUrl}/text-to-speech/{voiceId}",
+                    content,
+                    ct);
+
+                // Handle specific error cases
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync(ct);
+                    
+                    if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        throw new InvalidOperationException("ElevenLabs API key is invalid. Please check your API key in settings.");
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                    {
+                        throw new InvalidOperationException("ElevenLabs rate limit exceeded. Please wait a moment and try again, or upgrade your ElevenLabs plan.");
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.PaymentRequired)
+                    {
+                        throw new InvalidOperationException("ElevenLabs quota exceeded. Please check your plan limits or upgrade your subscription.");
+                    }
+                    else
+                    {
+                        _logger.LogError("ElevenLabs API error: {StatusCode} - {Error}", response.StatusCode, errorContent);
+                        throw new InvalidOperationException($"ElevenLabs synthesis failed with status {response.StatusCode}. {errorContent}");
+                    }
                 }
-                else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+
+                response.EnsureSuccessStatusCode();
+
+                // Save to temp file
+                tempFile = Path.Combine(_outputDirectory, $"line_{line.SceneIndex}_{lineIndex}.mp3");
+
+                using (var fileStream = new FileStream(tempFile, FileMode.Create))
                 {
-                    throw new InvalidOperationException("ElevenLabs rate limit exceeded. Please wait a moment and try again, or upgrade your ElevenLabs plan.");
+                    await response.Content.CopyToAsync(fileStream, ct);
                 }
-                else if (response.StatusCode == System.Net.HttpStatusCode.PaymentRequired)
+
+                // Store in cache
+                if (_voiceCache != null)
                 {
-                    throw new InvalidOperationException("ElevenLabs quota exceeded. Please check your plan limits or upgrade your subscription.");
-                }
-                else
-                {
-                    _logger.LogError("ElevenLabs API error: {StatusCode} - {Error}", response.StatusCode, errorContent);
-                    throw new InvalidOperationException($"ElevenLabs synthesis failed with status {response.StatusCode}. {errorContent}");
+                    try
+                    {
+                        await _voiceCache.StoreAsync(
+                            "ElevenLabs",
+                            spec.VoiceName,
+                            line.Text,
+                            tempFile,
+                            spec.Rate,
+                            spec.Pitch,
+                            ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to cache audio for line {Index}", line.SceneIndex);
+                    }
                 }
             }
 
-            response.EnsureSuccessStatusCode();
-
-            // Save to temp file
-            string tempFile = Path.Combine(_outputDirectory, $"line_{line.SceneIndex}_{lineIndex}.mp3");
             lineOutputs.Add(tempFile);
-
-            using (var fileStream = new FileStream(tempFile, FileMode.Create))
-            {
-                await response.Content.CopyToAsync(fileStream, ct);
-            }
-
             lineIndex++;
         }
 
@@ -197,20 +245,38 @@ public class ElevenLabsTtsProvider : ITtsProvider
         
         _logger.LogInformation("Synthesized {Count} lines, combining into final output", lineOutputs.Count);
         
-        // For now, just use the first file or concatenate using ffmpeg in production
-        if (lineOutputs.Count > 0)
+        if (lineOutputs.Count == 0)
         {
-            // In a real implementation, we'd use FFmpeg to concatenate the audio files
-            // For now, just copy the first file
+            throw new InvalidOperationException("No audio lines were generated");
+        }
+        
+        if (lineOutputs.Count == 1)
+        {
+            // Single file, just copy it
             File.Copy(lineOutputs[0], outputFilePath, true);
         }
+        else
+        {
+            // Multiple files, concatenate with FFmpeg
+            await ConcatenateAudioFilesAsync(lineOutputs, outputFilePath, ct);
+        }
 
-        // Clean up temp files
+        // Clean up temp files (only non-cached ones)
         foreach (var file in lineOutputs)
         {
             try
             {
-                if (File.Exists(file))
+                // Don't delete cached files
+                if (_voiceCache != null)
+                {
+                    var isCached = _voiceCache.TryGetCached("ElevenLabs", spec.VoiceName, string.Empty) != null;
+                    if (isCached && file.Contains("Cache"))
+                    {
+                        continue;
+                    }
+                }
+
+                if (File.Exists(file) && !file.Contains("Cache"))
                 {
                     File.Delete(file);
                 }
@@ -351,5 +417,158 @@ public class ElevenLabsTtsProvider : ITtsProvider
             _logger.LogError(ex, "Error fetching voice ID for '{Voice}'", voiceName);
             throw new InvalidOperationException($"Failed to get voice ID for '{voiceName}'. Check your internet connection and API key.", ex);
         }
+    }
+
+    /// <summary>
+    /// Streams audio generation in real-time (ElevenLabs streaming API)
+    /// </summary>
+    public async IAsyncEnumerable<byte[]> StreamAudioAsync(
+        string text,
+        string voiceId,
+        CancellationToken ct)
+    {
+        if (_offlineOnly || string.IsNullOrWhiteSpace(_apiKey))
+        {
+            throw new InvalidOperationException("ElevenLabs is not available in offline mode");
+        }
+
+        _logger.LogInformation("Streaming audio generation for voice {VoiceId}", voiceId);
+
+        var payload = new
+        {
+            text,
+            model_id = "eleven_monolingual_v1",
+            voice_settings = new
+            {
+                stability = 0.5,
+                similarity_boost = 0.75,
+                style = 0.0,
+                use_speaker_boost = true
+            }
+        };
+
+        var content = new StringContent(
+            JsonSerializer.Serialize(payload),
+            Encoding.UTF8,
+            "application/json");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/text-to-speech/{voiceId}/stream")
+        {
+            Content = content
+        };
+
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+
+        using var stream = await response.Content.ReadAsStreamAsync(ct);
+        var buffer = new byte[8192];
+        int bytesRead;
+
+        while ((bytesRead = await stream.ReadAsync(buffer, ct)) > 0)
+        {
+            var chunk = new byte[bytesRead];
+            Array.Copy(buffer, chunk, bytesRead);
+            yield return chunk;
+        }
+
+        _logger.LogInformation("Audio streaming completed");
+    }
+
+    /// <summary>
+    /// Concatenates multiple audio files using FFmpeg
+    /// </summary>
+    private async Task ConcatenateAudioFilesAsync(
+        List<string> inputFiles,
+        string outputPath,
+        CancellationToken ct)
+    {
+        var ffmpegPath = await GetFfmpegPathAsync();
+
+        // Create concat file list
+        var concatListPath = Path.Combine(_outputDirectory, $"concat_{Guid.NewGuid():N}.txt");
+        
+        try
+        {
+            // Write file list for ffmpeg concat demuxer
+            var fileList = inputFiles.Select(f => $"file '{f.Replace("'", "'\\''")}'");
+            await File.WriteAllLinesAsync(concatListPath, fileList, ct);
+
+            // Concatenate using ffmpeg
+            var args = $"-f concat -safe 0 -i \"{concatListPath}\" -c copy -y \"{outputPath}\"";
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = ffmpegPath,
+                Arguments = args,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process == null)
+            {
+                throw new InvalidOperationException("Failed to start FFmpeg process");
+            }
+
+            await process.WaitForExitAsync(ct);
+
+            if (process.ExitCode != 0)
+            {
+                var error = await process.StandardError.ReadToEndAsync(ct);
+                _logger.LogError("FFmpeg concatenation failed: {Error}", error);
+                throw new InvalidOperationException($"Failed to concatenate audio files: {error}");
+            }
+
+            _logger.LogDebug("Successfully concatenated {Count} audio files", inputFiles.Count);
+        }
+        finally
+        {
+            // Clean up concat list file
+            if (File.Exists(concatListPath))
+            {
+                try
+                {
+                    File.Delete(concatListPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete concat list file");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets FFmpeg executable path
+    /// </summary>
+    private async Task<string> GetFfmpegPathAsync()
+    {
+        if (!string.IsNullOrEmpty(_ffmpegPath) && File.Exists(_ffmpegPath))
+        {
+            return _ffmpegPath;
+        }
+
+        // Try to find ffmpeg in PATH
+        var paths = Environment.GetEnvironmentVariable("PATH")?.Split(Path.PathSeparator) ?? Array.Empty<string>();
+        
+        foreach (var path in paths)
+        {
+            var ffmpegPath = Path.Combine(path, "ffmpeg");
+            if (OperatingSystem.IsWindows())
+            {
+                ffmpegPath += ".exe";
+            }
+
+            if (File.Exists(ffmpegPath))
+            {
+                return ffmpegPath;
+            }
+        }
+
+        throw new FileNotFoundException(
+            "FFmpeg not found. Please install FFmpeg to concatenate audio files. " +
+            "Download from: https://ffmpeg.org/download.html");
     }
 }

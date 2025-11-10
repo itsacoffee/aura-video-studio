@@ -62,6 +62,21 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddTtsProviders(this IServiceCollection services)
     {
+        // Register TTS support services
+        services.AddSingleton<VoiceCache>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<VoiceCache>>();
+            return new VoiceCache(logger);
+        });
+
+        services.AddSingleton<AudioNormalizer>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<AudioNormalizer>>();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+            var ffmpegPath = settings.GetFfmpegPath();
+            return new AudioNormalizer(logger, ffmpegPath);
+        });
+
         // Always register NullTtsProvider as final fallback
         services.AddSingleton<ITtsProvider>(sp =>
         {
@@ -87,6 +102,9 @@ public static class ServiceCollectionExtensions
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var settings = sp.GetRequiredService<ProviderSettings>();
             var apiKey = settings.GetElevenLabsApiKey();
+            var offlineOnly = settings.IsOfflineOnly();
+            var voiceCache = sp.GetService<VoiceCache>();
+            var ffmpegPath = settings.GetFfmpegPath();
             
             // Only create if API key is available
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -95,7 +113,7 @@ public static class ServiceCollectionExtensions
                 return null!;
             }
             
-            return new ElevenLabsTtsProvider(logger, httpClient, apiKey);
+            return new ElevenLabsTtsProvider(logger, httpClient, apiKey, offlineOnly, voiceCache, ffmpegPath);
         });
 
         // Register PlayHT provider (requires API key and user ID)
