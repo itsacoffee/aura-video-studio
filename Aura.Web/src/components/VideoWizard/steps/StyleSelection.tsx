@@ -24,6 +24,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXL,
+    animation: 'fadeInUp 0.5s ease',
   },
   section: {
     display: 'flex',
@@ -38,15 +39,18 @@ const useStyles = makeStyles({
   providerCard: {
     padding: tokens.spacingVerticalL,
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     ':hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: tokens.shadow8,
+      transform: 'translateY(-4px)',
+      boxShadow: tokens.shadow16,
+      border: `1px solid ${tokens.colorBrandStroke1}`,
     },
   },
   selectedCard: {
     border: `2px solid ${tokens.colorBrandStroke1}`,
+    boxShadow: tokens.shadow8,
+    backgroundColor: tokens.colorBrandBackground2,
   },
   providerHeader: {
     display: 'flex',
@@ -73,6 +77,16 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     alignItems: 'center',
     padding: tokens.spacingVerticalXXL,
+  },
+  '@keyframes fadeInUp': {
+    '0%': {
+      opacity: 0,
+      transform: 'translateY(20px)',
+    },
+    '100%': {
+      opacity: 1,
+      transform: 'translateY(0)',
+    },
   },
 });
 
