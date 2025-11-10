@@ -133,6 +133,31 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<SystemConfigurationEntity> SystemConfigurations { get; set; } = null!;
 
+    /// <summary>
+    /// Media library items
+    /// </summary>
+    public DbSet<MediaEntity> MediaItems { get; set; } = null!;
+
+    /// <summary>
+    /// Media collections (folders)
+    /// </summary>
+    public DbSet<MediaCollectionEntity> MediaCollections { get; set; } = null!;
+
+    /// <summary>
+    /// Media tags
+    /// </summary>
+    public DbSet<MediaTagEntity> MediaTags { get; set; } = null!;
+
+    /// <summary>
+    /// Media usage tracking
+    /// </summary>
+    public DbSet<MediaUsageEntity> MediaUsages { get; set; } = null!;
+
+    /// <summary>
+    /// Upload sessions for chunked uploads
+    /// </summary>
+    public DbSet<UploadSessionEntity> UploadSessions { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -302,6 +327,70 @@ public class AuraDbContext : DbContext
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
+        });
+
+        // Configure MediaEntity
+        modelBuilder.Entity<MediaEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.Source);
+            entity.HasIndex(e => e.ProcessingStatus);
+            entity.HasIndex(e => e.CollectionId);
+            entity.HasIndex(e => e.ContentHash);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.IsDeleted);
+            entity.HasIndex(e => new { e.Type, e.CreatedAt });
+            entity.HasIndex(e => new { e.IsDeleted, e.DeletedAt });
+            entity.HasOne(e => e.Collection)
+                .WithMany(c => c.MediaItems)
+                .HasForeignKey(e => e.CollectionId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configure MediaCollectionEntity
+        modelBuilder.Entity<MediaCollectionEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.IsDeleted);
+            entity.HasIndex(e => new { e.IsDeleted, e.DeletedAt });
+        });
+
+        // Configure MediaTagEntity
+        modelBuilder.Entity<MediaTagEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.MediaId);
+            entity.HasIndex(e => e.Tag);
+            entity.HasIndex(e => new { e.MediaId, e.Tag }).IsUnique();
+            entity.HasOne(e => e.Media)
+                .WithMany(m => m.Tags)
+                .HasForeignKey(e => e.MediaId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure MediaUsageEntity
+        modelBuilder.Entity<MediaUsageEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.MediaId);
+            entity.HasIndex(e => e.ProjectId);
+            entity.HasIndex(e => e.UsedAt);
+            entity.HasIndex(e => new { e.MediaId, e.UsedAt });
+            entity.HasOne(e => e.Media)
+                .WithMany(m => m.Usages)
+                .HasForeignKey(e => e.MediaId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure UploadSessionEntity
+        modelBuilder.Entity<UploadSessionEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ExpiresAt);
+            entity.HasIndex(e => e.CreatedAt);
         });
 
         // Apply global query filters for soft delete
