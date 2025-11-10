@@ -183,6 +183,21 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<UploadSessionEntity> UploadSessions { get; set; } = null!;
 
+    /// <summary>
+    /// Job queue entries for background processing
+    /// </summary>
+    public DbSet<JobQueueEntity> JobQueue { get; set; } = null!;
+
+    /// <summary>
+    /// Job progress history for tracking and analytics
+    /// </summary>
+    public DbSet<JobProgressHistoryEntity> JobProgressHistory { get; set; } = null!;
+
+    /// <summary>
+    /// Queue configuration settings
+    /// </summary>
+    public DbSet<QueueConfigurationEntity> QueueConfiguration { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -510,6 +525,52 @@ public class AuraDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.ExpiresAt);
             entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // Configure JobQueueEntity
+        modelBuilder.Entity<JobQueueEntity>(entity =>
+        {
+            entity.HasKey(e => e.JobId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.Priority);
+            entity.HasIndex(e => new { e.Status, e.Priority });
+            entity.HasIndex(e => e.EnqueuedAt);
+            entity.HasIndex(e => e.NextRetryAt);
+            entity.HasIndex(e => e.WorkerId);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // Configure JobProgressHistoryEntity
+        modelBuilder.Entity<JobProgressHistoryEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.JobId, e.Timestamp });
+        });
+
+        // Configure QueueConfigurationEntity
+        modelBuilder.Entity<QueueConfigurationEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            // Seed default configuration
+            entity.HasData(new QueueConfigurationEntity
+            {
+                Id = 1,
+                MaxConcurrentJobs = 2,
+                PauseOnBattery = true,
+                CpuThrottleThreshold = 85,
+                MemoryThrottleThreshold = 85,
+                IsEnabled = true,
+                PollingIntervalSeconds = 5,
+                JobHistoryRetentionDays = 7,
+                FailedJobRetentionDays = 30,
+                RetryBaseDelaySeconds = 5,
+                RetryMaxDelaySeconds = 300,
+                EnableNotifications = true,
+                UpdatedAt = DateTime.UtcNow
+            });
         });
 
         // Apply global query filters for soft delete
