@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Aura.Core.Models.Settings;
 
 namespace Aura.Core.Models;
 
@@ -28,6 +29,12 @@ public class UserSettings
     
     // Visual Generation Settings
     public VisualGenerationSettings VisualGeneration { get; set; } = new();
+    
+    // Export Settings (NEW)
+    public ExportSettings Export { get; set; } = new();
+    
+    // Provider Rate Limits (NEW)
+    public ProviderRateLimits RateLimits { get; set; } = new();
     
     // Advanced Settings (legacy)
     public AdvancedSettings Advanced { get; set; } = new();
