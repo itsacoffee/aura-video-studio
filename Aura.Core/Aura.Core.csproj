@@ -49,8 +49,13 @@
   </ItemGroup>
 
   <!-- Windows-specific references for battery monitoring -->
-  <!-- Only include Windows Forms when explicitly building for Windows runtime -->
-  <ItemGroup Condition="$(RuntimeIdentifier.Contains('win'))">
+  <!-- Include Windows Forms when building for Windows or when no RuntimeIdentifier is specified on Windows -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == '' OR $(RuntimeIdentifier.Contains('win'))">
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+  </ItemGroup>
+  
+  <!-- When explicitly building for Windows runtime -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != '' AND $(RuntimeIdentifier.Contains('win'))">
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
   </ItemGroup>
 
