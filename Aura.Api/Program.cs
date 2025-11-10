@@ -190,24 +190,56 @@ builder.Services.AddHealthChecks()
     .AddCheck<Aura.Api.HealthChecks.MemoryHealthCheck>("Memory", tags: new[] { "ready", "infrastructure" })
     .AddCheck<Aura.Api.HealthChecks.ProviderHealthCheck>("Providers", tags: new[] { "ready", "providers" });
 
-// Configure database with WAL mode for better concurrency and performance optimizations
+// Configure database with support for both SQLite (default) and PostgreSQL
 const string MigrationsAssembly = "Aura.Api";
-var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
+var databaseProvider = builder.Configuration.GetValue<string>("Database:Provider") ?? "SQLite";
+var usePostgreSQL = string.Equals(databaseProvider, "PostgreSQL", StringComparison.OrdinalIgnoreCase);
+
 builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
 {
-    // Optimized SQLite connection string with performance tuning
-    var connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;" +
-        "Journal Mode=WAL;" +              // Write-Ahead Logging for better concurrency
-        "Synchronous=NORMAL;" +            // Faster writes with good reliability
-        "Page Size=4096;" +                // Optimal page size for modern systems
-        "Cache Size=-64000;" +             // 64MB cache (negative = KB)
-        "Temp Store=MEMORY;" +             // Store temp tables in memory
-        "Locking Mode=NORMAL;" +           // Allow multiple connections
-        "Foreign Keys=True;";              // Enforce FK constraints
+    if (usePostgreSQL)
+    {
+        // PostgreSQL configuration for production environments
+        var connectionString = builder.Configuration.GetConnectionString("PostgreSQL") 
+            ?? builder.Configuration.GetValue<string>("Database:ConnectionString")
+            ?? throw new InvalidOperationException("PostgreSQL connection string not configured. Please set 'Database:ConnectionString' or 'ConnectionStrings:PostgreSQL' in appsettings.json");
+        
+        options.UseNpgsql(connectionString, 
+            npgsqlOptions => 
+            {
+                npgsqlOptions.MigrationsAssembly(MigrationsAssembly);
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorCodesToAdd: null);
+                npgsqlOptions.CommandTimeout(60);
+            });
+        
+        Log.Information("Using PostgreSQL database at {Server}", 
+            new Npgsql.NpgsqlConnectionStringBuilder(connectionString).Host);
+    }
+    else
+    {
+        // SQLite configuration (default) with WAL mode for better concurrency
+        var dbPath = builder.Configuration.GetValue<string>("Database:SQLitePath") 
+            ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
+        
+        var connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;" +
+            "Journal Mode=WAL;" +              // Write-Ahead Logging for better concurrency
+            "Synchronous=NORMAL;" +            // Faster writes with good reliability
+            "Page Size=4096;" +                // Optimal page size for modern systems
+            "Cache Size=-64000;" +             // 64MB cache (negative = KB)
+            "Temp Store=MEMORY;" +             // Store temp tables in memory
+            "Locking Mode=NORMAL;" +           // Allow multiple connections
+            "Foreign Keys=True;";              // Enforce FK constraints
+        
+        options.UseSqlite(connectionString, 
+            sqliteOptions => sqliteOptions.MigrationsAssembly(MigrationsAssembly));
+        
+        Log.Information("Using SQLite database at {Path}", dbPath);
+    }
     
-    options.UseSqlite(connectionString, 
-        sqliteOptions => sqliteOptions.MigrationsAssembly(MigrationsAssembly));
-    
+    // Common options for both providers
     // Enable query tracking only when needed
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTrackingWithIdentityResolution);
     
@@ -216,6 +248,12 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
     {
         options.EnableSensitiveDataLogging(false);
         options.EnableDetailedErrors(false);
+    }
+    else
+    {
+        options.EnableSensitiveDataLogging(true);
+        options.EnableDetailedErrors(true);
+        options.LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information);
     }
 });
 
@@ -226,6 +264,12 @@ builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
 builder.Services.AddScoped<Aura.Core.Data.ConfigurationRepository>();
 builder.Services.AddSingleton<Aura.Core.Services.ConfigurationManager>();
 builder.Services.AddSingleton<Aura.Core.Services.DatabaseInitializationService>();
+
+// Register Unit of Work pattern for transactional data access
+builder.Services.AddScoped<Aura.Core.Data.IUnitOfWork, Aura.Core.Data.UnitOfWork>();
+
+// Register Generic Repository pattern for all entity types
+builder.Services.AddScoped(typeof(Aura.Core.Data.IRepository<,>), typeof(Aura.Core.Data.GenericRepository<,>));
 
 // CheckpointManager is scoped but cannot be injected into singleton JobRunner
 // It will be passed as null to JobRunner's optional parameter
@@ -640,6 +684,67 @@ builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.VoiceProcessin
 // Register HTTP client factory (required by providers)
 builder.Services.AddHttpClient();
 
+// Register SignalR for real-time updates (progress notifications, status updates, etc.)
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+    options.MaximumReceiveMessageSize = 102400; // 100 KB
+    options.StreamBufferCapacity = 10;
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+})
+.AddJsonProtocol(options =>
+{
+    EnumJsonConverters.AddToOptions(options.PayloadSerializerOptions);
+});
+
+// Register Hangfire for background job processing (optional, requires configuration)
+var hangfireConnectionString = builder.Configuration.GetConnectionString("Hangfire");
+if (!string.IsNullOrEmpty(hangfireConnectionString))
+{
+    try
+    {
+        builder.Services.AddHangfire(config =>
+        {
+            config.SetDataCompatibilityLevel(Hangfire.CompatibilityLevel.Version_180);
+            config.UseSimpleAssemblyNameTypeSerializer();
+            config.UseRecommendedSerializerSettings();
+            
+            // Use database provider based on configuration
+            if (usePostgreSQL)
+            {
+                config.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(hangfireConnectionString));
+                Log.Information("Hangfire configured with PostgreSQL storage");
+            }
+            else
+            {
+                // Use SQLite for Hangfire if PostgreSQL is not configured
+                var hangfireDbPath = builder.Configuration.GetValue<string>("Hangfire:SQLitePath") 
+                    ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "hangfire.db");
+                config.UseSQLiteStorage($"Data Source={hangfireDbPath}");
+                Log.Information("Hangfire configured with SQLite storage at {Path}", hangfireDbPath);
+            }
+        });
+        
+        builder.Services.AddHangfireServer(options =>
+        {
+            options.WorkerCount = Math.Max(1, Environment.ProcessorCount / 2);
+            options.Queues = new[] { "default", "video-generation", "exports", "cleanup" };
+            options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
+        });
+        
+        Log.Information("Hangfire background job processing enabled");
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Failed to configure Hangfire, background jobs will be disabled");
+    }
+}
+else
+{
+    Log.Information("Hangfire not configured (no connection string), background jobs disabled");
+}
+
 // Register all providers using centralized extension methods from Aura.Providers
 // This ensures consistent DI registration across LLM, TTS, and Image providers
 builder.Services.AddAuraProviders();
@@ -669,6 +774,60 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     var configuredFfmpegPath = providerSettings.GetFfmpegPath();
     var outputDirectory = providerSettings.GetOutputDirectory();
     return new FfmpegVideoComposer(logger, ffmpegLocator, configuredFfmpegPath, outputDirectory);
+});
+
+// Register IImageProvider with factory-based resolution (lazy initialization)
+builder.Services.AddSingleton<IImageProvider>(sp =>
+{
+    var factory = sp.GetRequiredService<Aura.Core.Providers.ImageProviderFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    var provider = factory.GetDefaultProvider(loggerFactory);
+    
+    if (provider == null)
+    {
+        var logger = loggerFactory.CreateLogger("ImageProvider");
+        logger.LogWarning("No image providers configured, returning null placeholder");
+    }
+    
+    return provider!; // Will be null if no providers are configured - consumers should handle null
+});
+
+// Register IStockProvider with factory-based resolution for stock media
+builder.Services.AddSingleton<IStockProvider>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<IStockProvider>>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    
+    // Priority order: Pexels > Unsplash > Pixabay > Local
+    var pexelsKey = providerSettings.GetPexelsApiKey();
+    if (!string.IsNullOrWhiteSpace(pexelsKey))
+    {
+        logger.LogInformation("Using Pexels as default stock provider");
+        return new Aura.Providers.Images.PexelsStockProvider(
+            logger, httpClientFactory.CreateClient(), pexelsKey);
+    }
+    
+    var unsplashKey = providerSettings.GetUnsplashAccessKey();
+    if (!string.IsNullOrWhiteSpace(unsplashKey))
+    {
+        logger.LogInformation("Using Unsplash as default stock provider");
+        return new Aura.Providers.Images.UnsplashStockProvider(
+            logger, httpClientFactory.CreateClient(), unsplashKey);
+    }
+    
+    var pixabayKey = providerSettings.GetPixabayApiKey();
+    if (!string.IsNullOrWhiteSpace(pixabayKey))
+    {
+        logger.LogInformation("Using Pixabay as default stock provider");
+        return new Aura.Providers.Images.PixabayStockProvider(
+            logger, httpClientFactory.CreateClient(), pixabayKey);
+    }
+    
+    // Fallback to local stock provider
+    logger.LogInformation("Using Local stock provider (no API keys configured)");
+    var localPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "Stock");
+    return new Aura.Providers.Images.LocalStockProvider(logger, localPath);
 });
 
 // Register validators
@@ -1663,6 +1822,18 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Aura Video Studio API v1");
         options.RoutePrefix = "swagger";
     });
+}
+
+// Configure Hangfire Dashboard (if enabled)
+if (!string.IsNullOrEmpty(hangfireConnectionString))
+{
+    app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
+    {
+        Authorization = Array.Empty<Hangfire.Dashboard.IDashboardAuthorizationFilter>(), // Configure authorization as needed
+        DashboardTitle = "Aura Background Jobs",
+        StatsPollingInterval = 30000 // 30 seconds
+    });
+    Log.Information("Hangfire Dashboard available at /hangfire");
 }
 
 app.UseCors();
@@ -4196,6 +4367,12 @@ apiGroup.MapPost("/providers/validate", async (
 })
 .WithName("ValidateProviders")
 .WithOpenApi();
+
+// Map SignalR Hubs for real-time communication
+// Note: Create hub classes in Aura.Api/Hubs/ as needed (e.g., GenerationProgressHub, NotificationHub)
+// app.MapHub<GenerationProgressHub>("/hubs/generation-progress");
+// app.MapHub<NotificationHub>("/hubs/notifications");
+Log.Information("SignalR hubs configured (add hub mappings as needed)");
 
 // Root health endpoint for startup readiness checks
 app.MapGet("/healthz", () => 
