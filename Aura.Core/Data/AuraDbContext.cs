@@ -198,6 +198,31 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<QueueConfigurationEntity> QueueConfiguration { get; set; } = null!;
 
+    /// <summary>
+    /// Usage statistics for local analytics
+    /// </summary>
+    public DbSet<UsageStatisticsEntity> UsageStatistics { get; set; } = null!;
+
+    /// <summary>
+    /// Cost tracking for budget monitoring
+    /// </summary>
+    public DbSet<CostTrackingEntity> CostTracking { get; set; } = null!;
+
+    /// <summary>
+    /// Performance metrics for optimization insights
+    /// </summary>
+    public DbSet<PerformanceMetricsEntity> PerformanceMetrics { get; set; } = null!;
+
+    /// <summary>
+    /// Analytics data retention settings
+    /// </summary>
+    public DbSet<AnalyticsRetentionSettingsEntity> AnalyticsRetentionSettings { get; set; } = null!;
+
+    /// <summary>
+    /// Pre-aggregated analytics summaries
+    /// </summary>
+    public DbSet<AnalyticsSummaryEntity> AnalyticsSummaries { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -571,6 +596,88 @@ public class AuraDbContext : DbContext
                 EnableNotifications = true,
                 UpdatedAt = DateTime.UtcNow
             });
+        });
+
+        // Configure UsageStatisticsEntity
+        modelBuilder.Entity<UsageStatisticsEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Provider);
+            entity.HasIndex(e => e.GenerationType);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.Success);
+            entity.HasIndex(e => new { e.Provider, e.Timestamp });
+            entity.HasIndex(e => new { e.GenerationType, e.Timestamp });
+            entity.HasIndex(e => new { e.Success, e.Timestamp });
+            entity.HasIndex(e => e.ProjectId);
+            entity.HasIndex(e => e.JobId);
+        });
+
+        // Configure CostTrackingEntity
+        modelBuilder.Entity<CostTrackingEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Provider);
+            entity.HasIndex(e => e.YearMonth);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => new { e.Provider, e.YearMonth });
+            entity.HasIndex(e => new { e.YearMonth, e.Timestamp });
+            entity.HasIndex(e => e.ProjectId);
+            entity.HasIndex(e => e.JobId);
+            entity.HasIndex(e => e.UsageStatisticsId);
+            entity.HasOne(e => e.UsageStatistics)
+                .WithMany()
+                .HasForeignKey(e => e.UsageStatisticsId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Configure PerformanceMetricsEntity
+        modelBuilder.Entity<PerformanceMetricsEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.OperationType);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.Success);
+            entity.HasIndex(e => new { e.OperationType, e.Timestamp });
+            entity.HasIndex(e => new { e.Success, e.Timestamp });
+            entity.HasIndex(e => e.ProjectId);
+            entity.HasIndex(e => e.JobId);
+        });
+
+        // Configure AnalyticsRetentionSettingsEntity
+        modelBuilder.Entity<AnalyticsRetentionSettingsEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            // Seed default settings
+            entity.HasData(new AnalyticsRetentionSettingsEntity
+            {
+                Id = 1,
+                IsEnabled = true,
+                UsageStatisticsRetentionDays = 90,
+                CostTrackingRetentionDays = 365,
+                PerformanceMetricsRetentionDays = 30,
+                AutoCleanupEnabled = true,
+                CleanupHourUtc = 3,
+                TrackSuccessOnly = false,
+                CollectHardwareMetrics = true,
+                AggregateOldData = true,
+                AggregationThresholdDays = 30,
+                MaxDatabaseSizeMB = 500,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        });
+
+        // Configure AnalyticsSummaryEntity
+        modelBuilder.Entity<AnalyticsSummaryEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.PeriodType);
+            entity.HasIndex(e => e.PeriodId);
+            entity.HasIndex(e => new { e.PeriodType, e.PeriodId }).IsUnique();
+            entity.HasIndex(e => e.PeriodStart);
+            entity.HasIndex(e => new { e.PeriodType, e.PeriodStart });
         });
 
         // Apply global query filters for soft delete

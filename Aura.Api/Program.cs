@@ -606,6 +606,12 @@ builder.Services.AddSingleton<Aura.Core.Services.PromptManagement.PromptManageme
 // Initialize system prompt templates on startup
 builder.Services.AddHostedService<Aura.Api.HostedServices.SystemPromptInitializer>();
 
+// Add Local Analytics Services (PR #16 - Privacy-first usage insights)
+builder.Services.AddScoped<Aura.Core.Services.Analytics.IUsageAnalyticsService, Aura.Core.Services.Analytics.UsageAnalyticsService>();
+builder.Services.AddScoped<Aura.Core.Services.Analytics.IAnalyticsCleanupService, Aura.Core.Services.Analytics.AnalyticsCleanupService>();
+builder.Services.AddScoped<Aura.Core.Services.Analytics.IAnalyticsTracker, Aura.Core.Services.Analytics.AnalyticsTracker>();
+builder.Services.AddHostedService<Aura.Api.HostedServices.AnalyticsMaintenanceService>();
+
 // Register Profile Management services
 builder.Services.AddSingleton<Aura.Core.Services.Profiles.ProfilePersistence>(sp =>
 {
