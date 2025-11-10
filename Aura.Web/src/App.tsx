@@ -8,7 +8,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { ConfigurationGate } from './components/ConfigurationGate';
 import { ContentPlanningDashboard } from './components/contentPlanning/ContentPlanningDashboard';
 import { QualityDashboard } from './components/dashboard';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary, CrashRecoveryScreen } from './components/ErrorBoundary';
 import { GlobalStatusFooter } from './components/GlobalStatusFooter';
 import { InitializationScreen, StartupErrorScreen } from './components/Initialization';
 import type { InitializationError } from './components/Initialization';
@@ -130,6 +130,7 @@ const CreateWizard = lazy(() =>
   import('./pages/Wizard/CreateWizard').then((m) => ({ default: m.CreateWizard }))
 );
 import { setupApi } from './services/api/setupApi';
+import { crashRecoveryService } from './services/crashRecoveryService';
 import { errorReportingService } from './services/errorReportingService';
 import {
   hasCompletedFirstRun,
@@ -194,9 +195,34 @@ function App() {
 
   const [isInitializing, setIsInitializing] = useState(true);
   const [initializationError, setInitializationError] = useState<InitializationError | null>(null);
+  const [showCrashRecovery, setShowCrashRecovery] = useState(false);
 
   const { currentJobId, status, progress, message } = useJobState();
   const [showDrawer, setShowDrawer] = useState(false);
+
+  // Initialize crash recovery on app mount
+  useEffect(() => {
+    const state = crashRecoveryService.initialize();
+    
+    if (crashRecoveryService.shouldShowRecoveryScreen()) {
+      setShowCrashRecovery(true);
+      loggingService.warn(
+        `Crash recovery triggered after ${state.consecutiveCrashes} consecutive crashes`,
+        'App',
+        'crashRecovery'
+      );
+    }
+
+    // Mark clean shutdown on beforeunload
+    const handleBeforeUnload = () => {
+      crashRecoveryService.markCleanShutdown();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
 
   // Check first-run status on app mount
   useEffect(() => {
@@ -510,6 +536,31 @@ function App() {
     const theme = isDarkMode ? webDarkTheme : webLightTheme;
     document.body.style.backgroundColor = theme.colorNeutralBackground1;
   }, [isDarkMode]);
+
+  // Show crash recovery screen if multiple crashes detected
+  if (showCrashRecovery) {
+    return (
+      <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+        <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+          <CrashRecoveryScreen
+            crashCount={crashRecoveryService.getRecoveryState()?.crashCount || 0}
+            consecutiveCrashes={crashRecoveryService.getRecoveryState()?.consecutiveCrashes || 0}
+            lastCrashUrl={crashRecoveryService.getRecoveryState()?.lastCrash?.url}
+            onContinue={() => {
+              crashRecoveryService.resetCrashCounter();
+              setShowCrashRecovery(false);
+            }}
+            onClearData={() => {
+              crashRecoveryService.clearRecoveryData();
+              localStorage.clear();
+              sessionStorage.clear();
+              window.location.reload();
+            }}
+          />
+        </FluentProvider>
+      </ThemeContext.Provider>
+    );
+  }
 
   // Show loading spinner while checking first-run status
   if (isCheckingFirstRun) {
