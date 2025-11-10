@@ -1,0 +1,270 @@
+{
+  "$schema": "./llm-pricing-schema.json",
+  "version": "2024.12",
+  "lastUpdated": "2024-12-01",
+  "description": "LLM pricing configuration. Prices are per 1M tokens in USD.",
+  "providers": {
+    "openai": {
+      "name": "OpenAI",
+      "models": {
+        "gpt-4o": {
+          "inputPrice": 2.50,
+          "outputPrice": 10.00,
+          "contextWindow": 128000,
+          "description": "Most capable model, good for complex tasks"
+        },
+        "gpt-4o-2024-11-20": {
+          "inputPrice": 2.50,
+          "outputPrice": 10.00,
+          "contextWindow": 128000,
+          "description": "Latest GPT-4o snapshot"
+        },
+        "gpt-4o-mini": {
+          "inputPrice": 0.150,
+          "outputPrice": 0.600,
+          "contextWindow": 128000,
+          "description": "Fast and affordable, good for most tasks"
+        },
+        "gpt-4o-mini-2024-07-18": {
+          "inputPrice": 0.150,
+          "outputPrice": 0.600,
+          "contextWindow": 128000,
+          "description": "Specific snapshot of GPT-4o-mini"
+        },
+        "o1-preview": {
+          "inputPrice": 15.00,
+          "outputPrice": 60.00,
+          "contextWindow": 128000,
+          "description": "Advanced reasoning model"
+        },
+        "o1-preview-2024-09-12": {
+          "inputPrice": 15.00,
+          "outputPrice": 60.00,
+          "contextWindow": 128000,
+          "description": "O1 preview snapshot"
+        },
+        "o1-mini": {
+          "inputPrice": 3.00,
+          "outputPrice": 12.00,
+          "contextWindow": 128000,
+          "description": "Faster reasoning model"
+        },
+        "o1-mini-2024-09-12": {
+          "inputPrice": 3.00,
+          "outputPrice": 12.00,
+          "contextWindow": 128000,
+          "description": "O1 mini snapshot"
+        },
+        "gpt-4-turbo": {
+          "inputPrice": 10.00,
+          "outputPrice": 30.00,
+          "contextWindow": 128000,
+          "description": "Previous generation high-capability model"
+        },
+        "gpt-4-turbo-2024-04-09": {
+          "inputPrice": 10.00,
+          "outputPrice": 30.00,
+          "contextWindow": 128000,
+          "description": "GPT-4 Turbo snapshot"
+        },
+        "gpt-4": {
+          "inputPrice": 30.00,
+          "outputPrice": 60.00,
+          "contextWindow": 8192,
+          "description": "Original GPT-4 model"
+        },
+        "gpt-4-32k": {
+          "inputPrice": 60.00,
+          "outputPrice": 120.00,
+          "contextWindow": 32768,
+          "description": "GPT-4 with extended context"
+        },
+        "gpt-3.5-turbo": {
+          "inputPrice": 0.50,
+          "outputPrice": 1.50,
+          "contextWindow": 16385,
+          "description": "Fast and affordable legacy model"
+        },
+        "gpt-3.5-turbo-0125": {
+          "inputPrice": 0.50,
+          "outputPrice": 1.50,
+          "contextWindow": 16385,
+          "description": "Latest GPT-3.5 Turbo"
+        },
+        "gpt-3.5-turbo-16k": {
+          "inputPrice": 3.00,
+          "outputPrice": 4.00,
+          "contextWindow": 16385,
+          "description": "GPT-3.5 with extended context (legacy)"
+        }
+      }
+    },
+    "anthropic": {
+      "name": "Anthropic",
+      "models": {
+        "claude-3-5-sonnet-20241022": {
+          "inputPrice": 3.00,
+          "outputPrice": 15.00,
+          "contextWindow": 200000,
+          "description": "Most intelligent model, best for complex tasks"
+        },
+        "claude-3-5-sonnet-20240620": {
+          "inputPrice": 3.00,
+          "outputPrice": 15.00,
+          "contextWindow": 200000,
+          "description": "Previous Claude 3.5 Sonnet snapshot"
+        },
+        "claude-3-5-haiku-20241022": {
+          "inputPrice": 0.80,
+          "outputPrice": 4.00,
+          "contextWindow": 200000,
+          "description": "Fast and affordable, good balance"
+        },
+        "claude-3-opus-20240229": {
+          "inputPrice": 15.00,
+          "outputPrice": 75.00,
+          "contextWindow": 200000,
+          "description": "Most powerful Claude 3 model (legacy)"
+        },
+        "claude-3-sonnet-20240229": {
+          "inputPrice": 3.00,
+          "outputPrice": 15.00,
+          "contextWindow": 200000,
+          "description": "Balanced Claude 3 model (legacy)"
+        },
+        "claude-3-haiku-20240307": {
+          "inputPrice": 0.25,
+          "outputPrice": 1.25,
+          "contextWindow": 200000,
+          "description": "Fastest Claude 3 model"
+        }
+      }
+    },
+    "google": {
+      "name": "Google Gemini",
+      "models": {
+        "gemini-2.0-flash-exp": {
+          "inputPrice": 0.00,
+          "outputPrice": 0.00,
+          "contextWindow": 1000000,
+          "description": "Experimental multimodal model (free during preview)"
+        },
+        "gemini-exp-1206": {
+          "inputPrice": 0.00,
+          "outputPrice": 0.00,
+          "contextWindow": 2000000,
+          "description": "Experimental model (free during preview)"
+        },
+        "gemini-1.5-pro": {
+          "inputPrice": 1.25,
+          "outputPrice": 5.00,
+          "contextWindow": 2000000,
+          "description": "Most capable model with huge context"
+        },
+        "gemini-1.5-pro-002": {
+          "inputPrice": 1.25,
+          "outputPrice": 5.00,
+          "contextWindow": 2000000,
+          "description": "Latest Gemini 1.5 Pro"
+        },
+        "gemini-1.5-flash": {
+          "inputPrice": 0.075,
+          "outputPrice": 0.30,
+          "contextWindow": 1000000,
+          "description": "Fast and affordable"
+        },
+        "gemini-1.5-flash-002": {
+          "inputPrice": 0.075,
+          "outputPrice": 0.30,
+          "contextWindow": 1000000,
+          "description": "Latest Gemini 1.5 Flash"
+        },
+        "gemini-1.5-flash-8b": {
+          "inputPrice": 0.0375,
+          "outputPrice": 0.15,
+          "contextWindow": 1000000,
+          "description": "Smaller, faster, more affordable"
+        },
+        "gemini-pro": {
+          "inputPrice": 0.50,
+          "outputPrice": 1.50,
+          "contextWindow": 32768,
+          "description": "Legacy Gemini Pro"
+        }
+      }
+    },
+    "azure-openai": {
+      "name": "Azure OpenAI",
+      "note": "Pricing varies by region. These are US East prices.",
+      "models": {
+        "gpt-4o": {
+          "inputPrice": 2.50,
+          "outputPrice": 10.00,
+          "contextWindow": 128000,
+          "description": "Azure GPT-4o"
+        },
+        "gpt-4o-mini": {
+          "inputPrice": 0.165,
+          "outputPrice": 0.660,
+          "contextWindow": 128000,
+          "description": "Azure GPT-4o-mini (slightly higher than OpenAI direct)"
+        },
+        "gpt-4-turbo": {
+          "inputPrice": 10.00,
+          "outputPrice": 30.00,
+          "contextWindow": 128000,
+          "description": "Azure GPT-4 Turbo"
+        },
+        "gpt-4": {
+          "inputPrice": 30.00,
+          "outputPrice": 60.00,
+          "contextWindow": 8192,
+          "description": "Azure GPT-4"
+        },
+        "gpt-35-turbo": {
+          "inputPrice": 0.50,
+          "outputPrice": 1.50,
+          "contextWindow": 16385,
+          "description": "Azure GPT-3.5 Turbo"
+        }
+      }
+    },
+    "local": {
+      "name": "Local/Free Providers",
+      "models": {
+        "ollama": {
+          "inputPrice": 0.00,
+          "outputPrice": 0.00,
+          "contextWindow": null,
+          "description": "Local Ollama models (free)"
+        },
+        "local": {
+          "inputPrice": 0.00,
+          "outputPrice": 0.00,
+          "contextWindow": null,
+          "description": "Local models (free)"
+        },
+        "rulebased": {
+          "inputPrice": 0.00,
+          "outputPrice": 0.00,
+          "contextWindow": null,
+          "description": "Rule-based generation (free)"
+        }
+      }
+    }
+  },
+  "fallbackModel": {
+    "inputPrice": 0.150,
+    "outputPrice": 0.600,
+    "description": "Default pricing for unknown models (gpt-4o-mini equivalent)"
+  },
+  "updateInstructions": {
+    "source": "Check official pricing pages for latest rates",
+    "urls": {
+      "openai": "https://openai.com/api/pricing/",
+      "anthropic": "https://www.anthropic.com/pricing",
+      "google": "https://ai.google.dev/pricing"
+    },
+    "updateFrequency": "Check monthly or when new models are released"
+  }
+}

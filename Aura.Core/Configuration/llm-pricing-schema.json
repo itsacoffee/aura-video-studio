@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LLM Pricing Configuration",
+  "description": "Configuration schema for LLM provider pricing",
+  "type": "object",
+  "required": ["version", "lastUpdated", "providers", "fallbackModel"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Version identifier (YYYY.MM format)",
+      "pattern": "^\\d{4}\\.\\d{2}$"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when pricing was last updated (YYYY-MM-DD)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the pricing configuration"
+    },
+    "providers": {
+      "type": "object",
+      "description": "Provider-specific pricing configurations",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "models"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Display name of the provider"
+          },
+          "note": {
+            "type": "string",
+            "description": "Optional notes about pricing variations"
+          },
+          "models": {
+            "type": "object",
+            "description": "Model-specific pricing",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["inputPrice", "outputPrice"],
+              "properties": {
+                "inputPrice": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Price per 1M input tokens (USD)"
+                },
+                "outputPrice": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Price per 1M output tokens (USD)"
+                },
+                "contextWindow": {
+                  "type": ["number", "null"],
+                  "minimum": 1,
+                  "description": "Maximum context window size in tokens"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Brief description of the model"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "fallbackModel": {
+      "type": "object",
+      "required": ["inputPrice", "outputPrice"],
+      "properties": {
+        "inputPrice": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Fallback price per 1M input tokens (USD)"
+        },
+        "outputPrice": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Fallback price per 1M output tokens (USD)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of fallback pricing"
+        }
+      }
+    },
+    "updateInstructions": {
+      "type": "object",
+      "description": "Instructions for updating pricing",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "urls": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "updateFrequency": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
