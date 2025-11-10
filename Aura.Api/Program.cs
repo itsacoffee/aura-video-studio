@@ -1613,6 +1613,17 @@ builder.Services.AddSingleton<Aura.Core.Services.ML.PostTrainingAnalysisService>
 // Register Advanced Mode service
 builder.Services.AddSingleton<Aura.Core.Services.AdvancedModeService>();
 
+// Register Enhanced Local Storage and Project File Services
+builder.Services.AddSingleton<Aura.Core.Services.Storage.IEnhancedLocalStorageService, Aura.Core.Services.Storage.EnhancedLocalStorageService>();
+builder.Services.AddScoped<Aura.Core.Services.Projects.IProjectFileService, Aura.Core.Services.Projects.ProjectFileService>();
+
+// Register Auto-Save Service
+var autoSaveConfig = new Aura.Core.Services.Projects.AutoSaveConfiguration();
+builder.Configuration.GetSection("AutoSave").Bind(autoSaveConfig);
+builder.Services.AddSingleton(autoSaveConfig);
+builder.Services.AddSingleton<Aura.Core.Services.Projects.ProjectAutoSaveService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Core.Services.Projects.ProjectAutoSaveService>());
+
 // Configure Kestrel to listen on specific port with environment variable overrides
 var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL") 
     ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS") 
