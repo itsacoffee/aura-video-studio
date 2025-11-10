@@ -171,10 +171,14 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // Add health checks
+builder.Services.AddSingleton<Aura.Api.HealthChecks.StartupHealthCheck>();
 builder.Services.AddHealthChecks()
-    .AddCheck<Aura.Api.HealthChecks.DependencyHealthCheck>("Dependencies")
-    .AddCheck<Aura.Api.HealthChecks.DiskSpaceHealthCheck>("DiskSpace")
-    .AddCheck<Aura.Api.HealthChecks.ProviderHealthCheck>("Providers");
+    .AddCheck<Aura.Api.HealthChecks.StartupHealthCheck>("Startup", tags: new[] { "ready" })
+    .AddCheck<Aura.Api.HealthChecks.DatabaseHealthCheck>("Database", tags: new[] { "ready", "db" })
+    .AddCheck<Aura.Api.HealthChecks.DependencyHealthCheck>("Dependencies", tags: new[] { "ready", "dependencies" })
+    .AddCheck<Aura.Api.HealthChecks.DiskSpaceHealthCheck>("DiskSpace", tags: new[] { "ready", "infrastructure" })
+    .AddCheck<Aura.Api.HealthChecks.MemoryHealthCheck>("Memory", tags: new[] { "ready", "infrastructure" })
+    .AddCheck<Aura.Api.HealthChecks.ProviderHealthCheck>("Providers", tags: new[] { "ready", "providers" });
 
 // Configure database with WAL mode for better concurrency
 const string MigrationsAssembly = "Aura.Api";
@@ -1629,16 +1633,26 @@ app.UseIpRateLimiting();
 // Add Performance Telemetry middleware
 app.UseMiddleware<Aura.Api.Telemetry.PerformanceMiddleware>();
 
-// Map health check endpoints
+// Map health check endpoints with detailed JSON responses
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = _ => false, // Skip all registered checks for liveness - just return 200 if app is running
-    AllowCachingResponses = false
+    AllowCachingResponses = false,
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var result = new
+        {
+            status = "healthy",
+            timestamp = DateTime.UtcNow
+        };
+        await context.Response.WriteAsJsonAsync(result);
+    }
 });
 
 app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
-    Predicate = _ => true, // Run all registered checks for readiness
+    Predicate = check => check.Tags.Contains("ready"),
     AllowCachingResponses = false,
     ResponseWriter = async (context, report) =>
     {
@@ -1648,7 +1662,79 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
         {
             status = report.Status.ToString().ToLowerInvariant(),
             timestamp = DateTime.UtcNow,
+            duration = report.TotalDuration.TotalMilliseconds,
             checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString().ToLowerInvariant(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.TotalMilliseconds,
+                data = e.Value.Data,
+                tags = e.Value.Tags
+            }).OrderBy(c => c.name).ToArray()
+        };
+        
+        await context.Response.WriteAsJsonAsync(result);
+    }
+});
+
+// Detailed health endpoint with full diagnostics
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => true, // All checks
+    AllowCachingResponses = false,
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        
+        var result = new
+        {
+            status = report.Status.ToString().ToLowerInvariant(),
+            timestamp = DateTime.UtcNow,
+            duration = report.TotalDuration.TotalMilliseconds,
+            environment = builder.Environment.EnvironmentName,
+            version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown",
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString().ToLowerInvariant(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.TotalMilliseconds,
+                data = e.Value.Data,
+                tags = e.Value.Tags,
+                exception = e.Value.Exception?.Message
+            }).OrderBy(c => c.name).ToArray()
+        };
+        
+        await context.Response.WriteAsJsonAsync(result);
+    }
+});
+
+// Health check by tags (e.g., /health/db, /health/infrastructure)
+app.MapHealthChecks("/health/{tag}", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => true, // Will be filtered by route handler
+    AllowCachingResponses = false,
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        
+        var tag = context.Request.RouteValues["tag"]?.ToString() ?? "";
+        var filteredEntries = report.Entries.Where(e => e.Value.Tags.Contains(tag));
+        
+        if (!filteredEntries.Any())
+        {
+            context.Response.StatusCode = 404;
+            await context.Response.WriteAsJsonAsync(new { error = $"No health checks with tag '{tag}' found" });
+            return;
+        }
+        
+        var result = new
+        {
+            status = report.Status.ToString().ToLowerInvariant(),
+            tag = tag,
+            timestamp = DateTime.UtcNow,
+            checks = filteredEntries.Select(e => new
             {
                 name = e.Key,
                 status = e.Value.Status.ToString().ToLowerInvariant(),
@@ -4319,6 +4405,13 @@ Task.Run(async () =>
         Log.Error(ex, "Failed to run startup dependency scan");
     }
 });
+
+// Mark application as ready to accept traffic
+var startupHealthCheck = app.Services.GetRequiredService<Aura.Api.HealthChecks.StartupHealthCheck>();
+startupHealthCheck.MarkAsReady();
+Log.Information("=================================================================");
+Log.Information("✓ Application startup complete - health checks enabled");
+Log.Information("=================================================================");
 
 app.Run();
 
