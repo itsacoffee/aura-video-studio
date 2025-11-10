@@ -23,43 +23,106 @@ import { ActionHistoryPanel } from './components/UndoRedo/ActionHistoryPanel';
 import { VideoCreationWizard } from './components/VideoWizard/VideoCreationWizard';
 import { env } from './config/env';
 import { useGlobalUndoShortcuts } from './hooks/useGlobalUndoShortcuts';
-import { AestheticsPage } from './pages/Aesthetics/AestheticsPage';
-import { AIEditingPage } from './pages/AIEditing/AIEditingPage';
-import { AssetLibrary } from './pages/Assets/AssetLibrary';
-import AudienceManagementPage from './pages/Audience/AudienceManagementPage';
-import { CreatePage } from './pages/CreatePage';
-import { DashboardPage } from './pages/DashboardPage';
-import { DownloadsPage } from './pages/DownloadsPage';
-import { TimelineEditor } from './pages/Editor/TimelineEditor';
-import { ExportHistoryPage } from './pages/Export/ExportHistoryPage';
-import { ProviderHealthDashboard } from './pages/Health/ProviderHealthDashboard';
-import SystemHealthDashboard from './pages/Health/SystemHealthDashboard';
-import { IdeationDashboard } from './pages/Ideation/IdeationDashboard';
-import { TrendingTopicsExplorer } from './pages/Ideation/TrendingTopicsExplorer';
-import { RunDetailsPage } from './pages/Jobs/RunDetailsPage';
-import LearningPage from './pages/Learning/LearningPage';
-import { TranslationPage } from './pages/Localization/TranslationPage';
-import { MLLabPage } from './pages/MLLab/MLLabPage';
-import { NotFoundPage } from './pages/NotFoundPage';
+// Import critical pages for initial render
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
-import { PacingAnalyzerPage } from './pages/PacingAnalyzerPage';
-import ABTestManagementPage from './pages/PerformanceAnalytics/ABTestManagementPage';
-import PerformanceAnalyticsPage from './pages/PerformanceAnalytics/PerformanceAnalyticsPage';
-import { ProjectsPage } from './pages/Projects/ProjectsPage';
-import { PromptManagementPage } from './pages/PromptManagement/PromptManagementPage';
-import QualityValidationPage from './pages/QualityValidation/QualityValidationPage';
-import RagDocumentManager from './pages/RAG/RagDocumentManager';
-import { RecentJobsPage } from './pages/RecentJobsPage';
-import { RenderPage } from './pages/RenderPage';
-import { SettingsPage } from './pages/SettingsPage';
-import CustomTemplatesPage from './pages/Templates/CustomTemplatesPage';
-import TemplatesLibrary from './pages/Templates/TemplatesLibrary';
-import ValidationPage from './pages/Validation/ValidationPage';
-import VerificationPage from './pages/Verification/VerificationPage';
-import { VideoEditorPage } from './pages/VideoEditorPage';
-import VoiceEnhancementPage from './pages/VoiceEnhancement/VoiceEnhancementPage';
 import { WelcomePage } from './pages/WelcomePage';
-import { CreateWizard } from './pages/Wizard/CreateWizard';
+import { DashboardPage } from './pages/DashboardPage';
+import { NotFoundPage } from './pages/NotFoundPage';
+
+// Lazy load non-critical pages to reduce initial bundle size
+const AestheticsPage = lazy(() =>
+  import('./pages/Aesthetics/AestheticsPage').then((m) => ({ default: m.AestheticsPage }))
+);
+const AIEditingPage = lazy(() =>
+  import('./pages/AIEditing/AIEditingPage').then((m) => ({ default: m.AIEditingPage }))
+);
+const AssetLibrary = lazy(() =>
+  import('./pages/Assets/AssetLibrary').then((m) => ({ default: m.AssetLibrary }))
+);
+const AudienceManagementPage = lazy(() => import('./pages/Audience/AudienceManagementPage'));
+const CreatePage = lazy(() =>
+  import('./pages/CreatePage').then((m) => ({ default: m.CreatePage }))
+);
+const DownloadsPage = lazy(() =>
+  import('./pages/DownloadsPage').then((m) => ({ default: m.DownloadsPage }))
+);
+const TimelineEditor = lazy(() =>
+  import('./pages/Editor/TimelineEditor').then((m) => ({ default: m.TimelineEditor }))
+);
+const ExportHistoryPage = lazy(() =>
+  import('./pages/Export/ExportHistoryPage').then((m) => ({ default: m.ExportHistoryPage }))
+);
+const ProviderHealthDashboard = lazy(() =>
+  import('./pages/Health/ProviderHealthDashboard').then((m) => ({
+    default: m.ProviderHealthDashboard,
+  }))
+);
+const SystemHealthDashboard = lazy(() => import('./pages/Health/SystemHealthDashboard'));
+const IdeationDashboard = lazy(() =>
+  import('./pages/Ideation/IdeationDashboard').then((m) => ({ default: m.IdeationDashboard }))
+);
+const TrendingTopicsExplorer = lazy(() =>
+  import('./pages/Ideation/TrendingTopicsExplorer').then((m) => ({
+    default: m.TrendingTopicsExplorer,
+  }))
+);
+const RunDetailsPage = lazy(() =>
+  import('./pages/Jobs/RunDetailsPage').then((m) => ({ default: m.RunDetailsPage }))
+);
+const LearningPage = lazy(() => import('./pages/Learning/LearningPage'));
+const TranslationPage = lazy(() =>
+  import('./pages/Localization/TranslationPage').then((m) => ({ default: m.TranslationPage }))
+);
+const MLLabPage = lazy(() =>
+  import('./pages/MLLab/MLLabPage').then((m) => ({ default: m.MLLabPage }))
+);
+const PacingAnalyzerPage = lazy(() =>
+  import('./pages/PacingAnalyzerPage').then((m) => ({ default: m.PacingAnalyzerPage }))
+);
+const ABTestManagementPage = lazy(() =>
+  import('./pages/PerformanceAnalytics/ABTestManagementPage')
+);
+const PerformanceAnalyticsPage = lazy(() =>
+  import('./pages/PerformanceAnalytics/PerformanceAnalyticsPage')
+);
+const ProjectsPage = lazy(() =>
+  import('./pages/Projects/ProjectsPage').then((m) => ({ default: m.ProjectsPage }))
+);
+const PromptManagementPage = lazy(() =>
+  import('./pages/PromptManagement/PromptManagementPage').then((m) => ({
+    default: m.PromptManagementPage,
+  }))
+);
+const QualityValidationPage = lazy(() =>
+  import('./pages/QualityValidation/QualityValidationPage')
+);
+const RagDocumentManager = lazy(() => import('./pages/RAG/RagDocumentManager'));
+const RecentJobsPage = lazy(() =>
+  import('./pages/RecentJobsPage').then((m) => ({ default: m.RecentJobsPage }))
+);
+const RenderPage = lazy(() =>
+  import('./pages/RenderPage').then((m) => ({ default: m.RenderPage }))
+);
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
+);
+const CustomTemplatesPage = lazy(() => import('./pages/Templates/CustomTemplatesPage'));
+const TemplatesLibrary = lazy(() => import('./pages/Templates/TemplatesLibrary'));
+const ValidationPage = lazy(() =>
+  import('./pages/Validation/ValidationPage').then((m) => ({ default: m.ValidationPage }))
+);
+const VerificationPage = lazy(() =>
+  import('./pages/Verification/VerificationPage').then((m) => ({ default: m.VerificationPage }))
+);
+const VideoEditorPage = lazy(() =>
+  import('./pages/VideoEditorPage').then((m) => ({ default: m.VideoEditorPage }))
+);
+const VoiceEnhancementPage = lazy(() =>
+  import('./pages/VoiceEnhancement/VoiceEnhancementPage')
+);
+const CreateWizard = lazy(() =>
+  import('./pages/Wizard/CreateWizard').then((m) => ({ default: m.CreateWizard }))
+);
 import { setupApi } from './services/api/setupApi';
 import { errorReportingService } from './services/errorReportingService';
 import {
@@ -539,46 +602,267 @@ function App() {
                         {/* Main routes */}
                         <Route path="/" element={<WelcomePage />} />
                         <Route path="/dashboard" element={<DashboardPage />} />
-                        <Route path="/ideation" element={<IdeationDashboard />} />
-                        <Route path="/trending" element={<TrendingTopicsExplorer />} />
+                        <Route
+                          path="/ideation"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <IdeationDashboard />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/trending"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <TrendingTopicsExplorer />
+                            </Suspense>
+                          }
+                        />
                         <Route path="/content-planning" element={<ContentPlanningDashboard />} />
-                        <Route path="/create" element={<CreateWizard />} />
+                        <Route
+                          path="/create"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <CreateWizard />
+                            </Suspense>
+                          }
+                        />
                         <Route path="/create/new" element={<VideoCreationWizard />} />
-                        <Route path="/create/legacy" element={<CreatePage />} />
-                        <Route path="/templates" element={<TemplatesLibrary />} />
-                        <Route path="/templates/custom" element={<CustomTemplatesPage />} />
-                        <Route path="/editor/:jobId" element={<TimelineEditor />} />
-                        <Route path="/editor" element={<VideoEditorPage />} />
-                        <Route path="/pacing" element={<PacingAnalyzerPage />} />
-                        <Route path="/render" element={<RenderPage />} />
+                        <Route
+                          path="/create/legacy"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <CreatePage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/templates"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <TemplatesLibrary />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/templates/custom"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <CustomTemplatesPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/editor/:jobId"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <TimelineEditor />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/editor"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <VideoEditorPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/pacing"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <PacingAnalyzerPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/render"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <RenderPage />
+                            </Suspense>
+                          }
+                        />
                         <Route path="/platform" element={<PlatformDashboard />} />
                         <Route path="/quality" element={<QualityDashboard />} />
 
-                        <Route path="/projects" element={<ProjectsPage />} />
-                        <Route path="/export-history" element={<ExportHistoryPage />} />
-                        <Route path="/assets" element={<AssetLibrary />} />
-                        <Route path="/jobs" element={<RecentJobsPage />} />
-                        <Route path="/jobs/:jobId/telemetry" element={<RunDetailsPage />} />
-                        <Route path="/downloads" element={<DownloadsPage />} />
-                        <Route path="/health" element={<SystemHealthDashboard />} />
-                        <Route path="/health/providers" element={<ProviderHealthDashboard />} />
-                        <Route path="/ai-editing" element={<AIEditingPage />} />
-                        <Route path="/aesthetics" element={<AestheticsPage />} />
-                        <Route path="/localization" element={<TranslationPage />} />
-                        <Route path="/prompt-management" element={<PromptManagementPage />} />
-                        <Route path="/rag" element={<RagDocumentManager />} />
-                        <Route path="/voice-enhancement" element={<VoiceEnhancementPage />} />
+                        <Route
+                          path="/projects"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <ProjectsPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/export-history"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <ExportHistoryPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/assets"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <AssetLibrary />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/jobs"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <RecentJobsPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/jobs/:jobId/telemetry"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <RunDetailsPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/downloads"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <DownloadsPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/health"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <SystemHealthDashboard />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/health/providers"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <ProviderHealthDashboard />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/ai-editing"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <AIEditingPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/aesthetics"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <AestheticsPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/localization"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <TranslationPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/prompt-management"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <PromptManagementPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/rag"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <RagDocumentManager />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/voice-enhancement"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <VoiceEnhancementPage />
+                            </Suspense>
+                          }
+                        />
                         <Route
                           path="/performance-analytics"
-                          element={<PerformanceAnalyticsPage />}
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <PerformanceAnalyticsPage />
+                            </Suspense>
+                          }
                         />
-                        <Route path="/ml-lab" element={<MLLabPage />} />
-                        <Route path="/ab-tests" element={<ABTestManagementPage />} />
-                        <Route path="/audience" element={<AudienceManagementPage />} />
-                        <Route path="/learning" element={<LearningPage />} />
-                        <Route path="/quality-validation" element={<QualityValidationPage />} />
-                        <Route path="/validation" element={<ValidationPage />} />
-                        <Route path="/verification" element={<VerificationPage />} />
+                        <Route
+                          path="/ml-lab"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <MLLabPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/ab-tests"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <ABTestManagementPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/audience"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <AudienceManagementPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/learning"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LearningPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/quality-validation"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <QualityValidationPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/validation"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <ValidationPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/verification"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <VerificationPage />
+                            </Suspense>
+                          }
+                        />
                         {/* Diagnostics and system information */}
                         <Route
                           path="/diagnostics"
@@ -618,7 +902,14 @@ function App() {
                             />
                           </>
                         )}
-                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route
+                          path="/settings"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <SettingsPage />
+                            </Suspense>
+                          }
+                        />
                         <Route path="/models" element={<Navigate to="/settings" replace />} />
                         <Route path="*" element={<NotFoundPage />} />
                       </Routes>
