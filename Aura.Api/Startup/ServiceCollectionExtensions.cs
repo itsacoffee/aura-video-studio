@@ -57,6 +57,7 @@ public static class ServiceCollectionExtensions
         services.AddAnalyticsServices();
         services.AddResourceServices();
         services.AddTelemetryServices();
+        services.AddErrorHandlingServices(configuration);
 
         return services;
     }
