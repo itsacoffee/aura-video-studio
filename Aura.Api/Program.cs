@@ -571,6 +571,26 @@ builder.Services.Configure<Aura.Api.Security.ApiAuthenticationOptions>(builder.C
 // Register Performance Telemetry services
 builder.Services.AddSingleton<Aura.Api.Telemetry.PerformanceMetrics>();
 
+// Register Monitoring and Alerting services
+builder.Services.Configure<Aura.Api.Configuration.MonitoringOptions>(builder.Configuration.GetSection("Monitoring"));
+builder.Services.AddSingleton<Aura.Core.Monitoring.MetricsCollector>();
+builder.Services.AddSingleton<Aura.Core.Monitoring.BusinessMetricsCollector>();
+builder.Services.AddSingleton(sp => Aura.Core.Monitoring.DefaultSliSlo.GetDefault());
+builder.Services.AddSingleton<Aura.Core.Monitoring.AlertingEngine>();
+builder.Services.AddHostedService<Aura.Api.HostedServices.MetricsExporterService>();
+builder.Services.AddHostedService<Aura.Api.HostedServices.AlertEvaluationService>();
+
+// Add Application Insights if enabled
+var monitoringConfig = builder.Configuration.GetSection("Monitoring").Get<Aura.Api.Configuration.MonitoringOptions>();
+if (monitoringConfig?.EnableApplicationInsights == true && 
+    !string.IsNullOrEmpty(monitoringConfig.ApplicationInsightsConnectionString))
+{
+    builder.Services.AddApplicationInsightsTelemetry(options =>
+    {
+        options.ConnectionString = monitoringConfig.ApplicationInsightsConnectionString;
+    });
+}
+
 // Register Content Verification services
 builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.FactCheckingService>();
 builder.Services.AddSingleton<Aura.Core.Services.ContentVerification.SourceAttributionService>();
