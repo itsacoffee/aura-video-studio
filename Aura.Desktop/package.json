@@ -52,16 +52,6 @@
         "filter": ["**/*", "!**/*.pdb", "!**/*.xml"]
       },
       {
-        "from": "resources/ffmpeg",
-        "to": "ffmpeg",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "resources/samples",
-        "to": "samples",
-        "filter": ["**/*"]
-      },
-      {
         "from": "../Aura.Web/dist",
         "to": "frontend",
         "filter": ["**/*"]

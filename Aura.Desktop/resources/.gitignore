@@ -1,0 +1,9 @@
+# Ignore build artifacts
+backend/
+ffmpeg/
+samples/
+
+# Keep the README
+!README.md
+!.gitkeep
+!.gitignore

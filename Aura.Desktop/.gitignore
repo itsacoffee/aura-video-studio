@@ -1,35 +1,34 @@
-# Dependencies
+# Node modules
 node_modules/
+package-lock.json
 
 # Build outputs
 dist/
-out/
 backend/
+resources/backend/
+resources/ffmpeg/
+resources/samples/
 
-# Environment files
-.env
-.env.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
+# Electron builder
+.electron-builder-config.yml
 
 # Logs
 *.log
 npm-debug.log*
 
-# Certificates (don't commit!)
-certs/
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Certificates (if any)
 *.pfx
 *.p12
-*.cer
+*.pem
 
 # Temporary files
 *.tmp
+*.temp

@@ -160,7 +160,8 @@ if [ "$SKIP_BACKEND" = false ]; then
             -p:PublishSingleFile=false \
             -p:PublishTrimmed=false \
             -p:IncludeNativeLibrariesForSelfExtract=true \
-            -o "$SCRIPT_DIR/backend/win-x64" || {
+            -p:SkipFrontendBuild=true \
+            -o "$SCRIPT_DIR/resources/backend/win-x64" || {
             print_error "Windows backend build failed"
             exit 1
         }
@@ -172,7 +173,8 @@ if [ "$SKIP_BACKEND" = false ]; then
         dotnet publish -c Release -r osx-x64 --self-contained true \
             -p:PublishSingleFile=false \
             -p:PublishTrimmed=false \
-            -o "$SCRIPT_DIR/backend/osx-x64" || {
+            -p:SkipFrontendBuild=true \
+            -o "$SCRIPT_DIR/resources/backend/osx-x64" || {
             print_error "macOS (x64) backend build failed"
             exit 1
         }
@@ -181,7 +183,8 @@ if [ "$SKIP_BACKEND" = false ]; then
         dotnet publish -c Release -r osx-arm64 --self-contained true \
             -p:PublishSingleFile=false \
             -p:PublishTrimmed=false \
-            -o "$SCRIPT_DIR/backend/osx-arm64" || {
+            -p:SkipFrontendBuild=true \
+            -o "$SCRIPT_DIR/resources/backend/osx-arm64" || {
             print_error "macOS (arm64) backend build failed"
             exit 1
         }
@@ -193,7 +196,8 @@ if [ "$SKIP_BACKEND" = false ]; then
         dotnet publish -c Release -r linux-x64 --self-contained true \
             -p:PublishSingleFile=false \
             -p:PublishTrimmed=false \
-            -o "$SCRIPT_DIR/backend/linux-x64" || {
+            -p:SkipFrontendBuild=true \
+            -o "$SCRIPT_DIR/resources/backend/linux-x64" || {
             print_error "Linux backend build failed"
             exit 1
         }
@@ -226,7 +230,37 @@ print_success "Electron dependencies ready"
 echo ""
 
 # ========================================
-# Step 4: Build Electron Installers
+# Step 4: Validate Resources
+# ========================================
+print_info "Validating required resources..."
+
+VALIDATION_FAILED=false
+
+if [ ! -f "$PROJECT_ROOT/Aura.Web/dist/index.html" ]; then
+    print_error "Frontend build not found at: $PROJECT_ROOT/Aura.Web/dist/index.html"
+    VALIDATION_FAILED=true
+else
+    print_success "  ✓ Frontend build found"
+fi
+
+if [ ! -d "$SCRIPT_DIR/resources/backend" ]; then
+    print_error "Backend binaries not found at: $SCRIPT_DIR/resources/backend"
+    VALIDATION_FAILED=true
+else
+    print_success "  ✓ Backend binaries found"
+fi
+
+if [ "$VALIDATION_FAILED" = true ]; then
+    print_error "Resource validation failed. Cannot build installer."
+    print_info "Please ensure all build steps complete successfully."
+    exit 1
+fi
+
+print_success "All required resources validated"
+echo ""
+
+# ========================================
+# Step 5: Build Electron Installers
 # ========================================
 if [ "$SKIP_INSTALLER" = false ]; then
     print_info "Building Electron installers..."

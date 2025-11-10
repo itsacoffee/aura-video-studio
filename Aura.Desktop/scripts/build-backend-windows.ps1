@@ -68,7 +68,7 @@ $ProjectRoot = Split-Path $DesktopDir -Parent
 $BackendProject = Join-Path $ProjectRoot "Aura.Api"
 $BackendCsproj = Join-Path $BackendProject "Aura.Api.csproj"
 $ResourcesDir = Join-Path $DesktopDir "resources"
-$BackendOutputDir = Join-Path $ResourcesDir "backend\win-x64"
+$BackendOutputDir = Join-Path $ResourcesDir "backend" "win-x64"
 
 # Verify backend project exists
 if (-not (Test-Path $BackendCsproj)) {
@@ -159,6 +159,7 @@ $publishArgs = @(
     "-p:RuntimeIdentifier=win-x64",
     "-p:DebugType=none",
     "-p:DebugSymbols=false",
+    "-p:SkipFrontendBuild=true",
     "--nologo"
 )
 
