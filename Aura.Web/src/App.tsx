@@ -15,6 +15,7 @@ import type { InitializationError } from './components/Initialization';
 import { JobProgressDrawer } from './components/JobProgressDrawer';
 import { KeyboardShortcutsPanel } from './components/KeyboardShortcuts/KeyboardShortcutsPanel';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
+import { KeyboardShortcutsCheatSheet } from './components/Accessibility/KeyboardShortcutsCheatSheet';
 import { Layout } from './components/Layout';
 import { NotificationsToaster } from './components/Notifications/Toasts';
 import { PlatformDashboard } from './components/Platform';
@@ -23,6 +24,7 @@ import { ActionHistoryPanel } from './components/UndoRedo/ActionHistoryPanel';
 import { VideoCreationWizard } from './components/VideoWizard/VideoCreationWizard';
 import { env } from './config/env';
 import { useGlobalUndoShortcuts } from './hooks/useGlobalUndoShortcuts';
+import { AccessibilityProvider } from './contexts/AccessibilityContext';
 // Import critical pages for initial render
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { WelcomePage } from './pages/WelcomePage';
@@ -112,6 +114,9 @@ const RenderPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
 );
+const AccessibilitySettingsPage = lazy(() =>
+  import('./pages/AccessibilitySettingsPage').then((m) => ({ default: m.AccessibilitySettingsPage }))
+);
 const CustomTemplatesPage = lazy(() => import('./pages/Templates/CustomTemplatesPage'));
 const TemplatesLibrary = lazy(() => import('./pages/Templates/TemplatesLibrary'));
 const ValidationPage = lazy(() =>
@@ -185,6 +190,7 @@ function App() {
 
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
+  const [showShortcutsCheatSheet, setShowShortcutsCheatSheet] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const toasterId = 'notifications-toaster';
 
@@ -403,6 +409,19 @@ function App() {
           // Placeholder for save functionality
         },
       },
+      {
+        id: 'generate-video',
+        keys: 'Ctrl+G',
+        description: 'Generate Video',
+        context: 'global',
+        handler: () => {
+          // Navigate to the create/wizard page to generate video
+          const currentPath = window.location.pathname;
+          if (!currentPath.includes('/create')) {
+            window.location.href = '/create';
+          }
+        },
+      },
     ]);
 
     // Clean up on unmount
@@ -494,10 +513,10 @@ function App() {
         e.preventDefault();
         setShowCommandPalette(true);
       }
-      // Ctrl+/ or Cmd+/ for old shortcuts modal
+      // Ctrl+/ or Cmd+/ for comprehensive shortcuts cheat sheet
       else if ((e.ctrlKey || e.metaKey) && e.key === '/') {
         e.preventDefault();
-        setShowShortcuts(true);
+        setShowShortcutsCheatSheet(true);
       }
     };
 
@@ -637,8 +656,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
         <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
-          <ActivityProvider>
-            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <AccessibilityProvider>
+            <ActivityProvider>
+              <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
               <BrowserRouter>
                 {/* Status bar for job progress */}
                 <JobStatusBar
@@ -986,6 +1006,14 @@ function App() {
                             </Suspense>
                           }
                         />
+                        <Route
+                          path="/settings/accessibility"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <AccessibilitySettingsPage />
+                            </Suspense>
+                          }
+                        />
                         <Route path="/models" element={<Navigate to="/settings" replace />} />
                         <Route path="*" element={<NotFoundPage />} />
                       </Routes>
@@ -1001,6 +1029,10 @@ function App() {
                 <KeyboardShortcutsPanel
                   isOpen={showShortcutsPanel}
                   onClose={() => setShowShortcutsPanel(false)}
+                />
+                <KeyboardShortcutsCheatSheet
+                  open={showShortcutsCheatSheet}
+                  onClose={() => setShowShortcutsCheatSheet(false)}
                 />
                 <CommandPalette
                   isOpen={showCommandPalette}
@@ -1019,10 +1051,13 @@ function App() {
                 <ActionHistoryPanel />
 
                 {/* Global activity status footer */}
-                <GlobalStatusFooter />
+                <footer id="global-footer">
+                  <GlobalStatusFooter />
+                </footer>
               </BrowserRouter>
-            </div>
-          </ActivityProvider>
+              </div>
+            </ActivityProvider>
+          </AccessibilityProvider>
         </FluentProvider>
         {/* React Query Devtools - only in development */}
         {env.isDevelopment && <ReactQueryDevtools initialIsOpen={false} />}
