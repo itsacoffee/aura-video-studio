@@ -324,4 +324,116 @@ public class SettingsController : ControllerBase
             return StatusCode(500, new { error = "Failed to retrieve available encoders" });
         }
     }
+
+    /// <summary>
+    /// Get export settings section
+    /// </summary>
+    [HttpGet("export")]
+    [ProducesResponseType(typeof(Aura.Core.Models.Settings.ExportSettings), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetExportSettings(CancellationToken ct)
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsSectionAsync<Aura.Core.Models.Settings.ExportSettings>(ct);
+            return Ok(settings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get export settings");
+            return StatusCode(500, new { error = "Failed to retrieve export settings" });
+        }
+    }
+
+    /// <summary>
+    /// Update export settings section
+    /// </summary>
+    [HttpPut("export")]
+    [ProducesResponseType(typeof(SettingsUpdateResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateExportSettings([FromBody] Aura.Core.Models.Settings.ExportSettings settings, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _settingsService.UpdateSettingsSectionAsync(settings, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update export settings");
+            return StatusCode(500, new { error = "Failed to update export settings" });
+        }
+    }
+
+    /// <summary>
+    /// Get provider rate limits section
+    /// </summary>
+    [HttpGet("ratelimits")]
+    [ProducesResponseType(typeof(Aura.Core.Models.Settings.ProviderRateLimits), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRateLimits(CancellationToken ct)
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsSectionAsync<Aura.Core.Models.Settings.ProviderRateLimits>(ct);
+            return Ok(settings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get rate limits");
+            return StatusCode(500, new { error = "Failed to retrieve rate limits" });
+        }
+    }
+
+    /// <summary>
+    /// Update provider rate limits section
+    /// </summary>
+    [HttpPut("ratelimits")]
+    [ProducesResponseType(typeof(SettingsUpdateResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateRateLimits([FromBody] Aura.Core.Models.Settings.ProviderRateLimits settings, CancellationToken ct)
+    {
+        try
+        {
+            var result = await _settingsService.UpdateSettingsSectionAsync(settings, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update rate limits");
+            return StatusCode(500, new { error = "Failed to update rate limits" });
+        }
+    }
+
+    /// <summary>
+    /// Test upload destination connection
+    /// </summary>
+    [HttpPost("upload-destinations/{id}/test")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> TestUploadDestination(string id, CancellationToken ct)
+    {
+        try
+        {
+            var settings = await _settingsService.GetSettingsAsync(ct);
+            var destination = settings.Export.UploadDestinations.Find(d => d.Id == id);
+            
+            if (destination == null)
+            {
+                return NotFound(new { error = "Upload destination not found" });
+            }
+
+            // Simple validation - full implementation would test actual connection
+            var testResult = new
+            {
+                success = !string.IsNullOrEmpty(destination.Name),
+                message = destination.Enabled 
+                    ? "Upload destination configured successfully" 
+                    : "Upload destination is disabled",
+                destinationType = destination.Type.ToString()
+            };
+
+            return Ok(testResult);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to test upload destination {Id}", id);
+            return StatusCode(500, new { error = "Failed to test upload destination" });
+        }
+    }
 }

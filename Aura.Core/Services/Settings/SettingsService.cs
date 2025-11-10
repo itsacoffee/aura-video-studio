@@ -702,6 +702,41 @@ public class SettingsService : ISettingsService
                 EnableClipScoring = true,
                 EnableQualityChecks = true
             },
+            Export = new Aura.Core.Models.Settings.ExportSettings
+            {
+                DefaultPreset = "YouTube1080p",
+                AutoOpenOutputFolder = true,
+                GenerateThumbnail = true,
+                Watermark = new Aura.Core.Models.Settings.WatermarkSettings
+                {
+                    Enabled = false,
+                    Type = Aura.Core.Models.Settings.WatermarkType.Text,
+                    Opacity = 0.7,
+                    Scale = 0.1,
+                    Position = Aura.Core.Models.Settings.WatermarkPosition.BottomRight
+                },
+                NamingPattern = new Aura.Core.Models.Settings.NamingPatternSettings
+                {
+                    Pattern = "{project}_{date}_{time}",
+                    DateFormat = "yyyy-MM-dd",
+                    TimeFormat = "HHmmss",
+                    SanitizeFilenames = true,
+                    ReplaceSpaces = true
+                }
+            },
+            RateLimits = new Aura.Core.Models.Settings.ProviderRateLimits
+            {
+                Global = new Aura.Core.Models.Settings.GlobalRateLimitSettings
+                {
+                    Enabled = true,
+                    MaxTotalRequestsPerMinute = 100,
+                    MaxTotalDailyCost = 50,
+                    MaxTotalMonthlyCost = 500,
+                    EnableCircuitBreaker = true,
+                    EnableLoadBalancing = true,
+                    LoadBalancingStrategy = Aura.Core.Models.Settings.LoadBalancingStrategy.LeastCost
+                }
+            },
             Advanced = new AdvancedSettings
             {
                 OfflineMode = false,
@@ -727,6 +762,8 @@ public class SettingsService : ISettingsService
         if (source.EditorPreferences != null) target.EditorPreferences = source.EditorPreferences;
         if (source.UI != null) target.UI = source.UI;
         if (source.VisualGeneration != null) target.VisualGeneration = source.VisualGeneration;
+        if (source.Export != null) target.Export = source.Export;
+        if (source.RateLimits != null) target.RateLimits = source.RateLimits;
         if (source.Advanced != null) target.Advanced = source.Advanced;
     }
 
