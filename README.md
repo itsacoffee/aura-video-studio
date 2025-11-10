@@ -1,6 +1,20 @@
 # Aura Video Studio
 
+> **🎬 AI-Powered Video Generation Studio**
+
 Create high-quality videos fast with an AI-first workflow designed for everyone. Aura Video Studio combines a beginner-friendly Guided Mode with an Advanced Mode for power users—unlocking a full ML Lab, deep prompt customization, expert render controls, and more.
+
+## 🚀 Download Desktop App
+
+**Get started in minutes with our one-click installers:**
+
+- **Windows**: [Download Installer](https://github.com/coffee285/aura-video-studio/releases/latest) (.exe)
+- **macOS**: [Download DMG](https://github.com/coffee285/aura-video-studio/releases/latest) (Intel + Apple Silicon)
+- **Linux**: [Download AppImage](https://github.com/coffee285/aura-video-studio/releases/latest) (Universal)
+
+📦 See [INSTALLATION.md](INSTALLATION.md) for detailed installation instructions.
+
+---
 
 ## What makes Aura different
 
@@ -27,11 +41,27 @@ Create high-quality videos fast with an AI-first workflow designed for everyone.
 
 ## Architecture
 
-- Aura.Web — React + TypeScript + Vite UI
-- Aura.Api — ASP.NET Core backend (REST + SSE)
-- Aura.Core — domain, orchestration, models, validation, rendering plan
-- Aura.Providers — LLM, TTS, images, video, planner providers
-- Aura.Cli — cross-platform CLI for headless testing and automation
+- **Aura.Desktop** — Electron desktop app with native installers (Windows, macOS, Linux)
+- **Aura.Web** — React + TypeScript + Vite UI
+- **Aura.Api** — ASP.NET Core backend (REST + SSE)
+- **Aura.Core** — Domain, orchestration, models, validation, rendering plan
+- **Aura.Providers** — LLM, TTS, images, video, planner providers
+- **Aura.Cli** — Cross-platform CLI for headless testing and automation
+
+## Installation Options
+
+### Option 1: Desktop App (Recommended for Users)
+
+**No command-line knowledge required!**
+
+1. Download the installer for your platform from [Releases](https://github.com/coffee285/aura-video-studio/releases/latest)
+2. Run the installer
+3. Follow the setup wizard
+4. Start creating videos!
+
+See [INSTALLATION.md](INSTALLATION.md) for detailed instructions.
+
+### Option 2: Development Setup
 
 ## Quick start (Development)
 
@@ -95,9 +125,15 @@ npm run dev
 
 ### Next Steps
 
-- 📖 Read [DEVELOPMENT.md](DEVELOPMENT.md) for architecture and workflows
-- 🔧 Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) if you encounter issues
-- 🚀 See [FIRST_RUN_GUIDE.md](FIRST_RUN_GUIDE.md) for initial configuration
+- **For Users:**
+  - 📥 [INSTALLATION.md](INSTALLATION.md) - Install the desktop app
+  - 🎓 [FIRST_RUN_GUIDE.md](FIRST_RUN_GUIDE.md) - Initial configuration
+  - 🎬 Start creating your first video!
+
+- **For Developers:**
+  - 📖 [DEVELOPMENT.md](DEVELOPMENT.md) - Architecture and workflows
+  - 🖥️ [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) - Desktop app development
+  - 🔧 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues
 
 ## Quick start (End users)
 

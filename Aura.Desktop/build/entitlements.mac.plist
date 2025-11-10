@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!-- Required for hardened runtime -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    
+    <!-- Allow unsigned executable memory -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    
+    <!-- Disable library validation for native modules -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    
+    <!-- Network access for API calls -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    
+    <key>com.apple.security.network.server</key>
+    <true/>
+    
+    <!-- File system access -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    
+    <!-- Microphone access for voice recording -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    
+    <!-- Camera access (if needed for future features) -->
+    <key>com.apple.security.device.camera</key>
+    <false/>
+    
+    <!-- Contacts (not needed, but good to document) -->
+    <key>com.apple.security.personal-information.addressbook</key>
+    <false/>
+    
+    <!-- Location (not needed) -->
+    <key>com.apple.security.personal-information.location</key>
+    <false/>
+    
+    <!-- Automation (for launching other apps like Ollama) -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+  </dict>
+</plist>
