@@ -68,7 +68,7 @@ public class ElevenLabsSSMLMapper : ISSMLMapper
             warnings.Add($"Text length {ssml.Length} exceeds recommended maximum {GetConstraints().MaxTextLength}");
         }
         
-        return new SSMLValidationResult
+        return new Models.Audio.SSMLValidationResult
         {
             IsValid = errors.Count == 0,
             Errors = errors,

@@ -144,7 +144,7 @@ public class AzureSSMLMapper : ISSMLMapper
                 false));
         }
 
-        return new SSMLValidationResult
+        return new Models.Audio.SSMLValidationResult
         {
             IsValid = errors.Count == 0,
             Errors = errors,

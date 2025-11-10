@@ -605,8 +605,13 @@ public class BackgroundJobQueueManager
     {
         try
         {
+#if WINDOWS
             var powerStatus = System.Windows.Forms.SystemInformation.PowerStatus;
             return powerStatus.PowerLineStatus == System.Windows.Forms.PowerLineStatus.Offline;
+#else
+            // On non-Windows platforms, assume AC power for simplicity
+            return false;
+#endif
         }
         catch
         {

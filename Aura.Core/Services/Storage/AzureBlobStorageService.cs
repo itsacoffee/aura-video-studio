@@ -101,7 +101,7 @@ public class AzureBlobStorageService : IStorageService
                 blobName = existingBlobName;
             }
 
-            var blobClient = _mediaContainer.GetBlobClient(blobName);
+            var blobClient = _mediaContainer.GetBlockBlobClient(blobName);
             
             // Stage block for eventual commit
             var blockId = Convert.ToBase64String(BitConverter.GetBytes(chunkIndex));
@@ -129,7 +129,7 @@ public class AzureBlobStorageService : IStorageService
                 throw new InvalidOperationException($"Upload session {sessionId} not found");
             }
 
-            var blobClient = _mediaContainer.GetBlobClient(blobName);
+            var blobClient = _mediaContainer.GetBlockBlobClient(blobName);
             
             // Get list of staged blocks
             var blockList = await blobClient.GetBlockListAsync(BlockListTypes.Uncommitted, cancellationToken: ct);
