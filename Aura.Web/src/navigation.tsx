@@ -149,5 +149,12 @@ export const navItems: NavItem[] = [
   },
   { key: 'diagnostics', name: 'Diagnostics', icon: Stethoscope24Regular, path: '/diagnostics' },
   { key: 'logs', name: 'Logs', icon: DocumentBulletList24Regular, path: '/logs' },
+  {
+    key: 'admin',
+    name: 'Admin Dashboard',
+    icon: ShieldCheckmark24Regular,
+    path: '/admin',
+    advancedOnly: true,
+  },
   { key: 'settings', name: 'Settings', icon: Settings24Regular, path: '/settings' },
 ];

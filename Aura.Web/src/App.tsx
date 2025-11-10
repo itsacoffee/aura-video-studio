@@ -30,6 +30,9 @@ import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 // Lazy load non-critical pages to reduce initial bundle size
+const AdminDashboardPage = lazy(() =>
+  import('./pages/Admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
+);
 const AestheticsPage = lazy(() =>
   import('./pages/Aesthetics/AestheticsPage').then((m) => ({ default: m.AestheticsPage }))
 );
@@ -902,6 +905,14 @@ function App() {
                             />
                           </>
                         )}
+                        <Route
+                          path="/admin"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <AdminDashboardPage />
+                            </Suspense>
+                          }
+                        />
                         <Route
                           path="/settings"
                           element={
