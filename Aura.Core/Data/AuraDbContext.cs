@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Aura.Core.Data;
 
@@ -10,6 +11,61 @@ public class AuraDbContext : DbContext
     public AuraDbContext(DbContextOptions<AuraDbContext> options)
         : base(options)
     {
+    }
+
+    /// <summary>
+    /// Override SaveChanges to automatically handle audit fields
+    /// </summary>
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        UpdateAuditFields();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    /// <summary>
+    /// Override SaveChangesAsync to automatically handle audit fields
+    /// </summary>
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        UpdateAuditFields();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Update audit fields for entities implementing IAuditableEntity and ISoftDeletable
+    /// </summary>
+    private void UpdateAuditFields()
+    {
+        var entries = ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted);
+
+        var timestamp = DateTime.UtcNow;
+
+        foreach (var entry in entries)
+        {
+            // Handle IAuditableEntity
+            if (entry.Entity is IAuditableEntity auditableEntity)
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    auditableEntity.CreatedAt = timestamp;
+                    auditableEntity.UpdatedAt = timestamp;
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    auditableEntity.UpdatedAt = timestamp;
+                }
+            }
+
+            // Handle soft delete
+            if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable softDeletable)
+            {
+                // Instead of actually deleting, mark as deleted
+                entry.State = EntityState.Modified;
+                softDeletable.IsDeleted = true;
+                softDeletable.DeletedAt = timestamp;
+            }
+        }
     }
 
     /// <summary>
@@ -244,5 +300,34 @@ public class AuraDbContext : DbContext
                 UpdatedAt = DateTime.UtcNow
             });
         });
+
+        // Apply global query filters for soft delete
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
+            {
+                entityType.AddSoftDeleteQueryFilter();
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Extension methods for EF Core model building
+/// </summary>
+internal static class ModelBuilderExtensions
+{
+    /// <summary>
+    /// Add a global query filter to exclude soft-deleted entities
+    /// </summary>
+    public static void AddSoftDeleteQueryFilter(this Microsoft.EntityFrameworkCore.Metadata.IMutableEntityType entityType)
+    {
+        var parameter = System.Linq.Expressions.Expression.Parameter(entityType.ClrType, "e");
+        var property = System.Linq.Expressions.Expression.Property(parameter, nameof(ISoftDeletable.IsDeleted));
+        var filter = System.Linq.Expressions.Expression.Lambda(
+            System.Linq.Expressions.Expression.Equal(property, System.Linq.Expressions.Expression.Constant(false)),
+            parameter);
+
+        entityType.SetQueryFilter(filter);
     }
 }

@@ -5,7 +5,7 @@ namespace Aura.Core.Data;
 /// <summary>
 /// Database entity for storing application configuration
 /// </summary>
-public class ConfigurationEntity
+public class ConfigurationEntity : IAuditableEntity
 {
     /// <summary>
     /// Configuration key (unique identifier)
@@ -51,6 +51,11 @@ public class ConfigurationEntity
     /// When the configuration was last updated
     /// </summary>
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// User or system that created this configuration
+    /// </summary>
+    public string? CreatedBy { get; set; }
 
     /// <summary>
     /// User or system that last modified this configuration
