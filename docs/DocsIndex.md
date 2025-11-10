@@ -42,6 +42,8 @@ New to Aura Video Studio? Start here:
 
 #### User Guides
 
+- **[Complete User Manual](./user-guide/USER_MANUAL.md)** - Comprehensive guide covering all features
+- **[FAQ](./user-guide/FAQ.md)** - Frequently asked questions with detailed answers
 - [User Customization Guide](../USER_CUSTOMIZATION_GUIDE.md) - Personalize settings and preferences
 - [Translation User Guide](../TRANSLATION_USER_GUIDE.md) - Multi-language support
 - [Prompt Customization Guide](../PROMPT_CUSTOMIZATION_USER_GUIDE.md) - Customize AI prompts
@@ -185,7 +187,7 @@ New to Aura Video Studio? Start here:
 
 #### Troubleshooting
 
-- [Troubleshooting Guide](./troubleshooting/Troubleshooting.md) - Main troubleshooting reference
+- **[Troubleshooting Guide](./troubleshooting/Troubleshooting.md)** - Main troubleshooting reference with quick fixes
 - [Common Issues](./troubleshooting/COMMON_ISSUES.md) - Frequently encountered problems and solutions
 - [Developer Troubleshooting](./troubleshooting/DEVELOPER_TROUBLESHOOTING.md) - Development-specific issues
 - [FFmpeg Setup Guide](./FFmpeg_Setup_Guide.md)
