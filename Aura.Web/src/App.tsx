@@ -627,13 +627,16 @@ function App() {
                         <Route path="/content-planning" element={<ContentPlanningDashboard />} />
                         <Route
                           path="/create"
+                          element={<VideoCreationWizard />}
+                        />
+                        <Route 
+                          path="/create/advanced"
                           element={
                             <Suspense fallback={<Spinner label="Loading..." />}>
                               <CreateWizard />
                             </Suspense>
                           }
                         />
-                        <Route path="/create/new" element={<VideoCreationWizard />} />
                         <Route
                           path="/create/legacy"
                           element={

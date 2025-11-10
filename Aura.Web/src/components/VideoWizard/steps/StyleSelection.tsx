@@ -78,6 +78,38 @@ const useStyles = makeStyles({
     alignItems: 'center',
     padding: tokens.spacingVerticalXXL,
   },
+  stylePresetGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+    gap: tokens.spacingHorizontalM,
+    marginTop: tokens.spacingVerticalM,
+  },
+  stylePresetCard: {
+    padding: tokens.spacingVerticalL,
+    cursor: 'pointer',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    border: `2px solid ${tokens.colorNeutralStroke2}`,
+    textAlign: 'center',
+    position: 'relative',
+    ':hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: tokens.shadow16,
+      border: `2px solid ${tokens.colorBrandStroke1}`,
+    },
+  },
+  stylePresetSelected: {
+    border: `2px solid ${tokens.colorBrandStroke1}`,
+    backgroundColor: tokens.colorBrandBackground2,
+  },
+  stylePresetIcon: {
+    fontSize: '48px',
+    marginBottom: tokens.spacingVerticalS,
+  },
+  stylePresetBadge: {
+    position: 'absolute',
+    top: tokens.spacingVerticalS,
+    right: tokens.spacingVerticalS,
+  },
   '@keyframes fadeInUp': {
     '0%': {
       opacity: 0,
@@ -97,6 +129,52 @@ interface StyleSelectionProps {
   onChange: (data: StyleData) => void;
   onValidationChange: (validation: StepValidation) => void;
 }
+
+interface StylePreset {
+  name: string;
+  visualStyle: string;
+  musicGenre: string;
+  description: string;
+  icon: string;
+}
+
+const STYLE_PRESETS: StylePreset[] = [
+  {
+    name: 'Modern',
+    visualStyle: 'modern',
+    musicGenre: 'upbeat',
+    description: 'Clean, contemporary look with energetic music',
+    icon: '🎨',
+  },
+  {
+    name: 'Professional',
+    visualStyle: 'professional',
+    musicGenre: 'ambient',
+    description: 'Corporate style with subtle background music',
+    icon: '💼',
+  },
+  {
+    name: 'Cinematic',
+    visualStyle: 'cinematic',
+    musicGenre: 'dramatic',
+    description: 'Movie-like visuals with dramatic scoring',
+    icon: '🎬',
+  },
+  {
+    name: 'Minimal',
+    visualStyle: 'minimal',
+    musicGenre: 'ambient',
+    description: 'Simple, focused design with calm ambiance',
+    icon: '✨',
+  },
+  {
+    name: 'Playful',
+    visualStyle: 'playful',
+    musicGenre: 'upbeat',
+    description: 'Fun, colorful style with lively music',
+    icon: '🎉',
+  },
+];
 
 export const StyleSelection: FC<StyleSelectionProps> = ({
   data,
@@ -193,11 +271,62 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
     );
   }
 
+  const handlePresetSelect = useCallback(
+    (preset: StylePreset) => {
+      onChange({
+        ...data,
+        visualStyle: preset.visualStyle,
+        musicGenre: preset.musicGenre,
+        musicEnabled: preset.musicGenre !== 'none',
+      });
+    },
+    [data, onChange]
+  );
+
   return (
     <div className={styles.container}>
       <div className={styles.section}>
         <Title2>Style Selection</Title2>
         <Text>Configure voice, visual style, and music preferences for your video.</Text>
+      </div>
+
+      <div className={styles.section}>
+        <Title3>Quick Style Presets</Title3>
+        <Text size={300} style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}>
+          Choose a preset style to quickly configure your video's look and feel
+        </Text>
+        <div className={styles.stylePresetGrid}>
+          {STYLE_PRESETS.map((preset) => (
+            <Card
+              key={preset.name}
+              className={`${styles.stylePresetCard} ${
+                data.visualStyle === preset.visualStyle && data.musicGenre === preset.musicGenre
+                  ? styles.stylePresetSelected
+                  : ''
+              }`}
+              onClick={() => handlePresetSelect(preset)}
+            >
+              {data.visualStyle === preset.visualStyle && data.musicGenre === preset.musicGenre && (
+                <Badge appearance="filled" color="success" className={styles.stylePresetBadge}>
+                  Active
+                </Badge>
+              )}
+              <div className={styles.stylePresetIcon}>{preset.icon}</div>
+              <Text weight="semibold" size={300}>
+                {preset.name}
+              </Text>
+              <Text
+                size={200}
+                style={{
+                  marginTop: tokens.spacingVerticalXS,
+                  color: tokens.colorNeutralForeground3,
+                }}
+              >
+                {preset.description}
+              </Text>
+            </Card>
+          ))}
+        </div>
       </div>
 
       <div className={styles.section}>

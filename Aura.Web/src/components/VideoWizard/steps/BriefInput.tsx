@@ -66,12 +66,35 @@ const useStyles = makeStyles({
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     border: `1px solid transparent`,
+    position: 'relative',
+    overflow: 'hidden',
+    '::before': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '3px',
+      background: tokens.colorBrandBackground,
+      transform: 'scaleX(0)',
+      transformOrigin: 'left',
+      transition: 'transform 0.3s ease',
+    },
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground3,
       transform: 'translateY(-4px)',
-      boxShadow: tokens.shadow8,
+      boxShadow: tokens.shadow16,
       border: `1px solid ${tokens.colorBrandStroke1}`,
+      '::before': {
+        transform: 'scaleX(1)',
+      },
     },
+    ':active': {
+      transform: 'translateY(-2px)',
+    },
+  },
+  categoryBadge: {
+    marginBottom: tokens.spacingVerticalXS,
   },
   exampleGrid: {
     display: 'grid',
@@ -109,22 +132,38 @@ const EXAMPLE_PROMPTS = [
     title: 'Educational: AI Basics',
     prompt:
       'Introduction to Artificial Intelligence for beginners - explaining neural networks, machine learning, and real-world applications',
+    category: 'Education',
   },
   {
     videoType: 'marketing' as const,
     title: 'Marketing: Product Launch',
     prompt:
       'Exciting product launch announcement for our new eco-friendly water bottle - highlighting sustainability features and health benefits',
+    category: 'Business',
   },
   {
     videoType: 'social' as const,
     title: 'Social: Travel Tips',
     prompt: 'Top 10 travel tips for budget-conscious backpackers exploring Southeast Asia',
+    category: 'Lifestyle',
   },
   {
     videoType: 'story' as const,
     title: 'Story: Success Journey',
     prompt: 'A motivational story about overcoming challenges to achieve entrepreneurial success',
+    category: 'Inspiration',
+  },
+  {
+    videoType: 'tutorial' as const,
+    title: 'Tutorial: Quick Cooking',
+    prompt: 'Step-by-step guide to making perfect homemade pasta in under 30 minutes',
+    category: 'Lifestyle',
+  },
+  {
+    videoType: 'explainer' as const,
+    title: 'Explainer: Crypto Basics',
+    prompt: 'Understanding cryptocurrency and blockchain technology - a beginner-friendly guide to digital currencies',
+    category: 'Education',
   },
 ];
 
@@ -451,6 +490,16 @@ export const BriefInput: FC<BriefInputProps> = ({
 
       <div>
         <Title3>Need Inspiration? Try These Examples</Title3>
+        <Text 
+          size={300} 
+          style={{ 
+            marginTop: tokens.spacingVerticalXS,
+            marginBottom: tokens.spacingVerticalM,
+            color: tokens.colorNeutralForeground3 
+          }}
+        >
+          Click any template to get started quickly
+        </Text>
         <div className={styles.exampleGrid}>
           {EXAMPLE_PROMPTS.map((example, index) => (
             <Card
@@ -458,6 +507,13 @@ export const BriefInput: FC<BriefInputProps> = ({
               className={styles.exampleCard}
               onClick={() => handleExampleClick(example)}
             >
+              <Badge 
+                appearance="tint" 
+                color="informative"
+                className={styles.categoryBadge}
+              >
+                {example.category}
+              </Badge>
               <Text weight="semibold" size={300}>
                 {example.title}
               </Text>
@@ -466,6 +522,7 @@ export const BriefInput: FC<BriefInputProps> = ({
                 style={{
                   marginTop: tokens.spacingVerticalS,
                   color: tokens.colorNeutralForeground3,
+                  lineHeight: '1.5',
                 }}
               >
                 {example.prompt}
