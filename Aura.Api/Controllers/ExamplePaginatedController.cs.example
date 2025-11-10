@@ -1,0 +1,207 @@
+using Aura.Core.Data;
+using Aura.Core.Extensions;
+using Aura.Core.Models.Pagination;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace Aura.Api.Controllers;
+
+/// <summary>
+/// Example controller demonstrating pagination usage
+/// </summary>
+/// <remarks>
+/// This is an example file showing how to implement pagination in your controllers.
+/// Rename this file by removing the .example extension to use it.
+/// </remarks>
+[ApiController]
+[Route("api/[controller]")]
+public class ExamplePaginatedController : ControllerBase
+{
+    private readonly AuraDbContext _dbContext;
+    private readonly ILogger<ExamplePaginatedController> _logger;
+
+    public ExamplePaginatedController(
+        AuraDbContext dbContext,
+        ILogger<ExamplePaginatedController> logger)
+    {
+        _dbContext = dbContext;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Get paginated list of templates with sorting
+    /// </summary>
+    /// <param name="page">Page number (1-based)</param>
+    /// <param name="pageSize">Items per page (max 100)</param>
+    /// <param name="sortBy">Property to sort by (e.g., "Name", "CreatedAt")</param>
+    /// <param name="sortDirection">Sort direction ("asc" or "desc")</param>
+    /// <param name="category">Optional category filter</param>
+    /// <returns>Paginated result with templates</returns>
+    [HttpGet("templates")]
+    [ProducesResponseType(typeof(PagedResult<TemplateEntity>), 200)]
+    public async Task<ActionResult<PagedResult<TemplateEntity>>> GetTemplates(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? sortBy = "CreatedAt",
+        [FromQuery] string sortDirection = "desc",
+        [FromQuery] string? category = null)
+    {
+        try
+        {
+            var pagination = new PaginationParams
+            {
+                PageNumber = page,
+                PageSize = pageSize,
+                SortBy = sortBy,
+                SortDirection = sortDirection
+            };
+
+            var query = _dbContext.Templates.AsQueryable();
+
+            // Apply optional filters
+            if (!string.IsNullOrEmpty(category))
+            {
+                query = query.Where(t => t.Category == category);
+            }
+
+            // Apply AsNoTracking for read-only queries
+            query = query.AsNoTracking();
+
+            // Apply pagination and sorting
+            var result = await query.ToPagedResultAsync(pagination);
+
+            _logger.LogInformation(
+                "Retrieved page {Page} of templates ({Count} items, {Total} total)",
+                result.PageNumber, result.Items.Count, result.TotalCount);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving paginated templates");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Error Retrieving Templates",
+                Status = 500,
+                Detail = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get paginated list of media items with eager loading
+    /// </summary>
+    [HttpGet("media")]
+    [ProducesResponseType(typeof(PagedResult<MediaEntity>), 200)]
+    public async Task<ActionResult<PagedResult<MediaEntity>>> GetMedia(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? type = null)
+    {
+        try
+        {
+            var query = _dbContext.MediaItems
+                .Include(m => m.Tags)          // Eager load tags
+                .Include(m => m.Collection)    // Eager load collection
+                .AsNoTracking();               // Read-only query
+
+            // Apply filters
+            if (!string.IsNullOrEmpty(type))
+            {
+                query = query.Where(m => m.Type == type);
+            }
+
+            // Apply pagination with default sorting
+            var result = await query.ToPagedResultAsync(
+                pageNumber: page,
+                pageSize: pageSize,
+                sortBy: "CreatedAt",
+                descending: true
+            );
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving paginated media");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Error Retrieving Media",
+                Status = 500,
+                Detail = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// Search projects with complex filtering and pagination
+    /// </summary>
+    [HttpPost("projects/search")]
+    [ProducesResponseType(typeof(PagedResult<ProjectStateEntity>), 200)]
+    public async Task<ActionResult<PagedResult<ProjectStateEntity>>> SearchProjects(
+        [FromBody] ProjectSearchRequest request)
+    {
+        try
+        {
+            var query = _dbContext.ProjectStates
+                .Include(p => p.Scenes)
+                .Include(p => p.Assets)
+                .AsNoTracking();
+
+            // Apply search filters
+            if (!string.IsNullOrEmpty(request.SearchTerm))
+            {
+                query = query.Where(p =>
+                    p.Title.Contains(request.SearchTerm) ||
+                    (p.Description != null && p.Description.Contains(request.SearchTerm)));
+            }
+
+            if (request.Status != null)
+            {
+                query = query.Where(p => p.Status == request.Status);
+            }
+
+            if (request.CreatedAfter.HasValue)
+            {
+                query = query.Where(p => p.CreatedAt >= request.CreatedAfter.Value);
+            }
+
+            // Apply pagination
+            var pagination = new PaginationParams
+            {
+                PageNumber = request.Page ?? 1,
+                PageSize = request.PageSize ?? 20,
+                SortBy = request.SortBy ?? "UpdatedAt",
+                SortDirection = request.SortDirection ?? "desc"
+            };
+
+            var result = await query.ToPagedResultAsync(pagination);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching projects");
+            return StatusCode(500, new ProblemDetails
+            {
+                Title = "Error Searching Projects",
+                Status = 500,
+                Detail = ex.Message
+            });
+        }
+    }
+}
+
+/// <summary>
+/// Request model for project search with pagination
+/// </summary>
+public class ProjectSearchRequest
+{
+    public string? SearchTerm { get; set; }
+    public string? Status { get; set; }
+    public DateTime? CreatedAfter { get; set; }
+    public int? Page { get; set; }
+    public int? PageSize { get; set; }
+    public string? SortBy { get; set; }
+    public string? SortDirection { get; set; }
+}
