@@ -42,6 +42,10 @@ public static class CoreServicesExtensions
         services.AddSingleton<IProcessManager, ProcessManager>();
         services.AddSingleton<IFFmpegService, FFmpegService>();
         services.AddSingleton<IFFmpegExecutor, FFmpegExecutor>();
+        
+        // Video Effects Services
+        services.AddSingleton<Aura.Core.Services.VideoEffects.IVideoEffectService, Aura.Core.Services.VideoEffects.VideoEffectService>();
+        services.AddSingleton<Aura.Core.Services.VideoEffects.IEffectCacheService, Aura.Core.Services.VideoEffects.EffectCacheService>();
         services.AddSingleton<IHardwareAccelerationDetector, HardwareAccelerationDetector>();
 
         // Video services
