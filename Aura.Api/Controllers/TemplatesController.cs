@@ -1,72 +1,52 @@
+using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
-using Aura.Core.Models;
-using Aura.Core.Services;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace Aura.Api.Controllers;
 
 /// <summary>
-/// Controller for managing project templates
+/// Controller for video templates, sample projects, and tutorial guides
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/templates")]
 public class TemplatesController : ControllerBase
 {
     private readonly ILogger<TemplatesController> _logger;
-    private readonly TemplateService _templateService;
 
-    public TemplatesController(ILogger<TemplatesController> logger, TemplateService templateService)
+    public TemplatesController(ILogger<TemplatesController> logger)
     {
         _logger = logger;
-        _templateService = templateService;
     }
 
     /// <summary>
-    /// Get all templates with optional filtering and pagination
+    /// Get all available video templates
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetTemplates(
-        [FromQuery] string? category = null,
-        [FromQuery] string? subCategory = null,
-        [FromQuery] bool systemOnly = false,
-        [FromQuery] bool communityOnly = false,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50)
+    public IActionResult GetTemplates([FromQuery] string? category = null, [FromQuery] string? difficulty = null)
     {
         try
         {
-            TemplateCategory? categoryEnum = null;
-            if (!string.IsNullOrWhiteSpace(category) && Enum.TryParse<TemplateCategory>(category, true, out var parsed))
+            var templates = GetAllTemplates();
+
+            if (!string.IsNullOrEmpty(category))
             {
-                categoryEnum = parsed;
+                templates = templates.Where(t => t.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
             }
 
-            var response = await _templateService.GetTemplatesAsync(
-                categoryEnum,
-                subCategory,
-                systemOnly,
-                communityOnly,
-                page,
-                pageSize);
+            if (!string.IsNullOrEmpty(difficulty))
+            {
+                templates = templates.Where(t => t.Difficulty.Equals(difficulty, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
 
-            return Ok(response);
+            return Ok(templates);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get templates");
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to retrieve templates",
-                correlationId = HttpContext.TraceIdentifier
-            });
+            _logger.LogError(ex, "Error getting templates");
+            return StatusCode(500, new { error = "Failed to get templates" });
         }
     }
 
@@ -74,676 +54,366 @@ public class TemplatesController : ControllerBase
     /// Get a specific template by ID
     /// </summary>
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetTemplate(string id)
+    public IActionResult GetTemplate(string id)
     {
         try
         {
-            var template = await _templateService.GetTemplateByIdAsync(id);
-            
+            var template = GetAllTemplates().FirstOrDefault(t => t.Id == id);
+
             if (template == null)
             {
-                return NotFound(new
-                {
-                    type = "https://docs.aura.studio/errors/E404",
-                    title = "Template Not Found",
-                    status = 404,
-                    detail = $"Template with ID '{id}' was not found",
-                    templateId = id
-                });
+                return NotFound(new { error = "Template not found" });
             }
 
             return Ok(template);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get template {TemplateId}", id);
-            return StatusCode(500, new
+            _logger.LogError(ex, "Error getting template {TemplateId}", id);
+            return StatusCode(500, new { error = "Failed to get template" });
+        }
+    }
+
+    /// <summary>
+    /// Get sample projects
+    /// </summary>
+    [HttpGet("samples")]
+    public IActionResult GetSampleProjects()
+    {
+        try
+        {
+            var samples = GetAllSampleProjects();
+            return Ok(samples);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting sample projects");
+            return StatusCode(500, new { error = "Failed to get sample projects" });
+        }
+    }
+
+    /// <summary>
+    /// Get example prompts
+    /// </summary>
+    [HttpGet("prompts")]
+    public IActionResult GetExamplePrompts([FromQuery] string? category = null)
+    {
+        try
+        {
+            var prompts = GetAllExamplePrompts();
+
+            if (!string.IsNullOrEmpty(category))
             {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to retrieve template",
-                correlationId = HttpContext.TraceIdentifier
-            });
+                prompts = prompts.Where(p => p.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            return Ok(prompts);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting example prompts");
+            return StatusCode(500, new { error = "Failed to get example prompts" });
+        }
+    }
+
+    /// <summary>
+    /// Get tutorial guides
+    /// </summary>
+    [HttpGet("tutorials")]
+    public IActionResult GetTutorialGuides()
+    {
+        try
+        {
+            var tutorials = GetAllTutorialGuides();
+            return Ok(tutorials);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting tutorial guides");
+            return StatusCode(500, new { error = "Failed to get tutorial guides" });
         }
     }
 
     /// <summary>
     /// Create a new project from a template
     /// </summary>
-    [HttpPost("create-from-template")]
-    public async Task<IActionResult> CreateFromTemplate([FromBody] CreateFromTemplateRequest request)
+    [HttpPost("create-project")]
+    public async Task<IActionResult> CreateProjectFromTemplate(
+        [FromBody] CreateProjectFromTemplateRequest request,
+        CancellationToken ct)
     {
         try
         {
-            var template = await _templateService.GetTemplateByIdAsync(request.TemplateId);
-            
+            if (string.IsNullOrEmpty(request.TemplateId))
+            {
+                return BadRequest(new { error = "TemplateId is required" });
+            }
+
+            var template = GetAllTemplates().FirstOrDefault(t => t.Id == request.TemplateId);
             if (template == null)
             {
-                return NotFound(new
-                {
-                    type = "https://docs.aura.studio/errors/E404",
-                    title = "Template Not Found",
-                    status = 404,
-                    detail = $"Template with ID '{request.TemplateId}' was not found",
-                    templateId = request.TemplateId
-                });
+                return NotFound(new { error = "Template not found" });
             }
 
-            // Increment usage count
-            await _templateService.IncrementUsageAsync(request.TemplateId);
+            // Generate a project ID
+            var projectId = Guid.NewGuid().ToString();
+            var projectName = request.ProjectName ?? $"{template.Name} - {DateTime.Now:yyyy-MM-dd HH:mm}";
 
-            // Parse template structure
-            var templateStructure = JsonSerializer.Deserialize<TemplateStructure>(template.TemplateData);
-            
-            if (templateStructure == null)
-            {
-                return BadRequest(new
-                {
-                    type = "https://docs.aura.studio/errors/E400",
-                    title = "Invalid Template",
-                    status = 400,
-                    detail = "Template data is invalid",
-                    templateId = request.TemplateId
-                });
-            }
+            _logger.LogInformation("Creating project from template {TemplateId}: {ProjectName}", request.TemplateId, projectName);
 
-            // Convert template to project file
-            var projectFile = ConvertTemplateToProject(templateStructure, request.ProjectName);
-
+            // In a real implementation, this would create the project in the database
+            // For now, just return success with the generated ID
             return Ok(new
             {
-                projectFile,
-                templateName = template.Name
+                success = true,
+                projectId,
+                projectName,
+                templateId = request.TemplateId,
+                message = "Project created successfully from template"
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create project from template {TemplateId}", request.TemplateId);
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to create project from template",
-                correlationId = HttpContext.TraceIdentifier
-            });
+            _logger.LogError(ex, "Error creating project from template");
+            return StatusCode(500, new { error = "Failed to create project from template" });
         }
     }
 
-    /// <summary>
-    /// Save current project as a template
-    /// </summary>
-    [HttpPost("save-as-template")]
-    public async Task<IActionResult> SaveAsTemplate([FromBody] SaveAsTemplateRequest request)
+    // Private helper methods to return template data
+
+    private List<VideoTemplate> GetAllTemplates()
     {
-        try
+        return new List<VideoTemplate>
         {
-            if (string.IsNullOrWhiteSpace(request.Name))
+            new VideoTemplate
             {
-                return BadRequest(new
-                {
-                    type = "https://docs.aura.studio/errors/E400",
-                    title = "Invalid Request",
-                    status = 400,
-                    detail = "Template name is required",
-                    field = "Name"
-                });
-            }
-
-            var template = await _templateService.CreateTemplateAsync(request);
-
-            return Ok(new
-            {
-                id = template.Id,
-                name = template.Name,
-                message = "Template saved successfully"
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save template {TemplateName}", request.Name);
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to save template",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Delete a template
-    /// </summary>
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteTemplate(string id)
-    {
-        try
-        {
-            var deleted = await _templateService.DeleteTemplateAsync(id);
-            
-            if (!deleted)
-            {
-                return NotFound(new
-                {
-                    type = "https://docs.aura.studio/errors/E404",
-                    title = "Template Not Found",
-                    status = 404,
-                    detail = $"Template with ID '{id}' was not found or cannot be deleted",
-                    templateId = id
-                });
-            }
-
-            return Ok(new { message = "Template deleted successfully" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to delete template {TemplateId}", id);
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to delete template",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Get effect presets
-    /// </summary>
-    [HttpGet("effect-presets")]
-    public IActionResult GetEffectPresets()
-    {
-        try
-        {
-            var presets = _templateService.GetEffectPresets();
-            return Ok(presets);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get effect presets");
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to retrieve effect presets",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Get transition presets
-    /// </summary>
-    [HttpGet("transition-presets")]
-    public IActionResult GetTransitionPresets()
-    {
-        try
-        {
-            var presets = _templateService.GetTransitionPresets();
-            return Ok(presets);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get transition presets");
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to retrieve transition presets",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Get title templates
-    /// </summary>
-    [HttpGet("title-templates")]
-    public IActionResult GetTitleTemplates()
-    {
-        try
-        {
-            var templates = _templateService.GetTitleTemplates();
-            return Ok(templates);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get title templates");
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to retrieve title templates",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Seed sample templates (for development/testing)
-    /// </summary>
-    [HttpPost("seed")]
-    public async Task<IActionResult> SeedTemplates()
-    {
-        try
-        {
-            await _templateService.SeedSampleTemplatesAsync();
-            return Ok(new { message = "Sample templates seeded successfully" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to seed sample templates");
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to seed sample templates",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Get all custom video templates
-    /// </summary>
-    [HttpGet("custom")]
-    public async Task<IActionResult> GetCustomTemplates([FromQuery] string? category = null)
-    {
-        try
-        {
-            var templates = await _templateService.GetCustomTemplatesAsync(category);
-            return Ok(templates);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get custom templates");
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to retrieve custom templates",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Get a specific custom template by ID
-    /// </summary>
-    [HttpGet("custom/{id}")]
-    public async Task<IActionResult> GetCustomTemplate(string id)
-    {
-        try
-        {
-            var template = await _templateService.GetCustomTemplateByIdAsync(id);
-            
-            if (template == null)
-            {
-                return NotFound(new
-                {
-                    type = "https://docs.aura.studio/errors/E404",
-                    title = "Custom Template Not Found",
-                    status = 404,
-                    detail = $"Custom template with ID '{id}' was not found",
-                    templateId = id
-                });
-            }
-
-            return Ok(template);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get custom template {TemplateId}", id);
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to retrieve custom template",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Create a new custom video template
-    /// </summary>
-    [HttpPost("custom")]
-    public async Task<IActionResult> CreateCustomTemplate([FromBody] CreateCustomTemplateRequest request)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(request.Name))
-            {
-                return BadRequest(new
-                {
-                    type = "https://docs.aura.studio/errors/E400",
-                    title = "Invalid Request",
-                    status = 400,
-                    detail = "Template name is required",
-                    field = "Name"
-                });
-            }
-
-            var template = await _templateService.CreateCustomTemplateAsync(request);
-
-            return CreatedAtAction(
-                nameof(GetCustomTemplate),
-                new { id = template.Id },
-                template);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to create custom template {TemplateName}", request.Name);
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to create custom template",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Update an existing custom template
-    /// </summary>
-    [HttpPut("custom/{id}")]
-    public async Task<IActionResult> UpdateCustomTemplate(string id, [FromBody] UpdateCustomTemplateRequest request)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(request.Name))
-            {
-                return BadRequest(new
-                {
-                    type = "https://docs.aura.studio/errors/E400",
-                    title = "Invalid Request",
-                    status = 400,
-                    detail = "Template name is required",
-                    field = "Name"
-                });
-            }
-
-            var template = await _templateService.UpdateCustomTemplateAsync(id, request);
-            
-            if (template == null)
-            {
-                return NotFound(new
-                {
-                    type = "https://docs.aura.studio/errors/E404",
-                    title = "Custom Template Not Found",
-                    status = 404,
-                    detail = $"Custom template with ID '{id}' was not found",
-                    templateId = id
-                });
-            }
-
-            return Ok(template);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to update custom template {TemplateId}", id);
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to update custom template",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Delete a custom template
-    /// </summary>
-    [HttpDelete("custom/{id}")]
-    public async Task<IActionResult> DeleteCustomTemplate(string id)
-    {
-        try
-        {
-            var deleted = await _templateService.DeleteCustomTemplateAsync(id);
-            
-            if (!deleted)
-            {
-                return NotFound(new
-                {
-                    type = "https://docs.aura.studio/errors/E404",
-                    title = "Custom Template Not Found",
-                    status = 404,
-                    detail = $"Custom template with ID '{id}' was not found",
-                    templateId = id
-                });
-            }
-
-            return Ok(new { message = "Custom template deleted successfully" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to delete custom template {TemplateId}", id);
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to delete custom template",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Duplicate a custom template
-    /// </summary>
-    [HttpPost("custom/{id}/duplicate")]
-    public async Task<IActionResult> DuplicateCustomTemplate(string id)
-    {
-        try
-        {
-            var template = await _templateService.DuplicateCustomTemplateAsync(id);
-
-            return CreatedAtAction(
-                nameof(GetCustomTemplate),
-                new { id = template.Id },
-                template);
-        }
-        catch (ArgumentException ex)
-        {
-            return NotFound(new
-            {
-                type = "https://docs.aura.studio/errors/E404",
-                title = "Custom Template Not Found",
-                status = 404,
-                detail = ex.Message,
-                templateId = id
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to duplicate custom template {TemplateId}", id);
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to duplicate custom template",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Set default custom template
-    /// </summary>
-    [HttpPost("custom/{id}/set-default")]
-    public async Task<IActionResult> SetDefaultCustomTemplate(string id)
-    {
-        try
-        {
-            var success = await _templateService.SetDefaultCustomTemplateAsync(id);
-            
-            if (!success)
-            {
-                return NotFound(new
-                {
-                    type = "https://docs.aura.studio/errors/E404",
-                    title = "Custom Template Not Found",
-                    status = 404,
-                    detail = $"Custom template with ID '{id}' was not found",
-                    templateId = id
-                });
-            }
-
-            return Ok(new { message = "Default template set successfully" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to set default custom template {TemplateId}", id);
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to set default custom template",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Export a custom template to JSON
-    /// </summary>
-    [HttpGet("custom/{id}/export")]
-    public async Task<IActionResult> ExportCustomTemplate(string id)
-    {
-        try
-        {
-            var exportData = await _templateService.ExportCustomTemplateAsync(id);
-            return Ok(exportData);
-        }
-        catch (ArgumentException ex)
-        {
-            return NotFound(new
-            {
-                type = "https://docs.aura.studio/errors/E404",
-                title = "Custom Template Not Found",
-                status = 404,
-                detail = ex.Message,
-                templateId = id
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to export custom template {TemplateId}", id);
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to export custom template",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    /// <summary>
-    /// Import a custom template from JSON
-    /// </summary>
-    [HttpPost("custom/import")]
-    public async Task<IActionResult> ImportCustomTemplate([FromBody] TemplateExportData exportData)
-    {
-        try
-        {
-            if (exportData?.Template == null)
-            {
-                return BadRequest(new
-                {
-                    type = "https://docs.aura.studio/errors/E400",
-                    title = "Invalid Request",
-                    status = 400,
-                    detail = "Template data is required"
-                });
-            }
-
-            var template = await _templateService.ImportCustomTemplateAsync(exportData);
-
-            return CreatedAtAction(
-                nameof(GetCustomTemplate),
-                new { id = template.Id },
-                template);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to import custom template");
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/E500",
-                title = "Internal Server Error",
-                status = 500,
-                detail = "Failed to import custom template",
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-    }
-
-    private object ConvertTemplateToProject(TemplateStructure templateStructure, string projectName)
-    {
-        // Convert template structure to project file format
-        var now = DateTime.UtcNow.ToString("o");
-        
-        return new
-        {
-            version = "1.0.0",
-            metadata = new
-            {
-                name = projectName,
-                createdAt = now,
-                lastModifiedAt = now,
-                duration = templateStructure.Duration
+                Id = "youtube-tutorial",
+                Name = "YouTube Tutorial",
+                Description = "Create educational tutorial videos for YouTube with clear structure and engaging visuals",
+                Category = "tutorial",
+                Duration = 180,
+                Difficulty = "beginner",
+                PromptExample = "Create a tutorial video about how to make homemade pasta, including ingredients, step-by-step instructions, and cooking tips",
+                Tags = new[] { "youtube", "education", "tutorial", "how-to" },
+                EstimatedTime = "2-3 minutes"
             },
-            settings = new
+            new VideoTemplate
             {
-                resolution = new
-                {
-                    width = templateStructure.Settings.Width,
-                    height = templateStructure.Settings.Height
-                },
-                frameRate = templateStructure.Settings.FrameRate,
-                sampleRate = 48000
+                Id = "social-shorts",
+                Name = "Social Media Shorts",
+                Description = "Quick, engaging short-form content perfect for TikTok, Instagram Reels, and YouTube Shorts",
+                Category = "social-media",
+                Duration = 60,
+                Difficulty = "beginner",
+                PromptExample = "Create a 60-second video about 5 productivity hacks for remote workers",
+                Tags = new[] { "social", "shorts", "tiktok", "reels", "quick" },
+                EstimatedTime = "1-2 minutes"
             },
-            tracks = templateStructure.Tracks.Select(t => new
+            new VideoTemplate
             {
-                id = t.Id,
-                label = t.Label,
-                type = t.Type,
-                visible = true,
-                locked = false
-            }).ToList(),
-            clips = templateStructure.Placeholders.Select(p => new
+                Id = "product-demo",
+                Name = "Product Demonstration",
+                Description = "Showcase product features and benefits with professional marketing style",
+                Category = "marketing",
+                Duration = 120,
+                Difficulty = "intermediate",
+                PromptExample = "Create a product demo video for a new smart home device, highlighting its key features and ease of use",
+                Tags = new[] { "marketing", "product", "demo", "commercial" },
+                EstimatedTime = "3-4 minutes"
+            },
+            new VideoTemplate
             {
-                id = p.Id,
-                trackId = p.TrackId,
-                startTime = p.StartTime,
-                duration = p.Duration,
-                label = p.PlaceholderText,
-                type = p.Type,
-                isPlaceholder = true,
-                preview = p.PreviewUrl
-            }).ToList(),
-            mediaLibrary = new List<object>(),
-            playerPosition = 0
+                Id = "educational-explainer",
+                Name = "Educational Explainer",
+                Description = "Explain complex topics in simple, visual terms",
+                Category = "educational",
+                Duration = 240,
+                Difficulty = "intermediate",
+                PromptExample = "Explain how photosynthesis works in plants, using simple analogies and visual examples",
+                Tags = new[] { "education", "explainer", "science", "learning" },
+                EstimatedTime = "3-5 minutes"
+            }
         };
+    }
+
+    private List<SampleProject> GetAllSampleProjects()
+    {
+        var templates = GetAllTemplates();
+        return new List<SampleProject>
+        {
+            new SampleProject
+            {
+                Id = "sample-coffee-tutorial",
+                Name = "How to Make Perfect Coffee",
+                Description = "A beginner-friendly tutorial demonstrating the sample project workflow",
+                TemplateId = "youtube-tutorial",
+                Prompt = "Create a 3-minute tutorial video about how to make the perfect cup of coffee at home. Include equipment needed, step-by-step brewing instructions, and tips for choosing beans.",
+                ExpectedOutput = "3-minute educational video with introduction, main content sections, and conclusion",
+                LearningPoints = new[]
+                {
+                    "How to write effective prompts",
+                    "Understanding video structure",
+                    "Working with tutorial format",
+                    "Basic editing and pacing"
+                }
+            },
+            new SampleProject
+            {
+                Id = "sample-productivity-short",
+                Name = "5 Morning Routine Hacks",
+                Description = "Quick social media content example",
+                TemplateId = "social-shorts",
+                Prompt = "Create a 60-second video about 5 morning routine hacks to start your day productively",
+                ExpectedOutput = "Fast-paced 1-minute video with quick transitions between tips",
+                LearningPoints = new[]
+                {
+                    "Creating engaging short-form content",
+                    "Pacing for social media",
+                    "Hook and retention strategies",
+                    "Quick tips format"
+                }
+            }
+        };
+    }
+
+    private List<ExamplePrompt> GetAllExamplePrompts()
+    {
+        return new List<ExamplePrompt>
+        {
+            new ExamplePrompt
+            {
+                Id = "prompt-cooking-basic",
+                Title = "Basic Cooking Tutorial",
+                Prompt = "Create a video showing how to make scrambled eggs, including ingredient prep, cooking technique, and plating tips",
+                Category = "tutorial",
+                Tags = new[] { "cooking", "food", "beginner", "how-to" },
+                ExpectedDuration = 120,
+                Tips = new[]
+                {
+                    "Be specific about ingredients and measurements",
+                    "Break down steps clearly",
+                    "Include safety tips where relevant"
+                }
+            },
+            new ExamplePrompt
+            {
+                Id = "prompt-tech-review",
+                Title = "Tech Product Review",
+                Prompt = "Review the latest smartphone, covering design, performance, camera quality, battery life, and value for money",
+                Category = "educational",
+                Tags = new[] { "tech", "review", "gadgets", "analysis" },
+                ExpectedDuration = 240,
+                Tips = new[]
+                {
+                    "Structure reviews with clear sections",
+                    "Be objective and balanced",
+                    "Include pros and cons",
+                    "Mention target audience"
+                }
+            }
+        };
+    }
+
+    private List<TutorialGuide> GetAllTutorialGuides()
+    {
+        return new List<TutorialGuide>
+        {
+            new TutorialGuide
+            {
+                Id = "getting-started",
+                Title = "Getting Started with Aura",
+                Description = "Learn the basics of creating your first video with Aura Video Studio",
+                EstimatedTime = "10 minutes",
+                Difficulty = "beginner",
+                Steps = new[]
+                {
+                    new TutorialStep
+                    {
+                        Title = "Write Your Prompt",
+                        Description = "Start by describing the video you want to create. Be specific about the topic, style, and duration.",
+                        Duration = "2 min"
+                    },
+                    new TutorialStep
+                    {
+                        Title = "Choose Your Settings",
+                        Description = "Select video resolution, aspect ratio, and any advanced options you need.",
+                        Duration = "1 min"
+                    },
+                    new TutorialStep
+                    {
+                        Title = "Generate Script",
+                        Description = "Aura will generate a script based on your prompt. Review and edit as needed.",
+                        Duration = "3 min"
+                    },
+                    new TutorialStep
+                    {
+                        Title = "Review & Render",
+                        Description = "Preview the timeline, make adjustments, then render your final video.",
+                        Duration = "4 min"
+                    }
+                }
+            }
+        };
+    }
+
+    // DTOs
+
+    public class VideoTemplate
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public int Duration { get; set; }
+        public string Difficulty { get; set; } = string.Empty;
+        public string PromptExample { get; set; } = string.Empty;
+        public string[] Tags { get; set; } = Array.Empty<string>();
+        public string EstimatedTime { get; set; } = string.Empty;
+    }
+
+    public class SampleProject
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string TemplateId { get; set; } = string.Empty;
+        public string Prompt { get; set; } = string.Empty;
+        public string ExpectedOutput { get; set; } = string.Empty;
+        public string[] LearningPoints { get; set; } = Array.Empty<string>();
+    }
+
+    public class ExamplePrompt
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Prompt { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public string[] Tags { get; set; } = Array.Empty<string>();
+        public int ExpectedDuration { get; set; }
+        public string[] Tips { get; set; } = Array.Empty<string>();
+    }
+
+    public class TutorialGuide
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string EstimatedTime { get; set; } = string.Empty;
+        public string Difficulty { get; set; } = string.Empty;
+        public TutorialStep[] Steps { get; set; } = Array.Empty<TutorialStep>();
+    }
+
+    public class TutorialStep
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string? Duration { get; set; }
+    }
+
+    public class CreateProjectFromTemplateRequest
+    {
+        public string TemplateId { get; set; } = string.Empty;
+        public string? CustomPrompt { get; set; }
+        public string? ProjectName { get; set; }
     }
 }

@@ -45,6 +45,12 @@ public class OllamaController : ControllerBase
             var baseUrl = _settings.GetOllamaUrl();
             var status = await _ollamaService.GetStatusAsync(baseUrl, ct);
 
+            // Check if Ollama is installed
+            var executablePath = _settings.GetOllamaExecutablePath();
+            var installed = !string.IsNullOrWhiteSpace(executablePath) || 
+                           !string.IsNullOrWhiteSpace(OllamaService.FindOllamaExecutable());
+            var installPath = executablePath ?? OllamaService.FindOllamaExecutable();
+
             var response = new OllamaStatusResponse(
                 Running: status.Running,
                 Pid: status.Pid,
@@ -53,10 +59,23 @@ public class OllamaController : ControllerBase
                 Error: status.Error
             );
 
-            Log.Information("Ollama status check: Running={Running}, PID={Pid}, ManagedByApp={Managed}, CorrelationId={CorrelationId}",
-                status.Running, status.Pid, status.ManagedByApp, HttpContext.TraceIdentifier);
+            // Add installation info to response
+            var enhancedResponse = new
+            {
+                running = response.Running,
+                pid = response.Pid,
+                managedByApp = response.ManagedByApp,
+                model = response.Model,
+                error = response.Error,
+                installed,
+                installPath,
+                version = status.Running ? "Running" : null
+            };
 
-            return Ok(response);
+            Log.Information("Ollama status check: Running={Running}, PID={Pid}, ManagedByApp={Managed}, Installed={Installed}, CorrelationId={CorrelationId}",
+                status.Running, status.Pid, status.ManagedByApp, installed, HttpContext.TraceIdentifier);
+
+            return Ok(enhancedResponse);
         }
         catch (Exception ex)
         {
