@@ -8,6 +8,7 @@ using Aura.Core.Models;
 using Aura.Core.Models.Jobs;
 using Aura.Core.Orchestrator;
 using Microsoft.Extensions.Logging;
+using JobStatus = Aura.Core.Models.Jobs.JobStatus;
 
 namespace Aura.Core.Services.Jobs;
 
@@ -165,7 +166,7 @@ public class VideoGenerationJobService
     /// <summary>
     /// Get all jobs (with optional filtering)
     /// </summary>
-    public List<VideoGenerationJob> GetJobs(JobStatus? statusFilter = null, int maxResults = 100)
+    public List<VideoGenerationJob> GetJobs(Models.Jobs.JobStatus? statusFilter = null, int maxResults = 100)
     {
         var query = _jobs.Values.AsEnumerable();
         

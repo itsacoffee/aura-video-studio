@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Aura.Core.Models;
+using Aura.Core.Models.Export;
 
 namespace Aura.Core.Services.FFmpeg;
 

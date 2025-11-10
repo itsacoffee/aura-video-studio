@@ -32,7 +32,7 @@ public interface ISSMLMapper
     /// <summary>
     /// Validate SSML for provider compatibility
     /// </summary>
-    SSMLValidationResult Validate(string ssml);
+    Models.Audio.SSMLValidationResult Validate(string ssml);
 
     /// <summary>
     /// Attempt to auto-repair invalid SSML

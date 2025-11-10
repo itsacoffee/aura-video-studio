@@ -293,16 +293,6 @@ public record SSMLValidationResult
 }
 
 /// <summary>
-/// Emphasis level for text
-/// </summary>
-public enum EmphasisLevel
-{
-    Strong,
-    Moderate,
-    Reduced
-}
-
-/// <summary>
 /// Say-as interpretation types
 /// </summary>
 public enum SayAsInterpret

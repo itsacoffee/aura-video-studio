@@ -25,7 +25,7 @@ public class EnhancedCostTrackingService
     
     private CostTrackingConfiguration _configuration;
     private List<CostLog> _costLogs = new();
-    private Dictionary<string, ProviderPricing> _providerPricing = new();
+    private Dictionary<string, Models.CostTracking.ProviderPricing> _providerPricing = new();
 
     public EnhancedCostTrackingService(
         ILogger<EnhancedCostTrackingService> logger,
@@ -220,7 +220,7 @@ public class EnhancedCostTrackingService
     /// <summary>
     /// Get provider pricing information
     /// </summary>
-    public ProviderPricing? GetProviderPricing(string providerName)
+    public Models.CostTracking.ProviderPricing? GetProviderPricing(string providerName)
     {
         lock (_lock)
         {
@@ -231,7 +231,7 @@ public class EnhancedCostTrackingService
     /// <summary>
     /// Update provider pricing
     /// </summary>
-    public void UpdateProviderPricing(ProviderPricing pricing)
+    public void UpdateProviderPricing(Models.CostTracking.ProviderPricing pricing)
     {
         lock (_lock)
         {
@@ -244,7 +244,7 @@ public class EnhancedCostTrackingService
     /// <summary>
     /// Get all provider pricing
     /// </summary>
-    public List<ProviderPricing> GetAllProviderPricing()
+    public List<Models.CostTracking.ProviderPricing> GetAllProviderPricing()
     {
         lock (_lock)
         {

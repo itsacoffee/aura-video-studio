@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Data;
 using Aura.Core.Models;
+using Aura.Core.Models.Events;
 using Aura.Core.Orchestrator;
 using Aura.Core.Services.Generation;
 using Microsoft.EntityFrameworkCore;

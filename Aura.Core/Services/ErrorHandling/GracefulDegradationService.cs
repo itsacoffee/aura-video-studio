@@ -152,7 +152,7 @@ public class GracefulDegradationService
     /// <summary>
     /// Create a fallback strategy for GPU failures
     /// </summary>
-    public FallbackStrategy<T> CreateGpuToC puFallback<T>(
+    public FallbackStrategy<T> CreateGpuToCpuFallback<T>(
         Func<Task<T>> cpuOperation,
         string userNotification = "GPU rendering failed. Using CPU rendering (slower but reliable).")
     {

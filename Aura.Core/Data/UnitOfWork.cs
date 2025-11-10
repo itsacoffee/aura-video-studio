@@ -13,7 +13,7 @@ namespace Aura.Core.Data;
 public class UnitOfWork : IUnitOfWork
 {
     private readonly AuraDbContext _context;
-    private readonly ILogger<UnitOfWork> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private IDbContextTransaction? _transaction;
     private bool _disposed;
 
@@ -28,56 +28,56 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<ActionLogEntity, Guid>? _actionLogs;
     private IRepository<SystemConfigurationEntity, int>? _systemConfigurations;
 
-    public UnitOfWork(AuraDbContext context, ILogger<UnitOfWork> logger)
+    public UnitOfWork(AuraDbContext context, ILoggerFactory loggerFactory)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
     }
 
     public ProjectStateRepository ProjectStates =>
         _projectStates ??= new ProjectStateRepository(
             _context, 
-            _logger.CreateLogger<ProjectStateRepository>());
+            _loggerFactory.CreateLogger<ProjectStateRepository>());
 
     public ProjectVersionRepository ProjectVersions =>
         _projectVersions ??= new ProjectVersionRepository(
             _context,
-            _logger.CreateLogger<ProjectVersionRepository>());
+            _loggerFactory.CreateLogger<ProjectVersionRepository>());
 
     public ConfigurationRepository Configurations =>
         _configurations ??= new ConfigurationRepository(
             _context,
-            _logger.CreateLogger<ConfigurationRepository>());
+            _loggerFactory.CreateLogger<ConfigurationRepository>());
 
     public IRepository<ExportHistoryEntity, string> ExportHistory =>
         _exportHistory ??= new GenericRepository<ExportHistoryEntity, string>(
             _context,
-            _logger.CreateLogger<GenericRepository<ExportHistoryEntity, string>>());
+            _loggerFactory.CreateLogger<GenericRepository<ExportHistoryEntity, string>>());
 
     public IRepository<TemplateEntity, string> Templates =>
         _templates ??= new GenericRepository<TemplateEntity, string>(
             _context,
-            _logger.CreateLogger<GenericRepository<TemplateEntity, string>>());
+            _loggerFactory.CreateLogger<GenericRepository<TemplateEntity, string>>());
 
     public IRepository<UserSetupEntity, string> UserSetups =>
         _userSetups ??= new GenericRepository<UserSetupEntity, string>(
             _context,
-            _logger.CreateLogger<GenericRepository<UserSetupEntity, string>>());
+            _loggerFactory.CreateLogger<GenericRepository<UserSetupEntity, string>>());
 
     public IRepository<CustomTemplateEntity, string> CustomTemplates =>
         _customTemplates ??= new GenericRepository<CustomTemplateEntity, string>(
             _context,
-            _logger.CreateLogger<GenericRepository<CustomTemplateEntity, string>>());
+            _loggerFactory.CreateLogger<GenericRepository<CustomTemplateEntity, string>>());
 
     public IRepository<ActionLogEntity, Guid> ActionLogs =>
         _actionLogs ??= new GenericRepository<ActionLogEntity, Guid>(
             _context,
-            _logger.CreateLogger<GenericRepository<ActionLogEntity, Guid>>());
+            _loggerFactory.CreateLogger<GenericRepository<ActionLogEntity, Guid>>());
 
     public IRepository<SystemConfigurationEntity, int> SystemConfigurations =>
         _systemConfigurations ??= new GenericRepository<SystemConfigurationEntity, int>(
             _context,
-            _logger.CreateLogger<GenericRepository<SystemConfigurationEntity, int>>());
+            _loggerFactory.CreateLogger<GenericRepository<SystemConfigurationEntity, int>>());
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
