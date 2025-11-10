@@ -103,11 +103,17 @@ if [ "$SKIP_FRONTEND" = false ]; then
     
     if [ ! -d "node_modules" ]; then
         print_info "Installing frontend dependencies..."
-        npm install
+        npm install || {
+            print_error "Failed to install frontend dependencies"
+            exit 1
+        }
     fi
     
     print_info "Running frontend build..."
-    npm run build
+    npm run build || {
+        print_error "Frontend build failed"
+        exit 1
+    }
     
     if [ ! -f "dist/index.html" ]; then
         print_error "Frontend build failed - dist/index.html not found"
@@ -154,7 +160,11 @@ if [ "$SKIP_BACKEND" = false ]; then
             -p:PublishSingleFile=false \
             -p:PublishTrimmed=false \
             -p:IncludeNativeLibrariesForSelfExtract=true \
-            -o "$SCRIPT_DIR/backend/win-x64"
+            -p:SkipFrontendBuild=true \
+            -o "$SCRIPT_DIR/resources/backend/win-x64" || {
+            print_error "Windows backend build failed"
+            exit 1
+        }
         print_success "Windows backend build complete"
     fi
     
@@ -163,13 +173,21 @@ if [ "$SKIP_BACKEND" = false ]; then
         dotnet publish -c Release -r osx-x64 --self-contained true \
             -p:PublishSingleFile=false \
             -p:PublishTrimmed=false \
-            -o "$SCRIPT_DIR/backend/osx-x64"
+            -p:SkipFrontendBuild=true \
+            -o "$SCRIPT_DIR/resources/backend/osx-x64" || {
+            print_error "macOS (x64) backend build failed"
+            exit 1
+        }
         
         print_info "Building backend for macOS (arm64)..."
         dotnet publish -c Release -r osx-arm64 --self-contained true \
             -p:PublishSingleFile=false \
             -p:PublishTrimmed=false \
-            -o "$SCRIPT_DIR/backend/osx-arm64"
+            -p:SkipFrontendBuild=true \
+            -o "$SCRIPT_DIR/resources/backend/osx-arm64" || {
+            print_error "macOS (arm64) backend build failed"
+            exit 1
+        }
         print_success "macOS backend builds complete"
     fi
     
@@ -178,7 +196,11 @@ if [ "$SKIP_BACKEND" = false ]; then
         dotnet publish -c Release -r linux-x64 --self-contained true \
             -p:PublishSingleFile=false \
             -p:PublishTrimmed=false \
-            -o "$SCRIPT_DIR/backend/linux-x64"
+            -p:SkipFrontendBuild=true \
+            -o "$SCRIPT_DIR/resources/backend/linux-x64" || {
+            print_error "Linux backend build failed"
+            exit 1
+        }
         print_success "Linux backend build complete"
     fi
     
@@ -196,7 +218,10 @@ print_info "Installing Electron dependencies..."
 cd "$SCRIPT_DIR"
 
 if [ ! -d "node_modules" ]; then
-    npm install
+    npm install || {
+        print_error "Failed to install Electron dependencies"
+        exit 1
+    }
 else
     print_info "Dependencies already installed"
 fi
@@ -205,7 +230,37 @@ print_success "Electron dependencies ready"
 echo ""
 
 # ========================================
-# Step 4: Build Electron Installers
+# Step 4: Validate Resources
+# ========================================
+print_info "Validating required resources..."
+
+VALIDATION_FAILED=false
+
+if [ ! -f "$PROJECT_ROOT/Aura.Web/dist/index.html" ]; then
+    print_error "Frontend build not found at: $PROJECT_ROOT/Aura.Web/dist/index.html"
+    VALIDATION_FAILED=true
+else
+    print_success "  ✓ Frontend build found"
+fi
+
+if [ ! -d "$SCRIPT_DIR/resources/backend" ]; then
+    print_error "Backend binaries not found at: $SCRIPT_DIR/resources/backend"
+    VALIDATION_FAILED=true
+else
+    print_success "  ✓ Backend binaries found"
+fi
+
+if [ "$VALIDATION_FAILED" = true ]; then
+    print_error "Resource validation failed. Cannot build installer."
+    print_info "Please ensure all build steps complete successfully."
+    exit 1
+fi
+
+print_success "All required resources validated"
+echo ""
+
+# ========================================
+# Step 5: Build Electron Installers
 # ========================================
 if [ "$SKIP_INSTALLER" = false ]; then
     print_info "Building Electron installers..."
@@ -213,19 +268,31 @@ if [ "$SKIP_INSTALLER" = false ]; then
     case "$BUILD_TARGET" in
         win)
             print_info "Building Windows installer..."
-            npm run build:win
+            npm run build:win || {
+                print_error "Windows installer build failed"
+                exit 1
+            }
             ;;
         mac)
             print_info "Building macOS installer..."
-            npm run build:mac
+            npm run build:mac || {
+                print_error "macOS installer build failed"
+                exit 1
+            }
             ;;
         linux)
             print_info "Building Linux packages..."
-            npm run build:linux
+            npm run build:linux || {
+                print_error "Linux packages build failed"
+                exit 1
+            }
             ;;
         all)
             print_info "Building installers for all platforms..."
-            npm run build:all
+            npm run build:all || {
+                print_error "Installer build failed"
+                exit 1
+            }
             ;;
         *)
             print_error "Unknown target: $BUILD_TARGET"
