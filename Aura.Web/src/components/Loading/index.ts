@@ -1,13 +1,21 @@
 /**
- * Loading components for skeleton screens and loading states
+ * Loading components index
+ * Exports all loading-related components for easy importing
  */
 
-export { SkeletonCard } from './SkeletonCard';
-export { SkeletonList } from './SkeletonList';
-export { SkeletonTable } from './SkeletonTable';
-export { ProgressIndicator } from './ProgressIndicator';
-export { AsyncButton } from './AsyncButton';
-export { ErrorState } from './ErrorState';
+export { 
+  Skeleton, 
+  SkeletonText, 
+  SkeletonCard, 
+  SkeletonList, 
+  SkeletonTable 
+} from './Skeleton';
 
-// Re-export LoadingOverlay from parent directory for convenience
-export { LoadingOverlay } from '../LoadingOverlay';
+export { 
+  LoadingSpinner, 
+  LoadingDots, 
+  LoadingBar 
+} from './LoadingSpinner';
+
+// Re-export existing loading components if any
+export * from './LoadingPriority';
