@@ -1,0 +1,361 @@
+// Aura Monitoring - Log Analytics Queries (KQL)
+// Deploy these queries to Azure Log Analytics workspace for operational monitoring
+
+// ============================================================================
+// AVAILABILITY QUERIES
+// ============================================================================
+
+// 1. API Availability Rate (5-minute rolling window)
+requests
+| where timestamp > ago(5m)
+| summarize 
+    TotalRequests = count(),
+    SuccessfulRequests = countif(resultCode < 500)
+| extend AvailabilityRate = (SuccessfulRequests * 100.0) / TotalRequests
+| project AvailabilityRate, TotalRequests, SuccessfulRequests
+
+// 2. Availability by Endpoint
+requests
+| where timestamp > ago(1h)
+| summarize 
+    Total = count(),
+    Success = countif(resultCode < 500)
+    by name
+| extend AvailabilityRate = (Success * 100.0) / Total
+| order by AvailabilityRate asc
+| take 10
+
+// 3. Availability Trend (hourly)
+requests
+| where timestamp > ago(24h)
+| summarize 
+    AvailabilityRate = (count() - countif(resultCode >= 500)) * 100.0 / count()
+    by bin(timestamp, 1h)
+| render timechart 
+
+// ============================================================================
+// LATENCY QUERIES
+// ============================================================================
+
+// 4. API Latency Percentiles
+requests
+| where timestamp > ago(5m)
+| summarize 
+    P50 = percentile(duration, 50),
+    P90 = percentile(duration, 90),
+    P95 = percentile(duration, 95),
+    P99 = percentile(duration, 99),
+    Average = avg(duration)
+| project P50, P90, P95, P99, Average
+
+// 5. Slowest Endpoints
+requests
+| where timestamp > ago(1h)
+| summarize 
+    AvgDuration = avg(duration),
+    P95Duration = percentile(duration, 95),
+    RequestCount = count()
+    by name
+| order by P95Duration desc
+| take 10
+
+// 6. Latency Trend by Endpoint
+requests
+| where timestamp > ago(24h)
+| summarize P95Latency = percentile(duration, 95) by name, bin(timestamp, 1h)
+| render timechart 
+
+// ============================================================================
+// ERROR RATE QUERIES
+// ============================================================================
+
+// 7. Overall Error Rate
+requests
+| where timestamp > ago(5m)
+| summarize 
+    ErrorRate = countif(resultCode >= 500) * 100.0 / count(),
+    ErrorCount = countif(resultCode >= 500),
+    TotalRequests = count()
+| project ErrorRate, ErrorCount, TotalRequests
+
+// 8. Errors by Endpoint
+requests
+| where timestamp > ago(1h) and resultCode >= 500
+| summarize ErrorCount = count() by name, resultCode
+| order by ErrorCount desc
+
+// 9. Error Trend
+requests
+| where timestamp > ago(24h)
+| summarize 
+    ErrorRate = countif(resultCode >= 500) * 100.0 / count()
+    by bin(timestamp, 5m)
+| render timechart 
+
+// 10. Top Exceptions
+exceptions
+| where timestamp > ago(1h)
+| summarize Count = count() by type, outerMessage
+| order by Count desc
+| take 20
+
+// ============================================================================
+// BUSINESS METRICS QUERIES
+// ============================================================================
+
+// 11. Job Completion Rate
+customMetrics
+| where name == "jobs.completed" and timestamp > ago(1h)
+| extend status = tostring(customDimensions.status)
+| summarize 
+    Total = count(),
+    Success = countif(status == "success"),
+    Failed = countif(status == "failure")
+| extend SuccessRate = (Success * 100.0) / Total
+| project SuccessRate, Total, Success, Failed
+
+// 12. Jobs by Type
+customMetrics
+| where name == "jobs.completed" and timestamp > ago(24h)
+| extend jobType = tostring(customDimensions.job_type)
+| summarize Count = count() by jobType
+| render piechart 
+
+// 13. Average Job Duration
+customMetrics
+| where name == "jobs.duration_seconds" and timestamp > ago(1h)
+| summarize 
+    AvgDuration = avg(value),
+    P90Duration = percentile(value, 90),
+    P95Duration = percentile(value, 95)
+
+// 14. LLM Usage by Provider
+customMetrics
+| where name == "llm.requests" and timestamp > ago(24h)
+| extend provider = tostring(customDimensions.provider)
+| summarize RequestCount = sum(value) by provider, bin(timestamp, 1h)
+| render timechart 
+
+// 15. LLM Cost Breakdown
+customMetrics
+| where name == "llm.cost_usd" and timestamp > ago(24h)
+| extend provider = tostring(customDimensions.provider)
+| summarize TotalCost = sum(value) by provider
+| order by TotalCost desc
+
+// 16. Videos Generated
+customMetrics
+| where name == "video.generated" and timestamp > ago(24h)
+| summarize VideosPerHour = sum(value) by bin(timestamp, 1h)
+| render timechart 
+
+// ============================================================================
+// PERFORMANCE QUERIES
+// ============================================================================
+
+// 17. CPU Usage Trend
+performanceCounters
+| where name == "Process CPU" and timestamp > ago(1h)
+| summarize AvgCPU = avg(value) by bin(timestamp, 1m)
+| render timechart 
+
+// 18. Memory Usage Trend
+performanceCounters
+| where name == "Process Memory" and timestamp > ago(1h)
+| summarize AvgMemory = avg(value) by bin(timestamp, 1m)
+| render timechart 
+
+// 19. Database Query Performance
+dependencies
+| where type == "SQL" and timestamp > ago(1h)
+| summarize 
+    AvgDuration = avg(duration),
+    P95Duration = percentile(duration, 95),
+    QueryCount = count()
+    by name
+| order by P95Duration desc
+| take 10
+
+// 20. Provider Health Status
+customMetrics
+| where name == "provider.healthy" and timestamp > ago(1h)
+| extend provider = tostring(customDimensions.provider)
+| summarize IsHealthy = max(value) by provider
+| project provider, Status = iff(IsHealthy == 1, "Healthy", "Unhealthy")
+
+// ============================================================================
+// COST TRACKING QUERIES
+// ============================================================================
+
+// 21. Total Cost Today
+customMetrics
+| where name == "cost.usd" and timestamp > startofday(now())
+| summarize TotalCost = sum(value)
+
+// 22. Cost by Category
+customMetrics
+| where name == "cost.usd" and timestamp > ago(24h)
+| extend category = tostring(customDimensions.category)
+| summarize Cost = sum(value) by category
+| render piechart 
+
+// 23. Cost Trend (hourly)
+customMetrics
+| where name == "cost.usd" and timestamp > ago(7d)
+| summarize HourlyCost = sum(value) by bin(timestamp, 1h)
+| render timechart 
+
+// 24. Cost per Job
+customMetrics
+| where name == "jobs.cost_usd" and timestamp > ago(24h)
+| summarize 
+    TotalCost = sum(value),
+    JobCount = count(),
+    AvgCostPerJob = avg(value)
+
+// ============================================================================
+// ALERT INVESTIGATION QUERIES
+// ============================================================================
+
+// 25. Recent Alert Firings
+customMetrics
+| where name startswith "alert." and timestamp > ago(24h)
+| extend alertName = replace("alert.", "", name)
+| project timestamp, alertName, value, customDimensions
+| order by timestamp desc
+
+// 26. Correlation: Errors + Latency + CPU
+let timeRange = ago(1h);
+let errors = requests 
+    | where timestamp > timeRange
+    | summarize ErrorRate = countif(resultCode >= 500) * 100.0 / count() by bin(timestamp, 5m);
+let latency = requests 
+    | where timestamp > timeRange
+    | summarize P95Latency = percentile(duration, 95) by bin(timestamp, 5m);
+let cpu = performanceCounters 
+    | where name == "Process CPU" and timestamp > timeRange
+    | summarize AvgCPU = avg(value) by bin(timestamp, 5m);
+errors
+| join kind=inner latency on timestamp
+| join kind=inner cpu on timestamp
+| project timestamp, ErrorRate, P95Latency, AvgCPU
+| render timechart 
+
+// 27. Identify Sudden Traffic Spikes
+requests
+| where timestamp > ago(1h)
+| summarize RequestRate = count() by bin(timestamp, 1m)
+| extend AvgRate = avg(RequestRate)
+| where RequestRate > AvgRate * 2
+| order by timestamp desc
+
+// 28. Failed Job Analysis
+customMetrics
+| where name == "jobs.completed" 
+    and tostring(customDimensions.status) == "failure"
+    and timestamp > ago(24h)
+| extend jobType = tostring(customDimensions.job_type)
+| summarize FailureCount = count() by jobType
+| order by FailureCount desc
+
+// ============================================================================
+// SLO COMPLIANCE QUERIES
+// ============================================================================
+
+// 29. API Availability SLO Compliance (99.9%)
+requests
+| where timestamp > ago(30d)
+| summarize 
+    AvailabilityRate = (count() - countif(resultCode >= 500)) * 100.0 / count()
+| extend SLOTarget = 99.9
+| extend SLOCompliant = iff(AvailabilityRate >= SLOTarget, "✅ Compliant", "❌ Not Compliant")
+| project AvailabilityRate, SLOTarget, SLOCompliant
+
+// 30. Latency SLO Compliance (P95 < 2000ms)
+requests
+| where timestamp > ago(30d)
+| summarize P95Latency = percentile(duration, 95)
+| extend SLOTarget = 2000
+| extend SLOCompliant = iff(P95Latency <= SLOTarget, "✅ Compliant", "❌ Not Compliant")
+| project P95Latency, SLOTarget, SLOCompliant
+
+// 31. Error Rate SLO Compliance (< 1%)
+requests
+| where timestamp > ago(30d)
+| summarize ErrorRate = countif(resultCode >= 500) * 100.0 / count()
+| extend SLOTarget = 1.0
+| extend SLOCompliant = iff(ErrorRate <= SLOTarget, "✅ Compliant", "❌ Not Compliant")
+| project ErrorRate, SLOTarget, SLOCompliant
+
+// ============================================================================
+// CAPACITY PLANNING QUERIES
+// ============================================================================
+
+// 32. Request Growth Trend
+requests
+| where timestamp > ago(30d)
+| summarize DailyRequests = count() by bin(timestamp, 1d)
+| render timechart 
+
+// 33. Peak Usage Times
+requests
+| where timestamp > ago(7d)
+| extend Hour = hourofday(timestamp)
+| summarize AvgRequestsPerHour = count() / 7 by Hour
+| render columnchart 
+
+// 34. Resource Utilization Forecast
+performanceCounters
+| where (name == "Process CPU" or name == "Process Memory") and timestamp > ago(30d)
+| summarize AvgValue = avg(value) by name, bin(timestamp, 1d)
+| render timechart 
+
+// ============================================================================
+// ANOMALY DETECTION QUERIES
+// ============================================================================
+
+// 35. Detect Latency Anomalies
+requests
+| where timestamp > ago(7d)
+| summarize P95Latency = percentile(duration, 95) by bin(timestamp, 1h)
+| extend (anomalies, anomaly_score, baseline) = series_decompose_anomalies(P95Latency, 1.5)
+| mv-expand timestamp to typeof(datetime), P95Latency to typeof(double), anomalies to typeof(int)
+| where anomalies == 1
+| project timestamp, P95Latency, anomaly_score
+
+// 36. Detect Error Rate Anomalies
+requests
+| where timestamp > ago(7d)
+| summarize ErrorRate = countif(resultCode >= 500) * 100.0 / count() by bin(timestamp, 1h)
+| extend (anomalies, anomaly_score, baseline) = series_decompose_anomalies(ErrorRate, 1.5)
+| mv-expand timestamp to typeof(datetime), ErrorRate to typeof(double), anomalies to typeof(int)
+| where anomalies == 1
+| project timestamp, ErrorRate, anomaly_score
+
+// ============================================================================
+// WORKBOOK TEMPLATES
+// ============================================================================
+
+// 37. Operational Health Summary
+let timeRange = ago(1h);
+let availability = requests 
+    | where timestamp > timeRange
+    | summarize Rate = (count() - countif(resultCode >= 500)) * 100.0 / count()
+    | project Metric = "Availability", Value = Rate, Target = 99.9;
+let latency = requests 
+    | where timestamp > timeRange
+    | summarize P95 = percentile(duration, 95)
+    | project Metric = "P95 Latency", Value = P95, Target = 2000.0;
+let errors = requests 
+    | where timestamp > timeRange
+    | summarize Rate = countif(resultCode >= 500) * 100.0 / count()
+    | project Metric = "Error Rate", Value = Rate, Target = 1.0;
+availability
+| union latency
+| union errors
+| extend Status = iff(
+    (Metric == "Availability" and Value >= Target) or
+    (Metric == "P95 Latency" and Value <= Target) or
+    (Metric == "Error Rate" and Value <= Target),
+    "✅ Healthy", "❌ Unhealthy")
+| project Metric, Value, Target, Status

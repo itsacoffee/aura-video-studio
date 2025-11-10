@@ -1,165 +1,215 @@
-using Aura.Core.Errors;
-using Aura.Core.Services.Diagnostics;
+using Aura.Core.Monitoring;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Aura.Api.Controllers;
 
 /// <summary>
-/// Monitoring endpoints for system health, provider status, and error tracking
+/// Monitoring and metrics endpoints
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class MonitoringController : ControllerBase
 {
+    private readonly MetricsCollector _metrics;
+    private readonly AlertingEngine _alerting;
     private readonly ILogger<MonitoringController> _logger;
-    private readonly ErrorAggregationService? _errorAggregation;
 
     public MonitoringController(
-        ILogger<MonitoringController> logger,
-        ErrorAggregationService? errorAggregation = null)
+        MetricsCollector metrics,
+        AlertingEngine alerting,
+        ILogger<MonitoringController> logger)
     {
+        _metrics = metrics;
+        _alerting = alerting;
         _logger = logger;
-        _errorAggregation = errorAggregation;
     }
 
     /// <summary>
-    /// Get system health status including provider availability and circuit breaker states
+    /// Get current metrics snapshot
     /// </summary>
-    [HttpGet("health")]
-    [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status200OK)]
-    public async Task<ActionResult<HealthResponse>> GetHealth(CancellationToken cancellationToken)
+    [HttpGet("metrics")]
+    [ProducesResponseType(typeof(MetricsSnapshot), StatusCodes.Status200OK)]
+    public ActionResult<MetricsSnapshot> GetMetrics()
     {
-        var health = new HealthResponse
+        try
         {
-            Status = "healthy",
-            Timestamp = DateTime.UtcNow,
-            Providers = new List<ProviderStatus>
-            {
-                new ProviderStatus
-                {
-                    Name = "System",
-                    Type = "Core",
-                    IsAvailable = true,
-                    CircuitState = "closed",
-                    AverageResponseTimeMs = 0,
-                    RecentErrorRate = 0.0
-                }
-            }
-        };
-
-        if (_errorAggregation != null)
-        {
-            var recentErrors = _errorAggregation.GetAggregatedErrors(TimeSpan.FromMinutes(5), 100);
-            health.TotalErrors = (int)recentErrors.Sum(e => e.Count);
-            health.ErrorRatePerMinute = CalculateErrorRate(recentErrors);
+            var snapshot = _metrics.GetSnapshot();
+            return Ok(snapshot);
         }
-
-        return Ok(health);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get metrics snapshot");
+            return Problem(
+                type: "https://docs.aura.studio/errors/E500",
+                title: "Metrics Error",
+                detail: "Failed to retrieve metrics",
+                statusCode: StatusCodes.Status500InternalServerError
+            );
+        }
     }
 
     /// <summary>
-    /// Get recent errors with filtering options (admin only)
+    /// Get current alert states
     /// </summary>
-    [HttpGet("errors")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<ErrorResponse>> GetErrors(
-        [FromQuery] int limit = 50,
-        [FromQuery] string? errorType = null,
-        [FromQuery] string? provider = null,
-        CancellationToken cancellationToken = default)
+    [HttpGet("alerts")]
+    [ProducesResponseType(typeof(Dictionary<string, AlertState>), StatusCodes.Status200OK)]
+    public ActionResult<Dictionary<string, AlertState>> GetAlerts()
     {
-        if (_errorAggregation == null)
+        try
         {
-            return Ok(new ErrorResponse
+            var states = _alerting.GetAlertStates();
+            return Ok(states);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get alert states");
+            return Problem(
+                type: "https://docs.aura.studio/errors/E500",
+                title: "Alerts Error",
+                detail: "Failed to retrieve alert states",
+                statusCode: StatusCodes.Status500InternalServerError
+            );
+        }
+    }
+
+    /// <summary>
+    /// Get firing alerts only
+    /// </summary>
+    [HttpGet("alerts/firing")]
+    [ProducesResponseType(typeof(Dictionary<string, AlertState>), StatusCodes.Status200OK)]
+    public ActionResult<Dictionary<string, AlertState>> GetFiringAlerts()
+    {
+        try
+        {
+            var states = _alerting.GetAlertStates();
+            var firing = states.Where(kvp => kvp.Value.Firing)
+                               .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            return Ok(firing);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get firing alerts");
+            return Problem(
+                type: "https://docs.aura.studio/errors/E500",
+                title: "Alerts Error",
+                detail: "Failed to retrieve firing alerts",
+                statusCode: StatusCodes.Status500InternalServerError
+            );
+        }
+    }
+
+    /// <summary>
+    /// Get specific metric value
+    /// </summary>
+    [HttpGet("metrics/gauge/{name}")]
+    [ProducesResponseType(typeof(double), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult<double> GetGaugeValue(string name)
+    {
+        try
+        {
+            var value = _metrics.GetGaugeValue(name);
+            if (value == null)
             {
-                Errors = new List<ErrorDetail>(),
-                TotalCount = 0
+                return NotFound(new
+                {
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Metric Not Found",
+                    detail = $"Gauge metric '{name}' not found",
+                    status = StatusCodes.Status404NotFound
+                });
+            }
+
+            return Ok(value.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get gauge value for {MetricName}", name);
+            return Problem(
+                type: "https://docs.aura.studio/errors/E500",
+                title: "Metrics Error",
+                detail: "Failed to retrieve metric value",
+                statusCode: StatusCodes.Status500InternalServerError
+            );
+        }
+    }
+
+    /// <summary>
+    /// Get histogram statistics for a metric
+    /// </summary>
+    [HttpGet("metrics/histogram/{name}")]
+    [ProducesResponseType(typeof(HistogramStats), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult<HistogramStats> GetHistogramStats(string name)
+    {
+        try
+        {
+            var stats = _metrics.GetHistogramStats(name);
+            if (stats == null)
+            {
+                return NotFound(new
+                {
+                    type = "https://docs.aura.studio/errors/E404",
+                    title = "Metric Not Found",
+                    detail = $"Histogram metric '{name}' not found",
+                    status = StatusCodes.Status404NotFound
+                });
+            }
+
+            return Ok(stats);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get histogram stats for {MetricName}", name);
+            return Problem(
+                type: "https://docs.aura.studio/errors/E500",
+                title = "Metrics Error",
+                detail: "Failed to retrieve histogram statistics",
+                statusCode: StatusCodes.Status500InternalServerError
+            );
+        }
+    }
+
+    /// <summary>
+    /// Health check endpoint for synthetic monitoring
+    /// </summary>
+    [HttpGet("health/synthetic")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public ActionResult GetSyntheticHealth()
+    {
+        try
+        {
+            // This endpoint is specifically for external synthetic monitoring tools
+            var snapshot = _metrics.GetSnapshot();
+            var alerts = _alerting.GetAlertStates();
+            var firingCount = alerts.Count(kvp => kvp.Value.Firing);
+
+            return Ok(new
+            {
+                status = firingCount > 0 ? "degraded" : "healthy",
+                timestamp = DateTimeOffset.UtcNow,
+                metrics = new
+                {
+                    gauges = snapshot.Gauges.Count,
+                    counters = snapshot.Counters.Count,
+                    histograms = snapshot.Histograms.Count
+                },
+                alerts = new
+                {
+                    total = alerts.Count,
+                    firing = firingCount
+                }
             });
         }
-
-        var recentErrors = _errorAggregation.GetAggregatedErrors(TimeSpan.FromHours(1), limit);
-        
-        var errorDetails = recentErrors
-            .Where(e => string.IsNullOrEmpty(errorType) || e.ExceptionType == errorType)
-            .Select(e => new ErrorDetail
-            {
-                Timestamp = e.LastSeen,
-                ErrorType = e.ExceptionType,
-                Message = e.Message,
-                CorrelationId = e.SampleCorrelationId,
-                Context = e.SampleContext,
-                Count = e.Count,
-                FirstSeen = e.FirstSeen
-            })
-            .ToList();
-
-        var response = new ErrorResponse
+        catch (Exception ex)
         {
-            Errors = errorDetails,
-            TotalCount = (int)errorDetails.Sum(e => e.Count),
-            ErrorFrequencyByType = errorDetails
-                .GroupBy(e => e.ErrorType)
-                .ToDictionary(g => g.Key, g => (int)g.Sum(e => e.Count))
-        };
-
-        return Ok(response);
+            _logger.LogError(ex, "Synthetic health check failed");
+            return Problem(
+                type: "https://docs.aura.studio/errors/E500",
+                title: "Health Check Error",
+                detail: "Synthetic health check failed",
+                statusCode: StatusCodes.Status500InternalServerError
+            );
+        }
     }
-
-    private static double CalculateErrorRate(List<ErrorSignature> errors)
-    {
-        if (errors.Count == 0) return 0.0;
-        
-        var oneMinuteAgo = DateTime.UtcNow.AddMinutes(-1);
-        var errorsInLastMinute = errors.Where(e => e.LastSeen >= oneMinuteAgo).Sum(e => e.Count);
-        return errorsInLastMinute;
-    }
-}
-
-public class HealthResponse
-{
-    public string Status { get; set; } = "healthy";
-    public DateTime Timestamp { get; set; }
-    public List<ProviderStatus> Providers { get; set; } = new();
-    public int TotalErrors { get; set; }
-    public double ErrorRatePerMinute { get; set; }
-}
-
-public class ProviderStatus
-{
-    public string Name { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
-    public bool IsAvailable { get; set; }
-    public string CircuitState { get; set; } = "closed";
-    public double AverageResponseTimeMs { get; set; }
-    public double RecentErrorRate { get; set; }
-}
-
-public class ErrorResponse
-{
-    public List<ErrorDetail> Errors { get; set; } = new();
-    public int TotalCount { get; set; }
-    public Dictionary<string, int> ErrorFrequencyByType { get; set; } = new();
-}
-
-public class ErrorDetail
-{
-    public DateTime Timestamp { get; set; }
-    public string ErrorType { get; set; } = string.Empty;
-    public string Message { get; set; } = string.Empty;
-    public string? CorrelationId { get; set; }
-    public Dictionary<string, object>? Context { get; set; }
-    public long Count { get; set; }
-    public DateTime FirstSeen { get; set; }
-}
-
-public class ProviderFailureStats
-{
-    public int TotalFailures { get; set; }
-    public int TransientFailures { get; set; }
-    public string MostCommonError { get; set; } = string.Empty;
 }

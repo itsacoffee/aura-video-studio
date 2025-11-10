@@ -1,0 +1,176 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Log Analytics workspace"
+      }
+    },
+    "actionGroupId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the action group for notifications"
+      }
+    }
+  },
+  "alertRules": [
+    {
+      "name": "API Availability Below SLO",
+      "description": "Fires when API availability drops below 99.9%",
+      "severity": "Critical",
+      "evaluationFrequency": "PT5M",
+      "windowSize": "PT5M",
+      "query": "requests | summarize AvailabilityRate = (count() - countif(resultCode >= 500)) * 100.0 / count() | where AvailabilityRate < 99.9",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["pagerduty", "slack"],
+      "runbook": "https://docs.aura.studio/runbooks/api-availability"
+    },
+    {
+      "name": "High Error Rate",
+      "description": "Fires when 5xx error rate exceeds 1%",
+      "severity": "Critical",
+      "evaluationFrequency": "PT5M",
+      "windowSize": "PT5M",
+      "query": "requests | summarize ErrorRate = countif(resultCode >= 500) * 100.0 / count() | where ErrorRate > 1.0",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["pagerduty", "slack"],
+      "runbook": "https://docs.aura.studio/runbooks/high-error-rate"
+    },
+    {
+      "name": "API Latency P95 Exceeded",
+      "description": "Fires when 95th percentile latency exceeds 2 seconds",
+      "severity": "Warning",
+      "evaluationFrequency": "PT5M",
+      "windowSize": "PT5M",
+      "query": "requests | summarize P95Latency = percentile(duration, 95) | where P95Latency > 2000",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["slack"],
+      "runbook": "https://docs.aura.studio/runbooks/high-latency"
+    },
+    {
+      "name": "Job Failure Rate High",
+      "description": "Fires when job failure rate exceeds 5%",
+      "severity": "Warning",
+      "evaluationFrequency": "PT15M",
+      "windowSize": "PT15M",
+      "query": "customMetrics | where name == 'jobs.completed' | summarize FailureRate = countif(customDimensions.status != 'success') * 100.0 / count() | where FailureRate > 5.0",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["slack"],
+      "runbook": "https://docs.aura.studio/runbooks/job-failures"
+    },
+    {
+      "name": "Queue Depth Critical",
+      "description": "Fires when job queue depth exceeds 100",
+      "severity": "Warning",
+      "evaluationFrequency": "PT5M",
+      "windowSize": "PT5M",
+      "query": "customMetrics | where name == 'queue.depth' | summarize AvgDepth = avg(value) | where AvgDepth > 100",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["slack"],
+      "runbook": "https://docs.aura.studio/runbooks/queue-backlog"
+    },
+    {
+      "name": "Provider Health Degraded",
+      "description": "Fires when multiple providers are unhealthy",
+      "severity": "Warning",
+      "evaluationFrequency": "PT5M",
+      "windowSize": "PT10M",
+      "query": "customMetrics | where name == 'provider.healthy' | summarize UnhealthyCount = countif(value == 0) | where UnhealthyCount > 2",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["slack"],
+      "runbook": "https://docs.aura.studio/runbooks/provider-health"
+    },
+    {
+      "name": "High CPU Usage",
+      "description": "Fires when CPU usage exceeds 90% for 5 minutes",
+      "severity": "Warning",
+      "evaluationFrequency": "PT1M",
+      "windowSize": "PT5M",
+      "query": "performanceCounters | where name == 'Process CPU' | summarize AvgCPU = avg(value) | where AvgCPU > 90",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["slack"],
+      "runbook": "https://docs.aura.studio/runbooks/high-cpu"
+    },
+    {
+      "name": "High Memory Usage",
+      "description": "Fires when memory usage exceeds 2GB",
+      "severity": "Warning",
+      "evaluationFrequency": "PT1M",
+      "windowSize": "PT5M",
+      "query": "performanceCounters | where name == 'Process Memory' | summarize AvgMemory = avg(value) | where AvgMemory > 2048",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["slack"],
+      "runbook": "https://docs.aura.studio/runbooks/high-memory"
+    },
+    {
+      "name": "Database Query Slow",
+      "description": "Fires when database query P95 exceeds 2 seconds",
+      "severity": "Warning",
+      "evaluationFrequency": "PT5M",
+      "windowSize": "PT5M",
+      "query": "dependencies | where type == 'SQL' | summarize P95Duration = percentile(duration, 95) | where P95Duration > 2000",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["slack"],
+      "runbook": "https://docs.aura.studio/runbooks/slow-database"
+    },
+    {
+      "name": "Daily Cost Exceeded Budget",
+      "description": "Fires when daily cost exceeds $100",
+      "severity": "Warning",
+      "evaluationFrequency": "PT1H",
+      "windowSize": "P1D",
+      "query": "customMetrics | where name == 'cost.usd' and timestamp > ago(1d) | summarize TotalCost = sum(value) | where TotalCost > 100",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["email"],
+      "runbook": "https://docs.aura.studio/runbooks/budget-exceeded"
+    },
+    {
+      "name": "Exception Rate High",
+      "description": "Fires when unhandled exception rate exceeds 10 per minute",
+      "severity": "Critical",
+      "evaluationFrequency": "PT5M",
+      "windowSize": "PT5M",
+      "query": "exceptions | summarize ExceptionRate = count() / 5.0 | where ExceptionRate > 10",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["pagerduty", "slack"],
+      "runbook": "https://docs.aura.studio/runbooks/high-exceptions"
+    },
+    {
+      "name": "Disk Space Low",
+      "description": "Fires when available disk space is below 10GB",
+      "severity": "Warning",
+      "evaluationFrequency": "PT15M",
+      "windowSize": "PT15M",
+      "query": "customMetrics | where name == 'system.disk_free_gb' | summarize AvgFreeDisk = avg(value) | where AvgFreeDisk < 10",
+      "threshold": 0,
+      "operator": "GreaterThan",
+      "triggerType": "Total",
+      "actionGroups": ["slack"],
+      "runbook": "https://docs.aura.studio/runbooks/disk-space"
+    }
+  ]
+}

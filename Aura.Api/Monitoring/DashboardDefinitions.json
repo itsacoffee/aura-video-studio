@@ -1,0 +1,287 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspaceName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the Log Analytics workspace"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    }
+  },
+  "dashboards": [
+    {
+      "name": "Operational Dashboard",
+      "description": "Real-time operational metrics and system health",
+      "refreshInterval": "1m",
+      "widgets": [
+        {
+          "type": "metric",
+          "title": "API Availability",
+          "query": "requests | summarize AvailabilityRate = (count() - countif(resultCode >= 500)) * 100.0 / count() by bin(timestamp, 5m)",
+          "visualization": "linechart",
+          "threshold": {
+            "warning": 99.5,
+            "critical": 99.0
+          }
+        },
+        {
+          "type": "metric",
+          "title": "Request Rate (req/min)",
+          "query": "requests | summarize RequestRate = count() by bin(timestamp, 1m)",
+          "visualization": "linechart"
+        },
+        {
+          "type": "metric",
+          "title": "P95 Latency (ms)",
+          "query": "requests | summarize P95Latency = percentile(duration, 95) by bin(timestamp, 5m)",
+          "visualization": "linechart",
+          "threshold": {
+            "warning": 2000,
+            "critical": 5000
+          }
+        },
+        {
+          "type": "metric",
+          "title": "Error Rate",
+          "query": "requests | summarize ErrorRate = countif(resultCode >= 500) * 100.0 / count() by bin(timestamp, 5m)",
+          "visualization": "linechart",
+          "threshold": {
+            "warning": 1.0,
+            "critical": 5.0
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Active Alerts",
+          "query": "customMetrics | where name == 'alerts.firing' | summarize ActiveAlerts = sum(value)",
+          "visualization": "number",
+          "threshold": {
+            "warning": 1,
+            "critical": 5
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Queue Depth",
+          "query": "customMetrics | where name == 'queue.depth' | summarize QueueDepth = avg(value)",
+          "visualization": "number",
+          "threshold": {
+            "warning": 50,
+            "critical": 100
+          }
+        },
+        {
+          "type": "table",
+          "title": "Top 5 Slow Endpoints",
+          "query": "requests | summarize AvgDuration = avg(duration), RequestCount = count() by name | top 5 by AvgDuration desc",
+          "visualization": "table"
+        },
+        {
+          "type": "table",
+          "title": "Recent Errors",
+          "query": "exceptions | project timestamp, type, outerMessage, operation_Name | top 10 by timestamp desc",
+          "visualization": "table"
+        }
+      ]
+    },
+    {
+      "name": "Business Metrics Dashboard",
+      "description": "Business KPIs and performance metrics",
+      "refreshInterval": "5m",
+      "widgets": [
+        {
+          "type": "metric",
+          "title": "Jobs Completed (per hour)",
+          "query": "customMetrics | where name == 'jobs.completed' | summarize JobsCompleted = sum(value) by bin(timestamp, 1h), tostring(customDimensions.status)",
+          "visualization": "barchart",
+          "dimensions": ["status"]
+        },
+        {
+          "type": "metric",
+          "title": "Job Success Rate (%)",
+          "query": "customMetrics | where name == 'jobs.completed' | summarize SuccessRate = countif(customDimensions.status == 'success') * 100.0 / count() by bin(timestamp, 1h)",
+          "visualization": "linechart",
+          "threshold": {
+            "warning": 95.0,
+            "critical": 90.0
+          }
+        },
+        {
+          "type": "metric",
+          "title": "Average Job Duration (seconds)",
+          "query": "customMetrics | where name == 'jobs.duration_seconds' | summarize AvgDuration = avg(value), P90 = percentile(value, 90) by bin(timestamp, 1h)",
+          "visualization": "linechart"
+        },
+        {
+          "type": "metric",
+          "title": "Videos Generated (per hour)",
+          "query": "customMetrics | where name == 'video.generated' | summarize VideosGenerated = sum(value) by bin(timestamp, 1h)",
+          "visualization": "barchart"
+        },
+        {
+          "type": "metric",
+          "title": "LLM Requests by Provider",
+          "query": "customMetrics | where name == 'llm.requests' | summarize Requests = sum(value) by tostring(customDimensions.provider), bin(timestamp, 1h)",
+          "visualization": "barchart",
+          "dimensions": ["provider"]
+        },
+        {
+          "type": "metric",
+          "title": "Cache Hit Rate (%)",
+          "query": "customMetrics | where name == 'cache.access' | summarize HitRate = countif(customDimensions.result == 'hit') * 100.0 / count() by bin(timestamp, 15m)",
+          "visualization": "linechart"
+        },
+        {
+          "type": "stat",
+          "title": "Total Jobs Today",
+          "query": "customMetrics | where name == 'jobs.completed' and timestamp > ago(1d) | summarize TotalJobs = sum(value)",
+          "visualization": "number"
+        },
+        {
+          "type": "stat",
+          "title": "Total Videos Today",
+          "query": "customMetrics | where name == 'video.generated' and timestamp > ago(1d) | summarize TotalVideos = sum(value)",
+          "visualization": "number"
+        }
+      ]
+    },
+    {
+      "name": "Performance Dashboard",
+      "description": "System performance and resource utilization",
+      "refreshInterval": "1m",
+      "widgets": [
+        {
+          "type": "metric",
+          "title": "CPU Usage (%)",
+          "query": "performanceCounters | where name == 'Process CPU' | summarize AvgCPU = avg(value) by bin(timestamp, 1m)",
+          "visualization": "linechart",
+          "threshold": {
+            "warning": 70,
+            "critical": 90
+          }
+        },
+        {
+          "type": "metric",
+          "title": "Memory Usage (MB)",
+          "query": "performanceCounters | where name == 'Process Memory' | summarize AvgMemory = avg(value) by bin(timestamp, 1m)",
+          "visualization": "linechart",
+          "threshold": {
+            "warning": 1024,
+            "critical": 2048
+          }
+        },
+        {
+          "type": "metric",
+          "title": "Request Duration Distribution",
+          "query": "requests | summarize P50 = percentile(duration, 50), P90 = percentile(duration, 90), P95 = percentile(duration, 95), P99 = percentile(duration, 99) by bin(timestamp, 5m)",
+          "visualization": "linechart"
+        },
+        {
+          "type": "metric",
+          "title": "Database Query Duration",
+          "query": "dependencies | where type == 'SQL' | summarize AvgDuration = avg(duration), P95 = percentile(duration, 95) by bin(timestamp, 5m)",
+          "visualization": "linechart"
+        },
+        {
+          "type": "metric",
+          "title": "LLM Latency by Provider",
+          "query": "customMetrics | where name == 'llm.latency_ms' | summarize AvgLatency = avg(value), P90 = percentile(value, 90) by tostring(customDimensions.provider), bin(timestamp, 15m)",
+          "visualization": "linechart",
+          "dimensions": ["provider"]
+        },
+        {
+          "type": "metric",
+          "title": "Provider Health Status",
+          "query": "customMetrics | where name == 'provider.healthy' | summarize HealthyProviders = countif(value == 1), UnhealthyProviders = countif(value == 0) by bin(timestamp, 5m)",
+          "visualization": "areachart"
+        },
+        {
+          "type": "table",
+          "title": "Slowest Dependencies",
+          "query": "dependencies | summarize AvgDuration = avg(duration), CallCount = count() by name, type | top 10 by AvgDuration desc",
+          "visualization": "table"
+        },
+        {
+          "type": "metric",
+          "title": "Concurrent Requests",
+          "query": "requests | summarize ConcurrentRequests = dcount(operation_Id) by bin(timestamp, 1m)",
+          "visualization": "linechart"
+        }
+      ]
+    },
+    {
+      "name": "Cost Tracking Dashboard",
+      "description": "Cost analysis and budget tracking",
+      "refreshInterval": "15m",
+      "widgets": [
+        {
+          "type": "metric",
+          "title": "Total Cost by Hour (USD)",
+          "query": "customMetrics | where name == 'cost.usd' | summarize TotalCost = sum(value) by bin(timestamp, 1h)",
+          "visualization": "barchart"
+        },
+        {
+          "type": "metric",
+          "title": "Cost by Category",
+          "query": "customMetrics | where name == 'cost.usd' | summarize Cost = sum(value) by tostring(customDimensions.category), bin(timestamp, 1h)",
+          "visualization": "areachart",
+          "dimensions": ["category"]
+        },
+        {
+          "type": "metric",
+          "title": "LLM Cost by Provider (USD)",
+          "query": "customMetrics | where name == 'llm.cost_usd' | summarize Cost = sum(value) by tostring(customDimensions.provider), bin(timestamp, 1h)",
+          "visualization": "barchart",
+          "dimensions": ["provider"]
+        },
+        {
+          "type": "metric",
+          "title": "TTS Cost (USD)",
+          "query": "customMetrics | where name == 'tts.cost_usd' | summarize Cost = sum(value) by bin(timestamp, 1h)",
+          "visualization": "linechart"
+        },
+        {
+          "type": "metric",
+          "title": "Image Generation Cost (USD)",
+          "query": "customMetrics | where name == 'image.cost_usd' | summarize Cost = sum(value) by bin(timestamp, 1h)",
+          "visualization": "linechart"
+        },
+        {
+          "type": "stat",
+          "title": "Total Cost Today (USD)",
+          "query": "customMetrics | where name == 'cost.usd' and timestamp > ago(1d) | summarize TotalCost = sum(value)",
+          "visualization": "number",
+          "format": "currency"
+        },
+        {
+          "type": "stat",
+          "title": "Total Cost This Month (USD)",
+          "query": "customMetrics | where name == 'cost.usd' and timestamp > startofmonth(now()) | summarize TotalCost = sum(value)",
+          "visualization": "number",
+          "format": "currency"
+        },
+        {
+          "type": "stat",
+          "title": "Average Cost per Job (USD)",
+          "query": "customMetrics | where name == 'jobs.cost_usd' | summarize AvgCost = avg(value)",
+          "visualization": "number",
+          "format": "currency"
+        },
+        {
+          "type": "table",
+          "title": "Top Cost Categories",
+          "query": "customMetrics | where name == 'cost.usd' | summarize TotalCost = sum(value) by tostring(customDimensions.category) | top 10 by TotalCost desc",
+          "visualization": "table"
+        }
+      ]
+    }
+  ]
+}
