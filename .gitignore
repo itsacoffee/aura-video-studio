@@ -111,6 +111,25 @@ Aura.Api/wwwroot/
 node_modules/
 Aura.Web/dist/
 
+# Electron Desktop Build Artifacts
+Aura.Desktop/dist/
+Aura.Desktop/out/
+Aura.Desktop/resources/backend/
+Aura.Desktop/resources/ffmpeg/
+Aura.Desktop/resources/samples/
+Aura.Desktop/temp/
+Aura.Desktop/*.exe
+Aura.Desktop/*.pfx
+Aura.Desktop/win-certificate.pfx
+Aura.Desktop/.electron-builder-cache/
+
+# Code signing certificates (NEVER commit these!)
+*.pfx
+*.p12
+*.cer
+win-certificate.*
+code-signing-cert.*
+
 # Test artifacts
 test-portable/
 output/

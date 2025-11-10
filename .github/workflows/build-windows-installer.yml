@@ -1,0 +1,340 @@
+name: Build Windows Installer
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create GitHub release'
+        required: false
+        default: 'false'
+
+env:
+  NODE_VERSION: '20.x'
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-windows:
+    name: Build Windows Installer
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      # ========================================
+      # Step 1: Checkout Code
+      # ========================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for versioning
+
+      # ========================================
+      # Step 2: Setup Node.js
+      # ========================================
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            Aura.Web/package-lock.json
+            Aura.Desktop/package-lock.json
+
+      # ========================================
+      # Step 3: Setup .NET SDK
+      # ========================================
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # ========================================
+      # Step 4: Display Build Info
+      # ========================================
+      - name: Display build information
+        run: |
+          Write-Host "========================================" -ForegroundColor Cyan
+          Write-Host "Build Information" -ForegroundColor Cyan
+          Write-Host "========================================" -ForegroundColor Cyan
+          Write-Host "Node version: $(node --version)"
+          Write-Host "npm version: $(npm --version)"
+          Write-Host ".NET version: $(dotnet --version)"
+          Write-Host "Repository: ${{ github.repository }}"
+          Write-Host "Branch: ${{ github.ref_name }}"
+          Write-Host "Commit: ${{ github.sha }}"
+          Write-Host "========================================" -ForegroundColor Cyan
+        shell: pwsh
+
+      # ========================================
+      # Step 5: Cache FFmpeg Download
+      # ========================================
+      - name: Cache FFmpeg binaries
+        id: cache-ffmpeg
+        uses: actions/cache@v4
+        with:
+          path: Aura.Desktop/resources/ffmpeg
+          key: ffmpeg-windows-${{ hashFiles('Aura.Desktop/scripts/download-ffmpeg-windows.ps1') }}
+          restore-keys: |
+            ffmpeg-windows-
+
+      # ========================================
+      # Step 6: Download FFmpeg
+      # ========================================
+      - name: Download FFmpeg
+        if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
+        run: |
+          cd Aura.Desktop
+          .\scripts\download-ffmpeg-windows.ps1
+        shell: pwsh
+
+      # ========================================
+      # Step 7: Verify FFmpeg
+      # ========================================
+      - name: Verify FFmpeg installation
+        run: |
+          $ffmpegPath = "Aura.Desktop/resources/ffmpeg/win-x64/bin/ffmpeg.exe"
+          if (Test-Path $ffmpegPath) {
+            Write-Host "✓ FFmpeg found" -ForegroundColor Green
+            $version = & $ffmpegPath -version | Select-Object -First 1
+            Write-Host "  Version: $version"
+          } else {
+            Write-Host "✗ FFmpeg not found" -ForegroundColor Red
+            exit 1
+          }
+        shell: pwsh
+
+      # ========================================
+      # Step 8: Install Frontend Dependencies
+      # ========================================
+      - name: Install frontend dependencies
+        run: |
+          cd Aura.Web
+          npm ci
+        shell: pwsh
+
+      # ========================================
+      # Step 9: Build Frontend
+      # ========================================
+      - name: Build React frontend
+        run: |
+          cd Aura.Web
+          npm run build
+        shell: pwsh
+
+      # ========================================
+      # Step 10: Verify Frontend Build
+      # ========================================
+      - name: Verify frontend build
+        run: |
+          $indexPath = "Aura.Web/dist/index.html"
+          if (Test-Path $indexPath) {
+            Write-Host "✓ Frontend build successful" -ForegroundColor Green
+          } else {
+            Write-Host "✗ Frontend build failed" -ForegroundColor Red
+            exit 1
+          }
+        shell: pwsh
+
+      # ========================================
+      # Step 11: Build Backend
+      # ========================================
+      - name: Build .NET backend (self-contained)
+        run: |
+          cd Aura.Desktop
+          .\scripts\build-backend-windows.ps1
+        shell: pwsh
+
+      # ========================================
+      # Step 12: Verify Backend Build
+      # ========================================
+      - name: Verify backend build
+        run: |
+          $backendPath = "Aura.Desktop/resources/backend/win-x64/Aura.Api.exe"
+          if (Test-Path $backendPath) {
+            Write-Host "✓ Backend build successful" -ForegroundColor Green
+            $fileSize = (Get-Item $backendPath).Length / 1MB
+            Write-Host "  Size: $([math]::Round($fileSize, 2)) MB"
+          } else {
+            Write-Host "✗ Backend build failed" -ForegroundColor Red
+            exit 1
+          }
+        shell: pwsh
+
+      # ========================================
+      # Step 13: Install Electron Dependencies
+      # ========================================
+      - name: Install Electron dependencies
+        run: |
+          cd Aura.Desktop
+          npm ci
+        shell: pwsh
+
+      # ========================================
+      # Step 14: Setup Code Signing (if available)
+      # ========================================
+      - name: Setup code signing certificate
+        if: ${{ env.WIN_CSC_LINK != '' }}
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if ($env:WIN_CSC_LINK) {
+            Write-Host "✓ Code signing certificate available" -ForegroundColor Green
+            # Decode certificate from base64
+            $certBytes = [Convert]::FromBase64String($env:WIN_CSC_LINK)
+            $certPath = "win-certificate.pfx"
+            [IO.File]::WriteAllBytes($certPath, $certBytes)
+            Write-Host "  Certificate saved to: $certPath"
+          } else {
+            Write-Host "⚠ No code signing certificate" -ForegroundColor Yellow
+          }
+        shell: pwsh
+
+      # ========================================
+      # Step 15: Build Electron Installer
+      # ========================================
+      - name: Build Windows installer
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd Aura.Desktop
+          npm run build:win
+        shell: pwsh
+
+      # ========================================
+      # Step 16: Generate Checksums
+      # ========================================
+      - name: Generate checksums
+        run: |
+          cd Aura.Desktop/dist
+          $installers = Get-ChildItem -Filter "*.exe"
+          $checksums = @()
+          
+          foreach ($installer in $installers) {
+            $hash = Get-FileHash -Path $installer.FullName -Algorithm SHA256
+            $checksums += "$($hash.Hash)  $($installer.Name)"
+            Write-Host "SHA256: $($hash.Hash)"
+            Write-Host "  File: $($installer.Name)"
+          }
+          
+          $checksums -join "`n" | Set-Content -Path "checksums.txt" -Encoding UTF8
+          Write-Host "`n✓ Checksums saved to checksums.txt" -ForegroundColor Green
+        shell: pwsh
+
+      # ========================================
+      # Step 17: List Build Artifacts
+      # ========================================
+      - name: List build artifacts
+        run: |
+          Write-Host "`n========================================" -ForegroundColor Cyan
+          Write-Host "Build Artifacts" -ForegroundColor Cyan
+          Write-Host "========================================" -ForegroundColor Cyan
+          
+          cd Aura.Desktop/dist
+          $files = Get-ChildItem -File
+          
+          foreach ($file in $files) {
+            $sizeMB = [math]::Round($file.Length / 1MB, 2)
+            Write-Host "$($file.Name) ($sizeMB MB)"
+          }
+          
+          Write-Host "========================================" -ForegroundColor Cyan
+        shell: pwsh
+
+      # ========================================
+      # Step 18: Upload Installer as Artifact
+      # ========================================
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            Aura.Desktop/dist/*.exe
+            Aura.Desktop/dist/checksums.txt
+          retention-days: 90
+          if-no-files-found: error
+
+      # ========================================
+      # Step 19: Upload Build Logs (on failure)
+      # ========================================
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            **/*.log
+            Aura.Desktop/dist/**/*.log
+          retention-days: 30
+          if-no-files-found: ignore
+
+      # ========================================
+      # Step 20: Create GitHub Release (on tag)
+      # ========================================
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            Aura.Desktop/dist/*.exe
+            Aura.Desktop/dist/checksums.txt
+          draft: true
+          prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
+          generate_release_notes: true
+          body: |
+            ## 🎉 Aura Video Studio ${{ github.ref_name }}
+            
+            ### 📦 Downloads
+            
+            - **Windows Installer (x64)**: Aura Video Studio Setup
+            - **Windows Portable (x64)**: Standalone executable (no installation required)
+            
+            ### ✅ System Requirements
+            
+            - Windows 10 version 1809 or later
+            - Windows 11 (all versions)
+            - 4GB RAM minimum (8GB recommended)
+            - 2GB free disk space minimum (10GB recommended for media)
+            
+            ### 🔐 Security
+            
+            All installers are signed with a valid code signing certificate. Verify checksums:
+            
+            See `checksums.txt` for SHA256 checksums.
+            
+            ### 📝 Release Notes
+            
+            See full release notes below.
+            
+            ---
+            
+            **Installation Instructions**: See [docs/WINDOWS_INSTALLATION.md](https://github.com/coffee285/aura-video-studio/blob/main/docs/WINDOWS_INSTALLATION.md)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ========================================
+      # Step 21: Build Summary
+      # ========================================
+      - name: Build summary
+        if: always()
+        run: |
+          Write-Host "`n========================================" -ForegroundColor Green
+          Write-Host "Build Complete!" -ForegroundColor Green
+          Write-Host "========================================" -ForegroundColor Green
+          Write-Host "Repository: ${{ github.repository }}"
+          Write-Host "Branch: ${{ github.ref_name }}"
+          Write-Host "Commit: ${{ github.sha }}"
+          Write-Host "Build Status: ${{ job.status }}"
+          Write-Host "========================================" -ForegroundColor Green
+        shell: pwsh

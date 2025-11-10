@@ -47,9 +47,19 @@
     ],
     "extraResources": [
       {
-        "from": "backend",
+        "from": "resources/backend",
         "to": "backend",
         "filter": ["**/*", "!**/*.pdb", "!**/*.xml"]
+      },
+      {
+        "from": "resources/ffmpeg",
+        "to": "ffmpeg",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "resources/samples",
+        "to": "samples",
+        "filter": ["**/*"]
       },
       {
         "from": "../Aura.Web/dist",
@@ -61,7 +71,7 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": ["x64"]
         },
         {
           "target": "portable",
@@ -71,7 +81,29 @@
       "icon": "assets/icons/icon.ico",
       "publisherName": "Coffee285",
       "requestedExecutionLevel": "asInvoker",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "signingHashAlgorithms": ["sha256"],
+      "sign": "./scripts/sign-windows.js",
+      "certificateFile": "win-certificate.pfx",
+      "certificatePassword": "",
+      "rfc3161TimeStampServer": "http://timestamp.digicert.com",
+      "verifyUpdateCodeSignature": false,
+      "fileAssociations": [
+        {
+          "ext": "aura",
+          "name": "Aura Project",
+          "description": "Aura Video Studio Project",
+          "icon": "assets/icons/icon.ico",
+          "role": "Editor"
+        },
+        {
+          "ext": "avsproj",
+          "name": "Aura Project",
+          "description": "Aura Video Studio Project",
+          "icon": "assets/icons/icon.ico",
+          "role": "Editor"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -80,17 +112,24 @@
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "Aura Video Studio",
-      "perMachine": false,
+      "perMachine": true,
       "installerIcon": "assets/icons/icon.ico",
       "uninstallerIcon": "assets/icons/icon.ico",
       "installerHeader": "assets/icons/installer-header.bmp",
       "installerHeaderIcon": "assets/icons/icon.ico",
+      "installerSidebar": "assets/icons/installer-sidebar.bmp",
+      "uninstallDisplayName": "Aura Video Studio",
       "license": "LICENSE.txt",
       "runAfterFinish": true,
       "menuCategory": true,
       "include": "build/installer.nsh",
       "deleteAppDataOnUninstall": false,
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "createStartMenuShortcut": true,
+      "warningsAsErrors": false,
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "displayLanguageSelector": false,
+      "installerLanguages": ["en_US"],
+      "language": "1033"
     },
     "mac": {
       "target": [
@@ -224,7 +263,8 @@
     "compression": "maximum",
     "asar": true,
     "asarUnpack": [
-      "backend/**/*"
+      "resources/backend/**/*",
+      "resources/ffmpeg/**/*"
     ]
   },
   "dependencies": {
