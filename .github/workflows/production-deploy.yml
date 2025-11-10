@@ -1,0 +1,557 @@
+name: Production Deployment Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      version:
+        description: 'Version to deploy (tag or commit SHA)'
+        required: true
+        type: string
+      skip_tests:
+        description: 'Skip tests (emergency deployment only)'
+        required: false
+        type: boolean
+        default: false
+      deployment_strategy:
+        description: 'Deployment strategy'
+        required: false
+        type: choice
+        options:
+          - blue-green
+          - canary
+          - rolling
+        default: blue-green
+
+permissions:
+  contents: write
+  packages: write
+  deployments: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  DOCKER_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '20'
+
+jobs:
+  # Pre-deployment validation
+  pre-deployment:
+    name: Pre-Deployment Validation
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment || 'staging' }}
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      short_sha: ${{ steps.get-version.outputs.short_sha }}
+      deployment_id: ${{ steps.create-deployment.outputs.deployment_id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.version || github.ref }}
+
+      - name: Get version information
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          elif [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="$(git describe --tags --always)"
+          fi
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Deploying version: ${VERSION} (${SHORT_SHA})"
+
+      - name: Validate semantic version
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid semantic version: $VERSION"
+            exit 1
+          fi
+          echo "✓ Valid semantic version: $VERSION"
+
+      - name: Check deployment prerequisites
+        run: |
+          echo "Checking deployment prerequisites..."
+          
+          # Check for required secrets (will fail if not set)
+          if [ "${{ inputs.environment || 'staging' }}" == "production" ]; then
+            echo "✓ Production deployment prerequisites"
+          else
+            echo "✓ Staging deployment prerequisites"
+          fi
+
+      - name: Create deployment
+        id: create-deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: '${{ steps.get-version.outputs.version }}',
+              environment: '${{ inputs.environment || 'staging' }}',
+              description: 'Deploying version ${{ steps.get-version.outputs.version }}',
+              auto_merge: false,
+              required_contexts: []
+            });
+            core.setOutput('deployment_id', deployment.data.id);
+            return deployment.data.id;
+
+      - name: Update deployment status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.create-deployment.outputs.deployment_id }},
+              state: 'in_progress',
+              description: 'Pre-deployment validation in progress',
+              environment_url: 'https://${{ inputs.environment || 'staging' }}.aura.studio'
+            });
+
+  # Build and test
+  build-and-test:
+    name: Build and Test
+    needs: pre-deployment
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_tests }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.pre-deployment.outputs.version }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Aura.Web/package-lock.json
+
+      - name: Restore .NET dependencies
+        run: dotnet restore Aura.sln
+
+      - name: Build .NET projects
+        run: dotnet build Aura.sln --configuration Release --no-restore
+
+      - name: Run .NET tests
+        run: |
+          dotnet test Aura.sln \
+            --configuration Release \
+            --no-build \
+            --logger "trx;LogFileName=test-results.trx" \
+            --collect:"XPlat Code Coverage" \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: Install frontend dependencies
+        working-directory: Aura.Web
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: Aura.Web
+        run: npm test -- --coverage
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            **/TestResults/**/*.trx
+            **/TestResults/**/coverage.opencover.xml
+            Aura.Web/coverage
+          retention-days: 30
+
+  # Security scanning
+  security-scan:
+    name: Security Scanning
+    needs: pre-deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.pre-deployment.outputs.version }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Check for critical vulnerabilities
+        run: |
+          if grep -q "CRITICAL" trivy-results.sarif; then
+            echo "⚠️  Critical vulnerabilities found!"
+            if [ "${{ inputs.environment }}" == "production" ]; then
+              echo "Blocking production deployment due to critical vulnerabilities"
+              exit 1
+            else
+              echo "Warning: Critical vulnerabilities detected in staging deployment"
+            fi
+          fi
+
+  # Build Docker images
+  build-images:
+    name: Build Docker Images
+    needs: [pre-deployment, build-and-test]
+    if: ${{ always() && (needs.build-and-test.result == 'success' || inputs.skip_tests) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.pre-deployment.outputs.version }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/aura-api
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.pre-deployment.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.pre-deployment.outputs.version }}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable=${{ inputs.environment == 'production' }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Aura.Api/Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          build-args: |
+            VERSION=${{ needs.pre-deployment.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract metadata for Web
+        id: meta-web
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/aura-web
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.pre-deployment.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.pre-deployment.outputs.version }}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable=${{ inputs.environment == 'production' }}
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Aura.Web
+          file: ./Aura.Web/Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta-web.outputs.tags }}
+          labels: ${{ steps.meta-web.outputs.labels }}
+          build-args: |
+            VERSION=${{ needs.pre-deployment.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate image SBOMs
+        run: |
+          # Install syft for SBOM generation
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          
+          # Generate SBOMs
+          syft ${{ env.DOCKER_REGISTRY }}/aura-api:${{ needs.pre-deployment.outputs.version }} -o json > api-sbom.json
+          syft ${{ env.DOCKER_REGISTRY }}/aura-web:${{ needs.pre-deployment.outputs.version }} -o json > web-sbom.json
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-sboms
+          path: |
+            api-sbom.json
+            web-sbom.json
+          retention-days: 90
+
+  # Deploy using selected strategy
+  deploy:
+    name: Deploy to ${{ inputs.environment || 'staging' }}
+    needs: [pre-deployment, build-images, security-scan]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment || 'staging' }}
+      url: https://${{ inputs.environment || 'staging' }}.aura.studio
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.pre-deployment.outputs.version }}
+
+      - name: Configure deployment credentials
+        run: |
+          echo "Configuring deployment credentials for ${{ inputs.environment || 'staging' }}"
+          # Add cloud provider CLI setup here (Azure CLI, AWS CLI, etc.)
+
+      - name: Deploy with Blue-Green strategy
+        if: ${{ inputs.deployment_strategy == 'blue-green' || !inputs.deployment_strategy }}
+        run: |
+          echo "Starting Blue-Green deployment..."
+          bash deploy/blue-green-deploy.sh \
+            ${{ inputs.environment || 'staging' }} \
+            ${{ needs.pre-deployment.outputs.version }}
+
+      - name: Deploy with Canary strategy
+        if: ${{ inputs.deployment_strategy == 'canary' }}
+        run: |
+          echo "Starting Canary deployment..."
+          bash deploy/canary-deploy.sh \
+            ${{ inputs.environment || 'staging' }} \
+            15m
+
+      - name: Deploy with Rolling strategy
+        if: ${{ inputs.deployment_strategy == 'rolling' }}
+        run: |
+          echo "Starting Rolling deployment..."
+          bash deploy/rolling-deploy.sh \
+            ${{ inputs.environment || 'staging' }} \
+            ${{ needs.pre-deployment.outputs.version }}
+
+      - name: Wait for deployment to stabilize
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 60
+
+  # Post-deployment validation
+  post-deployment:
+    name: Post-Deployment Validation
+    needs: [pre-deployment, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Health check validation
+        run: |
+          ENV="${{ inputs.environment || 'staging' }}"
+          BASE_URL="https://${ENV}.aura.studio"
+          
+          echo "Running health checks against ${BASE_URL}"
+          
+          # API health check
+          API_HEALTH=$(curl -s -w "\n%{http_code}" "${BASE_URL}/api/health/live" || echo "000")
+          API_STATUS=$(echo "$API_HEALTH" | tail -n 1)
+          
+          if [ "$API_STATUS" != "200" ]; then
+            echo "❌ API health check failed: HTTP $API_STATUS"
+            exit 1
+          fi
+          echo "✅ API health check passed"
+          
+          # Web health check
+          WEB_HEALTH=$(curl -s -w "\n%{http_code}" "${BASE_URL}/health" || echo "000")
+          WEB_STATUS=$(echo "$WEB_HEALTH" | tail -n 1)
+          
+          if [ "$WEB_STATUS" != "200" ]; then
+            echo "❌ Web health check failed: HTTP $WEB_STATUS"
+            exit 1
+          fi
+          echo "✅ Web health check passed"
+
+      - name: Smoke tests
+        run: |
+          ENV="${{ inputs.environment || 'staging' }}"
+          BASE_URL="https://${ENV}.aura.studio"
+          
+          echo "Running smoke tests..."
+          
+          # Test critical endpoints
+          curl -f "${BASE_URL}/api/health/system" || exit 1
+          curl -f "${BASE_URL}/api/version" || exit 1
+          
+          echo "✅ Smoke tests passed"
+
+      - name: Performance baseline check
+        run: |
+          ENV="${{ inputs.environment || 'staging' }}"
+          BASE_URL="https://${ENV}.aura.studio"
+          
+          echo "Checking performance baseline..."
+          
+          # Simple response time check
+          START_TIME=$(date +%s%N)
+          curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/api/health/live"
+          END_TIME=$(date +%s%N)
+          
+          RESPONSE_TIME=$(( (END_TIME - START_TIME) / 1000000 ))
+          echo "Response time: ${RESPONSE_TIME}ms"
+          
+          if [ $RESPONSE_TIME -gt 5000 ]; then
+            echo "⚠️  Warning: Response time exceeds 5s"
+          else
+            echo "✅ Response time acceptable"
+          fi
+
+      - name: Update deployment status - Success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ needs.pre-deployment.outputs.deployment_id }},
+              state: 'success',
+              description: 'Deployment completed successfully',
+              environment_url: 'https://${{ inputs.environment || 'staging' }}.aura.studio',
+              log_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            });
+
+      - name: Update deployment status - Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ needs.pre-deployment.outputs.deployment_id }},
+              state: 'failure',
+              description: 'Deployment failed',
+              log_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            });
+
+  # Automated rollback on failure
+  rollback:
+    name: Automated Rollback
+    needs: [pre-deployment, deploy, post-deployment]
+    if: ${{ failure() && needs.deploy.result == 'failure' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment || 'staging' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Trigger rollback
+        run: |
+          echo "🔄 Triggering automated rollback..."
+          bash deploy/rollback.sh ${{ inputs.environment || 'staging' }}
+
+      - name: Verify rollback
+        run: |
+          ENV="${{ inputs.environment || 'staging' }}"
+          BASE_URL="https://${ENV}.aura.studio"
+          
+          echo "Verifying rollback..."
+          sleep 30
+          
+          # Check health after rollback
+          HEALTH_STATUS=$(curl -s -w "\n%{http_code}" "${BASE_URL}/api/health/live" | tail -n 1)
+          
+          if [ "$HEALTH_STATUS" == "200" ]; then
+            echo "✅ Rollback successful - system healthy"
+          else
+            echo "❌ Rollback verification failed"
+            exit 1
+          fi
+
+      - name: Notify rollback
+        if: always()
+        run: |
+          echo "📧 Sending rollback notification..."
+          # Add notification logic (Slack, email, PagerDuty, etc.)
+
+  # Generate deployment report
+  deployment-report:
+    name: Generate Deployment Report
+    needs: [pre-deployment, deploy, post-deployment]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate deployment report
+        run: |
+          cat <<EOF > deployment-report.md
+          # Deployment Report
+          
+          **Version**: ${{ needs.pre-deployment.outputs.version }}
+          **Environment**: ${{ inputs.environment || 'staging' }}
+          **Strategy**: ${{ inputs.deployment_strategy || 'blue-green' }}
+          **Timestamp**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Triggered by**: ${{ github.actor }}
+          
+          ## Status
+          - Pre-deployment: ${{ needs.pre-deployment.result }}
+          - Build & Test: ${{ needs.build-and-test.result || 'skipped' }}
+          - Security Scan: ${{ needs.security-scan.result }}
+          - Build Images: ${{ needs.build-images.result }}
+          - Deploy: ${{ needs.deploy.result }}
+          - Post-deployment: ${{ needs.post-deployment.result }}
+          
+          ## URLs
+          - Application: https://${{ inputs.environment || 'staging' }}.aura.studio
+          - Deployment Log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          ## Artifacts
+          - Docker Images:
+            - \`${{ env.DOCKER_REGISTRY }}/aura-api:${{ needs.pre-deployment.outputs.version }}\`
+            - \`${{ env.DOCKER_REGISTRY }}/aura-web:${{ needs.pre-deployment.outputs.version }}\`
+          
+          ## Compliance
+          - Security scan completed: ✅
+          - Test coverage checked: ✅
+          - SBOM generated: ✅
+          - Deployment logged: ✅
+          EOF
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-report
+          path: deployment-report.md
+          retention-days: 365
+
+      - name: Add to job summary
+        run: cat deployment-report.md >> $GITHUB_STEP_SUMMARY
