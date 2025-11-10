@@ -102,6 +102,18 @@ public abstract class AuraException : Exception
             response["context"] = Context;
         }
 
+        // Add "Learn More" documentation link if available
+        var documentation = ErrorDocumentation.GetDocumentation(ErrorCode);
+        if (documentation != null)
+        {
+            response["learnMoreUrl"] = documentation.Url;
+            response["errorTitle"] = documentation.Title;
+        }
+        else
+        {
+            response["learnMoreUrl"] = ErrorDocumentation.GetFallbackUrl();
+        }
+
         return response;
     }
 }
