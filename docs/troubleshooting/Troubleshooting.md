@@ -1,5 +1,653 @@
 # Troubleshooting Guide
 
+This comprehensive troubleshooting guide helps you quickly resolve common issues with Aura Video Studio.
+
+## Quick Reference: Common Issues
+
+### Application Issues
+
+| Symptom | Quick Fix | Details |
+|---------|-----------|---------|
+| White screen on launch | Press `Ctrl+F5` to hard refresh | [See below](#white-screen-or-application-failed-to-initialize) |
+| Application won't start | Check if API server is running on port 5005 | [See below](#application-wont-start) |
+| Settings not saving | Check disk space and file permissions | [See below](#settings-not-saving) |
+| UI is slow/laggy | Close unused tabs, clear browser cache | [See below](#ui-performance-issues) |
+
+### Generation Issues
+
+| Symptom | Quick Fix | Details |
+|---------|-----------|---------|
+| Script generation fails | Test API key in Settings → Providers | [See below](#script-generation-fails) |
+| TTS generation fails | Try different voice or provider | [See below](#text-to-speech-fails) |
+| Image generation fails | Check provider status and VRAM | [See below](#image-generation-fails) |
+| Rate limit errors | Wait 60 seconds, or switch provider | [See below](#rate-limit-exceeded) |
+
+### Rendering Issues
+
+| Symptom | Quick Fix | Details |
+|---------|-----------|---------|
+| Export fails | Verify FFmpeg is installed | [See below](#export-render-fails) |
+| Export takes too long | Enable hardware acceleration | [See below](#export-too-slow) |
+| Poor video quality | Increase bitrate in render settings | [See below](#poor-video-quality) |
+| Audio sync issues | Check timeline audio track alignment | [See below](#audio-video-sync-issues) |
+
+### Provider Issues
+
+| Symptom | Quick Fix | Details |
+|---------|-----------|---------|
+| Invalid API key | Re-enter and test key | [See below](#invalid-api-key-error) |
+| Provider offline | Switch to alternative provider | [See below](#provider-service-unavailable) |
+| Local engine not starting | Check installation path and logs | [See below](#local-engine-issues) |
+
+---
+
+## Detailed Troubleshooting
+
+### Application Issues
+
+#### White Screen or "Application Failed to Initialize"
+
+**Symptoms:**
+- Blank white screen on launch
+- "Application Failed to Initialize" message
+- Page loads but shows no content
+
+**Causes:**
+1. Frontend not built or not copied to wwwroot
+2. API server not running
+3. Browser cache issue
+4. JavaScript error
+
+**Solutions:**
+
+1. **Hard Refresh Browser**
+   ```
+   Press Ctrl+F5 (Windows) or Cmd+Shift+R (Mac)
+   ```
+
+2. **Clear Browser Cache**
+   - Chrome: Settings → Privacy → Clear browsing data
+   - Select "Cached images and files"
+   - Clear last hour
+   - Refresh page
+
+3. **Verify API Server**
+   - Open http://127.0.0.1:5005/health in new tab
+   - Should see: `{"status":"healthy"}`
+   - If error, restart API server
+
+4. **Check Browser Console**
+   - Press F12 to open DevTools
+   - Look for red errors in Console tab
+   - Common errors:
+     - "Failed to fetch" → API not running
+     - "VITE_API_BASE_URL not defined" → Environment config issue
+     - "404 Not Found" → Frontend not built
+
+5. **Rebuild Application** (if issue persists)
+   ```bash
+   cd Aura.Web
+   npm run build
+   cd ..
+   dotnet build Aura.Api --configuration Release
+   cd Aura.Api
+   dotnet run --configuration Release
+   ```
+
+#### Application Won't Start
+
+**Symptoms:**
+- Executable doesn't launch
+- Process starts then immediately exits
+- Error message on startup
+
+**Causes:**
+1. Port 5005 already in use
+2. Missing .NET runtime
+3. Corrupted installation
+4. Antivirus blocking
+
+**Solutions:**
+
+1. **Check if Port is in Use**
+   ```bash
+   netstat -ano | findstr :5005
+   ```
+   If port is in use, either:
+   - Kill the process using the port
+   - Change port in `appsettings.json`
+
+2. **Verify .NET Runtime**
+   ```bash
+   dotnet --version
+   ```
+   Should show version 8.0 or higher
+   If not installed: Download from https://dot.net
+
+3. **Run as Administrator** (Windows)
+   - Right-click Aura.exe
+   - Select "Run as administrator"
+
+4. **Check Antivirus**
+   - Add Aura folder to antivirus exclusions
+   - Temporarily disable antivirus to test
+
+5. **Check Logs**
+   - Location: `%LOCALAPPDATA%\Aura\logs\`
+   - Open latest log file
+   - Look for error messages
+
+#### Settings Not Saving
+
+**Symptoms:**
+- Changes to settings don't persist
+- Settings revert after restart
+- "Failed to save settings" error
+
+**Causes:**
+1. Disk full
+2. File permissions issue
+3. Settings file corrupted
+4. Browser storage quota exceeded
+
+**Solutions:**
+
+1. **Check Disk Space**
+   - Need at least 1GB free
+   - Clear temp files if needed
+
+2. **Check File Permissions**
+   - Settings location: `%LOCALAPPDATA%\Aura\settings\`
+   - Ensure your user has write permissions
+   - Try running as administrator
+
+3. **Reset Settings**
+   - Close Aura
+   - Rename or delete `user-settings.json`
+   - Restart Aura (will recreate with defaults)
+
+4. **Clear Browser Storage**
+   - F12 → Application tab
+   - Clear Local Storage and Session Storage
+   - Refresh page
+
+#### UI Performance Issues
+
+**Symptoms:**
+- Laggy interface
+- Slow timeline scrubbing
+- Delayed button clicks
+- High CPU/memory usage
+
+**Solutions:**
+
+1. **Close Unused Browser Tabs**
+   - Each tab consumes memory
+   - Close other applications
+
+2. **Clear Browser Cache**
+   - Settings → Privacy → Clear browsing data
+
+3. **Disable Real-Time Preview**
+   - Settings → Editor → Disable "Live preview"
+
+4. **Reduce Timeline Zoom**
+   - Showing fewer clips at once reduces render load
+
+5. **Use Chrome or Edge**
+   - Best performance with Chromium-based browsers
+
+6. **Check System Resources**
+   - Task Manager → Check CPU/RAM usage
+   - Close memory-heavy applications
+
+---
+
+### Generation Issues
+
+#### Script Generation Fails
+
+**Symptoms:**
+- "Failed to generate script" error
+- Timeout error
+- Empty response
+
+**Causes:**
+1. Invalid or expired API key
+2. Provider service down
+3. Rate limit exceeded
+4. Network connection issue
+5. Invalid request parameters
+
+**Solutions:**
+
+1. **Test API Key**
+   - Settings → Providers
+   - Find your script provider
+   - Click "Test" button
+   - Should show green checkmark
+
+2. **Check Provider Status**
+   - Visit provider status page:
+     - OpenAI: https://status.openai.com
+     - Anthropic: https://status.anthropic.com
+     - Google: https://status.cloud.google.com
+
+3. **Switch Provider**
+   - Try alternative provider:
+     - GPT-4 → GPT-3.5 (faster, cheaper)
+     - Paid → Ollama (local, free)
+     - Any → RuleBased (always works)
+
+4. **Check Network**
+   - Test internet connection
+   - Try different network
+   - Check firewall settings
+
+5. **Reduce Request Size**
+   - Shorten script length
+   - Simplify topic description
+   - Remove special characters
+
+#### Text-to-Speech Fails
+
+**Symptoms:**
+- "TTS generation failed" error
+- No audio generated
+- Timeout
+
+**Causes:**
+1. Voice not available
+2. Invalid characters in script
+3. Credit limit reached
+4. Provider service down
+
+**Solutions:**
+
+1. **Try Different Voice**
+   - Some voices may be unavailable
+   - Browse and select alternative
+
+2. **Clean Up Script**
+   - Remove special characters: `|`, `<`, `>`, `{`, `}`
+   - Remove SSML tags if not supported
+   - Keep text under character limit
+
+3. **Check Credits**
+   - ElevenLabs: Check account credits
+   - Azure: Verify subscription active
+
+4. **Switch Provider**
+   - ElevenLabs → Azure Speech
+   - Paid → Windows TTS (free)
+   - Cloud → Piper TTS (local, free)
+
+5. **Break Into Chunks**
+   - Split long scripts into shorter segments
+   - Generate each segment separately
+
+#### Image Generation Fails
+
+**Symptoms:**
+- "Image generation failed" error
+- Blank images
+- Timeout
+
+**Causes:**
+1. VRAM insufficient (Stable Diffusion)
+2. Invalid prompt
+3. Service unavailable
+4. Rate limit or quota exceeded
+
+**Solutions:**
+
+1. **Check VRAM** (Stable Diffusion local)
+   - Need 6GB+ for SD XL
+   - Need 4GB+ for SD 1.5
+   - Use smaller models if limited
+
+2. **Simplify Prompts**
+   - Remove very long descriptions
+   - Avoid special characters
+   - Use clear, concise language
+
+3. **Switch Provider**
+   - SD Local → Stock Images (free, fast)
+   - DALL-E → Stability AI
+   - Any → Pexels/Unsplash (always works)
+
+4. **Check Service Status**
+   - Stable Diffusion: Check if WebUI is running
+   - Stability AI: Check API status
+
+5. **Reduce Resolution**
+   - Lower image size (512x512 instead of 1024x1024)
+   - Upscale later if needed
+
+#### Rate Limit Exceeded
+
+**Symptoms:**
+- "Rate limit exceeded" error
+- "Too many requests" message
+- Error code 429
+
+**Causes:**
+- Too many requests in short time
+- Provider-imposed limits
+- Burst of generation attempts
+
+**Solutions:**
+
+1. **Wait** (Limits reset automatically)
+   - Most limits: 60 seconds
+   - Some limits: 1 hour
+   - Check error message for exact time
+
+2. **Slow Down Generation**
+   - Don't regenerate rapidly
+   - Space out requests by 10+ seconds
+
+3. **Upgrade Plan**
+   - OpenAI: Higher tier = higher limits
+   - ElevenLabs: Pro plan = more requests
+
+4. **Use Alternative Provider**
+   - Switch to provider without rate limit
+   - Use local provider (no limits)
+
+---
+
+### Rendering Issues
+
+#### Export (Render) Fails
+
+**Symptoms:**
+- "Export failed" error
+- Process starts but doesn't complete
+- Corrupted output file
+
+**Causes:**
+1. FFmpeg not installed
+2. Insufficient disk space
+3. Invalid output path
+4. Corrupted source media
+5. Encoding settings incompatible
+
+**Solutions:**
+
+1. **Verify FFmpeg**
+   - Go to Downloads page
+   - Check FFmpeg status
+   - If not installed, click "Install"
+   - After install, restart Aura
+
+2. **Check Disk Space**
+   - Need 2x video size (for temp files)
+   - Typical 1-minute 1080p video: 200-500MB
+   - Clear space if needed
+
+3. **Verify Output Path**
+   - Directory must exist
+   - Path must not contain special characters
+   - Try Desktop folder as test
+
+4. **Test Media Files**
+   - Play each clip in timeline
+   - Replace any corrupted files
+   - Regenerate images/audio if needed
+
+5. **Try Simpler Settings**
+   - Lower resolution (1080p → 720p)
+   - Use H.264 instead of H.265
+   - Disable hardware acceleration (test)
+   - Try "fast" encoding preset
+
+6. **Check Logs**
+   - Look for FFmpeg error in logs
+   - Common errors:
+     - "Invalid output path" → Path doesn't exist
+     - "Codec not supported" → Use different codec
+     - "Permission denied" → Check folder permissions
+
+#### Export Too Slow
+
+**Symptoms:**
+- Rendering takes very long time
+- Progress bar moves slowly
+- High CPU usage but low GPU usage
+
+**Solutions:**
+
+1. **Enable Hardware Acceleration**
+   - Settings → Render → Hardware Acceleration
+   - Options:
+     - **NVENC** (NVIDIA GPU)
+     - **QuickSync** (Intel integrated graphics)
+     - **AMF** (AMD GPU)
+
+2. **Use Faster Encoding Preset**
+   - Settings → Render → Encoding Speed
+   - "ultrafast" = fastest, larger file
+   - "fast" = good balance
+   - "slow" = best quality, slowest
+
+3. **Lower Resolution**
+   - 4K → 1080p (4x faster)
+   - 1080p → 720p (2x faster)
+
+4. **Reduce Bitrate**
+   - Lower bitrate = faster encode
+   - Test different values
+
+5. **Close Other Applications**
+   - Free up CPU/GPU resources
+   - Disable browser hardware acceleration
+
+6. **Render Overnight**
+   - For very long videos
+   - Enable "Shutdown when complete" option
+
+#### Poor Video Quality
+
+**Symptoms:**
+- Blurry or pixelated video
+- Compression artifacts
+- Color banding
+- Low audio quality
+
+**Solutions:**
+
+1. **Increase Bitrate**
+   - Settings → Render → Video Bitrate
+   - 1080p recommended: 8-12 Mbps
+   - 4K recommended: 25-40 Mbps
+
+2. **Use Better Codec**
+   - H.265 (HEVC) = better quality than H.264
+   - Trade-off: Slower encode, not all players support
+
+3. **Enable Two-Pass Encoding**
+   - Advanced Mode → Render Settings
+   - Slower but better quality
+
+4. **Use Higher Resolution Sources**
+   - Generate images at higher resolution
+   - Upscale before adding to timeline
+
+5. **Improve Audio**
+   - Use higher quality TTS provider
+   - Increase audio bitrate (192 or 320 kbps)
+
+6. **Color Grading**
+   - Advanced Mode → Color Grading
+   - Adjust contrast, saturation, etc.
+
+#### Audio-Video Sync Issues
+
+**Symptoms:**
+- Audio doesn't match video
+- Drift over time
+- Lips don't match speech
+
+**Causes:**
+1. Incorrect frame rate
+2. Variable frame rate source
+3. Audio resampling
+4. Timeline editing errors
+
+**Solutions:**
+
+1. **Check Frame Rate**
+   - All clips should match (e.g., all 30fps)
+   - Mixed frame rates cause sync issues
+
+2. **Verify Timeline Alignment**
+   - Zoom in on timeline
+   - Check audio starts at same time as video
+
+3. **Re-export Audio**
+   - Regenerate TTS
+   - Ensure sample rate matches (48kHz recommended)
+
+4. **Use Constant Frame Rate**
+   - Avoid variable frame rate (VFR) sources
+   - Convert to constant frame rate (CFR)
+
+---
+
+### Provider Issues
+
+#### Invalid API Key Error
+
+**Symptoms:**
+- "Invalid API key" error
+- "Authentication failed"
+- 401 Unauthorized error
+
+**Solutions:**
+
+1. **Re-enter Key**
+   - Copy key from provider dashboard
+   - Settings → Providers → Paste key
+   - Click "Test" to validate
+
+2. **Check Key Format**
+   - OpenAI keys start with `sk-`
+   - ElevenLabs keys are 32 characters
+   - Ensure no spaces before/after
+
+3. **Verify Key Permissions**
+   - Some keys have restricted access
+   - Generate new key with full permissions
+
+4. **Check Account Status**
+   - Verify account not suspended
+   - Check payment method valid
+
+5. **Regenerate Key**
+   - Provider dashboard → Generate new key
+   - Delete old key
+   - Add new key to Aura
+
+#### Provider Service Unavailable
+
+**Symptoms:**
+- "Service unavailable" error
+- "Connection refused"
+- Timeout
+
+**Causes:**
+1. Provider experiencing outage
+2. Network issue
+3. Firewall blocking
+4. Local engine not running
+
+**Solutions:**
+
+1. **Check Provider Status**
+   - Visit provider status page
+   - Wait if outage reported
+
+2. **Test Network**
+   - Can you access provider website?
+   - Try different network
+   - Check firewall/proxy settings
+
+3. **For Local Engines:**
+   - **Ollama**: Check if service running
+   - **Stable Diffusion**: Verify WebUI launched with `--api` flag
+   - **Piper**: Check installation path
+
+4. **Switch to Backup Provider**
+   - Use Aura's automatic fallback
+   - Or manually select alternative
+
+#### Local Engine Issues
+
+**Symptoms:**
+- Can't start local engine
+- Engine starts but Aura can't connect
+- Engine crashes during use
+
+**Solutions:**
+
+**Ollama Issues:**
+
+1. **Verify Installation**
+   ```bash
+   ollama --version
+   ```
+
+2. **Check if Running**
+   ```bash
+   curl http://localhost:11434/api/tags
+   ```
+
+3. **Start Manually**
+   ```bash
+   ollama serve
+   ```
+
+4. **Check Logs**
+   - Windows: `%LOCALAPPDATA%\Ollama\logs\`
+   - Look for error messages
+
+**Stable Diffusion Issues:**
+
+1. **Launch with API Flag**
+   ```bash
+   webui.bat --api
+   ```
+
+2. **Verify Port**
+   - Default: http://localhost:7860
+   - Check Settings → Engines for configured port
+
+3. **Check VRAM**
+   - Need 4GB+ for SD 1.5
+   - Need 6GB+ for SD XL
+
+4. **Test in Browser**
+   - Open http://localhost:7860
+   - Should see SD WebUI interface
+
+**Piper Issues:**
+
+1. **Verify Installation**
+   - Check installation path in Settings
+   - Ensure piper.exe exists
+
+2. **Test Command Line**
+   ```bash
+   piper --help
+   ```
+
+3. **Check Voice Files**
+   - Voices should be in voices/ subdirectory
+   - Download missing voices
+
+---
+
 ## Enum Compatibility
 
 Aura Video Studio has evolved its API to use more descriptive enum values. To maintain backward compatibility, the system now accepts both canonical names and legacy aliases.
