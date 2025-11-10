@@ -137,6 +137,9 @@ public class AuraDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Configure value converters for enums (store as strings for readability)
+        ConfigureEnumConverters(modelBuilder);
+
         // Configure ExportHistoryEntity
         modelBuilder.Entity<ExportHistoryEntity>(entity =>
         {
@@ -309,6 +312,26 @@ public class AuraDbContext : DbContext
                 entityType.AddSoftDeleteQueryFilter();
             }
         }
+
+        // Configure row version for optimistic concurrency
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(IVersionedEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                modelBuilder.Entity(entityType.ClrType)
+                    .Property("RowVersion")
+                    .IsRowVersion();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Configure enum to string converters for better readability in database
+    /// </summary>
+    private static void ConfigureEnumConverters(ModelBuilder modelBuilder)
+    {
+        // No enum columns in entities currently - all status fields are already strings
+        // This method is here for future use when enum columns are added
     }
 }
 
