@@ -268,6 +268,11 @@ public class AuraDbContext : DbContext
             entity.HasIndex(e => e.JobId);
             entity.HasIndex(e => e.IsDeleted);
             entity.HasIndex(e => new { e.IsDeleted, e.DeletedAt });
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.TemplateId);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.Category, e.CreatedAt });
+            entity.HasIndex(e => new { e.Status, e.Category });
         });
 
         // Configure SceneStateEntity

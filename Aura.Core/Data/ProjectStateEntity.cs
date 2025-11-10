@@ -112,6 +112,46 @@ public class ProjectStateEntity : IAuditableEntity, ISoftDeletable
     public string? ErrorMessage { get; set; }
 
     /// <summary>
+    /// Comma-separated tags for project organization
+    /// </summary>
+    [MaxLength(1000)]
+    public string? Tags { get; set; }
+
+    /// <summary>
+    /// Output file path for completed projects
+    /// </summary>
+    [MaxLength(1000)]
+    public string? OutputFilePath { get; set; }
+
+    /// <summary>
+    /// Thumbnail image path for project preview
+    /// </summary>
+    [MaxLength(1000)]
+    public string? ThumbnailPath { get; set; }
+
+    /// <summary>
+    /// Video duration in seconds (for completed projects)
+    /// </summary>
+    public double? DurationSeconds { get; set; }
+
+    /// <summary>
+    /// Template ID used to create this project (if any)
+    /// </summary>
+    [MaxLength(50)]
+    public string? TemplateId { get; set; }
+
+    /// <summary>
+    /// Project category for organization (e.g., Tutorial, Marketing, Story)
+    /// </summary>
+    [MaxLength(100)]
+    public string? Category { get; set; }
+
+    /// <summary>
+    /// Last auto-save time
+    /// </summary>
+    public DateTime? LastAutoSaveAt { get; set; }
+
+    /// <summary>
     /// Navigation property for scenes
     /// </summary>
     public ICollection<SceneStateEntity> Scenes { get; set; } = new List<SceneStateEntity>();

@@ -309,6 +309,10 @@ builder.Services.AddScoped<Aura.Core.Services.WizardProjectService>();
 // Register project versioning services
 builder.Services.AddScoped<Aura.Core.Data.ProjectVersionRepository>();
 builder.Services.AddScoped<Aura.Core.Services.ProjectVersionService>();
+
+// Register project management services (PR #5 - Project Management System)
+builder.Services.AddScoped<Aura.Core.Services.ProjectManagementService>();
+builder.Services.AddScoped<Aura.Core.Services.TemplateManagementService>();
 // ProjectAutosaveService cannot inject scoped ProjectVersionService as singleton
 // Commenting out until refactored to use IServiceScopeFactory
 // builder.Services.AddSingleton<Aura.Api.HostedServices.ProjectAutosaveService>();
