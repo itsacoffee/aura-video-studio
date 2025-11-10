@@ -55,6 +55,7 @@ interface MediaListProps {
   selectedIds: Set<string>;
   onSelectItem: (id: string, selected: boolean) => void;
   onDelete: (id: string) => void;
+  onPreview?: (media: MediaItemResponse) => void;
 }
 
 export const MediaList: React.FC<MediaListProps> = ({
@@ -62,6 +63,7 @@ export const MediaList: React.FC<MediaListProps> = ({
   selectedIds,
   onSelectItem,
   onDelete,
+  onPreview,
 }) => {
   const styles = useStyles();
 
@@ -143,7 +145,12 @@ export const MediaList: React.FC<MediaListProps> = ({
                   </MenuTrigger>
                   <MenuPopover>
                     <MenuList>
-                      <MenuItem icon={<Eye24Regular />}>View</MenuItem>
+                      <MenuItem 
+                        icon={<Eye24Regular />}
+                        onClick={() => onPreview?.(item)}
+                      >
+                        View
+                      </MenuItem>
                       <MenuItem icon={<Edit24Regular />}>Edit</MenuItem>
                       <MenuItem icon={<CloudArrowDown24Regular />}>
                         Download

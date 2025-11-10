@@ -45,6 +45,7 @@ import { MediaUploadDialog } from './components/MediaUploadDialog';
 import { MediaFilterPanel } from './components/MediaFilterPanel';
 import { BulkOperationsBar } from './components/BulkOperationsBar';
 import { StorageStats } from './components/StorageStats';
+import { MediaPreviewDialog } from './components/MediaPreviewDialog';
 import { mediaLibraryApi } from '../../api/mediaLibraryApi';
 import type { MediaSearchRequest, MediaItemResponse } from '../../types/mediaLibrary';
 
@@ -108,6 +109,7 @@ export const MediaLibraryPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [previewMedia, setPreviewMedia] = useState<MediaItemResponse | null>(null);
   const [filters, setFilters] = useState<MediaSearchRequest>({
     page: 1,
     pageSize: 50,
@@ -192,6 +194,15 @@ export const MediaLibraryPage: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['media'] });
   }, [queryClient]);
 
+  const handlePreview = useCallback((media: MediaItemResponse) => {
+    setPreviewMedia(media);
+  }, []);
+
+  const handleEdit = useCallback((media: MediaItemResponse) => {
+    // TODO: Implement edit functionality
+    console.log('Edit media:', media);
+  }, []);
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -238,6 +249,7 @@ export const MediaLibraryPage: React.FC = () => {
             selectedIds={selectedItems}
             onSelectItem={handleSelectItem}
             onDelete={handleDelete}
+            onPreview={handlePreview}
           />
         ) : (
           <MediaList
@@ -245,6 +257,7 @@ export const MediaLibraryPage: React.FC = () => {
             selectedIds={selectedItems}
             onSelectItem={handleSelectItem}
             onDelete={handleDelete}
+            onPreview={handlePreview}
           />
         )}
 
@@ -362,6 +375,15 @@ export const MediaLibraryPage: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['media'] });
             queryClient.invalidateQueries({ queryKey: ['media-stats'] });
           }}
+        />
+      )}
+
+      {previewMedia && (
+        <MediaPreviewDialog
+          media={previewMedia}
+          onClose={() => setPreviewMedia(null)}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
         />
       )}
     </div>

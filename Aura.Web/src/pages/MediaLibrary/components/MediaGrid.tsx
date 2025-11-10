@@ -84,6 +84,7 @@ interface MediaGridProps {
   selectedIds: Set<string>;
   onSelectItem: (id: string, selected: boolean) => void;
   onDelete: (id: string) => void;
+  onPreview?: (media: MediaItemResponse) => void;
 }
 
 export const MediaGrid: React.FC<MediaGridProps> = ({
@@ -91,6 +92,7 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
   selectedIds,
   onSelectItem,
   onDelete,
+  onPreview,
 }) => {
   const styles = useStyles();
 
@@ -116,7 +118,12 @@ export const MediaGrid: React.FC<MediaGridProps> = ({
               </MenuTrigger>
               <MenuPopover>
                 <MenuList>
-                  <MenuItem icon={<Eye24Regular />}>View</MenuItem>
+                  <MenuItem 
+                    icon={<Eye24Regular />}
+                    onClick={() => onPreview?.(item)}
+                  >
+                    View
+                  </MenuItem>
                   <MenuItem icon={<Edit24Regular />}>Edit</MenuItem>
                   <MenuItem icon={<CloudArrowDown24Regular />}>Download</MenuItem>
                   <MenuItem
