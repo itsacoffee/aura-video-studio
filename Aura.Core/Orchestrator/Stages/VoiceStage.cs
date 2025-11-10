@@ -93,7 +93,7 @@ public class VoiceStage : PipelineStage
                         context.CorrelationId,
                         string.Join(", ", audioValidation.Issues));
                     
-                    throw new Errors.ValidationException(
+                    throw new Validation.ValidationException(
                         "Audio quality validation failed",
                         audioValidation.Issues);
                 }
