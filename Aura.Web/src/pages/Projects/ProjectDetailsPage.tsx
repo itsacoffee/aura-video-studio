@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tantml:function_calls>
-<invoke name="projectManagementApi, ProjectDetails, ProjectVersion } from '../../api/projectManagement';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { projectManagementApi, ProjectDetails, ProjectVersion } from '../../api/projectManagement';
 import {
   ArrowLeft,
   Edit,
