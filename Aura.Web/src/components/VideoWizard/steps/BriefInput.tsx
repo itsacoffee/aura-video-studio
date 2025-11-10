@@ -27,12 +27,14 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import type { BriefData, AdvancedData, StepValidation } from '../types';
+import { PromptQualityAnalyzer } from '../PromptQualityAnalyzer';
 
 const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXL,
+    animation: 'fadeInUp 0.5s ease',
   },
   header: {
     marginBottom: tokens.spacingVerticalM,
@@ -55,16 +57,20 @@ const useStyles = makeStyles({
     display: 'flex',
     gap: tokens.spacingHorizontalM,
     marginTop: tokens.spacingVerticalM,
+    flexWrap: 'wrap',
   },
   exampleCard: {
     padding: tokens.spacingVerticalL,
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: tokens.borderRadiusMedium,
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    border: `1px solid transparent`,
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground3,
-      transform: 'translateY(-2px)',
+      transform: 'translateY(-4px)',
+      boxShadow: tokens.shadow8,
+      border: `1px solid ${tokens.colorBrandStroke1}`,
     },
   },
   exampleGrid: {
@@ -75,6 +81,16 @@ const useStyles = makeStyles({
   },
   advancedSection: {
     marginTop: tokens.spacingVerticalL,
+  },
+  '@keyframes fadeInUp': {
+    '0%': {
+      opacity: 0,
+      transform: 'translateY(20px)',
+    },
+    '100%': {
+      opacity: 1,
+      transform: 'translateY(0)',
+    },
   },
 });
 
@@ -295,6 +311,14 @@ export const BriefInput: FC<BriefInputProps> = ({
             </Button>
           </Tooltip>
         </div>
+
+        {/* Prompt Quality Analyzer */}
+        <PromptQualityAnalyzer
+          prompt={data.topic}
+          targetAudience={data.targetAudience}
+          keyMessage={data.keyMessage}
+          videoType={data.videoType}
+        />
 
         <Field label="Video Type" required>
           <Dropdown

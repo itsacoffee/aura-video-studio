@@ -30,18 +30,38 @@ const useStyles = makeStyles({
     borderRadius: '2px',
     position: 'relative',
     cursor: 'pointer',
-    transition: 'all 0.3s ease-in-out',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    '::after': {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      borderRadius: '2px',
+      opacity: 0,
+      transition: 'opacity 0.3s ease',
+    },
+    ':hover::after': {
+      opacity: 0.1,
+      backgroundColor: tokens.colorBrandBackground,
+    },
   },
   stepInactive: {
     cursor: 'default',
+    ':hover::after': {
+      opacity: 0,
+    },
   },
   stepActive: {
     backgroundColor: tokens.colorBrandBackground,
     height: '6px',
+    boxShadow: `0 0 12px ${tokens.colorBrandBackground}`,
   },
   stepCompleted: {
     backgroundColor: tokens.colorPaletteGreenBackground2,
     cursor: 'pointer',
+    height: '5px',
   },
   stepLabel: {
     position: 'absolute',
@@ -50,6 +70,11 @@ const useStyles = makeStyles({
     transform: 'translateX(-50%)',
     whiteSpace: 'nowrap',
     fontSize: tokens.fontSizeBase200,
+    transition: 'all 0.2s ease',
+  },
+  stepLabelActive: {
+    transform: 'translateX(-50%) scale(1.1)',
+    fontWeight: tokens.fontWeightSemibold,
   },
   checkmark: {
     position: 'absolute',
@@ -57,6 +82,20 @@ const useStyles = makeStyles({
     left: '50%',
     transform: 'translateX(-50%)',
     color: tokens.colorPaletteGreenForeground1,
+    animation: 'checkmarkBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+  },
+  '@keyframes checkmarkBounce': {
+    '0%': {
+      transform: 'translateX(-50%) scale(0)',
+      opacity: 0,
+    },
+    '50%': {
+      transform: 'translateX(-50%) scale(1.2)',
+    },
+    '100%': {
+      transform: 'translateX(-50%) scale(1)',
+      opacity: 1,
+    },
   },
 });
 
@@ -126,7 +165,7 @@ export function WizardProgress({
                   <Checkmark16Regular />
                 </div>
               )}
-              <div className={styles.stepLabel}>
+              <div className={`${styles.stepLabel} ${isActive ? styles.stepLabelActive : ''}`}>
                 <Text size={100} weight={isActive ? 'semibold' : 'regular'}>
                   {stepLabels[index]}
                 </Text>

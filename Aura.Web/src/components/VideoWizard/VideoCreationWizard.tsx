@@ -37,6 +37,7 @@ import { ScriptReview } from './steps/ScriptReview';
 import { StyleSelection } from './steps/StyleSelection';
 import type { WizardData, StepValidation, VideoTemplate, WizardDraft } from './types';
 import { VideoTemplates } from './VideoTemplates';
+import { CelebrationEffect } from './CelebrationEffect';
 
 const useStyles = makeStyles({
   container: {
@@ -53,6 +54,7 @@ const useStyles = makeStyles({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: tokens.spacingVerticalL,
+    animation: 'fadeIn 0.5s ease',
   },
   headerLeft: {
     display: 'flex',
@@ -63,13 +65,17 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
   },
   progressSection: {
     marginBottom: tokens.spacingVerticalXL,
+    animation: 'fadeIn 0.6s ease',
   },
   contentCard: {
     padding: tokens.spacingVerticalXXL,
     flex: 1,
+    animation: 'fadeInUp 0.5s ease',
+    transition: 'all 0.3s ease',
   },
   navigationBar: {
     display: 'flex',
@@ -77,6 +83,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
     paddingTop: tokens.spacingVerticalL,
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    animation: 'fadeIn 0.7s ease',
   },
   navigationButtons: {
     display: 'flex',
@@ -105,6 +112,20 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground2,
     borderRadius: tokens.borderRadiusMedium,
   },
+  '@keyframes fadeIn': {
+    '0%': { opacity: 0 },
+    '100%': { opacity: 1 },
+  },
+  '@keyframes fadeInUp': {
+    '0%': {
+      opacity: 0,
+      transform: 'translateY(20px)',
+    },
+    '100%': {
+      opacity: 1,
+      transform: 'translateY(0)',
+    },
+  },
 });
 
 const STEP_LABELS = ['Brief', 'Style', 'Script', 'Preview', 'Export'];
@@ -125,6 +146,7 @@ export const VideoCreationWizard: FC = () => {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const autoSaveTimerRef = useRef<number | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [wizardData, setWizardData] = useState<WizardData>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -246,6 +268,11 @@ export const VideoCreationWizard: FC = () => {
     if (currentStep < STEP_LABELS.length - 1 && stepValidation[currentStep].isValid) {
       setCurrentStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // Show celebration when completing final step
+      if (currentStep === STEP_LABELS.length - 2) {
+        setShowCelebration(true);
+      }
     }
   }, [currentStep, stepValidation]);
 
@@ -532,6 +559,13 @@ export const VideoCreationWizard: FC = () => {
         onLoadDraft={handleLoadDraft}
         currentData={wizardData}
         currentStep={currentStep}
+      />
+
+      <CelebrationEffect
+        show={showCelebration}
+        onComplete={() => setShowCelebration(false)}
+        type="both"
+        duration={3000}
       />
     </div>
   );
