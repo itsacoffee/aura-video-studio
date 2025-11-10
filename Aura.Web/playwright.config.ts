@@ -29,7 +29,7 @@ export default defineConfig({
   },
   
   use: {
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:5173',
     
     // Enhanced debugging and artifact collection
     trace: 'retain-on-failure',
