@@ -2,6 +2,7 @@ using Aura.Api.Filters;
 using Aura.Api.Helpers;
 using Aura.Api.Middleware;
 using Aura.Api.Serialization;
+using Aura.Api.Startup;
 using Aura.Api.Validation;
 using Aura.Api.Validators;
 using Aura.Core.Hardware;
@@ -330,6 +331,9 @@ builder.Services.AddSingleton<Aura.Core.Services.IKeyValidationService, Aura.Cor
 
 // Register settings export/import service
 builder.Services.AddScoped<Aura.Core.Configuration.SettingsExportImportService>();
+
+// Register media library services
+builder.Services.AddMediaServices(builder.Configuration);
 
 // Register Ollama service for process control
 builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
