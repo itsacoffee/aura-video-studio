@@ -3,6 +3,8 @@ using Aura.Core.Data;
 using Aura.Core.Dependencies;
 using Aura.Core.Hardware;
 using Aura.Core.Services;
+using Aura.Core.Services.FFmpeg;
+using Aura.Core.Services.Video;
 using Microsoft.EntityFrameworkCore;
 
 namespace Aura.Api.Startup;
@@ -35,6 +37,17 @@ public static class CoreServicesExtensions
             var toolsDir = providerSettings.GetToolsDirectory();
             return new FfmpegLocator(logger, toolsDir);
         });
+
+        // FFmpeg services
+        services.AddSingleton<IProcessManager, ProcessManager>();
+        services.AddSingleton<IFFmpegService, FFmpegService>();
+        services.AddSingleton<IFFmpegExecutor, FFmpegExecutor>();
+        services.AddSingleton<IHardwareAccelerationDetector, HardwareAccelerationDetector>();
+
+        // Video services
+        services.AddScoped<IVideoComposer, VideoComposer>();
+        services.AddScoped<ISubtitleGenerator, SubtitleGenerator>();
+        services.AddScoped<IAudioMixer, AudioMixer>();
 
         // Data persistence - Configure database with WAL mode for better concurrency
         const string MigrationsAssembly = "Aura.Api";
