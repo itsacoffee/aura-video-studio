@@ -88,6 +88,9 @@ const ABTestManagementPage = lazy(() =>
 const PerformanceAnalyticsPage = lazy(() =>
   import('./pages/PerformanceAnalytics/PerformanceAnalyticsPage')
 );
+const UsageAnalyticsPage = lazy(() =>
+  import('./pages/Analytics/UsageAnalyticsPage').then((m) => ({ default: m.default }))
+);
 const ProjectsPage = lazy(() =>
   import('./pages/Projects/ProjectsPage').then((m) => ({ default: m.ProjectsPage }))
 );
@@ -807,6 +810,14 @@ function App() {
                           element={
                             <Suspense fallback={<Spinner label="Loading..." />}>
                               <PerformanceAnalyticsPage />
+                            </Suspense>
+                          }
+                        />
+                        <Route
+                          path="/usage-analytics"
+                          element={
+                            <Suspense fallback={<Spinner label="Loading..." />}>
+                              <UsageAnalyticsPage />
                             </Suspense>
                           }
                         />

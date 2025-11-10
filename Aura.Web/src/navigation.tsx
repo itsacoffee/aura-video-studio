@@ -51,6 +51,12 @@ export const navItems: NavItem[] = [
     icon: CalendarLtr24Regular,
     path: '/content-planning',
   },
+  {
+    key: 'usage-analytics',
+    name: 'Usage Analytics',
+    icon: DataUsage24Regular,
+    path: '/usage-analytics',
+  },
   { key: 'create', name: 'Create', icon: VideoClip24Regular, path: '/create' },
   { key: 'templates', name: 'Templates', icon: AppGeneric24Regular, path: '/templates' },
   { key: 'projects', name: 'Projects', icon: Folder24Regular, path: '/projects' },

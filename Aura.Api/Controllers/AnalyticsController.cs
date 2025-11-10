@@ -1,492 +1,537 @@
-using Aura.Core.Analytics.Retention;
-using Aura.Core.Analytics.Platforms;
-using Aura.Core.Analytics.Content;
-using Aura.Core.Analytics.Recommendations;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Aura.Core.Data;
+using Aura.Core.Services.Analytics;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Serilog;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Aura.Api.Controllers;
 
 /// <summary>
-/// Controller for audience retention analytics and content optimization
+/// Controller for local analytics and usage insights
+/// All data stays local - privacy-first design
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class AnalyticsController : ControllerBase
 {
-    private readonly RetentionPredictor _retentionPredictor;
-    private readonly PlatformOptimizer _platformOptimizer;
-    private readonly ContentAnalyzer _contentAnalyzer;
-    private readonly ImprovementEngine _improvementEngine;
+    private readonly AuraDbContext _context;
+    private readonly IUsageAnalyticsService _analyticsService;
+    private readonly IAnalyticsCleanupService _cleanupService;
+    private readonly ILogger<AnalyticsController> _logger;
 
     public AnalyticsController(
-        RetentionPredictor retentionPredictor,
-        PlatformOptimizer platformOptimizer,
-        ContentAnalyzer contentAnalyzer,
-        ImprovementEngine improvementEngine)
+        AuraDbContext context,
+        IUsageAnalyticsService analyticsService,
+        IAnalyticsCleanupService cleanupService,
+        ILogger<AnalyticsController> logger)
     {
-        _retentionPredictor = retentionPredictor;
-        _platformOptimizer = platformOptimizer;
-        _contentAnalyzer = contentAnalyzer;
-        _improvementEngine = improvementEngine;
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _analyticsService = analyticsService ?? throw new ArgumentNullException(nameof(analyticsService));
+        _cleanupService = cleanupService ?? throw new ArgumentNullException(nameof(cleanupService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
-    /// Predicts audience retention for content
+    /// Get usage statistics for a date range
     /// </summary>
-    [HttpPost("predict-retention")]
-    public async Task<IActionResult> PredictRetention(
-        [FromBody] PredictRetentionRequest request,
-        CancellationToken ct = default)
+    [HttpGet("usage")]
+    [ProducesResponseType(typeof(UsageStatistics), StatusCodes.Status200OK)]
+    public async Task<ActionResult<UsageStatistics>> GetUsageStatistics(
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] string? provider = null,
+        [FromQuery] string? generationType = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Information("[{CorrelationId}] Predicting retention for {ContentType}", correlationId, request.ContentType);
+            var start = startDate ?? DateTime.UtcNow.AddDays(-30);
+            var end = endDate ?? DateTime.UtcNow;
 
-            var prediction = await _retentionPredictor.PredictRetentionAsync(
-                request.Content,
-                request.ContentType,
-                TimeSpan.Parse(request.VideoDuration),
-                request.TargetDemographic,
-                ct
-            );
+            var stats = await _analyticsService.GetUsageStatisticsAsync(
+                start, end, provider, generationType, cancellationToken);
 
-            return Ok(new
-            {
-                retentionCurve = prediction.RetentionCurve.Select(p => new
-                {
-                    timePoint = p.TimePoint.ToString(),
-                    retention = p.Retention
-                }),
-                predictedAverageRetention = prediction.PredictedAverageRetention,
-                engagementDips = prediction.EngagementDips.Select(d => new
-                {
-                    timePoint = d.TimePoint.ToString(),
-                    retentionDrop = d.RetentionDrop,
-                    severity = d.Severity,
-                    reason = d.Reason
-                }),
-                optimalLength = prediction.OptimalLength.ToString(),
-                recommendations = prediction.Recommendations,
-                correlationId
-            });
+            return Ok(stats);
         }
         catch (Exception ex)
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Error(ex, "[{CorrelationId}] Error predicting retention", correlationId);
-
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/retention-prediction",
-                title = "Retention Prediction Failed",
-                status = 500,
-                detail = $"Failed to predict retention: {ex.Message}",
-                correlationId
-            });
+            _logger.LogError(ex, "Failed to get usage statistics");
+            return StatusCode(500, new { error = "Failed to retrieve usage statistics" });
         }
     }
 
     /// <summary>
-    /// Analyzes attention span patterns
+    /// Get cost statistics for a date range
     /// </summary>
-    [HttpPost("analyze-attention")]
-    public async Task<IActionResult> AnalyzeAttention(
-        [FromBody] AnalyzeAttentionRequest request,
-        CancellationToken ct = default)
+    [HttpGet("costs")]
+    [ProducesResponseType(typeof(CostStatistics), StatusCodes.Status200OK)]
+    public async Task<ActionResult<CostStatistics>> GetCostStatistics(
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] string? provider = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Information("[{CorrelationId}] Analyzing attention span", correlationId);
+            var start = startDate ?? DateTime.UtcNow.AddDays(-30);
+            var end = endDate ?? DateTime.UtcNow;
 
-            var analysis = await _retentionPredictor.AnalyzeAttentionSpanAsync(
-                request.Content,
-                TimeSpan.Parse(request.VideoDuration),
-                ct
-            );
+            var stats = await _analyticsService.GetCostStatisticsAsync(
+                start, end, provider, cancellationToken);
 
-            return Ok(new
-            {
-                segmentScores = analysis.SegmentScores.Select(s => new
-                {
-                    segmentIndex = s.SegmentIndex,
-                    startTime = s.StartTime.ToString(),
-                    duration = s.Duration.ToString(),
-                    engagementScore = s.EngagementScore,
-                    reasoning = s.Reasoning
-                }),
-                criticalDropPoints = analysis.CriticalDropPoints.Select(s => new
-                {
-                    segmentIndex = s.SegmentIndex,
-                    startTime = s.StartTime.ToString(),
-                    engagementScore = s.EngagementScore
-                }),
-                averageEngagement = analysis.AverageEngagement,
-                suggestions = analysis.Suggestions,
-                correlationId
-            });
+            return Ok(stats);
         }
         catch (Exception ex)
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Error(ex, "[{CorrelationId}] Error analyzing attention", correlationId);
-
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/attention-analysis",
-                title = "Attention Analysis Failed",
-                status = 500,
-                detail = $"Failed to analyze attention: {ex.Message}",
-                correlationId
-            });
+            _logger.LogError(ex, "Failed to get cost statistics");
+            return StatusCode(500, new { error = "Failed to retrieve cost statistics" });
         }
     }
 
     /// <summary>
-    /// Gets platform-specific optimization recommendations
+    /// Get performance statistics for a date range
     /// </summary>
-    [HttpPost("optimize-platform")]
-    public async Task<IActionResult> OptimizePlatform(
-        [FromBody] OptimizePlatformRequest request,
-        CancellationToken ct = default)
+    [HttpGet("performance")]
+    [ProducesResponseType(typeof(PerformanceStatistics), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PerformanceStatistics>> GetPerformanceStatistics(
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] string? operationType = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Information("[{CorrelationId}] Optimizing for platform: {Platform}", correlationId, request.Platform);
+            var start = startDate ?? DateTime.UtcNow.AddDays(-30);
+            var end = endDate ?? DateTime.UtcNow;
 
-            var optimization = await _platformOptimizer.GetPlatformOptimizationAsync(
-                request.Platform,
-                request.Content,
-                TimeSpan.Parse(request.VideoDuration),
-                ct
-            );
+            var stats = await _analyticsService.GetPerformanceStatisticsAsync(
+                start, end, operationType, cancellationToken);
 
-            return Ok(new
-            {
-                platform = optimization.Platform,
-                optimalDuration = optimization.OptimalDuration.ToString(),
-                recommendedAspectRatio = optimization.RecommendedAspectRatio,
-                optimalThumbnailSize = optimization.OptimalThumbnailSize,
-                recommendations = optimization.Recommendations,
-                metadataGuidelines = optimization.MetadataGuidelines,
-                hashtagSuggestions = optimization.HashtagSuggestions,
-                correlationId
-            });
+            return Ok(stats);
         }
         catch (Exception ex)
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Error(ex, "[{CorrelationId}] Error optimizing platform", correlationId);
-
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/platform-optimization",
-                title = "Platform Optimization Failed",
-                status = 500,
-                detail = $"Failed to optimize platform: {ex.Message}",
-                correlationId
-            });
+            _logger.LogError(ex, "Failed to get performance statistics");
+            return StatusCode(500, new { error = "Failed to retrieve performance statistics" });
         }
     }
 
     /// <summary>
-    /// Suggests aspect ratios for cross-platform publishing
+    /// Get aggregated summaries for a period
     /// </summary>
-    [HttpPost("suggest-aspect-ratios")]
-    public async Task<IActionResult> SuggestAspectRatios(
-        [FromBody] SuggestAspectRatiosRequest request,
-        CancellationToken ct = default)
+    [HttpGet("summaries")]
+    [ProducesResponseType(typeof(List<AnalyticsSummaryEntity>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<AnalyticsSummaryEntity>>> GetSummaries(
+        [FromQuery, Required] string periodType = "daily",
+        [FromQuery] int limit = 30,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Information("[{CorrelationId}] Suggesting aspect ratios for {Count} platforms", 
-                correlationId, request.TargetPlatforms.Count);
+            var summaries = await _context.AnalyticsSummaries
+                .Where(s => s.PeriodType == periodType)
+                .OrderByDescending(s => s.PeriodStart)
+                .Take(limit)
+                .ToListAsync(cancellationToken);
 
-            var suggestions = await _platformOptimizer.SuggestAspectRatioAdaptationsAsync(
-                request.TargetPlatforms,
-                ct
-            );
-
-            return Ok(new
-            {
-                suggestions = suggestions.Suggestions.Select(s => new
-                {
-                    platform = s.Platform,
-                    aspectRatio = s.AspectRatio,
-                    resolution = s.Resolution,
-                    reasoning = s.Reasoning
-                }),
-                recommendedPrimaryFormat = suggestions.RecommendedPrimaryFormat,
-                adaptationStrategy = suggestions.AdaptationStrategy,
-                correlationId
-            });
+            return Ok(summaries);
         }
         catch (Exception ex)
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Error(ex, "[{CorrelationId}] Error suggesting aspect ratios", correlationId);
-
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/aspect-ratio-suggestion",
-                title = "Aspect Ratio Suggestion Failed",
-                status = 500,
-                detail = $"Failed to suggest aspect ratios: {ex.Message}",
-                correlationId
-            });
+            _logger.LogError(ex, "Failed to get analytics summaries");
+            return StatusCode(500, new { error = "Failed to retrieve summaries" });
         }
     }
 
     /// <summary>
-    /// Analyzes content structure
+    /// Get current month's cost summary
     /// </summary>
-    [HttpPost("analyze-structure")]
-    public async Task<IActionResult> AnalyzeStructure(
-        [FromBody] AnalyzeStructureRequest request,
-        CancellationToken ct = default)
+    [HttpGet("costs/current-month")]
+    [ProducesResponseType(typeof(MonthlyBudgetStatus), StatusCodes.Status200OK)]
+    public async Task<ActionResult<MonthlyBudgetStatus>> GetCurrentMonthBudget(
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Information("[{CorrelationId}] Analyzing content structure", correlationId);
+            var now = DateTime.UtcNow;
+            var monthStart = new DateTime(now.Year, now.Month, 1);
+            var monthEnd = monthStart.AddMonths(1);
 
-            var analysis = await _contentAnalyzer.AnalyzeContentStructureAsync(
-                request.Content,
-                request.ContentType,
-                ct
-            );
+            var costs = await _context.CostTracking
+                .Where(c => c.Timestamp >= monthStart && c.Timestamp < monthEnd)
+                .ToListAsync(cancellationToken);
 
-            return Ok(new
+            var totalCost = costs.Sum(c => c.TotalCost);
+            var providerCosts = costs
+                .GroupBy(c => c.Provider)
+                .ToDictionary(g => g.Key, g => g.Sum(c => c.TotalCost));
+
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+
+            return Ok(new MonthlyBudgetStatus
             {
-                hookQuality = analysis.HookQuality,
-                hookSuggestions = analysis.HookSuggestions,
-                pacingScore = analysis.PacingScore,
-                pacingIssues = analysis.PacingIssues,
-                structuralStrength = analysis.StructuralStrength,
-                improvementAreas = analysis.ImprovementAreas,
-                overallScore = analysis.OverallScore,
-                correlationId
+                YearMonth = now.ToString("yyyy-MM"),
+                TotalCost = totalCost,
+                ProviderCosts = providerCosts,
+                Currency = costs.FirstOrDefault()?.Currency ?? "USD",
+                DaysInMonth = DateTime.DaysInMonth(now.Year, now.Month),
+                DaysElapsed = now.Day,
+                ProjectedMonthlyTotal = totalCost / now.Day * DateTime.DaysInMonth(now.Year, now.Month),
+                AnalyticsEnabled = settings?.IsEnabled ?? true
             });
         }
         catch (Exception ex)
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Error(ex, "[{CorrelationId}] Error analyzing structure", correlationId);
-
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/structure-analysis",
-                title = "Structure Analysis Failed",
-                status = 500,
-                detail = $"Failed to analyze structure: {ex.Message}",
-                correlationId
-            });
+            _logger.LogError(ex, "Failed to get current month budget");
+            return StatusCode(500, new { error = "Failed to retrieve budget status" });
         }
     }
 
     /// <summary>
-    /// Gets content improvement recommendations
+    /// Estimate cost for a planned operation
     /// </summary>
-    [HttpPost("get-recommendations")]
-    public async Task<IActionResult> GetRecommendations(
-        [FromBody] GetRecommendationsRequest request,
-        CancellationToken ct = default)
+    [HttpPost("costs/estimate")]
+    [ProducesResponseType(typeof(CostEstimate), StatusCodes.Status200OK)]
+    public async Task<ActionResult<CostEstimate>> EstimateCost(
+        [FromBody] CostEstimateRequest request,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Information("[{CorrelationId}] Getting recommendations", correlationId);
+            var cost = await _analyticsService.EstimateCostAsync(
+                request.Provider,
+                request.Model,
+                request.InputTokens,
+                request.OutputTokens,
+                cancellationToken);
 
-            var recommendations = await _contentAnalyzer.GetContentRecommendationsAsync(
-                request.Content,
-                request.TargetAudience,
-                ct
-            );
-
-            return Ok(new
+            return Ok(new CostEstimate
             {
-                targetAudience = recommendations.TargetAudience,
-                recommendations = recommendations.Recommendations.Select(r => new
-                {
-                    area = r.Area,
-                    priority = r.Priority,
-                    currentState = r.CurrentState,
-                    suggestion = r.Suggestion,
-                    expectedImpact = r.ExpectedImpact
-                }),
-                estimatedImprovementScore = recommendations.EstimatedImprovementScore,
-                correlationId
+                Provider = request.Provider,
+                Model = request.Model,
+                InputTokens = request.InputTokens,
+                OutputTokens = request.OutputTokens,
+                EstimatedCost = cost,
+                Currency = "USD"
             });
         }
         catch (Exception ex)
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Error(ex, "[{CorrelationId}] Error getting recommendations", correlationId);
-
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/recommendations",
-                title = "Recommendations Failed",
-                status = 500,
-                detail = $"Failed to get recommendations: {ex.Message}",
-                correlationId
-            });
+            _logger.LogError(ex, "Failed to estimate cost");
+            return StatusCode(500, new { error = "Failed to estimate cost" });
         }
     }
 
     /// <summary>
-    /// Generates comprehensive improvement roadmap
+    /// Get analytics retention settings
     /// </summary>
-    [HttpPost("improvement-roadmap")]
-    public async Task<IActionResult> GetImprovementRoadmap(
-        [FromBody] ImprovementRoadmapRequest request,
-        CancellationToken ct = default)
+    [HttpGet("settings")]
+    [ProducesResponseType(typeof(AnalyticsRetentionSettingsEntity), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AnalyticsRetentionSettingsEntity>> GetSettings(
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Information("[{CorrelationId}] Generating improvement roadmap", correlationId);
-
-            var roadmap = await _improvementEngine.GenerateImprovementRoadmapAsync(
-                request.Content,
-                request.ContentType,
-                TimeSpan.Parse(request.VideoDuration),
-                request.TargetPlatforms,
-                ct
-            );
-
-            return Ok(new
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            
+            if (settings == null)
             {
-                currentScore = roadmap.CurrentScore,
-                potentialScore = roadmap.PotentialScore,
-                prioritizedActions = roadmap.PrioritizedActions.Select(a => new
-                {
-                    title = a.Title,
-                    description = a.Description,
-                    impact = a.Impact,
-                    difficulty = a.Difficulty,
-                    category = a.Category,
-                    estimatedTime = a.EstimatedTime.ToString()
-                }),
-                quickWins = roadmap.QuickWins.Select(a => new { a.Title, a.Description }),
-                estimatedTimeToImprove = roadmap.EstimatedTimeToImprove.ToString(),
-                correlationId
-            });
+                return NotFound(new { error = "Settings not found" });
+            }
+
+            return Ok(settings);
         }
         catch (Exception ex)
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Error(ex, "[{CorrelationId}] Error generating roadmap", correlationId);
-
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/improvement-roadmap",
-                title = "Improvement Roadmap Failed",
-                status = 500,
-                detail = $"Failed to generate roadmap: {ex.Message}",
-                correlationId
-            });
+            _logger.LogError(ex, "Failed to get analytics settings");
+            return StatusCode(500, new { error = "Failed to retrieve settings" });
         }
     }
 
     /// <summary>
-    /// Provides real-time feedback for content being created
+    /// Update analytics retention settings
     /// </summary>
-    [HttpPost("real-time-feedback")]
-    public async Task<IActionResult> GetRealTimeFeedback(
-        [FromBody] RealTimeFeedbackRequest request,
-        CancellationToken ct = default)
+    [HttpPut("settings")]
+    [ProducesResponseType(typeof(AnalyticsRetentionSettingsEntity), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AnalyticsRetentionSettingsEntity>> UpdateSettings(
+        [FromBody] AnalyticsRetentionSettingsEntity settings,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Information("[{CorrelationId}] Providing real-time feedback", correlationId);
-
-            var feedback = await _improvementEngine.GetRealTimeFeedbackAsync(
-                request.CurrentContent,
-                request.CurrentWordCount,
-                TimeSpan.Parse(request.CurrentDuration),
-                ct
-            );
-
-            return Ok(new
+            var existing = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+            
+            if (existing == null)
             {
-                issues = feedback.Issues.Select(i => new
-                {
-                    type = i.Type,
-                    severity = i.Severity,
-                    message = i.Message,
-                    suggestion = i.Suggestion
-                }),
-                strengths = feedback.Strengths,
-                currentQualityScore = feedback.CurrentQualityScore,
-                suggestions = feedback.Suggestions,
-                correlationId
+                return NotFound(new { error = "Settings not found" });
+            }
+
+            // Update settings
+            existing.IsEnabled = settings.IsEnabled;
+            existing.UsageStatisticsRetentionDays = settings.UsageStatisticsRetentionDays;
+            existing.CostTrackingRetentionDays = settings.CostTrackingRetentionDays;
+            existing.PerformanceMetricsRetentionDays = settings.PerformanceMetricsRetentionDays;
+            existing.AutoCleanupEnabled = settings.AutoCleanupEnabled;
+            existing.CleanupHourUtc = settings.CleanupHourUtc;
+            existing.TrackSuccessOnly = settings.TrackSuccessOnly;
+            existing.CollectHardwareMetrics = settings.CollectHardwareMetrics;
+            existing.AggregateOldData = settings.AggregateOldData;
+            existing.AggregationThresholdDays = settings.AggregationThresholdDays;
+            existing.MaxDatabaseSizeMB = settings.MaxDatabaseSizeMB;
+            existing.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Analytics settings updated");
+
+            return Ok(existing);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update analytics settings");
+            return StatusCode(500, new { error = "Failed to update settings" });
+        }
+    }
+
+    /// <summary>
+    /// Get database size and statistics
+    /// </summary>
+    [HttpGet("database/info")]
+    [ProducesResponseType(typeof(DatabaseInfo), StatusCodes.Status200OK)]
+    public async Task<ActionResult<DatabaseInfo>> GetDatabaseInfo(
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var usageCount = await _context.UsageStatistics.CountAsync(cancellationToken);
+            var costCount = await _context.CostTracking.CountAsync(cancellationToken);
+            var perfCount = await _context.PerformanceMetrics.CountAsync(cancellationToken);
+            var summaryCount = await _context.AnalyticsSummaries.CountAsync(cancellationToken);
+            
+            var estimatedSize = await _cleanupService.GetDatabaseSizeBytesAsync(cancellationToken);
+            var sizeMB = estimatedSize / (1024.0 * 1024.0);
+
+            var oldestUsage = await _context.UsageStatistics
+                .OrderBy(u => u.Timestamp)
+                .Select(u => u.Timestamp)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var settings = await _context.AnalyticsRetentionSettings.FirstOrDefaultAsync(cancellationToken);
+
+            return Ok(new DatabaseInfo
+            {
+                UsageRecords = usageCount,
+                CostRecords = costCount,
+                PerformanceRecords = perfCount,
+                SummaryRecords = summaryCount,
+                TotalRecords = usageCount + costCount + perfCount + summaryCount,
+                EstimatedSizeMB = sizeMB,
+                OldestRecordDate = oldestUsage,
+                MaxSizeMB = settings?.MaxDatabaseSizeMB ?? 0,
+                UsagePercent = settings?.MaxDatabaseSizeMB > 0 
+                    ? (sizeMB / settings.MaxDatabaseSizeMB * 100) 
+                    : 0
             });
         }
         catch (Exception ex)
         {
-            var correlationId = HttpContext.TraceIdentifier;
-            Log.Error(ex, "[{CorrelationId}] Error providing feedback", correlationId);
-
-            return StatusCode(500, new
-            {
-                type = "https://docs.aura.studio/errors/real-time-feedback",
-                title = "Real-time Feedback Failed",
-                status = 500,
-                detail = $"Failed to provide feedback: {ex.Message}",
-                correlationId
-            });
+            _logger.LogError(ex, "Failed to get database info");
+            return StatusCode(500, new { error = "Failed to retrieve database info" });
         }
+    }
+
+    /// <summary>
+    /// Trigger manual cleanup (user-initiated)
+    /// </summary>
+    [HttpPost("cleanup")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> TriggerCleanup(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Manual cleanup triggered");
+            
+            await _cleanupService.CleanupAsync(cancellationToken);
+            await _cleanupService.AggregateOldDataAsync(cancellationToken);
+
+            return Ok(new { message = "Cleanup completed successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to trigger cleanup");
+            return StatusCode(500, new { error = "Failed to perform cleanup" });
+        }
+    }
+
+    /// <summary>
+    /// Clear all analytics data (user-initiated)
+    /// </summary>
+    [HttpDelete("data")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult> ClearAllData(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogWarning("Clear all analytics data requested");
+            
+            await _cleanupService.ClearAllDataAsync(cancellationToken);
+
+            return Ok(new { message = "All analytics data cleared successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to clear data");
+            return StatusCode(500, new { error = "Failed to clear data" });
+        }
+    }
+
+    /// <summary>
+    /// Export analytics data as JSON
+    /// </summary>
+    [HttpGet("export")]
+    [Produces("application/json", "text/csv")]
+    public async Task<ActionResult> ExportData(
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] string format = "json",
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var start = startDate ?? DateTime.UtcNow.AddDays(-30);
+            var end = endDate ?? DateTime.UtcNow;
+
+            var usage = await _context.UsageStatistics
+                .Where(u => u.Timestamp >= start && u.Timestamp <= end)
+                .ToListAsync(cancellationToken);
+
+            var costs = await _context.CostTracking
+                .Where(c => c.Timestamp >= start && c.Timestamp <= end)
+                .ToListAsync(cancellationToken);
+
+            var performance = await _context.PerformanceMetrics
+                .Where(p => p.Timestamp >= start && p.Timestamp <= end)
+                .ToListAsync(cancellationToken);
+
+            var export = new
+            {
+                exportDate = DateTime.UtcNow,
+                dateRange = new { start, end },
+                usage,
+                costs,
+                performance
+            };
+
+            if (format.ToLower() == "csv")
+            {
+                var csv = GenerateCSV(usage, costs, performance);
+                return File(Encoding.UTF8.GetBytes(csv), "text/csv", $"analytics-export-{DateTime.UtcNow:yyyy-MM-dd}.csv");
+            }
+
+            var json = JsonSerializer.Serialize(export, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            return File(Encoding.UTF8.GetBytes(json), "application/json", $"analytics-export-{DateTime.UtcNow:yyyy-MM-dd}.json");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to export data");
+            return StatusCode(500, new { error = "Failed to export data" });
+        }
+    }
+
+    private static string GenerateCSV(
+        List<UsageStatisticsEntity> usage,
+        List<CostTrackingEntity> costs,
+        List<PerformanceMetricsEntity> performance)
+    {
+        var csv = new StringBuilder();
+        
+        // Usage CSV
+        csv.AppendLine("# Usage Statistics");
+        csv.AppendLine("Timestamp,Provider,Model,GenerationType,Success,InputTokens,OutputTokens,DurationMs");
+        foreach (var u in usage)
+        {
+            csv.AppendLine($"{u.Timestamp:O},{u.Provider},{u.Model},{u.GenerationType},{u.Success},{u.InputTokens},{u.OutputTokens},{u.DurationMs}");
+        }
+        
+        csv.AppendLine();
+        csv.AppendLine("# Cost Tracking");
+        csv.AppendLine("Timestamp,Provider,Model,InputTokens,OutputTokens,TotalCost,Currency");
+        foreach (var c in costs)
+        {
+            csv.AppendLine($"{c.Timestamp:O},{c.Provider},{c.Model},{c.InputTokens},{c.OutputTokens},{c.TotalCost},{c.Currency}");
+        }
+        
+        csv.AppendLine();
+        csv.AppendLine("# Performance Metrics");
+        csv.AppendLine("Timestamp,OperationType,DurationMs,Success,CpuUsage,MemoryUsedMB");
+        foreach (var p in performance)
+        {
+            csv.AppendLine($"{p.Timestamp:O},{p.OperationType},{p.DurationMs},{p.Success},{p.CpuUsagePercent},{p.MemoryUsedMB}");
+        }
+
+        return csv.ToString();
     }
 }
 
-// Request models
-public record PredictRetentionRequest(
-    string Content,
-    string ContentType,
-    string VideoDuration,
-    string? TargetDemographic = null
-);
+// Request/Response DTOs
+public class CostEstimateRequest
+{
+    [Required]
+    public string Provider { get; set; } = string.Empty;
+    
+    [Required]
+    public string Model { get; set; } = string.Empty;
+    
+    public long InputTokens { get; set; }
+    
+    public long OutputTokens { get; set; }
+}
 
-public record AnalyzeAttentionRequest(
-    string Content,
-    string VideoDuration
-);
+public class CostEstimate
+{
+    public string Provider { get; set; } = string.Empty;
+    public string Model { get; set; } = string.Empty;
+    public long InputTokens { get; set; }
+    public long OutputTokens { get; set; }
+    public decimal EstimatedCost { get; set; }
+    public string Currency { get; set; } = "USD";
+}
 
-public record OptimizePlatformRequest(
-    string Platform,
-    string Content,
-    string VideoDuration
-);
+public class MonthlyBudgetStatus
+{
+    public string YearMonth { get; set; } = string.Empty;
+    public decimal TotalCost { get; set; }
+    public Dictionary<string, decimal> ProviderCosts { get; set; } = new();
+    public string Currency { get; set; } = "USD";
+    public int DaysInMonth { get; set; }
+    public int DaysElapsed { get; set; }
+    public decimal ProjectedMonthlyTotal { get; set; }
+    public bool AnalyticsEnabled { get; set; }
+}
 
-public record SuggestAspectRatiosRequest(
-    List<string> TargetPlatforms
-);
-
-public record AnalyzeStructureRequest(
-    string Content,
-    string ContentType
-);
-
-public record GetRecommendationsRequest(
-    string Content,
-    string TargetAudience
-);
-
-public record ImprovementRoadmapRequest(
-    string Content,
-    string ContentType,
-    string VideoDuration,
-    List<string> TargetPlatforms
-);
-
-public record RealTimeFeedbackRequest(
-    string CurrentContent,
-    int CurrentWordCount,
-    string CurrentDuration
-);
+public class DatabaseInfo
+{
+    public int UsageRecords { get; set; }
+    public int CostRecords { get; set; }
+    public int PerformanceRecords { get; set; }
+    public int SummaryRecords { get; set; }
+    public int TotalRecords { get; set; }
+    public double EstimatedSizeMB { get; set; }
+    public DateTime? OldestRecordDate { get; set; }
+    public int MaxSizeMB { get; set; }
+    public double UsagePercent { get; set; }
+}
