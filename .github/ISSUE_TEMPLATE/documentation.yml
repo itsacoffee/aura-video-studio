@@ -1,0 +1,92 @@
+name: Documentation Issue
+description: Report missing, incorrect, or unclear documentation
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! Please provide details about the documentation issue.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - Missing documentation
+        - Incorrect information
+        - Unclear or confusing
+        - Outdated information
+        - Typo or formatting
+        - Need more examples
+        - Translation issue
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Document Location
+      description: |
+        Where is the documentation issue located?
+        Provide file path, URL, or page name
+      placeholder: "e.g., docs/user-guide/QUICKSTART.md or README.md section 'Installation'"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue Description
+      description: Describe the documentation issue
+      placeholder: Explain what's wrong or missing...
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Fix
+      description: If you have a suggestion for how to improve the documentation, please share it
+      placeholder: Your suggested improvement...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Target Audience
+      description: Who is affected by this documentation issue?
+      options:
+        - End Users
+        - Developers
+        - Contributors
+        - Operations/DevOps
+        - All audiences
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context or screenshots
+      placeholder: Any additional information...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have checked the documentation index (docs/DocsIndex.md)
+          required: true
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+        - label: I am willing to help fix this documentation issue
+          required: false

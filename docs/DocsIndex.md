@@ -15,6 +15,13 @@ New to Aura Video Studio? Start here:
 
 ## Documentation by Audience
 
+### For Everyone
+
+#### Governance and Community
+
+- [Code of Conduct](../CODE_OF_CONDUCT.md) - Community standards and behavior
+- [Security Policy](../SECURITY.md) - Vulnerability reporting and security practices
+
 ### End Users
 
 #### Getting Started
@@ -82,6 +89,7 @@ New to Aura Video Studio? Start here:
 
 - [Build Guide](../BUILD_GUIDE.md) - Build from source
 - [Contributing Guide](../CONTRIBUTING.md) - How to contribute
+- [Development Container Guide](../.devcontainer/README.md) - Consistent dev environment with Docker
 - [Build and Run](./developer/BUILD_AND_RUN.md)
 - [Installation](./developer/INSTALL.md)
 - [Deployment](./developer/DEPLOYMENT.md)
@@ -100,6 +108,11 @@ New to Aura Video Studio? Start here:
 #### Architecture
 
 - [Architecture Overview](./architecture/ARCHITECTURE.md)
+- [Architecture Decision Records (ADRs)](./adr/README.md) - Documented architectural decisions
+  - [ADR-001: Monorepo Structure](./adr/001-monorepo-structure.md)
+  - [ADR-002: ASP.NET Core Backend](./adr/002-aspnet-core-backend.md)
+  - [ADR-006: Server-Sent Events](./adr/006-server-sent-events.md)
+  - [ADR-009: Secrets Encryption](./adr/009-secrets-encryption.md)
 - [Provider Selection Architecture](./architecture/PROVIDER_SELECTION_ARCHITECTURE.md)
 - [SSE Event Flow](./architecture/SSE_EVENT_FLOW.md)
 - [Service Initialization Order](./architecture/SERVICE_INITIALIZATION_ORDER.md)
@@ -115,6 +128,7 @@ New to Aura Video Studio? Start here:
 
 - [API Contract v1](./api/API_CONTRACT_V1.md)
 - [API Overview](./api/README.md)
+- [Swagger/OpenAPI Guide](./api/SWAGGER_GUIDE.md) - Interactive API documentation
 - [Error Handling](./api/errors.md)
 - [Health Endpoints](./api/health.md)
 - [Job Management](./api/jobs.md)
@@ -171,7 +185,9 @@ New to Aura Video Studio? Start here:
 
 #### Troubleshooting
 
-- [Troubleshooting Guide](./troubleshooting/Troubleshooting.md)
+- [Troubleshooting Guide](./troubleshooting/Troubleshooting.md) - Main troubleshooting reference
+- [Common Issues](./troubleshooting/COMMON_ISSUES.md) - Frequently encountered problems and solutions
+- [Developer Troubleshooting](./troubleshooting/DEVELOPER_TROUBLESHOOTING.md) - Development-specific issues
 - [FFmpeg Setup Guide](./FFmpeg_Setup_Guide.md)
 
 #### CI/CD

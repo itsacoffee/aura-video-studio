@@ -1,0 +1,119 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest in improving Aura Video Studio! Please provide details about your feature request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Describe the problem this feature would solve
+      placeholder: "As a user, I find it difficult to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature you'd like to see
+      placeholder: Describe your proposed solution...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Describe any alternative solutions or features you've considered
+      placeholder: Alternative approaches...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: Which area does this feature relate to?
+      options:
+        - User Interface
+        - Video Generation
+        - Script Generation
+        - Audio/TTS
+        - Image Generation
+        - Timeline Editor
+        - Performance
+        - Configuration
+        - API
+        - CLI
+        - Documentation
+        - Testing
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Target Mode
+      description: Which mode should this feature be available in?
+      options:
+        - Both Guided and Advanced Mode
+        - Guided Mode only
+        - Advanced Mode only
+        - CLI only
+        - API only
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority (Your Perspective)
+      description: How important is this feature to you?
+      options:
+        - Critical - Blocking my use of the application
+        - High - Significantly improves my workflow
+        - Medium - Nice to have
+        - Low - Minor improvement
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups or Examples
+      description: |
+        If applicable, add mockups, screenshots, or links to examples
+        Drag and drop images here or paste from clipboard
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the feature request
+      placeholder: Any additional information...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to avoid duplicates
+          required: true
+        - label: I have described the problem and proposed solution clearly
+          required: true
+        - label: I am willing to help implement or test this feature
+          required: false

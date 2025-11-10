@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../:/workspace:cached
+    command: sleep infinity
+    network_mode: service:redis
+    depends_on:
+      - redis
+      - ffmpeg
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
+  ffmpeg:
+    image: jrottenberg/ffmpeg:5-alpine
+    restart: unless-stopped
+    entrypoint: /bin/sh
+    command: -c "while true; do sleep 30; done"
+    volumes:
+      - ../output:/output
+
+volumes:
+  redis-data:
