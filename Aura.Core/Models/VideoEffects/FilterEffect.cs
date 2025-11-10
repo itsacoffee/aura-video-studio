@@ -116,7 +116,7 @@ public class BlurEffect : VideoEffect
     /// <summary>
     /// Type of blur
     /// </summary>
-    public BlurType Type { get; set; } = BlurType.Gaussian;
+    public BlurType BlurStyle { get; set; } = BlurType.Gaussian;
 
     /// <summary>
     /// Blur strength (0 to 100)
@@ -151,7 +151,7 @@ public class BlurEffect : VideoEffect
         var strength = Math.Max(0, Math.Min(100, Strength));
         var luma = Math.Max(0.01, strength / 10.0).ToString(CultureInfo.InvariantCulture);
         
-        return Type switch
+        return BlurStyle switch
         {
             BlurType.Gaussian => $"gblur=sigma={luma}",
             BlurType.Box => $"boxblur=luma_radius={luma}:luma_power=1",

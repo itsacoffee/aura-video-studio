@@ -86,6 +86,10 @@ if (-not $SkipFrontend) {
     
     Write-Info "Running frontend build..."
     npm run build
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Frontend build failed with exit code $LASTEXITCODE"
+        exit 1
+    }
     
     if (-not (Test-Path "dist\index.html")) {
         Write-Error "Frontend build failed - dist\index.html not found"
@@ -119,6 +123,10 @@ if (-not $SkipBackend) {
             -p:PublishTrimmed=false `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -o "$BackendDir\win-x64"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Windows backend build failed with exit code $LASTEXITCODE"
+            exit 1
+        }
         Write-Success "Windows backend build complete"
     }
     
@@ -128,12 +136,20 @@ if (-not $SkipBackend) {
             -p:PublishSingleFile=false `
             -p:PublishTrimmed=false `
             -o "$BackendDir\osx-x64"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "macOS (x64) backend build failed with exit code $LASTEXITCODE"
+            exit 1
+        }
         
         Write-Info "Building backend for macOS (arm64)..."
         dotnet publish -c Release -r osx-arm64 --self-contained true `
             -p:PublishSingleFile=false `
             -p:PublishTrimmed=false `
             -o "$BackendDir\osx-arm64"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "macOS (arm64) backend build failed with exit code $LASTEXITCODE"
+            exit 1
+        }
         Write-Success "macOS backend builds complete"
     }
     
@@ -143,6 +159,10 @@ if (-not $SkipBackend) {
             -p:PublishSingleFile=false `
             -p:PublishTrimmed=false `
             -o "$BackendDir\linux-x64"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Linux backend build failed with exit code $LASTEXITCODE"
+            exit 1
+        }
         Write-Success "Linux backend build complete"
     }
     
@@ -161,6 +181,10 @@ Set-Location $ScriptDir
 
 if (-not (Test-Path "node_modules")) {
     npm install
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "npm install failed with exit code $LASTEXITCODE"
+        exit 1
+    }
 } else {
     Write-Info "Dependencies already installed"
 }
@@ -178,18 +202,34 @@ if (-not $SkipInstaller) {
         "win" {
             Write-Info "Building Windows installer..."
             npm run build:win
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Windows installer build failed with exit code $LASTEXITCODE"
+                exit 1
+            }
         }
         "mac" {
             Write-Info "Building macOS installer..."
             npm run build:mac
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "macOS installer build failed with exit code $LASTEXITCODE"
+                exit 1
+            }
         }
         "linux" {
             Write-Info "Building Linux packages..."
             npm run build:linux
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Linux packages build failed with exit code $LASTEXITCODE"
+                exit 1
+            }
         }
         "all" {
             Write-Info "Building installers for all platforms..."
             npm run build:all
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Installer build failed with exit code $LASTEXITCODE"
+                exit 1
+            }
         }
         default {
             Write-Error "Unknown target: $Target"

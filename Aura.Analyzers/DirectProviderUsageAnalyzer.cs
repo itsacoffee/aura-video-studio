@@ -22,7 +22,7 @@ public class DirectProviderUsageAnalyzer : DiagnosticAnalyzer
         "Direct provider usage forbidden outside orchestrator layer";
     
     private static readonly LocalizableString MessageFormat = 
-        "Direct usage of '{0}' is not allowed. Use orchestrator layer instead (LlmStageAdapter, SSMLStageAdapter, VisualStageAdapter)";
+        "Direct usage of '{0}' is not allowed. Use orchestrator layer instead.";
     
     private static readonly LocalizableString Description = 
         "All provider calls must go through the unified orchestration layer to ensure middleware is applied.";
