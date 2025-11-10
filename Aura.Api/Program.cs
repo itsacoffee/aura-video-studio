@@ -359,6 +359,9 @@ builder.Services.AddSingleton<Aura.Core.Services.IKeyValidationService, Aura.Cor
 // Register settings export/import service
 builder.Services.AddScoped<Aura.Core.Configuration.SettingsExportImportService>();
 
+// Register settings service
+builder.Services.AddSingleton<Aura.Core.Services.Settings.ISettingsService, Aura.Core.Services.Settings.SettingsService>();
+
 // Register media library services
 builder.Services.AddMediaServices(builder.Configuration);
 
