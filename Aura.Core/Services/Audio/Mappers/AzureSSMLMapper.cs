@@ -96,7 +96,7 @@ public class AzureSSMLMapper : ISSMLMapper
         return sb.ToString();
     }
 
-    public SSMLValidationResult Validate(string ssml)
+    public Models.Audio.SSMLValidationResult Validate(string ssml)
     {
         var errors = new List<string>();
         var warnings = new List<string>();

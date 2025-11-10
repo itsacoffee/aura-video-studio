@@ -24,7 +24,10 @@ public abstract class BaseSagaStep : ISagaStep
     public virtual bool CanCompensate => true;
 
     /// <inheritdoc />
-    public abstract Task ExecuteAsync(SagaContext context, CancellationToken cancellationToken = default);
+    public virtual Task ExecuteAsync(SagaContext context, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException("ExecuteAsync must be implemented");
+    }
 
     /// <inheritdoc />
     public abstract Task CompensateAsync(SagaContext context, CancellationToken cancellationToken = default);

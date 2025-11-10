@@ -82,6 +82,14 @@ public class UserEntity : IAuditableEntity
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("created_by")]
+    [MaxLength(100)]
+    public string? CreatedBy { get; set; }
+
+    [Column("modified_by")]
+    [MaxLength(100)]
+    public string? ModifiedBy { get; set; }
+
     [Column("metadata")]
     public string? Metadata { get; set; }
 
@@ -125,6 +133,14 @@ public class RoleEntity : IAuditableEntity
 
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("created_by")]
+    [MaxLength(100)]
+    public string? CreatedBy { get; set; }
+
+    [Column("modified_by")]
+    [MaxLength(100)]
+    public string? ModifiedBy { get; set; }
 
     // Navigation properties
     public ICollection<UserRoleEntity> UserRoles { get; set; } = new List<UserRoleEntity>();
@@ -225,6 +241,14 @@ public class UserQuotaEntity : IAuditableEntity
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("created_by")]
+    [MaxLength(100)]
+    public string? CreatedBy { get; set; }
+
+    [Column("modified_by")]
+    [MaxLength(100)]
+    public string? ModifiedBy { get; set; }
+
     // Navigation property
     public UserEntity User { get; set; } = null!;
 }
@@ -287,21 +311,4 @@ public class AuditLogEntity
     [Column("severity")]
     [MaxLength(50)]
     public string? Severity { get; set; } = "Information";
-}
-
-/// <summary>
-/// Soft deletable interface for entities that support soft delete
-/// </summary>
-public interface ISoftDeletable
-{
-    bool IsDeleted { get; set; }
-    DateTime? DeletedAt { get; set; }
-}
-
-/// <summary>
-/// Versioned entity interface for optimistic concurrency
-/// </summary>
-public interface IVersionedEntity
-{
-    byte[]? RowVersion { get; set; }
 }
