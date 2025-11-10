@@ -81,6 +81,53 @@ async function waitForBackend(port, maxAttempts = 60) {
 }
 
 /**
+ * Get the path to bundled FFmpeg binaries
+ */
+function getFFmpegPath() {
+  let ffmpegBinPath;
+  
+  if (IS_DEV) {
+    // In development, look for FFmpeg in resources directory
+    const platform = process.platform;
+    if (platform === 'win32') {
+      ffmpegBinPath = path.join(__dirname, 'resources', 'ffmpeg', 'win-x64', 'bin');
+    } else if (platform === 'darwin') {
+      ffmpegBinPath = path.join(__dirname, 'resources', 'ffmpeg', 'osx-x64', 'bin');
+    } else {
+      ffmpegBinPath = path.join(__dirname, 'resources', 'ffmpeg', 'linux-x64', 'bin');
+    }
+  } else {
+    // In production, use the bundled FFmpeg from resources
+    const platform = process.platform;
+    if (platform === 'win32') {
+      ffmpegBinPath = path.join(process.resourcesPath, 'ffmpeg', 'win-x64', 'bin');
+    } else if (platform === 'darwin') {
+      ffmpegBinPath = path.join(process.resourcesPath, 'ffmpeg', 'osx-x64', 'bin');
+    } else {
+      ffmpegBinPath = path.join(process.resourcesPath, 'ffmpeg', 'linux-x64', 'bin');
+    }
+  }
+  
+  return ffmpegBinPath;
+}
+
+/**
+ * Verify FFmpeg installation
+ */
+function verifyFFmpeg(ffmpegPath) {
+  const ffmpegExe = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
+  const ffmpegFullPath = path.join(ffmpegPath, ffmpegExe);
+  
+  if (!fs.existsSync(ffmpegFullPath)) {
+    console.warn(`FFmpeg not found at: ${ffmpegFullPath}`);
+    return false;
+  }
+  
+  console.log('FFmpeg found at:', ffmpegFullPath);
+  return true;
+}
+
+/**
  * Start the bundled ASP.NET Core backend
  */
 async function startBackend() {
@@ -102,9 +149,11 @@ async function startBackend() {
     } else {
       // In production, use the bundled backend from resources
       if (process.platform === 'win32') {
-        backendPath = path.join(process.resourcesPath, 'backend', 'Aura.Api.exe');
+        backendPath = path.join(process.resourcesPath, 'backend', 'win-x64', 'Aura.Api.exe');
+      } else if (process.platform === 'darwin') {
+        backendPath = path.join(process.resourcesPath, 'backend', 'osx-x64', 'Aura.Api');
       } else {
-        backendPath = path.join(process.resourcesPath, 'backend', 'Aura.Api');
+        backendPath = path.join(process.resourcesPath, 'backend', 'linux-x64', 'Aura.Api');
       }
     }
     
@@ -122,6 +171,14 @@ async function startBackend() {
       }
     }
     
+    // Get FFmpeg path
+    const ffmpegPath = getFFmpegPath();
+    const ffmpegExists = verifyFFmpeg(ffmpegPath);
+    
+    if (!ffmpegExists) {
+      console.warn('FFmpeg not found - video rendering may not work');
+    }
+    
     // Prepare environment variables
     const env = {
       ...process.env,
@@ -132,7 +189,10 @@ async function startBackend() {
       // Set paths for user data
       AURA_DATA_PATH: app.getPath('userData'),
       AURA_LOGS_PATH: path.join(app.getPath('userData'), 'logs'),
-      AURA_TEMP_PATH: path.join(app.getPath('temp'), 'aura-video-studio')
+      AURA_TEMP_PATH: path.join(app.getPath('temp'), 'aura-video-studio'),
+      // Set FFmpeg path for backend
+      FFMPEG_PATH: ffmpegPath,
+      FFMPEG_BINARIES_PATH: ffmpegPath
     };
     
     // Create necessary directories
@@ -146,6 +206,7 @@ async function startBackend() {
     console.log('Backend executable:', backendPath);
     console.log('Backend port:', backendPort);
     console.log('Environment:', env.DOTNET_ENVIRONMENT);
+    console.log('FFmpeg path:', ffmpegPath);
     
     // Spawn backend process
     backendProcess = spawn(backendPath, [], { 
