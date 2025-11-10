@@ -45,7 +45,9 @@ public class SeedData
             await SeedUserSetup();
             await SeedProjectStates();
             await SeedTemplates();
+            await SeedCustomTemplates();
             await SeedExportHistory();
+            await SeedConfiguration();
 
             // Save changes
             await _context.SaveChangesAsync();
@@ -266,5 +268,129 @@ public class SeedData
 
         _context.ExportHistory.AddRange(history);
         _logger.LogInformation("Seeded {Count} export history records", history.Length);
+    }
+
+    private async Task SeedCustomTemplates()
+    {
+        var existingCustomTemplates = await _context.CustomTemplates.AnyAsync();
+        if (existingCustomTemplates)
+        {
+            return;
+        }
+
+        var customTemplates = new[]
+        {
+            new CustomTemplateEntity
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "My Custom Educational Template",
+                Description = "Custom template for my educational content series",
+                Category = "Education",
+                Tags = "education,custom,series",
+                Author = "Demo User",
+                IsDefault = false,
+                ScriptStructureJson = @"{""scenes"":3,""style"":""educational""}",
+                VideoStructureJson = @"{""intro"":5,""body"":80,""outro"":15}",
+                LLMPipelineJson = @"{""provider"":""openai",""model"":""gpt-4""}",
+                VisualPreferencesJson = @"{""style"":""modern",""color_scheme"":""blue""}",
+                CreatedAt = DateTime.UtcNow.AddDays(-7),
+                UpdatedAt = DateTime.UtcNow.AddDays(-7)
+            },
+            new CustomTemplateEntity
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Quick Social Media Template",
+                Description = "My go-to template for quick social media posts",
+                Category = "SocialMedia",
+                Tags = "social,quick,vertical",
+                Author = "Demo User",
+                IsDefault = true,
+                ScriptStructureJson = @"{""scenes"":1,""style"":""casual""}",
+                VideoStructureJson = @"{""format"":""vertical",""duration"":30}",
+                LLMPipelineJson = @"{""provider"":""openai",""model"":""gpt-3.5-turbo""}",
+                VisualPreferencesJson = @"{""style"":""vibrant",""color_scheme"":""rainbow""}",
+                CreatedAt = DateTime.UtcNow.AddDays(-14),
+                UpdatedAt = DateTime.UtcNow.AddDays(-2)
+            }
+        };
+
+        _context.CustomTemplates.AddRange(customTemplates);
+        _logger.LogInformation("Seeded {Count} custom templates", customTemplates.Length);
+    }
+
+    private async Task SeedConfiguration()
+    {
+        var existingConfig = await _context.Configurations.AnyAsync();
+        if (existingConfig)
+        {
+            return;
+        }
+
+        var configurations = new[]
+        {
+            new ConfigurationEntity
+            {
+                Key = "app.theme",
+                Value = "dark",
+                Category = "Appearance",
+                ValueType = "string",
+                Description = "Application theme (light/dark)",
+                IsSensitive = false,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ConfigurationEntity
+            {
+                Key = "app.language",
+                Value = "en-US",
+                Category = "Localization",
+                ValueType = "string",
+                Description = "Default application language",
+                IsSensitive = false,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ConfigurationEntity
+            {
+                Key = "ffmpeg.threads",
+                Value = "4",
+                Category = "Performance",
+                ValueType = "number",
+                Description = "Number of FFmpeg encoding threads",
+                IsSensitive = false,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ConfigurationEntity
+            {
+                Key = "llm.default_provider",
+                Value = "openai",
+                Category = "AI",
+                ValueType = "string",
+                Description = "Default LLM provider for content generation",
+                IsSensitive = false,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new ConfigurationEntity
+            {
+                Key = "cache.ttl_minutes",
+                Value = "60",
+                Category = "Performance",
+                ValueType = "number",
+                Description = "Cache time-to-live in minutes",
+                IsSensitive = false,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+
+        _context.Configurations.AddRange(configurations);
+        _logger.LogInformation("Seeded {Count} configuration entries", configurations.Length);
     }
 }
