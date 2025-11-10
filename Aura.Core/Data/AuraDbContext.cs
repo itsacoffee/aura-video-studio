@@ -133,6 +133,31 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<SystemConfigurationEntity> SystemConfigurations { get; set; } = null!;
 
+    /// <summary>
+    /// System users
+    /// </summary>
+    public DbSet<UserEntity> Users { get; set; } = null!;
+
+    /// <summary>
+    /// User roles
+    /// </summary>
+    public DbSet<RoleEntity> Roles { get; set; } = null!;
+
+    /// <summary>
+    /// User role assignments
+    /// </summary>
+    public DbSet<UserRoleEntity> UserRoles { get; set; } = null!;
+
+    /// <summary>
+    /// User quotas and usage tracking
+    /// </summary>
+    public DbSet<UserQuotaEntity> UserQuotas { get; set; } = null!;
+
+    /// <summary>
+    /// Audit logs for administrative and security events
+    /// </summary>
+    public DbSet<AuditLogEntity> AuditLogs { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -302,6 +327,100 @@ public class AuraDbContext : DbContext
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
+        });
+
+        // Configure UserEntity
+        modelBuilder.Entity<UserEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.IsSuspended);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // Configure RoleEntity
+        modelBuilder.Entity<RoleEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.NormalizedName).IsUnique();
+            entity.HasIndex(e => e.IsSystemRole);
+
+            // Seed default roles
+            entity.HasData(
+                new RoleEntity
+                {
+                    Id = "role-admin",
+                    Name = "Administrator",
+                    NormalizedName = "ADMINISTRATOR",
+                    Description = "Full system access",
+                    IsSystemRole = true,
+                    Permissions = @"[""admin.full_access"",""users.manage"",""config.write"",""audit.view""]",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new RoleEntity
+                {
+                    Id = "role-user",
+                    Name = "User",
+                    NormalizedName = "USER",
+                    Description = "Standard user access",
+                    IsSystemRole = true,
+                    Permissions = @"[""projects.manage"",""videos.create"",""assets.manage""]",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                new RoleEntity
+                {
+                    Id = "role-viewer",
+                    Name = "Viewer",
+                    NormalizedName = "VIEWER",
+                    Description = "Read-only access",
+                    IsSystemRole = true,
+                    Permissions = @"[""projects.view"",""videos.view""]",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }
+            );
+        });
+
+        // Configure UserRoleEntity
+        modelBuilder.Entity<UserRoleEntity>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.RoleId });
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.UserRoles)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Role)
+                .WithMany(r => r.UserRoles)
+                .HasForeignKey(e => e.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure UserQuotaEntity
+        modelBuilder.Entity<UserQuotaEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.HasOne(e => e.User)
+                .WithOne(u => u.Quota)
+                .HasForeignKey<UserQuotaEntity>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure AuditLogEntity
+        modelBuilder.Entity<AuditLogEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Action);
+            entity.HasIndex(e => e.ResourceType);
+            entity.HasIndex(e => new { e.UserId, e.Timestamp });
+            entity.HasIndex(e => new { e.Action, e.Timestamp });
         });
 
         // Apply global query filters for soft delete
