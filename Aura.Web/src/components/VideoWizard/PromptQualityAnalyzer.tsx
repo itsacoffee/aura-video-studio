@@ -242,7 +242,7 @@ export const PromptQualityAnalyzer: FC<PromptQualityAnalyzerProps> = ({
 
   const getScoreColor = () => {
     if (analysis.level === 'excellent') return tokens.colorPaletteGreenForeground1;
-    if (analysis.level === 'good') return tokens.colorPaletteBlueForeground1;
+    if (analysis.level === 'good') return tokens.colorPaletteBlueForeground2;
     if (analysis.level === 'fair') return tokens.colorPaletteYellowForeground1;
     return tokens.colorPaletteRedForeground1;
   };
@@ -261,7 +261,7 @@ export const PromptQualityAnalyzer: FC<PromptQualityAnalyzerProps> = ({
       case 'warning':
         return <Warning24Regular style={{ color: tokens.colorPaletteYellowForeground1 }} />;
       case 'tip':
-        return <Lightbulb24Regular style={{ color: tokens.colorPaletteBlueForeground1 }} />;
+        return <Lightbulb24Regular style={{ color: tokens.colorPaletteBlueForeground2 }} />;
       default:
         return <Info24Regular style={{ color: tokens.colorNeutralForeground3 }} />;
     }

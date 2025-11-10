@@ -17,5 +17,7 @@ export {
   LoadingBar 
 } from './LoadingSpinner';
 
+export { ErrorState } from './ErrorState';
+
 // Re-export existing loading components if any
 export * from './LoadingPriority';

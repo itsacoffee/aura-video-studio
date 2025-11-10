@@ -25,7 +25,7 @@ import {
   ErrorCircle24Filled,
   Server24Regular,
   Database24Regular,
-  CloudDatabase24Regular,
+  // CloudDatabase24Regular,  // Not available in this version
   HardDrive24Regular,
   DeveloperBoard24Regular,
 } from '@fluentui/react-icons';

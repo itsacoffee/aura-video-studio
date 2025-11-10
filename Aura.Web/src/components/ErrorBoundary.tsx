@@ -157,3 +157,6 @@ export function useErrorHandler() {
     [setError]
   );
 }
+
+// Re-export CrashRecoveryScreen for backwards compatibility
+export { CrashRecoveryScreen } from './ErrorBoundary/CrashRecoveryScreen';

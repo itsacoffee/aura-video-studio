@@ -30,7 +30,7 @@ const useStyles = makeStyles({
     marginBottom: tokens.spacingVerticalM,
   },
   visual: {
-    color: tokens.colorPalettePurpleForeground1,
+    color: tokens.colorPalettePurpleForeground2,
     fontStyle: 'italic',
     marginBottom: tokens.spacingVerticalS,
   },
@@ -58,7 +58,7 @@ const useStyles = makeStyles({
     color: tokens.colorBrandForeground1,
   },
   pause: {
-    color: tokens.colorPaletteOrangeForeground1,
+    color: tokens.colorPaletteDarkOrangeForeground1,
   },
 });
 

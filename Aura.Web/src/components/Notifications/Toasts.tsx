@@ -384,7 +384,14 @@ export function useNotifications() {
     return toastId;
   };
 
-  return { showSuccessToast, showFailureToast };
+  return { 
+    showSuccessToast, 
+    showFailureToast,
+    // Aliases for backwards compatibility
+    showSuccess: showSuccessToast,
+    showError: showFailureToast,
+    showInfo: showSuccessToast,
+  };
 }
 
 /**
