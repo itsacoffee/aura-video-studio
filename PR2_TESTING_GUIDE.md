@@ -297,7 +297,7 @@ curl -X POST http://localhost:5000/api/video/generate \
 
 # Expected: 400 Bad Request with validation errors
 {
-  "type": "https://docs.aura.studio/errors/E400",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
   "title": "Validation Failed",
   "status": 400,
   "detail": "Brief is required",

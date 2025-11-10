@@ -31,7 +31,7 @@ public class RequireAdvancedModeAttribute : Attribute, IAsyncActionFilter
             
             context.Result = new ObjectResult(new
             {
-                type = "https://docs.aura.studio/errors/E403",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E403",
                 title = "Advanced Mode Required",
                 status = 403,
                 detail = "This feature requires Advanced Mode to be enabled. Please enable Advanced Mode in Settings > General.",

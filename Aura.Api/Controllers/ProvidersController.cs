@@ -355,7 +355,7 @@ public class ProvidersController : ControllerBase
                 title: "Connection Test Error",
                 detail: $"An error occurred while testing the connection: {ex.Message}",
                 statusCode: 500,
-                type: "https://docs.aura.studio/errors/connection-test-error",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#connection-test-error",
                 instance: correlationId);
         }
     }
@@ -420,7 +420,7 @@ public class ProvidersController : ControllerBase
                 title: "Validation Error",
                 detail: "An unexpected error occurred while validating the API key.",
                 statusCode: 500,
-                type: "https://docs.aura.studio/errors/validation-error",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#validation-error",
                 instance: correlationId);
         }
     }
@@ -479,7 +479,7 @@ public class ProvidersController : ControllerBase
                 title: "Models Fetch Error",
                 detail: "An unexpected error occurred while fetching models.",
                 statusCode: 500,
-                type: "https://docs.aura.studio/errors/models-fetch-error",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#models-fetch-error",
                 instance: correlationId);
         }
     }
@@ -552,7 +552,7 @@ public class ProvidersController : ControllerBase
                 title: "Generation Test Error",
                 detail: "An unexpected error occurred while testing script generation.",
                 statusCode: 500,
-                type: "https://docs.aura.studio/errors/generation-test-error",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#generation-test-error",
                 instance: correlationId);
         }
     }
@@ -611,7 +611,7 @@ public class ProvidersController : ControllerBase
                 title: "Validation Error",
                 detail: "An unexpected error occurred while validating the API key.",
                 statusCode: 500,
-                type: "https://docs.aura.studio/errors/validation-error",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#validation-error",
                 instance: correlationId);
         }
     }
@@ -670,7 +670,7 @@ public class ProvidersController : ControllerBase
                 title: "Validation Error",
                 detail: "An unexpected error occurred while validating the API key.",
                 statusCode: 500,
-                type: "https://docs.aura.studio/errors/validation-error",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#validation-error",
                 instance: correlationId);
         }
     }
@@ -742,7 +742,7 @@ public class ProvidersController : ControllerBase
                 title: "Provider Status Error",
                 detail: "An unexpected error occurred while getting provider status.",
                 statusCode: 500,
-                type: "https://docs.aura.studio/errors/provider-status-error",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#provider-status-error",
                 instance: correlationId);
         }
     }
@@ -854,7 +854,7 @@ public class ProvidersController : ControllerBase
                 title: "Provider Status Error",
                 detail: "An error occurred while fetching provider status.",
                 statusCode: 500,
-                type: "https://docs.aura.studio/errors/provider-status-error",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#provider-status-error",
                 instance: correlationId);
         }
     }
@@ -912,7 +912,7 @@ public class ProvidersController : ControllerBase
                 title: "Provider Priorities Error",
                 detail: "An error occurred while fetching provider priorities.",
                 statusCode: 500,
-                type: "https://docs.aura.studio/errors/provider-priorities-error",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#provider-priorities-error",
                 instance: correlationId);
         }
     }
@@ -994,7 +994,7 @@ public class ProvidersController : ControllerBase
                 title: "Provider Priorities Update Error",
                 detail: $"An error occurred while updating provider priorities: {ex.Message}",
                 statusCode: 500,
-                type: "https://docs.aura.studio/errors/provider-priorities-update-error",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#provider-priorities-update-error",
                 instance: correlationId);
         }
     }

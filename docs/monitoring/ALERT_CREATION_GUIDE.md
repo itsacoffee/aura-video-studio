@@ -26,7 +26,7 @@ This guide provides step-by-step instructions for creating effective alerts in A
   "name": "API Availability Below SLO",
   "description": "API success rate dropped below 99.9%",
   "action": "Check error logs, identify failing endpoints, escalate if needed",
-  "runbook": "https://docs.aura.studio/runbooks/api-availability"
+  "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/api-availability"
 }
 ```
 
@@ -463,7 +463,7 @@ checks:
    ALERT: API Availability Below SLO
    Current: 98.5% | Target: 99.9%
    Impact: Users experiencing errors
-   Runbook: https://docs.aura.studio/runbooks/api-availability
+   Runbook: https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/api-availability
    Dashboard: https://portal.azure.com/...
    ```
 
@@ -523,7 +523,7 @@ Use this template for consistency:
   "operator": "GreaterThan|LessThan|Equal",
   "triggerType": "Total|Consecutive",
   "actionGroups": ["slack", "pagerduty", "email"],
-  "runbook": "https://docs.aura.studio/runbooks/<alert-name>",
+  "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/<alert-name>",
   "tags": {
     "component": "api|job|provider",
     "impact": "high|medium|low",

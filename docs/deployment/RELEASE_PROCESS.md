@@ -377,7 +377,7 @@ Duration: 12 minutes
 🔗 Links:
 - Release Notes: https://github.com/aura/aura/releases/tag/v1.2.3
 - Changelog: https://github.com/aura/aura/blob/main/CHANGELOG.md
-- Documentation: https://docs.aura.studio/releases/v1.2.3
+- Documentation: https://github.com/Coffee285/aura-video-studio/blob/main/docs/releases/v1.2.3
 
 📊 Metrics:
 - Tests: 1,234 passed

@@ -64,7 +64,7 @@ public class FFmpegController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E310",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E310",
                 title = "FFmpeg Status Error",
                 status = 500,
                 detail = $"Failed to get FFmpeg status: {ex.Message}",
@@ -98,7 +98,7 @@ public class FFmpegController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E311",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E311",
                     title = "FFmpeg Not Found",
                     status = 404,
                     detail = "FFmpeg not found in engine manifest",
@@ -127,7 +127,7 @@ public class FFmpegController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E312",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E312",
                     title = "No Mirrors Available",
                     status = 400,
                     detail = "No download mirrors available for FFmpeg",
@@ -151,7 +151,7 @@ public class FFmpegController : ControllerBase
                 {
                     success = false,
                     message = installResult.ErrorMessage ?? "Failed to install FFmpeg",
-                    type = "https://docs.aura.studio/errors/E313",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E313",
                     title = "Installation Failed",
                     status = 500,
                     detail = installResult.ErrorMessage ?? "Failed to install FFmpeg",
@@ -183,7 +183,7 @@ public class FFmpegController : ControllerBase
             {
                 success = false,
                 message = $"Unexpected error during FFmpeg installation: {ex.Message}",
-                type = "https://docs.aura.studio/errors/E313",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E313",
                 title = "Installation Error",
                 status = 500,
                 detail = $"Unexpected error during FFmpeg installation: {ex.Message}",

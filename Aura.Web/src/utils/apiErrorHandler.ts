@@ -102,7 +102,7 @@ export async function parseApiError(error: unknown): Promise<ParsedApiError> {
 }
 
 /**
- * Extract error code from type URI (e.g., "https://docs.aura.studio/errors/E300" -> "E300")
+ * Extract error code from type URI (e.g., "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300" -> "E300")
  */
 function extractErrorCodeFromType(type?: string): string | undefined {
   if (!type) return undefined;

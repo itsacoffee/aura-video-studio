@@ -99,7 +99,7 @@ export class ErrorBoundary extends Component<Props, State> {
       documentationLinks: [
         {
           title: 'Troubleshooting Guide',
-          url: 'https://docs.aura.studio/troubleshooting',
+          url: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/Troubleshooting.md',
           description: 'General troubleshooting tips and solutions',
         },
       ],

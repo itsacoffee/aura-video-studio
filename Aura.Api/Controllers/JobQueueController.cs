@@ -73,7 +73,7 @@ public class JobQueueController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Enqueue Failed",
                 status = 500,
                 detail = $"Failed to enqueue job: {ex.Message}",
@@ -97,7 +97,7 @@ public class JobQueueController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Job Not Found",
                     status = 404,
                     detail = $"Job {jobId} not found in queue",
@@ -132,7 +132,7 @@ public class JobQueueController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Error Getting Job",
                 status = 500,
                 detail = $"Failed to retrieve job: {ex.Message}",
@@ -187,7 +187,7 @@ public class JobQueueController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Error Listing Jobs",
                 status = 500,
                 detail = $"Failed to list jobs: {ex.Message}",
@@ -213,7 +213,7 @@ public class JobQueueController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Cannot Cancel Job",
                     status = 400,
                     detail = $"Job {jobId} cannot be cancelled (not found or already completed)",
@@ -235,7 +235,7 @@ public class JobQueueController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Cancel Failed",
                 status = 500,
                 detail = $"Failed to cancel job: {ex.Message}",
@@ -269,7 +269,7 @@ public class JobQueueController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Error Getting Statistics",
                 status = 500,
                 detail = $"Failed to retrieve statistics: {ex.Message}",
@@ -302,7 +302,7 @@ public class JobQueueController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Error Getting Configuration",
                 status = 500,
                 detail = $"Failed to retrieve configuration: {ex.Message}",
@@ -347,7 +347,7 @@ public class JobQueueController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Configuration Update Failed",
                 status = 500,
                 detail = $"Failed to update configuration: {ex.Message}",

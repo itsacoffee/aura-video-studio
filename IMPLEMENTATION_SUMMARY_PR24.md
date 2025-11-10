@@ -286,7 +286,7 @@ No configuration changes required. All new features use sensible defaults:
 **Example Response (Backoff Active)**:
 ```json
 {
-  "type": "https://docs.aura.studio/errors/E400",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
   "title": "Retry Not Allowed",
   "status": 400,
   "detail": "Job cannot be retried at this time. Maximum retry count may have been reached or backoff period is active.",

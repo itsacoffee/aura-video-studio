@@ -88,7 +88,7 @@ This guide documents the comprehensive error handling and recovery system implem
     "Verify the key hasn't expired",
     "Try regenerating the key from OpenAI dashboard"
   ],
-  "learnMoreUrl": "https://docs.aura.video/troubleshooting/provider-errors#authentication",
+  "learnMoreUrl": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/provider-errors#authentication",
   "correlationId": "a1b2c3d4-e5f6-7890",
   "timestamp": "2025-11-10T12:34:56Z",
   "isTransient": false
@@ -164,7 +164,7 @@ Every error code maps to a documentation URL with:
 ["MY_ERROR_CODE"] = new(
     "User-Friendly Title",
     "Clear description of what this error means",
-    "https://docs.aura.video/troubleshooting/my-error"
+    "https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/my-error"
 )
 ```
 
@@ -554,7 +554,7 @@ What you can do:
 - Verify the key hasn't expired
 - Try regenerating the key from OpenAI dashboard
 
-Learn more: https://docs.aura.video/troubleshooting/api-keys
+Learn more: https://github.com/Coffee285/aura-video-studio/blob/main/docs/setup/api-keys.md
 ```
 
 ### 3. Validate Early

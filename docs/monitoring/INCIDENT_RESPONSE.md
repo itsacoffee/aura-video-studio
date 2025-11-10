@@ -407,7 +407,7 @@ Keep these bookmarked:
 
 - **Monitoring Dashboard**: https://portal.azure.com/...
 - **Logs**: https://portal.azure.com/...
-- **Runbooks**: https://docs.aura.studio/runbooks/
+- **Runbooks**: https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/
 - **Status Page Admin**: https://status.aura.studio/admin
 - **PagerDuty**: https://aura.pagerduty.com
 

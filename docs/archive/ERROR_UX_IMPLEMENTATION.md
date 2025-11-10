@@ -52,7 +52,7 @@ showFailureToast({
 - `parseApiError(error: any): Promise<ParsedApiError>`
   - Parses Response objects, ProblemDetails, Error objects, or unknown errors
   - Extracts correlation ID from response body or `X-Correlation-ID` header
-  - Extracts error code from type URI (e.g., `https://docs.aura.studio/errors/E300`)
+  - Extracts error code from type URI (e.g., `https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300`)
   - Returns structured error information for display
 
 - `openLogsFolder(): void`

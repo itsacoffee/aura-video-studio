@@ -38,7 +38,7 @@ public class QueueController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Limit",
                     status = 400,
                     detail = "Limit must be between 1 and 200",
@@ -66,7 +66,7 @@ public class QueueController : ControllerBase
                 {
                     return BadRequest(new
                     {
-                        type = "https://docs.aura.studio/errors/E400",
+                        type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                         title = "Invalid Status Filter",
                         status = 400,
                         detail = $"Invalid status filter: {status}. Valid values: pending, running, completed, failed, canceled",
@@ -120,7 +120,7 @@ public class QueueController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Error Getting Queue",
                 status = 500,
                 detail = $"Failed to retrieve queue: {ex.Message}",

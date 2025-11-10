@@ -99,7 +99,7 @@ public class QualityDashboardController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/dashboard-metrics",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#dashboard-metrics",
                 title = "Dashboard Metrics Failed",
                 status = 500,
                 detail = $"Failed to retrieve dashboard metrics: {ex.Message}",
@@ -153,7 +153,7 @@ public class QualityDashboardController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/dashboard-historical",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#dashboard-historical",
                 title = "Historical Data Failed",
                 status = 500,
                 detail = $"Failed to retrieve historical data: {ex.Message}",
@@ -227,7 +227,7 @@ public class QualityDashboardController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/dashboard-compliance",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#dashboard-compliance",
                 title = "Platform Compliance Failed",
                 status = 500,
                 detail = $"Failed to retrieve platform compliance: {ex.Message}",
@@ -275,7 +275,7 @@ public class QualityDashboardController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/dashboard-recommendations",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#dashboard-recommendations",
                 title = "Recommendations Failed",
                 status = 500,
                 detail = $"Failed to retrieve recommendations: {ex.Message}",
@@ -313,7 +313,7 @@ public class QualityDashboardController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/dashboard-export",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#dashboard-export",
                 title = "Report Export Failed",
                 status = 500,
                 detail = $"Failed to generate report: {ex.Message}",

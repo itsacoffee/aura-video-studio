@@ -59,7 +59,7 @@ Successfully implemented comprehensive error handling and recovery throughout th
     "Check your API key in Settings → Providers",
     "Verify the key hasn't expired"
   ],
-  "learnMoreUrl": "https://docs.aura.video/troubleshooting/...",
+  "learnMoreUrl": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/...",
   "isTransient": false,
   "correlationId": "..."
 }
@@ -284,7 +284,7 @@ Successfully implemented comprehensive error handling and recovery throughout th
 ["MY_ERROR"] = new(
     "Title",
     "Description",
-    "https://docs.aura.video/troubleshooting/my-error"
+    "https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/my-error"
 )
 ```
 

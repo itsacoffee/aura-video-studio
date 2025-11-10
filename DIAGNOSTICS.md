@@ -155,7 +155,7 @@ Content-Type: application/json
   "documentationLinks": [
     {
       "title": "Managing API Rate Limits",
-      "url": "https://docs.aura.studio/troubleshooting/rate-limits",
+      "url": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/Troubleshooting.md/rate-limits",
       "description": "Learn how to handle and avoid rate limit errors"
     }
   ],

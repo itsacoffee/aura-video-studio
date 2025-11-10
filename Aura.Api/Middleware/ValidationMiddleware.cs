@@ -46,7 +46,7 @@ public class ValidationMiddleware
                 
                 await context.Response.WriteAsJsonAsync(new
                 {
-                    type = "https://docs.aura.studio/errors/E413",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E413",
                     title = "Request Too Large",
                     status = 413,
                     detail = $"Request body exceeds maximum size of {_maxContentLength / (1024 * 1024)} MB",

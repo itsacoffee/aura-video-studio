@@ -104,7 +104,7 @@ test.describe('Error UX - Toasts with Retry and Open Logs', () => {
             title: 'Invalid Plan',
             detail: 'Plan parameters are invalid. Ensure target duration is between 0 and 120 minutes.',
             status: 400,
-            type: 'https://docs.aura.studio/errors/E304',
+            type: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E304',
             correlationId: correlationId
           })
         });
@@ -214,7 +214,7 @@ test.describe('Error UX - Toasts with Retry and Open Logs', () => {
               title: 'Script Provider Failed',
               detail: 'The script generation service encountered an error.',
               status: 500,
-              type: 'https://docs.aura.studio/errors/E300',
+              type: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300',
               correlationId: 'retry-test-123'
             })
           });

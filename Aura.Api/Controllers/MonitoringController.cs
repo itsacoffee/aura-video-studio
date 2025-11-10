@@ -40,7 +40,7 @@ public class MonitoringController : ControllerBase
         {
             _logger.LogError(ex, "Failed to get metrics snapshot");
             return Problem(
-                type: "https://docs.aura.studio/errors/E500",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title: "Metrics Error",
                 detail: "Failed to retrieve metrics",
                 statusCode: StatusCodes.Status500InternalServerError
@@ -64,7 +64,7 @@ public class MonitoringController : ControllerBase
         {
             _logger.LogError(ex, "Failed to get alert states");
             return Problem(
-                type: "https://docs.aura.studio/errors/E500",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title: "Alerts Error",
                 detail: "Failed to retrieve alert states",
                 statusCode: StatusCodes.Status500InternalServerError
@@ -90,7 +90,7 @@ public class MonitoringController : ControllerBase
         {
             _logger.LogError(ex, "Failed to get firing alerts");
             return Problem(
-                type: "https://docs.aura.studio/errors/E500",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title: "Alerts Error",
                 detail: "Failed to retrieve firing alerts",
                 statusCode: StatusCodes.Status500InternalServerError
@@ -113,7 +113,7 @@ public class MonitoringController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Metric Not Found",
                     detail = $"Gauge metric '{name}' not found",
                     status = StatusCodes.Status404NotFound
@@ -126,7 +126,7 @@ public class MonitoringController : ControllerBase
         {
             _logger.LogError(ex, "Failed to get gauge value for {MetricName}", name);
             return Problem(
-                type: "https://docs.aura.studio/errors/E500",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title: "Metrics Error",
                 detail: "Failed to retrieve metric value",
                 statusCode: StatusCodes.Status500InternalServerError
@@ -149,7 +149,7 @@ public class MonitoringController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Metric Not Found",
                     detail = $"Histogram metric '{name}' not found",
                     status = StatusCodes.Status404NotFound
@@ -162,7 +162,7 @@ public class MonitoringController : ControllerBase
         {
             _logger.LogError(ex, "Failed to get histogram stats for {MetricName}", name);
             return Problem(
-                type: "https://docs.aura.studio/errors/E500",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Metrics Error",
                 detail: "Failed to retrieve histogram statistics",
                 statusCode: StatusCodes.Status500InternalServerError
@@ -205,7 +205,7 @@ public class MonitoringController : ControllerBase
         {
             _logger.LogError(ex, "Synthetic health check failed");
             return Problem(
-                type: "https://docs.aura.studio/errors/E500",
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title: "Health Check Error",
                 detail: "Synthetic health check failed",
                 statusCode: StatusCodes.Status500InternalServerError

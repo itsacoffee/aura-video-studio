@@ -33,7 +33,7 @@ public class WizardProjectsController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = "Project name is required",
@@ -65,7 +65,7 @@ public class WizardProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to save wizard project", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to save project",
@@ -89,7 +89,7 @@ public class WizardProjectsController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project {id} not found",
@@ -126,7 +126,7 @@ public class WizardProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to get wizard project {ProjectId}", correlationId, id);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve project",
@@ -166,7 +166,7 @@ public class WizardProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to get wizard projects", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve projects",
@@ -206,7 +206,7 @@ public class WizardProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to get recent wizard projects", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve recent projects",
@@ -229,7 +229,7 @@ public class WizardProjectsController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = "New project name is required",
@@ -251,7 +251,7 @@ public class WizardProjectsController : ControllerBase
         {
             return NotFound(new
             {
-                type = "https://docs.aura.studio/errors/E404",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 title = "Project Not Found",
                 status = 404,
                 detail = ex.Message,
@@ -263,7 +263,7 @@ public class WizardProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to duplicate wizard project {ProjectId}", correlationId, id);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to duplicate project",
@@ -292,7 +292,7 @@ public class WizardProjectsController : ControllerBase
         {
             return NotFound(new
             {
-                type = "https://docs.aura.studio/errors/E404",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 title = "Project Not Found",
                 status = 404,
                 detail = ex.Message,
@@ -304,7 +304,7 @@ public class WizardProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to delete wizard project {ProjectId}", correlationId, id);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to delete project",
@@ -333,7 +333,7 @@ public class WizardProjectsController : ControllerBase
         {
             return NotFound(new
             {
-                type = "https://docs.aura.studio/errors/E404",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 title = "Project Not Found",
                 status = 404,
                 detail = ex.Message,
@@ -345,7 +345,7 @@ public class WizardProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to export wizard project {ProjectId}", correlationId, id);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to export project",
@@ -368,7 +368,7 @@ public class WizardProjectsController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = "Project JSON is required",
@@ -391,7 +391,7 @@ public class WizardProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to import wizard project", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = $"Failed to import project: {ex.Message}",
@@ -430,7 +430,7 @@ public class WizardProjectsController : ControllerBase
         {
             return NotFound(new
             {
-                type = "https://docs.aura.studio/errors/E404",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 title = "Project Not Found",
                 status = 404,
                 detail = ex.Message,
@@ -442,7 +442,7 @@ public class WizardProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to clear content for wizard project {ProjectId}", correlationId, id);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to clear generated content",

@@ -77,7 +77,7 @@ public class ContentController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/content-analysis",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#content-analysis",
                 title = "Script Analysis Failed",
                 status = 500,
                 detail = $"Failed to analyze script: {ex.Message}",
@@ -129,7 +129,7 @@ public class ContentController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/content-enhancement",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#content-enhancement",
                 title = "Script Enhancement Failed",
                 status = 500,
                 detail = $"Failed to enhance script: {ex.Message}",
@@ -181,7 +181,7 @@ public class ContentController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/asset-suggestion",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#asset-suggestion",
                 title = "Asset Suggestion Failed",
                 status = 500,
                 detail = $"Failed to suggest assets: {ex.Message}",
@@ -243,7 +243,7 @@ public class ContentController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/pacing-optimization",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#pacing-optimization",
                 title = "Pacing Optimization Failed",
                 status = 500,
                 detail = $"Failed to optimize pacing: {ex.Message}",
@@ -267,7 +267,7 @@ public class ContentController : ControllerBase
             {
                 return StatusCode(503, new
                 {
-                    type = "https://docs.aura.studio/errors/service-unavailable",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#service-unavailable",
                     title = "Document Import Service Unavailable",
                     status = 503,
                     detail = "Document import service is not configured",
@@ -282,7 +282,7 @@ public class ContentController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/invalid-file",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#invalid-file",
                     title = "Invalid File",
                     status = 400,
                     detail = "File is empty",
@@ -297,7 +297,7 @@ public class ContentController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/import-failed",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#import-failed",
                     title = "Document Import Failed",
                     status = 400,
                     detail = result.ErrorMessage,
@@ -369,7 +369,7 @@ public class ContentController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/document-import",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#document-import",
                 title = "Document Import Failed",
                 status = 500,
                 detail = $"Failed to import document: {ex.Message}",
@@ -392,7 +392,7 @@ public class ContentController : ControllerBase
             {
                 return StatusCode(503, new
                 {
-                    type = "https://docs.aura.studio/errors/service-unavailable",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#service-unavailable",
                     title = "Script Converter Service Unavailable",
                     status = 503,
                     detail = "Script converter service is not configured",
@@ -413,7 +413,7 @@ public class ContentController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/conversion-failed",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#conversion-failed",
                     title = "Document Conversion Failed",
                     status = 400,
                     detail = result.ErrorMessage,
@@ -482,7 +482,7 @@ public class ContentController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/document-conversion",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#document-conversion",
                 title = "Document Conversion Failed",
                 status = 500,
                 detail = $"Failed to convert document: {ex.Message}",
@@ -535,7 +535,7 @@ public class ContentController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/presets",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#presets",
                 title = "Failed to Get Presets",
                 status = 500,
                 detail = $"Failed to get conversion presets: {ex.Message}",

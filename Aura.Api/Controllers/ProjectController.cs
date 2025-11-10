@@ -55,7 +55,7 @@ public class ProjectController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project with ID '{id}' was not found",
@@ -91,7 +91,7 @@ public class ProjectController : ControllerBase
             Log.Warning("[{CorrelationId}] Project save rejected: Name is required", correlationId);
             return BadRequest(new
             {
-                type = "https://docs.aura.studio/errors/E400",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                 title = "Invalid Request",
                 status = 400,
                 detail = "Project name is required",
@@ -105,7 +105,7 @@ public class ProjectController : ControllerBase
             Log.Warning("[{CorrelationId}] Project save rejected: ProjectData is required", correlationId);
             return BadRequest(new
             {
-                type = "https://docs.aura.studio/errors/E400",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                 title = "Invalid Request",
                 status = 400,
                 detail = "Project data is required",
@@ -124,7 +124,7 @@ public class ProjectController : ControllerBase
             Log.Warning("[{CorrelationId}] Project save rejected: Invalid JSON in ProjectData", correlationId);
             return BadRequest(new
             {
-                type = "https://docs.aura.studio/errors/E400",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                 title = "Invalid Request",
                 status = 400,
                 detail = $"Project data must be valid JSON: {ex.Message}",
@@ -184,7 +184,7 @@ public class ProjectController : ControllerBase
                 {
                     return NotFound(new
                     {
-                        type = "https://docs.aura.studio/errors/E404",
+                        type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                         title = "Project Not Found",
                         status = 404,
                         detail = $"Project with ID '{request.Id}' was not found",
@@ -237,7 +237,7 @@ public class ProjectController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project with ID '{id}' was not found",
@@ -271,7 +271,7 @@ public class ProjectController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project with ID '{id}' was not found",

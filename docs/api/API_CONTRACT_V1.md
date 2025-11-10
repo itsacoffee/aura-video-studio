@@ -174,7 +174,7 @@ All errors follow ProblemDetails (RFC 7807) format:
 
 ```json
 {
-  "type": "https://docs.aura.studio/errors/E303",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E303",
   "title": "Invalid Enum Value",
   "status": 400,
   "detail": "Unknown Aspect value: '4:3'. Valid values are: Widescreen16x9 (or 16:9), Vertical9x16 (or 9:16), Square1x1 (or 1:1)",
@@ -195,7 +195,7 @@ Request:
 Response (400 Bad Request):
 ```json
 {
-  "type": "https://docs.aura.studio/errors/E303",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E303",
   "title": "Invalid Enum Value",
   "status": 400,
   "detail": "Unknown Aspect value: '4:3'. Valid values are: Widescreen16x9 (or 16:9), Vertical9x16 (or 9:16), Square1x1 (or 1:1)"

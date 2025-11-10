@@ -864,7 +864,7 @@ public enum AspectRatio
 
 ```json
 {
-  "type": "https://docs.aura.studio/errors/E404",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
   "title": "Job Not Found",
   "status": 404,
   "detail": "Job abc123 does not exist",

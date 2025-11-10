@@ -50,7 +50,7 @@ public class JobsController : ControllerBase
                 Log.Warning("[{CorrelationId}] Job creation rejected: Topic is required", correlationId);
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = "Brief.Topic cannot be null or empty",
@@ -67,7 +67,7 @@ public class JobsController : ControllerBase
                     correlationId, request.PlanSpec.TargetDuration);
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = $"PlanSpec.TargetDuration must be positive (received: {request.PlanSpec.TargetDuration})",
@@ -149,7 +149,7 @@ public class JobsController : ControllerBase
             // Return structured ProblemDetails with correlation ID
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E203",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E203",
                 title = "Job Creation Failed",
                 status = 500,
                 detail = $"Failed to create job: {ex.Message}",
@@ -175,7 +175,7 @@ public class JobsController : ControllerBase
                 Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
                 return NotFound(new 
                 { 
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Job Not Found", 
                     status = 404,
                     detail = $"Job {jobId} not found",
@@ -192,7 +192,7 @@ public class JobsController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Error Retrieving Job",
                 status = 500,
                 detail = $"Failed to retrieve job: {ex.Message}",
@@ -221,7 +221,7 @@ public class JobsController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Error Listing Jobs",
                 status = 500,
                 detail = $"Failed to list jobs: {ex.Message}",
@@ -246,7 +246,7 @@ public class JobsController : ControllerBase
                 Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
                 return NotFound(new 
                 { 
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Job Not Found", 
                     status = 404,
                     detail = $"Job {jobId} not found",
@@ -258,7 +258,7 @@ public class JobsController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Job Not Failed",
                     status = 400,
                     detail = $"Job {jobId} has not failed (status: {job.Status})",
@@ -288,7 +288,7 @@ public class JobsController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Error Retrieving Failure Details",
                 status = 500,
                 detail = $"Failed to retrieve failure details: {ex.Message}",
@@ -365,7 +365,7 @@ public class JobsController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Job Not Found",
                     status = 404,
                     detail = $"Job {jobId} not found",
@@ -378,7 +378,7 @@ public class JobsController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Job Not Failed",
                     status = 400,
                     detail = $"Job {jobId} has not failed (status: {job.Status})",
@@ -408,7 +408,7 @@ public class JobsController : ControllerBase
                     correlationId, jobId);
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Retry Not Allowed",
                     status = 400,
                     detail = "Job cannot be retried at this time. Maximum retry count may have been reached or backoff period is active.",
@@ -430,7 +430,7 @@ public class JobsController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Retry Failed",
                 status = 500,
                 detail = $"Failed to retry job: {ex.Message}",
@@ -656,7 +656,7 @@ public class JobsController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Job Not Found",
                     status = 404,
                     detail = $"Job {jobId} not found",
@@ -669,7 +669,7 @@ public class JobsController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Job Not Cancellable",
                     status = 400,
                     detail = $"Job is in {job.Status} status and cannot be cancelled",
@@ -698,7 +698,7 @@ public class JobsController : ControllerBase
                 Log.Warning("[{CorrelationId}] Failed to cancel job {JobId}", correlationId, jobId);
                 return StatusCode(500, new
                 {
-                    type = "https://docs.aura.studio/errors/E500",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                     title = "Cancellation Failed",
                     status = 500,
                     detail = "Job could not be cancelled. It may have already completed or been cancelled.",
@@ -714,7 +714,7 @@ public class JobsController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Cancel Failed",
                 status = 500,
                 detail = $"Failed to cancel job: {ex.Message}",
@@ -783,7 +783,7 @@ public class JobsController : ControllerBase
                 Log.Warning("[{CorrelationId}] Job not found: {JobId}", correlationId, jobId);
                 return NotFound(new 
                 { 
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Job Not Found", 
                     status = 404,
                     detail = $"Job {jobId} not found",
@@ -818,7 +818,7 @@ public class JobsController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Error Retrieving Job Progress",
                 status = 500,
                 detail = $"Failed to retrieve job progress: {ex.Message}",
