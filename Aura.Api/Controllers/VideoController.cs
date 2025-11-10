@@ -573,4 +573,68 @@ public class VideoController : ControllerBase
             _ => Core.Models.Density.Balanced
         };
     }
+
+    /// <summary>
+    /// Cancel a running video generation job
+    /// </summary>
+    /// <param name="id">Job ID</param>
+    /// <returns>Success result</returns>
+    [HttpPost("{id}/cancel")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public IActionResult CancelVideoGeneration(string id)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] POST /api/video/{Id}/cancel", correlationId, id);
+
+            var job = _jobRunner.GetJob(id);
+            if (job == null)
+            {
+                return NotFound(CreateProblemDetails(
+                    "Job Not Found",
+                    $"Video generation job {id} was not found",
+                    StatusCodes.Status404NotFound,
+                    correlationId));
+            }
+
+            if (job.Status == JobStatus.Done || job.Status == JobStatus.Failed || job.Status == JobStatus.Canceled)
+            {
+                return BadRequest(CreateProblemDetails(
+                    "Cannot Cancel Job",
+                    $"Job is already in terminal state: {job.Status}",
+                    StatusCodes.Status400BadRequest,
+                    correlationId));
+            }
+
+            var cancelled = _jobRunner.CancelJob(id);
+            
+            if (!cancelled)
+            {
+                return BadRequest(CreateProblemDetails(
+                    "Cancellation Failed",
+                    "Failed to cancel the video generation job. It may have already completed.",
+                    StatusCodes.Status400BadRequest,
+                    correlationId));
+            }
+
+            _logger.LogInformation("[{CorrelationId}] Job {Id} cancelled successfully", correlationId, id);
+            
+            return Ok(new { message = "Job cancellation requested", jobId = id, correlationId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error cancelling job {Id}", correlationId, id);
+            
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                CreateProblemDetails(
+                    "Cancellation Failed",
+                    "An error occurred while cancelling the video generation job",
+                    StatusCodes.Status500InternalServerError,
+                    correlationId));
+        }
+    }
 }

@@ -121,8 +121,9 @@ export class SseClient {
   private connectionStatus: SseConnectionStatus = 'disconnected';
   private statusChangeHandlers: Array<(state: SseConnectionState) => void> = [];
 
-  constructor(jobId: string) {
-    this.url = apiUrl(`/api/jobs/${jobId}/events`);
+  constructor(jobId: string, endpoint?: string) {
+    // Allow custom endpoint, default to /api/video/{id}/stream for video generation
+    this.url = endpoint ? apiUrl(endpoint) : apiUrl(`/api/video/${jobId}/stream`);
   }
 
   /**
@@ -395,7 +396,9 @@ export class SseClient {
 
 /**
  * Create and manage an SSE client for a job
+ * @param jobId Job identifier
+ * @param endpoint Optional custom endpoint (defaults to video generation endpoint)
  */
-export function createSseClient(jobId: string): SseClient {
-  return new SseClient(jobId);
+export function createSseClient(jobId: string, endpoint?: string): SseClient {
+  return new SseClient(jobId, endpoint);
 }
