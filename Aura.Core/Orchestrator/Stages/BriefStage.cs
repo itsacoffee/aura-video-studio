@@ -55,7 +55,7 @@ public class BriefStage : PipelineStage
                 context.CorrelationId,
                 issues);
             
-            throw new Errors.ValidationException("Brief validation failed", validationResult.Issues);
+            throw new Validation.ValidationException("Brief validation failed", validationResult.Issues);
         }
 
         ReportProgress(progress, 50, "Checking system resources...");

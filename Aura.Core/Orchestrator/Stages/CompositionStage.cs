@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
+using Aura.Core.Models.Timeline;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 

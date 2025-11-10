@@ -404,7 +404,7 @@ public class EnhancedCostTrackingService
     {
         var defaults = new[]
         {
-            new ProviderPricing
+            new Models.CostTracking.ProviderPricing
             {
                 ProviderName = "OpenAI",
                 ProviderType = ProviderType.LLM,
@@ -412,7 +412,7 @@ public class EnhancedCostTrackingService
                 CostPer1KOutputTokens = 0.06m,
                 Notes = "GPT-4 pricing (2024)"
             },
-            new ProviderPricing
+            new Models.CostTracking.ProviderPricing
             {
                 ProviderName = "Anthropic",
                 ProviderType = ProviderType.LLM,
@@ -420,56 +420,56 @@ public class EnhancedCostTrackingService
                 CostPer1KOutputTokens = 0.075m,
                 Notes = "Claude 3 Sonnet pricing (2024)"
             },
-            new ProviderPricing
+            new Models.CostTracking.ProviderPricing
             {
                 ProviderName = "Gemini",
                 ProviderType = ProviderType.LLM,
                 CostPer1KTokens = 0.00025m,
                 Notes = "Gemini Pro pricing (2024)"
             },
-            new ProviderPricing
+            new Models.CostTracking.ProviderPricing
             {
                 ProviderName = "Ollama",
                 ProviderType = ProviderType.LLM,
                 IsFree = true,
                 Notes = "Local/offline - no API costs"
             },
-            new ProviderPricing
+            new Models.CostTracking.ProviderPricing
             {
                 ProviderName = "RuleBased",
                 ProviderType = ProviderType.LLM,
                 IsFree = true,
                 Notes = "Local/offline - no API costs"
             },
-            new ProviderPricing
+            new Models.CostTracking.ProviderPricing
             {
                 ProviderName = "ElevenLabs",
                 ProviderType = ProviderType.TTS,
                 CostPer1KCharacters = 0.30m,
                 Notes = "ElevenLabs standard pricing (2024)"
             },
-            new ProviderPricing
+            new Models.CostTracking.ProviderPricing
             {
                 ProviderName = "PlayHT",
                 ProviderType = ProviderType.TTS,
                 CostPer1KCharacters = 0.20m,
                 Notes = "PlayHT standard pricing (2024)"
             },
-            new ProviderPricing
+            new Models.CostTracking.ProviderPricing
             {
                 ProviderName = "Windows",
                 ProviderType = ProviderType.TTS,
                 IsFree = true,
                 Notes = "Windows SAPI - no API costs"
             },
-            new ProviderPricing
+            new Models.CostTracking.ProviderPricing
             {
                 ProviderName = "Piper",
                 ProviderType = ProviderType.TTS,
                 IsFree = true,
                 Notes = "Local/offline - no API costs"
             },
-            new ProviderPricing
+            new Models.CostTracking.ProviderPricing
             {
                 ProviderName = "Mimic3",
                 ProviderType = ProviderType.TTS,
@@ -567,7 +567,7 @@ public class EnhancedCostTrackingService
             if (File.Exists(_pricingPath))
             {
                 var json = File.ReadAllText(_pricingPath);
-                var pricingList = JsonSerializer.Deserialize<List<ProviderPricing>>(json);
+                var pricingList = JsonSerializer.Deserialize<List<Models.CostTracking.ProviderPricing>>(json);
                 if (pricingList != null)
                 {
                     _providerPricing = pricingList.ToDictionary(p => p.ProviderName);

@@ -48,6 +48,11 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
   </ItemGroup>
 
+  <!-- Windows-specific references for battery monitoring -->
+  <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Update="Dependencies/components.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

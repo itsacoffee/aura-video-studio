@@ -42,10 +42,34 @@ dev-detached: ## Start all services in detached mode
 test: ## Run all tests (unit, integration, E2E)
 	@echo "$(GREEN)Running tests...$(NC)"
 	@echo "$(BLUE)Running .NET tests...$(NC)"
-	dotnet test Aura.Tests/Aura.Tests.csproj --verbosity minimal
+	dotnet test Aura.Tests/Aura.Tests.csproj --configuration Release --verbosity minimal
 	@echo "$(BLUE)Running Web tests...$(NC)"
 	cd Aura.Web && npm run test
 	@echo "$(GREEN)All tests completed!$(NC)"
+
+test-coverage: ## Run all tests with coverage reports
+	@echo "$(GREEN)Running tests with coverage...$(NC)"
+	@./scripts/test-local.sh
+	@echo "$(GREEN)Coverage reports generated!$(NC)"
+	@echo "$(BLUE)View reports:$(NC)"
+	@echo "  - .NET: TestResults/CoverageReport/index.html"
+	@echo "  - Frontend: Aura.Web/coverage/index.html"
+
+test-dotnet: ## Run .NET tests only
+	@echo "$(BLUE)Running .NET tests...$(NC)"
+	@./scripts/test-local.sh --dotnet-only
+
+test-frontend: ## Run frontend tests only
+	@echo "$(BLUE)Running frontend tests...$(NC)"
+	@./scripts/test-local.sh --frontend-only
+
+test-e2e: ## Run E2E tests (Playwright)
+	@echo "$(BLUE)Running E2E tests...$(NC)"
+	@./scripts/test-local.sh --e2e
+
+test-watch: ## Run frontend tests in watch mode
+	@echo "$(BLUE)Starting frontend test watcher...$(NC)"
+	cd Aura.Web && npm run test:watch
 
 clean: ## Stop and remove all containers, volumes, and temporary data
 	@echo "$(YELLOW)Cleaning up development environment...$(NC)"

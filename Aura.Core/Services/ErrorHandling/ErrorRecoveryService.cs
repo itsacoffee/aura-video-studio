@@ -1,5 +1,7 @@
 using Aura.Core.Errors;
+using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
 
 namespace Aura.Core.Services.ErrorHandling;
 
@@ -395,7 +397,7 @@ public class ErrorRecoveryService
 
         return exception switch
         {
-            ArgumentException or ValidationException => ErrorSeverity.Warning,
+            ArgumentException or Aura.Core.Validation.ValidationException => ErrorSeverity.Warning,
             ProviderException { IsTransient: true } => ErrorSeverity.Warning,
             ResourceException { ResourceType: ResourceType.DiskSpace or ResourceType.Memory } => ErrorSeverity.Critical,
             FfmpegException { Category: FfmpegErrorCategory.NotFound } => ErrorSeverity.Critical,

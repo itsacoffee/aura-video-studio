@@ -52,13 +52,15 @@ public class EnhancedResourceMonitor : ResourceMonitor
     {
         try
         {
+#if WINDOWS
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 // Use System.Windows.Forms for Windows
                 var powerStatus = System.Windows.Forms.SystemInformation.PowerStatus;
                 return powerStatus.PowerLineStatus == System.Windows.Forms.PowerLineStatus.Offline;
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+#else
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 // Check /sys/class/power_supply for Linux
                 return CheckLinuxBatteryStatus();
@@ -68,6 +70,7 @@ public class EnhancedResourceMonitor : ResourceMonitor
                 // Use pmset for macOS
                 return CheckMacOSBatteryStatus();
             }
+#endif
         }
         catch (Exception ex)
         {

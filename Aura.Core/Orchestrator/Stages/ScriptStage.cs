@@ -79,7 +79,7 @@ public class ScriptStage : PipelineStage
                         context.CorrelationId,
                         string.Join(", ", allIssues));
                     
-                    throw new Errors.ValidationException("Script quality validation failed", allIssues);
+                    throw new Validation.ValidationException("Script quality validation failed", allIssues);
                 }
 
                 return generatedScript;

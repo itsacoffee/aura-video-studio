@@ -220,7 +220,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             {
                 throw new ProviderException(
                     "LLM",
-                    ProviderType.Llm,
+                    ProviderType.LLM,
                     "Circuit breaker is open",
                     "CIRCUIT_OPEN");
             }
@@ -346,7 +346,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             {
                 throw new ProviderException(
                     "TTS",
-                    ProviderType.Tts,
+                    ProviderType.TTS,
                     "Circuit breaker is open",
                     "CIRCUIT_OPEN");
             }

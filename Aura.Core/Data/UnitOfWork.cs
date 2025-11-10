@@ -14,6 +14,7 @@ public class UnitOfWork : IUnitOfWork
 {
     private readonly AuraDbContext _context;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger<UnitOfWork> _logger;
     private IDbContextTransaction? _transaction;
     private bool _disposed;
 
@@ -32,6 +33,7 @@ public class UnitOfWork : IUnitOfWork
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+        _logger = loggerFactory.CreateLogger<UnitOfWork>();
     }
 
     public ProjectStateRepository ProjectStates =>

@@ -138,11 +138,95 @@ Use built-in profiles to balance cost, quality, and offline use:
 
 ## Testing & CI
 
-- Unit and integration tests for core systems and providers
-- Playwright E2E for critical UI flows
-- CI runs on every PR: .NET build/test, web lint/build/test, E2E, docs build, markdown lint, and link checks
+Aura Video Studio has comprehensive test coverage across all layers:
 
-See the CI workflow in `.github/workflows/ci.yml`.
+### Running Tests Locally
+
+**Quick Start - All Tests:**
+```bash
+# Run all tests with coverage (recommended)
+./scripts/test-local.sh
+
+# Run only .NET tests
+./scripts/test-local.sh --dotnet-only
+
+# Run only frontend tests
+./scripts/test-local.sh --frontend-only
+
+# Run with E2E tests
+./scripts/test-local.sh --e2e
+```
+
+**Individual Test Suites:**
+
+**.NET Tests (Unit & Integration):**
+```bash
+# Run all .NET tests with coverage
+dotnet test Aura.Tests/Aura.Tests.csproj --collect:"XPlat Code Coverage"
+
+# Generate HTML coverage report
+dotnet tool install --global dotnet-reportgenerator-globaltool
+reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" \
+  -targetdir:"TestResults/CoverageReport" \
+  -reporttypes:"Html"
+# Open TestResults/CoverageReport/index.html
+```
+
+**Frontend Tests (Vitest):**
+```bash
+cd Aura.Web
+
+# Run once
+npm test
+
+# Watch mode (auto-rerun on changes)
+npm run test:watch
+
+# With coverage
+npm run test:coverage
+# Open coverage/index.html
+```
+
+**E2E Tests (Playwright):**
+```bash
+cd Aura.Web
+
+# Install browsers (first time only)
+npx playwright install --with-deps chromium
+
+# Run tests
+npm run playwright
+
+# Interactive mode (debug tests)
+npm run playwright:ui
+
+# View report
+npx playwright show-report
+```
+
+### Continuous Integration
+
+CI runs automatically on every pull request and push to main/develop branches:
+
+- **`.github/workflows/ci-unified.yml`** - Main CI pipeline
+  - .NET Build & Test (Linux-compatible projects)
+  - Frontend Build, Lint & Test
+  - E2E Tests (Playwright with full browser automation)
+  - Coverage collection and artifact upload
+
+**CI Artifacts:**
+- Test results (TRX, JUnit formats)
+- Coverage reports (Cobertura XML + HTML)
+- Playwright HTML report with traces and videos
+- Built frontend assets
+
+**CI Features:**
+- NuGet package caching for faster builds
+- Parallel test execution where safe
+- Continue-on-error for non-critical failures
+- Comprehensive summary in GitHub Actions UI
+
+See the [CI Platform Requirements](CI_PLATFORM_REQUIREMENTS.md) for details on cross-platform builds.
 
 ## Roadmap highlights
 
