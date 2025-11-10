@@ -157,72 +157,62 @@ public class ExceptionHandlingMiddleware
             // Operation cancelled - 499 (Client Closed Request - non-standard but widely used)
             OperationCanceledException => (
                 (HttpStatusCode)499,
-                new
-                {
-                    errorCode = "E998",
-                    message = "Operation was cancelled",
-                    technicalDetails = "The operation was cancelled, typically by the user",
-                    suggestedActions = new[] { "Retry the operation if it was cancelled unintentionally" },
-                    correlationId,
-                    timestamp = DateTime.UtcNow
-                }),
+                CreateStandardErrorResponse(
+                    "E998",
+                    "Operation was cancelled",
+                    "The operation was cancelled, typically by the user",
+                    new[] { "Retry the operation if it was cancelled unintentionally" },
+                    correlationId
+                )),
 
             // Argument exceptions - 400 Bad Request
             ArgumentException argEx => (
                 HttpStatusCode.BadRequest,
-                new
-                {
-                    errorCode = "E002",
-                    message = "Invalid input provided",
-                    technicalDetails = argEx.Message,
-                    suggestedActions = new[] { "Review the request parameters and try again" },
-                    correlationId,
-                    timestamp = DateTime.UtcNow
-                }),
+                CreateStandardErrorResponse(
+                    "E002",
+                    "Invalid input provided",
+                    argEx.Message,
+                    new[] { "Review the request parameters and try again" },
+                    correlationId
+                )),
 
             // Not implemented - 501 Not Implemented
             NotImplementedException => (
                 HttpStatusCode.NotImplemented,
-                new
-                {
-                    errorCode = "E997",
-                    message = "This feature is not yet implemented",
-                    technicalDetails = exception.Message,
-                    suggestedActions = new[] { "Check for updates or use an alternative feature" },
-                    correlationId,
-                    timestamp = DateTime.UtcNow
-                }),
+                CreateStandardErrorResponse(
+                    "E997",
+                    "This feature is not yet implemented",
+                    exception.Message,
+                    new[] { "Check for updates or use an alternative feature" },
+                    correlationId
+                )),
 
             // Unauthorized access - 403 Forbidden
             UnauthorizedAccessException => (
                 HttpStatusCode.Forbidden,
-                new
-                {
-                    errorCode = "E003",
-                    message = "Access denied",
-                    technicalDetails = exception.Message,
-                    suggestedActions = new[] { "Check permissions and try again", "Contact an administrator if needed" },
-                    correlationId,
-                    timestamp = DateTime.UtcNow
-                }),
+                CreateStandardErrorResponse(
+                    "E003",
+                    "Access denied",
+                    exception.Message,
+                    new[] { "Check permissions and try again", "Contact an administrator if needed" },
+                    correlationId
+                )),
 
             // Default - 500 Internal Server Error
             _ => (
                 HttpStatusCode.InternalServerError,
-                new
-                {
-                    errorCode = "E999",
-                    message = "An unexpected error occurred",
-                    technicalDetails = exception.Message,
-                    suggestedActions = new[]
+                CreateStandardErrorResponse(
+                    "E999",
+                    "An unexpected error occurred",
+                    exception.Message,
+                    new[]
                     {
                         "Try the operation again",
                         "Check application logs for more details",
                         "Contact support if the issue persists"
                     },
-                    correlationId,
-                    timestamp = DateTime.UtcNow
-                })
+                    correlationId
+                ))
         };
     }
 
@@ -290,6 +280,41 @@ public class ExceptionHandlingMiddleware
 
         // Server errors (5xx) log as errors
         return LogLevel.Error;
+    }
+
+    /// <summary>
+    /// Creates a standard error response object with documentation link
+    /// </summary>
+    private static object CreateStandardErrorResponse(
+        string errorCode,
+        string message,
+        string technicalDetails,
+        string[] suggestedActions,
+        string correlationId)
+    {
+        var response = new Dictionary<string, object>
+        {
+            ["errorCode"] = errorCode,
+            ["message"] = message,
+            ["technicalDetails"] = technicalDetails,
+            ["suggestedActions"] = suggestedActions,
+            ["correlationId"] = correlationId,
+            ["timestamp"] = DateTime.UtcNow
+        };
+
+        // Add "Learn More" link
+        var documentation = ErrorDocumentation.GetDocumentation(errorCode);
+        if (documentation != null)
+        {
+            response["learnMoreUrl"] = documentation.Url;
+            response["errorTitle"] = documentation.Title;
+        }
+        else
+        {
+            response["learnMoreUrl"] = ErrorDocumentation.GetFallbackUrl();
+        }
+
+        return response;
     }
 }
 
