@@ -7,6 +7,7 @@ using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
 using Polly.Timeout;
+using static Aura.Core.Errors.ProviderException;
 
 namespace Aura.Core.Policies;
 

@@ -1,5 +1,6 @@
 using Aura.Api.Filters;
 using Aura.Api.Helpers;
+using Aura.Api.HostedServices;
 using Aura.Api.Middleware;
 using Aura.Api.Serialization;
 using Aura.Api.Startup;
@@ -1264,6 +1265,9 @@ builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.DiagnosticReportGen
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.DiagnosticBundleService>();
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.FailureAnalysisService>();
 
+// Register resilience services for error recovery and monitoring
+builder.Services.AddResilienceServices(builder.Configuration);
+
 // Register Startup Initialization Service - runs first to ensure critical services are ready
 builder.Services.AddHostedService<Aura.Api.HostedServices.StartupInitializationService>();
 
@@ -1278,6 +1282,9 @@ builder.Services.AddHostedService<Aura.Api.HostedServices.OrphanedFileCleanupSer
 
 // Register ActionCleanupService for cleaning up expired actions
 builder.Services.AddHostedService<Aura.Api.HostedServices.ActionCleanupService>();
+
+// Register resilience monitoring service
+builder.Services.AddHostedService<ResilienceMonitoringService>();
 
 // Register DependencyManager
 builder.Services.AddHttpClient<Aura.Core.Dependencies.DependencyManager>();
