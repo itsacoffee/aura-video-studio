@@ -1,6 +1,6 @@
 /**
  * Templates Browser Component
- * 
+ *
  * Allows users to browse and select video templates during first-run setup
  */
 
@@ -16,11 +16,7 @@ import {
   Dropdown,
   Option,
 } from '@fluentui/react-components';
-import {
-  Video24Regular,
-  Play24Regular,
-  Info24Regular,
-} from '@fluentui/react-icons';
+import { Video24Regular, Play24Regular, Info24Regular } from '@fluentui/react-icons';
 import { useState, useMemo } from 'react';
 import type { VideoTemplate } from '../../services/templatesAndSamplesService';
 import {
@@ -89,8 +85,8 @@ const useStyles = makeStyles({
   },
   selectedTemplateCard: {
     padding: tokens.spacingVerticalL,
-    backgroundColor: tokens.colorPaletteBlueBackground1,
-    borderLeft: `4px solid ${tokens.colorPaletteBlueBorder1}`,
+    backgroundColor: tokens.colorPaletteBlueBackground2,
+    borderLeft: `4px solid ${tokens.colorPaletteRedBorder1}`,
   },
 });
 
@@ -195,17 +191,37 @@ export function TemplatesBrowser({
 
       {selectedTemplate && (
         <Card className={styles.selectedTemplateCard}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: tokens.spacingHorizontalM }}>
-            <Info24Regular style={{ width: '24px', height: '24px', color: tokens.colorPaletteBlueForeground1, flexShrink: 0 }} />
+          <div
+            style={{ display: 'flex', alignItems: 'flex-start', gap: tokens.spacingHorizontalM }}
+          >
+            <Info24Regular
+              style={{
+                width: '24px',
+                height: '24px',
+                color: tokens.colorPaletteBlueForeground2,
+                flexShrink: 0,
+              }}
+            />
             <div style={{ flex: 1 }}>
-              <Text weight="semibold" size={400}>Selected Template: {selectedTemplate.name}</Text>
+              <Text weight="semibold" size={400}>
+                Selected Template: {selectedTemplate.name}
+              </Text>
               <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalXS }}>
                 {selectedTemplate.description}
               </Text>
               <div style={{ marginTop: tokens.spacingVerticalM }}>
-                <Text size={200} weight="semibold">Example Prompt:</Text>
-                <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalXS, fontStyle: 'italic' }}>
-                  "{selectedTemplate.promptExample}"
+                <Text size={200} weight="semibold">
+                  Example Prompt:
+                </Text>
+                <Text
+                  size={200}
+                  style={{
+                    display: 'block',
+                    marginTop: tokens.spacingVerticalXS,
+                    fontStyle: 'italic',
+                  }}
+                >
+                  &quot;{selectedTemplate.promptExample}&quot;
                 </Text>
               </div>
             </div>
@@ -230,8 +246,14 @@ export function TemplatesBrowser({
             <div className={styles.templateInfo}>
               <Title3>{template.name}</Title3>
               <Text size={300}>{template.description}</Text>
-              
-              <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, marginTop: tokens.spacingVerticalS }}>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: tokens.spacingHorizontalM,
+                  marginTop: tokens.spacingVerticalS,
+                }}
+              >
                 <Text size={200}>
                   <strong>Duration:</strong> {formatDuration(template.duration)}
                 </Text>
@@ -250,11 +272,15 @@ export function TemplatesBrowser({
             </div>
 
             <div className={styles.templatePromptExample}>
-              <Text size={200} weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}>
+              <Text
+                size={200}
+                weight="semibold"
+                style={{ display: 'block', marginBottom: tokens.spacingVerticalXS }}
+              >
                 Example:
               </Text>
               <Text size={200} style={{ fontStyle: 'italic' }}>
-                "{template.promptExample}"
+                &quot;{template.promptExample}&quot;
               </Text>
             </div>
 

@@ -1,6 +1,6 @@
 /**
  * System Requirements Check Component
- * 
+ *
  * Displays system requirements checking during first-run setup
  */
 
@@ -19,9 +19,12 @@ import {
   Dismiss24Regular,
   Info24Regular,
 } from '@fluentui/react-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { SystemRequirements } from '../../services/systemRequirementsService';
-import { checkSystemRequirements, getSystemRecommendations } from '../../services/systemRequirementsService';
+import {
+  checkSystemRequirements,
+  getSystemRecommendations,
+} from '../../services/systemRequirementsService';
 
 const useStyles = makeStyles({
   container: {
@@ -63,8 +66,8 @@ const useStyles = makeStyles({
   },
   recommendationsCard: {
     padding: tokens.spacingVerticalL,
-    backgroundColor: tokens.colorPaletteBlueBackground1,
-    borderLeft: `4px solid ${tokens.colorPaletteBlueBorder1}`,
+    backgroundColor: tokens.colorPaletteBlueBackground2,
+    borderLeft: `4px solid ${tokens.colorPaletteRedBorder1}`,
   },
   loadingContainer: {
     display: 'flex',
@@ -85,14 +88,10 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    performCheck();
-  }, []);
-
-  const performCheck = async () => {
+  const performCheck = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await checkSystemRequirements();
       setRequirements(result);
@@ -102,16 +101,35 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
     } finally {
       setLoading(false);
     }
-  };
+  }, [onCheckComplete]);
+
+  useEffect(() => {
+    performCheck();
+  }, [performCheck]);
 
   const getStatusIcon = (status: 'pass' | 'warning' | 'fail') => {
     switch (status) {
       case 'pass':
-        return <Checkmark24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteGreenForeground1 }} />;
+        return (
+          <Checkmark24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorPaletteGreenForeground1 }}
+          />
+        );
       case 'warning':
-        return <Warning24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteYellowForeground1 }} />;
+        return (
+          <Warning24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorPaletteYellowForeground1 }}
+          />
+        );
       case 'fail':
-        return <Dismiss24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteRedForeground1 }} />;
+        return (
+          <Dismiss24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorPaletteRedForeground1 }}
+          />
+        );
     }
   };
 
@@ -127,11 +145,18 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
     return (
       <Card className={styles.requirementCard}>
         <div className={styles.requirementHeader}>
-          <Dismiss24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteRedForeground1 }} />
+          <Dismiss24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorPaletteRedForeground1 }}
+          />
           <Title3>Error Checking Requirements</Title3>
         </div>
         <Text>{error}</Text>
-        <Button appearance="secondary" onClick={performCheck} style={{ marginTop: tokens.spacingVerticalM }}>
+        <Button
+          appearance="secondary"
+          onClick={performCheck}
+          style={{ marginTop: tokens.spacingVerticalM }}
+        >
           Retry
         </Button>
       </Card>
@@ -153,9 +178,12 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
           <Title3>System Requirements Check</Title3>
         </div>
         <Text>
-          {requirements.overall === 'pass' && 'Your system meets all requirements for video generation.'}
-          {requirements.overall === 'warning' && 'Your system meets minimum requirements, but there are some recommendations below.'}
-          {requirements.overall === 'fail' && 'Your system does not meet minimum requirements. Please review the details below.'}
+          {requirements.overall === 'pass' &&
+            'Your system meets all requirements for video generation.'}
+          {requirements.overall === 'warning' &&
+            'Your system meets minimum requirements, but there are some recommendations below.'}
+          {requirements.overall === 'fail' &&
+            'Your system does not meet minimum requirements. Please review the details below.'}
         </Text>
       </Card>
 
@@ -167,7 +195,8 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
         </div>
         <div className={styles.requirementDetails}>
           <Text>
-            <strong>Available:</strong> {requirements.diskSpace.available.toFixed(2)} GB / {requirements.diskSpace.total.toFixed(2)} GB
+            <strong>Available:</strong> {requirements.diskSpace.available.toFixed(2)} GB /{' '}
+            {requirements.diskSpace.total.toFixed(2)} GB
           </Text>
           <Text>
             <strong>Free:</strong> {requirements.diskSpace.percentage.toFixed(1)}%
@@ -176,7 +205,14 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
             <ul className={styles.warningList}>
               {requirements.diskSpace.warnings.map((warning, index) => (
                 <li key={index} className={styles.warningItem}>
-                  <Warning24Regular style={{ width: '16px', height: '16px', color: tokens.colorPaletteYellowForeground1, flexShrink: 0 }} />
+                  <Warning24Regular
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      color: tokens.colorPaletteYellowForeground1,
+                      flexShrink: 0,
+                    }}
+                  />
                   <Text size={200}>{warning}</Text>
                 </li>
               ))}
@@ -203,10 +239,12 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
                 </Text>
               )}
               <Text>
-                <strong>Hardware Acceleration:</strong> {requirements.gpu.capabilities.hardwareAcceleration ? 'Yes' : 'No'}
+                <strong>Hardware Acceleration:</strong>{' '}
+                {requirements.gpu.capabilities.hardwareAcceleration ? 'Yes' : 'No'}
               </Text>
               <Text>
-                <strong>Video Encoding:</strong> {requirements.gpu.capabilities.videoEncoding ? 'Yes' : 'No'}
+                <strong>Video Encoding:</strong>{' '}
+                {requirements.gpu.capabilities.videoEncoding ? 'Yes' : 'No'}
               </Text>
             </>
           ) : (
@@ -216,7 +254,14 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
             <ul className={styles.warningList} style={{ marginTop: tokens.spacingVerticalM }}>
               {requirements.gpu.recommendations.map((rec, index) => (
                 <li key={index} className={styles.warningItem}>
-                  <Info24Regular style={{ width: '16px', height: '16px', color: tokens.colorPaletteBlueForeground1, flexShrink: 0 }} />
+                  <Info24Regular
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      color: tokens.colorPaletteBlueForeground2,
+                      flexShrink: 0,
+                    }}
+                  />
                   <Text size={200}>{rec}</Text>
                 </li>
               ))}
@@ -236,13 +281,21 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
             <strong>Total:</strong> {requirements.memory.total.toFixed(2)} GB
           </Text>
           <Text>
-            <strong>Available:</strong> {requirements.memory.available.toFixed(2)} GB ({requirements.memory.percentage.toFixed(1)}%)
+            <strong>Available:</strong> {requirements.memory.available.toFixed(2)} GB (
+            {requirements.memory.percentage.toFixed(1)}%)
           </Text>
           {requirements.memory.warnings.length > 0 && (
             <ul className={styles.warningList}>
               {requirements.memory.warnings.map((warning, index) => (
                 <li key={index} className={styles.warningItem}>
-                  <Warning24Regular style={{ width: '16px', height: '16px', color: tokens.colorPaletteYellowForeground1, flexShrink: 0 }} />
+                  <Warning24Regular
+                    style={{
+                      width: '16px',
+                      height: '16px',
+                      color: tokens.colorPaletteYellowForeground1,
+                      flexShrink: 0,
+                    }}
+                  />
                   <Text size={200}>{warning}</Text>
                 </li>
               ))}
@@ -269,7 +322,14 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
           </Text>
           {!requirements.os.compatible && (
             <div className={styles.warningItem}>
-              <Warning24Regular style={{ width: '16px', height: '16px', color: tokens.colorPaletteRedForeground1, flexShrink: 0 }} />
+              <Warning24Regular
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  color: tokens.colorPaletteRedForeground1,
+                  flexShrink: 0,
+                }}
+              />
               <Text size={200}>Your operating system is not officially supported</Text>
             </div>
           )}
@@ -280,13 +340,23 @@ export function SystemRequirementsCheck({ onCheckComplete }: SystemRequirementsC
       {recommendations.length > 0 && (
         <Card className={styles.recommendationsCard}>
           <div className={styles.requirementHeader}>
-            <Info24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteBlueForeground1 }} />
+            <Info24Regular
+              className={styles.statusIcon}
+              style={{ color: tokens.colorPaletteBlueForeground2 }}
+            />
             <Title3>Recommendations</Title3>
           </div>
           <ul className={styles.warningList}>
             {recommendations.map((rec, index) => (
               <li key={index} className={styles.warningItem}>
-                <Info24Regular style={{ width: '16px', height: '16px', color: tokens.colorPaletteBlueForeground1, flexShrink: 0 }} />
+                <Info24Regular
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    color: tokens.colorPaletteBlueForeground2,
+                    flexShrink: 0,
+                  }}
+                />
                 <Text size={200}>{rec}</Text>
               </li>
             ))}

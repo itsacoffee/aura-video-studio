@@ -1,6 +1,6 @@
 /**
  * Ollama Setup Step Component
- * 
+ *
  * Guides users through setting up Ollama as a local LLM provider
  */
 
@@ -12,7 +12,6 @@ import {
   Title3,
   Button,
   Spinner,
-  Link,
 } from '@fluentui/react-components';
 import {
   Checkmark24Regular,
@@ -21,8 +20,8 @@ import {
   Play24Regular,
   Info24Regular,
 } from '@fluentui/react-icons';
-import { useEffect, useState } from 'react';
-import type { OllamaSetupStatus, OllamaModelRecommendation } from '../../services/ollamaSetupService';
+import { useEffect, useState, useCallback } from 'react';
+import type { OllamaSetupStatus } from '../../services/ollamaSetupService';
 import {
   checkOllamaStatus,
   getInstallGuide,
@@ -87,8 +86,8 @@ const useStyles = makeStyles({
   },
   infoCard: {
     padding: tokens.spacingVerticalL,
-    backgroundColor: tokens.colorPaletteBlueBackground1,
-    borderLeft: `4px solid ${tokens.colorPaletteBlueBorder1}`,
+    backgroundColor: tokens.colorPaletteBlueBackground2,
+    borderLeft: `4px solid ${tokens.colorPaletteRedBorder1}`,
   },
 });
 
@@ -98,7 +97,11 @@ export interface OllamaSetupStepProps {
   onSetupComplete?: () => void;
 }
 
-export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupComplete }: OllamaSetupStepProps) {
+export function OllamaSetupStep({
+  availableMemoryGB,
+  availableDiskGB,
+  onSetupComplete,
+}: OllamaSetupStepProps) {
   const styles = useStyles();
   const { showSuccessToast, showFailureToast } = useNotifications();
   const [status, setStatus] = useState<OllamaSetupStatus | null>(null);
@@ -106,16 +109,12 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
   const [starting, setStarting] = useState(false);
   const installGuide = getInstallGuide();
 
-  useEffect(() => {
-    checkStatus();
-  }, []);
-
-  const checkStatus = async () => {
+  const checkStatus = useCallback(async () => {
     setLoading(true);
     try {
       const result = await checkOllamaStatus();
       setStatus(result);
-      
+
       if (result.installed && result.running && result.modelsInstalled.length > 0) {
         onSetupComplete?.();
       }
@@ -124,13 +123,17 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
     } finally {
       setLoading(false);
     }
-  };
+  }, [onSetupComplete]);
+
+  useEffect(() => {
+    checkStatus();
+  }, [checkStatus]);
 
   const handleStartOllama = async () => {
     setStarting(true);
     try {
       const result = await startOllama();
-      
+
       if (result.success) {
         showSuccessToast({
           title: 'Ollama Started',
@@ -159,7 +162,9 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXL }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'center', padding: tokens.spacingVerticalXXL }}
+      >
         <Spinner size="large" label="Checking Ollama installation..." />
       </div>
     );
@@ -169,7 +174,11 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
     return (
       <Card className={styles.statusCard}>
         <Text>Failed to check Ollama status. Please try again.</Text>
-        <Button appearance="secondary" onClick={checkStatus} style={{ marginTop: tokens.spacingVerticalM }}>
+        <Button
+          appearance="secondary"
+          onClick={checkStatus}
+          style={{ marginTop: tokens.spacingVerticalM }}
+        >
           Retry
         </Button>
       </Card>
@@ -182,11 +191,15 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
       <div className={styles.container}>
         <Card className={styles.statusCard}>
           <div className={styles.statusHeader}>
-            <Checkmark24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteGreenForeground1 }} />
+            <Checkmark24Regular
+              className={styles.statusIcon}
+              style={{ color: tokens.colorPaletteGreenForeground1 }}
+            />
             <Title3>Ollama Ready!</Title3>
           </div>
           <Text>
-            Ollama is installed, running, and has {status.modelsInstalled.length} model(s) installed.
+            Ollama is installed, running, and has {status.modelsInstalled.length} model(s)
+            installed.
           </Text>
           <div style={{ marginTop: tokens.spacingVerticalM }}>
             <Text weight="semibold">Installed Models:</Text>
@@ -209,15 +222,19 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
       <div className={styles.container}>
         <Card className={styles.statusCard}>
           <div className={styles.statusHeader}>
-            <Warning24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteYellowForeground1 }} />
+            <Warning24Regular
+              className={styles.statusIcon}
+              style={{ color: tokens.colorPaletteYellowForeground1 }}
+            />
             <Title3>Ollama Installed but Not Running</Title3>
           </div>
           <Text>
-            Ollama is installed at <code>{status.installationPath}</code> but is not currently running.
+            Ollama is installed at <code>{status.installationPath}</code> but is not currently
+            running.
           </Text>
           <div className={styles.actions}>
-            <Button 
-              appearance="primary" 
+            <Button
+              appearance="primary"
               icon={<Play24Regular />}
               onClick={handleStartOllama}
               disabled={starting}
@@ -233,11 +250,15 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
         {status.modelsInstalled.length === 0 && (
           <Card className={styles.infoCard}>
             <div className={styles.statusHeader}>
-              <Info24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteBlueForeground1 }} />
+              <Info24Regular
+                className={styles.statusIcon}
+                style={{ color: tokens.colorPaletteBlueForeground2 }}
+              />
               <Title3>No Models Installed</Title3>
             </div>
             <Text>
-              After starting Ollama, you'll need to download at least one model. Recommended models will be shown once Ollama is running.
+              After starting Ollama, you&apos;ll need to download at least one model. Recommended
+              models will be shown once Ollama is running.
             </Text>
           </Card>
         )}
@@ -252,23 +273,30 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
     <div className={styles.container}>
       <Card className={styles.statusCard}>
         <div className={styles.statusHeader}>
-          <Info24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteBlueForeground1 }} />
+          <Info24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorPaletteBlueForeground2 }}
+          />
           <Title3>Ollama Not Installed</Title3>
         </div>
         <Text>
-          Ollama is a free, open-source tool that runs large language models locally on your computer. 
-          It provides AI capabilities without requiring API keys or internet connectivity.
+          Ollama is a free, open-source tool that runs large language models locally on your
+          computer. It provides AI capabilities without requiring API keys or internet connectivity.
         </Text>
       </Card>
 
       <Card className={styles.statusCard}>
-        <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Installation Guide for {installGuide.platform}</Title3>
+        <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
+          Installation Guide for {installGuide.platform}
+        </Title3>
         <div className={styles.installGuide}>
           <Text>
             <strong>Estimated time:</strong> {installGuide.estimatedTime}
           </Text>
-          
-          <Text weight="semibold" style={{ marginTop: tokens.spacingVerticalM }}>Steps:</Text>
+
+          <Text weight="semibold" style={{ marginTop: tokens.spacingVerticalM }}>
+            Steps:
+          </Text>
           <ol className={styles.stepsList}>
             {installGuide.steps.map((step, index) => (
               <li key={index}>
@@ -278,15 +306,15 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
           </ol>
 
           <div className={styles.actions}>
-            <Button 
-              appearance="primary" 
+            <Button
+              appearance="primary"
               icon={<ArrowDownload24Regular />}
               onClick={handleOpenDownloadPage}
             >
               Download Ollama
             </Button>
             <Button appearance="secondary" onClick={checkStatus}>
-              I've Installed Ollama
+              I&apos;ve Installed Ollama
             </Button>
           </div>
         </div>
@@ -294,10 +322,12 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
 
       {recommendedModels.length > 0 && (
         <Card className={styles.infoCard}>
-          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Recommended Models for Your System</Title3>
+          <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>
+            Recommended Models for Your System
+          </Title3>
           <Text style={{ marginBottom: tokens.spacingVerticalM }}>
-            Based on your available memory ({availableMemoryGB.toFixed(1)} GB) and disk space ({availableDiskGB.toFixed(1)} GB), 
-            here are the models we recommend:
+            Based on your available memory ({availableMemoryGB.toFixed(1)} GB) and disk space (
+            {availableDiskGB.toFixed(1)} GB), here are the models we recommend:
           </Text>
           <div className={styles.modelsList}>
             {recommendedModels.slice(0, 3).map((model) => (
@@ -308,7 +338,11 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
                     <Text size={200}>{model.size}</Text>
                   </div>
                   {model.recommended && (
-                    <Text size={200} weight="semibold" style={{ color: tokens.colorPaletteGreenForeground1 }}>
+                    <Text
+                      size={200}
+                      weight="semibold"
+                      style={{ color: tokens.colorPaletteGreenForeground1 }}
+                    >
                       Recommended
                     </Text>
                   )}
@@ -318,21 +352,41 @@ export function OllamaSetupStep({ availableMemoryGB, availableDiskGB, onSetupCom
             ))}
           </div>
           <Text size={200} style={{ marginTop: tokens.spacingVerticalM }}>
-            You can download models after installing Ollama using the command: <code>ollama pull &lt;model-name&gt;</code>
+            You can download models after installing Ollama using the command:{' '}
+            <code>ollama pull &lt;model-name&gt;</code>
           </Text>
         </Card>
       )}
 
       <Card className={styles.infoCard}>
         <div className={styles.statusHeader}>
-          <Info24Regular className={styles.statusIcon} style={{ color: tokens.colorPaletteBlueForeground1 }} />
+          <Info24Regular
+            className={styles.statusIcon}
+            style={{ color: tokens.colorPaletteBlueForeground2 }}
+          />
           <Title3>Why Use Ollama?</Title3>
         </div>
         <ul>
-          <li><Text>✅ <strong>Free and Open Source</strong> - No API keys or subscription costs</Text></li>
-          <li><Text>✅ <strong>Privacy</strong> - All processing happens locally on your machine</Text></li>
-          <li><Text>✅ <strong>No Internet Required</strong> - Works offline once models are downloaded</Text></li>
-          <li><Text>✅ <strong>Multiple Models</strong> - Choose from dozens of open-source models</Text></li>
+          <li>
+            <Text>
+              ✅ <strong>Free and Open Source</strong> - No API keys or subscription costs
+            </Text>
+          </li>
+          <li>
+            <Text>
+              ✅ <strong>Privacy</strong> - All processing happens locally on your machine
+            </Text>
+          </li>
+          <li>
+            <Text>
+              ✅ <strong>No Internet Required</strong> - Works offline once models are downloaded
+            </Text>
+          </li>
+          <li>
+            <Text>
+              ✅ <strong>Multiple Models</strong> - Choose from dozens of open-source models
+            </Text>
+          </li>
         </ul>
       </Card>
     </div>

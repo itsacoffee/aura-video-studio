@@ -42,17 +42,13 @@ export function renderHookWithProviders<Result, Props>(
   const testQueryClient = queryClient ?? createTestQueryClient();
 
   function Wrapper({ children }: { children: ReactNode }) {
-    let content = children;
-
+    const fluentContent = <FluentProvider theme={theme}>{children}</FluentProvider>;
+    
     if (withQueryClient) {
-      content = (
-        <QueryClientProvider client={testQueryClient}>
-          {content}
-        </QueryClientProvider>
-      );
+      return <QueryClientProvider client={testQueryClient}>{fluentContent}</QueryClientProvider>;
     }
 
-    return <FluentProvider theme={theme}>{content}</FluentProvider>;
+    return fluentContent;
   }
 
   return renderHook(hook, {

@@ -1,6 +1,6 @@
 /**
  * Service for Ollama detection, installation guidance, and setup
- * 
+ *
  * This service helps users set up Ollama as a local LLM provider during
  * the first-run wizard.
  */
@@ -38,7 +38,7 @@ export interface OllamaInstallGuide {
 export async function checkOllamaStatus(): Promise<OllamaSetupStatus> {
   try {
     const status = await ollamaClient.getStatus();
-    
+
     // If we get a response, Ollama is installed
     const modelsResponse = await ollamaClient.getModels().catch(() => ({ models: [] }));
     const installedModels = modelsResponse.models.map((m) => m.name);
@@ -115,7 +115,7 @@ export function getRecommendedModels(): OllamaModelRecommendation[] {
  */
 export function getInstallGuide(): OllamaInstallGuide {
   const platform = navigator.platform.toLowerCase();
-  
+
   if (platform.includes('win')) {
     return {
       platform: 'Windows',
@@ -193,7 +193,7 @@ export async function pullModel(modelName: string): Promise<{ success: boolean; 
       throw new Error(`Failed to pull model: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    await response.json();
     return {
       success: true,
       message: `Model ${modelName} pulled successfully`,
@@ -213,7 +213,7 @@ export function getEstimatedDownloadTime(sizeBytes: number, speedMbps = 50): str
   // Convert to megabits
   const sizeMb = (sizeBytes * 8) / (1024 * 1024);
   const timeSeconds = sizeMb / speedMbps;
-  
+
   if (timeSeconds < 60) {
     return `${Math.ceil(timeSeconds)} seconds`;
   } else if (timeSeconds < 3600) {
@@ -228,16 +228,19 @@ export function getEstimatedDownloadTime(sizeBytes: number, speedMbps = 50): str
  */
 export function canRunModel(model: OllamaModelRecommendation, availableMemoryGB: number): boolean {
   // Rule of thumb: Need 1.2x model size in RAM
-  const requiredGB = model.sizeBytes / (1024 * 1024 * 1024) * 1.2;
+  const requiredGB = (model.sizeBytes / (1024 * 1024 * 1024)) * 1.2;
   return availableMemoryGB >= requiredGB;
 }
 
 /**
  * Get model recommendations based on system specs
  */
-export function getModelRecommendationsForSystem(availableMemoryGB: number, availableDiskGB: number): OllamaModelRecommendation[] {
+export function getModelRecommendationsForSystem(
+  availableMemoryGB: number,
+  availableDiskGB: number
+): OllamaModelRecommendation[] {
   const allModels = getRecommendedModels();
-  
+
   return allModels
     .filter((model) => {
       const modelSizeGB = model.sizeBytes / (1024 * 1024 * 1024);
