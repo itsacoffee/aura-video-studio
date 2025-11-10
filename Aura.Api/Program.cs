@@ -176,14 +176,33 @@ builder.Services.AddHealthChecks()
     .AddCheck<Aura.Api.HealthChecks.DiskSpaceHealthCheck>("DiskSpace")
     .AddCheck<Aura.Api.HealthChecks.ProviderHealthCheck>("Providers");
 
-// Configure database with WAL mode for better concurrency
+// Configure database with WAL mode for better concurrency and performance optimizations
 const string MigrationsAssembly = "Aura.Api";
 var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
 builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
 {
-    var connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;";
+    // Optimized SQLite connection string with performance tuning
+    var connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;" +
+        "Journal Mode=WAL;" +              // Write-Ahead Logging for better concurrency
+        "Synchronous=NORMAL;" +            // Faster writes with good reliability
+        "Page Size=4096;" +                // Optimal page size for modern systems
+        "Cache Size=-64000;" +             // 64MB cache (negative = KB)
+        "Temp Store=MEMORY;" +             // Store temp tables in memory
+        "Locking Mode=NORMAL;" +           // Allow multiple connections
+        "Foreign Keys=True;";              // Enforce FK constraints
+    
     options.UseSqlite(connectionString, 
         sqliteOptions => sqliteOptions.MigrationsAssembly(MigrationsAssembly));
+    
+    // Enable query tracking only when needed
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTrackingWithIdentityResolution);
+    
+    // Enable compiled models for better performance
+    if (!builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging(false);
+        options.EnableDetailedErrors(false);
+    }
 });
 
 // Register ProjectStateRepository for state persistence
