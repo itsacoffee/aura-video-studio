@@ -10,6 +10,7 @@ import { ResultsTray } from './ResultsTray';
 import { Sidebar } from './Sidebar';
 import { SystemStatusIndicator } from './SystemStatus';
 import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
+import { SkipLinks } from './Accessibility/SkipLinks';
 
 const useStyles = makeStyles({
   container: {
@@ -118,6 +119,9 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
 
   return (
     <div className={styles.container} ref={swipeRef as React.RefObject<HTMLDivElement>}>
+      {/* Skip links for accessibility */}
+      <SkipLinks />
+
       {/* Mobile sidebar overlay */}
       {isMobileSidebarOpen && (
         <div
@@ -134,19 +138,19 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
         />
       )}
 
-      {/* Sidebar */}
-      <div className={isMobileSidebarOpen ? styles.sidebarMobileOpen : undefined}>
+      {/* Sidebar navigation */}
+      <nav id="main-navigation" aria-label="Main navigation" className={isMobileSidebarOpen ? styles.sidebarMobileOpen : undefined}>
         <Sidebar
           isDarkMode={isDarkMode}
           onToggleTheme={toggleTheme}
           isMobileOpen={isMobileSidebarOpen}
           onMobileClose={() => setIsMobileSidebarOpen(false)}
         />
-      </div>
+      </nav>
 
       <div className={styles.mainContainer}>
         {showBreadcrumbs && <Breadcrumbs statusBadge={statusBadge} />}
-        <div className={styles.topBar}>
+        <div className={styles.topBar} role="banner" aria-label="Top bar">
           <UndoRedoButtons />
           <div className={styles.topBarActions}>
             <SystemStatusIndicator />
@@ -154,7 +158,9 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
             <ResultsTray />
           </div>
         </div>
-        <main className={styles.content}>{children}</main>
+        <main id="main-content" className={styles.content} tabIndex={-1} aria-label="Main content">
+          {children}
+        </main>
       </div>
 
       {/* Mobile-specific components */}

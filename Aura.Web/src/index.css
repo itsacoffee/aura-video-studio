@@ -253,6 +253,92 @@ button {
   outline-offset: 2px;
 }
 
+/* Enhanced focus indicators for accessibility */
+.enhanced-focus *:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgb(14 165 233 / 20%);
+}
+
+/* High contrast mode */
+.high-contrast {
+  --color-primary: #0078d4;
+  --color-secondary: #9b51e0;
+  --color-success: #0f8e25;
+  --color-warning: #f59e0b;
+  --color-error: #d13438;
+  --color-text-primary: #000;
+  --color-text-secondary: #323130;
+  --color-border: #000;
+}
+
+.dark.high-contrast {
+  --color-primary: #2ba0ff;
+  --color-secondary: #c084fc;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-text-primary: #fff;
+  --color-text-secondary: #e0e0e0;
+  --color-border: #fff;
+  --color-background: #000;
+  --color-surface: #1a1a1a;
+}
+
+/* High contrast focus indicators */
+.high-contrast *:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgb(255 255 255 / 30%);
+}
+
+/* Reduced motion preferences */
+.reduce-motion,
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Font size adjustments */
+[data-font-size='small'] {
+  font-size: 12px;
+}
+
+[data-font-size='medium'] {
+  font-size: 14px;
+}
+
+[data-font-size='large'] {
+  font-size: 16px;
+}
+
+[data-font-size='x-large'] {
+  font-size: 18px;
+}
+
+/* Screen reader only class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus within for containers */
+.focus-within:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Scrollbar styling - works for both light and dark modes */
 ::-webkit-scrollbar {
   width: 10px;
