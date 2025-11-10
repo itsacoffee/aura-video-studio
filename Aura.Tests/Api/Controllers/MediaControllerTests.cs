@@ -16,15 +16,17 @@ namespace Aura.Tests.Api.Controllers;
 
 public class MediaControllerTests
 {
-    private readonly Mock<IMediaService> _mockService;
+    private readonly Mock<IMediaService> _mockMediaService;
     private readonly Mock<ILogger<MediaController>> _mockLogger;
     private readonly MediaController _controller;
 
     public MediaControllerTests()
     {
-        _mockService = new Mock<IMediaService>();
+        _mockMediaService = new Mock<IMediaService>();
         _mockLogger = new Mock<ILogger<MediaController>>();
-        _controller = new MediaController(_mockService.Object, _mockLogger.Object);
+        _controller = new MediaController(_mockMediaService.Object, _mockLogger.Object);
+        
+        // Setup HttpContext
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext()
@@ -32,25 +34,20 @@ public class MediaControllerTests
     }
 
     [Fact]
-    public async Task GetMedia_ReturnsOk_WhenMediaExists()
+    public async Task GetMedia_ExistingId_ReturnsOk()
     {
         // Arrange
         var mediaId = Guid.NewGuid();
         var mediaResponse = new MediaItemResponse
         {
-            Id = mediaId.ToString(),
+            Id = mediaId,
             FileName = "test.mp4",
             Type = MediaType.Video,
-            FileSize = 1024,
-            Url = "test-url",
-            ProcessingStatus = ProcessingStatus.Completed,
-            Tags = new List<string>(),
-            UsageCount = 0,
-            CreatedAt = DateTime.UtcNow.ToString("O"),
-            UpdatedAt = DateTime.UtcNow.ToString("O")
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
-        _mockService
+        _mockMediaService
             .Setup(s => s.GetMediaByIdAsync(mediaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(mediaResponse);
 
@@ -60,15 +57,15 @@ public class MediaControllerTests
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
         var returnedMedia = Assert.IsType<MediaItemResponse>(okResult.Value);
-        Assert.Equal(mediaId.ToString(), returnedMedia.Id);
+        Assert.Equal(mediaId, returnedMedia.Id);
     }
 
     [Fact]
-    public async Task GetMedia_ReturnsNotFound_WhenMediaDoesNotExist()
+    public async Task GetMedia_NonExistentId_ReturnsNotFound()
     {
         // Arrange
         var mediaId = Guid.NewGuid();
-        _mockService
+        _mockMediaService
             .Setup(s => s.GetMediaByIdAsync(mediaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((MediaItemResponse?)null);
 
@@ -76,29 +73,41 @@ public class MediaControllerTests
         var result = await _controller.GetMedia(mediaId, CancellationToken.None);
 
         // Assert
-        Assert.IsType<NotFoundObjectResult>(result);
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.Equal(404, notFoundResult.StatusCode);
     }
 
     [Fact]
-    public async Task SearchMedia_ReturnsOk_WithResults()
+    public async Task SearchMedia_ValidRequest_ReturnsOk()
     {
         // Arrange
         var request = new MediaSearchRequest
         {
+            SearchTerm = "test",
             Page = 1,
             PageSize = 10
         };
 
         var response = new MediaSearchResponse
         {
-            Items = new List<MediaItemResponse>(),
-            TotalItems = 0,
+            Items = new List<MediaItemResponse>
+            {
+                new MediaItemResponse
+                {
+                    Id = Guid.NewGuid(),
+                    FileName = "test.mp4",
+                    Type = MediaType.Video,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }
+            },
+            TotalItems = 1,
             Page = 1,
             PageSize = 10,
-            TotalPages = 0
+            TotalPages = 1
         };
 
-        _mockService
+        _mockMediaService
             .Setup(s => s.SearchMediaAsync(request, It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);
 
@@ -107,16 +116,16 @@ public class MediaControllerTests
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var returnedResponse = Assert.IsType<MediaSearchResponse>(okResult.Value);
-        Assert.Equal(0, returnedResponse.TotalItems);
+        var searchResponse = Assert.IsType<MediaSearchResponse>(okResult.Value);
+        Assert.Single(searchResponse.Items);
     }
 
     [Fact]
-    public async Task DeleteMedia_ReturnsNoContent_WhenSuccessful()
+    public async Task DeleteMedia_ExistingId_ReturnsNoContent()
     {
         // Arrange
         var mediaId = Guid.NewGuid();
-        _mockService
+        _mockMediaService
             .Setup(s => s.DeleteMediaAsync(mediaId, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -125,25 +134,32 @@ public class MediaControllerTests
 
         // Assert
         Assert.IsType<NoContentResult>(result);
+        _mockMediaService.Verify(s => s.DeleteMediaAsync(mediaId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task GetCollections_ReturnsOk_WithCollections()
+    public async Task GetCollections_ReturnsAllCollections()
     {
         // Arrange
         var collections = new List<MediaCollectionResponse>
         {
             new MediaCollectionResponse
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = "Test Collection",
-                MediaCount = 5,
-                CreatedAt = DateTime.UtcNow.ToString("O"),
-                UpdatedAt = DateTime.UtcNow.ToString("O")
+                Id = Guid.NewGuid(),
+                Name = "Collection 1",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            },
+            new MediaCollectionResponse
+            {
+                Id = Guid.NewGuid(),
+                Name = "Collection 2",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             }
         };
 
-        _mockService
+        _mockMediaService
             .Setup(s => s.GetAllCollectionsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(collections);
 
@@ -153,23 +169,65 @@ public class MediaControllerTests
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
         var returnedCollections = Assert.IsType<List<MediaCollectionResponse>>(okResult.Value);
-        Assert.Single(returnedCollections);
+        Assert.Equal(2, returnedCollections.Count);
     }
 
     [Fact]
-    public async Task GetStats_ReturnsOk_WithStats()
+    public async Task CreateCollection_ValidRequest_ReturnsCreated()
+    {
+        // Arrange
+        var request = new MediaCollectionRequest
+        {
+            Name = "New Collection",
+            Description = "Test collection"
+        };
+
+        var response = new MediaCollectionResponse
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name,
+            Description = request.Description,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockMediaService
+            .Setup(s => s.CreateCollectionAsync(request, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+        // Act
+        var result = await _controller.CreateCollection(request, CancellationToken.None);
+
+        // Assert
+        var createdResult = Assert.IsType<CreatedAtActionResult>(result);
+        var collection = Assert.IsType<MediaCollectionResponse>(createdResult.Value);
+        Assert.Equal(request.Name, collection.Name);
+    }
+
+    [Fact]
+    public async Task GetStats_ReturnsStorageStats()
     {
         // Arrange
         var stats = new StorageStats
         {
-            TotalSizeBytes = 1024,
-            QuotaBytes = 1024 * 1024,
-            TotalFiles = 10,
-            FilesByType = new Dictionary<MediaType, int>(),
-            SizeByType = new Dictionary<MediaType, long>()
+            TotalSizeBytes = 1000000,
+            QuotaBytes = 10000000,
+            AvailableBytes = 9000000,
+            UsagePercentage = 10.0,
+            TotalFiles = 5,
+            FilesByType = new Dictionary<MediaType, int>
+            {
+                { MediaType.Video, 3 },
+                { MediaType.Image, 2 }
+            },
+            SizeByType = new Dictionary<MediaType, long>
+            {
+                { MediaType.Video, 800000 },
+                { MediaType.Image, 200000 }
+            }
         };
 
-        _mockService
+        _mockMediaService
             .Setup(s => s.GetStorageStatsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(stats);
 
@@ -179,6 +237,7 @@ public class MediaControllerTests
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
         var returnedStats = Assert.IsType<StorageStats>(okResult.Value);
-        Assert.Equal(10, returnedStats.TotalFiles);
+        Assert.Equal(5, returnedStats.TotalFiles);
+        Assert.Equal(10.0, returnedStats.UsagePercentage);
     }
 }
