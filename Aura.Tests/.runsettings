@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <!-- Configurations for .NET test runner -->
+  <RunConfiguration>
+    <!-- Maximum number of concurrent test workers -->
+    <MaxCpuCount>0</MaxCpuCount>
+    
+    <!-- Results directory -->
+    <ResultsDirectory>./TestResults</ResultsDirectory>
+    
+    <!-- Target platform (x86, x64, ARM, ARM64) -->
+    <TargetPlatform>x64</TargetPlatform>
+    
+    <!-- Test timeout in milliseconds -->
+    <TestSessionTimeout>3600000</TestSessionTimeout>
+    
+    <!-- Treat test adapter errors as warnings -->
+    <TreatNoTestsAsError>false</TreatNoTestsAsError>
+  </RunConfiguration>
+
+  <!-- Code coverage data collector -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>json,cobertura,opencover</Format>
+          <Exclude>[*.Tests?]*,[*]*.Designer,[*]*.g.cs,[*]*.g.i.cs</Exclude>
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+          <ExcludeByFile>**/Migrations/**/*.cs</ExcludeByFile>
+          <IncludeDirectory>../Aura.Core/**/*.cs,../Aura.Api/**/*.cs,../Aura.Providers/**/*.cs</IncludeDirectory>
+          <SingleHit>false</SingleHit>
+          <UseSourceLink>true</UseSourceLink>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+
+  <!-- xUnit runner configuration -->
+  <xUnit>
+    <ParallelizeTestCollections>true</ParallelizeTestCollections>
+    <MaxParallelThreads>-1</MaxParallelThreads>
+    <DiagnosticMessages>false</DiagnosticMessages>
+    <AppDomain>denied</AppDomain>
+    <ShadowCopy>false</ShadowCopy>
+    <StopOnFail>false</StopOnFail>
+  </xUnit>
+
+  <!-- Test categories -->
+  <TestCaseFilter>(Category!=Integration&amp;Category!=Performance&amp;Category!=E2E)|FullyQualifiedName~Integration|FullyQualifiedName~Performance</TestCaseFilter>
+
+  <!-- Logging -->
+  <LoggerRunSettings>
+    <Loggers>
+      <Logger friendlyName="trx" enabled="True">
+        <Configuration>
+          <LogFileName>test-results.trx</LogFileName>
+        </Configuration>
+      </Logger>
+      <Logger friendlyName="html" enabled="True">
+        <Configuration>
+          <LogFileName>test-results.html</LogFileName>
+        </Configuration>
+      </Logger>
+      <Logger friendlyName="console" enabled="True">
+        <Configuration>
+          <Verbosity>normal</Verbosity>
+        </Configuration>
+      </Logger>
+    </Loggers>
+  </LoggerRunSettings>
+</RunSettings>
