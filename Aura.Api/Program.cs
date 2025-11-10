@@ -60,37 +60,47 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 // Configure Serilog with structured logging and separate log files
-var outputTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{CorrelationId}] {Message:lj} {Properties:j}{NewLine}{Exception}";
+using Aura.Core.Logging;
+
+var outputTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{CorrelationId}] [{TraceId}] [{SpanId}] {Message:lj} {Properties:j}{NewLine}{Exception}";
 
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext() // Enable correlation ID enrichment
-    .Enrich.WithProperty("Application", "Aura.Api")
-    .Enrich.WithProperty("MachineName", Environment.MachineName)
-    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
+    .ConfigureStructuredLogging("Aura.Api") // Use our custom extension with all enrichers
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{CorrelationId}] {Message:lj}{NewLine}{Exception}")
     .WriteTo.File("logs/aura-api-.log", 
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30, // 30 days retention
-        outputTemplate: outputTemplate)
+        outputTemplate: outputTemplate,
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 100_000_000) // 100MB per file
     .WriteTo.File("logs/errors-.log",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
         restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error,
-        outputTemplate: outputTemplate)
+        outputTemplate: outputTemplate,
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 100_000_000)
     .WriteTo.File("logs/warnings-.log",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
         restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning,
-        outputTemplate: outputTemplate)
+        outputTemplate: outputTemplate,
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 100_000_000)
     .WriteTo.File("logs/performance-.log",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
         outputTemplate: outputTemplate,
-        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information)
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 100_000_000)
     .WriteTo.File("logs/audit-.log",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 90, // 90 days for audit logs
-        outputTemplate: outputTemplate)
+        outputTemplate: outputTemplate,
+        rollOnFileSizeLimit: true,
+        fileSizeLimitBytes: 100_000_000)
     .CreateLogger();
 
 builder.Host.UseSerilog();

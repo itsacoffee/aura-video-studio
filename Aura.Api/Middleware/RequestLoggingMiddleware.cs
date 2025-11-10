@@ -1,29 +1,43 @@
+using Aura.Core.Logging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Aura.Api.Middleware;
 
 /// <summary>
-/// Middleware for comprehensive request/response logging
+/// Middleware for comprehensive request/response logging with structured logging support
 /// Logs method, path, status code, duration, user ID, and correlation ID
 /// </summary>
 public class RequestLoggingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<RequestLoggingMiddleware> _logger;
+    private readonly bool _logRequestBody;
+    private readonly bool _logResponseBody;
+    private readonly int _maxBodyLogSize;
 
-    public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
+    public RequestLoggingMiddleware(
+        RequestDelegate next, 
+        ILogger<RequestLoggingMiddleware> logger,
+        bool logRequestBody = false,
+        bool logResponseBody = false,
+        int maxBodyLogSize = 4096)
     {
         _next = next;
         _logger = logger;
+        _logRequestBody = logRequestBody;
+        _logResponseBody = logResponseBody;
+        _maxBodyLogSize = maxBodyLogSize;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var correlationId = context.TraceIdentifier;
+        var correlationId = context.Items["CorrelationId"] as string ?? context.TraceIdentifier;
         var method = context.Request.Method;
         var path = context.Request.Path;
         var queryString = context.Request.QueryString.HasValue ? context.Request.QueryString.Value : "";
@@ -31,44 +45,141 @@ public class RequestLoggingMiddleware
         var clientIp = GetClientIpAddress(context);
 
         var stopwatch = Stopwatch.StartNew();
+        string? requestBody = null;
+        string? responseBody = null;
 
         try
         {
-            // Log request
-            _logger.LogInformation(
-                "[{CorrelationId}] Request: {Method} {Path}{QueryString} from {ClientIp}",
-                correlationId, method, path, queryString, clientIp);
+            // Optionally log request body for debugging
+            if (_logRequestBody && context.Request.ContentLength > 0)
+            {
+                requestBody = await ReadRequestBodyAsync(context.Request);
+            }
 
-            await _next(context);
+            // Log incoming request with structured data
+            var requestMetadata = new Dictionary<string, object>
+            {
+                ["Method"] = method,
+                ["Path"] = path,
+                ["QueryString"] = queryString,
+                ["ClientIp"] = clientIp,
+                ["UserAgent"] = userAgent,
+                ["ContentType"] = context.Request.ContentType ?? "none",
+                ["ContentLength"] = context.Request.ContentLength ?? 0
+            };
+
+            _logger.LogStructured(
+                LogLevel.Information,
+                "Incoming request: {Method} {Path}{QueryString} from {ClientIp}",
+                requestMetadata);
+
+            // Capture response body if needed
+            Stream originalBodyStream = context.Response.Body;
+            if (_logResponseBody)
+            {
+                using var responseBodyStream = new MemoryStream();
+                context.Response.Body = responseBodyStream;
+
+                await _next(context);
+
+                responseBodyStream.Seek(0, SeekOrigin.Begin);
+                responseBody = await new StreamReader(responseBodyStream).ReadToEndAsync();
+                responseBodyStream.Seek(0, SeekOrigin.Begin);
+                await responseBodyStream.CopyToAsync(originalBodyStream);
+            }
+            else
+            {
+                await _next(context);
+            }
 
             stopwatch.Stop();
 
-            // Log response
+            // Log response with performance metrics
             var statusCode = context.Response.StatusCode;
             var logLevel = GetLogLevelForStatusCode(statusCode);
-            
-            _logger.Log(logLevel,
-                "[{CorrelationId}] Response: {Method} {Path} {StatusCode} in {Duration}ms",
-                correlationId, method, path, statusCode, stopwatch.ElapsedMilliseconds);
+            var duration = stopwatch.Elapsed;
 
-            // Log slow requests (>5 seconds)
-            if (stopwatch.ElapsedMilliseconds > 5000)
+            var responseMetadata = new Dictionary<string, object>
+            {
+                ["Method"] = method,
+                ["Path"] = path,
+                ["StatusCode"] = statusCode,
+                ["Duration"] = duration,
+                ["DurationMs"] = duration.TotalMilliseconds,
+                ["ResponseContentType"] = context.Response.ContentType ?? "none"
+            };
+
+            if (_logResponseBody && !string.IsNullOrEmpty(responseBody))
+            {
+                responseMetadata["ResponseBody"] = responseBody.Length > _maxBodyLogSize 
+                    ? responseBody[.._maxBodyLogSize] + "... (truncated)" 
+                    : responseBody;
+            }
+
+            _logger.LogStructured(
+                logLevel,
+                "Request completed: {Method} {Path} - {StatusCode} in {DurationMs}ms",
+                responseMetadata);
+
+            // Log slow requests with warning
+            if (duration.TotalSeconds > 5)
             {
                 _logger.LogWarning(
-                    "[{CorrelationId}] SLOW REQUEST: {Method} {Path} took {Duration}ms",
-                    correlationId, method, path, stopwatch.ElapsedMilliseconds);
+                    "SLOW REQUEST DETECTED: {Method} {Path} took {DurationMs}ms (Status: {StatusCode})",
+                    method, path, duration.TotalMilliseconds, statusCode);
             }
+
+            // Log performance metrics
+            _logger.LogPerformance(
+                $"{method} {path}",
+                duration,
+                success: statusCode < 400,
+                new Dictionary<string, object>
+                {
+                    ["StatusCode"] = statusCode,
+                    ["ClientIp"] = clientIp
+                });
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
 
-            _logger.LogError(ex,
-                "[{CorrelationId}] Request failed: {Method} {Path} after {Duration}ms - {ErrorMessage}",
-                correlationId, method, path, stopwatch.ElapsedMilliseconds, ex.Message);
+            var errorMetadata = new Dictionary<string, object>
+            {
+                ["Method"] = method,
+                ["Path"] = path,
+                ["Duration"] = stopwatch.Elapsed,
+                ["DurationMs"] = stopwatch.ElapsedMilliseconds,
+                ["ClientIp"] = clientIp,
+                ["ExceptionType"] = ex.GetType().Name
+            };
+
+            _logger.LogErrorWithContext(
+                ex,
+                "Request failed: {Method} {Path} after {DurationMs}ms",
+                errorMetadata);
 
             throw;
         }
+    }
+
+    private async Task<string> ReadRequestBodyAsync(HttpRequest request)
+    {
+        request.EnableBuffering();
+        
+        using var reader = new StreamReader(
+            request.Body,
+            Encoding.UTF8,
+            detectEncodingFromByteOrderMarks: false,
+            bufferSize: 4096,
+            leaveOpen: true);
+
+        var body = await reader.ReadToEndAsync();
+        request.Body.Position = 0;
+
+        return body.Length > _maxBodyLogSize 
+            ? body[.._maxBodyLogSize] + "... (truncated)" 
+            : body;
     }
 
     private string GetClientIpAddress(HttpContext context)
