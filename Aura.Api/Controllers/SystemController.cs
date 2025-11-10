@@ -73,7 +73,7 @@ public class SystemController : ControllerBase
 
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "FFmpeg Status Error",
                 status = 500,
                 detail = $"Failed to get FFmpeg status: {ex.Message}",

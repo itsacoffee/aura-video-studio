@@ -12,7 +12,7 @@ public class ErrorModel
     /// A URI reference that identifies the problem type
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; init; } = "https://docs.aura.studio/errors/E500";
+    public string Type { get; init; } = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500";
 
     /// <summary>
     /// A short, human-readable summary of the problem type
@@ -99,7 +99,7 @@ public class ErrorModel
     public static ErrorModel NotFound(string detail, string correlationId, string? traceId = null)
     {
         return new ErrorModel(
-            type: "https://docs.aura.studio/errors/E404",
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
             title: "Not Found",
             status: 404,
             detail: detail,
@@ -113,7 +113,7 @@ public class ErrorModel
     public static ErrorModel BadRequest(string detail, string correlationId, string? traceId = null, object? details = null)
     {
         return new ErrorModel(
-            type: "https://docs.aura.studio/errors/E400",
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
             title: "Bad Request",
             status: 400,
             detail: detail,
@@ -128,7 +128,7 @@ public class ErrorModel
     public static ErrorModel InternalServerError(string detail, string correlationId, string? traceId = null, string? errorCode = null)
     {
         return new ErrorModel(
-            type: "https://docs.aura.studio/errors/E500",
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
             title: "Internal Server Error",
             status: 500,
             detail: detail,

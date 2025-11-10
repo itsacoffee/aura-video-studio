@@ -65,7 +65,7 @@ public class VersionsController : ControllerBase
                 correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve versions",
@@ -91,7 +91,7 @@ public class VersionsController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Version Not Found",
                     status = 404,
                     detail = $"Version {versionId} not found for project {projectId}",
@@ -126,7 +126,7 @@ public class VersionsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve version {VersionId}", correlationId, versionId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve version",
@@ -154,7 +154,7 @@ public class VersionsController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = "Project ID in URL does not match request body",
@@ -201,7 +201,7 @@ public class VersionsController : ControllerBase
                 correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to create snapshot",
@@ -229,7 +229,7 @@ public class VersionsController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = "Project ID in URL does not match request body",
@@ -252,7 +252,7 @@ public class VersionsController : ControllerBase
                 correlationId, request.VersionId, projectId);
             return NotFound(new
             {
-                type = "https://docs.aura.studio/errors/E404",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 title = "Not Found",
                 status = 404,
                 detail = ex.Message,
@@ -266,7 +266,7 @@ public class VersionsController : ControllerBase
                 correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to restore version",
@@ -296,7 +296,7 @@ public class VersionsController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Version Not Found",
                     status = 404,
                     detail = $"Version {versionId} not found for project {projectId}",
@@ -319,7 +319,7 @@ public class VersionsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to update version {VersionId}", correlationId, versionId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to update version",
@@ -348,7 +348,7 @@ public class VersionsController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Version Not Found",
                     status = 404,
                     detail = $"Version {versionId} not found for project {projectId}",
@@ -366,7 +366,7 @@ public class VersionsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to delete version {VersionId}", correlationId, versionId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to delete version",
@@ -427,7 +427,7 @@ public class VersionsController : ControllerBase
             Log.Warning(ex, "[{CorrelationId}] Failed to compare versions", correlationId);
             return NotFound(new
             {
-                type = "https://docs.aura.studio/errors/E404",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 title = "Not Found",
                 status = 404,
                 detail = ex.Message,
@@ -440,7 +440,7 @@ public class VersionsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to compare versions", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to compare versions",
@@ -488,7 +488,7 @@ public class VersionsController : ControllerBase
                 correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to get storage usage",
@@ -515,7 +515,7 @@ public class VersionsController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Autosave Failed",
                     status = 400,
                     detail = "Project is not registered for autosave",
@@ -536,7 +536,7 @@ public class VersionsController : ControllerBase
                 correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to trigger autosave",

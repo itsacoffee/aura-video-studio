@@ -12,7 +12,7 @@ public class ErrorModelTests
     {
         // Arrange & Act
         var error = new ErrorModel(
-            type: "https://docs.aura.studio/errors/E500",
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
             title: "Internal Server Error",
             status: 500,
             detail: "Something went wrong",
@@ -22,7 +22,7 @@ public class ErrorModelTests
             details: new { additionalInfo = "test" });
 
         // Assert
-        Assert.Equal("https://docs.aura.studio/errors/E500", error.Type);
+        Assert.Equal("https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500", error.Type);
         Assert.Equal("Internal Server Error", error.Title);
         Assert.Equal(500, error.Status);
         Assert.Equal("Something went wrong", error.Detail);
@@ -40,7 +40,7 @@ public class ErrorModelTests
         var error = ErrorModel.NotFound("Resource not found", "corr-123", "trace-456");
 
         // Assert
-        Assert.Equal("https://docs.aura.studio/errors/E404", error.Type);
+        Assert.Equal("https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404", error.Type);
         Assert.Equal("Not Found", error.Title);
         Assert.Equal(404, error.Status);
         Assert.Equal("Resource not found", error.Detail);
@@ -59,7 +59,7 @@ public class ErrorModelTests
             new { field = "name", error = "required" });
 
         // Assert
-        Assert.Equal("https://docs.aura.studio/errors/E400", error.Type);
+        Assert.Equal("https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400", error.Type);
         Assert.Equal("Bad Request", error.Title);
         Assert.Equal(400, error.Status);
         Assert.Equal("Invalid input", error.Detail);
@@ -79,7 +79,7 @@ public class ErrorModelTests
             "E500-DB");
 
         // Assert
-        Assert.Equal("https://docs.aura.studio/errors/E500", error.Type);
+        Assert.Equal("https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500", error.Type);
         Assert.Equal("Internal Server Error", error.Title);
         Assert.Equal(500, error.Status);
         Assert.Equal("Server error occurred", error.Detail);
@@ -93,7 +93,7 @@ public class ErrorModelTests
     {
         // Arrange
         var error = new ErrorModel(
-            type: "https://docs.aura.studio/errors/E500",
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
             title: "Test Error",
             status: 500,
             detail: "Test detail",
@@ -119,7 +119,7 @@ public class ErrorModelTests
     {
         // Arrange
         var error = new ErrorModel(
-            type: "https://docs.aura.studio/errors/E500",
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
             title: "Test Error",
             status: 500,
             detail: "Test detail",
@@ -146,7 +146,7 @@ public class ErrorModelTests
         var error = new ErrorModel();
 
         // Assert
-        Assert.Equal("https://docs.aura.studio/errors/E500", error.Type);
+        Assert.Equal("https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500", error.Type);
         Assert.Equal("Internal Server Error", error.Title);
         Assert.Equal(500, error.Status);
         Assert.Equal(string.Empty, error.Detail);

@@ -57,7 +57,7 @@ public class ProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve incomplete projects", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve incomplete projects",
@@ -82,7 +82,7 @@ public class ProjectsController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project {projectId} does not exist",
@@ -128,7 +128,7 @@ public class ProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve project {ProjectId}", correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve project details",
@@ -153,7 +153,7 @@ public class ProjectsController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project {projectId} does not exist",
@@ -177,7 +177,7 @@ public class ProjectsController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to delete project {ProjectId}", correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to delete project",

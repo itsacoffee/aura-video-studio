@@ -60,7 +60,7 @@ public class ValidationFilter : IActionFilter
 
                     context.Result = new BadRequestObjectResult(new
                     {
-                        type = "https://docs.aura.studio/errors/E400",
+                        type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                         title = "Validation Failed",
                         status = 400,
                         detail = "One or more validation errors occurred",
@@ -89,7 +89,7 @@ public class ValidationFilter : IActionFilter
 
         return new
         {
-            type = "https://docs.aura.studio/errors/E400",
+            type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
             title = "Validation Failed",
             status = 400,
             detail = "One or more validation errors occurred",

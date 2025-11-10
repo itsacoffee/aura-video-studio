@@ -2788,7 +2788,7 @@ apiGroup.MapPost("/plan", ([FromBody] PlanRequest request) =>
             detail: ex.Message,
             statusCode: 400,
             title: "Invalid Enum Value",
-            type: "https://docs.aura.studio/errors/E303");
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E303");
     }
     catch (Exception ex)
     {
@@ -2814,7 +2814,7 @@ apiGroup.MapPost("/planner/recommendations", async (
                 detail: "Topic is required",
                 statusCode: 400,
                 title: "Invalid Brief",
-                type: "https://docs.aura.studio/errors/E303");
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E303");
         }
         
         if (request.TargetDurationMinutes <= 0 || request.TargetDurationMinutes > 120)
@@ -2823,7 +2823,7 @@ apiGroup.MapPost("/planner/recommendations", async (
                 detail: "Target duration must be between 0 and 120 minutes",
                 statusCode: 400,
                 title: "Invalid Plan",
-                type: "https://docs.aura.studio/errors/E304");
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E304");
         }
 
         var brief = new Brief(
@@ -2872,7 +2872,7 @@ apiGroup.MapPost("/planner/recommendations", async (
             detail: "Recommendation generation was cancelled",
             statusCode: 408,
             title: "Request Timeout",
-            type: "https://docs.aura.studio/errors/E301");
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E301");
     }
     catch (Exception ex)
     {
@@ -2881,7 +2881,7 @@ apiGroup.MapPost("/planner/recommendations", async (
             detail: $"Error generating recommendations: {ex.Message}",
             statusCode: 500,
             title: "Recommendation Service Failed",
-            type: "https://docs.aura.studio/errors/E305");
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E305");
     }
 })
 .WithName("GetPlannerRecommendations")

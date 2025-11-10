@@ -36,7 +36,7 @@ public class RenderController : ControllerBase
                 Log.Warning("[{CorrelationId}] Render job not found: {JobId}", correlationId, id);
                 return NotFound(new 
                 { 
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Render Job Not Found", 
                     status = 404,
                     detail = $"Render job {id} not found",
@@ -122,7 +122,7 @@ public class RenderController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Error Getting Render Progress",
                 status = 500,
                 detail = $"Failed to retrieve render progress: {ex.Message}",
@@ -148,7 +148,7 @@ public class RenderController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Render Job Not Found",
                     status = 404,
                     detail = $"Render job {id} not found",
@@ -161,7 +161,7 @@ public class RenderController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Render Job Not Cancellable",
                     status = 400,
                     detail = $"Render job is in {job.Status} status and cannot be cancelled",
@@ -189,7 +189,7 @@ public class RenderController : ControllerBase
                 Log.Warning("[{CorrelationId}] Failed to cancel render job {JobId}", correlationId, id);
                 return StatusCode(500, new
                 {
-                    type = "https://docs.aura.studio/errors/E500",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                     title = "Cancellation Failed",
                     status = 500,
                     detail = "Render job could not be cancelled. It may have already completed or been cancelled.",
@@ -205,7 +205,7 @@ public class RenderController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Cancel Failed",
                 status = 500,
                 detail = $"Failed to cancel render job: {ex.Message}",

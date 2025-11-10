@@ -57,7 +57,7 @@ public static class ProblemDetailsHelper
                 detail: detail,
                 statusCode: 500,
                 title: "Script Generation Failed",
-                type: $"https://docs.aura.studio/errors/{errorCode}",
+                type: $"https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#{errorCode}",
                 httpContext: httpContext
             );
         }
@@ -75,7 +75,7 @@ public static class ProblemDetailsHelper
             detail: fullDetail,
             statusCode: statusCode,
             title: title,
-            type: $"https://docs.aura.studio/errors/{errorCode}",
+            type: $"https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#{errorCode}",
             httpContext: httpContext
         );
     }
@@ -127,7 +127,7 @@ public static class ProblemDetailsHelper
             detail: detail,
             statusCode: 400,
             title: "Invalid Brief",
-            type: "https://docs.aura.studio/errors/E303"
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E303"
         );
     }
 
@@ -142,7 +142,7 @@ public static class ProblemDetailsHelper
             detail: fullDetail,
             statusCode: 400,
             title: "Invalid Plan",
-            type: "https://docs.aura.studio/errors/E304"
+            type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E304"
         );
     }
 
@@ -184,7 +184,7 @@ public static class ProblemDetailsHelper
             detail: detail,
             statusCode: statusCode,
             title: title,
-            type: type ?? "https://docs.aura.studio/errors/generic",
+            type: type ?? "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#generic",
             httpContext: httpContext
         );
     }

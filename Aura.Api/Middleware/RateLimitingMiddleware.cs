@@ -89,7 +89,7 @@ public class RateLimitingMiddleware
 
             await context.Response.WriteAsJsonAsync(new
             {
-                type = "https://docs.aura.studio/errors/E429",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E429",
                 title = "Rate Limit Exceeded",
                 status = 429,
                 detail = $"Too many requests. Limit is {config.MaxRequests} requests per {config.WindowSeconds} seconds.",

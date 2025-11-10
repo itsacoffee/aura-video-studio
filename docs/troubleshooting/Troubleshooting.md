@@ -706,7 +706,7 @@ If you provide an invalid or unsupported enum value, the API will return an RFC7
 
 ```json
 {
-  "type": "https://docs.aura.studio/errors/E303",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E303",
   "title": "Invalid Enum Value",
   "status": 400,
   "detail": "Unknown Density value: 'Medium'. Valid values are: Sparse, Balanced (or Normal), Dense"

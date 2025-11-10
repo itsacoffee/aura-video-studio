@@ -97,7 +97,7 @@ public class ScriptsController : ControllerBase
 
                 return StatusCode(500, new ProblemDetails
                 {
-                    Type = "https://docs.aura.studio/errors/E300",
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300",
                     Title = "Script Generation Failed",
                     Status = 500,
                     Detail = result.ErrorMessage ?? "Failed to generate script",
@@ -133,7 +133,7 @@ public class ScriptsController : ControllerBase
             
             return StatusCode(500, new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E500",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 Title = "Internal Server Error",
                 Status = 500,
                 Detail = "An error occurred while generating the script",
@@ -161,7 +161,7 @@ public class ScriptsController : ControllerBase
         
         return NotFound(new ProblemDetails
         {
-            Type = "https://docs.aura.studio/errors/E404",
+            Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
             Title = "Script Not Found",
             Status = 404,
             Detail = $"Script with ID '{id}' was not found",
@@ -184,7 +184,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -197,7 +197,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Scene Not Found",
                 Status = 404,
                 Detail = $"Scene {sceneNumber} not found in script '{id}'",
@@ -248,7 +248,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -261,7 +261,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Scene Not Found",
                 Status = 404,
                 Detail = $"Scene {sceneNumber} not found in script '{id}'",
@@ -326,7 +326,7 @@ public class ScriptsController : ControllerBase
 
                 return StatusCode(500, new ProblemDetails
                 {
-                    Type = "https://docs.aura.studio/errors/E300",
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300",
                     Title = "Scene Regeneration Failed",
                     Status = 500,
                     Detail = result.ErrorMessage ?? "Failed to regenerate scene",
@@ -365,7 +365,7 @@ public class ScriptsController : ControllerBase
             
             return StatusCode(500, new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E500",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 Title = "Internal Server Error",
                 Status = 500,
                 Detail = "An error occurred while regenerating the scene",
@@ -389,7 +389,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -430,7 +430,7 @@ public class ScriptsController : ControllerBase
 
                 return StatusCode(500, new ProblemDetails
                 {
-                    Type = "https://docs.aura.studio/errors/E300",
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300",
                     Title = "Script Regeneration Failed",
                     Status = 500,
                     Detail = result.ErrorMessage ?? "Failed to regenerate script",
@@ -464,7 +464,7 @@ public class ScriptsController : ControllerBase
             
             return StatusCode(500, new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E500",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 Title = "Internal Server Error",
                 Status = 500,
                 Detail = "An error occurred while regenerating the script",
@@ -671,7 +671,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -775,7 +775,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -836,7 +836,7 @@ public class ScriptsController : ControllerBase
             
             return StatusCode(500, new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E500",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 Title = "Internal Server Error",
                 Status = 500,
                 Detail = "An error occurred while enhancing the script",
@@ -859,7 +859,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -871,7 +871,7 @@ public class ScriptsController : ControllerBase
         {
             return BadRequest(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E400",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                 Title = "Invalid Request",
                 Status = 400,
                 Detail = "Scene order must contain all scenes",
@@ -918,7 +918,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -930,7 +930,7 @@ public class ScriptsController : ControllerBase
         {
             return BadRequest(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E400",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                 Title = "Invalid Request",
                 Status = 400,
                 Detail = "Must specify at least 2 scenes to merge",
@@ -946,7 +946,7 @@ public class ScriptsController : ControllerBase
         {
             return BadRequest(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E400",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                 Title = "Invalid Request",
                 Status = 400,
                 Detail = "One or more specified scenes not found",
@@ -997,7 +997,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -1010,7 +1010,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Scene Not Found",
                 Status = 404,
                 Detail = $"Scene {sceneNumber} not found in script '{id}'",
@@ -1022,7 +1022,7 @@ public class ScriptsController : ControllerBase
         {
             return BadRequest(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E400",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                 Title = "Invalid Request",
                 Status = 400,
                 Detail = "Split position must be within narration text",
@@ -1096,7 +1096,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -1109,7 +1109,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Scene Not Found",
                 Status = 404,
                 Detail = $"Scene {sceneNumber} not found in script '{id}'",
@@ -1121,7 +1121,7 @@ public class ScriptsController : ControllerBase
         {
             return BadRequest(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E400",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                 Title = "Invalid Request",
                 Status = 400,
                 Detail = "Cannot delete the last scene in a script",
@@ -1161,7 +1161,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -1202,7 +1202,7 @@ public class ScriptsController : ControllerBase
 
                 return StatusCode(500, new ProblemDetails
                 {
-                    Type = "https://docs.aura.studio/errors/E300",
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300",
                     Title = "Regeneration Failed",
                     Status = 500,
                     Detail = result.ErrorMessage ?? "Failed to regenerate script",
@@ -1236,7 +1236,7 @@ public class ScriptsController : ControllerBase
             
             return StatusCode(500, new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E500",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 Title = "Internal Server Error",
                 Status = 500,
                 Detail = "An error occurred while regenerating the script",
@@ -1257,7 +1257,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -1295,7 +1295,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Script Not Found",
                 Status = 404,
                 Detail = $"Script with ID '{id}' was not found",
@@ -1310,7 +1310,7 @@ public class ScriptsController : ControllerBase
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://docs.aura.studio/errors/E404",
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                 Title = "Version Not Found",
                 Status = 404,
                 Detail = $"Version '{request.VersionId}' not found",

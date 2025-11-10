@@ -56,7 +56,7 @@ When you exceed the rate limit, the API returns:
 **Response Body:**
 ```json
 {
-  "type": "https://docs.aura.studio/errors/E429",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E429",
   "title": "Rate Limit Exceeded",
   "status": 429,
   "detail": "Too many requests. Please retry after the specified time."
@@ -86,7 +86,7 @@ Rate limits are configured in `appsettings.json`:
     "HttpStatusCode": 429,
     "RealIpHeader": "X-Real-IP",
     "QuotaExceededResponse": {
-      "Content": "{\"type\":\"https://docs.aura.studio/errors/E429\",\"title\":\"Rate Limit Exceeded\",\"status\":429,\"detail\":\"Too many requests. Please retry after the specified time.\"}",
+      "Content": "{\"type\":\"https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E429\",\"title\":\"Rate Limit Exceeded\",\"status\":429,\"detail\":\"Too many requests. Please retry after the specified time.\"}",
       "ContentType": "application/json"
     },
     "IpWhitelist": [],

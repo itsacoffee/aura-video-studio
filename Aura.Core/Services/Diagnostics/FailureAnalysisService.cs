@@ -695,7 +695,7 @@ public class FailureAnalysisService
                 links.Add(new DocumentationLink
                 {
                     Title = "Managing API Rate Limits",
-                    Url = "https://docs.aura.studio/troubleshooting/rate-limits",
+                    Url = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/Troubleshooting.md/rate-limits",
                     Description = "Learn how to handle and avoid rate limit errors"
                 });
                 break;
@@ -705,7 +705,7 @@ public class FailureAnalysisService
                 links.Add(new DocumentationLink
                 {
                     Title = "Configuring Provider API Keys",
-                    Url = "https://docs.aura.studio/setup/api-keys",
+                    Url = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/setup/api-keys.md",
                     Description = "Step-by-step guide for setting up provider API keys"
                 });
                 break;
@@ -715,7 +715,7 @@ public class FailureAnalysisService
                 links.Add(new DocumentationLink
                 {
                     Title = "FFmpeg Installation Guide",
-                    Url = "https://docs.aura.studio/setup/ffmpeg",
+                    Url = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/setup/dependencies.md#ffmpeg",
                     Description = "How to install and configure FFmpeg"
                 });
                 break;
@@ -724,7 +724,7 @@ public class FailureAnalysisService
                 links.Add(new DocumentationLink
                 {
                     Title = "Network Troubleshooting",
-                    Url = "https://docs.aura.studio/troubleshooting/network",
+                    Url = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/Troubleshooting.md/network",
                     Description = "Troubleshoot network and firewall issues"
                 });
                 break;
@@ -733,7 +733,7 @@ public class FailureAnalysisService
                 links.Add(new DocumentationLink
                 {
                     Title = "System Requirements",
-                    Url = "https://docs.aura.studio/setup/requirements",
+                    Url = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/setup/system-requirements.md",
                     Description = "Check minimum and recommended system requirements"
                 });
                 break;
@@ -742,7 +742,7 @@ public class FailureAnalysisService
                 links.Add(new DocumentationLink
                 {
                     Title = "Cost Management Guide",
-                    Url = "https://docs.aura.studio/cost-tracking/budgets",
+                    Url = "https://github.com/Coffee285/aura-video-studio/blob/main/COST_ANALYTICS_IMPLEMENTATION.md",
                     Description = "How to configure and manage budgets"
                 });
                 break;
@@ -752,7 +752,7 @@ public class FailureAnalysisService
         links.Add(new DocumentationLink
         {
             Title = "General Troubleshooting",
-            Url = "https://docs.aura.studio/troubleshooting",
+            Url = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/Troubleshooting.md",
             Description = "Common issues and solutions"
         });
 

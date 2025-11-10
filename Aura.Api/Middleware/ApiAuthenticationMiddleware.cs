@@ -73,7 +73,7 @@ public class ApiAuthenticationMiddleware
         
         await context.Response.WriteAsJsonAsync(new
         {
-            type = "https://docs.aura.studio/errors/E401",
+            type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E401",
             title = "Unauthorized",
             status = 401,
             detail = "Authentication is required. Provide a valid API key via X-API-Key header.",

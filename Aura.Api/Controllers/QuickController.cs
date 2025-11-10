@@ -56,7 +56,7 @@ public class QuickController : ControllerBase
                 
                 return Conflict(new Microsoft.AspNetCore.Mvc.ProblemDetails
                 {
-                    Type = "https://docs.aura.studio/errors/E302-FFMPEG_NOT_READY",
+                    Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E302-FFMPEG_NOT_READY",
                     Title = "FFmpeg Not Ready",
                     Status = 409,
                     Detail = "FFmpeg is not properly installed or configured. Quick Demo requires a working FFmpeg installation to render videos.",
@@ -106,7 +106,7 @@ public class QuickController : ControllerBase
                 Log.Warning("[{CorrelationId}] Quick Demo creation failed: {Message}", correlationId, result.Message);
                 return StatusCode(500, new
                 {
-                    type = "https://docs.aura.studio/errors/E200",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E200",
                     title = "Quick Demo Failed",
                     status = 500,
                     detail = result.Message,
@@ -121,7 +121,7 @@ public class QuickController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Internal Service Error",
                 status = 500,
                 detail = $"Required service not initialized: {ex.ParamName}",
@@ -135,7 +135,7 @@ public class QuickController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E200",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E200",
                 title = "Quick Demo Error",
                 status = 500,
                 detail = $"Unexpected error creating quick demo: {ex.Message}",

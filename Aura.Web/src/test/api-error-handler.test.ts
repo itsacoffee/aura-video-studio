@@ -8,7 +8,7 @@ describe('API Error Handler', () => {
         title: 'Script Generation Failed',
         detail: 'The LLM provider returned an error',
         status: 500,
-        type: 'https://docs.aura.studio/errors/E300',
+        type: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E300',
         correlationId: 'abc123',
       }),
       {
@@ -34,7 +34,7 @@ describe('API Error Handler', () => {
       JSON.stringify({
         title: 'Invalid Plan',
         detail: 'Duration out of range',
-        type: 'https://docs.aura.studio/errors/E304',
+        type: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E304',
       }),
       {
         status: 400,

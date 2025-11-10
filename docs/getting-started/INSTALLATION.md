@@ -757,7 +757,7 @@ If you've tried the solutions above and still have problems:
 4. **Community Support**:
    - Join community discussions
    - Ask questions in Discord/forums
-   - Check documentation: https://docs.aura.studio/
+   - Check documentation: https://github.com/Coffee285/aura-video-studio/blob/main/docs/
 
 ---
 

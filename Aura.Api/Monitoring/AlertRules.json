@@ -27,7 +27,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["pagerduty", "slack"],
-      "runbook": "https://docs.aura.studio/runbooks/api-availability"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/api-availability"
     },
     {
       "name": "High Error Rate",
@@ -40,7 +40,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["pagerduty", "slack"],
-      "runbook": "https://docs.aura.studio/runbooks/high-error-rate"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/high-error-rate"
     },
     {
       "name": "API Latency P95 Exceeded",
@@ -53,7 +53,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["slack"],
-      "runbook": "https://docs.aura.studio/runbooks/high-latency"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/high-latency"
     },
     {
       "name": "Job Failure Rate High",
@@ -66,7 +66,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["slack"],
-      "runbook": "https://docs.aura.studio/runbooks/job-failures"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/job-failures"
     },
     {
       "name": "Queue Depth Critical",
@@ -79,7 +79,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["slack"],
-      "runbook": "https://docs.aura.studio/runbooks/queue-backlog"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/queue-backlog"
     },
     {
       "name": "Provider Health Degraded",
@@ -92,7 +92,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["slack"],
-      "runbook": "https://docs.aura.studio/runbooks/provider-health"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/provider-health"
     },
     {
       "name": "High CPU Usage",
@@ -105,7 +105,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["slack"],
-      "runbook": "https://docs.aura.studio/runbooks/high-cpu"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/high-cpu"
     },
     {
       "name": "High Memory Usage",
@@ -118,7 +118,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["slack"],
-      "runbook": "https://docs.aura.studio/runbooks/high-memory"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/high-memory"
     },
     {
       "name": "Database Query Slow",
@@ -131,7 +131,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["slack"],
-      "runbook": "https://docs.aura.studio/runbooks/slow-database"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/slow-database"
     },
     {
       "name": "Daily Cost Exceeded Budget",
@@ -144,7 +144,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["email"],
-      "runbook": "https://docs.aura.studio/runbooks/budget-exceeded"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/budget-exceeded"
     },
     {
       "name": "Exception Rate High",
@@ -157,7 +157,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["pagerduty", "slack"],
-      "runbook": "https://docs.aura.studio/runbooks/high-exceptions"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/high-exceptions"
     },
     {
       "name": "Disk Space Low",
@@ -170,7 +170,7 @@
       "operator": "GreaterThan",
       "triggerType": "Total",
       "actionGroups": ["slack"],
-      "runbook": "https://docs.aura.studio/runbooks/disk-space"
+      "runbook": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/runbooks/disk-space"
     }
   ]
 }

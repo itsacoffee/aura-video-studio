@@ -103,7 +103,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve projects", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve projects",
@@ -128,7 +128,7 @@ public class ProjectManagementController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project {projectId} does not exist",
@@ -204,7 +204,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve project {ProjectId}", correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve project",
@@ -231,7 +231,7 @@ public class ProjectManagementController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = "Project title is required",
@@ -264,7 +264,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to create project", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to create project",
@@ -304,7 +304,7 @@ public class ProjectManagementController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project {projectId} does not exist",
@@ -326,7 +326,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to update project {ProjectId}", correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to update project",
@@ -361,7 +361,7 @@ public class ProjectManagementController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project {projectId} does not exist",
@@ -377,7 +377,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to auto-save project {ProjectId}", correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to auto-save project",
@@ -402,7 +402,7 @@ public class ProjectManagementController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project {projectId} does not exist",
@@ -427,7 +427,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to duplicate project {ProjectId}", correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to duplicate project",
@@ -452,7 +452,7 @@ public class ProjectManagementController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Project Not Found",
                     status = 404,
                     detail = $"Project {projectId} does not exist",
@@ -468,7 +468,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to delete project {ProjectId}", correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to delete project",
@@ -495,7 +495,7 @@ public class ProjectManagementController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = "No project IDs provided",
@@ -517,7 +517,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to bulk delete projects", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to bulk delete projects",
@@ -562,7 +562,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve project versions {ProjectId}", correlationId, projectId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve project versions",
@@ -588,7 +588,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve categories", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve categories",
@@ -614,7 +614,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve tags", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve tags",
@@ -640,7 +640,7 @@ public class ProjectManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve statistics", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve statistics",

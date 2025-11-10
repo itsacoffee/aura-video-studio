@@ -355,7 +355,7 @@ public class ErrorRecoveryService
             links.Add(new DocumentationLink
             {
                 Title = "Provider Configuration Guide",
-                Url = "https://docs.aura.studio/providers/configuration",
+                Url = "https://github.com/Coffee285/aura-video-studio/blob/main/PROVIDER_INTEGRATION_GUIDE.md",
                 Description = "Learn how to configure and troubleshoot providers"
             });
 
@@ -364,7 +364,7 @@ public class ErrorRecoveryService
                 links.Add(new DocumentationLink
                 {
                     Title = "API Key Setup",
-                    Url = "https://docs.aura.studio/providers/api-keys",
+                    Url = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/setup/api-keys.md",
                     Description = "How to obtain and configure API keys"
                 });
             }
@@ -374,7 +374,7 @@ public class ErrorRecoveryService
             links.Add(new DocumentationLink
             {
                 Title = "FFmpeg Installation Guide",
-                Url = "https://docs.aura.studio/setup/ffmpeg",
+                Url = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/setup/dependencies.md#ffmpeg",
                 Description = "How to install and configure FFmpeg"
             });
         }
@@ -383,7 +383,7 @@ public class ErrorRecoveryService
         links.Add(new DocumentationLink
         {
             Title = "Troubleshooting Guide",
-            Url = "https://docs.aura.studio/troubleshooting",
+            Url = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/Troubleshooting.md",
             Description = "General troubleshooting tips and common solutions"
         });
 

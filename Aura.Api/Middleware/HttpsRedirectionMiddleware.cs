@@ -67,7 +67,7 @@ public class HttpsEnforcementMiddleware
                 
                 await context.Response.WriteAsJsonAsync(new
                 {
-                    type = "https://docs.aura.studio/errors/E301",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E301",
                     title = "HTTPS Required",
                     status = 301,
                     detail = "This service requires HTTPS. Please use HTTPS to access this endpoint.",

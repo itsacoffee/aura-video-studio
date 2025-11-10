@@ -55,7 +55,7 @@ E311: Insufficient system resources
 **Example Error Response:**
 ```json
 {
-  "type": "https://docs.aura.studio/errors/E307",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E307",
   "title": "Offline Mode Restriction",
   "status": 403,
   "detail": "Pro LLM providers require internet connection...\n\nAction: Disable Offline mode in settings or use Free providers."
@@ -156,7 +156,7 @@ Primary Provider → Ollama (if different) → RuleBased (always available)
 **Example:**
 ```json
 {
-  "type": "https://docs.aura.studio/errors/E303",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E303",
   "title": "Invalid Enum Value",
   "status": 400,
   "detail": "Unknown Aspect value: '4:3'. Valid values are: Widescreen16x9 (or 16:9), Vertical9x16 (or 9:16), Square1x1 (or 1:1)\n\nAction: One or more enum values are invalid..."
@@ -276,7 +276,7 @@ POST /api/script
 
 Response: 400 Bad Request
 {
-  "type": "https://docs.aura.studio/errors/E303",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E303",
   "title": "Invalid Enum Value",
   "status": 400,
   "detail": "Unknown Aspect value: '4:3'. Valid values are: Widescreen16x9 (or 16:9)..."
@@ -293,7 +293,7 @@ POST /api/script
 
 Response: 403 Forbidden
 {
-  "type": "https://docs.aura.studio/errors/E307",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E307",
   "title": "Offline Mode Restriction",
   "status": 403,
   "detail": "Pro LLM providers require internet connection...\n\nAction: Disable Offline mode..."

@@ -70,7 +70,7 @@ Preview the complete prompt that will be sent to the LLM, including variable sub
 **Error Response:** `400 Bad Request`
 ```json
 {
-  "type": "https://docs.aura.studio/errors/validation",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#validation",
   "title": "Validation Error",
   "status": 400,
   "detail": "Invalid prompt configuration",
@@ -391,7 +391,7 @@ All endpoints follow RFC 7807 Problem Details standard.
 
 ```json
 {
-  "type": "https://docs.aura.studio/errors/validation",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#validation",
   "title": "Validation Error",
   "status": 400,
   "detail": "Custom instructions exceed maximum length of 5000 characters",

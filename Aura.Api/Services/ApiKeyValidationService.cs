@@ -504,7 +504,7 @@ public class ApiKeyValidationService
             "ElevenLabs" => "https://docs.elevenlabs.io/",
             "PlayHT" => "https://docs.play.ht/",
             "Replicate" => "https://replicate.com/docs",
-            _ => "https://docs.aura.video/"
+            _ => "https://github.com/Coffee285/aura-video-studio/blob/main/docs/"
         };
     }
 

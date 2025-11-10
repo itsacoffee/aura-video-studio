@@ -61,7 +61,7 @@ public class CsrfProtectionMiddleware
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsJsonAsync(new
             {
-                type = "https://docs.aura.studio/errors/E403",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E403",
                 title = "CSRF Token Missing",
                 status = 403,
                 detail = "CSRF token is required for this request. Include the XSRF-TOKEN cookie value in the X-XSRF-TOKEN header.",
@@ -80,7 +80,7 @@ public class CsrfProtectionMiddleware
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsJsonAsync(new
             {
-                type = "https://docs.aura.studio/errors/E403",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E403",
                 title = "CSRF Token Invalid",
                 status = 403,
                 detail = "CSRF token validation failed. Token may be expired or invalid.",

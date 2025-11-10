@@ -1797,7 +1797,7 @@ Render engine uses ProblemDetails (RFC 7807) for consistent error responses:
 
 ```json
 {
-  "type": "https://docs.aura.studio/errors/render/insufficient-disk-space",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#render/insufficient-disk-space",
   "title": "Insufficient Disk Space",
   "status": 400,
   "detail": "Insufficient disk space. Required: 2500 MB, Available: 1200 MB in C:\\Videos\\Output",

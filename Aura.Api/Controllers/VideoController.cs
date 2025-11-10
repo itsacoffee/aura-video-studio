@@ -498,7 +498,7 @@ public class VideoController : ControllerBase
     {
         var problemDetails = new ProblemDetails
         {
-            Type = $"https://docs.aura.studio/errors/E{status}",
+            Type = $"https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E{status}",
             Title = title,
             Status = status,
             Detail = detail,

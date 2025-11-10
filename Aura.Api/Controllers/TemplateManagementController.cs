@@ -75,7 +75,7 @@ public class TemplateManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve templates", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve templates",
@@ -100,7 +100,7 @@ public class TemplateManagementController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Template Not Found",
                     status = 404,
                     detail = $"Template {templateId} does not exist",
@@ -139,7 +139,7 @@ public class TemplateManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to retrieve template {TemplateId}", correlationId, templateId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to retrieve template",
@@ -166,7 +166,7 @@ public class TemplateManagementController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = "Template name is required",
@@ -202,7 +202,7 @@ public class TemplateManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to create template", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to create template",
@@ -231,7 +231,7 @@ public class TemplateManagementController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Template Not Found",
                     status = 404,
                     detail = $"Template {templateId} does not exist",
@@ -271,7 +271,7 @@ public class TemplateManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to create project from template {TemplateId}", correlationId, templateId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to create project from template",
@@ -296,7 +296,7 @@ public class TemplateManagementController : ControllerBase
             {
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Template Not Found or Cannot Delete",
                     status = 404,
                     detail = $"Template {templateId} does not exist or is a system template",
@@ -312,7 +312,7 @@ public class TemplateManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to delete template {TemplateId}", correlationId, templateId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to delete template",
@@ -342,7 +342,7 @@ public class TemplateManagementController : ControllerBase
             Log.Error(ex, "[{CorrelationId}] Failed to seed system templates", correlationId);
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Server Error",
                 status = 500,
                 detail = "Failed to seed system templates",

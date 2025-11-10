@@ -339,7 +339,7 @@ class ErrorHandlingService {
     const links = [
       {
         title: 'Troubleshooting Guide',
-        url: 'https://docs.aura.studio/troubleshooting',
+        url: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/Troubleshooting.md',
         description: 'General troubleshooting tips and solutions',
       },
     ];
@@ -347,13 +347,13 @@ class ErrorHandlingService {
     if (category === 'NETWORK_ERROR') {
       links.push({
         title: 'Network Configuration',
-        url: 'https://docs.aura.studio/network',
+        url: 'https://github.com/Coffee285/aura-video-studio/blob/main/docs/troubleshooting/network-errors.md',
         description: 'How to configure network and proxy settings',
       });
     } else if (category === 'PROVIDER_ERROR') {
       links.push({
         title: 'Provider Configuration Guide',
-        url: 'https://docs.aura.studio/providers',
+        url: 'https://github.com/Coffee285/aura-video-studio/blob/main/PROVIDER_INTEGRATION_GUIDE.md',
         description: 'Learn how to configure and troubleshoot providers',
       });
     }

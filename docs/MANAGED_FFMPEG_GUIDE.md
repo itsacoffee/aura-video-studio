@@ -129,7 +129,7 @@ Installs managed FFmpeg from trusted mirrors. Pass `null` or omit `version` to i
 **Response on Failure** (500):
 ```json
 {
-  "type": "https://docs.aura.studio/errors/E313",
+  "type": "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E313",
   "title": "Installation Failed",
   "status": 500,
   "detail": "Failed to download FFmpeg from any mirror",

@@ -46,7 +46,7 @@ public class TelemetryController : ControllerBase
             {
                 return BadRequest(new
                 {
-                    type = "https://docs.aura.studio/errors/E400",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
                     title = "Invalid Request",
                     status = 400,
                     detail = "Job ID is required",
@@ -64,7 +64,7 @@ public class TelemetryController : ControllerBase
                 
                 return NotFound(new
                 {
-                    type = "https://docs.aura.studio/errors/E404",
+                    type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E404",
                     title = "Telemetry Not Found",
                     status = 404,
                     detail = $"No telemetry data found for job {jobId}",
@@ -87,7 +87,7 @@ public class TelemetryController : ControllerBase
             
             return StatusCode(500, new
             {
-                type = "https://docs.aura.studio/errors/E500",
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
                 title = "Internal Server Error",
                 status = 500,
                 detail = "An error occurred while retrieving telemetry data",
@@ -118,7 +118,7 @@ public class TelemetryController : ControllerBase
             },
             resultStatuses = new[] { "ok", "warn", "error" },
             selectionSources = new[] { "default", "pinned", "cli", "fallback" },
-            documentation = "https://docs.aura.studio/telemetry/run-telemetry-v1"
+            documentation = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/user-guide/run-telemetry-v1"
         });
     }
 }
