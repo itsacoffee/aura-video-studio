@@ -16,7 +16,7 @@ import {
   Pause24Regular,
   ArrowRepeatAll24Regular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useJobQueue } from '../../hooks/useJobQueue';
 
 const useStyles = makeStyles({
   container: {
@@ -77,69 +77,67 @@ const useStyles = makeStyles({
   },
 });
 
-interface ExportJob {
-  id: string;
-  platform: string;
-  status: 'queued' | 'processing' | 'paused' | 'completed' | 'failed';
-  progress: number;
-  fileName: string;
-  createdAt: Date;
-  estimatedTimeRemaining?: string;
-  encodingSpeed?: number;
-  error?: string;
-}
+// Map backend job status to UI status
+const mapJobStatus = (status: string): 'queued' | 'processing' | 'paused' | 'completed' | 'failed' => {
+  switch (status) {
+    case 'Pending':
+      return 'queued';
+    case 'Processing':
+      return 'processing';
+    case 'Completed':
+      return 'completed';
+    case 'Failed':
+      return 'failed';
+    case 'Cancelled':
+      return 'failed';
+    default:
+      return 'queued';
+  }
+};
 
 export function ExportQueueManager() {
   const styles = useStyles();
+  
+  // Use the job queue hook
+  const {
+    jobs: queueJobs,
+    cancelJob,
+  } = useJobQueue();
 
-  // Mock data - in real implementation, this would come from API/state
-  const [jobs, setJobs] = useState<ExportJob[]>([
-    {
-      id: '1',
-      platform: 'YouTube',
-      status: 'processing',
-      progress: 65,
-      fileName: 'my-video-youtube.mp4',
-      createdAt: new Date(),
-      estimatedTimeRemaining: '2m 15s',
-    },
-    {
-      id: '2',
-      platform: 'TikTok',
-      status: 'queued',
-      progress: 0,
-      fileName: 'my-video-tiktok.mp4',
-      createdAt: new Date(),
-    },
-  ]);
+  // Map backend jobs to export jobs format
+  const jobs = queueJobs.map((job) => ({
+    id: job.jobId,
+    platform: job.isQuickDemo ? 'Quick Demo' : 'Export',
+    status: mapJobStatus(job.status),
+    progress: job.progress,
+    fileName: job.outputPath ? job.outputPath.split('/').pop() || 'output.mp4' : 'processing...',
+    createdAt: new Date(job.enqueuedAt),
+    estimatedTimeRemaining: undefined, // Backend doesn't provide this yet
+    encodingSpeed: undefined,
+    error: job.errorMessage || undefined,
+  }));
 
-  const handleCancel = (jobId: string) => {
-    setJobs((prev) => prev.filter((job) => job.id !== jobId));
+  const handleCancel = async (jobId: string) => {
+    try {
+      await cancelJob(jobId);
+    } catch (error) {
+      console.error('Failed to cancel job:', error);
+    }
   };
 
-  const handlePause = (jobId: string) => {
-    setJobs((prev) =>
-      prev.map((job) => (job.id === jobId ? { ...job, status: 'paused' as const } : job))
-    );
+  const handlePause = (_jobId: string) => {
+    // TODO: Implement pause functionality in backend
   };
 
-  const handleResume = (jobId: string) => {
-    setJobs((prev) =>
-      prev.map((job) => (job.id === jobId ? { ...job, status: 'processing' as const } : job))
-    );
+  const handleResume = (_jobId: string) => {
+    // TODO: Implement resume functionality in backend
   };
 
-  const handleRetry = (jobId: string) => {
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === jobId
-          ? { ...job, status: 'queued' as const, progress: 0, error: undefined }
-          : job
-      )
-    );
+  const handleRetry = (_jobId: string) => {
+    // TODO: Implement retry functionality in backend
   };
 
-  const getStatusIcon = (status: ExportJob['status']) => {
+  const getStatusIcon = (status: 'queued' | 'processing' | 'paused' | 'completed' | 'failed') => {
     switch (status) {
       case 'completed':
         return <CheckmarkCircle24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />;
@@ -154,7 +152,7 @@ export function ExportQueueManager() {
     }
   };
 
-  const getStatusColor = (status: ExportJob['status']) => {
+  const getStatusColor = (status: 'queued' | 'processing' | 'paused' | 'completed' | 'failed') => {
     switch (status) {
       case 'completed':
         return 'success';

@@ -14,3 +14,6 @@ export type { ProjectsState } from './projectsStore';
 
 export { useVideoGenerationStore } from './videoGenerationStore';
 export type { VideoGenerationState, VideoGenerationJob } from './videoGenerationStore';
+
+export { useJobQueueStore } from './jobQueueStore';
+export type { JobQueueState } from './jobQueueStore';

@@ -39,7 +39,9 @@ import {
   ArrowExport24Regular,
   DocumentText24Regular,
 } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useJobQueue } from '../../hooks/useJobQueue';
+import type { JobQueueItem } from '../../services/jobQueueService';
 
 const useStyles = makeStyles({
   container: {
@@ -128,68 +130,74 @@ const useStyles = makeStyles({
   },
 });
 
-interface QueueItem {
-  id: string;
-  projectName: string;
-  presetName: string;
-  status: 'queued' | 'rendering' | 'complete' | 'failed';
-  progress: number;
-  estimatedTimeRemaining: number;
-  outputSize?: number;
-  error?: string;
-  createdAt: Date;
-  startedAt?: Date;
-  completedAt?: Date;
-  renderTime?: number;
-}
+// Map backend job status to UI status
+const mapJobStatus = (status: string): 'queued' | 'rendering' | 'complete' | 'failed' => {
+  switch (status) {
+    case 'Pending':
+      return 'queued';
+    case 'Processing':
+      return 'rendering';
+    case 'Completed':
+      return 'complete';
+    case 'Failed':
+    case 'Cancelled':
+      return 'failed';
+    default:
+      return 'queued';
+  }
+};
 
 export function RenderQueue() {
   const styles = useStyles();
+  
+  // Use the job queue hook
+  const {
+    jobs,
+    statistics,
+    configuration,
+    isConnected,
+    isLoadingJobs,
+    error,
+    cancelJob,
+    clearCompletedJobs,
+    updateConfiguration,
+  } = useJobQueue();
+
   const [isPaused, setIsPaused] = useState(false);
-  const [queueItems, setQueueItems] = useState<QueueItem[]>([
-    {
-      id: '1',
-      projectName: 'Marketing Video Q4',
-      presetName: 'YouTube 1080p',
-      status: 'rendering',
-      progress: 45,
-      estimatedTimeRemaining: 120,
-      createdAt: new Date(),
-      startedAt: new Date(),
-    },
-    {
-      id: '2',
-      projectName: 'Marketing Video Q4',
-      presetName: 'Instagram Feed',
-      status: 'queued',
-      progress: 0,
-      estimatedTimeRemaining: 180,
-      createdAt: new Date(),
-    },
-    {
-      id: '3',
-      projectName: 'Product Demo',
-      presetName: 'TikTok',
-      status: 'complete',
-      progress: 100,
-      estimatedTimeRemaining: 0,
-      outputSize: 45600000,
-      createdAt: new Date(),
-      completedAt: new Date(),
-      renderTime: 156,
-    },
-  ]);
+
+  // Sync pause state with configuration
+  useEffect(() => {
+    if (configuration) {
+      setIsPaused(!configuration.isEnabled);
+    }
+  }, [configuration]);
+
+  // Map jobs to queue items
+  const queueItems = jobs.map((job) => ({
+    id: job.jobId,
+    projectName: job.correlationId || 'Video Project',
+    presetName: `${job.isQuickDemo ? 'Quick Demo' : 'Full Render'} (Priority: ${job.priority})`,
+    status: mapJobStatus(job.status),
+    progress: job.progress,
+    estimatedTimeRemaining: 0, // Backend doesn't provide this yet
+    error: job.errorMessage || undefined,
+    createdAt: new Date(job.enqueuedAt),
+    startedAt: job.startedAt ? new Date(job.startedAt) : undefined,
+    completedAt: job.completedAt ? new Date(job.completedAt) : undefined,
+    outputPath: job.outputPath || undefined,
+    currentStage: job.currentStage || undefined,
+  }));
 
   const currentRender = queueItems.find((item) => item.status === 'rendering');
-  const queuedCount = queueItems.filter((item) => item.status === 'queued').length;
-  const completedCount = queueItems.filter((item) => item.status === 'complete').length;
-  const failedCount = queueItems.filter((item) => item.status === 'failed').length;
+  const queuedCount = statistics?.pendingJobs || queueItems.filter((item) => item.status === 'queued').length;
+  const completedCount = statistics?.completedJobs || queueItems.filter((item) => item.status === 'complete').length;
+  const failedCount = statistics?.failedJobs || queueItems.filter((item) => item.status === 'failed').length;
 
   const overallProgress =
-    queueItems.length > 0
-      ? Math.round(
-          (queueItems.filter((item) => item.status === 'complete').length / queueItems.length) * 100
-        )
+    statistics && statistics.totalJobs > 0
+      ? Math.round((statistics.completedJobs / statistics.totalJobs) * 100)
+      : queueItems.length > 0
+      ? Math.round((queueItems.filter((item) => item.status === 'complete').length / queueItems.length) * 100)
       : 0;
 
   const formatTime = (seconds: number) => {
@@ -202,32 +210,54 @@ export function RenderQueue() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
-  const handlePauseResume = () => {
-    setIsPaused(!isPaused);
-  };
-
-  const handleClearCompleted = () => {
-    setQueueItems(queueItems.filter((item) => item.status !== 'complete'));
-  };
-
-  const handleClearAll = () => {
-    if (confirm('Are you sure you want to clear all queue items?')) {
-      setQueueItems([]);
+  const handlePauseResume = async () => {
+    if (!configuration) return;
+    
+    try {
+      await updateConfiguration(
+        configuration.maxConcurrentJobs,
+        !configuration.isEnabled
+      );
+      setIsPaused(!isPaused);
+    } catch (error) {
+      console.error('Failed to pause/resume queue:', error);
     }
   };
 
-  const handleRemoveItem = (id: string) => {
-    setQueueItems(queueItems.filter((item) => item.id !== id));
+  const handleClearCompleted = async () => {
+    try {
+      await clearCompletedJobs();
+    } catch (error) {
+      console.error('Failed to clear completed jobs:', error);
+    }
+  };
+
+  const handleClearAll = () => {
+    if (confirm('Are you sure you want to clear all queue items? Active jobs will be cancelled.')) {
+      // Cancel all active jobs
+      queueItems.forEach(async (item) => {
+        if (item.status === 'rendering' || item.status === 'queued') {
+          try {
+            await cancelJob(item.id);
+          } catch (error) {
+            console.error(`Failed to cancel job ${item.id}:`, error);
+          }
+        }
+      });
+    }
+  };
+
+  const handleRemoveItem = async (id: string) => {
+    try {
+      await cancelJob(id);
+    } catch (error) {
+      console.error(`Failed to remove job ${id}:`, error);
+    }
   };
 
   const handleRetryItem = (id: string) => {
-    setQueueItems(
-      queueItems.map((item) =>
-        item.id === id
-          ? { ...item, status: 'queued' as const, progress: 0, error: undefined }
-          : item
-      )
-    );
+    // TODO: Implement retry functionality in the backend API
+    console.log('Retry not yet implemented for job:', id);
   };
 
   const renderStatusBadge = (status: QueueItem['status']) => {
@@ -268,11 +298,18 @@ export function RenderQueue() {
       <div className={styles.header}>
         <Title1>Render Queue</Title1>
         <Text>Manage your video export queue and monitor rendering progress</Text>
+        {!isConnected && (
+          <Badge color="danger">Disconnected from queue service</Badge>
+        )}
+        {error && (
+          <Text style={{ color: 'red' }}>{error}</Text>
+        )}
         <div className={styles.headerActions}>
           <Button
             appearance="secondary"
             icon={isPaused ? <Play24Regular /> : <Pause24Regular />}
             onClick={handlePauseResume}
+            disabled={!configuration}
           >
             {isPaused ? 'Resume Queue' : 'Pause Queue'}
           </Button>
@@ -348,7 +385,11 @@ export function RenderQueue() {
         </Card>
       )}
 
-      {queueItems.length === 0 ? (
+      {isLoadingJobs ? (
+        <div className={styles.emptyState}>
+          <Body1>Loading jobs...</Body1>
+        </div>
+      ) : queueItems.length === 0 ? (
         <div className={styles.emptyState}>
           <Body1>No items in queue</Body1>
           <Caption1>Add exports to the queue from the Export dialog</Caption1>
@@ -384,12 +425,14 @@ export function RenderQueue() {
                 </TableCell>
                 <TableCell>
                   {item.status === 'rendering' && (
-                    <Caption1>{formatTime(item.estimatedTimeRemaining)} remaining</Caption1>
+                    <Caption1>
+                      {item.currentStage || 'Processing...'}
+                    </Caption1>
                   )}
-                  {item.status === 'complete' && item.outputSize && (
-                    <Caption1>{formatFileSize(item.outputSize)}</Caption1>
+                  {item.status === 'complete' && (
+                    <Caption1>Done</Caption1>
                   )}
-                  {item.status === 'failed' && <Caption1>-</Caption1>}
+                  {item.status === 'failed' && <Caption1>Failed</Caption1>}
                   {item.status === 'queued' && <Caption1>Waiting...</Caption1>}
                 </TableCell>
                 <TableCell>
