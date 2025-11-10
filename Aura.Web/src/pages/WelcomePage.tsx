@@ -12,14 +12,18 @@ import {
   Badge,
   Tooltip,
 } from '@fluentui/react-components';
-import { Play24Regular, Settings24Regular, Rocket24Regular } from '@fluentui/react-icons';
+import { Play24Regular, Settings24Regular, Rocket24Regular, Lightbulb24Regular } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ConfigurationModal } from '../components/ConfigurationModal';
+import { ConfigurationStatusCard } from '../components/ConfigurationStatusCard';
 import { FirstRunDiagnostics } from '../components/FirstRunDiagnostics';
 import { SystemCheckCard } from '../components/SystemCheckCard';
 import { TooltipContent, TooltipWithLink } from '../components/Tooltips';
 import { apiUrl } from '../config/api';
 import { hasCompletedFirstRun } from '../services/firstRunService';
+import { configurationStatusService } from '../services/configurationStatusService';
+import type { ConfigurationStatus } from '../services/configurationStatusService';
 import type { HardwareCapabilities } from '../types';
 
 const useStyles = makeStyles({
@@ -137,6 +141,84 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: tokens.spacingVerticalS,
   },
+  setupBanner: {
+    padding: tokens.spacingVerticalXXL,
+    marginBottom: tokens.spacingVerticalXXL,
+    borderRadius: tokens.borderRadiusLarge,
+    background: `linear-gradient(135deg, ${tokens.colorPaletteRedBackground1} 0%, ${tokens.colorPaletteOrangeBackground1} 100%)`,
+    border: `3px solid ${tokens.colorPaletteRedBorder2}`,
+    textAlign: 'center',
+    animation: 'pulseGlow 2s ease-in-out infinite',
+  },
+  '@keyframes pulseGlow': {
+    '0%, 100%': {
+      boxShadow: `0 0 20px ${tokens.colorPaletteRedBorder1}`,
+    },
+    '50%': {
+      boxShadow: `0 0 40px ${tokens.colorPaletteRedBorder2}`,
+    },
+  },
+  setupBannerTitle: {
+    fontSize: '32px',
+    fontWeight: tokens.fontWeightBold,
+    marginBottom: tokens.spacingVerticalM,
+    color: tokens.colorPaletteRedForeground1,
+  },
+  setupBannerText: {
+    fontSize: '18px',
+    marginBottom: tokens.spacingVerticalXL,
+    maxWidth: '700px',
+    margin: '0 auto',
+    lineHeight: '1.6',
+  },
+  quickSetupButton: {
+    fontSize: '20px',
+    padding: '20px 48px',
+    height: 'auto',
+    minHeight: '64px',
+    fontWeight: tokens.fontWeightBold,
+    animation: 'buttonPulse 2s ease-in-out infinite',
+  },
+  '@keyframes buttonPulse': {
+    '0%, 100%': {
+      transform: 'scale(1)',
+    },
+    '50%': {
+      transform: 'scale(1.05)',
+    },
+  },
+  readyBanner: {
+    padding: tokens.spacingVerticalXL,
+    marginBottom: tokens.spacingVerticalXXL,
+    borderRadius: tokens.borderRadiusLarge,
+    background: `linear-gradient(135deg, ${tokens.colorPaletteGreenBackground1} 0%, ${tokens.colorPaletteBlueBorderActive} 100%)`,
+    border: `2px solid ${tokens.colorPaletteGreenBorder1}`,
+    textAlign: 'center',
+  },
+  readyBannerTitle: {
+    fontSize: '28px',
+    fontWeight: tokens.fontWeightBold,
+    marginBottom: tokens.spacingVerticalS,
+    color: tokens.colorPaletteGreenForeground1,
+  },
+  disabledButtonTooltip: {
+    padding: tokens.spacingVerticalM,
+    maxWidth: '300px',
+  },
+  summaryCard: {
+    padding: tokens.spacingVerticalL,
+    marginTop: tokens.spacingVerticalL,
+  },
+  summaryGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: tokens.spacingVerticalM,
+  },
+  summaryItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
 });
 
 interface HealthStatus {
@@ -152,6 +234,9 @@ export function WelcomePage() {
   const [loading, setLoading] = useState(true);
   const [isFirstRun, setIsFirstRun] = useState(false);
   const [checkingFirstRun, setCheckingFirstRun] = useState(true);
+  const [configStatus, setConfigStatus] = useState<ConfigurationStatus | null>(null);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(true);
 
   useEffect(() => {
     // Check first-run status
@@ -168,6 +253,26 @@ export function WelcomePage() {
     };
 
     checkFirstRunStatus();
+  }, []);
+
+  useEffect(() => {
+    // Load configuration status
+    const loadConfigStatus = async () => {
+      try {
+        const status = await configurationStatusService.getStatus();
+        setConfigStatus(status);
+      } catch (error) {
+        console.error('Error loading configuration status:', error);
+      } finally {
+        setLoadingConfig(false);
+      }
+    };
+
+    loadConfigStatus();
+
+    // Subscribe to configuration changes
+    const unsubscribe = configurationStatusService.subscribe(setConfigStatus);
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -212,87 +317,90 @@ export function WelcomePage() {
       });
   }, []);
 
+  const handleOpenConfigModal = () => {
+    setShowConfigModal(true);
+  };
+
+  const handleCloseConfigModal = () => {
+    setShowConfigModal(false);
+    // Refresh configuration status after modal closes
+    configurationStatusService.getStatus(true).then(setConfigStatus);
+  };
+
+  const handleConfigComplete = async () => {
+    // Refresh all statuses
+    await configurationStatusService.markConfigured();
+    const status = await configurationStatusService.getStatus(true);
+    setConfigStatus(status);
+  };
+
+  const isSystemReady = !loadingConfig && configStatus?.isConfigured;
+  const needsSetup = !loadingConfig && !configStatus?.isConfigured;
+
   return (
     <div className={styles.container}>
-      {/* First-Run Diagnostics */}
-      <FirstRunDiagnostics
-        autoRun={true}
-        onNeedsSetup={() => {
-          // Optionally redirect to onboarding if critical issues found
-        }}
+      {/* Configuration Modal */}
+      <ConfigurationModal
+        open={showConfigModal}
+        onClose={handleCloseConfigModal}
+        onComplete={handleConfigComplete}
+        allowDismiss={!needsSetup}
       />
+
+      {/* Setup Required Banner - Show if not configured */}
+      {needsSetup && (
+        <div className={styles.setupBanner}>
+          <div className={styles.setupBannerTitle}>
+            ⚠️ SETUP REQUIRED ⚠️
+          </div>
+          <Text className={styles.setupBannerText}>
+            <strong>Configuration is incomplete.</strong> You must complete the setup wizard before you can create videos.
+            <br />
+            <br />
+            ✓ Configure AI providers for script generation
+            <br />
+            ✓ Install FFmpeg for video rendering
+            <br />
+            ✓ Set up your workspace for saving projects
+            <br />
+            <br />
+            This quick 3-5 minute setup will get you ready to create amazing videos!
+          </Text>
+          <Button
+            appearance="primary"
+            size="large"
+            className={styles.quickSetupButton}
+            icon={<Rocket24Regular />}
+            onClick={handleOpenConfigModal}
+          >
+            🚀 Quick Setup - Start Now
+          </Button>
+        </div>
+      )}
+
+      {/* Ready Banner - Show if configured */}
+      {isSystemReady && (
+        <div className={styles.readyBanner}>
+          <div className={styles.readyBannerTitle}>
+            ✅ System Ready!
+          </div>
+          <Text style={{ fontSize: '16px', marginTop: tokens.spacingVerticalS }}>
+            Your system is configured and ready to create videos. All checks passed!
+          </Text>
+        </div>
+      )}
+
+      {/* Configuration Status Card */}
+      {!loadingConfig && (
+        <ConfigurationStatusCard
+          onConfigure={handleOpenConfigModal}
+          showConfigureButton={true}
+          autoRefresh={true}
+        />
+      )}
 
       {/* System Health Check */}
       <SystemCheckCard autoRetry={true} retryInterval={30000} />
-
-      {/* Prominent First-Time Setup Callout - only show if user hasn't completed onboarding */}
-      {!checkingFirstRun && isFirstRun && (
-        <div className={styles.firstTimeCallout}>
-          <Title3 className={styles.calloutTitle}>
-            <Rocket24Regular
-              style={{
-                fontSize: '32px',
-                marginRight: tokens.spacingHorizontalM,
-                verticalAlign: 'middle',
-              }}
-            />
-            🚀 REQUIRED: Complete Initial Setup Before Proceeding
-          </Title3>
-          <Text className={styles.calloutText}>
-            <strong>You must complete this setup before creating videos.</strong> This quick 3-5
-            minute wizard will:
-            <br />
-            <br />
-            ✓ Configure your AI providers (free or paid options available)
-            <br />
-            ✓ Detect your hardware capabilities for optimal performance
-            <br />
-            ✓ Set up your workspace and ensure all dependencies are ready
-            <br />
-            <br />
-            Don&apos;t worry - the setup is flexible. You can use completely free tools or add API
-            keys for premium services. You&apos;ll have full control over your configuration!
-          </Text>
-          <Button
-            appearance="primary"
-            size="large"
-            className={styles.primaryOnboardingButton}
-            icon={<Rocket24Regular />}
-            onClick={() => navigate('/setup')}
-          >
-            ▶ Start Required Setup Now
-          </Button>
-        </div>
-      )}
-
-      {/* Reconfigure Setup Callout - show for returning users who have completed onboarding */}
-      {!checkingFirstRun && !isFirstRun && (
-        <div className={styles.reconfigureCallout}>
-          <Title3 className={styles.reconfigureTitle}>
-            <Settings24Regular
-              style={{
-                fontSize: '24px',
-                marginRight: tokens.spacingHorizontalM,
-                verticalAlign: 'middle',
-              }}
-            />
-            Need to Reconfigure Your Setup?
-          </Title3>
-          <Text className={styles.reconfigureText}>
-            Use the setup wizard to update API keys, configure dependencies, or adjust your
-            workspace preferences.
-          </Text>
-          <Button
-            appearance="primary"
-            size="large"
-            className={styles.secondaryOnboardingButton}
-            icon={<Settings24Regular />}
-            onClick={() => navigate('/setup')}
-          >
-            Configure Setup
-          </Button>
-        </div>
-      )}
 
       <div className={styles.hero}>
         <Title1 className={styles.title}>Welcome to Aura Video Studio</Title1>
@@ -301,19 +409,45 @@ export function WelcomePage() {
         </Text>
 
         <div className={styles.actions}>
-          <Tooltip
-            content={<TooltipWithLink content={TooltipContent.welcomeCreateNew} />}
-            relationship="description"
-          >
-            <Button
-              appearance="primary"
-              size="large"
-              icon={<Play24Regular />}
-              onClick={() => navigate('/create')}
+          {needsSetup ? (
+            <Tooltip
+              content={
+                <div className={styles.disabledButtonTooltip}>
+                  <Text weight="semibold" style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}>
+                    Setup Required
+                  </Text>
+                  <Text>
+                    You must complete the configuration wizard before creating videos. 
+                    Click &quot;Quick Setup&quot; above to get started.
+                  </Text>
+                </div>
+              }
+              relationship="description"
             >
-              Create Video
-            </Button>
-          </Tooltip>
+              <Button
+                appearance="primary"
+                size="large"
+                icon={<Play24Regular />}
+                disabled={true}
+              >
+                Create Video
+              </Button>
+            </Tooltip>
+          ) : (
+            <Tooltip
+              content={<TooltipWithLink content={TooltipContent.welcomeCreateNew} />}
+              relationship="description"
+            >
+              <Button
+                appearance="primary"
+                size="large"
+                icon={<Play24Regular />}
+                onClick={() => navigate('/create')}
+              >
+                Create Video
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip
             content={<TooltipWithLink content={TooltipContent.welcomeSettings} />}
             relationship="description"
@@ -322,8 +456,58 @@ export function WelcomePage() {
               Settings
             </Button>
           </Tooltip>
+          <Button 
+            size="large" 
+            icon={<Lightbulb24Regular />} 
+            onClick={handleOpenConfigModal}
+            appearance={needsSetup ? "primary" : "secondary"}
+          >
+            {needsSetup ? "Setup Wizard" : "Reconfigure"}
+          </Button>
         </div>
       </div>
+
+      {/* Configuration Summary - Show when ready */}
+      {isSystemReady && configStatus && (
+        <Card className={styles.summaryCard}>
+          <CardHeader
+            header={<Title2>Configuration Summary</Title2>}
+            description="Your current system configuration"
+          />
+          <div className={styles.summaryGrid}>
+            <div className={styles.summaryItem}>
+              <Text weight="semibold">AI Providers</Text>
+              <Text size={300}>
+                {configStatus.details.configuredProviders.length > 0
+                  ? configStatus.details.configuredProviders.join(', ')
+                  : 'None'}
+              </Text>
+            </div>
+            <div className={styles.summaryItem}>
+              <Text weight="semibold">FFmpeg</Text>
+              <Text size={300}>
+                {configStatus.details.ffmpegVersion
+                  ? `Version ${configStatus.details.ffmpegVersion}`
+                  : 'Not detected'}
+              </Text>
+            </div>
+            <div className={styles.summaryItem}>
+              <Text weight="semibold">GPU</Text>
+              <Text size={300}>
+                {configStatus.details.gpuAvailable ? 'Available' : 'Not available'}
+              </Text>
+            </div>
+            <div className={styles.summaryItem}>
+              <Text weight="semibold">Disk Space</Text>
+              <Text size={300}>
+                {configStatus.details.diskSpaceAvailable
+                  ? `${configStatus.details.diskSpaceAvailable.toFixed(1)} GB available`
+                  : 'Unknown'}
+              </Text>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className={styles.grid}>
         <Card className={styles.card}>
