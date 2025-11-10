@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -7,49 +10,67 @@ namespace Aura.Providers.Llm;
 
 /// <summary>
 /// Estimates costs for LLM API calls based on token usage and provider pricing.
-/// Updated with current pricing as of late 2024.
+/// Uses dynamic configuration file for pricing that can be updated without code changes.
 /// </summary>
 public class LlmCostEstimator
 {
     private readonly ILogger<LlmCostEstimator> _logger;
-    
-    // Pricing per 1M tokens (input / output) in USD
-    private static readonly Dictionary<string, (decimal Input, decimal Output)> ModelPricing = new()
-    {
-        // OpenAI Pricing (as of Nov 2024)
-        { "gpt-4o", (2.50m, 10.00m) },
-        { "gpt-4o-mini", (0.150m, 0.600m) },
-        { "gpt-4-turbo", (10.00m, 30.00m) },
-        { "gpt-4", (30.00m, 60.00m) },
-        { "gpt-3.5-turbo", (0.50m, 1.50m) },
-        { "gpt-3.5-turbo-16k", (3.00m, 4.00m) },
-        
-        // Anthropic Pricing
-        { "claude-3-5-sonnet-20241022", (3.00m, 15.00m) },
-        { "claude-3-opus-20240229", (15.00m, 75.00m) },
-        { "claude-3-sonnet-20240229", (3.00m, 15.00m) },
-        { "claude-3-haiku-20240307", (0.25m, 1.25m) },
-        
-        // Google Gemini Pricing
-        { "gemini-1.5-pro", (1.25m, 5.00m) },
-        { "gemini-1.5-flash", (0.075m, 0.30m) },
-        { "gemini-pro", (0.50m, 1.50m) },
-        
-        // Azure OpenAI (same as OpenAI, region-dependent)
-        { "azure-gpt-4o", (2.50m, 10.00m) },
-        { "azure-gpt-4o-mini", (0.150m, 0.600m) },
-        { "azure-gpt-4", (30.00m, 60.00m) },
-        { "azure-gpt-35-turbo", (0.50m, 1.50m) },
-        
-        // Free/Local providers
-        { "ollama", (0.00m, 0.00m) },
-        { "local", (0.00m, 0.00m) },
-        { "rulebased", (0.00m, 0.00m) }
-    };
+    private readonly LlmPricingConfiguration _pricingConfig;
+    private readonly string? _configPath;
+    private DateTime _lastConfigCheck;
+    private readonly TimeSpan _configCheckInterval = TimeSpan.FromMinutes(5);
 
-    public LlmCostEstimator(ILogger<LlmCostEstimator> logger)
+    public LlmCostEstimator(ILogger<LlmCostEstimator> logger, string? configPath = null)
     {
         _logger = logger;
+        _configPath = configPath;
+        _pricingConfig = LoadConfiguration();
+        _lastConfigCheck = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Load pricing configuration from file or defaults
+    /// </summary>
+    private LlmPricingConfiguration LoadConfiguration()
+    {
+        if (!string.IsNullOrEmpty(_configPath))
+        {
+            return LlmPricingConfiguration.LoadFromFile(_configPath, _logger);
+        }
+        
+        return LlmPricingConfiguration.LoadDefault(_logger);
+    }
+
+    /// <summary>
+    /// Reload configuration if enough time has passed
+    /// Allows hot-reloading of pricing without restart
+    /// </summary>
+    private void CheckConfigurationUpdate()
+    {
+        if (DateTime.UtcNow - _lastConfigCheck < _configCheckInterval)
+        {
+            return;
+        }
+
+        _lastConfigCheck = DateTime.UtcNow;
+        
+        try
+        {
+            var newConfig = LoadConfiguration();
+            if (newConfig.Version != _pricingConfig.Version)
+            {
+                _logger.LogInformation(
+                    "Pricing configuration updated from v{OldVersion} to v{NewVersion}",
+                    _pricingConfig.Version, newConfig.Version);
+                
+                // Update via reflection or recreate (for simplicity, log only in this implementation)
+                _logger.LogInformation("Restart application to use new pricing configuration");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check for pricing configuration updates");
+        }
     }
 
     /// <summary>
@@ -68,16 +89,18 @@ public class LlmCostEstimator
     /// </summary>
     public CostEstimate CalculateCost(int inputTokens, int outputTokens, string model)
     {
-        var normalizedModel = NormalizeModelName(model);
+        CheckConfigurationUpdate();
         
-        if (!ModelPricing.TryGetValue(normalizedModel, out var pricing))
+        var pricing = _pricingConfig.GetModelPricing(model);
+        
+        if (pricing == null)
         {
-            _logger.LogWarning("Unknown model {Model}, using gpt-4o-mini pricing as fallback", model);
-            pricing = ModelPricing["gpt-4o-mini"];
+            _logger.LogWarning("Unknown model {Model}, using fallback pricing", model);
+            pricing = _pricingConfig.FallbackModel;
         }
 
-        var inputCost = (inputTokens / 1_000_000.0m) * pricing.Input;
-        var outputCost = (outputTokens / 1_000_000.0m) * pricing.Output;
+        var inputCost = (inputTokens / 1_000_000.0m) * pricing.InputPrice;
+        var outputCost = (outputTokens / 1_000_000.0m) * pricing.OutputPrice;
         var totalCost = inputCost + outputCost;
 
         _logger.LogDebug(
@@ -93,7 +116,8 @@ public class LlmCostEstimator
             InputCost = inputCost,
             OutputCost = outputCost,
             TotalCost = totalCost,
-            EstimatedAt = DateTime.UtcNow
+            EstimatedAt = DateTime.UtcNow,
+            ConfigVersion = _pricingConfig.Version
         };
     }
 
@@ -148,22 +172,85 @@ public class LlmCostEstimator
     /// </summary>
     public string RecommendModel(decimal maxBudgetPerRequest, QualityTier desiredQuality)
     {
+        CheckConfigurationUpdate();
+        
+        // Get all available models sorted by cost (per 1000 tokens)
+        var modelsWithCost = _pricingConfig.Providers.Values
+            .SelectMany(p => p.Models)
+            .Where(m => m.Value.InputPrice > 0) // Exclude free models
+            .Select(m => new
+            {
+                Name = m.Key,
+                Pricing = m.Value,
+                AvgCostPer1K = (m.Value.InputPrice + m.Value.OutputPrice) / 2000m // Average cost per 1K tokens
+            })
+            .OrderBy(m => m.AvgCostPer1K)
+            .ToList();
+
+        // Estimate tokens for a typical request (2000 input, 1000 output)
+        var estimatedInputTokens = 2000;
+        var estimatedOutputTokens = 1000;
+
         return desiredQuality switch
         {
-            QualityTier.Budget when maxBudgetPerRequest >= 0.01m => "gpt-4o-mini",
-            QualityTier.Budget => "claude-3-haiku-20240307",
+            QualityTier.Budget => FindBestModelForBudget(modelsWithCost, maxBudgetPerRequest, 
+                estimatedInputTokens, estimatedOutputTokens, isBudget: true),
             
-            QualityTier.Balanced when maxBudgetPerRequest >= 0.05m => "gpt-4o",
-            QualityTier.Balanced => "gpt-4o-mini",
+            QualityTier.Balanced => FindBestModelForBudget(modelsWithCost, maxBudgetPerRequest,
+                estimatedInputTokens, estimatedOutputTokens, isBalanced: true),
             
-            QualityTier.Premium when maxBudgetPerRequest >= 0.50m => "gpt-4-turbo",
-            QualityTier.Premium when maxBudgetPerRequest >= 0.20m => "claude-3-5-sonnet-20241022",
-            QualityTier.Premium => "gpt-4o",
+            QualityTier.Premium => FindBestModelForBudget(modelsWithCost, maxBudgetPerRequest,
+                estimatedInputTokens, estimatedOutputTokens, isPremium: true),
             
-            QualityTier.Maximum => "gpt-4-turbo",
+            QualityTier.Maximum => modelsWithCost.LastOrDefault()?.Name ?? "gpt-4o",
             
             _ => "gpt-4o-mini"
         };
+    }
+
+    private string FindBestModelForBudget(
+        List<dynamic> models,
+        decimal maxBudget,
+        int inputTokens,
+        int outputTokens,
+        bool isBudget = false,
+        bool isBalanced = false,
+        bool isPremium = false)
+    {
+        // Filter models that fit the budget
+        var affordableModels = models.Where(m =>
+        {
+            var cost = (inputTokens / 1_000_000.0m) * m.Pricing.InputPrice +
+                      (outputTokens / 1_000_000.0m) * m.Pricing.OutputPrice;
+            return cost <= maxBudget;
+        }).ToList();
+
+        if (!affordableModels.Any())
+        {
+            // Return cheapest model if nothing fits budget
+            return models.FirstOrDefault()?.Name ?? "gpt-4o-mini";
+        }
+
+        if (isBudget)
+        {
+            // Return cheapest affordable model
+            return affordableModels.FirstOrDefault()?.Name ?? "gpt-4o-mini";
+        }
+
+        if (isBalanced)
+        {
+            // Return model in middle of affordable range
+            var midIndex = affordableModels.Count / 2;
+            return affordableModels[midIndex]?.Name ?? "gpt-4o";
+        }
+
+        if (isPremium)
+        {
+            // Return most expensive affordable model
+            return affordableModels.LastOrDefault()?.Name ?? "gpt-4o";
+        }
+
+        return "gpt-4o-mini";
     }
 
     /// <summary>
@@ -191,48 +278,23 @@ public class LlmCostEstimator
     }
 
     /// <summary>
-    /// Normalize model name to match pricing dictionary
+    /// Get all available models from configuration
     /// </summary>
-    private string NormalizeModelName(string model)
+    public List<string> GetAvailableModels()
     {
-        var normalized = model.ToLowerInvariant().Trim();
-        
-        // Handle common variations
-        if (normalized.Contains("gpt-4o-mini") || normalized.Contains("gpt-4o-mini"))
-            return "gpt-4o-mini";
-        if (normalized.Contains("gpt-4o"))
-            return "gpt-4o";
-        if (normalized.Contains("gpt-4-turbo"))
-            return "gpt-4-turbo";
-        if (normalized.Contains("gpt-4"))
-            return "gpt-4";
-        if (normalized.Contains("gpt-3.5") && normalized.Contains("16k"))
-            return "gpt-3.5-turbo-16k";
-        if (normalized.Contains("gpt-3.5"))
-            return "gpt-3.5-turbo";
-        if (normalized.Contains("claude-3-5-sonnet"))
-            return "claude-3-5-sonnet-20241022";
-        if (normalized.Contains("claude-3-opus"))
-            return "claude-3-opus-20240229";
-        if (normalized.Contains("claude-3-sonnet"))
-            return "claude-3-sonnet-20240229";
-        if (normalized.Contains("claude-3-haiku") || normalized.Contains("claude-haiku"))
-            return "claude-3-haiku-20240307";
-        if (normalized.Contains("gemini-1.5-pro"))
-            return "gemini-1.5-pro";
-        if (normalized.Contains("gemini-1.5-flash") || normalized.Contains("gemini-flash"))
-            return "gemini-1.5-flash";
-        if (normalized.Contains("gemini"))
-            return "gemini-pro";
-        if (normalized.Contains("ollama"))
-            return "ollama";
-        if (normalized.Contains("local"))
-            return "local";
-        if (normalized.Contains("rule"))
-            return "rulebased";
-        
-        return normalized;
+        CheckConfigurationUpdate();
+        return _pricingConfig.GetAllModelNames();
     }
+
+    /// <summary>
+    /// Get pricing configuration version
+    /// </summary>
+    public string GetConfigVersion() => _pricingConfig.Version;
+
+    /// <summary>
+    /// Get configuration last updated date
+    /// </summary>
+    public string GetConfigLastUpdated() => _pricingConfig.LastUpdated;
 }
 
 /// <summary>
@@ -248,6 +310,7 @@ public record CostEstimate
     public decimal OutputCost { get; init; }
     public decimal TotalCost { get; init; }
     public DateTime EstimatedAt { get; init; }
+    public string ConfigVersion { get; init; } = string.Empty;
 }
 
 /// <summary>

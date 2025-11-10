@@ -7,7 +7,7 @@ using System;
 namespace Aura.Tests;
 
 /// <summary>
-/// Tests for LLM cost estimation functionality
+/// Tests for LLM cost estimation functionality with dynamic configuration
 /// </summary>
 public class LlmCostEstimatorTests
 {
@@ -15,6 +15,8 @@ public class LlmCostEstimatorTests
 
     public LlmCostEstimatorTests()
     {
+        // Create estimator with default configuration loading
+        // In tests, it will use default configuration if JSON file not found
         _estimator = new LlmCostEstimator(NullLogger<LlmCostEstimator>.Instance);
     }
 
@@ -271,6 +273,52 @@ public class LlmCostEstimatorTests
         // Assert
         Assert.True(result.EstimatedAt >= beforeEstimate);
         Assert.True(result.EstimatedAt <= afterEstimate);
+    }
+
+    [Fact]
+    public void CostEstimate_IncludesConfigVersion()
+    {
+        // Act
+        var result = _estimator.CalculateCost(100, 100, "gpt-4o-mini");
+
+        // Assert
+        Assert.NotNull(result.ConfigVersion);
+        Assert.NotEmpty(result.ConfigVersion);
+    }
+
+    [Fact]
+    public void GetConfigVersion_ReturnsVersion()
+    {
+        // Act
+        var version = _estimator.GetConfigVersion();
+
+        // Assert
+        Assert.NotNull(version);
+        Assert.NotEmpty(version);
+        Assert.Matches(@"^\d{4}\.\d{2}$", version); // Format: YYYY.MM
+    }
+
+    [Fact]
+    public void GetConfigLastUpdated_ReturnsDate()
+    {
+        // Act
+        var lastUpdated = _estimator.GetConfigLastUpdated();
+
+        // Assert
+        Assert.NotNull(lastUpdated);
+        Assert.NotEmpty(lastUpdated);
+    }
+
+    [Fact]
+    public void GetAvailableModels_ReturnsModelList()
+    {
+        // Act
+        var models = _estimator.GetAvailableModels();
+
+        // Assert
+        Assert.NotNull(models);
+        Assert.NotEmpty(models);
+        Assert.Contains(models, m => m.Contains("gpt"));
     }
 
     [Fact]
