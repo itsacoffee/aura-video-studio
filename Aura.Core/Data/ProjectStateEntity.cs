@@ -8,7 +8,7 @@ namespace Aura.Core.Data;
 /// <summary>
 /// Entity representing a video generation project state for persistence and recovery
 /// </summary>
-public class ProjectStateEntity
+public class ProjectStateEntity : IAuditableEntity, ISoftDeletable
 {
     [Key]
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -50,7 +50,19 @@ public class ProjectStateEntity
     /// Soft-delete support: user who deleted the project
     /// </summary>
     [MaxLength(200)]
-    public string? DeletedByUserId { get; set; }
+    public string? DeletedBy { get; set; }
+
+    /// <summary>
+    /// User who created the project
+    /// </summary>
+    [MaxLength(200)]
+    public string? CreatedBy { get; set; }
+
+    /// <summary>
+    /// User who last modified the project
+    /// </summary>
+    [MaxLength(200)]
+    public string? ModifiedBy { get; set; }
 
     /// <summary>
     /// Current stage in pipeline (Script, TTS, Images, Composition, Render)

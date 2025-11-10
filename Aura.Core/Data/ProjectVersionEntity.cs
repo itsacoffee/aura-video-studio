@@ -7,7 +7,7 @@ namespace Aura.Core.Data;
 /// <summary>
 /// Entity representing a saved version/snapshot of a project at a specific point in time
 /// </summary>
-public class ProjectVersionEntity
+public class ProjectVersionEntity : IAuditableEntity, ISoftDeletable
 {
     [Key]
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -141,13 +141,36 @@ public class ProjectVersionEntity
     /// When this version was deleted (null if not deleted)
     /// </summary>
     public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
+    /// User who deleted this version
+    /// </summary>
+    [MaxLength(200)]
+    public string? DeletedBy { get; set; }
+
+    /// <summary>
+    /// When this version was last updated (for IAuditableEntity)
+    /// </summary>
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// User who created this version (for IAuditableEntity)
+    /// </summary>
+    [MaxLength(200)]
+    public string? CreatedBy { get; set; }
+
+    /// <summary>
+    /// User who last modified this version (for IAuditableEntity)
+    /// </summary>
+    [MaxLength(200)]
+    public string? ModifiedBy { get; set; }
 }
 
 /// <summary>
 /// Entity representing deduplicated content blobs for versions
 /// Content-addressable storage: same content = same hash = single storage
 /// </summary>
-public class ContentBlobEntity
+public class ContentBlobEntity : IAuditableEntity
 {
     [Key]
     [MaxLength(64)]
@@ -190,4 +213,22 @@ public class ContentBlobEntity
     /// </summary>
     [Required]
     public int ReferenceCount { get; set; } = 0;
+
+    /// <summary>
+    /// When this blob was last updated (for IAuditableEntity)
+    /// </summary>
+    [Required]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// User who created this blob (for IAuditableEntity)
+    /// </summary>
+    [MaxLength(200)]
+    public string? CreatedBy { get; set; }
+
+    /// <summary>
+    /// User who last modified this blob (for IAuditableEntity)
+    /// </summary>
+    [MaxLength(200)]
+    public string? ModifiedBy { get; set; }
 }
