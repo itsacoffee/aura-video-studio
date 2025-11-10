@@ -293,9 +293,28 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        // Configure CORS based on environment
+        if (builder.Environment.IsDevelopment())
+        {
+            // In development, allow any origin for easier testing
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .WithExposedHeaders("X-Correlation-ID", "X-Request-ID");
+        }
+        else
+        {
+            // In production, restrict to specific origins
+            var allowedOrigins = builder.Configuration
+                .GetSection("Cors:AllowedOrigins")
+                .Get<string[]>() ?? new[] { "http://localhost:5173", "http://127.0.0.1:5173" };
+            
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials()
+                  .WithExposedHeaders("X-Correlation-ID", "X-Request-ID");
+        }
     });
 });
 
