@@ -128,13 +128,6 @@
         "releaseType": "release"
       }
     ],
-    "updater": {
-      "enabled": true,
-      "autoDownload": false,
-      "autoInstallOnAppQuit": true,
-      "allowDowngrade": false,
-      "allowPrerelease": false
-    },
     "compression": "maximum",
     "asar": true,
     "asarUnpack": [
