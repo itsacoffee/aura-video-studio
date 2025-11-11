@@ -1,4 +1,4 @@
-import { typedFetch } from './typedClient';
+import { typedFetch, typedApiClient } from './typedClient';
 
 // Type definitions
 export interface User {
@@ -259,7 +259,8 @@ export class AdminApiClient {
     if (params?.page) queryParams.set('page', params.page.toString());
     if (params?.pageSize) queryParams.set('pageSize', params.pageSize.toString());
     if (params?.isActive !== undefined) queryParams.set('isActive', params.isActive.toString());
-    if (params?.isSuspended !== undefined) queryParams.set('isSuspended', params.isSuspended.toString());
+    if (params?.isSuspended !== undefined)
+      queryParams.set('isSuspended', params.isSuspended.toString());
     if (params?.search) queryParams.set('search', params.search);
 
     const url = `${this.baseUrl}/users?${queryParams}`;
@@ -271,27 +272,15 @@ export class AdminApiClient {
   }
 
   async createUser(request: CreateUserRequest): Promise<User> {
-    return typedFetch<User>(`${this.baseUrl}/users`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
+    return typedApiClient.post<User>(`${this.baseUrl}/users`, request);
   }
 
   async updateUser(userId: string, request: UpdateUserRequest): Promise<User> {
-    return typedFetch<User>(`${this.baseUrl}/users/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
+    return typedApiClient.put<User>(`${this.baseUrl}/users/${userId}`, request);
   }
 
   async suspendUser(userId: string, request: SuspendUserRequest): Promise<User> {
-    return typedFetch<User>(`${this.baseUrl}/users/${userId}/suspend`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
+    return typedApiClient.post<User>(`${this.baseUrl}/users/${userId}/suspend`, request);
   }
 
   async unsuspendUser(userId: string): Promise<User> {
@@ -307,19 +296,11 @@ export class AdminApiClient {
   }
 
   async assignRoles(userId: string, roleIds: string[]): Promise<User> {
-    return typedFetch<User>(`${this.baseUrl}/users/${userId}/roles`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(roleIds),
-    });
+    return typedApiClient.post<User>(`${this.baseUrl}/users/${userId}/roles`, roleIds);
   }
 
   async updateUserQuota(userId: string, quota: UserQuota): Promise<UserQuotaSummary> {
-    return typedFetch<UserQuotaSummary>(`${this.baseUrl}/users/${userId}/quota`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(quota),
-    });
+    return typedApiClient.put<UserQuotaSummary>(`${this.baseUrl}/users/${userId}/quota`, quota);
   }
 
   async getUserActivity(userId: string, limit = 100): Promise<UserActivity[]> {
@@ -332,25 +313,15 @@ export class AdminApiClient {
   }
 
   async createRole(request: CreateRoleRequest): Promise<Role> {
-    return typedFetch<Role>(`${this.baseUrl}/roles`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
+    return typedApiClient.post<Role>(`${this.baseUrl}/roles`, request);
   }
 
   async updateRole(roleId: string, request: UpdateRoleRequest): Promise<Role> {
-    return typedFetch<Role>(`${this.baseUrl}/roles/${roleId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
+    return typedApiClient.put<Role>(`${this.baseUrl}/roles/${roleId}`, request);
   }
 
   async deleteRole(roleId: string): Promise<void> {
-    return typedFetch<void>(`${this.baseUrl}/roles/${roleId}`, {
-      method: 'DELETE',
-    });
+    return typedApiClient.delete<void>(`${this.baseUrl}/roles/${roleId}`);
   }
 
   // Audit Logs
@@ -361,7 +332,8 @@ export class AdminApiClient {
     if (params?.resourceType) queryParams.set('resourceType', params.resourceType);
     if (params?.startDate) queryParams.set('startDate', params.startDate);
     if (params?.endDate) queryParams.set('endDate', params.endDate);
-    if (params?.successOnly !== undefined) queryParams.set('successOnly', params.successOnly.toString());
+    if (params?.successOnly !== undefined)
+      queryParams.set('successOnly', params.successOnly.toString());
     if (params?.page) queryParams.set('page', params.page.toString());
     if (params?.pageSize) queryParams.set('pageSize', params.pageSize.toString());
 
@@ -386,18 +358,15 @@ export class AdminApiClient {
     return typedFetch<ConfigurationCategory[]>(`${this.baseUrl}/configuration/categories`);
   }
 
-  async updateConfiguration(key: string, request: UpdateConfigurationRequest): Promise<ConfigurationItem> {
-    return typedFetch<ConfigurationItem>(`${this.baseUrl}/configuration/${key}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    });
+  async updateConfiguration(
+    key: string,
+    request: UpdateConfigurationRequest
+  ): Promise<ConfigurationItem> {
+    return typedApiClient.put<ConfigurationItem>(`${this.baseUrl}/configuration/${key}`, request);
   }
 
   async deleteConfiguration(key: string): Promise<void> {
-    return typedFetch<void>(`${this.baseUrl}/configuration/${key}`, {
-      method: 'DELETE',
-    });
+    return typedApiClient.delete<void>(`${this.baseUrl}/configuration/${key}`);
   }
 }
 

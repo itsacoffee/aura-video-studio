@@ -34,9 +34,7 @@ import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { WelcomePage } from './pages/WelcomePage';
 
 // Lazy load non-critical pages to reduce initial bundle size
-const AdminDashboardPage = lazy(() =>
-  import('./pages/Admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
-);
+const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage'));
 const AestheticsPage = lazy(() =>
   import('./pages/Aesthetics/AestheticsPage').then((m) => ({ default: m.AestheticsPage }))
 );
@@ -579,18 +577,8 @@ function App() {
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
         <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
           <CrashRecoveryScreen
-            crashCount={crashRecoveryService.getRecoveryState()?.crashCount || 0}
-            consecutiveCrashes={crashRecoveryService.getRecoveryState()?.consecutiveCrashes || 0}
-            lastCrashUrl={crashRecoveryService.getRecoveryState()?.lastCrash?.url}
-            onContinue={() => {
-              crashRecoveryService.resetCrashCounter();
+            onRecovered={() => {
               setShowCrashRecovery(false);
-            }}
-            onClearData={() => {
-              crashRecoveryService.clearRecoveryData();
-              localStorage.clear();
-              sessionStorage.clear();
-              window.location.reload();
             }}
           />
         </FluentProvider>

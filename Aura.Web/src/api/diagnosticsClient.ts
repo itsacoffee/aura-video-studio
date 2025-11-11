@@ -72,7 +72,9 @@ export async function getRecentErrors(count = 50, category?: string): Promise<Er
     params.append('category', category);
   }
 
-  const response = await apiClient.get(`/api/diagnostics/errors?${params}`);
+  const response = await apiClient.get<{ errors: ErrorLogEntry[] }>(
+    `/api/diagnostics/errors?${params}`
+  );
   return response.errors;
 }
 
@@ -80,7 +82,9 @@ export async function getRecentErrors(count = 50, category?: string): Promise<Er
  * Search errors by correlation ID
  */
 export async function searchErrorsByCorrelationId(correlationId: string): Promise<ErrorLogEntry[]> {
-  const response = await apiClient.get(`/api/diagnostics/errors/by-correlation/${correlationId}`);
+  const response = await apiClient.get<{ errors: ErrorLogEntry[] }>(
+    `/api/diagnostics/errors/by-correlation/${correlationId}`
+  );
   return response.errors;
 }
 
