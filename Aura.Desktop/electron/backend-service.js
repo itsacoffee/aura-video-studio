@@ -3,7 +3,7 @@
  * Manages the .NET backend process lifecycle
  */
 
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const net = require('net');
@@ -16,14 +16,19 @@ class BackendService {
     this.process = null;
     this.port = null;
     this.isQuitting = false;
+    this.isRestarting = false;
     this.restartAttempts = 0;
     this.maxRestartAttempts = 3;
     this.healthCheckInterval = null;
+    this.pid = null;
+    this.isWindows = process.platform === 'win32';
     
     // Constants
     this.BACKEND_STARTUP_TIMEOUT = 60000; // 60 seconds
     this.HEALTH_CHECK_INTERVAL = 1000; // 1 second
     this.AUTO_RESTART_DELAY = 5000; // 5 seconds
+    this.GRACEFUL_SHUTDOWN_TIMEOUT = 10000; // 10 seconds
+    this.FORCE_KILL_TIMEOUT = 5000; // 5 seconds after graceful timeout
   }
 
   /**
@@ -71,11 +76,16 @@ class BackendService {
       console.log('Environment:', env.DOTNET_ENVIRONMENT);
       console.log('FFmpeg path:', ffmpegPath);
 
-      // Spawn backend process
+      // Spawn backend process with detached flag on Windows to get proper process tree control
       this.process = spawn(backendPath, [], {
         env,
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true, // Hide console window on Windows
+        detached: false // Keep attached so we can control it, but we'll handle child processes separately
       });
+      
+      // Store PID for Windows process tree termination
+      this.pid = this.process.pid;
 
       // Setup process handlers
       this._setupProcessHandlers();
@@ -98,7 +108,7 @@ class BackendService {
   /**
    * Stop the backend service
    */
-  stop() {
+  async stop() {
     console.log('Stopping backend service...');
     this.isQuitting = true;
 
@@ -107,33 +117,184 @@ class BackendService {
 
     // Kill backend process
     if (this.process && !this.process.killed) {
-      console.log('Terminating backend process...');
-      this.process.kill('SIGTERM');
-      
-      // Force kill after 5 seconds if not stopped
-      setTimeout(() => {
-        if (this.process && !this.process.killed) {
-          console.log('Force killing backend process...');
-          this.process.kill('SIGKILL');
-        }
-      }, 5000);
+      try {
+        await this._terminateBackend();
+      } catch (error) {
+        console.error('Error terminating backend:', error);
+      }
     }
 
     this.process = null;
+    this.pid = null;
     this.port = null;
+  }
+
+  /**
+   * Gracefully terminate backend process with Windows-specific handling
+   */
+  async _terminateBackend() {
+    return new Promise((resolve) => {
+      if (!this.process || this.process.killed) {
+        resolve();
+        return;
+      }
+
+      console.log('Terminating backend process (PID: ' + this.pid + ')...');
+
+      // Set up timeout for graceful shutdown
+      const gracefulTimeout = setTimeout(() => {
+        console.warn('Backend did not shut down gracefully, forcing termination...');
+        this._forceTerminate();
+      }, this.GRACEFUL_SHUTDOWN_TIMEOUT);
+
+      // Handle process exit
+      const onExit = () => {
+        clearTimeout(gracefulTimeout);
+        clearTimeout(forceTimeout);
+        console.log('Backend process terminated successfully');
+        resolve();
+      };
+
+      this.process.once('exit', onExit);
+
+      // Attempt graceful shutdown first via API
+      this._attemptGracefulShutdown().then(success => {
+        if (!success) {
+          console.log('Graceful shutdown via API failed, using process termination...');
+          // Try process termination
+          if (this.isWindows) {
+            // On Windows, use taskkill for proper process tree termination
+            this._windowsTerminate(false);
+          } else {
+            // On Unix, use SIGTERM
+            try {
+              this.process.kill('SIGTERM');
+            } catch (err) {
+              console.error('Error sending SIGTERM:', err);
+              this._forceTerminate();
+            }
+          }
+        }
+      }).catch(err => {
+        console.error('Error during graceful shutdown:', err);
+        if (this.isWindows) {
+          this._windowsTerminate(false);
+        } else {
+          try {
+            this.process.kill('SIGTERM');
+          } catch (killErr) {
+            this._forceTerminate();
+          }
+        }
+      });
+
+      // Final safety net - force kill after extended timeout
+      const forceTimeout = setTimeout(() => {
+        console.error('Backend still running after graceful timeout, force killing...');
+        this._forceTerminate();
+        resolve();
+      }, this.GRACEFUL_SHUTDOWN_TIMEOUT + this.FORCE_KILL_TIMEOUT);
+    });
+  }
+
+  /**
+   * Attempt graceful shutdown via backend API
+   */
+  async _attemptGracefulShutdown() {
+    try {
+      if (!this.port) return false;
+      
+      console.log('Requesting graceful shutdown via API...');
+      await axios.post(`http://localhost:${this.port}/api/system/shutdown`, {}, {
+        timeout: 2000
+      });
+      return true;
+    } catch (error) {
+      // API call failed, backend may already be down or endpoint doesn't exist
+      return false;
+    }
+  }
+
+  /**
+   * Force terminate the backend process
+   */
+  _forceTerminate() {
+    if (!this.process || this.process.killed) return;
+
+    console.log('Force terminating backend process...');
+
+    if (this.isWindows) {
+      this._windowsTerminate(true);
+    } else {
+      try {
+        this.process.kill('SIGKILL');
+      } catch (error) {
+        console.error('Error force killing process:', error);
+      }
+    }
+  }
+
+  /**
+   * Windows-specific process termination using taskkill
+   * This properly terminates the process tree including child processes
+   */
+  _windowsTerminate(force = false) {
+    if (!this.pid) return;
+
+    const forceFlag = force ? '/F' : '';
+    const command = `taskkill /PID ${this.pid} ${forceFlag} /T`;
+    
+    console.log('Executing:', command);
+
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error('taskkill error:', error);
+        // Fallback to Node's kill
+        try {
+          if (this.process && !this.process.killed) {
+            this.process.kill();
+          }
+        } catch (fallbackError) {
+          console.error('Fallback kill failed:', fallbackError);
+        }
+        return;
+      }
+      if (stdout) console.log('taskkill output:', stdout);
+      if (stderr) console.error('taskkill stderr:', stderr);
+    });
   }
 
   /**
    * Restart the backend service
    */
   async restart() {
-    console.log('Restarting backend service...');
-    this.stop();
-    
-    // Wait a bit before restarting
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    return this.start();
+    if (this.isRestarting) {
+      console.warn('Backend restart already in progress');
+      return;
+    }
+
+    try {
+      this.isRestarting = true;
+      console.log('Restarting backend service...');
+      
+      const wasQuitting = this.isQuitting;
+      this.isQuitting = false; // Temporarily disable quitting flag for restart
+      
+      await this.stop();
+      
+      // Wait a bit before restarting to ensure port is released
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      await this.start();
+      
+      this.isQuitting = wasQuitting;
+      console.log('Backend restart completed successfully');
+    } catch (error) {
+      console.error('Backend restart failed:', error);
+      throw error;
+    } finally {
+      this.isRestarting = false;
+    }
   }
 
   /**
@@ -155,6 +316,131 @@ class BackendService {
    */
   isRunning() {
     return this.process !== null && !this.process.killed;
+  }
+
+  /**
+   * Check Windows Firewall compatibility
+   */
+  async checkFirewallCompatibility() {
+    if (!this.isWindows) {
+      return { compatible: true, message: 'Not Windows' };
+    }
+
+    try {
+      // Check if port is accessible locally
+      const portAccessible = await this._checkPortAccessible();
+      
+      if (!portAccessible) {
+        return {
+          compatible: false,
+          message: 'Backend port is not accessible. Windows Firewall may be blocking the connection.',
+          recommendation: 'Please add Aura Video Studio to Windows Firewall exceptions.'
+        };
+      }
+
+      // Check if process can bind to port
+      const canBind = await this._checkCanBindPort();
+      
+      if (!canBind) {
+        return {
+          compatible: false,
+          message: 'Cannot bind to port. Another application may be using it.',
+          recommendation: 'Please close other applications that might be using the port.'
+        };
+      }
+
+      return {
+        compatible: true,
+        message: 'Windows Firewall compatibility check passed'
+      };
+    } catch (error) {
+      console.error('Firewall compatibility check error:', error);
+      return {
+        compatible: false,
+        message: `Firewall check failed: ${error.message}`,
+        recommendation: 'Please check Windows Firewall settings manually.'
+      };
+    }
+  }
+
+  /**
+   * Check if port is accessible
+   */
+  async _checkPortAccessible() {
+    if (!this.port) return false;
+
+    try {
+      const response = await axios.get(`http://localhost:${this.port}/health`, {
+        timeout: 2000
+      });
+      return response.status === 200;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Check if we can bind to a port (test with a temporary server)
+   */
+  async _checkCanBindPort() {
+    return new Promise((resolve) => {
+      const testServer = net.createServer();
+      
+      testServer.once('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          resolve(false);
+        } else {
+          resolve(false);
+        }
+      });
+
+      testServer.once('listening', () => {
+        testServer.close(() => {
+          resolve(true);
+        });
+      });
+
+      // Try to bind to port 0 (any available port) to test capability
+      testServer.listen(0, 'localhost');
+    });
+  }
+
+  /**
+   * Get Windows Firewall rule status (requires elevation)
+   */
+  async getFirewallRuleStatus() {
+    if (!this.isWindows) {
+      return { exists: null, error: 'Not Windows' };
+    }
+
+    return new Promise((resolve) => {
+      const command = 'netsh advfirewall firewall show rule name="Aura Video Studio"';
+      
+      exec(command, (error, stdout, stderr) => {
+        if (error) {
+          // Rule doesn't exist or error checking
+          resolve({ exists: false, error: error.message });
+          return;
+        }
+
+        const exists = !stdout.includes('No rules match');
+        resolve({ 
+          exists, 
+          details: exists ? stdout : null 
+        });
+      });
+    });
+  }
+
+  /**
+   * Suggest firewall rule creation command
+   */
+  getFirewallRuleCommand() {
+    if (!this.isWindows) return null;
+
+    const backendPath = this._getBackendPath();
+    
+    return `netsh advfirewall firewall add rule name="Aura Video Studio" dir=in action=allow program="${backendPath}" enable=yes profile=any`;
   }
 
   /**
@@ -332,7 +618,8 @@ class BackendService {
     this.process.on('exit', (code, signal) => {
       console.log(`Backend exited with code ${code} and signal ${signal}`);
       
-      if (!this.isQuitting && code !== 0) {
+      // Don't restart if we're intentionally quitting or already restarting
+      if (!this.isQuitting && !this.isRestarting && code !== 0) {
         // Backend crashed unexpectedly
         console.error('Backend crashed unexpectedly!');
         
@@ -348,6 +635,10 @@ class BackendService {
           }, this.AUTO_RESTART_DELAY);
         } else {
           console.error('Max restart attempts reached. Backend will not auto-restart.');
+          // Emit event for main process to handle
+          if (this.app) {
+            this.app.emit('backend-crash');
+          }
         }
       }
     });

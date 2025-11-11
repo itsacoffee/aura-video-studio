@@ -43,6 +43,7 @@ let ipcHandlers = {
 };
 
 let isQuitting = false;
+let isCleaningUp = false;
 let crashCount = 0;
 const MAX_CRASH_COUNT = 3;
 
@@ -287,8 +288,8 @@ function registerIpcHandlers() {
   ipcHandlers.video = new VideoHandler(backendUrl);
   ipcHandlers.video.register();
 
-  // Backend handler
-  ipcHandlers.backend = new BackendHandler(backendUrl);
+  // Backend handler (pass backendService for control operations)
+  ipcHandlers.backend = new BackendHandler(backendUrl, backendService);
   ipcHandlers.backend.register();
 
   // Start backend health checks
@@ -332,7 +333,7 @@ function checkFirstRun() {
 /**
  * Cleanup before quit
  */
-function cleanup() {
+async function cleanup() {
   console.log('Cleaning up application resources...');
 
   try {
@@ -341,9 +342,11 @@ function cleanup() {
       ipcHandlers.backend.stopHealthChecks();
     }
 
-    // Stop backend service
+    // Stop backend service (now async for proper Windows process termination)
     if (backendService) {
-      backendService.stop();
+      console.log('Stopping backend service...');
+      await backendService.stop();
+      console.log('Backend service stopped');
     }
 
     // Destroy tray
@@ -519,12 +522,34 @@ app.on('window-all-closed', () => {
 });
 
 // Before quit
-app.on('before-quit', (event) => {
+app.on('before-quit', async (event) => {
   console.log('Application is quitting...');
-  isQuitting = true;
   
-  // Perform cleanup
-  cleanup();
+  // Prevent multiple cleanup calls
+  if (isCleaningUp) {
+    return;
+  }
+  
+  isQuitting = true;
+  isCleaningUp = true;
+  
+  // Prevent immediate quit to allow async cleanup
+  event.preventDefault();
+  
+  try {
+    // Perform cleanup with timeout
+    await Promise.race([
+      cleanup(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Cleanup timeout')), 30000)
+      )
+    ]);
+  } catch (error) {
+    console.error('Cleanup error or timeout:', error);
+  } finally {
+    // Now actually quit
+    app.exit(0);
+  }
 });
 
 // Will quit
@@ -580,6 +605,30 @@ app.on('child-process-gone', (event, details) => {
   
   if (details.type === 'Utility' && details.reason !== 'clean-exit') {
     console.warn('A utility process has crashed, but the app should continue functioning');
+  }
+});
+
+// Backend crash handler
+app.on('backend-crash', () => {
+  console.error('Backend has crashed after max restart attempts');
+  
+  const mainWindow = windowManager ? windowManager.getMainWindow() : null;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      title: 'Backend Service Error',
+      message: 'The Aura backend service has stopped unexpectedly and could not be restarted.',
+      detail: 'The application needs to close. Please check the logs and try restarting.\n\n' +
+              `Logs: ${path.join(app.getPath('userData'), 'logs')}`,
+      buttons: ['Close Application'],
+      defaultId: 0
+    }).then(() => {
+      isQuitting = true;
+      app.quit();
+    });
+  } else {
+    isQuitting = true;
+    app.quit();
   }
 });
 

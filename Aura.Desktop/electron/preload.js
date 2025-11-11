@@ -35,7 +35,9 @@ const VALID_CHANNELS = {
   
   // Backend channels
   BACKEND: ['backend:getUrl', 'backend:health', 'backend:ping', 'backend:info', 
-            'backend:version', 'backend:providerStatus', 'backend:ffmpegStatus'],
+            'backend:version', 'backend:providerStatus', 'backend:ffmpegStatus',
+            'backend:restart', 'backend:stop', 'backend:status',
+            'backend:checkFirewall', 'backend:getFirewallRule', 'backend:getFirewallCommand'],
   
   // Update channels
   UPDATES: ['updates:check']
@@ -201,6 +203,12 @@ contextBridge.exposeInMainWorld('electron', {
     version: () => safeInvoke('backend:version'),
     providerStatus: () => safeInvoke('backend:providerStatus'),
     ffmpegStatus: () => safeInvoke('backend:ffmpegStatus'),
+    restart: () => safeInvoke('backend:restart'),
+    stop: () => safeInvoke('backend:stop'),
+    status: () => safeInvoke('backend:status'),
+    checkFirewall: () => safeInvoke('backend:checkFirewall'),
+    getFirewallRule: () => safeInvoke('backend:getFirewallRule'),
+    getFirewallCommand: () => safeInvoke('backend:getFirewallCommand'),
     onHealthUpdate: (callback) => safeOn('backend:healthUpdate', callback),
     onProviderUpdate: (callback) => safeOn('backend:providerUpdate', callback)
   },
