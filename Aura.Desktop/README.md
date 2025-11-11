@@ -2,24 +2,24 @@
 
 > **🎬 One-click installable AI-powered video generation studio**
 
-This directory contains the Electron desktop application that wraps Aura Video Studio into a native app for Windows, macOS, and Linux.
+This directory contains the Electron desktop application that wraps Aura Video Studio into a native app for Windows.
+
+**Note:** Currently, only Windows builds are supported. macOS and Linux builds have been disabled to focus on the primary target platform (Windows 10/11).
 
 ## ✨ Features
 
-- **🚀 One-Click Installation**: Native installers for all platforms
+- **🚀 One-Click Installation**: Native Windows installer (NSIS) and portable executable
 - **🔧 Auto-Configuration**: Automatic dependency detection and installation
 - **📦 Self-Contained**: Bundled .NET backend, no manual setup required
 - **🔄 Auto-Updates**: Seamless background updates
-- **🎯 System Tray**: Quick access from taskbar/menu bar
-- **⚙️ Native Integration**: File associations, notifications, OS integration
+- **🎯 System Tray**: Quick access from taskbar
+- **⚙️ Native Integration**: File associations, notifications, Windows integration
 
 ## 📥 Download
 
-Get the latest release for your platform:
+Get the latest release:
 
-- **Windows**: `Aura-Video-Studio-Setup-1.0.0.exe`
-- **macOS**: `Aura-Video-Studio-1.0.0-universal.dmg`
-- **Linux**: `Aura-Video-Studio-1.0.0.AppImage`
+- **Windows (x64)**: `Aura-Video-Studio-Setup-1.0.0.exe` (installer) or `Aura-Video-Studio-1.0.0-portable.exe` (standalone)
 
 [📦 Download Latest Release →](https://github.com/coffee285/aura-video-studio/releases/latest)
 
@@ -27,7 +27,7 @@ Get the latest release for your platform:
 
 ### For Users
 
-1. Download the installer for your platform
+1. Download the Windows installer
 2. Run the installer
 3. Launch Aura Video Studio
 4. Follow the first-run setup wizard
@@ -42,6 +42,7 @@ See [INSTALLATION.md](../INSTALLATION.md) for detailed instructions.
 - Node.js 18+
 - .NET 8.0 SDK
 - npm 9+
+- Windows 10 or later (for building)
 
 #### Development Mode
 
@@ -63,30 +64,30 @@ See [DESKTOP_APP_GUIDE.md](../DESKTOP_APP_GUIDE.md) for development documentatio
 
 ## 🏗️ Building
 
-### Build for All Platforms
+### Build for Windows
 
 ```bash
-# Using shell script (Linux/macOS)
-./build-desktop.sh
-
-# Using PowerShell (Windows)
+# Using PowerShell (recommended)
 .\build-desktop.ps1
-```
 
-### Build for Specific Platform
-
-```bash
-# Windows
+# Or using npm directly
 npm run build:win
-
-# macOS
-npm run build:mac
-
-# Linux
-npm run build:linux
 ```
 
 Output will be in the `dist/` directory.
+
+### Build Options
+
+```powershell
+# Skip installer creation (faster, for testing)
+.\build-desktop.ps1 -SkipInstaller
+
+# Skip frontend build (if already built)
+.\build-desktop.ps1 -SkipFrontend
+
+# Skip backend build (if already built)
+.\build-desktop.ps1 -SkipBackend
+```
 
 ## 📁 Project Structure
 
@@ -95,22 +96,23 @@ Aura.Desktop/
 ├── electron.js              # Main process (app lifecycle, backend spawning)
 ├── preload.js              # Preload script (secure IPC bridge)
 ├── package.json            # Dependencies and build configuration
-├── build-desktop.sh        # Build script (Linux/macOS)
 ├── build-desktop.ps1       # Build script (Windows)
+├── build-desktop.sh        # Build script (cross-platform, Windows target only)
 │
 ├── assets/
 │   ├── splash.html         # Startup splash screen
 │   └── icons/              # Platform-specific app icons
-│       ├── icon.ico        # Windows
-│       ├── icon.icns       # macOS
-│       └── icon.png        # Linux
+│       └── icon.ico        # Windows
 │
 ├── build/
-│   ├── installer.nsh       # Windows NSIS installer customization
-│   ├── entitlements.mac.plist  # macOS security permissions
-│   └── dmg-background.png  # macOS DMG background image
+│   └── installer.nsh       # Windows NSIS installer customization
 │
-├── backend/                # Bundled .NET backend (generated during build)
+├── scripts/
+│   └── sign-windows.js     # Custom code signing script
+│
+├── resources/
+│   └── backend/            # Bundled .NET backend (generated during build)
+│       └── win-x64/        # Windows x64 binaries
 └── dist/                   # Build output (installers, packages)
 ```
 
@@ -128,9 +130,9 @@ Main process configuration:
 ### package.json
 
 Build configuration:
-- Platform targets (Windows, macOS, Linux)
-- Installer options (NSIS, DMG, AppImage, DEB, RPM, Snap)
-- Code signing configuration
+- Windows platform target (x64)
+- Installer options (NSIS, Portable)
+- Optional code signing configuration
 - Auto-update settings
 
 ## 🔐 Security
@@ -149,8 +151,6 @@ The desktop app follows Electron security best practices:
 
 Replace icons in `assets/icons/`:
 - `icon.ico` - Windows (256x256 multi-size)
-- `icon.icns` - macOS (1024x1024 multi-size)
-- `icon.png` - Linux (512x512)
 - `tray.png` - System tray (16x16 or 22x22)
 
 See [assets/icons/README.md](assets/icons/README.md) for details.
@@ -161,9 +161,7 @@ Edit `assets/splash.html` to customize the startup splash screen.
 
 ### Installer Branding
 
-- **Windows**: Edit `build/installer.nsh` for NSIS customization
-- **macOS**: Replace `build/dmg-background.png` for DMG background
-- **Linux**: Icons and desktop file configured in `package.json`
+Edit `build/installer.nsh` for NSIS installer customization.
 
 ## 📦 Distribution
 
@@ -172,16 +170,13 @@ Edit `assets/splash.html` to customize the startup splash screen.
 The easiest way to distribute:
 
 1. Tag a release: `git tag v1.0.0 && git push origin v1.0.0`
-2. Build all platforms: `npm run build:all`
+2. Build Windows installers: `npm run build:win`
 3. Create GitHub Release and upload artifacts
 4. Users get auto-update notifications
 
 ### Platform Stores
 
-- **Microsoft Store**: Use `appx` target
-- **Mac App Store**: Use `mas` target (requires review)
-- **Snap Store**: `snapcraft upload dist/*.snap`
-- **Flathub**: Submit PR to flathub/aura-video-studio
+- **Microsoft Store**: Use `appx` target (requires separate configuration)
 
 ## 🐛 Troubleshooting
 
@@ -199,11 +194,18 @@ cd ../Aura.Web
 npm run build
 ```
 
+**"Code signing certificate not found"**
+Code signing is optional. Set these environment variables if you have a certificate:
+```powershell
+$env:WIN_CSC_LINK = "path\to\certificate.pfx"
+$env:WIN_CSC_KEY_PASSWORD = "your-password"
+```
+
 **Clear cache and rebuild**
 ```bash
 rm -rf dist/ node_modules/
 npm install
-npm run build
+npm run build:win
 ```
 
 ### Runtime Issues
@@ -236,7 +238,7 @@ See [DESKTOP_APP_GUIDE.md](../DESKTOP_APP_GUIDE.md#troubleshooting) for more.
 We welcome contributions! When working on the desktop app:
 
 1. Follow Electron security best practices
-2. Test on all three platforms (Windows, macOS, Linux)
+2. Test on Windows 10 and Windows 11
 3. Update documentation for new features
 4. Test both development and production builds
 

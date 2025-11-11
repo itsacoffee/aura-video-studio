@@ -19,17 +19,11 @@ const path = require('path');
  * @param {Object} configuration - Electron builder configuration
  */
 exports.default = async function (configuration) {
-  const { path: filePath, hash, isWin } = configuration;
+  const { path: filePath, hash } = configuration;
   
   console.log('Custom signing script called');
   console.log('  File:', filePath);
   console.log('  Hash algorithm:', hash);
-  console.log('  Is Windows:', isWin);
-  
-  if (!isWin) {
-    console.log('Skipping signing - not a Windows build');
-    return;
-  }
   
   // Check for certificate
   const certLink = process.env.WIN_CSC_LINK;

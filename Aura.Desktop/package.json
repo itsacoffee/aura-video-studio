@@ -21,7 +21,8 @@
     "build:dir": "electron-builder --dir",
     "postinstall": "electron-builder install-app-deps",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "validate": "node scripts/validate-build-config.js"
   },
   "build": {
     "appId": "com.coffee285.aura-video-studio",
@@ -54,6 +55,8 @@
         "filter": ["**/*"]
       }
     ],
+    "mac": null,
+    "linux": null,
     "win": {
       "target": [
         {
@@ -69,11 +72,7 @@
       "publisherName": "Coffee285",
       "requestedExecutionLevel": "asInvoker",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "signingHashAlgorithms": ["sha256"],
       "sign": "./scripts/sign-windows.js",
-      "certificateFile": "win-certificate.pfx",
-      "certificatePassword": "",
-      "rfc3161TimeStampServer": "http://timestamp.digicert.com",
       "verifyUpdateCodeSignature": false,
       "fileAssociations": [
         {
