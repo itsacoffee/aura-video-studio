@@ -1,8 +1,8 @@
-import { Link } from 'react-router-dom';
-import { MoreVertical, Trash2, Copy, Edit } from 'lucide-react';
-import { Project } from '../../api/projectManagement';
 import { formatDistanceToNow } from 'date-fns';
-import { useState } from 'react';
+import { MoreVertical, Trash2, Copy, Edit } from 'lucide-react';
+import { useState, memo } from 'react';
+import { Link } from 'react-router-dom';
+import { Project } from '../../api/projectManagement';
 
 interface ProjectListItemProps {
   project: Project;
@@ -12,13 +12,13 @@ interface ProjectListItemProps {
   onDuplicate: () => void;
 }
 
-export function ProjectListItem({
+const ProjectListItemComponent = ({
   project,
   selected,
   onSelect,
   onDelete,
   onDuplicate,
-}: ProjectListItemProps) {
+}: ProjectListItemProps) => {
   const [showMenu, setShowMenu] = useState(false);
 
   const statusColors = {
@@ -67,9 +67,7 @@ export function ProjectListItem({
         </span>
       </td>
       <td className="px-4 py-3">
-        <span className="text-sm text-gray-600 dark:text-gray-300">
-          {project.category || '-'}
-        </span>
+        <span className="text-sm text-gray-600 dark:text-gray-300">{project.category || '-'}</span>
       </td>
       <td className="px-4 py-3">
         <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -100,4 +98,6 @@ export function ProjectListItem({
       </td>
     </tr>
   );
-}
+};
+
+export const ProjectListItem = memo(ProjectListItemComponent);
