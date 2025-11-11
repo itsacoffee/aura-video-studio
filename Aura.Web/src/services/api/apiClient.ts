@@ -11,9 +11,11 @@ import axios, {
   AxiosResponse,
 } from 'axios';
 import { env } from '../../config/env';
+import { timeoutConfig } from '../../config/timeouts';
 import { createDedupeKey } from '../../utils/dedupeKey';
 import { requestDeduplicator } from '../../utils/requestDeduplicator';
 import { loggingService } from '../loggingService';
+import { networkResilienceService } from '../networkResilience';
 import {
   getHttpErrorMessage,
   getAppErrorMessage,
@@ -318,7 +320,7 @@ function getRequestQueue(key: string): RequestQueue {
  */
 const apiClient: AxiosInstance = axios.create({
   baseURL: env.apiBaseUrl,
-  timeout: 30000,
+  timeout: timeoutConfig.getTimeout('default'),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -898,5 +900,15 @@ export function clearDeduplicationCache(method?: string, url?: string, data?: un
     requestDeduplicator.clear();
   }
 }
+
+/**
+ * Export network resilience service for offline queue management
+ */
+export { networkResilienceService };
+
+/**
+ * Export timeout configuration for settings management
+ */
+export { timeoutConfig } from '../../config/timeouts';
 
 export default apiClient;
