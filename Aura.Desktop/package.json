@@ -54,6 +54,8 @@
         "filter": ["**/*"]
       }
     ],
+    "mac": null,
+    "linux": null,
     "win": {
       "target": [
         {
@@ -69,11 +71,7 @@
       "publisherName": "Coffee285",
       "requestedExecutionLevel": "asInvoker",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "signingHashAlgorithms": ["sha256"],
       "sign": "./scripts/sign-windows.js",
-      "certificateFile": "win-certificate.pfx",
-      "certificatePassword": "",
-      "rfc3161TimeStampServer": "http://timestamp.digicert.com",
       "verifyUpdateCodeSignature": false,
       "fileAssociations": [
         {

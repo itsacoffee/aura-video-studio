@@ -43,7 +43,7 @@ if ! command -v dotnet &> /dev/null; then
 fi
 
 # Parse arguments
-BUILD_TARGET="all"
+BUILD_TARGET="win"
 SKIP_FRONTEND=false
 SKIP_BACKEND=false
 SKIP_INSTALLER=false
@@ -70,11 +70,14 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: ./build-desktop.sh [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --target <platform>    Build for specific platform (win|mac|linux|all)"
+            echo "  --target <platform>    Build for specific platform (win only, default: win)"
             echo "  --skip-frontend        Skip frontend build"
             echo "  --skip-backend         Skip backend build"
             echo "  --skip-installer       Skip installer creation (build directory only)"
             echo "  --help                 Show this help message"
+            echo ""
+            echo "Note: Only Windows builds are currently supported."
+            echo "      macOS and Linux builds are disabled."
             exit 0
             ;;
         *)
@@ -131,30 +134,14 @@ fi
 # Step 2: Build Backend
 # ========================================
 if [ "$SKIP_BACKEND" = false ]; then
-    print_info "Building .NET backend for all platforms..."
+    print_info "Building .NET backend for Windows..."
     cd "$PROJECT_ROOT/Aura.Api"
     
     # Create backend output directory
-    mkdir -p "$SCRIPT_DIR/backend"
+    mkdir -p "$SCRIPT_DIR/resources/backend"
     
-    # Detect current platform for optimized build
-    case "$(uname -s)" in
-        Darwin*)
-            CURRENT_PLATFORM="mac"
-            ;;
-        Linux*)
-            CURRENT_PLATFORM="linux"
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            CURRENT_PLATFORM="win"
-            ;;
-        *)
-            CURRENT_PLATFORM="linux"
-            ;;
-    esac
-    
-    # Build for current platform or all platforms
-    if [ "$BUILD_TARGET" = "all" ] || [ "$BUILD_TARGET" = "win" ]; then
+    # Only build for Windows (target platform)
+    if [ "$BUILD_TARGET" = "win" ]; then
         print_info "Building backend for Windows (x64)..."
         dotnet publish -c Release -r win-x64 --self-contained true \
             -p:PublishSingleFile=false \
@@ -166,45 +153,13 @@ if [ "$SKIP_BACKEND" = false ]; then
             exit 1
         }
         print_success "Windows backend build complete"
+    else
+        print_error "Unsupported build target: $BUILD_TARGET"
+        print_error "Only Windows (win) is supported."
+        exit 1
     fi
     
-    if [ "$BUILD_TARGET" = "all" ] || [ "$BUILD_TARGET" = "mac" ]; then
-        print_info "Building backend for macOS (x64)..."
-        dotnet publish -c Release -r osx-x64 --self-contained true \
-            -p:PublishSingleFile=false \
-            -p:PublishTrimmed=false \
-            -p:SkipFrontendBuild=true \
-            -o "$SCRIPT_DIR/resources/backend/osx-x64" || {
-            print_error "macOS (x64) backend build failed"
-            exit 1
-        }
-        
-        print_info "Building backend for macOS (arm64)..."
-        dotnet publish -c Release -r osx-arm64 --self-contained true \
-            -p:PublishSingleFile=false \
-            -p:PublishTrimmed=false \
-            -p:SkipFrontendBuild=true \
-            -o "$SCRIPT_DIR/resources/backend/osx-arm64" || {
-            print_error "macOS (arm64) backend build failed"
-            exit 1
-        }
-        print_success "macOS backend builds complete"
-    fi
-    
-    if [ "$BUILD_TARGET" = "all" ] || [ "$BUILD_TARGET" = "linux" ]; then
-        print_info "Building backend for Linux (x64)..."
-        dotnet publish -c Release -r linux-x64 --self-contained true \
-            -p:PublishSingleFile=false \
-            -p:PublishTrimmed=false \
-            -p:SkipFrontendBuild=true \
-            -o "$SCRIPT_DIR/resources/backend/linux-x64" || {
-            print_error "Linux backend build failed"
-            exit 1
-        }
-        print_success "Linux backend build complete"
-    fi
-    
-    print_success "Backend builds complete"
+    print_success "Backend build complete"
     echo ""
 else
     print_warning "Skipping backend build"
@@ -273,29 +228,15 @@ if [ "$SKIP_INSTALLER" = false ]; then
                 exit 1
             }
             ;;
-        mac)
-            print_info "Building macOS installer..."
-            npm run build:mac || {
-                print_error "macOS installer build failed"
-                exit 1
-            }
-            ;;
-        linux)
-            print_info "Building Linux packages..."
-            npm run build:linux || {
-                print_error "Linux packages build failed"
-                exit 1
-            }
-            ;;
-        all)
-            print_info "Building installers for all platforms..."
-            npm run build:all || {
-                print_error "Installer build failed"
-                exit 1
-            }
+        mac|linux|all)
+            print_error "Only Windows builds are currently supported."
+            print_error "macOS and Linux builds have been disabled."
+            print_info "Use --target win to build for Windows."
+            exit 1
             ;;
         *)
             print_error "Unknown target: $BUILD_TARGET"
+            print_info "Use --help for usage information."
             exit 1
             ;;
     esac
