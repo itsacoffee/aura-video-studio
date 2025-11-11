@@ -122,7 +122,9 @@ public class FFmpegService : IFFmpegService
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            CreateNoWindow = true
+            CreateNoWindow = true,
+            // Windows-specific: Set working directory to avoid path issues
+            WorkingDirectory = Path.GetDirectoryName(ffmpegPath) ?? Environment.CurrentDirectory
         };
 
         Process? process = null;
