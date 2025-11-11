@@ -16,6 +16,7 @@ public class DependencyDownloadE2ETests : IDisposable
     private readonly string _testDirectory;
     private readonly string _manifestPath;
     private readonly string _downloadDirectory;
+    private readonly HttpClient _httpClient;
 
     public DependencyDownloadE2ETests()
     {
@@ -23,6 +24,7 @@ public class DependencyDownloadE2ETests : IDisposable
         _testDirectory = Path.Combine(Path.GetTempPath(), "aura-e2e-tests-" + Guid.NewGuid().ToString());
         _manifestPath = Path.Combine(_testDirectory, "manifest.json");
         _downloadDirectory = Path.Combine(_testDirectory, "downloads");
+        _httpClient = new HttpClient();
         
         Directory.CreateDirectory(_testDirectory);
         Directory.CreateDirectory(_downloadDirectory);
@@ -30,6 +32,8 @@ public class DependencyDownloadE2ETests : IDisposable
 
     public void Dispose()
     {
+        _httpClient?.Dispose();
+        
         if (Directory.Exists(_testDirectory))
         {
             Directory.Delete(_testDirectory, true);
@@ -40,8 +44,7 @@ public class DependencyDownloadE2ETests : IDisposable
     public async Task ManifestDrivenFlow_Should_LoadAndVerifyComponents()
     {
         // Arrange
-        var httpClient = new HttpClient();
-        var manager = new DependencyManager(_logger, httpClient, _manifestPath, _downloadDirectory);
+        var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Act - Load manifest
         var manifest = await manager.LoadManifestAsync();
@@ -67,8 +70,7 @@ public class DependencyDownloadE2ETests : IDisposable
     public async Task VerifyComponent_Should_DetectUninstalledComponent()
     {
         // Arrange
-        var httpClient = new HttpClient();
-        var manager = new DependencyManager(_logger, httpClient, _manifestPath, _downloadDirectory);
+        var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Act
         var result = await manager.VerifyComponentAsync("FFmpeg");
@@ -85,8 +87,6 @@ public class DependencyDownloadE2ETests : IDisposable
     public async Task RepairWorkflow_Should_DetectInvalidComponent()
     {
         // Arrange
-        var httpClient = new HttpClient();
-        
         // Create a test manifest with a small dummy file
         var testManifest = @"{
   ""components"": [
@@ -111,7 +111,7 @@ public class DependencyDownloadE2ETests : IDisposable
         await File.WriteAllTextAsync(_manifestPath, testManifest);
 
         // Create manager after writing manifest
-        var manager = new DependencyManager(_logger, httpClient, _manifestPath, _downloadDirectory);
+        var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Act - Verify component (should detect component is not installed)
         var verifyResult = await manager.VerifyComponentAsync("TestComponent");
@@ -125,8 +125,7 @@ public class DependencyDownloadE2ETests : IDisposable
     public async Task ManualInstructions_Should_ProvideOfflineInstallPath()
     {
         // Arrange
-        var httpClient = new HttpClient();
-        var manager = new DependencyManager(_logger, httpClient, _manifestPath, _downloadDirectory);
+        var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
         await manager.LoadManifestAsync(); // Ensure manifest is created
 
         // Act
@@ -144,8 +143,6 @@ public class DependencyDownloadE2ETests : IDisposable
     public async Task ComponentLifecycle_Should_HandleVerifyAndRemove()
     {
         // Arrange
-        var httpClient = new HttpClient();
-
         // Create a minimal test manifest
         var testManifest = @"{
   ""components"": [
@@ -170,7 +167,7 @@ public class DependencyDownloadE2ETests : IDisposable
         await File.WriteAllTextAsync(_manifestPath, testManifest);
 
         // Create manager after writing manifest
-        var manager = new DependencyManager(_logger, httpClient, _manifestPath, _downloadDirectory);
+        var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Step 1: Verify - should be invalid (not installed)
         var verifyResult1 = await manager.VerifyComponentAsync("TestComponent");
@@ -202,8 +199,7 @@ public class DependencyDownloadE2ETests : IDisposable
     public void GetComponentDirectory_Should_ReturnValidPath()
     {
         // Arrange
-        var httpClient = new HttpClient();
-        var manager = new DependencyManager(_logger, httpClient, _manifestPath, _downloadDirectory);
+        var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Act
         var directory = manager.GetComponentDirectory("FFmpeg");
@@ -218,8 +214,7 @@ public class DependencyDownloadE2ETests : IDisposable
     public async Task PostInstallProbe_Configuration_Should_BePresent()
     {
         // Arrange
-        var httpClient = new HttpClient();
-        var manager = new DependencyManager(_logger, httpClient, _manifestPath, _downloadDirectory);
+        var manager = new DependencyManager(_logger, _httpClient, _manifestPath, _downloadDirectory);
 
         // Act
         var manifest = await manager.LoadManifestAsync();

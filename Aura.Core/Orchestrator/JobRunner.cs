@@ -9,6 +9,7 @@ using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Models.Events;
 using Aura.Core.Providers;
+using Aura.Core.Services.Memory;
 using Aura.Core.Telemetry;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
@@ -29,6 +30,7 @@ public class JobRunner
     private readonly RunTelemetryCollector _telemetryCollector;
     private readonly Services.JobQueueService? _jobQueueService;
     private readonly Services.ProgressEstimator _progressEstimator;
+    private readonly IMemoryPressureMonitor? _memoryMonitor;
     private readonly Dictionary<string, Job> _activeJobs = new();
     private readonly Dictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
     private readonly Dictionary<string, Guid> _jobProjectIds = new();
@@ -44,7 +46,8 @@ public class JobRunner
         Services.CheckpointManager? checkpointManager = null,
         Services.CleanupService? cleanupService = null,
         Services.JobQueueService? jobQueueService = null,
-        Services.ProgressEstimator? progressEstimator = null)
+        Services.ProgressEstimator? progressEstimator = null,
+        IMemoryPressureMonitor? memoryMonitor = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(artifactManager);
@@ -61,6 +64,7 @@ public class JobRunner
         _cleanupService = cleanupService;
         _jobQueueService = jobQueueService;
         _progressEstimator = progressEstimator ?? new Services.ProgressEstimator();
+        _memoryMonitor = memoryMonitor;
     }
 
     /// <summary>
@@ -253,6 +257,9 @@ public class JobRunner
 
             _logger.LogInformation("Starting job {JobId}", jobId);
             
+            // Start memory monitoring for this job
+            _memoryMonitor?.StartMonitoring(jobId);
+            
             // Start telemetry collection for this job
             _telemetryCollector.StartCollection(jobId, job.CorrelationId ?? Guid.NewGuid().ToString());
             _logger.LogInformation("Started telemetry collection for job {JobId}", jobId);
@@ -307,6 +314,12 @@ public class JobRunner
                 
                 // Record progress for ETA calculation
                 _progressEstimator.RecordProgress(jobId, percent, DateTime.UtcNow);
+                
+                // Update peak memory tracking
+                _memoryMonitor?.UpdatePeakMemory(jobId);
+                
+                // Check for memory pressure and force collection if needed
+                _memoryMonitor?.ForceCollectionIfNeeded();
                 
                 // Calculate ETA and elapsed time
                 var eta = _progressEstimator.EstimateTimeRemaining(jobId, percent);
@@ -380,6 +393,16 @@ public class JobRunner
                 _logger.LogInformation("Telemetry data persisted to {Path}", telemetryPath);
             }
             
+            // Stop memory monitoring and log statistics
+            if (_memoryMonitor != null)
+            {
+                var memStats = _memoryMonitor.StopMonitoring(jobId);
+                _logger.LogInformation(
+                    "Job {JobId} memory usage: Start={StartMb:F1}MB, Peak={PeakMb:F1}MB, End={EndMb:F1}MB, Delta={DeltaMb:+0.0;-0.0}MB, GC(G0={G0},G1={G1},G2={G2})",
+                    jobId, memStats.StartMemoryMb, memStats.PeakMemoryMb, memStats.EndMemoryMb, 
+                    memStats.MemoryDeltaMb, memStats.Gen0Collections, memStats.Gen1Collections, memStats.Gen2Collections);
+            }
+            
             // Clear progress estimation history
             _progressEstimator.ClearHistory(jobId);
             
@@ -440,6 +463,9 @@ public class JobRunner
                     _logger.LogInformation("Telemetry data persisted for cancelled job {JobId} to {Path}", jobId, telemetryPath);
                 }
                 
+                // Stop memory monitoring and log statistics
+                _memoryMonitor?.StopMonitoring(jobId);
+                
                 // Clear progress estimation history
                 _progressEstimator.ClearHistory(jobId);
                 
@@ -499,6 +525,9 @@ public class JobRunner
                     _logger.LogInformation("Telemetry data persisted for failed job {JobId} to {Path}", jobId, telemetryPath);
                 }
                 
+                // Stop memory monitoring
+                _memoryMonitor?.StopMonitoring(jobId);
+                
                 // Clear progress estimation history
                 _progressEstimator.ClearHistory(jobId);
                 
@@ -550,6 +579,9 @@ public class JobRunner
                 {
                     _logger.LogInformation("Telemetry data persisted for failed job {JobId} to {Path}", jobId, telemetryPath);
                 }
+                
+                // Stop memory monitoring
+                _memoryMonitor?.StopMonitoring(jobId);
                 
                 // Clear progress estimation history
                 _progressEstimator.ClearHistory(jobId);
