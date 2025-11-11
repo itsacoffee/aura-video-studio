@@ -1,0 +1,335 @@
+/**
+ * Windows 11 Native UI Styles
+ * Applies Windows 11 design language: rounded corners, acrylic materials, mica effects
+ */
+
+/* Windows 11 Design Tokens */
+:root {
+  /* Windows 11 Corner Radius */
+  --win11-corner-radius-small: 4px;
+  --win11-corner-radius-medium: 8px;
+  --win11-corner-radius-large: 12px;
+  --win11-corner-radius-xlarge: 16px;
+
+  /* Windows 11 Elevation Shadows */
+  --win11-shadow-flyout: 0 8px 16px 0 rgb(0 0 0 / 14%);
+  --win11-shadow-dialog: 0 32px 64px 0 rgb(0 0 0 / 24%);
+  --win11-shadow-card: 0 2px 8px 0 rgb(0 0 0 / 12%);
+
+  /* Windows 11 Acrylic Material */
+  --win11-acrylic-background: rgb(255 255 255 / 70%);
+  --win11-acrylic-border: rgb(255 255 255 / 50%);
+  --win11-acrylic-blur: 30px;
+
+  /* Windows 11 Mica Effect */
+  --win11-mica-background: rgb(243 243 243 / 50%);
+  --win11-mica-tint: rgb(255 255 255 / 30%);
+
+  /* Windows 11 Animation Timing */
+  --win11-animation-duration-fast: 167ms;
+  --win11-animation-duration-normal: 250ms;
+  --win11-animation-duration-slow: 500ms;
+  --win11-animation-easing: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Dark theme adjustments */
+.dark {
+  --win11-acrylic-background: rgb(44 44 44 / 70%);
+  --win11-acrylic-border: rgb(255 255 255 / 8%);
+  --win11-mica-background: rgb(32 32 32 / 50%);
+  --win11-mica-tint: rgb(255 255 255 / 3%);
+}
+
+/* Windows 11 specific class */
+body.windows-11 {
+  /* Apply mica effect to body */
+  background: var(--win11-mica-background);
+}
+
+/* Windows 11 Card Styling */
+body.windows-11 .card,
+body.windows-11 .panel,
+body.windows-11 .section {
+  border-radius: var(--win11-corner-radius-medium);
+  box-shadow: var(--win11-shadow-card);
+  backdrop-filter: blur(var(--win11-acrylic-blur));
+  background: var(--win11-acrylic-background);
+  border: 1px solid var(--win11-acrylic-border);
+  transition: all var(--win11-animation-duration-normal) var(--win11-animation-easing);
+}
+
+/* Windows 11 Button Styling */
+body.windows-11 button {
+  border-radius: var(--win11-corner-radius-small);
+  transition: all var(--win11-animation-duration-fast) var(--win11-animation-easing);
+}
+
+body.windows-11 button:hover:not(:disabled) {
+  background: rgb(0 0 0 / 5%);
+  transform: translateY(-1px);
+}
+
+body.windows-11 .dark button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 5%);
+}
+
+body.windows-11 button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Windows 11 Input Styling */
+body.windows-11 input:not([type='checkbox'], [type='radio']),
+body.windows-11 textarea,
+body.windows-11 select {
+  border-radius: var(--win11-corner-radius-small);
+  border: 1px solid var(--win11-acrylic-border);
+  background: var(--win11-acrylic-background);
+  backdrop-filter: blur(20px);
+  transition: all var(--win11-animation-duration-fast) var(--win11-animation-easing);
+}
+
+body.windows-11 input:focus,
+body.windows-11 textarea:focus,
+body.windows-11 select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgb(14 165 233 / 20%);
+}
+
+/* Windows 11 Modal/Dialog Styling */
+body.windows-11 [role='dialog'],
+body.windows-11 .dialog,
+body.windows-11 .modal {
+  border-radius: var(--win11-corner-radius-large);
+  box-shadow: var(--win11-shadow-dialog);
+  backdrop-filter: blur(var(--win11-acrylic-blur));
+  background: var(--win11-acrylic-background);
+  border: 1px solid var(--win11-acrylic-border);
+}
+
+/* Windows 11 Flyout/Dropdown Styling */
+body.windows-11 [role='menu'],
+body.windows-11 .dropdown,
+body.windows-11 .popover {
+  border-radius: var(--win11-corner-radius-medium);
+  box-shadow: var(--win11-shadow-flyout);
+  backdrop-filter: blur(var(--win11-acrylic-blur));
+  background: var(--win11-acrylic-background);
+  border: 1px solid var(--win11-acrylic-border);
+}
+
+/* Windows 11 Scrollbar Styling */
+body.windows-11 ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+body.windows-11 ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body.windows-11 ::-webkit-scrollbar-thumb {
+  background: rgb(0 0 0 / 20%);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background var(--win11-animation-duration-fast) var(--win11-animation-easing);
+}
+
+body.windows-11.dark ::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 20%);
+  background-clip: content-box;
+}
+
+body.windows-11 ::-webkit-scrollbar-thumb:hover {
+  background: rgb(0 0 0 / 40%);
+  background-clip: content-box;
+}
+
+body.windows-11.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 40%);
+  background-clip: content-box;
+}
+
+/* Windows 11 Tooltip Styling */
+body.windows-11 [role='tooltip'],
+body.windows-11 .tooltip {
+  border-radius: var(--win11-corner-radius-small);
+  box-shadow: var(--win11-shadow-flyout);
+  backdrop-filter: blur(20px);
+  background: var(--win11-acrylic-background);
+  border: 1px solid var(--win11-acrylic-border);
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+/* Windows 11 Focus Visible */
+body.windows-11 *:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--win11-corner-radius-small);
+}
+
+/* Windows 11 Animation Classes */
+body.windows-11 .fade-in,
+body.windows-11 .slide-in {
+  animation-duration: var(--win11-animation-duration-normal);
+  animation-timing-function: var(--win11-animation-easing);
+}
+
+/* Windows 11 Context Menu Specific Styling */
+body.windows-11 .context-menu {
+  border-radius: var(--win11-corner-radius-medium);
+  box-shadow: var(--win11-shadow-flyout);
+  backdrop-filter: blur(var(--win11-acrylic-blur));
+  background: var(--win11-acrylic-background);
+  border: 1px solid var(--win11-acrylic-border);
+  padding: 4px;
+  min-width: 200px;
+}
+
+body.windows-11 .context-menu-item {
+  border-radius: var(--win11-corner-radius-small);
+  padding: 8px 12px;
+  transition: background var(--win11-animation-duration-fast) var(--win11-animation-easing);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+body.windows-11 .context-menu-item:hover {
+  background: rgb(0 0 0 / 5%);
+}
+
+body.windows-11.dark .context-menu-item:hover {
+  background: rgb(255 255 255 / 8%);
+}
+
+body.windows-11 .context-menu-divider {
+  height: 1px;
+  background: var(--win11-acrylic-border);
+  margin: 4px 8px;
+}
+
+/* DPI Scaling Adjustments */
+
+/* Normal DPI (100%) - no adjustments needed */
+body.dpi-normal {
+  /* Base styles */
+}
+
+/* Medium DPI (150%) - slightly larger touch targets */
+body.dpi-medium button,
+body.dpi-medium input,
+body.dpi-medium select {
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
+body.dpi-medium .context-menu-item {
+  padding: 10px 14px;
+}
+
+/* High DPI (200%) - larger touch targets and spacing */
+body.dpi-high button,
+body.dpi-high input,
+body.dpi-high select {
+  min-height: 40px;
+  padding: 10px 16px;
+  font-size: 15px;
+}
+
+body.dpi-high .context-menu-item {
+  padding: 12px 16px;
+  font-size: 15px;
+}
+
+body.dpi-high .icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Very High DPI (300%+) - maximum touch target sizes */
+body.dpi-very-high button,
+body.dpi-very-high input,
+body.dpi-very-high select {
+  min-height: 48px;
+  padding: 12px 20px;
+  font-size: 16px;
+}
+
+body.dpi-very-high .context-menu-item {
+  padding: 14px 20px;
+  font-size: 16px;
+}
+
+body.dpi-very-high .icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Ensure crisp rendering at all DPI scales */
+body.windows-11 * {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizelegibility;
+}
+
+/* Prevent blurry images on high-DPI displays */
+body.windows-11 img {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Windows 11 Notification/Toast Styling */
+body.windows-11 .toast,
+body.windows-11 [role='alert'] {
+  border-radius: var(--win11-corner-radius-medium);
+  box-shadow: var(--win11-shadow-dialog);
+  backdrop-filter: blur(var(--win11-acrylic-blur));
+  background: var(--win11-acrylic-background);
+  border: 1px solid var(--win11-acrylic-border);
+  animation: slideInRight var(--win11-animation-duration-normal) var(--win11-animation-easing);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Windows 11 Navigation/Sidebar Styling */
+body.windows-11 nav,
+body.windows-11 .sidebar {
+  backdrop-filter: blur(var(--win11-acrylic-blur));
+  background: var(--win11-mica-background);
+  border-right: 1px solid var(--win11-acrylic-border);
+}
+
+body.windows-11 nav a,
+body.windows-11 .nav-item {
+  border-radius: var(--win11-corner-radius-small);
+  transition: background var(--win11-animation-duration-fast) var(--win11-animation-easing);
+}
+
+body.windows-11 nav a:hover,
+body.windows-11 .nav-item:hover {
+  background: rgb(0 0 0 / 5%);
+}
+
+body.windows-11.dark nav a:hover,
+body.windows-11.dark .nav-item:hover {
+  background: rgb(255 255 255 / 5%);
+}
+
+body.windows-11 nav a.active,
+body.windows-11 .nav-item.active {
+  background: var(--color-primary);
+  color: white;
+}

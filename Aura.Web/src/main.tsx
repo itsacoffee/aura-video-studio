@@ -1,7 +1,14 @@
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import './styles/windows11.css';
 import { validateEnvironment } from './utils/validateEnv';
+import { logWindowsEnvironment } from './utils/windowsUtils';
+
+// Log Windows environment information for debugging
+if (import.meta.env.DEV) {
+  logWindowsEnvironment();
+}
 
 // Validate environment before rendering
 try {
