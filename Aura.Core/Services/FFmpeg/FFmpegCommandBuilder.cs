@@ -693,7 +693,7 @@ public class FFmpegCommandBuilder
 
             // Handle Windows long path prefix (\\?\)
             // FFmpeg on Windows doesn't work well with \\?\ prefix, so remove it
-            if (path.StartsWith(@\"\\?\", StringComparison.Ordinal))
+            if (path.StartsWith(@"\\?\", StringComparison.Ordinal))
             {
                 path = path.Substring(4);
             }
