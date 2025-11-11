@@ -21,7 +21,8 @@
     "build:dir": "electron-builder --dir",
     "postinstall": "electron-builder install-app-deps",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "validate": "node scripts/validate-build-config.js"
   },
   "build": {
     "appId": "com.coffee285.aura-video-studio",
