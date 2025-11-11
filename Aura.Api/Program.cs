@@ -865,14 +865,15 @@ builder.Services.AddSingleton<IImageProvider>(sp =>
 // Register IStockProvider with factory-based resolution for stock media
 builder.Services.AddSingleton<IStockProvider>(sp =>
 {
-    var logger = sp.GetRequiredService<ILogger<IStockProvider>>();
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
     
     // Priority order: Pexels > Unsplash > Pixabay > Local
     var pexelsKey = providerSettings.GetPexelsApiKey();
     if (!string.IsNullOrWhiteSpace(pexelsKey))
     {
+        var logger = loggerFactory.CreateLogger<Aura.Providers.Images.PexelsStockProvider>();
         logger.LogInformation("Using Pexels as default stock provider");
         return new Aura.Providers.Images.PexelsStockProvider(
             logger, httpClientFactory.CreateClient(), pexelsKey);
@@ -881,6 +882,7 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
     var unsplashKey = providerSettings.GetUnsplashAccessKey();
     if (!string.IsNullOrWhiteSpace(unsplashKey))
     {
+        var logger = loggerFactory.CreateLogger<Aura.Providers.Images.UnsplashStockProvider>();
         logger.LogInformation("Using Unsplash as default stock provider");
         return new Aura.Providers.Images.UnsplashStockProvider(
             logger, httpClientFactory.CreateClient(), unsplashKey);
@@ -889,15 +891,17 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
     var pixabayKey = providerSettings.GetPixabayApiKey();
     if (!string.IsNullOrWhiteSpace(pixabayKey))
     {
+        var logger = loggerFactory.CreateLogger<Aura.Providers.Images.PixabayStockProvider>();
         logger.LogInformation("Using Pixabay as default stock provider");
         return new Aura.Providers.Images.PixabayStockProvider(
             logger, httpClientFactory.CreateClient(), pixabayKey);
     }
     
     // Fallback to local stock provider
-    logger.LogInformation("Using Local stock provider (no API keys configured)");
+    var localLogger = loggerFactory.CreateLogger<Aura.Providers.Images.LocalStockProvider>();
+    localLogger.LogInformation("Using Local stock provider (no API keys configured)");
     var localPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "Stock");
-    return new Aura.Providers.Images.LocalStockProvider(logger, localPath);
+    return new Aura.Providers.Images.LocalStockProvider(localLogger, localPath);
 });
 
 // Register validators
