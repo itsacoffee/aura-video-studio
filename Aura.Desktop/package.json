@@ -149,8 +149,7 @@
   },
   "devDependencies": {
     "electron": "^32.2.5",
-    "electron-builder": "^25.1.8",
-    "dmg-license": "^1.0.11"
+    "electron-builder": "^25.1.8"
   },
   "engines": {
     "node": ">=18.0.0",
