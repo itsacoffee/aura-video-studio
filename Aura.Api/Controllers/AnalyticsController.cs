@@ -203,7 +203,7 @@ public class AnalyticsController : ControllerBase
     [HttpPost("costs/estimate")]
     [ProducesResponseType(typeof(CostEstimate), StatusCodes.Status200OK)]
     public async Task<ActionResult<CostEstimate>> EstimateCost(
-        [FromBody] CostEstimateRequest request,
+        [FromBody] AnalyticsCostEstimateRequest request,
         CancellationToken cancellationToken = default)
     {
         try
@@ -488,7 +488,7 @@ public class AnalyticsController : ControllerBase
 }
 
 // Request/Response DTOs
-public class CostEstimateRequest
+public class AnalyticsCostEstimateRequest
 {
     [Required]
     public string Provider { get; set; } = string.Empty;

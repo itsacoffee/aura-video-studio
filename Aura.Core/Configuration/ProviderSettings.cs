@@ -330,6 +330,33 @@ public class ProviderSettings
     }
 
     /// <summary>
+    /// Get Pexels API key
+    /// </summary>
+    public string? GetPexelsApiKey()
+    {
+        LoadSettings();
+        return GetStringSetting("pexelsApiKey", "");
+    }
+
+    /// <summary>
+    /// Get Unsplash access key
+    /// </summary>
+    public string? GetUnsplashAccessKey()
+    {
+        LoadSettings();
+        return GetStringSetting("unsplashAccessKey", "");
+    }
+
+    /// <summary>
+    /// Get Pixabay API key
+    /// </summary>
+    public string? GetPixabayApiKey()
+    {
+        LoadSettings();
+        return GetStringSetting("pixabayApiKey", "");
+    }
+
+    /// <summary>
     /// Get PlayHT User ID
     /// </summary>
     public string? GetPlayHTUserId()

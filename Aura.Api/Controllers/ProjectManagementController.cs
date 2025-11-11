@@ -540,7 +540,7 @@ public class ProjectManagementController : ControllerBase
             var correlationId = HttpContext.TraceIdentifier;
             Log.Information("[{CorrelationId}] GET /api/project-management/projects/{ProjectId}/versions", correlationId, projectId);
 
-            var versions = await _versionRepository.GetVersionsByProjectIdAsync(projectId, ct);
+            var versions = await _versionRepository.GetVersionsAsync(projectId, false, ct);
 
             var response = versions.Select(v => new
             {

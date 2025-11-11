@@ -51,15 +51,8 @@ public static class ResilienceServicesExtensions
             configureClient?.Invoke(client);
         });
 
-        // Add resilience pipeline
-        builder.AddResiliencePipeline(name, (pipelineBuilder, context) =>
-        {
-            var factory = context.ServiceProvider.GetRequiredService<IResiliencePipelineFactory>();
-            var pipeline = factory.GetHttpPipeline(name);
-
-            // Apply the pipeline to the HttpClient
-            pipelineBuilder.AddPipeline(pipeline);
-        });
+        // Add standard resilience handler (retry, circuit breaker, timeout)
+        builder.AddStandardResilienceHandler();
 
         return builder;
     }
@@ -80,14 +73,8 @@ public static class ResilienceServicesExtensions
             configureClient?.Invoke(client);
         });
 
-        // Add resilience pipeline
-        builder.AddResiliencePipeline(clientName, (pipelineBuilder, context) =>
-        {
-            var factory = context.ServiceProvider.GetRequiredService<IResiliencePipelineFactory>();
-            var pipeline = factory.GetHttpPipeline(clientName);
-
-            pipelineBuilder.AddPipeline(pipeline);
-        });
+        // Add standard resilience handler (retry, circuit breaker, timeout)
+        builder.AddStandardResilienceHandler();
 
         return builder;
     }
