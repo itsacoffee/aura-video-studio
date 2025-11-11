@@ -46,7 +46,7 @@ public static class CoreServicesExtensions
         // Video Effects Services
         services.AddSingleton<Aura.Core.Services.VideoEffects.IVideoEffectService, Aura.Core.Services.VideoEffects.VideoEffectService>();
         services.AddSingleton<Aura.Core.Services.VideoEffects.IEffectCacheService, Aura.Core.Services.VideoEffects.EffectCacheService>();
-        services.AddSingleton<IHardwareAccelerationDetector, HardwareAccelerationDetector>();
+        // Note: IHardwareAccelerationDetector implementation pending
 
         // Video services
         services.AddScoped<IVideoComposer, VideoComposer>();

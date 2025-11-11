@@ -61,10 +61,10 @@ public class GenerationStateManager
         
         var entity = new ProjectStateEntity
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = Guid.NewGuid(),
             JobId = jobId,
             Status = "Initializing",
-            StateJson = JsonSerializer.Serialize(state),
+            BriefJson = config != null ? JsonSerializer.Serialize(config) : null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -73,7 +73,7 @@ public class GenerationStateManager
         await context.SaveChangesAsync(ct);
 
         _logger.LogInformation("Initialized generation state for job {JobId}", jobId);
-        return entity.Id;
+        return entity.Id.ToString();
     }
 
     /// <summary>
@@ -136,11 +136,11 @@ public class GenerationStateManager
         
         var checkpointEntity = new RenderCheckpointEntity
         {
-            Id = Guid.NewGuid().ToString(),
-            ProjectId = state.ProjectStateId ?? "",
+            Id = Guid.NewGuid(),
+            ProjectId = !string.IsNullOrEmpty(state.ProjectStateId) && Guid.TryParse(state.ProjectStateId, out var projectGuid) ? projectGuid : Guid.Empty,
             StageName = stageName,
             CheckpointTime = DateTime.UtcNow,
-            DataJson = stageData != null ? JsonSerializer.Serialize(stageData) : null
+            CheckpointData = stageData != null ? JsonSerializer.Serialize(stageData) : null
         };
 
         context.RenderCheckpoints.Add(checkpointEntity);
@@ -249,17 +249,17 @@ public class GenerationStateManager
         var entity = await context.ProjectStates
             .FirstOrDefaultAsync(p => p.JobId == jobId, ct);
 
-        if (entity == null || string.IsNullOrEmpty(entity.StateJson))
+        if (entity == null || string.IsNullOrEmpty(entity.BriefJson))
         {
             return null;
         }
 
         try
         {
-            var state = JsonSerializer.Deserialize<GenerationState>(entity.StateJson);
+            var state = JsonSerializer.Deserialize<GenerationState>(entity.BriefJson);
             if (state != null)
             {
-                state.ProjectStateId = entity.Id;
+                state.ProjectStateId = entity.Id.ToString();
                 _activeStates[jobId] = state;
                 _logger.LogInformation("Recovered state for job {JobId} from database", jobId);
                 return state;
@@ -291,7 +291,7 @@ public class GenerationStateManager
         if (entity != null)
         {
             entity.Status = state.Status.ToString();
-            entity.StateJson = JsonSerializer.Serialize(state);
+            entity.BriefJson = JsonSerializer.Serialize(state);
             entity.UpdatedAt = DateTime.UtcNow;
             
             await context.SaveChangesAsync(ct);

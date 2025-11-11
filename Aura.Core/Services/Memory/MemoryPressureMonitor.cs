@@ -40,6 +40,11 @@ public interface IMemoryPressureMonitor
     /// Forces garbage collection if memory pressure is high
     /// </summary>
     void ForceCollectionIfNeeded();
+    
+    /// <summary>
+    /// Updates peak memory for a job if current memory is higher
+    /// </summary>
+    void UpdatePeakMemory(string jobId);
 }
 
 /// <summary>

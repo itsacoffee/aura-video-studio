@@ -221,7 +221,7 @@ public class DiagnosticBundleService
                     ProcessorCount = Environment.ProcessorCount,
                     DotNetVersion = Environment.Version.ToString(),
                     WorkingSetBytes = (int)Environment.WorkingSet,
-                    Hardware = new HardwareInfo
+                    Hardware = new Models.Diagnostics.HardwareInfo
                     {
                         LogicalCores = hw.LogicalCores,
                         PhysicalCores = hw.PhysicalCores,
