@@ -453,7 +453,7 @@ public class VideoEffectService : IVideoEffectService
                 new BlurEffect
                 {
                     Name = "Soft Blur",
-                    Type = BlurEffect.BlurType.Gaussian,
+                    BlurStyle = BlurEffect.BlurType.Gaussian,
                     Strength = 3.0,
                     Duration = 1.0
                 }

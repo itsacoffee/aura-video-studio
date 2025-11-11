@@ -735,7 +735,7 @@ public class VideoOrchestrator
             SystemProfile = systemProfile
         };
 
-        var pipelineConfig = new PipelineConfiguration
+        var pipelineConfig = new Services.Orchestration.PipelineConfiguration
         {
             MaxConcurrentLlmCalls = Math.Max(1, Environment.ProcessorCount / 2),
             EnableCaching = true,

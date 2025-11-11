@@ -130,7 +130,7 @@ public class MediaGenerationIntegrationService : IMediaGenerationIntegrationServ
 
             if (projectCollection != null)
             {
-                collectionId = Guid.Parse(projectCollection.Id);
+                collectionId = projectCollection.Id;
             }
         }
 
@@ -190,7 +190,7 @@ public class MediaGenerationIntegrationService : IMediaGenerationIntegrationServ
         var usedMedia = new List<MediaItemResponse>();
         foreach (var media in allMedia.Items)
         {
-            var usage = await _mediaService.GetMediaUsageAsync(Guid.Parse(media.Id), ct);
+            var usage = await _mediaService.GetMediaUsageAsync(media.Id, ct);
             if (usage.UsedInProjects.Contains(projectId))
             {
                 usedMedia.Add(media);

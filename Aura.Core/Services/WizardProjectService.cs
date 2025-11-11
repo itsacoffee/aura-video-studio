@@ -173,7 +173,7 @@ public class WizardProjectService
 
         project.IsDeleted = true;
         project.DeletedAt = DateTime.UtcNow;
-        project.DeletedByUserId = userId;
+        project.DeletedBy = userId;
         project.Status = "Deleted";
 
         await _repository.UpdateAsync(project, ct);
