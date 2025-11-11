@@ -1,18 +1,8 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  MoreVertical,
-  Play,
-  Trash2,
-  Copy,
-  Edit,
-  Download,
-  Clock,
-  Folder,
-  Tag,
-} from 'lucide-react';
-import { Project } from '../../api/projectManagement';
 import { formatDistanceToNow } from 'date-fns';
+import { MoreVertical, Play, Trash2, Copy, Edit, Download, Clock, Folder, Tag } from 'lucide-react';
+import { useState, memo } from 'react';
+import { Link } from 'react-router-dom';
+import { Project } from '../../api/projectManagement';
 
 interface ProjectCardProps {
   project: Project;
@@ -22,13 +12,13 @@ interface ProjectCardProps {
   onDuplicate: () => void;
 }
 
-export function ProjectCard({
+const ProjectCardComponent = ({
   project,
   selected,
   onSelect,
   onDelete,
   onDuplicate,
-}: ProjectCardProps) {
+}: ProjectCardProps) => {
   const [showMenu, setShowMenu] = useState(false);
 
   const statusColors = {
@@ -72,10 +62,7 @@ export function ProjectCard({
 
         {showMenu && (
           <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setShowMenu(false)}
-            />
+            <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
             <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 overflow-hidden">
               <Link
                 to={`/projects/${project.id}`}
@@ -174,12 +161,11 @@ export function ProjectCard({
             {project.durationSeconds && (
               <div className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {Math.floor(project.durationSeconds / 60)}:{String(Math.floor(project.durationSeconds % 60)).padStart(2, '0')}
+                {Math.floor(project.durationSeconds / 60)}:
+                {String(Math.floor(project.durationSeconds % 60)).padStart(2, '0')}
               </div>
             )}
-            {project.sceneCount > 0 && (
-              <span>{project.sceneCount} scenes</span>
-            )}
+            {project.sceneCount > 0 && <span>{project.sceneCount} scenes</span>}
             {project.category && (
               <div className="flex items-center gap-1">
                 <Folder className="w-3 h-3" />
@@ -223,4 +209,6 @@ export function ProjectCard({
       </Link>
     </div>
   );
-}
+};
+
+export const ProjectCard = memo(ProjectCardComponent);

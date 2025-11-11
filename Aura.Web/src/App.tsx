@@ -17,6 +17,7 @@ import { JobProgressDrawer } from './components/JobProgressDrawer';
 import { KeyboardShortcutsPanel } from './components/KeyboardShortcuts/KeyboardShortcutsPanel';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { Layout } from './components/Layout';
+import { SuspenseFallback } from './components/Loading/SuspenseFallback';
 import { NotificationsToaster } from './components/Notifications/Toasts';
 import { PlatformDashboard } from './components/Platform';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';

@@ -43,7 +43,7 @@ import {
   LinkRegular,
   ShieldCheckmark24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { apiUrl } from '../../config/api';
 import { useEngineInstallProgress } from '../../hooks/useEngineInstallProgress';
 import { useEnginesStore } from '../../state/engines';
@@ -131,7 +131,7 @@ interface EngineCardProps {
 }
 
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Complex UI component managing multiple engine states and operations; splitting would fragment related logic
-export function EngineCard({ engine }: EngineCardProps) {
+const EngineCardComponent = ({ engine }: EngineCardProps) => {
   const styles = useStyles();
   const { showSuccessToast, showFailureToast } = useNotifications();
   const [status, setStatus] = useState<EngineStatus | null>(null);
@@ -1240,4 +1240,6 @@ export function EngineCard({ engine }: EngineCardProps) {
       </Dialog>
     </Card>
   );
-}
+};
+
+export const EngineCard = memo(EngineCardComponent);

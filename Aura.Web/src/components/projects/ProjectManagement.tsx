@@ -1,4 +1,3 @@
-import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search,
@@ -14,14 +13,15 @@ import {
   LayoutList,
   RefreshCw,
 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { projectManagementApi, Project } from '../../api/projectManagement';
-import { ProjectCard } from './ProjectCard';
-import { ProjectListItem } from './ProjectListItem';
-import { ProjectFilters } from './ProjectFilters';
-import { CreateProjectDialog } from './CreateProjectDialog';
-import { TemplateSelectionDialog } from './TemplateSelectionDialog';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { CreateProjectDialog } from './CreateProjectDialog';
+import { ProjectCard } from './ProjectCard';
+import { ProjectFilters } from './ProjectFilters';
+import { ProjectListItem } from './ProjectListItem';
+import { TemplateSelectionDialog } from './TemplateSelectionDialog';
 
 type ViewMode = 'grid' | 'list';
 
@@ -73,8 +73,7 @@ export function ProjectManagement() {
 
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
-    mutationFn: (projectIds: string[]) =>
-      projectManagementApi.bulkDeleteProjects(projectIds),
+    mutationFn: (projectIds: string[]) => projectManagementApi.bulkDeleteProjects(projectIds),
     onSuccess: () => {
       setSelectedProjects(new Set());
       queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -90,49 +89,59 @@ export function ProjectManagement() {
     },
   });
 
-  const handleSelectProject = (projectId: string, selected: boolean) => {
-    const newSelected = new Set(selectedProjects);
-    if (selected) {
-      newSelected.add(projectId);
-    } else {
-      newSelected.delete(projectId);
-    }
-    setSelectedProjects(newSelected);
-  };
-
-  const handleSelectAll = () => {
-    if (data?.projects) {
-      if (selectedProjects.size === data.projects.length) {
-        setSelectedProjects(new Set());
+  const handleSelectProject = useCallback((projectId: string, selected: boolean) => {
+    setSelectedProjects((prev) => {
+      const newSelected = new Set(prev);
+      if (selected) {
+        newSelected.add(projectId);
       } else {
-        setSelectedProjects(new Set(data.projects.map((p) => p.id)));
+        newSelected.delete(projectId);
       }
-    }
-  };
+      return newSelected;
+    });
+  }, []);
 
-  const handleBulkDelete = async () => {
+  const handleSelectAll = useCallback(() => {
+    if (data?.projects) {
+      setSelectedProjects((prev) => {
+        if (prev.size === data.projects.length) {
+          return new Set();
+        } else {
+          return new Set(data.projects.map((p) => p.id));
+        }
+      });
+    }
+  }, [data?.projects]);
+
+  const handleBulkDelete = useCallback(async () => {
     if (selectedProjects.size === 0) return;
     if (!confirm(`Delete ${selectedProjects.size} project(s)?`)) return;
 
     await bulkDeleteMutation.mutateAsync(Array.from(selectedProjects));
-  };
+  }, [selectedProjects, bulkDeleteMutation]);
 
-  const handleDeleteProject = async (projectId: string) => {
-    if (!confirm('Delete this project?')) return;
-    await deleteMutation.mutateAsync(projectId);
-  };
+  const handleDeleteProject = useCallback(
+    async (projectId: string) => {
+      if (!confirm('Delete this project?')) return;
+      await deleteMutation.mutateAsync(projectId);
+    },
+    [deleteMutation]
+  );
 
-  const handleDuplicateProject = async (projectId: string) => {
-    await duplicateMutation.mutateAsync(projectId);
-  };
+  const handleDuplicateProject = useCallback(
+    async (projectId: string) => {
+      await duplicateMutation.mutateAsync(projectId);
+    },
+    [duplicateMutation]
+  );
 
-  const handleFilterChange = (newFilters: Partial<typeof filters>) => {
-    setFilters({ ...filters, ...newFilters, page: 1 });
-  };
+  const handleFilterChange = useCallback((newFilters: Partial<typeof filters>) => {
+    setFilters((prev) => ({ ...prev, ...newFilters, page: 1 }));
+  }, []);
 
-  const handlePageChange = (page: number) => {
-    setFilters({ ...filters, page });
-  };
+  const handlePageChange = useCallback((page: number) => {
+    setFilters((prev) => ({ ...prev, page }));
+  }, []);
 
   const projects = data?.projects || [];
   const pagination = data?.pagination;
@@ -154,12 +163,7 @@ export function ProjectManagement() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isLoading}
-              >
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
               </Button>
@@ -300,9 +304,7 @@ export function ProjectManagement() {
                     <th className="px-4 py-3 text-left">
                       <input
                         type="checkbox"
-                        checked={
-                          projects.length > 0 && selectedProjects.size === projects.length
-                        }
+                        checked={projects.length > 0 && selectedProjects.size === projects.length}
                         onChange={handleSelectAll}
                         className="rounded border-gray-300 dark:border-gray-600"
                       />
