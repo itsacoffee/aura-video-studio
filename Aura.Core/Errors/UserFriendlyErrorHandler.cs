@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Errors;
