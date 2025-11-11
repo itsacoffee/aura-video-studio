@@ -214,11 +214,20 @@ async function startBackend() {
       stdio: ['ignore', 'pipe', 'pipe']
     });
     
+    // Collect startup logs for diagnostics
+    const startupLogs = [];
+    const maxStartupLogs = 100;
+    
     // Handle backend output
     backendProcess.stdout.on('data', (data) => {
       const message = data.toString().trim();
       if (message) {
         console.log(`[Backend] ${message}`);
+        
+        // Collect startup logs for error diagnostics
+        if (startupLogs.length < maxStartupLogs) {
+          startupLogs.push(`[INFO] ${message}`);
+        }
       }
     });
     
@@ -226,6 +235,11 @@ async function startBackend() {
       const message = data.toString().trim();
       if (message) {
         console.error(`[Backend Error] ${message}`);
+        
+        // Collect error logs for diagnostics
+        if (startupLogs.length < maxStartupLogs) {
+          startupLogs.push(`[ERROR] ${message}`);
+        }
       }
     });
     
@@ -235,10 +249,31 @@ async function startBackend() {
       
       if (!isQuitting && code !== 0) {
         // Backend crashed unexpectedly
-        dialog.showErrorBox(
-          'Backend Error',
-          `The Aura backend server has stopped unexpectedly (exit code: ${code}). The application will now close.`
-        );
+        let errorMessage = `The Aura backend server has stopped unexpectedly.\n\n`;
+        
+        // Provide helpful error messages based on exit code
+        if (code === 1) {
+          errorMessage += `Exit Code: ${code}\nLikely cause: Configuration validation failed or critical service initialization error.\n\n`;
+          errorMessage += `Please check:\n`;
+          errorMessage += `- Database file permissions\n`;
+          errorMessage += `- Port availability (default: 5005)\n`;
+          errorMessage += `- Disk space\n\n`;
+        } else if (code === 3762504530 || code === -532459699) {
+          // 0xE0434352 (.NET CLR exception) - can appear as signed or unsigned
+          errorMessage += `Exit Code: ${code} (0xE0434352 - .NET CLR Exception)\n`;
+          errorMessage += `Likely cause: Unhandled exception during startup.\n\n`;
+          errorMessage += `Please check:\n`;
+          errorMessage += `- Application logs in: ${path.join(app.getPath('userData'), 'logs')}\n`;
+          errorMessage += `- Ensure all dependencies are installed\n`;
+          errorMessage += `- Try restarting the application\n\n`;
+        } else {
+          errorMessage += `Exit Code: ${code}\n\n`;
+        }
+        
+        errorMessage += `Logs location: ${path.join(app.getPath('userData'), 'logs')}\n`;
+        errorMessage += `\nThe application will now close.`;
+        
+        dialog.showErrorBox('Backend Error', errorMessage);
         app.quit();
       }
     });
@@ -256,6 +291,25 @@ async function startBackend() {
     
   } catch (error) {
     console.error('Backend startup error:', error);
+    
+    // Provide detailed error message
+    let errorDetails = `Failed to start the Aura backend server.\n\n`;
+    errorDetails += `Error: ${error.message}\n\n`;
+    
+    if (error.message.includes('not found')) {
+      errorDetails += `The backend executable was not found. Please ensure the application is properly installed.\n`;
+      errorDetails += `Expected location: ${backendPath}\n\n`;
+    } else if (error.message.includes('Backend failed to start within')) {
+      errorDetails += `The backend server did not respond to health checks within the timeout period.\n`;
+      errorDetails += `This may indicate:\n`;
+      errorDetails += `- Port ${backendPort} is already in use\n`;
+      errorDetails += `- Firewall is blocking the application\n`;
+      errorDetails += `- Missing dependencies\n\n`;
+    }
+    
+    errorDetails += `Logs location: ${env.AURA_LOGS_PATH}\n`;
+    
+    dialog.showErrorBox('Startup Error', errorDetails);
     throw error;
   }
 }

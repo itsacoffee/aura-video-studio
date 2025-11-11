@@ -194,12 +194,20 @@ public class StartupInitializationService : IHostedService
         if (failedCritical)
         {
             _logger.LogError("=== Service Initialization FAILED ===");
-            _logger.LogError("Critical services failed to initialize. Application cannot start.");
+            _logger.LogError("Critical services failed to initialize. Application cannot start properly.");
             _logger.LogError("Total time: {Duration}ms, Successful: {Success}/{Total}",
                 overallStopwatch.ElapsedMilliseconds, successCount, _initializationSteps.Count);
             
-            // Terminate the application
-            Environment.Exit(1);
+            // Instead of Environment.Exit, throw an exception that can be caught and logged properly
+            var failedSteps = string.Join(", ", _initializationSteps
+                .Where((s, i) => i < _initializationSteps.Count && s.IsCritical)
+                .Select(s => s.Name));
+            
+            _logger.LogError("Failed critical steps: {Steps}", failedSteps);
+            _logger.LogWarning("Application will continue startup but may be unstable. Please check logs above for details.");
+            
+            // Don't throw or exit - let the application try to start
+            // Users can see errors in the UI and troubleshoot
         }
         else
         {

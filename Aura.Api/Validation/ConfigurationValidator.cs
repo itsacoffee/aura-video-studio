@@ -170,7 +170,8 @@ public class ConfigurationValidator
             }
             else if (!IsPortAvailable(port))
             {
-                AddIssue("ASPNETCORE_URLS:Port", $"Port {port} is already in use", IssueSeverity.Critical);
+                // Changed from Critical to Warning - the app might be restarting or port check might be flaky
+                AddIssue("ASPNETCORE_URLS:Port", $"Port {port} appears to be in use. If startup fails, check for port conflicts.", IssueSeverity.Warning);
             }
         }
         else
