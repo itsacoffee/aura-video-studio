@@ -14,17 +14,8 @@ public static class MediaServicesExtensions
     /// </summary>
     public static IServiceCollection AddMediaServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // Storage services
-        var storageType = configuration["Storage:Type"] ?? "Local";
-        
-        if (storageType.Equals("AzureBlob", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddScoped<IStorageService, AzureBlobStorageService>();
-        }
-        else
-        {
-            services.AddScoped<IStorageService, LocalStorageService>();
-        }
+        // Storage services - Local only (cloud storage removed in PR #198)
+        services.AddScoped<IStorageService, LocalStorageService>();
 
         // Media repositories
         services.AddScoped<IMediaRepository, MediaRepository>();
