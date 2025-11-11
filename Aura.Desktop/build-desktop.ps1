@@ -1,6 +1,6 @@
 # PowerShell Build Script for Aura Video Studio Desktop
 param(
-    [string]$Target = "all",
+    [string]$Target = "win",
     [switch]$SkipFrontend,
     [switch]$SkipBackend,
     [switch]$SkipInstaller,
@@ -39,7 +39,7 @@ if ($Help) {
     Write-Host "Usage: .\build-desktop.ps1 [OPTIONS]"
     Write-Host ""
     Write-Host "Options:"
-    Write-Host "  -Target <platform>    Build for specific platform (win|mac|linux|all)"
+    Write-Host "  -Target <platform>    Build for specific platform (win only, default: win)"
     Write-Host "  -SkipFrontend         Skip frontend build"
     Write-Host "  -SkipBackend          Skip backend build"
     Write-Host "  -SkipInstaller        Skip installer creation"
@@ -117,7 +117,7 @@ if (-not $SkipBackend) {
         New-Item -ItemType Directory -Path $BackendDir -Force | Out-Null
     }
     
-    if ($Target -eq "all" -or $Target -eq "win") {
+    if ($Target -eq "win") {
         Write-Info "Building backend for Windows (x64)..."
         dotnet publish -c Release -r win-x64 --self-contained true `
             -p:PublishSingleFile=false `
@@ -130,45 +130,9 @@ if (-not $SkipBackend) {
             exit 1
         }
         Write-Success "Windows backend build complete"
-    }
-    
-    if ($Target -eq "all" -or $Target -eq "mac") {
-        Write-Info "Building backend for macOS (x64)..."
-        dotnet publish -c Release -r osx-x64 --self-contained true `
-            -p:PublishSingleFile=false `
-            -p:PublishTrimmed=false `
-            -p:SkipFrontendBuild=true `
-            -o "$BackendDir\osx-x64"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "macOS (x64) backend build failed with exit code $LASTEXITCODE"
-            exit 1
-        }
-        
-        Write-Info "Building backend for macOS (arm64)..."
-        dotnet publish -c Release -r osx-arm64 --self-contained true `
-            -p:PublishSingleFile=false `
-            -p:PublishTrimmed=false `
-            -p:SkipFrontendBuild=true `
-            -o "$BackendDir\osx-arm64"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "macOS (arm64) backend build failed with exit code $LASTEXITCODE"
-            exit 1
-        }
-        Write-Success "macOS backend builds complete"
-    }
-    
-    if ($Target -eq "all" -or $Target -eq "linux") {
-        Write-Info "Building backend for Linux (x64)..."
-        dotnet publish -c Release -r linux-x64 --self-contained true `
-            -p:PublishSingleFile=false `
-            -p:PublishTrimmed=false `
-            -p:SkipFrontendBuild=true `
-            -o "$BackendDir\linux-x64"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Linux backend build failed with exit code $LASTEXITCODE"
-            exit 1
-        }
-        Write-Success "Linux backend build complete"
+    } else {
+        Write-Error "Only Windows builds are supported. Target: $Target"
+        exit 1
     }
     
     Write-Success "Backend builds complete"
@@ -232,43 +196,16 @@ Write-Host ""
 if (-not $SkipInstaller) {
     Write-Info "Building Electron installers..."
     
-    switch ($Target) {
-        "win" {
-            Write-Info "Building Windows installer..."
-            npm run build:win
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "Windows installer build failed with exit code $LASTEXITCODE"
-                exit 1
-            }
-        }
-        "mac" {
-            Write-Info "Building macOS installer..."
-            npm run build:mac
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "macOS installer build failed with exit code $LASTEXITCODE"
-                exit 1
-            }
-        }
-        "linux" {
-            Write-Info "Building Linux packages..."
-            npm run build:linux
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "Linux packages build failed with exit code $LASTEXITCODE"
-                exit 1
-            }
-        }
-        "all" {
-            Write-Info "Building installers for all platforms..."
-            npm run build:all
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "Installer build failed with exit code $LASTEXITCODE"
-                exit 1
-            }
-        }
-        default {
-            Write-Error "Unknown target: $Target"
+    if ($Target -eq "win") {
+        Write-Info "Building Windows installer..."
+        npm run build:win
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Windows installer build failed with exit code $LASTEXITCODE"
             exit 1
         }
+    } else {
+        Write-Error "Only Windows builds are supported. Target: $Target"
+        exit 1
     }
     
     Write-Success "Installer build complete"
