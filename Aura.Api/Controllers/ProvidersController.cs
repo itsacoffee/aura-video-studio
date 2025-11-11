@@ -689,44 +689,44 @@ public class ProvidersController : ControllerBase
 
             var configuredProviders = await _secureStorageService.GetConfiguredProvidersAsync();
             
-            var providerStatuses = new List<ProviderStatusDto>
+            var providerStatuses = new List<ProviderValidationStatusDto>
             {
-                new ProviderStatusDto(
+                new ProviderValidationStatusDto(
                     Name: "OpenAI",
                     IsConfigured: configuredProviders.Contains("openai"),
                     IsAvailable: configuredProviders.Contains("openai"),
                     Status: configuredProviders.Contains("openai") ? "Configured" : "Not Configured"),
-                new ProviderStatusDto(
+                new ProviderValidationStatusDto(
                     Name: "Anthropic",
                     IsConfigured: configuredProviders.Contains("anthropic"),
                     IsAvailable: configuredProviders.Contains("anthropic"),
                     Status: configuredProviders.Contains("anthropic") ? "Configured" : "Not Configured"),
-                new ProviderStatusDto(
+                new ProviderValidationStatusDto(
                     Name: "Gemini",
                     IsConfigured: configuredProviders.Contains("gemini") || configuredProviders.Contains("google"),
                     IsAvailable: configuredProviders.Contains("gemini") || configuredProviders.Contains("google"),
                     Status: configuredProviders.Contains("gemini") || configuredProviders.Contains("google") ? "Configured" : "Not Configured"),
-                new ProviderStatusDto(
+                new ProviderValidationStatusDto(
                     Name: "ElevenLabs",
                     IsConfigured: configuredProviders.Contains("elevenlabs"),
                     IsAvailable: configuredProviders.Contains("elevenlabs"),
                     Status: configuredProviders.Contains("elevenlabs") ? "Configured" : "Not Configured"),
-                new ProviderStatusDto(
+                new ProviderValidationStatusDto(
                     Name: "PlayHT",
                     IsConfigured: configuredProviders.Contains("playht"),
                     IsAvailable: configuredProviders.Contains("playht"),
                     Status: configuredProviders.Contains("playht") ? "Configured" : "Not Configured"),
-                new ProviderStatusDto(
+                new ProviderValidationStatusDto(
                     Name: "Pexels",
                     IsConfigured: configuredProviders.Contains("pexels"),
                     IsAvailable: configuredProviders.Contains("pexels"),
                     Status: configuredProviders.Contains("pexels") ? "Configured" : "Not Configured"),
-                new ProviderStatusDto(
+                new ProviderValidationStatusDto(
                     Name: "StabilityAI",
                     IsConfigured: configuredProviders.Contains("stabilityai") || configuredProviders.Contains("stability"),
                     IsAvailable: configuredProviders.Contains("stabilityai") || configuredProviders.Contains("stability"),
                     Status: configuredProviders.Contains("stabilityai") || configuredProviders.Contains("stability") ? "Configured" : "Not Configured"),
-                new ProviderStatusDto(
+                new ProviderValidationStatusDto(
                     Name: "RuleBased",
                     IsConfigured: true,
                     IsAvailable: true,
@@ -823,7 +823,7 @@ public class ProvidersController : ControllerBase
         {
             Log.Information("Fetching provider status, CorrelationId: {CorrelationId}", correlationId);
 
-            var statuses = new List<ProviderStatusDto>();
+            var statuses = new List<ProviderValidationStatusDto>();
             var configuredProviders = await _secureStorageService.GetConfiguredProvidersAsync();
 
             var providerNames = new[] { "OpenAI", "Anthropic", "Google", "Ollama", "ElevenLabs", "PlayHT", "Windows", "StabilityAI", "StableDiffusion", "Stock" };
@@ -833,7 +833,7 @@ public class ProvidersController : ControllerBase
                 var isConfigured = configuredProviders.Contains(provider, StringComparer.OrdinalIgnoreCase);
                 var hasKey = await _secureStorageService.HasApiKeyAsync(provider);
 
-                var status = new ProviderStatusDto(
+                var status = new ProviderValidationStatusDto(
                     Name: provider,
                     IsConfigured: isConfigured || hasKey,
                     IsAvailable: isConfigured || hasKey || IsLocalProvider(provider),

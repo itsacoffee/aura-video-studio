@@ -7,6 +7,7 @@ using Aura.Api.Startup;
 using Aura.Api.Validation;
 using Aura.Api.Validators;
 using Aura.Core.Hardware;
+using Aura.Core.Logging;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Planner;
@@ -62,8 +63,6 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 // Configure Serilog with structured logging and separate log files
-using Aura.Core.Logging;
-
 var outputTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{CorrelationId}] [{TraceId}] [{SpanId}] {Message:lj} {Properties:j}{NewLine}{Exception}";
 
 Log.Logger = new LoggerConfiguration()
@@ -765,6 +764,9 @@ builder.Services.AddSignalR(options =>
 builder.Services.AddJobQueueServices();
 Log.Information("Background job queue services registered");
 
+// Hangfire is optional and not currently installed
+// To enable Hangfire, install the package and uncomment the following code
+/*
 // Register Hangfire for background job processing (optional, requires configuration)
 var hangfireConnectionString = builder.Configuration.GetConnectionString("Hangfire");
 if (!string.IsNullOrEmpty(hangfireConnectionString))
@@ -811,6 +813,7 @@ else
 {
     Log.Information("Hangfire not configured (no connection string), background jobs disabled");
 }
+*/
 
 // Register all providers using centralized extension methods from Aura.Providers
 // This ensures consistent DI registration across LLM, TTS, and Image providers
@@ -1565,22 +1568,7 @@ builder.Services.AddScoped<Aura.Core.Services.Export.IExportOrchestrationService
 // Register Licensing services
 builder.Services.AddSingleton<Aura.Core.Services.Licensing.ILicensingService, Aura.Core.Services.Licensing.LicensingService>();
 
-// Register Cloud Storage services
-builder.Services.AddSingleton(sp =>
-{
-    var settings = new Aura.Core.Models.Settings.CloudStorageSettings();
-    builder.Configuration.GetSection("CloudStorage").Bind(settings);
-    return settings;
-});
-builder.Services.AddSingleton<Aura.Core.Services.Storage.CloudStorageProviderFactory>();
-
-// Register CloudExportService conditionally based on configuration
-var cloudStorageConfig = new Aura.Core.Models.Settings.CloudStorageSettings();
-builder.Configuration.GetSection("CloudStorage").Bind(cloudStorageConfig);
-if (cloudStorageConfig.Enabled)
-{
-    builder.Services.AddSingleton<Aura.Core.Services.Export.ICloudExportService, Aura.Core.Services.Export.CloudExportService>();
-}
+// Cloud storage removed in PR #198 - this is a local-only application
 
 // Proxy media and caching services
 builder.Services.AddSingleton<Aura.Core.Services.Media.IProxyMediaService>(sp =>
@@ -1917,6 +1905,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// Hangfire Dashboard is optional and not currently installed
+/*
 // Configure Hangfire Dashboard (if enabled)
 if (!string.IsNullOrEmpty(hangfireConnectionString))
 {
@@ -1928,6 +1918,7 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
     });
     Log.Information("Hangfire Dashboard available at /hangfire");
 }
+*/
 
 app.UseCors();
 

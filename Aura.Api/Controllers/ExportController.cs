@@ -22,18 +22,15 @@ public class ExportController : ControllerBase
     private readonly IExportOrchestrationService _exportService;
     private readonly ILogger<ExportController> _logger;
     private readonly TimelineRenderer _timelineRenderer;
-    private readonly ICloudExportService? _cloudExportService;
 
     public ExportController(
         IExportOrchestrationService exportService,
         ILogger<ExportController> logger,
-        TimelineRenderer timelineRenderer,
-        ICloudExportService? cloudExportService = null)
+        TimelineRenderer timelineRenderer)
     {
         _exportService = exportService ?? throw new ArgumentNullException(nameof(exportService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _timelineRenderer = timelineRenderer ?? throw new ArgumentNullException(nameof(timelineRenderer));
-        _cloudExportService = cloudExportService;
     }
 
     /// <summary>
@@ -441,94 +438,30 @@ public class ExportController : ControllerBase
     /// Check if cloud storage is available
     /// </summary>
     [HttpGet("cloud/status")]
-    public async Task<IActionResult> GetCloudStorageStatus()
+    public IActionResult GetCloudStorageStatus()
     {
-        try
-        {
-            if (_cloudExportService == null)
-            {
-                return Ok(new { available = false, message = "Cloud storage service not configured" });
-            }
-
-            var isAvailable = await _cloudExportService.IsCloudStorageAvailableAsync();
-            return Ok(new { available = isAvailable });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to check cloud storage status");
-            return StatusCode(500, new { error = "Failed to check cloud storage status", details = ex.Message });
-        }
+        // Cloud storage removed in PR #198 - this is a local-only application
+        return Ok(new { available = false, message = "Cloud storage not supported in local-only application" });
     }
 
     /// <summary>
     /// Upload an exported file to cloud storage
     /// </summary>
     [HttpPost("cloud/upload")]
-    public async Task<IActionResult> UploadToCloud([FromBody] CloudUploadRequest request)
+    public IActionResult UploadToCloud([FromBody] CloudUploadRequest request)
     {
-        try
-        {
-            if (_cloudExportService == null)
-            {
-                return BadRequest(new { error = "Cloud storage service not configured" });
-            }
-
-            _logger.LogInformation("Uploading file {FilePath} to cloud", request.FilePath);
-
-            var progress = new Progress<Aura.Core.Services.Storage.UploadProgress>(p =>
-            {
-                _logger.LogDebug("Upload progress: {Percent:F2}%", p.PercentComplete);
-            });
-
-            var result = await _cloudExportService.UploadExportAsync(
-                request.FilePath,
-                request.DestinationKey,
-                progress,
-                HttpContext.RequestAborted
-            );
-
-            if (result.Success)
-            {
-                return Ok(new
-                {
-                    success = true,
-                    url = result.Url,
-                    key = result.Key,
-                    fileSize = result.FileSize,
-                    metadata = result.Metadata
-                });
-            }
-
-            return BadRequest(new { success = false, error = result.ErrorMessage });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to upload to cloud storage");
-            return StatusCode(500, new { error = "Failed to upload to cloud storage", details = ex.Message });
-        }
+        // Cloud storage removed in PR #198 - this is a local-only application
+        return BadRequest(new { error = "Cloud storage not supported in local-only application" });
     }
 
     /// <summary>
     /// Generate a shareable link for a cloud-stored export
     /// </summary>
     [HttpPost("cloud/share")]
-    public async Task<IActionResult> GetShareableLink([FromBody] ShareLinkRequest request)
+    public IActionResult GetShareableLink([FromBody] ShareLinkRequest request)
     {
-        try
-        {
-            if (_cloudExportService == null)
-            {
-                return BadRequest(new { error = "Cloud storage service not configured" });
-            }
-
-            var url = await _cloudExportService.GetShareableLinkAsync(request.Key, HttpContext.RequestAborted);
-            return Ok(new { url });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to generate shareable link");
-            return StatusCode(500, new { error = "Failed to generate shareable link", details = ex.Message });
-        }
+        // Cloud storage removed in PR #198 - this is a local-only application
+        return BadRequest(new { error = "Cloud storage not supported in local-only application" });
     }
 }
 

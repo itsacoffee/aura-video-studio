@@ -59,9 +59,9 @@ public record ValidationDetails(
     long? ResponseTimeMs = null);
 
 /// <summary>
-/// Provider status information
+/// Provider status information for validation
 /// </summary>
-public record ProviderStatusDto(
+public record ProviderValidationStatusDto(
     string Name,
     bool IsConfigured,
     bool IsAvailable,

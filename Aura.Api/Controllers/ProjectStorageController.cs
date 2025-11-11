@@ -41,7 +41,7 @@ public class ProjectStorageController : ControllerBase
     /// Create a new project
     /// </summary>
     [HttpPost("projects")]
-    public async Task<IActionResult> CreateProject([FromBody] CreateProjectRequest request, CancellationToken ct)
+    public async Task<IActionResult> CreateProject([FromBody] ProjectStorageCreateRequest request, CancellationToken ct)
     {
         try
         {
@@ -300,7 +300,7 @@ public class ProjectStorageController : ControllerBase
     /// Import a packaged project
     /// </summary>
     [HttpPost("projects/import")]
-    public async Task<IActionResult> ImportProject([FromBody] ImportProjectRequest request, CancellationToken ct)
+    public async Task<IActionResult> ImportProject([FromBody] ProjectStorageImportRequest request, CancellationToken ct)
     {
         try
         {
@@ -539,7 +539,7 @@ public class ProjectStorageController : ControllerBase
 
 #region Request Models
 
-public class CreateProjectRequest
+public class ProjectStorageCreateRequest
 {
     public required string Name { get; set; }
     public string? Description { get; set; }
@@ -556,7 +556,7 @@ public class RelinkAssetRequest
     public required string NewPath { get; set; }
 }
 
-public class ImportProjectRequest
+public class ProjectStorageImportRequest
 {
     public required string PackagePath { get; set; }
 }
