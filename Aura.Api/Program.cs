@@ -220,27 +220,54 @@ var usePostgreSQL = string.Equals(databaseProvider, "PostgreSQL", StringComparis
 var dbPerfOptions = builder.Configuration.GetSection("Database:Performance").Get<Aura.Api.Configuration.DatabasePerformanceOptions>() 
     ?? new Aura.Api.Configuration.DatabasePerformanceOptions();
 
-builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
+// Build the connection string once for reuse
+string connectionString;
+if (usePostgreSQL)
+{
+    var baseConnectionString = builder.Configuration.GetConnectionString("PostgreSQL") 
+        ?? builder.Configuration.GetValue<string>("Database:ConnectionString")
+        ?? throw new InvalidOperationException("PostgreSQL connection string not configured. Please set 'Database:ConnectionString' or 'ConnectionStrings:PostgreSQL' in appsettings.json");
+    
+    var connectionStringBuilder = new Npgsql.NpgsqlConnectionStringBuilder(baseConnectionString)
+    {
+        MaxPoolSize = dbPerfOptions.MaxPoolSize,
+        MinPoolSize = dbPerfOptions.MinPoolSize,
+        ConnectionLifetime = dbPerfOptions.ConnectionLifetimeSeconds,
+        CommandTimeout = dbPerfOptions.CommandTimeoutSeconds,
+        Pooling = true
+    };
+    
+    connectionString = connectionStringBuilder.ToString();
+    Log.Information("Using PostgreSQL database at {Server} with connection pooling (Min: {Min}, Max: {Max})", 
+        connectionStringBuilder.Host, dbPerfOptions.MinPoolSize, dbPerfOptions.MaxPoolSize);
+}
+else
+{
+    var dbPath = builder.Configuration.GetValue<string>("Database:SQLitePath") 
+        ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
+    
+    var walEnabled = dbPerfOptions.SqliteEnableWAL;
+    var cacheSize = -dbPerfOptions.SqliteCacheSizeKB;
+    var pageSize = dbPerfOptions.SqlitePageSize;
+    
+    connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;" +
+        $"Journal Mode={(walEnabled ? "WAL" : "DELETE")};" +  // Write-Ahead Logging for better concurrency
+        "Synchronous=NORMAL;" +            // Faster writes with good reliability
+        $"Page Size={pageSize};" +         // Optimal page size for modern systems
+        $"Cache Size={cacheSize};" +       // Cache size (negative = KB)
+        "Temp Store=MEMORY;" +             // Store temp tables in memory
+        "Locking Mode=NORMAL;" +           // Allow multiple connections
+        "Foreign Keys=True;";              // Enforce FK constraints
+    
+    Log.Information("Using SQLite database at {Path} (WAL: {WAL}, Cache: {CacheKB}KB)", 
+        dbPath, walEnabled, dbPerfOptions.SqliteCacheSizeKB);
+}
+
+// Helper method to configure DbContext options
+void ConfigureDbContextOptions(DbContextOptionsBuilder options)
 {
     if (usePostgreSQL)
     {
-        // PostgreSQL configuration for production environments with connection pooling
-        var baseConnectionString = builder.Configuration.GetConnectionString("PostgreSQL") 
-            ?? builder.Configuration.GetValue<string>("Database:ConnectionString")
-            ?? throw new InvalidOperationException("PostgreSQL connection string not configured. Please set 'Database:ConnectionString' or 'ConnectionStrings:PostgreSQL' in appsettings.json");
-        
-        // Add connection pooling parameters
-        var connectionStringBuilder = new Npgsql.NpgsqlConnectionStringBuilder(baseConnectionString)
-        {
-            MaxPoolSize = dbPerfOptions.MaxPoolSize,
-            MinPoolSize = dbPerfOptions.MinPoolSize,
-            ConnectionLifetime = dbPerfOptions.ConnectionLifetimeSeconds,
-            CommandTimeout = dbPerfOptions.CommandTimeoutSeconds,
-            Pooling = true
-        };
-        
-        var connectionString = connectionStringBuilder.ToString();
-        
         options.UseNpgsql(connectionString, 
             npgsqlOptions => 
             {
@@ -256,41 +283,16 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
                     npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
                 }
             });
-        
-        Log.Information("Using PostgreSQL database at {Server} with connection pooling (Min: {Min}, Max: {Max})", 
-            connectionStringBuilder.Host, dbPerfOptions.MinPoolSize, dbPerfOptions.MaxPoolSize);
     }
     else
     {
-        // SQLite configuration (default) with WAL mode for better concurrency
-        var dbPath = builder.Configuration.GetValue<string>("Database:SQLitePath") 
-            ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aura.db");
-        
-        var walEnabled = dbPerfOptions.SqliteEnableWAL;
-        var cacheSize = -dbPerfOptions.SqliteCacheSizeKB;
-        var pageSize = dbPerfOptions.SqlitePageSize;
-        
-        var connectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Cache=Shared;" +
-            $"Journal Mode={(walEnabled ? "WAL" : "DELETE")};" +  // Write-Ahead Logging for better concurrency
-            "Synchronous=NORMAL;" +            // Faster writes with good reliability
-            $"Page Size={pageSize};" +         // Optimal page size for modern systems
-            $"Cache Size={cacheSize};" +       // Cache size (negative = KB)
-            "Temp Store=MEMORY;" +             // Store temp tables in memory
-            "Locking Mode=NORMAL;" +           // Allow multiple connections
-            "Foreign Keys=True;";              // Enforce FK constraints
-        
         options.UseSqlite(connectionString, 
             sqliteOptions => sqliteOptions.MigrationsAssembly(MigrationsAssembly));
-        
-        Log.Information("Using SQLite database at {Path} (WAL: {WAL}, Cache: {CacheKB}KB)", 
-            dbPath, walEnabled, dbPerfOptions.SqliteCacheSizeKB);
     }
     
     // Common options for both providers
-    // Enable query tracking only when needed
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTrackingWithIdentityResolution);
     
-    // Enable compiled models for better performance
     if (!builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging(false);
@@ -302,7 +304,24 @@ builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(options =>
         options.EnableDetailedErrors(true);
         options.LogTo(Console.WriteLine, Microsoft.Extensions.Logging.LogLevel.Information);
     }
+}
+
+// Register DbContext for scoped services (controllers, endpoints, etc.)
+builder.Services.AddDbContext<Aura.Core.Data.AuraDbContext>(ConfigureDbContextOptions);
+
+// Register DbContextFactory for singleton services (BackgroundJobQueueManager, GenerationStateManager)
+// Create options separately to avoid DI scope conflicts
+var dbOptions = new DbContextOptionsBuilder<Aura.Core.Data.AuraDbContext>();
+ConfigureDbContextOptions(dbOptions);
+var builtOptions = dbOptions.Options;
+
+// Register singleton factory that doesn't depend on scoped services
+builder.Services.AddSingleton<IDbContextFactory<Aura.Core.Data.AuraDbContext>>(sp =>
+{
+    return new Aura.Core.Data.AuraDbContextFactory(builtOptions);
 });
+
+Log.Information("Database context and factory registered successfully");
 
 // Register ProjectStateRepository for state persistence
 builder.Services.AddScoped<Aura.Core.Data.ProjectStateRepository>();
@@ -1649,11 +1668,15 @@ builder.Services.AddSingleton<Aura.Core.Services.Storage.IEnhancedLocalStorageSe
 builder.Services.AddScoped<Aura.Core.Services.Projects.IProjectFileService, Aura.Core.Services.Projects.ProjectFileService>();
 
 // Register Auto-Save Service
+// NOTE: ProjectAutoSaveService is currently disabled due to DI scope issues
+// ProjectAutoSaveService is singleton but depends on scoped IProjectFileService
+// This needs refactoring to use IServiceScopeFactory to create scopes for database operations
+// See issue in Program.cs line 337 for similar commented-out service
 var autoSaveConfig = new Aura.Core.Services.Projects.AutoSaveConfiguration();
 builder.Configuration.GetSection("AutoSave").Bind(autoSaveConfig);
 builder.Services.AddSingleton(autoSaveConfig);
-builder.Services.AddSingleton<Aura.Core.Services.Projects.ProjectAutoSaveService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Core.Services.Projects.ProjectAutoSaveService>());
+// builder.Services.AddSingleton<Aura.Core.Services.Projects.ProjectAutoSaveService>();
+// builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Core.Services.Projects.ProjectAutoSaveService>());
 
 // Configure Kestrel to listen on specific port with environment variable overrides
 var apiUrl = Environment.GetEnvironmentVariable("AURA_API_URL") 
