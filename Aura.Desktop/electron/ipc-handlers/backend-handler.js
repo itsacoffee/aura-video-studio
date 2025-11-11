@@ -7,8 +7,9 @@ const { ipcMain } = require('electron');
 const axios = require('axios');
 
 class BackendHandler {
-  constructor(backendUrl) {
+  constructor(backendUrl, backendService = null) {
     this.backendUrl = backendUrl;
+    this.backendService = backendService;
     this.healthCheckInterval = null;
     this.lastHealthStatus = 'unknown';
   }
@@ -18,6 +19,13 @@ class BackendHandler {
    */
   setBackendUrl(url) {
     this.backendUrl = url;
+  }
+
+  /**
+   * Set backend service reference for control operations
+   */
+  setBackendService(service) {
+    this.backendService = service;
   }
 
   /**
@@ -125,6 +133,92 @@ class BackendHandler {
         console.error('Error getting FFmpeg status:', error);
         throw new Error(`Failed to get FFmpeg status: ${error.message}`);
       }
+    });
+
+    // Restart backend
+    ipcMain.handle('backend:restart', async () => {
+      if (!this.backendService) {
+        throw new Error('Backend service not available');
+      }
+
+      try {
+        console.log('Restart requested via IPC');
+        await this.backendService.restart();
+        this.backendUrl = this.backendService.getUrl();
+        return {
+          success: true,
+          url: this.backendUrl
+        };
+      } catch (error) {
+        console.error('Error restarting backend:', error);
+        throw new Error(`Failed to restart backend: ${error.message}`);
+      }
+    });
+
+    // Stop backend
+    ipcMain.handle('backend:stop', async () => {
+      if (!this.backendService) {
+        throw new Error('Backend service not available');
+      }
+
+      try {
+        console.log('Stop requested via IPC');
+        await this.backendService.stop();
+        return { success: true };
+      } catch (error) {
+        console.error('Error stopping backend:', error);
+        throw new Error(`Failed to stop backend: ${error.message}`);
+      }
+    });
+
+    // Get backend status
+    ipcMain.handle('backend:status', () => {
+      if (!this.backendService) {
+        return { running: false, error: 'Service not available' };
+      }
+
+      return {
+        running: this.backendService.isRunning(),
+        port: this.backendService.getPort(),
+        url: this.backendService.getUrl()
+      };
+    });
+
+    // Check Windows Firewall compatibility
+    ipcMain.handle('backend:checkFirewall', async () => {
+      if (!this.backendService) {
+        throw new Error('Backend service not available');
+      }
+
+      try {
+        return await this.backendService.checkFirewallCompatibility();
+      } catch (error) {
+        console.error('Error checking firewall:', error);
+        throw new Error(`Failed to check firewall: ${error.message}`);
+      }
+    });
+
+    // Get Windows Firewall rule status
+    ipcMain.handle('backend:getFirewallRule', async () => {
+      if (!this.backendService) {
+        throw new Error('Backend service not available');
+      }
+
+      try {
+        return await this.backendService.getFirewallRuleStatus();
+      } catch (error) {
+        console.error('Error getting firewall rule:', error);
+        throw new Error(`Failed to get firewall rule: ${error.message}`);
+      }
+    });
+
+    // Get firewall rule creation command
+    ipcMain.handle('backend:getFirewallCommand', () => {
+      if (!this.backendService) {
+        throw new Error('Backend service not available');
+      }
+
+      return this.backendService.getFirewallRuleCommand();
     });
 
     console.log('Backend IPC handlers registered');
