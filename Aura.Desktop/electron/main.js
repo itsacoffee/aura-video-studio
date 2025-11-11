@@ -23,6 +23,7 @@ const ConfigHandler = require('./ipc-handlers/config-handler');
 const SystemHandler = require('./ipc-handlers/system-handler');
 const VideoHandler = require('./ipc-handlers/video-handler');
 const BackendHandler = require('./ipc-handlers/backend-handler');
+const FFmpegHandler = require('./ipc-handlers/ffmpeg-handler');
 
 // ========================================
 // Global State
@@ -39,7 +40,8 @@ let ipcHandlers = {
   config: null,
   system: null,
   video: null,
-  backend: null
+  backend: null,
+  ffmpeg: null
 };
 
 let isQuitting = false;
@@ -296,6 +298,10 @@ function registerIpcHandlers() {
   if (mainWindow) {
     ipcHandlers.backend.startHealthChecks(mainWindow);
   }
+
+  // FFmpeg handler
+  ipcHandlers.ffmpeg = new FFmpegHandler(app, windowManager);
+  ipcHandlers.ffmpeg.register();
 
   console.log('IPC handlers registered successfully');
 }

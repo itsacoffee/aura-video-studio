@@ -109,12 +109,16 @@
       "menuCategory": true,
       "include": "build/installer.nsh",
       "deleteAppDataOnUninstall": false,
-      "createStartMenuShortcut": true,
       "warningsAsErrors": false,
       "artifactName": "${productName}-Setup-${version}.${ext}",
       "displayLanguageSelector": false,
       "installerLanguages": ["en_US"],
-      "language": "1033"
+      "language": "1033",
+      "packElevateHelper": true,
+      "differentialPackage": true,
+      "unicode": true,
+      "multiLanguageInstaller": false,
+      "guid": "f6c6e9f0-8b1a-4e5a-9c2d-1e8f4a6b7c8d"
     },
     "publish": [
       {
@@ -131,14 +135,14 @@
     ]
   },
   "dependencies": {
-    "electron-updater": "^6.7.0",
+    "electron-updater": "^6.3.9",
     "electron-store": "^8.1.0",
-    "axios": "^1.13.2",
-    "keytar": "^7.9.0"
+    "axios": "^1.7.7"
   },
   "devDependencies": {
-    "electron": "^35.7.5",
-    "electron-builder": "^25.1.8"
+    "electron": "^32.2.5",
+    "electron-builder": "^25.1.8",
+    "dmg-license": "^1.0.11"
   },
   "engines": {
     "node": ">=18.0.0",
