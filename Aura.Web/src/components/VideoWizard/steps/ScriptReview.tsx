@@ -40,7 +40,7 @@ import {
   Merge24Regular,
   SplitVertical24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import type { FC } from 'react';
 import {
   generateScript,
@@ -250,7 +250,7 @@ interface ScriptReviewProps {
   onValidationChange: (validation: StepValidation) => void;
 }
 
-export const ScriptReview: FC<ScriptReviewProps> = ({
+const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   data,
   briefData,
   styleData,
@@ -1403,3 +1403,5 @@ export const ScriptReview: FC<ScriptReviewProps> = ({
     </div>
   );
 };
+
+export const ScriptReview = memo(ScriptReviewComponent);

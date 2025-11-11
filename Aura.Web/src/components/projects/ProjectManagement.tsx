@@ -21,6 +21,7 @@ import { CreateProjectDialog } from './CreateProjectDialog';
 import { ProjectCard } from './ProjectCard';
 import { ProjectFilters } from './ProjectFilters';
 import { ProjectListItem } from './ProjectListItem';
+import { ProjectGridSkeleton, ProjectListSkeleton } from './ProjectSkeletons';
 import { TemplateSelectionDialog } from './TemplateSelectionDialog';
 
 type ViewMode = 'grid' | 'list';
@@ -259,9 +260,11 @@ export function ProjectManagement() {
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-gray-500">Loading projects...</div>
-          </div>
+          viewMode === 'grid' ? (
+            <ProjectGridSkeleton count={filters.pageSize} />
+          ) : (
+            <ProjectListSkeleton count={filters.pageSize} />
+          )
         ) : projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <LayoutGrid className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
