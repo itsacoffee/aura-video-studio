@@ -48,7 +48,7 @@ public class PiperSSMLMapper : BaseSSMLMapper
         return sb.ToString();
     }
 
-    public override SSMLValidationResult Validate(string ssml)
+    public override Aura.Core.Models.Audio.SSMLValidationResult Validate(string ssml)
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -56,7 +56,7 @@ public class PiperSSMLMapper : BaseSSMLMapper
         if (string.IsNullOrWhiteSpace(ssml))
         {
             errors.Add("SSML is empty");
-            return new SSMLValidationResult { IsValid = false, Errors = errors };
+            return new Aura.Core.Models.Audio.SSMLValidationResult { IsValid = false, Errors = errors };
         }
 
         if (!ssml.Contains("<speak>"))
@@ -74,7 +74,7 @@ public class PiperSSMLMapper : BaseSSMLMapper
             warnings.Add("Piper does not support emphasis tags; they will be ignored");
         }
 
-        return new SSMLValidationResult
+        return new Aura.Core.Models.Audio.SSMLValidationResult
         {
             IsValid = errors.Count == 0,
             Errors = errors,

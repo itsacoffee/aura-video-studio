@@ -2,9 +2,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
-using Aura.Core.Models.Timeline;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
+using TimelineRecord = Aura.Core.Providers.Timeline;
 
 namespace Aura.Core.Orchestrator.Stages;
 
@@ -56,7 +56,7 @@ public class CompositionStage : PipelineStage
         ReportProgress(progress, 10, "Building timeline...");
 
         // Build timeline from context
-        var timeline = new Timeline(
+        var timeline = new TimelineRecord(
             Scenes: context.ParsedScenes,
             SceneAssets: context.SceneAssets,
             NarrationPath: context.NarrationPath,

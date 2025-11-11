@@ -79,10 +79,23 @@ public class OllamaStreamingClient
 
             stream = await response.Content.ReadAsStreamAsync(ct);
             reader = new StreamReader(stream);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error during streaming from Ollama");
+            throw new InvalidOperationException("Failed to connect to Ollama for streaming", ex);
+        }
+        catch (TaskCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogInformation("Streaming cancelled by user");
+            throw;
+        }
 
-            var totalTokens = 0;
-            var buffer = new StringBuilder();
+        var totalTokens = 0;
+        var buffer = new StringBuilder();
 
+        try
+        {
             while (!reader.EndOfStream && !ct.IsCancellationRequested)
             {
                 var line = await reader.ReadLineAsync();
@@ -92,6 +105,7 @@ public class OllamaStreamingClient
                     continue;
                 }
 
+                OllamaStreamingChunk? chunk = null;
                 JsonDocument? doc = null;
                 try
                 {
@@ -106,7 +120,7 @@ public class OllamaStreamingClient
 
                         var isDone = root.TryGetProperty("done", out var doneProp) && doneProp.GetBoolean();
 
-                        yield return new OllamaStreamingChunk
+                        chunk = new OllamaStreamingChunk
                         {
                             Token = token,
                             TotalText = buffer.ToString(),
@@ -118,35 +132,27 @@ public class OllamaStreamingClient
                         if (isDone)
                         {
                             _logger.LogInformation("Streaming completion finished. Total tokens: {Tokens}", totalTokens);
-                            break;
                         }
                     }
                 }
                 catch (JsonException ex)
                 {
                     _logger.LogWarning(ex, "Failed to parse streaming JSON line: {Line}", line);
-                    continue;
                 }
                 finally
                 {
                     doc?.Dispose();
                 }
+
+                if (chunk != null)
+                {
+                    yield return chunk;
+                    if (chunk.IsComplete)
+                    {
+                        break;
+                    }
+                }
             }
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP error during streaming from Ollama");
-            throw new InvalidOperationException("Failed to connect to Ollama for streaming", ex);
-        }
-        catch (TaskCanceledException) when (ct.IsCancellationRequested)
-        {
-            _logger.LogInformation("Streaming cancelled by user");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error during Ollama streaming");
-            throw;
         }
         finally
         {
@@ -197,10 +203,23 @@ public class OllamaStreamingClient
 
             stream = await response.Content.ReadAsStreamAsync(ct);
             reader = new StreamReader(stream);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error during streaming chat from Ollama");
+            throw new InvalidOperationException("Failed to connect to Ollama for streaming chat", ex);
+        }
+        catch (TaskCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogInformation("Streaming chat cancelled by user");
+            throw;
+        }
 
-            var totalTokens = 0;
-            var buffer = new StringBuilder();
+        var totalTokens = 0;
+        var buffer = new StringBuilder();
 
+        try
+        {
             while (!reader.EndOfStream && !ct.IsCancellationRequested)
             {
                 var line = await reader.ReadLineAsync();
@@ -210,6 +229,7 @@ public class OllamaStreamingClient
                     continue;
                 }
 
+                OllamaStreamingChunk? chunk = null;
                 JsonDocument? doc = null;
                 try
                 {
@@ -225,7 +245,7 @@ public class OllamaStreamingClient
 
                         var isDone = root.TryGetProperty("done", out var doneProp) && doneProp.GetBoolean();
 
-                        yield return new OllamaStreamingChunk
+                        chunk = new OllamaStreamingChunk
                         {
                             Token = token,
                             TotalText = buffer.ToString(),
@@ -237,35 +257,27 @@ public class OllamaStreamingClient
                         if (isDone)
                         {
                             _logger.LogInformation("Streaming chat finished. Total tokens: {Tokens}", totalTokens);
-                            break;
                         }
                     }
                 }
                 catch (JsonException ex)
                 {
                     _logger.LogWarning(ex, "Failed to parse streaming JSON line: {Line}", line);
-                    continue;
                 }
                 finally
                 {
                     doc?.Dispose();
                 }
+
+                if (chunk != null)
+                {
+                    yield return chunk;
+                    if (chunk.IsComplete)
+                    {
+                        break;
+                    }
+                }
             }
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "HTTP error during streaming chat from Ollama");
-            throw new InvalidOperationException("Failed to connect to Ollama for streaming chat", ex);
-        }
-        catch (TaskCanceledException) when (ct.IsCancellationRequested)
-        {
-            _logger.LogInformation("Streaming chat cancelled by user");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error during Ollama streaming chat");
-            throw;
         }
         finally
         {

@@ -79,7 +79,7 @@ public abstract class VideoEffect
     /// <summary>
     /// Type of effect
     /// </summary>
-    public required EffectType Type { get; set; }
+    public EffectType Type { get; set; }
 
     /// <summary>
     /// Category for organizing effects

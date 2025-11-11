@@ -25,13 +25,13 @@ public static class ApiKeyValidator
     /// <summary>
     /// Validates an API key format
     /// </summary>
-    public static ValidationResult ValidateKey(string keyName, string? keyValue)
+    public static Errors.ValidationResult ValidateKey(string keyName, string? keyValue)
     {
         if (string.IsNullOrWhiteSpace(keyValue))
         {
-            return ValidationResult.Failure(
+            return Errors.ValidationResult.Failure(
                 $"API key '{keyName}' is required but not provided",
-                ValidationErrorCode.MissingApiKey,
+                Errors.ValidationErrorCode.MissingApiKey,
                 new[] { $"Add {keyName} in Settings → Providers" }
             );
         }
@@ -41,9 +41,9 @@ public static class ApiKeyValidator
         {
             if (!Regex.IsMatch(keyValue, $"^{format.Pattern}$"))
             {
-                return ValidationResult.Failure(
+                return Errors.ValidationResult.Failure(
                     $"API key '{keyName}' has invalid format",
-                    ValidationErrorCode.InvalidApiKeyFormat,
+                    Errors.ValidationErrorCode.InvalidApiKeyFormat,
                     new[]
                     {
                         format.Hint,
@@ -57,9 +57,9 @@ public static class ApiKeyValidator
         // General validation checks
         if (keyValue.Length < 10)
         {
-            return ValidationResult.Failure(
+            return Errors.ValidationResult.Failure(
                 $"API key '{keyName}' appears too short",
-                ValidationErrorCode.InvalidApiKeyFormat,
+                Errors.ValidationErrorCode.InvalidApiKeyFormat,
                 new[] { "API keys are typically at least 10 characters long" }
             );
         }
@@ -67,31 +67,31 @@ public static class ApiKeyValidator
         // Check for common mistakes
         if (keyValue.Contains(" ") || keyValue.Contains("\n") || keyValue.Contains("\t"))
         {
-            return ValidationResult.Failure(
+            return Errors.ValidationResult.Failure(
                 $"API key '{keyName}' contains whitespace characters",
-                ValidationErrorCode.InvalidApiKeyFormat,
+                Errors.ValidationErrorCode.InvalidApiKeyFormat,
                 new[] { "Remove any spaces, tabs, or line breaks from the key" }
             );
         }
 
         if (keyValue.StartsWith("Bearer ") || keyValue.StartsWith("bearer "))
         {
-            return ValidationResult.Failure(
+            return Errors.ValidationResult.Failure(
                 $"API key '{keyName}' should not include 'Bearer' prefix",
-                ValidationErrorCode.InvalidApiKeyFormat,
+                Errors.ValidationErrorCode.InvalidApiKeyFormat,
                 new[] { "Remove the 'Bearer ' prefix from the key" }
             );
         }
 
-        return ValidationResult.Success();
+        return Errors.ValidationResult.Success();
     }
 
     /// <summary>
     /// Validates multiple API keys at once
     /// </summary>
-    public static Dictionary<string, ValidationResult> ValidateKeys(Dictionary<string, string?> keys)
+    public static Dictionary<string, Errors.ValidationResult> ValidateKeys(Dictionary<string, string?> keys)
     {
-        var results = new Dictionary<string, ValidationResult>();
+        var results = new Dictionary<string, Errors.ValidationResult>();
 
         foreach (var (keyName, keyValue) in keys)
         {

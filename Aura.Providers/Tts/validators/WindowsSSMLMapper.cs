@@ -110,7 +110,7 @@ public class WindowsSSMLMapper : BaseSSMLMapper
         return sb.ToString();
     }
 
-    public override SSMLValidationResult Validate(string ssml)
+    public override Aura.Core.Models.Audio.SSMLValidationResult Validate(string ssml)
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -119,7 +119,7 @@ public class WindowsSSMLMapper : BaseSSMLMapper
         if (string.IsNullOrWhiteSpace(ssml))
         {
             errors.Add("SSML is empty");
-            return new SSMLValidationResult { IsValid = false, Errors = errors };
+            return new Aura.Core.Models.Audio.SSMLValidationResult { IsValid = false, Errors = errors };
         }
 
         if (!ssml.Contains("<speak"))
@@ -138,7 +138,7 @@ public class WindowsSSMLMapper : BaseSSMLMapper
             warnings.Add($"Unsupported tags (will be ignored): {string.Join(", ", unsupportedTags)}");
         }
 
-        return new SSMLValidationResult
+        return new Aura.Core.Models.Audio.SSMLValidationResult
         {
             IsValid = errors.Count == 0,
             Errors = errors,

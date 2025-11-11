@@ -23,7 +23,7 @@ public abstract class BaseSSMLMapper : ISSMLMapper
 
     public abstract string MapToSSML(string text, ProsodyAdjustments adjustments, VoiceSpec voiceSpec);
 
-    public virtual SSMLValidationResult Validate(string ssml)
+    public virtual Aura.Core.Models.Audio.SSMLValidationResult Validate(string ssml)
     {
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -32,7 +32,7 @@ public abstract class BaseSSMLMapper : ISSMLMapper
         if (string.IsNullOrWhiteSpace(ssml))
         {
             errors.Add("SSML is empty");
-            return new SSMLValidationResult { IsValid = false, Errors = errors };
+            return new Aura.Core.Models.Audio.SSMLValidationResult { IsValid = false, Errors = errors };
         }
 
         if (!ssml.Contains("<speak>") && !ssml.Contains("<speak "))
@@ -44,7 +44,7 @@ public abstract class BaseSSMLMapper : ISSMLMapper
                 true));
         }
 
-        return new SSMLValidationResult
+        return new Aura.Core.Models.Audio.SSMLValidationResult
         {
             IsValid = errors.Count == 0,
             Errors = errors,
