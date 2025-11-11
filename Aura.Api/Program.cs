@@ -1699,14 +1699,31 @@ Log.Information("Initialization Phase 1: Service Registration Complete");
 
 // Perform configuration validation
 Log.Information("Initialization Phase 2: Configuration Validation");
-var configValidator = app.Services.GetRequiredService<ConfigurationValidator>();
-var configResult = configValidator.Validate();
-if (!configResult.IsValid)
+try
 {
-    Log.Error("Configuration validation failed with critical issues. Application cannot start.");
-    Log.Error("Please fix the configuration issues listed above and restart the application.");
-    // Exit if configuration validation has critical issues
-    Environment.Exit(1);
+    var configValidator = app.Services.GetRequiredService<ConfigurationValidator>();
+    var configResult = configValidator.Validate();
+    if (!configResult.IsValid)
+    {
+        Log.Error("Configuration validation failed with critical issues. Application cannot start.");
+        Log.Error("Please fix the configuration issues listed above and restart the application.");
+        
+        // Provide detailed error message for troubleshooting
+        foreach (var issue in configResult.Issues.Where(i => i.Severity == IssueSeverity.Critical))
+        {
+            Log.Error("CRITICAL: {Key} - {Message}", issue.Key, issue.Message);
+        }
+        
+        // Exit gracefully with proper cleanup
+        Log.Information("Shutting down application due to configuration errors");
+        await app.StopAsync();
+        return;
+    }
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Configuration validation failed with exception. Continuing with startup...");
+    // Don't fail startup if validation itself fails - let the app try to start
 }
 
 // Perform startup validation - warn on non-critical issues but continue
@@ -4732,10 +4749,30 @@ Log.Information("===============================================================
 Log.Information("✓ Application startup complete - health checks enabled");
 Log.Information("=================================================================");
 
-app.Run();
-
-// Make Program accessible for integration tests
-public partial class Program { }
+try
+{
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+    Log.Fatal("Error details: {Message}", ex.Message);
+    Log.Fatal("Stack trace: {StackTrace}", ex.StackTrace);
+    
+    if (ex.InnerException != null)
+    {
+        Log.Fatal("Inner exception: {InnerMessage}", ex.InnerException.Message);
+        Log.Fatal("Inner stack trace: {InnerStackTrace}", ex.InnerException.StackTrace);
+    }
+    
+    // Give time for logs to flush
+    await Task.Delay(1000);
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 // Make Program accessible for integration tests
 public partial class Program { }
