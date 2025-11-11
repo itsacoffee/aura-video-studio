@@ -16,15 +16,12 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "build": "electron-builder build",
-    "build:all": "electron-builder build --win --mac --linux",
+    "build": "electron-builder build --win",
     "build:win": "electron-builder build --win",
-    "build:mac": "electron-builder build --mac",
-    "build:linux": "electron-builder build --linux",
     "build:dir": "electron-builder --dir",
     "postinstall": "electron-builder install-app-deps",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder --win"
   },
   "build": {
     "appId": "com.coffee285.aura-video-studio",
@@ -120,128 +117,6 @@
       "displayLanguageSelector": false,
       "installerLanguages": ["en_US"],
       "language": "1033"
-    },
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": ["x64", "arm64", "universal"]
-        },
-        {
-          "target": "zip",
-          "arch": ["x64", "arm64", "universal"]
-        }
-      ],
-      "category": "public.app-category.video",
-      "icon": "assets/icons/icon.icns",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "type": "distribution",
-      "minimumSystemVersion": "10.15.0",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
-    },
-    "dmg": {
-      "background": "build/dmg-background.png",
-      "iconSize": 100,
-      "iconTextSize": 14,
-      "window": {
-        "width": 600,
-        "height": 400
-      },
-      "contents": [
-        {
-          "x": 140,
-          "y": 180,
-          "type": "file"
-        },
-        {
-          "x": 440,
-          "y": 180,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ],
-      "sign": false,
-      "artifactName": "${productName}-${version}.${ext}"
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": ["x64"]
-        },
-        {
-          "target": "deb",
-          "arch": ["x64"]
-        },
-        {
-          "target": "rpm",
-          "arch": ["x64"]
-        },
-        {
-          "target": "snap",
-          "arch": ["x64"]
-        }
-      ],
-      "category": "Video;AudioVideo;Graphics",
-      "icon": "assets/icons/",
-      "desktop": {
-        "Name": "Aura Video Studio",
-        "GenericName": "Video Generation Studio",
-        "Comment": "AI-Powered Video Creation and Generation",
-        "Categories": "AudioVideo;Video;Graphics;",
-        "Keywords": "video;ai;generation;studio;",
-        "Terminal": false,
-        "StartupWMClass": "aura-video-studio"
-      },
-      "maintainer": "Coffee285 <support@aura-video-studio.com>",
-      "vendor": "Coffee285",
-      "synopsis": "AI-Powered Video Generation Studio",
-      "description": "Create stunning videos powered by AI. Generate scripts, images, voice, and music with integrated AI providers.",
-      "artifactName": "${productName}-${version}.${ext}"
-    },
-    "appImage": {
-      "license": "LICENSE.txt",
-      "artifactName": "${productName}-${version}.${ext}"
-    },
-    "deb": {
-      "depends": [
-        "gconf2",
-        "gconf-service",
-        "libnotify4",
-        "libappindicator1",
-        "libxtst6",
-        "libnss3"
-      ],
-      "artifactName": "${productName}_${version}_${arch}.${ext}"
-    },
-    "rpm": {
-      "depends": [
-        "libXScrnSaver",
-        "libappindicator-gtk3",
-        "libsecret-1-0"
-      ],
-      "artifactName": "${productName}-${version}.${arch}.${ext}"
-    },
-    "snap": {
-      "confinement": "strict",
-      "grade": "stable",
-      "summary": "AI-Powered Video Generation Studio",
-      "description": "Create stunning videos powered by AI. Generate scripts, images, voice, and music with integrated AI providers.",
-      "plugs": [
-        "default",
-        "home",
-        "network",
-        "network-bind",
-        "audio-playback",
-        "removable-media",
-        "desktop",
-        "desktop-legacy",
-        "x11"
-      ],
-      "artifactName": "${productName}_${version}_${arch}.${ext}"
     },
     "publish": [
       {
