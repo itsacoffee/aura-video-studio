@@ -93,44 +93,80 @@ Output will be in the `dist/` directory.
 
 ```
 Aura.Desktop/
-├── electron.js              # Main process (app lifecycle, backend spawning)
-├── preload.js              # Preload script (secure IPC bridge)
-├── package.json            # Dependencies and build configuration
-├── build-desktop.ps1       # Build script (Windows)
-├── build-desktop.sh        # Build script (cross-platform, Windows target only)
+├── electron/                   # Main process modules (modular architecture)
+│   ├── main.js                # Application entry point (orchestrator)
+│   ├── preload.js             # Secure IPC bridge
+│   ├── window-manager.js      # Window lifecycle management
+│   ├── app-config.js          # Configuration storage
+│   ├── backend-service.js     # Backend process management
+│   ├── tray-manager.js        # System tray integration
+│   ├── menu-builder.js        # Application menu
+│   ├── protocol-handler.js    # aura:// protocol support
+│   ├── windows-setup-wizard.js # First-run setup wizard
+│   ├── types.d.ts             # TypeScript definitions
+│   └── ipc-handlers/          # IPC channel handlers
+│       ├── config-handler.js   # Configuration IPC
+│       ├── system-handler.js   # System operations
+│       ├── video-handler.js    # Video generation
+│       ├── backend-handler.js  # Backend control
+│       └── ffmpeg-handler.js   # FFmpeg operations
+│
+├── package.json               # Dependencies and build configuration
+├── preload.js                 # Legacy redirect to electron/preload.js
+├── electron.js                # Legacy monolithic file (kept for reference)
+├── build-desktop.ps1          # Build script (Windows)
+├── build-desktop.sh           # Build script (cross-platform, Windows target only)
 │
 ├── assets/
-│   ├── splash.html         # Startup splash screen
-│   └── icons/              # Platform-specific app icons
-│       └── icon.ico        # Windows
+│   ├── splash.html            # Startup splash screen
+│   └── icons/                 # Platform-specific app icons
+│       └── icon.ico           # Windows
 │
 ├── build/
-│   └── installer.nsh       # Windows NSIS installer customization
+│   └── installer.nsh          # Windows NSIS installer customization
 │
 ├── scripts/
-│   └── sign-windows.js     # Custom code signing script
+│   ├── sign-windows.js        # Custom code signing script
+│   ├── validate-build-config.js        # Build configuration validator
+│   └── validate-electron-config.js     # Electron configuration validator
 │
 ├── resources/
-│   └── backend/            # Bundled .NET backend (generated during build)
-│       └── win-x64/        # Windows x64 binaries
-└── dist/                   # Build output (installers, packages)
+│   └── backend/               # Bundled .NET backend (generated during build)
+│       └── win-x64/           # Windows x64 binaries
+└── dist/                      # Build output (installers, packages)
 ```
 
 ## 🔧 Configuration
 
-### electron.js
+### Modular Architecture
 
-Main process configuration:
-- Backend spawning on random port
-- Window management
-- System tray creation
-- Auto-update handling
-- IPC handlers
+The application uses a **modular architecture** for better maintainability:
+
+- **electron/main.js** - Entry point that orchestrates all modules
+- **electron/window-manager.js** - Window creation and lifecycle
+- **electron/backend-service.js** - Backend spawning and health monitoring
+- **electron/app-config.js** - Persistent configuration with encryption
+- **electron/tray-manager.js** - System tray integration
+- **electron/menu-builder.js** - Application menu creation
+- **electron/ipc-handlers/** - Secure IPC channel handlers
+
+### Validation
+
+Ensure configuration integrity with built-in validators:
+
+```bash
+# Validate Electron configuration
+npm run validate:electron
+
+# Validate build configuration
+npm run validate
+```
 
 ### package.json
 
 Build configuration:
 - Windows platform target (x64)
+- Entry point: `"main": "electron/main.js"`
 - Installer options (NSIS, Portable)
 - Optional code signing configuration
 - Auto-update settings
@@ -229,6 +265,8 @@ See [DESKTOP_APP_GUIDE.md](../DESKTOP_APP_GUIDE.md#troubleshooting) for more.
 
 ## 📚 Documentation
 
+- **[QUICK_START.md](QUICK_START.md)** - Quick start for the new modular architecture
+- **[ELECTRON_CONFIG_VERIFICATION.md](ELECTRON_CONFIG_VERIFICATION.md)** - Configuration verification details
 - **[INSTALLATION.md](../INSTALLATION.md)** - End-user installation guide
 - **[DESKTOP_APP_GUIDE.md](../DESKTOP_APP_GUIDE.md)** - Developer guide
 - **[BUILD_GUIDE.md](../BUILD_GUIDE.md)** - General build instructions
