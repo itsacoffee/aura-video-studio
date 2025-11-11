@@ -132,14 +132,14 @@
     ]
   },
   "dependencies": {
-    "electron-updater": "^6.1.7",
+    "electron-updater": "^6.7.0",
     "electron-store": "^8.1.0",
-    "axios": "^1.6.5",
+    "axios": "^1.13.2",
     "keytar": "^7.9.0"
   },
   "devDependencies": {
     "electron": "^35.7.5",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^25.1.8"
   },
   "engines": {
     "node": ">=18.0.0",
