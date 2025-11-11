@@ -7,6 +7,7 @@ using Aura.Api.Startup;
 using Aura.Api.Validation;
 using Aura.Api.Validators;
 using Aura.Core.Hardware;
+using Aura.Core.Logging;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Planner;
@@ -62,8 +63,6 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 // Configure Serilog with structured logging and separate log files
-using Aura.Core.Logging;
-
 var outputTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{CorrelationId}] [{TraceId}] [{SpanId}] {Message:lj} {Properties:j}{NewLine}{Exception}";
 
 Log.Logger = new LoggerConfiguration()
@@ -765,6 +764,9 @@ builder.Services.AddSignalR(options =>
 builder.Services.AddJobQueueServices();
 Log.Information("Background job queue services registered");
 
+// Hangfire is optional and not currently installed
+// To enable Hangfire, install the package and uncomment the following code
+/*
 // Register Hangfire for background job processing (optional, requires configuration)
 var hangfireConnectionString = builder.Configuration.GetConnectionString("Hangfire");
 if (!string.IsNullOrEmpty(hangfireConnectionString))
@@ -811,6 +813,7 @@ else
 {
     Log.Information("Hangfire not configured (no connection string), background jobs disabled");
 }
+*/
 
 // Register all providers using centralized extension methods from Aura.Providers
 // This ensures consistent DI registration across LLM, TTS, and Image providers
@@ -862,14 +865,15 @@ builder.Services.AddSingleton<IImageProvider>(sp =>
 // Register IStockProvider with factory-based resolution for stock media
 builder.Services.AddSingleton<IStockProvider>(sp =>
 {
-    var logger = sp.GetRequiredService<ILogger<IStockProvider>>();
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
     
     // Priority order: Pexels > Unsplash > Pixabay > Local
     var pexelsKey = providerSettings.GetPexelsApiKey();
     if (!string.IsNullOrWhiteSpace(pexelsKey))
     {
+        var logger = loggerFactory.CreateLogger<Aura.Providers.Images.PexelsStockProvider>();
         logger.LogInformation("Using Pexels as default stock provider");
         return new Aura.Providers.Images.PexelsStockProvider(
             logger, httpClientFactory.CreateClient(), pexelsKey);
@@ -878,6 +882,7 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
     var unsplashKey = providerSettings.GetUnsplashAccessKey();
     if (!string.IsNullOrWhiteSpace(unsplashKey))
     {
+        var logger = loggerFactory.CreateLogger<Aura.Providers.Images.UnsplashStockProvider>();
         logger.LogInformation("Using Unsplash as default stock provider");
         return new Aura.Providers.Images.UnsplashStockProvider(
             logger, httpClientFactory.CreateClient(), unsplashKey);
@@ -886,15 +891,17 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
     var pixabayKey = providerSettings.GetPixabayApiKey();
     if (!string.IsNullOrWhiteSpace(pixabayKey))
     {
+        var logger = loggerFactory.CreateLogger<Aura.Providers.Images.PixabayStockProvider>();
         logger.LogInformation("Using Pixabay as default stock provider");
         return new Aura.Providers.Images.PixabayStockProvider(
             logger, httpClientFactory.CreateClient(), pixabayKey);
     }
     
     // Fallback to local stock provider
-    logger.LogInformation("Using Local stock provider (no API keys configured)");
+    var localLogger = loggerFactory.CreateLogger<Aura.Providers.Images.LocalStockProvider>();
+    localLogger.LogInformation("Using Local stock provider (no API keys configured)");
     var localPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "Stock");
-    return new Aura.Providers.Images.LocalStockProvider(logger, localPath);
+    return new Aura.Providers.Images.LocalStockProvider(localLogger, localPath);
 });
 
 // Register validators
@@ -1565,22 +1572,7 @@ builder.Services.AddScoped<Aura.Core.Services.Export.IExportOrchestrationService
 // Register Licensing services
 builder.Services.AddSingleton<Aura.Core.Services.Licensing.ILicensingService, Aura.Core.Services.Licensing.LicensingService>();
 
-// Register Cloud Storage services
-builder.Services.AddSingleton(sp =>
-{
-    var settings = new Aura.Core.Models.Settings.CloudStorageSettings();
-    builder.Configuration.GetSection("CloudStorage").Bind(settings);
-    return settings;
-});
-builder.Services.AddSingleton<Aura.Core.Services.Storage.CloudStorageProviderFactory>();
-
-// Register CloudExportService conditionally based on configuration
-var cloudStorageConfig = new Aura.Core.Models.Settings.CloudStorageSettings();
-builder.Configuration.GetSection("CloudStorage").Bind(cloudStorageConfig);
-if (cloudStorageConfig.Enabled)
-{
-    builder.Services.AddSingleton<Aura.Core.Services.Export.ICloudExportService, Aura.Core.Services.Export.CloudExportService>();
-}
+// Cloud storage removed in PR #198 - this is a local-only application
 
 // Proxy media and caching services
 builder.Services.AddSingleton<Aura.Core.Services.Media.IProxyMediaService>(sp =>
@@ -1917,6 +1909,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+// Hangfire Dashboard is optional and not currently installed
+/*
 // Configure Hangfire Dashboard (if enabled)
 if (!string.IsNullOrEmpty(hangfireConnectionString))
 {
@@ -1928,6 +1922,7 @@ if (!string.IsNullOrEmpty(hangfireConnectionString))
     });
     Log.Information("Hangfire Dashboard available at /hangfire");
 }
+*/
 
 app.UseCors();
 

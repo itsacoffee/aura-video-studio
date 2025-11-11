@@ -147,7 +147,9 @@ public class LlmCostEstimator
         
         var briefTokens = EstimateTokenCount($"{brief.Topic} {brief.Audience} {brief.Goal} {brief.Tone}");
         var specTokens = EstimateTokenCount($"{spec.Style} {spec.TargetDuration}");
-        var contextTokens = brief.Context != null ? EstimateTokenCount(brief.Context) : 0;
+        var contextTokens = brief.PromptModifiers?.AdditionalInstructions != null 
+            ? EstimateTokenCount(brief.PromptModifiers.AdditionalInstructions) 
+            : 0;
         
         return systemPromptTokens + briefTokens + specTokens + contextTokens;
     }
@@ -178,12 +180,11 @@ public class LlmCostEstimator
         var modelsWithCost = _pricingConfig.Providers.Values
             .SelectMany(p => p.Models)
             .Where(m => m.Value.InputPrice > 0) // Exclude free models
-            .Select(m => new
-            {
-                Name = m.Key,
-                Pricing = m.Value,
-                AvgCostPer1K = (m.Value.InputPrice + m.Value.OutputPrice) / 2000m // Average cost per 1K tokens
-            })
+            .Select(m => new ModelCostInfo(
+                Name: m.Key,
+                Pricing: m.Value,
+                AvgCostPer1K: (m.Value.InputPrice + m.Value.OutputPrice) / 2000m // Average cost per 1K tokens
+            ))
             .OrderBy(m => m.AvgCostPer1K)
             .ToList();
 
@@ -209,7 +210,7 @@ public class LlmCostEstimator
     }
 
     private string FindBestModelForBudget(
-        List<dynamic> models,
+        List<ModelCostInfo> models,
         decimal maxBudget,
         int inputTokens,
         int outputTokens,
@@ -336,3 +337,11 @@ public enum QualityTier
     Premium,
     Maximum
 }
+
+/// <summary>
+/// Model information with cost data for budget comparison
+/// </summary>
+internal record ModelCostInfo(
+    string Name,
+    ModelPricing Pricing,
+    decimal AvgCostPer1K);

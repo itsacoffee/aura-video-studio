@@ -291,8 +291,8 @@ public class SeedData
                 IsDefault = false,
                 ScriptStructureJson = @"{""scenes"":3,""style"":""educational""}",
                 VideoStructureJson = @"{""intro"":5,""body"":80,""outro"":15}",
-                LLMPipelineJson = @"{""provider"":""openai",""model"":""gpt-4""}",
-                VisualPreferencesJson = @"{""style"":""modern",""color_scheme"":""blue""}",
+                LLMPipelineJson = @"{""provider"":""openai"",""model"":""gpt-4""}",
+                VisualPreferencesJson = @"{""style"":""modern"",""color_scheme"":""blue""}",
                 CreatedAt = DateTime.UtcNow.AddDays(-7),
                 UpdatedAt = DateTime.UtcNow.AddDays(-7)
             },
@@ -306,9 +306,9 @@ public class SeedData
                 Author = "Demo User",
                 IsDefault = true,
                 ScriptStructureJson = @"{""scenes"":1,""style"":""casual""}",
-                VideoStructureJson = @"{""format"":""vertical",""duration"":30}",
-                LLMPipelineJson = @"{""provider"":""openai",""model"":""gpt-3.5-turbo""}",
-                VisualPreferencesJson = @"{""style"":""vibrant",""color_scheme"":""rainbow""}",
+                VideoStructureJson = @"{""format"":""vertical"",""duration"":30}",
+                LLMPipelineJson = @"{""provider"":""openai"",""model"":""gpt-3.5-turbo""}",
+                VisualPreferencesJson = @"{""style"":""vibrant"",""color_scheme"":""rainbow""}",
                 CreatedAt = DateTime.UtcNow.AddDays(-14),
                 UpdatedAt = DateTime.UtcNow.AddDays(-2)
             }
