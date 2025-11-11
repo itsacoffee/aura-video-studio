@@ -3,7 +3,7 @@
  * Privacy-first: All data stays local
  */
 
-import { typedFetch } from './typedClient';
+import { typedFetch, typedApiClient } from './typedClient';
 
 export interface UsageStatistics {
   totalOperations: number;
@@ -217,10 +217,11 @@ export async function estimateCost(
   inputTokens: number,
   outputTokens: number
 ): Promise<CostEstimate> {
-  return typedFetch<CostEstimate>('/api/analytics/costs/estimate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ provider, model, inputTokens, outputTokens }),
+  return typedApiClient.post<CostEstimate>('/api/analytics/costs/estimate', {
+    provider,
+    model,
+    inputTokens,
+    outputTokens,
   });
 }
 
@@ -237,11 +238,7 @@ export async function getAnalyticsSettings(): Promise<AnalyticsSettings> {
 export async function updateAnalyticsSettings(
   settings: Partial<AnalyticsSettings>
 ): Promise<AnalyticsSettings> {
-  return typedFetch<AnalyticsSettings>('/api/analytics/settings', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(settings),
-  });
+  return typedApiClient.put<AnalyticsSettings>('/api/analytics/settings', settings);
 }
 
 /**

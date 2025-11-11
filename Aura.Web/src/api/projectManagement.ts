@@ -124,18 +124,20 @@ export interface ProjectStatistics {
 
 export const projectManagementApi = {
   // Project CRUD operations
-  async getProjects(params: {
-    search?: string;
-    status?: string;
-    category?: string;
-    tags?: string;
-    fromDate?: string;
-    toDate?: string;
-    sortBy?: string;
-    ascending?: boolean;
-    page?: number;
-    pageSize?: number;
-  } = {}): Promise<ProjectsResponse> {
+  async getProjects(
+    params: {
+      search?: string;
+      status?: string;
+      category?: string;
+      tags?: string;
+      fromDate?: string;
+      toDate?: string;
+      sortBy?: string;
+      ascending?: boolean;
+      page?: number;
+      pageSize?: number;
+    } = {}
+  ): Promise<ProjectsResponse> {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -143,17 +145,13 @@ export const projectManagementApi = {
       }
     });
 
-    const response = await typedClient.get<ProjectsResponse>(
+    return await typedClient.get<ProjectsResponse>(
       `/api/project-management/projects?${queryParams.toString()}`
     );
-    return response;
   },
 
   async getProject(projectId: string): Promise<ProjectDetails> {
-    const response = await typedClient.get<ProjectDetails>(
-      `/api/project-management/projects/${projectId}`
-    );
-    return response;
+    return await typedClient.get<ProjectDetails>(`/api/project-management/projects/${projectId}`);
   },
 
   async createProject(data: {
@@ -163,11 +161,10 @@ export const projectManagementApi = {
     tags?: string[];
     templateId?: string;
   }): Promise<{ id: string; title: string; status: string; createdAt: string }> {
-    const response = await typedClient.post(
+    return await typedClient.post<{ id: string; title: string; status: string; createdAt: string }>(
       '/api/project-management/projects',
       data
     );
-    return response;
   },
 
   async updateProject(
@@ -184,11 +181,10 @@ export const projectManagementApi = {
       durationSeconds?: number;
     }
   ): Promise<{ id: string; title: string; status: string; updatedAt: string }> {
-    const response = await typedClient.put(
+    return await typedClient.put<{ id: string; title: string; status: string; updatedAt: string }>(
       `/api/project-management/projects/${projectId}`,
       data
     );
-    return response;
   },
 
   async autoSaveProject(
@@ -200,11 +196,10 @@ export const projectManagementApi = {
       renderSpecJson?: string;
     }
   ): Promise<{ success: boolean; autoSavedAt: string }> {
-    const response = await typedClient.post(
+    return await typedClient.post<{ success: boolean; autoSavedAt: string }>(
       `/api/project-management/projects/${projectId}/auto-save`,
       data
     );
-    return response;
   },
 
   async duplicateProject(projectId: string): Promise<{
@@ -213,11 +208,12 @@ export const projectManagementApi = {
     status: string;
     createdAt: string;
   }> {
-    const response = await typedClient.post(
-      `/api/project-management/projects/${projectId}/duplicate`,
-      {}
-    );
-    return response;
+    return await typedClient.post<{
+      id: string;
+      title: string;
+      status: string;
+      createdAt: string;
+    }>(`/api/project-management/projects/${projectId}/duplicate`, {});
   },
 
   async deleteProject(projectId: string): Promise<void> {
@@ -228,45 +224,40 @@ export const projectManagementApi = {
     deletedCount: number;
     requestedCount: number;
   }> {
-    const response = await typedClient.post(
-      '/api/project-management/projects/bulk-delete',
-      { projectIds }
-    );
-    return response;
+    return await typedClient.post<{
+      deletedCount: number;
+      requestedCount: number;
+    }>('/api/project-management/projects/bulk-delete', { projectIds });
   },
 
   // Project versions
   async getProjectVersions(projectId: string): Promise<{ versions: ProjectVersion[] }> {
-    const response = await typedClient.get(
+    return await typedClient.get<{ versions: ProjectVersion[] }>(
       `/api/project-management/projects/${projectId}/versions`
     );
-    return response;
   },
 
   // Metadata
   async getCategories(): Promise<{ categories: string[] }> {
-    const response = await typedClient.get('/api/project-management/categories');
-    return response;
+    return await typedClient.get<{ categories: string[] }>('/api/project-management/categories');
   },
 
   async getTags(): Promise<{ tags: string[] }> {
-    const response = await typedClient.get('/api/project-management/tags');
-    return response;
+    return await typedClient.get('/api/project-management/tags');
   },
 
   async getStatistics(): Promise<ProjectStatistics> {
-    const response = await typedClient.get<ProjectStatistics>(
-      '/api/project-management/statistics'
-    );
-    return response;
+    return await typedClient.get<ProjectStatistics>('/api/project-management/statistics');
   },
 
   // Template operations
-  async getTemplates(params: {
-    category?: string;
-    subCategory?: string;
-    isSystemTemplate?: boolean;
-  } = {}): Promise<{ templates: Template[] }> {
+  async getTemplates(
+    params: {
+      category?: string;
+      subCategory?: string;
+      isSystemTemplate?: boolean;
+    } = {}
+  ): Promise<{ templates: Template[] }> {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -274,17 +265,13 @@ export const projectManagementApi = {
       }
     });
 
-    const response = await typedClient.get(
-      `/api/template-management/templates?${queryParams.toString()}`
-    );
-    return response;
+    return await typedClient.get(`/api/template-management/templates?${queryParams.toString()}`);
   },
 
   async getTemplate(templateId: string): Promise<TemplateDetails> {
-    const response = await typedClient.get<TemplateDetails>(
+    return await typedClient.get<TemplateDetails>(
       `/api/template-management/templates/${templateId}`
     );
-    return response;
   },
 
   async createTemplate(data: {
@@ -297,22 +284,17 @@ export const projectManagementApi = {
     previewImage?: string;
     previewVideo?: string;
   }): Promise<{ id: string; name: string; createdAt: string }> {
-    const response = await typedClient.post(
-      '/api/template-management/templates',
-      data
-    );
-    return response;
+    return await typedClient.post('/api/template-management/templates', data);
   },
 
   async createProjectFromTemplate(
     templateId: string,
     projectName?: string
   ): Promise<{ id: string; title: string; templateId: string; createdAt: string }> {
-    const response = await typedClient.post(
+    return await typedClient.post(
       `/api/template-management/templates/${templateId}/create-project`,
       { projectName }
     );
-    return response;
   },
 
   async deleteTemplate(templateId: string): Promise<void> {
@@ -320,10 +302,6 @@ export const projectManagementApi = {
   },
 
   async seedSystemTemplates(): Promise<{ message: string }> {
-    const response = await typedClient.post(
-      '/api/template-management/templates/seed',
-      {}
-    );
-    return response;
+    return await typedClient.post('/api/template-management/templates/seed', {});
   },
 };

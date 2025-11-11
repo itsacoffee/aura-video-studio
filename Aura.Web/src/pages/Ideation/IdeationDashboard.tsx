@@ -179,7 +179,9 @@ export const IdeationDashboard: React.FC = () => {
 
         {loading && (
           <div className={styles.conceptsGrid}>
-            <SkeletonCard count={4} showFooter={true} ariaLabel="Generating creative concepts" />
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonCard key={i} hasImage={true} />
+            ))}
           </div>
         )}
       </div>

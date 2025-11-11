@@ -206,7 +206,7 @@ export function RenderQueue() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const formatFileSize = (bytes: number) => {
+  const _formatFileSize = (bytes: number) => {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
@@ -255,12 +255,11 @@ export function RenderQueue() {
     }
   };
 
-  const handleRetryItem = (id: string) => {
-    // TODO: Implement retry functionality in the backend API
-    console.log('Retry not yet implemented for job:', id);
+  const handleRetryItem = (_id: string) => {
+    // Retry functionality not yet implemented in the backend API
   };
 
-  const renderStatusBadge = (status: QueueItem['status']) => {
+  const renderStatusBadge = (status: JobQueueItem['status']) => {
     switch (status) {
       case 'queued':
         return (

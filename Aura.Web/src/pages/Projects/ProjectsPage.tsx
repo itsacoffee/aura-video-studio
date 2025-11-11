@@ -212,10 +212,8 @@ function ProjectsPageContent() {
           {loadingProjects && (
             <Card>
               <SkeletonTable
-                columns={['Name', 'Last Modified', 'Duration', 'Clips', 'Actions']}
-                rowCount={5}
-                columnWidths={['35%', '20%', '15%', '10%', '20%']}
-                ariaLabel="Loading editor projects"
+                columns={5}
+                rows={5}
               />
             </Card>
           )}
@@ -330,10 +328,8 @@ function ProjectsPageContent() {
           {loading && (
             <Card>
               <SkeletonTable
-                columns={['Date', 'Topic', 'Status', 'Stage', 'Duration', 'Actions']}
-                rowCount={5}
-                columnWidths={['18%', '20%', '15%', '15%', '12%', '20%']}
-                ariaLabel="Loading generated videos"
+                columns={6}
+                rows={5}
               />
             </Card>
           )}

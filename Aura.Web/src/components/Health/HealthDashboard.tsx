@@ -3,6 +3,7 @@
  * Displays system health status with real-time monitoring
  */
 
+import React from 'react';
 import {
   makeStyles,
   tokens,
@@ -176,12 +177,12 @@ const getStatusBadge = (status: string) => {
   }
 };
 
-const getCheckIcon = (name: string) => {
-  const iconMap: Record<string, JSX.Element> = {
+const getCheckIcon = (name: string): React.JSX.Element => {
+  const iconMap: Record<string, React.JSX.Element> = {
     Database: <Database24Regular />,
     Dependencies: <DeveloperBoard24Regular />,
     DiskSpace: <HardDrive24Regular />,
-    Memory: <CloudDatabase24Regular />,
+    Memory: <Database24Regular />,
     Providers: <Server24Regular />,
     Startup: <Server24Regular />,
   };
