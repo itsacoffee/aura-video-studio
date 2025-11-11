@@ -65,7 +65,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 // Configure Serilog with structured logging and separate log files
 var outputTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{CorrelationId}] [{TraceId}] [{SpanId}] {Message:lj} {Properties:j}{NewLine}{Exception}";
 
-Log.Logger = new LoggerConfiguration()
+var loggerConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .ConfigureStructuredLogging("Aura.Api") // Use our custom extension with all enrichers
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{CorrelationId}] {Message:lj}{NewLine}{Exception}")
@@ -101,8 +101,28 @@ Log.Logger = new LoggerConfiguration()
         retainedFileCountLimit: 90, // 90 days for audit logs
         outputTemplate: outputTemplate,
         rollOnFileSizeLimit: true,
-        fileSizeLimitBytes: 100_000_000)
-    .CreateLogger();
+        fileSizeLimitBytes: 100_000_000);
+
+// Add Windows Event Log sink on Windows platforms
+if (OperatingSystem.IsWindows())
+{
+    try
+    {
+        loggerConfig.WriteTo.EventLog(
+            source: "Aura.Api",
+            logName: "Application",
+            restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning,
+            manageEventSource: false // Don't try to create event source (requires admin)
+        );
+    }
+    catch (Exception ex)
+    {
+        // If Event Log sink fails (e.g., permissions), continue without it
+        Console.WriteLine($"Warning: Could not configure Windows Event Log sink: {ex.Message}");
+    }
+}
+
+Log.Logger = loggerConfig.CreateLogger();
 
 builder.Host.UseSerilog();
 
@@ -1314,6 +1334,8 @@ builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.PerformanceTracking
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.DiagnosticReportGenerator>();
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.DiagnosticBundleService>();
 builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.FailureAnalysisService>();
+builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.CrashReportService>();
+builder.Services.AddSingleton<Aura.Core.Services.Diagnostics.SystemDiagnosticsService>();
 
 // Register resilience services for error recovery and monitoring
 builder.Services.AddResilienceServices(builder.Configuration);

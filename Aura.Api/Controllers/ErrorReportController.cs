@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Aura.Core.Models.Diagnostics;
+using Aura.Core.Services.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -16,11 +18,15 @@ namespace Aura.Api.Controllers;
 public class ErrorReportController : ControllerBase
 {
     private readonly ILogger<ErrorReportController> _logger;
+    private readonly CrashReportService _crashReportService;
     private readonly string _errorReportsPath;
 
-    public ErrorReportController(ILogger<ErrorReportController> logger)
+    public ErrorReportController(
+        ILogger<ErrorReportController> logger,
+        CrashReportService crashReportService)
     {
         _logger = logger;
+        _crashReportService = crashReportService;
         
         // Store error reports in a dedicated directory
         var baseDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ErrorReports");
@@ -32,7 +38,38 @@ public class ErrorReportController : ControllerBase
     /// Receive and store an error report from the frontend
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> SubmitErrorReport([FromBody] ErrorReportDto report)
+    public async Task<IActionResult> SubmitErrorReport([FromBody] ClientErrorReport report)
+    {
+        try
+        {
+            // Validate the error report
+            if (report == null || string.IsNullOrEmpty(report.Message))
+            {
+                return BadRequest(new { error = "Invalid error report: missing required fields" });
+            }
+
+            // Save using crash report service
+            var reportId = await _crashReportService.SaveClientErrorReportAsync(report, HttpContext.RequestAborted);
+
+            return Ok(new
+            {
+                success = true,
+                reportId,
+                message = "Error report received and stored successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process error report");
+            return StatusCode(500, new { error = "Failed to process error report" });
+        }
+    }
+
+    /// <summary>
+    /// Receive and store a legacy error report from the frontend (backward compatibility)
+    /// </summary>
+    [HttpPost("legacy")]
+    public async Task<IActionResult> SubmitLegacyErrorReport([FromBody] ErrorReportDto report)
     {
         try
         {
@@ -47,9 +84,9 @@ public class ErrorReportController : ControllerBase
 
             // Log the error for immediate visibility
             _logger.LogError(
-                "Frontend Error Report: {ErrorName} - {ErrorMessage}\nURL: {Url}\nUser Description: {Description}",
-                sanitizedReport.Error.Name,
-                sanitizedReport.Error.Message,
+                "Frontend Error Report (Legacy): {ErrorName} - {ErrorMessage}\nURL: {Url}\nUser Description: {Description}",
+                sanitizedReport.Error?.Name,
+                sanitizedReport.Error?.Message,
                 sanitizedReport.Url,
                 sanitizedReport.UserDescription ?? "None provided"
             );
