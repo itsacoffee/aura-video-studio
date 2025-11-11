@@ -70,7 +70,7 @@ public class UserFriendlyErrorHandler
         // Add provider-specific suggestions
         switch (ex.Type)
         {
-            case ProviderType.Llm:
+            case ProviderType.LLM:
                 suggestions.Add("Check that your API key is valid and has sufficient credits");
                 suggestions.Add("Verify your internet connection");
                 suggestions.Add("Try using a different LLM provider");
@@ -83,13 +83,13 @@ public class UserFriendlyErrorHandler
                 }
                 break;
 
-            case ProviderType.Tts:
+            case ProviderType.TTS:
                 suggestions.Add("Check that your TTS provider credentials are configured");
                 suggestions.Add("Verify the selected voice is available");
                 suggestions.Add("Try a different voice or TTS provider");
                 break;
 
-            case ProviderType.Image:
+            case ProviderType.Visual:
                 suggestions.Add("Verify your image provider settings");
                 suggestions.Add("Check that the required model is available");
                 suggestions.Add("Try simplifying the image description");
@@ -109,7 +109,7 @@ public class UserFriendlyErrorHandler
 
     private UserFriendlyError HandlePipelineException(PipelineException ex, string? context)
     {
-        var message = new StringBuilder($"Video generation failed during the {ex.StageName} stage.");
+        var message = new StringBuilder($"Video generation failed during the {ex.Stage} stage.");
 
         if (ex.CompletedTasks > 0)
         {
@@ -132,7 +132,7 @@ public class UserFriendlyErrorHandler
             "Simplify the video brief or reduce target duration"
         };
 
-        if (ex.ElapsedBeforeFailure.HasValue && ex.ElapsedBeforeFailure.Value.TotalMinutes > 5)
+        if (ex.ElapsedBeforeFailure.TotalMinutes > 5)
         {
             suggestions.Add("The operation ran for a while - check system resources and available disk space");
         }
