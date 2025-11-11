@@ -1,404 +1,326 @@
 /**
- * SSE Client for real-time job progress updates
- * Provides auto-reconnect and resilient connection handling
+ * Enhanced SSE (Server-Sent Events) Client
+ *
+ * Provides robust SSE connection management with:
+ * - Automatic reconnection with exponential backoff
+ * - Connection state tracking
+ * - Proper cleanup and cancellation
+ * - Progress event parsing
+ * - Error recovery
  */
 
-import { apiUrl } from '../../config/api';
-import { loggingService as logger } from '../loggingService';
+import { loggingService } from '@/services/loggingService';
+import { toError } from '@/utils/errorUtils';
 
-export interface SseEvent {
-  type: string;
-  data: unknown;
-  eventId?: string;
+export interface SSEConnectionOptions {
+  url: string;
+  onMessage: (event: MessageEvent) => void;
+  onError?: (error: Error) => void;
+  onOpen?: () => void;
+  onClose?: () => void;
+  maxRetries?: number;
+  retryDelay?: number;
+  timeout?: number;
 }
 
-export type SseConnectionStatus =
-  | 'connecting'
-  | 'connected'
-  | 'reconnecting'
-  | 'disconnected'
-  | 'error';
-
-export interface SseConnectionState {
-  status: SseConnectionStatus;
-  reconnectAttempt: number;
-  lastEventId: string | null;
+export enum SSEConnectionState {
+  CONNECTING = 'CONNECTING',
+  CONNECTED = 'CONNECTED',
+  DISCONNECTED = 'DISCONNECTED',
+  ERROR = 'ERROR',
+  CLOSED = 'CLOSED',
 }
 
-export interface JobStatusEvent {
-  status: string;
-  stage: string;
-  percent: number;
-  correlationId: string;
-}
-
-export interface StepStatusEvent {
-  step: string;
-  status: string;
-  phase: string;
-  correlationId: string;
-}
-
-export interface StepProgressEvent {
-  step: string;
-  phase: string;
-  progressPct: number;
-  message: string;
-  correlationId: string;
-  substageDetail?: string;
-  currentItem?: number;
-  totalItems?: number;
-  elapsedTime?: string;
-  estimatedTimeRemaining?: string;
-}
-
-export interface JobCompletedEvent {
-  status: string;
-  jobId: string;
-  artifacts: Array<{
-    name: string;
-    path: string;
-    type: string;
-    sizeBytes: number;
-  }>;
-  output: {
-    videoPath: string;
-    subtitlePath: string;
-    sizeBytes: number;
-  };
-  correlationId: string;
-}
-
-export interface JobFailedEvent {
-  status: string;
-  jobId: string;
-  stage: string;
-  errors: Array<{
-    code: string;
-    message: string;
-    remediation: string;
-  }>;
-  errorMessage?: string;
-  logs: string[];
-  correlationId: string;
-}
-
-export interface JobCancelledEvent {
-  status: string;
-  jobId: string;
-  stage: string;
-  message: string;
-  correlationId: string;
-}
-
-export interface WarningEvent {
-  message: string;
-  step: string;
-  correlationId: string;
-}
-
-export interface ErrorEvent {
-  message: string;
-  correlationId?: string;
-}
-
-type EventHandler = (event: SseEvent) => void;
-
-/**
- * SSE Client with auto-reconnect capability and Last-Event-ID support
- */
-export class SseClient {
+export class SSEClient {
   private eventSource: EventSource | null = null;
-  private handlers: Map<string, EventHandler[]> = new Map();
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000; // Start with 1 second
-  private maxReconnectDelay = 30000; // Cap at 30 seconds
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private url: string;
-  private isManualClose = false;
-  private lastEventId: string | null = null;
-  private connectionStatus: SseConnectionStatus = 'disconnected';
-  private statusChangeHandlers: Array<(state: SseConnectionState) => void> = [];
+  private options: Required<SSEConnectionOptions>;
+  private state: SSEConnectionState = SSEConnectionState.DISCONNECTED;
+  private retryCount = 0;
+  private reconnectTimer: number | null = null;
+  private timeoutTimer: number | null = null;
+  private isCancelled = false;
 
-  constructor(jobId: string, endpoint?: string) {
-    // Allow custom endpoint, default to /api/video/{id}/stream for video generation
-    this.url = endpoint ? apiUrl(endpoint) : apiUrl(`/api/video/${jobId}/stream`);
-  }
-
-  /**
-   * Subscribe to connection status changes
-   */
-  onStatusChange(handler: (state: SseConnectionState) => void): void {
-    this.statusChangeHandlers.push(handler);
-  }
-
-  /**
-   * Get current connection state
-   */
-  getConnectionState(): SseConnectionState {
-    return {
-      status: this.connectionStatus,
-      reconnectAttempt: this.reconnectAttempts,
-      lastEventId: this.lastEventId,
+  constructor(options: SSEConnectionOptions) {
+    this.options = {
+      onError: () => {},
+      onOpen: () => {},
+      onClose: () => {},
+      maxRetries: 5,
+      retryDelay: 1000,
+      timeout: 300000, // 5 minutes default timeout
+      ...options,
     };
   }
 
   /**
-   * Notify status change handlers
+   * Connect to SSE endpoint
    */
-  private notifyStatusChange(): void {
-    const state = this.getConnectionState();
-    this.statusChangeHandlers.forEach((handler) => {
-      try {
-        handler(state);
-      } catch (error) {
-        logger.error(
-          'Error in status change handler',
-          error instanceof Error ? error : new Error(String(error)),
-          'SseClient',
-          'notifyStatusChange'
-        );
-      }
-    });
-  }
-
-  /**
-   * Connect to the SSE endpoint with Last-Event-ID support for resumption
-   */
-  connect(): void {
-    if (this.eventSource) {
-      logger.warn('Already connected', 'SseClient', 'connect');
+  public connect(): void {
+    if (this.isCancelled) {
+      loggingService.debug('SSE connection cancelled', 'sseClient', 'connect');
       return;
     }
 
-    this.isManualClose = false;
-    this.connectionStatus = this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting';
-    this.notifyStatusChange();
+    if (this.state === SSEConnectionState.CONNECTED) {
+      loggingService.warn('SSE already connected', 'sseClient', 'connect');
+      return;
+    }
 
-    // Build URL with Last-Event-ID as query parameter for reconnection
-    // Note: Native EventSource doesn't support custom headers, so we use query param
-    const connectionUrl = this.lastEventId
-      ? `${this.url}?lastEventId=${encodeURIComponent(this.lastEventId)}`
-      : this.url;
-
-    logger.debug(
-      `Connecting to ${this.url}${this.lastEventId ? ` (resuming from event ${this.lastEventId})` : ''}`,
-      'SseClient',
-      'connect'
-    );
+    this.setState(SSEConnectionState.CONNECTING);
 
     try {
-      this.eventSource = new EventSource(connectionUrl);
+      loggingService.info('Connecting to SSE', 'sseClient', 'connect', {
+        url: this.options.url,
+        retry: this.retryCount,
+      });
+
+      this.eventSource = new EventSource(this.options.url);
 
       this.eventSource.onopen = () => {
-        logger.debug('Connected successfully', 'SseClient', 'onopen');
-        this.reconnectAttempts = 0;
-        this.reconnectDelay = 1000;
-        this.connectionStatus = 'connected';
-        this.notifyStatusChange();
+        loggingService.info('SSE connection opened', 'sseClient', 'open');
+        this.setState(SSEConnectionState.CONNECTED);
+        this.retryCount = 0;
+        this.clearReconnectTimer();
+        this.startTimeoutTimer();
+        this.options.onOpen();
       };
 
-      this.eventSource.onerror = (error) => {
-        logger.error(
-          'Connection error',
-          error instanceof Error ? error : new Error('SSE connection error'),
-          'SseClient',
-          'onerror'
-        );
+      this.eventSource.onmessage = (event: MessageEvent) => {
+        this.resetTimeoutTimer();
+        
+        loggingService.debug('SSE message received', 'sseClient', 'message', {
+          data: event.data?.substring(0, 100),
+        });
 
-        if (this.eventSource?.readyState === EventSource.CLOSED) {
-          logger.debug('Connection closed by server', 'SseClient', 'onerror');
-          this.connectionStatus = 'disconnected';
-          this.notifyStatusChange();
-          this.handleConnectionError();
-        } else if (this.eventSource?.readyState === EventSource.CONNECTING) {
-          logger.debug('Reconnecting...', 'SseClient', 'onerror');
-          this.connectionStatus = 'reconnecting';
-          this.notifyStatusChange();
-        }
-      };
-
-      // Register event listeners
-      this.registerEventListeners();
-    } catch (error) {
-      logger.error(
-        'Failed to create EventSource',
-        error instanceof Error ? error : new Error(String(error)),
-        'SseClient',
-        'connect'
-      );
-      this.connectionStatus = 'error';
-      this.notifyStatusChange();
-      this.handleConnectionError();
-    }
-  }
-
-  /**
-   * Register all SSE event listeners
-   */
-  private registerEventListeners(): void {
-    if (!this.eventSource) return;
-
-    const eventTypes = [
-      'job-status',
-      'step-status',
-      'step-progress',
-      'progress-message',
-      'warning',
-      'error',
-      'job-completed',
-      'job-failed',
-      'job-cancelled',
-    ];
-
-    eventTypes.forEach((eventType) => {
-      this.eventSource?.addEventListener(eventType, (event: MessageEvent) => {
         try {
-          // Track last event ID for reconnection support
-          if (event.lastEventId) {
-            this.lastEventId = event.lastEventId;
-            logger.debug(`Tracked event ID: ${event.lastEventId}`, 'SseClient', 'onEvent');
-          }
-
-          const data = JSON.parse(event.data);
-          logger.debug(`Received ${eventType}`, 'SseClient', 'onEvent', { data });
-
-          // Emit event with event ID for tracking
-          this.emit(eventType, data, event.lastEventId);
+          this.options.onMessage(event);
         } catch (error) {
-          logger.error(
-            `Failed to parse ${eventType} event`,
-            error instanceof Error ? error : new Error(String(error)),
-            'SseClient',
-            'onEvent'
+          loggingService.error(
+            'Error handling SSE message',
+            toError(error),
+            'sseClient',
+            'message'
           );
         }
-      });
-    });
+      };
+
+      this.eventSource.onerror = (event) => {
+        loggingService.error(
+          'SSE connection error',
+          new Error('EventSource error'),
+          'sseClient',
+          'error',
+          { readyState: this.eventSource?.readyState }
+        );
+
+        this.setState(SSEConnectionState.ERROR);
+        this.clearTimeoutTimer();
+
+        const error = new Error(
+          `SSE connection error (readyState: ${this.eventSource?.readyState})`
+        );
+        this.options.onError(error);
+
+        // Attempt reconnection if not cancelled and within retry limit
+        if (!this.isCancelled && this.retryCount < this.options.maxRetries) {
+          this.scheduleReconnect();
+        } else {
+          this.close();
+        }
+      };
+    } catch (error) {
+      loggingService.error('Failed to create EventSource', toError(error), 'sseClient', 'connect');
+      this.setState(SSEConnectionState.ERROR);
+      this.options.onError(toError(error));
+
+      if (!this.isCancelled && this.retryCount < this.options.maxRetries) {
+        this.scheduleReconnect();
+      }
+    }
   }
 
   /**
-   * Handle connection errors with exponential backoff
+   * Schedule automatic reconnection
    */
-  private handleConnectionError(): void {
-    if (this.isManualClose) {
-      logger.debug('Manual close, not reconnecting', 'SseClient', 'handleConnectionError');
-      return;
-    }
-
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      logger.error(
-        'Max reconnect attempts reached',
-        new Error('SSE reconnection failed'),
-        'SseClient',
-        'handleConnectionError'
-      );
-      this.emit('error', {
-        message: 'Failed to connect to server after multiple attempts. Please refresh the page.',
-        correlationId: 'sse-reconnect-failed',
-      });
-      return;
-    }
-
-    this.reconnectAttempts++;
-    const calculatedDelay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-    const delay = Math.min(calculatedDelay, this.maxReconnectDelay);
-
-    logger.debug(
-      `Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
-      'SseClient',
-      'handleConnectionError'
+  private scheduleReconnect(): void {
+    this.retryCount++;
+    const delay = Math.min(
+      this.options.retryDelay * Math.pow(2, this.retryCount - 1),
+      30000
     );
 
-    this.reconnectTimer = setTimeout(() => {
-      logger.debug('Attempting reconnect...', 'SseClient', 'reconnectTimer');
+    loggingService.info('Scheduling SSE reconnect', 'sseClient', 'reconnect', {
+      attempt: this.retryCount,
+      maxRetries: this.options.maxRetries,
+      delay,
+    });
+
+    this.clearReconnectTimer();
+    this.reconnectTimer = window.setTimeout(() => {
       this.close();
       this.connect();
     }, delay);
   }
 
   /**
-   * Subscribe to a specific event type
+   * Start timeout timer
    */
-  on(eventType: string, handler: EventHandler): void {
-    if (!this.handlers.has(eventType)) {
-      this.handlers.set(eventType, []);
-    }
-    this.handlers.get(eventType)!.push(handler);
-  }
-
-  /**
-   * Unsubscribe from a specific event type
-   */
-  off(eventType: string, handler: EventHandler): void {
-    const handlers = this.handlers.get(eventType);
-    if (handlers) {
-      const index = handlers.indexOf(handler);
-      if (index !== -1) {
-        handlers.splice(index, 1);
-      }
+  private startTimeoutTimer(): void {
+    this.clearTimeoutTimer();
+    
+    if (this.options.timeout > 0) {
+      this.timeoutTimer = window.setTimeout(() => {
+        loggingService.warn('SSE connection timeout', 'sseClient', 'timeout');
+        this.close();
+        this.options.onError(new Error('SSE connection timeout'));
+      }, this.options.timeout);
     }
   }
 
   /**
-   * Emit an event to all registered handlers
+   * Reset timeout timer (called on each message received)
    */
-  private emit(eventType: string, data: unknown, eventId?: string): void {
-    const handlers = this.handlers.get(eventType);
-    if (handlers) {
-      handlers.forEach((handler) => {
-        try {
-          handler({ type: eventType, data, eventId });
-        } catch (error) {
-          logger.error(
-            'Error in event handler',
-            error instanceof Error ? error : new Error(String(error)),
-            'SseClient',
-            'emit'
-          );
-        }
+  private resetTimeoutTimer(): void {
+    this.clearTimeoutTimer();
+    this.startTimeoutTimer();
+  }
+
+  /**
+   * Clear timeout timer
+   */
+  private clearTimeoutTimer(): void {
+    if (this.timeoutTimer !== null) {
+      window.clearTimeout(this.timeoutTimer);
+      this.timeoutTimer = null;
+    }
+  }
+
+  /**
+   * Clear reconnect timer
+   */
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer !== null) {
+      window.clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  /**
+   * Update connection state
+   */
+  private setState(state: SSEConnectionState): void {
+    const previousState = this.state;
+    this.state = state;
+
+    if (previousState !== state) {
+      loggingService.debug('SSE state changed', 'sseClient', 'state', {
+        from: previousState,
+        to: state,
       });
     }
   }
 
   /**
-   * Close the SSE connection
+   * Get current connection state
    */
-  close(): void {
-    this.isManualClose = true;
+  public getState(): SSEConnectionState {
+    return this.state;
+  }
 
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
+  /**
+   * Check if connected
+   */
+  public isConnected(): boolean {
+    return this.state === SSEConnectionState.CONNECTED;
+  }
+
+  /**
+   * Close SSE connection
+   */
+  public close(): void {
+    loggingService.info('Closing SSE connection', 'sseClient', 'close');
+
+    this.clearReconnectTimer();
+    this.clearTimeoutTimer();
 
     if (this.eventSource) {
-      logger.debug('Closing connection', 'SseClient', 'close');
       this.eventSource.close();
       this.eventSource = null;
     }
 
-    this.handlers.clear();
-    this.statusChangeHandlers = [];
-    this.reconnectAttempts = 0;
-    this.connectionStatus = 'disconnected';
-    this.notifyStatusChange();
+    this.setState(SSEConnectionState.CLOSED);
+    this.options.onClose();
   }
 
   /**
-   * Check if the client is connected
+   * Cancel connection and prevent reconnection
    */
-  isConnected(): boolean {
-    return this.eventSource?.readyState === EventSource.OPEN;
+  public cancel(): void {
+    loggingService.info('Cancelling SSE connection', 'sseClient', 'cancel');
+    this.isCancelled = true;
+    this.close();
   }
 }
 
 /**
- * Create and manage an SSE client for a job
- * @param jobId Job identifier
- * @param endpoint Optional custom endpoint (defaults to video generation endpoint)
+ * Parse SSE event data as JSON
  */
-export function createSseClient(jobId: string, endpoint?: string): SseClient {
-  return new SseClient(jobId, endpoint);
+export function parseSSEJson<T = any>(event: MessageEvent): T | null {
+  try {
+    return JSON.parse(event.data);
+  } catch (error) {
+    loggingService.error('Failed to parse SSE JSON', toError(error), 'sseClient', 'parse');
+    return null;
+  }
+}
+
+/**
+ * Create an SSE client for generation progress
+ */
+export function createGenerationProgressSSE(
+  jobId: string,
+  onProgress: (progress: GenerationProgressEvent) => void,
+  onError?: (error: Error) => void,
+  onComplete?: () => void
+): SSEClient {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005';
+  const url = `${baseUrl}/api/generation/progress/${jobId}`;
+
+  return new SSEClient({
+    url,
+    onMessage: (event) => {
+      const progress = parseSSEJson<GenerationProgressEvent>(event);
+      if (progress) {
+        onProgress(progress);
+
+        // Auto-close on completion
+        if (progress.stage === 'Completed' || progress.stage === 'Failed') {
+          onComplete?.();
+        }
+      }
+    },
+    onError: (error) => {
+      loggingService.error('Generation progress SSE error', error, 'sseClient', 'generation');
+      onError?.(error);
+    },
+    maxRetries: 3,
+    retryDelay: 2000,
+    timeout: 600000, // 10 minutes for long-running generations
+  });
+}
+
+/**
+ * Generation progress event from SSE
+ */
+export interface GenerationProgressEvent {
+  jobId: string;
+  stage: string;
+  overallPercent: number;
+  stagePercent: number;
+  message?: string;
+  currentItem?: number;
+  totalItems?: number;
+  elapsedTime?: string;
+  estimatedTimeRemaining?: string;
+  error?: string;
 }
