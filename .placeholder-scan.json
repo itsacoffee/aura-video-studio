@@ -1,0 +1,10 @@
+{
+  "warnOnly": true,
+  "allowedPaths": [
+    "Aura.Core/Services/ProjectExportImportService.cs",
+    "Aura.Tests/Integration/VideoGenerationIntegrationTests.cs",
+    "Aura.Web/src/components/Export/ExportQueueManager.tsx",
+    "Aura.Web/src/pages/Export/RenderQueue.tsx",
+    "Aura.Web/src/pages/MediaLibrary/MediaLibraryPage.tsx"
+  ]
+}
