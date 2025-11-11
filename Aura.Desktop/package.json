@@ -124,9 +124,17 @@
       {
         "provider": "github",
         "owner": "coffee285",
-        "repo": "aura-video-studio"
+        "repo": "aura-video-studio",
+        "releaseType": "release"
       }
     ],
+    "updater": {
+      "enabled": true,
+      "autoDownload": false,
+      "autoInstallOnAppQuit": true,
+      "allowDowngrade": false,
+      "allowPrerelease": false
+    },
     "compression": "maximum",
     "asar": true,
     "asarUnpack": [

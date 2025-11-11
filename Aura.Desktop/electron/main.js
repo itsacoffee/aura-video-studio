@@ -17,6 +17,7 @@ const BackendService = require('./backend-service');
 const TrayManager = require('./tray-manager');
 const MenuBuilder = require('./menu-builder');
 const ProtocolHandler = require('./protocol-handler');
+const WindowsSetupWizard = require('./windows-setup-wizard');
 
 // Import IPC handlers
 const ConfigHandler = require('./ipc-handlers/config-handler');
@@ -35,6 +36,7 @@ let backendService = null;
 let trayManager = null;
 let menuBuilder = null;
 let protocolHandler = null;
+let windowsSetupWizard = null;
 
 let ipcHandlers = {
   config: null,
@@ -312,12 +314,78 @@ function registerIpcHandlers() {
 // ========================================
 
 /**
- * Check if this is the first run and navigate to setup wizard
+ * Check if this is the first run and run Windows-specific setup if needed
  */
-function checkFirstRun() {
+async function checkFirstRun() {
   const setupComplete = appConfig.isSetupComplete();
   const firstRun = appConfig.isFirstRun();
 
+  // Run Windows-specific setup wizard on first run (Windows only)
+  if ((firstRun || !setupComplete) && process.platform === 'win32') {
+    console.log('First run detected on Windows, running Windows setup wizard...');
+    
+    // Initialize Windows setup wizard
+    windowsSetupWizard = new WindowsSetupWizard(app, windowManager, appConfig);
+    
+    // Check if Windows setup has been completed
+    if (!windowsSetupWizard.isSetupComplete()) {
+      try {
+        const setupResult = await windowsSetupWizard.runSetup();
+        
+        if (!setupResult.success) {
+          console.warn('Windows setup wizard encountered issues:', setupResult);
+          
+          // Show warning to user if there were critical errors
+          if (setupResult.results && setupResult.results.errors.length > 0) {
+            const mainWindow = windowManager.getMainWindow();
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              dialog.showMessageBox(mainWindow, {
+                type: 'warning',
+                title: 'Setup Incomplete',
+                message: 'Some setup steps could not be completed',
+                detail: 
+                  'Aura Video Studio has started, but some setup steps encountered issues:\n\n' +
+                  setupResult.results.errors.join('\n') +
+                  '\n\nThe application may not function correctly. Please check the setup guide.',
+                buttons: ['Continue Anyway']
+              });
+            }
+          }
+        } else {
+          console.log('✓ Windows setup wizard completed successfully');
+        }
+      } catch (error) {
+        console.error('Windows setup wizard error:', error);
+      }
+    } else {
+      // Run quick compatibility check on subsequent launches
+      try {
+        const quickCheck = await windowsSetupWizard.quickCheck();
+        if (!quickCheck.compatible) {
+          console.warn('Windows compatibility issues detected:', quickCheck.issues);
+          
+          // Show warning for critical issues
+          const criticalIssues = quickCheck.issues.filter(i => i.type === 'error');
+          if (criticalIssues.length > 0) {
+            const mainWindow = windowManager.getMainWindow();
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              dialog.showMessageBox(mainWindow, {
+                type: 'warning',
+                title: 'Compatibility Issues',
+                message: 'System compatibility issues detected',
+                detail: criticalIssues.map(i => `• ${i.message}\n  Action: ${i.action}`).join('\n\n'),
+                buttons: ['OK']
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Quick compatibility check error:', error);
+      }
+    }
+  }
+
+  // Navigate to setup wizard in UI if not complete
   if (!setupComplete || firstRun) {
     console.log('First run detected, navigating to setup wizard...');
     
@@ -465,9 +533,13 @@ async function startApplication() {
     setupAutoUpdater();
     console.log('✓ Auto-updater configured');
 
-    // Check for first run
-    mainWindow.once('ready-to-show', () => {
-      checkFirstRun();
+    // Check for first run (async to support Windows setup wizard)
+    mainWindow.once('ready-to-show', async () => {
+      try {
+        await checkFirstRun();
+      } catch (error) {
+        console.error('First run check error:', error);
+      }
       protocolHandler.checkPendingUrl();
     });
 
