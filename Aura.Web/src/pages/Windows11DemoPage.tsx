@@ -1,7 +1,4 @@
 import { makeStyles, Card, Text, Badge, Button } from '@fluentui/react-components';
-import { useWindowsNativeUI } from '../../hooks/useWindowsNativeUI';
-import { ContextMenu, useContextMenu } from '../../components/ContextMenu';
-import type { ContextMenuItem } from '../../components/ContextMenu';
 import {
   Info24Regular,
   Desktop24Regular,
@@ -9,6 +6,9 @@ import {
   CheckmarkCircle24Regular,
   DismissCircle24Regular,
 } from '@fluentui/react-icons';
+import { ContextMenu, useContextMenu } from '../components/ContextMenu';
+import type { ContextMenuItem } from '../components/ContextMenu';
+import { useWindowsNativeUI } from '../hooks/useWindowsNativeUI';
 
 const useStyles = makeStyles({
   container: {
@@ -113,7 +113,9 @@ export function Windows11DemoPage() {
               <Badge
                 appearance="filled"
                 color={windowsUI.isWindows ? 'success' : 'danger'}
-                icon={windowsUI.isWindows ? <CheckmarkCircle24Regular /> : <DismissCircle24Regular />}
+                icon={
+                  windowsUI.isWindows ? <CheckmarkCircle24Regular /> : <DismissCircle24Regular />
+                }
               >
                 {windowsUI.isWindows ? 'Detected' : 'Not Detected'}
               </Badge>
@@ -133,7 +135,10 @@ export function Windows11DemoPage() {
           <Card className={styles.card}>
             <div className={styles.infoRow}>
               <Text weight="semibold">System Theme</Text>
-              <Badge appearance="outline" color={windowsUI.systemTheme === 'dark' ? 'brand' : 'warning'}>
+              <Badge
+                appearance="outline"
+                color={windowsUI.systemTheme === 'dark' ? 'brand' : 'warning'}
+              >
                 {windowsUI.systemTheme === 'dark' ? 'Dark Mode' : 'Light Mode'}
               </Badge>
             </div>
@@ -142,7 +147,9 @@ export function Windows11DemoPage() {
               <Badge
                 appearance="filled"
                 color={windowsUI.supportsSnapLayouts ? 'success' : 'subtle'}
-                icon={windowsUI.supportsSnapLayouts ? <CheckmarkCircle24Regular /> : <Info24Regular />}
+                icon={
+                  windowsUI.supportsSnapLayouts ? <CheckmarkCircle24Regular /> : <Info24Regular />
+                }
               >
                 {windowsUI.supportsSnapLayouts ? 'Supported' : 'Not Available'}
               </Badge>
@@ -171,7 +178,10 @@ export function Windows11DemoPage() {
             </div>
             <div className={styles.infoRow}>
               <Text>High DPI</Text>
-              <Badge appearance="filled" color={windowsUI.dpiInfo.isHighDPI ? 'important' : 'subtle'}>
+              <Badge
+                appearance="filled"
+                color={windowsUI.dpiInfo.isHighDPI ? 'important' : 'subtle'}
+              >
                 {windowsUI.dpiInfo.isHighDPI ? 'Yes' : 'No'}
               </Badge>
             </div>
@@ -198,7 +208,8 @@ export function Windows11DemoPage() {
             </Badge>
             <Text as="p" size={300} style={{ marginTop: '12px', opacity: 0.7 }}>
               {windowsUI.dpiInfo.scaleCategory === 'normal' && 'Standard 100% display scaling'}
-              {windowsUI.dpiInfo.scaleCategory === 'medium' && 'Medium 150% display scaling (recommended)'}
+              {windowsUI.dpiInfo.scaleCategory === 'medium' &&
+                'Medium 150% display scaling (recommended)'}
               {windowsUI.dpiInfo.scaleCategory === 'high' && 'High 200% display scaling'}
               {windowsUI.dpiInfo.scaleCategory === 'very-high' && '300%+ display scaling'}
             </Text>
@@ -255,7 +266,8 @@ export function Windows11DemoPage() {
           <div style={{ fontFamily: 'monospace', fontSize: '14px' }}>
             <div style={{ marginBottom: '8px' }}>
               <Badge appearance="outline" color="brand">
-                body.{windowsUI.isWindows11 ? 'windows-11' : windowsUI.isWindows ? 'windows' : 'other'}
+                body.
+                {windowsUI.isWindows11 ? 'windows-11' : windowsUI.isWindows ? 'windows' : 'other'}
               </Badge>
             </div>
             <div style={{ marginBottom: '8px' }}>
@@ -265,8 +277,8 @@ export function Windows11DemoPage() {
             </div>
           </div>
           <Text as="p" size={300} style={{ marginTop: '16px', opacity: 0.7 }}>
-            These classes enable Windows 11-specific styling including rounded corners, acrylic materials, mica
-            effects, and DPI-aware sizing.
+            These classes enable Windows 11-specific styling including rounded corners, acrylic
+            materials, mica effects, and DPI-aware sizing.
           </Text>
         </Card>
       </div>
