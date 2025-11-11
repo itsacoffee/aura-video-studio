@@ -899,6 +899,9 @@ export interface OllamaStatusResponse {
   managedByApp: boolean;
   model?: string;
   error?: string;
+  installed?: boolean;
+  version?: string;
+  installPath?: string;
 }
 
 /**

@@ -178,16 +178,8 @@ export function ExportHistoryPage() {
           <Title1>Export History</Title1>
         </div>
         <SkeletonTable
-          columns={[
-            'Status',
-            'Preset',
-            'Platform',
-            'Resolution',
-            'Created',
-            'Duration',
-            'Size',
-            'Actions',
-          ]}
+          columns={8}
+          rows={10}
           rowCount={5}
         />
       </div>

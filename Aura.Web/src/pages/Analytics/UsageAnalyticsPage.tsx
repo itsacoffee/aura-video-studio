@@ -27,13 +27,11 @@ import {
 import {
   DataUsage24Regular,
   Money24Regular,
-  // SpeedHigh24Regular, // Not available in this version
+  Timer24Regular,
   ArrowDownload24Regular,
   Settings24Regular,
   Delete24Regular,
   DataPie24Regular,
-  ChevronUp24Regular,
-  ChevronDown24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect } from 'react';
 import {
@@ -230,6 +228,7 @@ export default function UsageAnalyticsPage() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
   const handleTabSelect = (_: SelectTabEvent, data: SelectTabData) => {
@@ -287,7 +286,7 @@ export default function UsageAnalyticsPage() {
     );
   }
 
-  const formatBytes = (bytes: number) => {
+  const _formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -324,7 +323,7 @@ export default function UsageAnalyticsPage() {
         <div className={styles.headerActions}>
           <Dropdown
             value={dateRange}
-            onOptionSelect={(_, data) => setDateRange(data.optionValue as any)}
+            onOptionSelect={(_, data) => setDateRange(data.optionValue as string)}
           >
             <Option value="7d">Last 7 days</Option>
             <Option value="30d">Last 30 days</Option>
@@ -363,7 +362,7 @@ export default function UsageAnalyticsPage() {
         <Tab value="overview" icon={<DataUsage24Regular />}>Overview</Tab>
         <Tab value="usage" icon={<DataUsage24Regular />}>Usage</Tab>
         <Tab value="costs" icon={<Money24Regular />}>Costs</Tab>
-        <Tab value="performance" icon={<SpeedHigh24Regular />}>Performance</Tab>
+        <Tab value="performance" icon={<Timer24Regular />}>Performance</Tab>
         <Tab value="settings" icon={<Settings24Regular />}>Settings</Tab>
       </TabList>
 
@@ -409,7 +408,7 @@ export default function UsageAnalyticsPage() {
 
             <Card className={styles.statCard}>
               <div className={styles.statHeader}>
-                <SpeedHigh24Regular />
+                <Timer24Regular />
                 <Text weight="semibold">Avg Duration</Text>
               </div>
               <div className={styles.statValue}>

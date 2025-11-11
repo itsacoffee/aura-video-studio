@@ -291,11 +291,6 @@ export function ProjectDetailsPage() {
                       />
                     </div>
                   </div>
-                  {project.currentStage && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Current stage: <strong>{project.currentStage}</strong>
-                    </p>
-                  )}
                 </div>
               </div>
             )}
