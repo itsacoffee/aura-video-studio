@@ -2,7 +2,7 @@
   "name": "aura-video-studio",
   "version": "1.0.0",
   "description": "AI-Powered Video Generation Studio",
-  "main": "electron.js",
+  "main": "electron/main.js",
   "author": {
     "name": "Coffee285",
     "email": "support@aura-video-studio.com"
@@ -33,8 +33,7 @@
       "buildResources": "build"
     },
     "files": [
-      "electron.js",
-      "preload.js",
+      "electron/**/*",
       "assets/**/*",
       "backend/**/*",
       "!backend/**/*.pdb",
