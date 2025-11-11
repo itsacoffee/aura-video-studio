@@ -316,7 +316,7 @@ public class JobQueueController : ControllerBase
     /// </summary>
     [HttpPut("configuration")]
     public async Task<IActionResult> UpdateConfiguration(
-        [FromBody] UpdateConfigurationRequest request,
+        [FromBody] JobQueueConfigurationRequest request,
         CancellationToken ct = default)
     {
         try
@@ -369,8 +369,8 @@ public record EnqueueJobRequest(
     bool IsQuickDemo = false);
 
 /// <summary>
-/// Request model for updating configuration
+/// Request model for updating job queue configuration
 /// </summary>
-public record UpdateConfigurationRequest(
+public record JobQueueConfigurationRequest(
     int? MaxConcurrentJobs = null,
     bool? IsEnabled = null);

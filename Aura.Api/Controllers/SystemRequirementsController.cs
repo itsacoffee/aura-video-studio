@@ -560,7 +560,7 @@ public class SystemRequirementsController : ControllerBase
 
     // Helper methods for detailed requirements endpoint
 
-    private async Task<object> GetDiskSpaceInfo()
+    private async Task<dynamic> GetDiskSpaceInfo()
     {
         var appPath = AppDomain.CurrentDomain.BaseDirectory;
         var drive = new DriveInfo(Path.GetPathRoot(appPath) ?? "C:\\");
@@ -592,7 +592,7 @@ public class SystemRequirementsController : ControllerBase
         };
     }
 
-    private async Task<object> GetGPUInformation()
+    private async Task<dynamic> GetGPUInformation()
     {
         var result = GetGPUInfo();
         if (result is OkObjectResult okResult && okResult.Value != null)
@@ -640,7 +640,7 @@ public class SystemRequirementsController : ControllerBase
         };
     }
 
-    private async Task<object> GetMemoryInformation()
+    private async Task<dynamic> GetMemoryInformation()
     {
         var result = GetMemoryInfo();
         if (result is OkObjectResult okResult && okResult.Value != null)
@@ -683,7 +683,7 @@ public class SystemRequirementsController : ControllerBase
         };
     }
 
-    private object GetOSInformation()
+    private dynamic GetOSInformation()
     {
         var platform = "Unknown";
         var compatible = true;

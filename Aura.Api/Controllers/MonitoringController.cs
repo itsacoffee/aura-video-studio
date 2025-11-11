@@ -163,7 +163,7 @@ public class MonitoringController : ControllerBase
             _logger.LogError(ex, "Failed to get histogram stats for {MetricName}", name);
             return Problem(
                 type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
-                title = "Metrics Error",
+                title: "Metrics Error",
                 detail: "Failed to retrieve histogram statistics",
                 statusCode: StatusCodes.Status500InternalServerError
             );

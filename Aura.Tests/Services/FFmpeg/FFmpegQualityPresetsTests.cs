@@ -77,7 +77,7 @@ public class FFmpegQualityPresetsTests
     [InlineData(QualityLevel.Good, 23)]
     [InlineData(QualityLevel.High, 18)]
     [InlineData(QualityLevel.Maximum, 15)]
-    public void GetPreset_AllLevels_ShouldHaveAppropriate CRF(QualityLevel level, int expectedCrf)
+    public void GetPreset_AllLevels_ShouldHaveAppropriateCRF(QualityLevel level, int expectedCrf)
     {
         // Act
         var preset = FFmpegQualityPresets.GetPreset(level);

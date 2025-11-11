@@ -101,7 +101,7 @@ public static class SecurityServicesExtensions
         services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, RateLimitBypassAuthorizationHandler>();
 
         // Configure cookie policy for secure cookies
-        services.Configure<Microsoft.AspNetCore.Http.CookiePolicyOptions>(options =>
+        services.Configure<Microsoft.AspNetCore.Builder.CookiePolicyOptions>(options =>
         {
             options.HttpOnly = Microsoft.AspNetCore.CookiePolicy.HttpOnlyPolicy.Always;
             options.Secure = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
@@ -143,8 +143,8 @@ public static class SecurityServicesExtensions
         // Security headers should be first
         app.UseSecurityHeaders();
 
-        // HTTPS enforcement
-        app.UseHttpsEnforcement(enforceHttps: true);
+        // HTTPS enforcement (use standard middleware)
+        app.UseHttpsRedirection();
 
         // Cookie policy
         app.UseCookiePolicy();
