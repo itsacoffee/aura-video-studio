@@ -157,6 +157,9 @@ const ActivityDemoPage = lazy(() =>
 const LayoutDemoPage = lazy(() =>
   import('./pages/LayoutDemoPage').then((m) => ({ default: m.LayoutDemoPage }))
 );
+const Windows11DemoPage = lazy(() =>
+  import('./pages/Windows11DemoPage').then((m) => ({ default: m.Windows11DemoPage }))
+);
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -995,6 +998,14 @@ function App() {
                                 element={
                                   <Suspense fallback={<Spinner label="Loading..." />}>
                                     <LayoutDemoPage />
+                                  </Suspense>
+                                }
+                              />
+                              <Route
+                                path="/windows11-demo"
+                                element={
+                                  <Suspense fallback={<Spinner label="Loading..." />}>
+                                    <Windows11DemoPage />
                                   </Suspense>
                                 }
                               />
