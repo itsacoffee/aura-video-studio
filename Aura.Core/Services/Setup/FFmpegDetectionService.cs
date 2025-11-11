@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
 
 namespace Aura.Core.Services.Setup;
 
@@ -173,14 +174,27 @@ public class FFmpegDetectionService : IFFmpegDetectionService
             }
         }
 
-        // 4. Check common Windows installation paths
+        // 4. Check Windows Registry for FFmpeg installations
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            var registryPath = FindFfmpegInWindowsRegistry();
+            if (!string.IsNullOrEmpty(registryPath))
+            {
+                _logger.LogDebug("Found FFmpeg via Windows Registry: {Path}", registryPath);
+                return registryPath;
+            }
+        }
+
+        // 5. Check common Windows installation paths
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             var commonPaths = new[]
             {
                 @"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
                 @"C:\Program Files (x86)\ffmpeg\bin\ffmpeg.exe",
-                @"C:\ffmpeg\bin\ffmpeg.exe"
+                @"C:\ffmpeg\bin\ffmpeg.exe",
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "ffmpeg", "bin", "ffmpeg.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ffmpeg", "bin", "ffmpeg.exe")
             };
 
             foreach (var path in commonPaths)
@@ -283,5 +297,113 @@ public class FFmpegDetectionService : IFFmpegDetectionService
         }
 
         return "unknown";
+    }
+
+    /// <summary>
+    /// Search Windows Registry for FFmpeg installation paths
+    /// </summary>
+    private string? FindFfmpegInWindowsRegistry()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return null;
+        }
+
+        try
+        {
+            // Common registry locations where installers might register FFmpeg
+            var registryPaths = new[]
+            {
+                // HKEY_LOCAL_MACHINE locations
+                (@"SOFTWARE\FFmpeg", RegistryHive.LocalMachine),
+                (@"SOFTWARE\WOW6432Node\FFmpeg", RegistryHive.LocalMachine),
+                (@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FFmpeg", RegistryHive.LocalMachine),
+                (@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\FFmpeg", RegistryHive.LocalMachine),
+                
+                // HKEY_CURRENT_USER locations
+                (@"SOFTWARE\FFmpeg", RegistryHive.CurrentUser),
+                (@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\FFmpeg", RegistryHive.CurrentUser)
+            };
+
+            foreach (var (subKey, hive) in registryPaths)
+            {
+                using var baseKey = RegistryKey.OpenBaseKey(hive, RegistryView.Registry64);
+                using var key = baseKey.OpenSubKey(subKey);
+                
+                if (key != null)
+                {
+                    // Try common value names
+                    var valueNames = new[] { "InstallLocation", "InstallPath", "Path", "BinPath" };
+                    
+                    foreach (var valueName in valueNames)
+                    {
+                        var value = key.GetValue(valueName) as string;
+                        if (!string.IsNullOrEmpty(value))
+                        {
+                            var ffmpegPath = FindFfmpegExecutableInDirectory(value);
+                            if (!string.IsNullOrEmpty(ffmpegPath))
+                            {
+                                _logger.LogInformation("Found FFmpeg via registry key: {Key}\\{Value}", subKey, valueName);
+                                return ffmpegPath;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Also check 32-bit registry view on 64-bit systems
+            if (Environment.Is64BitOperatingSystem)
+            {
+                using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32);
+                using var key = baseKey.OpenSubKey(@"SOFTWARE\FFmpeg");
+                
+                if (key != null)
+                {
+                    var installLocation = key.GetValue("InstallLocation") as string;
+                    if (!string.IsNullOrEmpty(installLocation))
+                    {
+                        var ffmpegPath = FindFfmpegExecutableInDirectory(installLocation);
+                        if (!string.IsNullOrEmpty(ffmpegPath))
+                        {
+                            _logger.LogInformation("Found FFmpeg via 32-bit registry");
+                            return ffmpegPath;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error searching Windows Registry for FFmpeg");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Find ffmpeg.exe in a directory (checking bin subdirectory too)
+    /// </summary>
+    private string? FindFfmpegExecutableInDirectory(string directory)
+    {
+        if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+        {
+            return null;
+        }
+
+        // Check if directory directly contains ffmpeg.exe
+        var directPath = Path.Combine(directory, "ffmpeg.exe");
+        if (File.Exists(directPath))
+        {
+            return directPath;
+        }
+
+        // Check bin subdirectory
+        var binPath = Path.Combine(directory, "bin", "ffmpeg.exe");
+        if (File.Exists(binPath))
+        {
+            return binPath;
+        }
+
+        return null;
     }
 }

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using Aura.Core.Models;
 using Aura.Core.Models.Export;
@@ -28,7 +30,7 @@ public class FFmpegCommandBuilder
     /// </summary>
     public FFmpegCommandBuilder AddInput(string filePath)
     {
-        _inputFiles.Add($"-i \"{filePath}\"");
+        _inputFiles.Add($"-i {EscapePath(filePath)}");
         return this;
     }
 
@@ -665,9 +667,46 @@ public class FFmpegCommandBuilder
         }
 
         // Add output file
-        command.Append($"\"{_outputFile}\"");
+        command.Append(EscapePath(_outputFile));
 
         return command.ToString();
+    }
+
+    /// <summary>
+    /// Escape file path for FFmpeg command line (Windows-safe)
+    /// </summary>
+    private static string EscapePath(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return "\"\"";
+        }
+
+        // On Windows, handle long paths and special characters
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            // Convert to absolute path if relative
+            if (!Path.IsPathRooted(path))
+            {
+                path = Path.GetFullPath(path);
+            }
+
+            // Handle Windows long path prefix (\\?\)
+            // FFmpeg on Windows doesn't work well with \\?\ prefix, so remove it
+            if (path.StartsWith(@\"\\?\", StringComparison.Ordinal))
+            {
+                path = path.Substring(4);
+            }
+
+            // Normalize path separators to forward slashes (FFmpeg prefers this on all platforms)
+            path = path.Replace('\\', '/');
+        }
+
+        // Escape double quotes inside the path
+        path = path.Replace("\"", "\\\"");
+
+        // Quote the entire path
+        return $"\"{path}\"";
     }
 
     /// <summary>
