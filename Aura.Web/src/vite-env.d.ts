@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+import type { ElectronAPI } from './types/electron-menu';
+
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_APP_VERSION: string;
@@ -19,14 +21,7 @@ interface ImportMeta {
 
 // Extend Window interface for Electron and browser APIs
 interface Window {
-  electron?: {
-    selectFolder: () => Promise<string | null>;
-    openPath: (path: string) => Promise<void>;
-    openExternal: (url: string) => Promise<void>;
-    backend?: {
-      getUrl(): Promise<string>;
-    };
-  };
+  electron?: ElectronAPI;
   // Global variables set by Electron
   AURA_BACKEND_URL?: string;
   AURA_IS_ELECTRON?: boolean;
