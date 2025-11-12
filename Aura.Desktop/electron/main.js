@@ -10,6 +10,10 @@ const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 
+// Import startup logging and diagnostics (MUST BE FIRST)
+const StartupLogger = require('./startup-logger');
+const StartupDiagnostics = require('./startup-diagnostics');
+
 // Import application modules
 const WindowManager = require('./window-manager');
 const AppConfig = require('./app-config');
@@ -25,11 +29,13 @@ const SystemHandler = require('./ipc-handlers/system-handler');
 const VideoHandler = require('./ipc-handlers/video-handler');
 const BackendHandler = require('./ipc-handlers/backend-handler');
 const FFmpegHandler = require('./ipc-handlers/ffmpeg-handler');
+const StartupLogsHandler = require('./ipc-handlers/startup-logs-handler');
 
 // ========================================
 // Global State
 // ========================================
 
+let startupLogger = null;
 let windowManager = null;
 let appConfig = null;
 let backendService = null;
@@ -43,7 +49,8 @@ let ipcHandlers = {
   system: null,
   video: null,
   backend: null,
-  ffmpeg: null
+  ffmpeg: null,
+  startupLogs: null
 };
 
 let isQuitting = false;
@@ -56,6 +63,7 @@ const MAX_CRASH_COUNT = 3;
 // ========================================
 
 const IS_DEV = process.argv.includes('--dev') || !app.isPackaged;
+const DEBUG_STARTUP = process.argv.includes('--debug-startup');
 const APP_NAME = 'Aura Video Studio';
 
 // Disable hardware acceleration if configured (helps with some Windows issues)
@@ -118,14 +126,25 @@ if (!gotTheLock) {
  * Setup error handling
  */
 function setupErrorHandling() {
+  if (startupLogger) {
+    startupLogger.stepStart('error-handling', 'ErrorHandling', 'Setting up error handlers');
+  }
+  
   // Handle uncaught exceptions
   process.on('uncaughtException', (error) => {
     console.error('Uncaught exception:', error);
     
     crashCount++;
     
-    // Log error
-    logError('UncaughtException', error);
+    // Log error with structured logging
+    if (startupLogger) {
+      startupLogger.error('UncaughtException', 'Uncaught exception occurred', error, {
+        crashCount,
+        maxCrashCount: MAX_CRASH_COUNT
+      });
+    } else {
+      logError('UncaughtException', error);
+    }
     
     // Show error dialog
     if (crashCount < MAX_CRASH_COUNT) {
@@ -153,13 +172,27 @@ function setupErrorHandling() {
     console.error('Unhandled rejection at:', promise, 'reason:', reason);
     
     // Log error
-    logError('UnhandledRejection', reason);
+    if (startupLogger) {
+      startupLogger.error('UnhandledRejection', 'Unhandled promise rejection', reason instanceof Error ? reason : new Error(String(reason)));
+    } else {
+      logError('UnhandledRejection', reason);
+    }
   });
 
   // Handle process warnings
   process.on('warning', (warning) => {
     console.warn('Process warning:', warning);
+    if (startupLogger) {
+      startupLogger.warn('ProcessWarning', warning.message, {
+        name: warning.name,
+        stack: warning.stack
+      });
+    }
   });
+  
+  if (startupLogger) {
+    startupLogger.stepEnd('error-handling', true);
+  }
 }
 
 /**
@@ -200,8 +233,16 @@ function logError(type, error) {
  * Setup auto-updater
  */
 function setupAutoUpdater() {
+  if (startupLogger) {
+    startupLogger.stepStart('auto-updater', 'AutoUpdater', 'Configuring auto-updater');
+  }
+  
   if (IS_DEV) {
     console.log('Auto-updater disabled in development mode');
+    if (startupLogger) {
+      startupLogger.info('AutoUpdater', 'Auto-updater disabled in development mode');
+      startupLogger.stepEnd('auto-updater', true);
+    }
     return;
   }
 
@@ -212,6 +253,9 @@ function setupAutoUpdater() {
   // Update available
   autoUpdater.on('update-available', (info) => {
     console.log('Update available:', info.version);
+    if (startupLogger) {
+      startupLogger.info('AutoUpdater', 'Update available', { version: info.version });
+    }
 
     const mainWindow = windowManager.getMainWindow();
     dialog.showMessageBox(mainWindow, {
@@ -232,6 +276,9 @@ function setupAutoUpdater() {
   // Update not available
   autoUpdater.on('update-not-available', () => {
     console.log('Application is up to date');
+    if (startupLogger) {
+      startupLogger.info('AutoUpdater', 'Application is up to date');
+    }
   });
 
   // Download progress
@@ -248,6 +295,9 @@ function setupAutoUpdater() {
   // Update downloaded
   autoUpdater.on('update-downloaded', (info) => {
     console.log('Update downloaded:', info.version);
+    if (startupLogger) {
+      startupLogger.info('AutoUpdater', 'Update downloaded', { version: info.version });
+    }
 
     const mainWindow = windowManager.getMainWindow();
     if (mainWindow) {
@@ -273,6 +323,9 @@ function setupAutoUpdater() {
   // Update error
   autoUpdater.on('error', (error) => {
     console.error('Auto-updater error:', error);
+    if (startupLogger) {
+      startupLogger.error('AutoUpdater', 'Auto-updater error', error);
+    }
   });
 
   // Check for updates on startup (if enabled)
@@ -281,8 +334,15 @@ function setupAutoUpdater() {
     setTimeout(() => {
       autoUpdater.checkForUpdates().catch(err => {
         console.error('Update check failed:', err);
+        if (startupLogger) {
+          startupLogger.error('AutoUpdater', 'Update check failed', err);
+        }
       });
     }, 5000);
+  }
+  
+  if (startupLogger) {
+    startupLogger.stepEnd('auto-updater', true, { autoUpdate });
   }
 }
 
@@ -294,36 +354,79 @@ function setupAutoUpdater() {
  * Register all IPC handlers
  */
 function registerIpcHandlers() {
+  if (startupLogger) {
+    startupLogger.stepStart('ipc-handlers', 'IPC', 'Registering IPC handlers');
+  }
+  
   console.log('Registering IPC handlers...');
 
-  // Config handler
-  ipcHandlers.config = new ConfigHandler(appConfig);
-  ipcHandlers.config.register();
+  try {
+    // Config handler
+    ipcHandlers.config = new ConfigHandler(appConfig);
+    ipcHandlers.config.register();
+    if (startupLogger) {
+      startupLogger.debug('IPC', 'Config handler registered');
+    }
 
-  // System handler
-  ipcHandlers.system = new SystemHandler(app, windowManager, appConfig);
-  ipcHandlers.system.register();
+    // System handler
+    ipcHandlers.system = new SystemHandler(app, windowManager, appConfig);
+    ipcHandlers.system.register();
+    if (startupLogger) {
+      startupLogger.debug('IPC', 'System handler registered');
+    }
 
-  // Video handler
-  const backendUrl = backendService.getUrl();
-  ipcHandlers.video = new VideoHandler(backendUrl);
-  ipcHandlers.video.register();
+    // Video handler
+    const backendUrl = backendService.getUrl();
+    ipcHandlers.video = new VideoHandler(backendUrl);
+    ipcHandlers.video.register();
+    if (startupLogger) {
+      startupLogger.debug('IPC', 'Video handler registered', { backendUrl });
+    }
 
-  // Backend handler (pass backendService for control operations)
-  ipcHandlers.backend = new BackendHandler(backendUrl, backendService);
-  ipcHandlers.backend.register();
+    // Backend handler (pass backendService for control operations)
+    ipcHandlers.backend = new BackendHandler(backendUrl, backendService);
+    ipcHandlers.backend.register();
+    if (startupLogger) {
+      startupLogger.debug('IPC', 'Backend handler registered');
+    }
 
-  // Start backend health checks
-  const mainWindow = windowManager.getMainWindow();
-  if (mainWindow) {
-    ipcHandlers.backend.startHealthChecks(mainWindow);
+    // Start backend health checks
+    const mainWindow = windowManager.getMainWindow();
+    if (mainWindow) {
+      ipcHandlers.backend.startHealthChecks(mainWindow);
+      if (startupLogger) {
+        startupLogger.debug('IPC', 'Backend health checks started');
+      }
+    }
+
+    // FFmpeg handler
+    ipcHandlers.ffmpeg = new FFmpegHandler(app, windowManager);
+    ipcHandlers.ffmpeg.register();
+    if (startupLogger) {
+      startupLogger.debug('IPC', 'FFmpeg handler registered');
+    }
+
+    // Startup logs handler
+    ipcHandlers.startupLogs = new StartupLogsHandler(app, startupLogger);
+    ipcHandlers.startupLogs.register();
+    if (startupLogger) {
+      startupLogger.debug('IPC', 'Startup logs handler registered');
+    }
+
+    console.log('IPC handlers registered successfully');
+    
+    if (startupLogger) {
+      startupLogger.stepEnd('ipc-handlers', true, {
+        handlersRegistered: Object.keys(ipcHandlers).length
+      });
+    }
+  } catch (error) {
+    if (startupLogger) {
+      startupLogger.error('IPC', 'Failed to register IPC handlers', error);
+      startupLogger.stepEnd('ipc-handlers', false, { error: error.message });
+    }
+    throw error;
   }
-
-  // FFmpeg handler
-  ipcHandlers.ffmpeg = new FFmpegHandler(app, windowManager);
-  ipcHandlers.ffmpeg.register();
-
-  console.log('IPC handlers registered successfully');
 }
 
 // ========================================
@@ -334,12 +437,23 @@ function registerIpcHandlers() {
  * Check if this is the first run and run Windows-specific setup if needed
  */
 async function checkFirstRun() {
+  if (startupLogger) {
+    startupLogger.stepStart('first-run-check', 'FirstRun', 'Checking first run status');
+  }
+  
   const setupComplete = appConfig.isSetupComplete();
   const firstRun = appConfig.isFirstRun();
+
+  if (startupLogger) {
+    startupLogger.debug('FirstRun', 'First run check', { setupComplete, firstRun });
+  }
 
   // Run Windows-specific setup wizard on first run (Windows only)
   if ((firstRun || !setupComplete) && process.platform === 'win32') {
     console.log('First run detected on Windows, running Windows setup wizard...');
+    if (startupLogger) {
+      startupLogger.info('FirstRun', 'Running Windows setup wizard');
+    }
     
     // Initialize Windows setup wizard
     windowsSetupWizard = new WindowsSetupWizard(app, windowManager, appConfig);
@@ -351,6 +465,12 @@ async function checkFirstRun() {
         
         if (!setupResult.success) {
           console.warn('Windows setup wizard encountered issues:', setupResult);
+          
+          if (startupLogger) {
+            startupLogger.warn('FirstRun', 'Windows setup encountered issues', {
+              errors: setupResult.results?.errors || []
+            });
+          }
           
           // Show warning to user if there were critical errors
           if (setupResult.results && setupResult.results.errors.length > 0) {
@@ -370,9 +490,15 @@ async function checkFirstRun() {
           }
         } else {
           console.log('✓ Windows setup wizard completed successfully');
+          if (startupLogger) {
+            startupLogger.info('FirstRun', 'Windows setup completed successfully');
+          }
         }
       } catch (error) {
         console.error('Windows setup wizard error:', error);
+        if (startupLogger) {
+          startupLogger.error('FirstRun', 'Windows setup wizard error', error);
+        }
       }
     } else {
       // Run quick compatibility check on subsequent launches
@@ -380,6 +506,12 @@ async function checkFirstRun() {
         const quickCheck = await windowsSetupWizard.quickCheck();
         if (!quickCheck.compatible) {
           console.warn('Windows compatibility issues detected:', quickCheck.issues);
+          
+          if (startupLogger) {
+            startupLogger.warn('FirstRun', 'Compatibility issues detected', {
+              issues: quickCheck.issues
+            });
+          }
           
           // Show warning for critical issues
           const criticalIssues = quickCheck.issues.filter(i => i.type === 'error');
@@ -398,6 +530,9 @@ async function checkFirstRun() {
         }
       } catch (error) {
         console.error('Quick compatibility check error:', error);
+        if (startupLogger) {
+          startupLogger.error('FirstRun', 'Quick compatibility check error', error);
+        }
       }
     }
   }
@@ -405,6 +540,10 @@ async function checkFirstRun() {
   // Navigate to setup wizard in UI if not complete
   if (!setupComplete || firstRun) {
     console.log('First run detected, navigating to setup wizard...');
+    
+    if (startupLogger) {
+      startupLogger.info('FirstRun', 'Navigating to setup wizard in UI');
+    }
     
     const mainWindow = windowManager.getMainWindow();
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -414,6 +553,10 @@ async function checkFirstRun() {
         }
       `);
     }
+  }
+  
+  if (startupLogger) {
+    startupLogger.stepEnd('first-run-check', true, { setupComplete, firstRun });
   }
 }
 
@@ -426,23 +569,39 @@ async function checkFirstRun() {
  */
 async function cleanup() {
   console.log('Cleaning up application resources...');
+  
+  if (startupLogger) {
+    startupLogger.info('Cleanup', 'Starting application cleanup');
+  }
 
   try {
     // Stop backend health checks
     if (ipcHandlers.backend) {
       ipcHandlers.backend.stopHealthChecks();
+      if (startupLogger) {
+        startupLogger.debug('Cleanup', 'Backend health checks stopped');
+      }
     }
 
     // Stop backend service (now async for proper Windows process termination)
     if (backendService) {
       console.log('Stopping backend service...');
+      if (startupLogger) {
+        startupLogger.info('Cleanup', 'Stopping backend service');
+      }
       await backendService.stop();
       console.log('Backend service stopped');
+      if (startupLogger) {
+        startupLogger.info('Cleanup', 'Backend service stopped successfully');
+      }
     }
 
     // Destroy tray
     if (trayManager) {
       trayManager.destroy();
+      if (startupLogger) {
+        startupLogger.debug('Cleanup', 'System tray destroyed');
+      }
     }
 
     // Cleanup temp files
@@ -451,14 +610,29 @@ async function cleanup() {
       try {
         fs.rmSync(tempPath, { recursive: true, force: true });
         console.log('Temp files cleaned up');
+        if (startupLogger) {
+          startupLogger.debug('Cleanup', 'Temp files cleaned up', { tempPath });
+        }
       } catch (error) {
         console.warn('Failed to cleanup temp files:', error.message);
+        if (startupLogger) {
+          startupLogger.warn('Cleanup', 'Failed to cleanup temp files', { 
+            error: error.message,
+            tempPath 
+          });
+        }
       }
     }
 
     console.log('Cleanup completed');
+    if (startupLogger) {
+      startupLogger.info('Cleanup', 'Application cleanup completed successfully');
+    }
   } catch (error) {
     console.error('Error during cleanup:', error);
+    if (startupLogger) {
+      startupLogger.error('Cleanup', 'Error during cleanup', error);
+    }
   }
 }
 
@@ -478,42 +652,104 @@ async function startApplication() {
     console.log('Platform:', process.platform);
     console.log('Architecture:', process.arch);
     console.log('Development Mode:', IS_DEV);
+    console.log('Debug Startup:', DEBUG_STARTUP);
     console.log('Node:', process.versions.node);
     console.log('Electron:', process.versions.electron);
     console.log('Chrome:', process.versions.chrome);
     console.log('User Data:', app.getPath('userData'));
     console.log('='.repeat(60));
 
+    // Initialize startup logger (BEFORE anything else)
+    startupLogger = new StartupLogger(app, { debugMode: DEBUG_STARTUP });
+    startupLogger.info('Main', 'Application startup initiated', {
+      version: app.getVersion(),
+      platform: process.platform,
+      arch: process.arch,
+      isDev: IS_DEV,
+      debugStartup: DEBUG_STARTUP,
+      userDataPath: app.getPath('userData')
+    });
+
+    // Run startup diagnostics
+    const diagnostics = new StartupDiagnostics(app, startupLogger);
+    const diagnosticsResults = await startupLogger.trackAsync(
+      'diagnostics',
+      'StartupDiagnostics',
+      'Running startup diagnostics',
+      () => diagnostics.runDiagnostics()
+    );
+
+    // Warn if diagnostics found issues
+    if (!diagnosticsResults.healthy) {
+      startupLogger.warn('StartupDiagnostics', 'System health check detected issues', {
+        errors: diagnosticsResults.errors.length,
+        warnings: diagnosticsResults.warnings.length
+      });
+    }
+
     // Initialize app config
-    appConfig = new AppConfig(app);
+    appConfig = startupLogger.trackSync(
+      'app-config',
+      'AppConfig',
+      'Initializing application configuration',
+      () => new AppConfig(app)
+    );
     console.log('✓ App configuration initialized');
 
     // Initialize window manager
-    windowManager = new WindowManager(app, IS_DEV);
+    windowManager = startupLogger.trackSync(
+      'window-manager',
+      'WindowManager',
+      'Initializing window manager',
+      () => new WindowManager(app, IS_DEV)
+    );
     console.log('✓ Window manager initialized');
 
     // Show splash screen
+    startupLogger.stepStart('splash-screen', 'WindowManager', 'Creating splash screen');
     windowManager.createSplashWindow();
     console.log('✓ Splash screen displayed');
+    startupLogger.stepEnd('splash-screen', true);
 
     // Initialize protocol handler
-    protocolHandler = new ProtocolHandler(windowManager);
-    protocolHandler.register();
+    protocolHandler = startupLogger.trackSync(
+      'protocol-handler',
+      'ProtocolHandler',
+      'Initializing protocol handler',
+      () => {
+        const handler = new ProtocolHandler(windowManager);
+        handler.register();
+        return handler;
+      }
+    );
     console.log('✓ Protocol handler registered');
 
     // Start backend service
-    backendService = new BackendService(app, IS_DEV);
-    await backendService.start();
-    console.log('✓ Backend service started on port:', backendService.getPort());
+    backendService = await startupLogger.trackAsync(
+      'backend-service',
+      'BackendService',
+      'Starting backend service',
+      async () => {
+        const service = new BackendService(app, IS_DEV);
+        await service.start();
+        console.log('✓ Backend service started on port:', service.getPort());
+        return service;
+      }
+    );
 
     // Register IPC handlers
     registerIpcHandlers();
     console.log('✓ IPC handlers registered');
 
     // Create main window
+    startupLogger.stepStart('main-window', 'WindowManager', 'Creating main window');
     const preloadPath = path.join(__dirname, 'preload.js');
     windowManager.createMainWindow(backendService.getPort(), preloadPath);
     console.log('✓ Main window created');
+    startupLogger.stepEnd('main-window', true, { 
+      port: backendService.getPort(),
+      preloadPath 
+    });
 
     // Handle window close event
     const mainWindow = windowManager.getMainWindow();
@@ -536,18 +772,33 @@ async function startApplication() {
     });
 
     // Create system tray (optional, non-critical)
+    startupLogger.stepStart('system-tray', 'TrayManager', 'Creating system tray');
     trayManager = new TrayManager(app, windowManager, IS_DEV);
     const trayCreated = trayManager.create();
     if (trayCreated) {
       trayManager.setBackendUrl(backendService.getUrl());
       console.log('✓ System tray created');
+      startupLogger.stepEnd('system-tray', true);
     } else {
       console.log('⚠ System tray not created (icon not found, but app will continue)');
+      startupLogger.stepEnd('system-tray', true, { 
+        created: false, 
+        reason: 'icon not found' 
+      });
+    }
 
     // Build application menu
-    menuBuilder = new MenuBuilder(app, windowManager, appConfig, IS_DEV);
-    menuBuilder.buildMenu();
-    console.log('✓ Application menu created');
+    menuBuilder = startupLogger.trackSync(
+      'app-menu',
+      'MenuBuilder',
+      'Building application menu',
+      () => {
+        const builder = new MenuBuilder(app, windowManager, appConfig, IS_DEV);
+        builder.buildMenu();
+        console.log('✓ Application menu created');
+        return builder;
+      }
+    );
 
     // Setup auto-updater
     setupAutoUpdater();
@@ -559,8 +810,33 @@ async function startApplication() {
         await checkFirstRun();
       } catch (error) {
         console.error('First run check error:', error);
+        if (startupLogger) {
+          startupLogger.error('FirstRun', 'First run check error', error);
+        }
       }
       protocolHandler.checkPendingUrl();
+      
+      // Finalize startup logging
+      if (startupLogger) {
+        const summary = startupLogger.finalize();
+        
+        // Keep DevTools open in debug startup mode
+        if (DEBUG_STARTUP && mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.openDevTools();
+          startupLogger.info('Main', 'DevTools opened (debug-startup mode)');
+        }
+        
+        // Log summary to console
+        console.log('='.repeat(60));
+        console.log('STARTUP SUMMARY');
+        console.log('='.repeat(60));
+        console.log(`Status: ${summary.success ? 'SUCCESS' : 'COMPLETED WITH ERRORS'}`);
+        console.log(`Duration: ${summary.totalDurationSeconds}s`);
+        console.log(`Steps: ${summary.statistics.successfulSteps}/${summary.statistics.totalSteps} successful`);
+        console.log(`Log File: ${startupLogger.getLogFile()}`);
+        console.log(`Summary: ${startupLogger.getSummaryFile()}`);
+        console.log('='.repeat(60));
+      }
     });
 
     console.log('='.repeat(60));
@@ -569,6 +845,14 @@ async function startApplication() {
 
   } catch (error) {
     console.error('Startup failed:', error);
+    
+    // Log to startup logger if available
+    if (startupLogger) {
+      startupLogger.error('Main', 'Application startup failed', error, {
+        fatal: true
+      });
+      startupLogger.finalize();
+    }
 
     // Close splash if it exists
     if (windowManager) {
@@ -578,10 +862,15 @@ async function startApplication() {
       }
     }
 
+    const logsDir = startupLogger 
+      ? startupLogger.getLogsDirectory() 
+      : path.join(app.getPath('userData'), 'logs');
+
     dialog.showErrorBox(
       'Startup Error',
       `Failed to start ${APP_NAME}:\n\n${error.message}\n\n` +
-      `Please check the logs for more information:\n${path.join(app.getPath('userData'), 'logs')}`
+      `Stack trace:\n${error.stack}\n\n` +
+      `Please check the logs for more information:\n${logsDir}`
     );
 
     app.quit();
@@ -741,5 +1030,6 @@ module.exports = {
   backendService,
   trayManager,
   menuBuilder,
-  protocolHandler
+  protocolHandler,
+  startupLogger
 };

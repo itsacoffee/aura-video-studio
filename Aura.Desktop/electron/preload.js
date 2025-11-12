@@ -39,6 +39,10 @@ const VALID_CHANNELS = {
             'backend:restart', 'backend:stop', 'backend:status',
             'backend:checkFirewall', 'backend:getFirewallRule', 'backend:getFirewallCommand'],
   
+  // Startup logs channels
+  STARTUP_LOGS: ['startup-logs:get-latest', 'startup-logs:get-summary', 'startup-logs:get-log-content',
+                 'startup-logs:list', 'startup-logs:read-file', 'startup-logs:open-directory'],
+  
   // Update channels
   UPDATES: ['updates:check']
 };
@@ -211,6 +215,16 @@ contextBridge.exposeInMainWorld('electron', {
     getFirewallCommand: () => safeInvoke('backend:getFirewallCommand'),
     onHealthUpdate: (callback) => safeOn('backend:healthUpdate', callback),
     onProviderUpdate: (callback) => safeOn('backend:providerUpdate', callback)
+  },
+  
+  // Startup logs
+  startupLogs: {
+    getLatest: () => safeInvoke('startup-logs:get-latest'),
+    getSummary: () => safeInvoke('startup-logs:get-summary'),
+    getLogContent: () => safeInvoke('startup-logs:get-log-content'),
+    list: () => safeInvoke('startup-logs:list'),
+    readFile: (filePath) => safeInvoke('startup-logs:read-file', filePath),
+    openDirectory: () => safeInvoke('startup-logs:open-directory')
   },
   
   // Update management
