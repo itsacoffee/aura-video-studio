@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   makeStyles,
   shorthands,
@@ -12,6 +11,7 @@ import {
   Label,
 } from '@fluentui/react-components';
 import { Dismiss24Regular } from '@fluentui/react-icons';
+import React from 'react';
 import type {
   MediaSearchRequest,
   MediaCollectionResponse,

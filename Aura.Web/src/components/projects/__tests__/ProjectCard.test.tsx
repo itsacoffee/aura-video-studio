@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { ProjectCard } from '../ProjectCard';
+import { describe, it, expect, vi } from 'vitest';
 import { Project } from '../../../api/projectManagement';
+import { ProjectCard } from '../ProjectCard';
 
 const mockProject: Project = {
   id: '123',

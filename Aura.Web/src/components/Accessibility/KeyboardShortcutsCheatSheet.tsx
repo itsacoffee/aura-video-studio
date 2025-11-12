@@ -23,8 +23,8 @@ import { Dismiss24Regular, Search24Regular, Keyboard24Regular } from '@fluentui/
 import { useState, useMemo } from 'react';
 import { keyboardShortcutManager } from '../../services/keyboardShortcutManager';
 import { useKeybindingsStore, shortcutMetadata } from '../../state/keybindings';
-import { formatShortcutForDisplay, getCategoryDescription } from '../../utils/keybinding-utils';
 import type { ShortcutKey } from '../../types/keybinding';
+import { formatShortcutForDisplay, getCategoryDescription } from '../../utils/keybinding-utils';
 
 const useStyles = makeStyles({
   surface: {

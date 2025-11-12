@@ -3,9 +3,9 @@
  * Handles user profile management and preferences
  */
 
+import { loggingService } from '../loggingService';
 import { get, post, put, del } from './apiClient';
 import type { UserProfile } from './authApi';
-import { loggingService } from '../loggingService';
 
 export interface UserPreferences {
   theme?: 'light' | 'dark' | 'auto';

@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import { ErrorCircle24Filled } from '@fluentui/react-icons';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { shakeVariants, scaleVariants } from '../../utils/animations';
 

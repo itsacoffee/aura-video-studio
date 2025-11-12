@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { X, Search, Book, Keyboard, HelpCircle, ExternalLink, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface HelpSection {
   id: string;

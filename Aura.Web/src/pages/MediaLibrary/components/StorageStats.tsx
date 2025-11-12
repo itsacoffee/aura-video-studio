@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   makeStyles,
   shorthands,
@@ -8,6 +7,7 @@ import {
   ProgressBar,
   Badge,
 } from '@fluentui/react-components';
+import React from 'react';
 import type { StorageStats as StorageStatsType } from '../../../types/mediaLibrary';
 import { formatFileSize } from '../../../utils/format';
 

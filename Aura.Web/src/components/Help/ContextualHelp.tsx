@@ -1,5 +1,5 @@
-import React from 'react';
 import { HelpCircle, Info, AlertCircle, CheckCircle } from 'lucide-react';
+import React from 'react';
 
 type HelpType = 'info' | 'tip' | 'warning' | 'success';
 

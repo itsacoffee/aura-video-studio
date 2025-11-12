@@ -3,8 +3,8 @@
  * Manages project CRUD operations with optimistic updates and caching
  */
 
-import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
+import { useState, useCallback, useEffect } from 'react';
 import {
   listProjects,
   getProject,

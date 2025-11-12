@@ -1,6 +1,6 @@
+import { Dismiss24Regular } from '@fluentui/react-icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReactNode, useEffect } from 'react';
-import { Dismiss24Regular } from '@fluentui/react-icons';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { backdropVariants, scaleVariants } from '../../utils/animations';
 

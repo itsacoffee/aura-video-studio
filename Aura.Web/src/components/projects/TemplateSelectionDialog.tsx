@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { X, Sparkles } from 'lucide-react';
+import { useState } from 'react';
 import { projectManagementApi, Template } from '../../api/projectManagement';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';

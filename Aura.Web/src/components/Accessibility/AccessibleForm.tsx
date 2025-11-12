@@ -5,7 +5,6 @@
  * error announcements, and validation messages.
  */
 
-import React, { useId, useCallback } from 'react';
 import {
   Input,
   Textarea,
@@ -14,8 +13,9 @@ import {
   tokens,
   Text,
 } from '@fluentui/react-components';
-import { useAccessibility } from '../../contexts/AccessibilityContext';
 import { ErrorCircle20Regular, Checkmark20Regular } from '@fluentui/react-icons';
+import React, { useId, useCallback } from 'react';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 const useStyles = makeStyles({
   fieldContainer: {

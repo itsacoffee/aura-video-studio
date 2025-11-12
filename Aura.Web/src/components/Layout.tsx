@@ -2,6 +2,7 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 import { ReactNode, useState } from 'react';
 import { useTheme } from '../App';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
+import { SkipLinks } from './Accessibility/SkipLinks';
 import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationCenter } from './dashboard/NotificationCenter';
 import { MobileBottomNav } from './MobileBottomNav';
@@ -10,7 +11,6 @@ import { ResultsTray } from './ResultsTray';
 import { Sidebar } from './Sidebar';
 import { SystemStatusIndicator } from './SystemStatus';
 import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
-import { SkipLinks } from './Accessibility/SkipLinks';
 
 const useStyles = makeStyles({
   container: {

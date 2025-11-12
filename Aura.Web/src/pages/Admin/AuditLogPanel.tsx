@@ -1,5 +1,5 @@
-import React from 'react';
 import { Card, Text, Title2 } from '@fluentui/react-components';
+import React from 'react';
 
 export default function AuditLogPanel() {
   return (

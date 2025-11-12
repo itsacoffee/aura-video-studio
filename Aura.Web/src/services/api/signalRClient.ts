@@ -4,8 +4,8 @@
  */
 
 import * as signalR from '@microsoft/signalr';
-import { env } from '@/config/env';
 import { loggingService } from '../loggingService';
+import { env } from '@/config/env';
 
 export type ConnectionState = 'Disconnected' | 'Connecting' | 'Connected' | 'Reconnecting' | 'Disconnected';
 
