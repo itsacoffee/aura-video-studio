@@ -63,40 +63,57 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 // Configure Serilog with structured logging and separate log files
+// Use AURA_LOGS_PATH if set (by Electron or container), otherwise use relative logs/ directory
+var logsBasePath = Environment.GetEnvironmentVariable("AURA_LOGS_PATH") ?? "logs";
+
+// Ensure logs directory exists before Serilog tries to write to it
+try
+{
+    Directory.CreateDirectory(logsBasePath);
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Warning: Could not create logs directory at {logsBasePath}: {ex.Message}");
+    Console.WriteLine("Falling back to current directory for logs");
+    logsBasePath = "."; // Fallback to current directory if we can't create logs directory
+}
+
+Console.WriteLine($"Logs will be written to: {Path.GetFullPath(logsBasePath)}");
+
 var outputTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] [{CorrelationId}] [{TraceId}] [{SpanId}] {Message:lj} {Properties:j}{NewLine}{Exception}";
 
 var loggerConfig = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .ConfigureStructuredLogging("Aura.Api") // Use our custom extension with all enrichers
     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{CorrelationId}] {Message:lj}{NewLine}{Exception}")
-    .WriteTo.File("logs/aura-api-.log", 
+    .WriteTo.File(Path.Combine(logsBasePath, "aura-api-.log"), 
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30, // 30 days retention
         outputTemplate: outputTemplate,
         rollOnFileSizeLimit: true,
         fileSizeLimitBytes: 100_000_000) // 100MB per file
-    .WriteTo.File("logs/errors-.log",
+    .WriteTo.File(Path.Combine(logsBasePath, "errors-.log"),
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
         restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error,
         outputTemplate: outputTemplate,
         rollOnFileSizeLimit: true,
         fileSizeLimitBytes: 100_000_000)
-    .WriteTo.File("logs/warnings-.log",
+    .WriteTo.File(Path.Combine(logsBasePath, "warnings-.log"),
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
         restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning,
         outputTemplate: outputTemplate,
         rollOnFileSizeLimit: true,
         fileSizeLimitBytes: 100_000_000)
-    .WriteTo.File("logs/performance-.log",
+    .WriteTo.File(Path.Combine(logsBasePath, "performance-.log"),
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 30,
         outputTemplate: outputTemplate,
         restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
         rollOnFileSizeLimit: true,
         fileSizeLimitBytes: 100_000_000)
-    .WriteTo.File("logs/audit-.log",
+    .WriteTo.File(Path.Combine(logsBasePath, "audit-.log"),
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 90, // 90 days for audit logs
         outputTemplate: outputTemplate,
@@ -125,6 +142,9 @@ if (OperatingSystem.IsWindows())
 Log.Logger = loggerConfig.CreateLogger();
 
 builder.Host.UseSerilog();
+
+// Log the actual logs directory being used for troubleshooting
+Log.Information("Logging initialized. Logs directory: {LogsPath}", Path.GetFullPath(logsBasePath));
 
 // Add global exception handler and ProblemDetails support
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
