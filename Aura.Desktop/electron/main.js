@@ -56,7 +56,9 @@ let isCleaningUp = false;
 let crashCount = 0;
 const MAX_CRASH_COUNT = 3;
 
-// Track degraded mode state
+// Track safe mode and degraded mode state
+let safeMode = false;
+let safeModeFeatures = [];
 let degradedModeFeatures = [];
 
 // ========================================
@@ -692,6 +694,25 @@ async function startApplication() {
     }
     console.log('✓ App configuration initialized');
 
+    // Step 6a: Check if we should enter safe mode
+    safeMode = appConfig.shouldEnterSafeMode(MAX_CRASH_COUNT);
+    if (safeMode) {
+      console.log('⚠ SAFE MODE ACTIVATED');
+      console.log(`  Crash count: ${appConfig.getCrashCount()}/${MAX_CRASH_COUNT}`);
+      
+      if (startupLogger) {
+        startupLogger.warn('SafeMode', 'Application starting in safe mode', {
+          crashCount: appConfig.getCrashCount(),
+          maxCrashes: MAX_CRASH_COUNT,
+          lastCrashTime: appConfig.getLastCrashTime()
+        });
+      }
+      
+      appConfig.enableSafeMode();
+    } else {
+      appConfig.disableSafeMode();
+    }
+
     // Step 7: Initialize window manager
     const windowResult = SafeInit.initializeWindowManager(app, IS_DEV, initializationTracker, startupLogger, earlyCrashLogger);
     
@@ -714,16 +735,23 @@ async function startApplication() {
       initializationTracker.skipStep(InitializationStep.SPLASH_SCREEN, 'Failed to create splash window');
     }
 
-    // Step 9: Initialize protocol handler
-    const protocolResult = SafeInit.initializeProtocolHandler(windowManager, initializationTracker, startupLogger, earlyCrashLogger);
-    
-    protocolHandler = protocolResult.component;
-    
-    if (protocolResult.degradedMode) {
-      degradedModeFeatures.push('Protocol handling (deep linking disabled)');
-      console.log('⚠ Protocol handler running in degraded mode');
+    // Step 9: Initialize protocol handler (skip in safe mode)
+    if (safeMode) {
+      console.log('⚠ Skipping protocol handler (safe mode)');
+      safeModeFeatures.push('Protocol handling (deep linking disabled)');
+      initializationTracker.skipStep(InitializationStep.PROTOCOL_HANDLER, 'Disabled in safe mode');
+      protocolHandler = null;
     } else {
-      console.log('✓ Protocol handler registered');
+      const protocolResult = SafeInit.initializeProtocolHandler(windowManager, initializationTracker, startupLogger, earlyCrashLogger);
+      
+      protocolHandler = protocolResult.component;
+      
+      if (protocolResult.degradedMode) {
+        degradedModeFeatures.push('Protocol handling (deep linking disabled)');
+        console.log('⚠ Protocol handler running in degraded mode');
+      } else {
+        console.log('✓ Protocol handler registered');
+      }
     }
 
     // Step 10: Start backend service
@@ -816,22 +844,29 @@ async function startApplication() {
       throw new Error(`Critical: Failed to create main window: ${error.message}`);
     }
 
-    // Step 13: Create system tray (optional)
-    initializationTracker.startStep(InitializationStep.SYSTEM_TRAY);
-    try {
-      trayManager = new TrayManager(app, windowManager, IS_DEV);
-      const trayCreated = trayManager.create();
-      if (trayCreated) {
-        trayManager.setBackendUrl(backendService.getUrl());
-        console.log('✓ System tray created');
-        initializationTracker.succeedStep(InitializationStep.SYSTEM_TRAY);
-      } else {
-        console.log('⚠ System tray not created (icon not found, but app will continue)');
-        initializationTracker.skipStep(InitializationStep.SYSTEM_TRAY, 'Icon not found');
+    // Step 13: Create system tray (skip in safe mode)
+    if (safeMode) {
+      console.log('⚠ Skipping system tray (safe mode)');
+      safeModeFeatures.push('System tray (minimize to tray disabled)');
+      initializationTracker.skipStep(InitializationStep.SYSTEM_TRAY, 'Disabled in safe mode');
+      trayManager = null;
+    } else {
+      initializationTracker.startStep(InitializationStep.SYSTEM_TRAY);
+      try {
+        trayManager = new TrayManager(app, windowManager, IS_DEV);
+        const trayCreated = trayManager.create();
+        if (trayCreated) {
+          trayManager.setBackendUrl(backendService.getUrl());
+          console.log('✓ System tray created');
+          initializationTracker.succeedStep(InitializationStep.SYSTEM_TRAY);
+        } else {
+          console.log('⚠ System tray not created (icon not found, but app will continue)');
+          initializationTracker.skipStep(InitializationStep.SYSTEM_TRAY, 'Icon not found');
+        }
+      } catch (error) {
+        console.log('⚠ System tray creation failed (non-critical)');
+        initializationTracker.skipStep(InitializationStep.SYSTEM_TRAY, error.message);
       }
-    } catch (error) {
-      console.log('⚠ System tray creation failed (non-critical)');
-      initializationTracker.skipStep(InitializationStep.SYSTEM_TRAY, error.message);
     }
 
     // Step 14: Build application menu
@@ -847,16 +882,22 @@ async function startApplication() {
       degradedModeFeatures.push('Application menu (may have missing items)');
     }
 
-    // Step 15: Setup auto-updater (optional)
-    initializationTracker.startStep(InitializationStep.AUTO_UPDATER);
-    try {
-      setupAutoUpdater();
-      console.log('✓ Auto-updater configured');
-      initializationTracker.succeedStep(InitializationStep.AUTO_UPDATER);
-    } catch (error) {
-      console.log('⚠ Auto-updater setup failed (non-critical)');
-      initializationTracker.skipStep(InitializationStep.AUTO_UPDATER, error.message);
-      degradedModeFeatures.push('Auto-updater (manual updates only)');
+    // Step 15: Setup auto-updater (skip in safe mode)
+    if (safeMode) {
+      console.log('⚠ Skipping auto-updater (safe mode)');
+      safeModeFeatures.push('Auto-updater (manual updates only)');
+      initializationTracker.skipStep(InitializationStep.AUTO_UPDATER, 'Disabled in safe mode');
+    } else {
+      initializationTracker.startStep(InitializationStep.AUTO_UPDATER);
+      try {
+        setupAutoUpdater();
+        console.log('✓ Auto-updater configured');
+        initializationTracker.succeedStep(InitializationStep.AUTO_UPDATER);
+      } catch (error) {
+        console.log('⚠ Auto-updater setup failed (non-critical)');
+        initializationTracker.skipStep(InitializationStep.AUTO_UPDATER, error.message);
+        degradedModeFeatures.push('Auto-updater (manual updates only)');
+      }
     }
 
     // Step 16: Check for first run (async)
@@ -911,7 +952,7 @@ async function startApplication() {
       }
       
       // Show degraded mode warning if applicable
-      if (degradedModeFeatures.length > 0) {
+      if (degradedModeFeatures.length > 0 && !safeMode) {
         setTimeout(() => {
           dialog.showMessageBox(mainWindow, {
             type: 'warning',
@@ -923,6 +964,30 @@ async function startApplication() {
             buttons: ['OK']
           });
         }, 2000);
+      }
+      
+      // Show safe mode warning if applicable
+      if (safeMode) {
+        setTimeout(() => {
+          dialog.showMessageBox(mainWindow, {
+            type: 'warning',
+            title: 'Safe Mode Active',
+            message: 'Application started in Safe Mode',
+            detail: `The application has been started in safe mode due to ${appConfig.getCrashCount()} recent crashes.\n\n` +
+                    'Disabled features:\n' +
+                    safeModeFeatures.map(f => `• ${f}`).join('\n') +
+                    '\n\nYou can use the Diagnostics panel to identify and fix issues, or reset configuration to defaults.\n\n' +
+                    'Once issues are resolved, restart the application to exit safe mode.',
+            buttons: ['OK']
+          });
+        }, 2000);
+        
+        // Send safe mode status to frontend
+        mainWindow.webContents.send('app:safeMode', {
+          enabled: true,
+          crashCount: appConfig.getCrashCount(),
+          disabledFeatures: safeModeFeatures
+        });
       }
       
       // Finalize startup logging

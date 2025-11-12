@@ -133,6 +133,68 @@ class ConfigHandler {
       }
     });
 
+    // Safe mode handlers
+    ipcMain.handle('config:isSafeMode', () => {
+      try {
+        return this.appConfig.isSafeMode();
+      } catch (error) {
+        console.error('Error checking safe mode:', error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle('config:getCrashCount', () => {
+      try {
+        return this.appConfig.getCrashCount();
+      } catch (error) {
+        console.error('Error getting crash count:', error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle('config:resetCrashCount', () => {
+      try {
+        this.appConfig.resetCrashCount();
+        return { success: true };
+      } catch (error) {
+        console.error('Error resetting crash count:', error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle('config:deleteAndRestart', async () => {
+      try {
+        const { app } = require('electron');
+        
+        // Delete config file
+        const deleted = this.appConfig.deleteConfigFile();
+        
+        if (!deleted) {
+          throw new Error('Failed to delete config file');
+        }
+        
+        // Schedule restart
+        setTimeout(() => {
+          app.relaunch();
+          app.exit(0);
+        }, 500);
+        
+        return { success: true, deleted };
+      } catch (error) {
+        console.error('Error deleting config and restarting:', error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle('config:getConfigPath', () => {
+      try {
+        return this.appConfig.getConfigPath();
+      } catch (error) {
+        console.error('Error getting config path:', error);
+        throw error;
+      }
+    });
+
     console.log('Configuration IPC handlers registered');
   }
 }

@@ -17,7 +17,8 @@ const VALID_CHANNELS = {
   // Configuration channels
   CONFIG: ['config:get', 'config:set', 'config:getAll', 'config:reset', 
            'config:getSecure', 'config:setSecure', 'config:deleteSecure',
-           'config:addRecentProject', 'config:getRecentProjects', 'config:clearRecentProjects', 'config:removeRecentProject'],
+           'config:addRecentProject', 'config:getRecentProjects', 'config:clearRecentProjects', 'config:removeRecentProject',
+           'config:isSafeMode', 'config:getCrashCount', 'config:resetCrashCount', 'config:deleteAndRestart', 'config:getConfigPath'],
   
   // Dialog channels
   DIALOG: ['dialog:openFolder', 'dialog:openFile', 'dialog:openMultipleFiles', 
@@ -47,6 +48,11 @@ const VALID_CHANNELS = {
   STARTUP_LOGS: ['startup-logs:get-latest', 'startup-logs:get-summary', 'startup-logs:get-log-content',
                  'startup-logs:list', 'startup-logs:read-file', 'startup-logs:open-directory'],
   
+  // Diagnostics channels
+  DIAGNOSTICS: ['diagnostics:runAll', 'diagnostics:checkFFmpeg', 'diagnostics:fixFFmpeg',
+                'diagnostics:checkAPI', 'diagnostics:fixAPI', 'diagnostics:checkProviders',
+                'diagnostics:fixProviders', 'diagnostics:checkDiskSpace', 'diagnostics:checkConfig'],
+  
   // Update channels
   UPDATES: ['updates:check']
 };
@@ -59,6 +65,7 @@ const VALID_EVENT_CHANNELS = [
   'backend:healthUpdate',
   'backend:providerUpdate',
   'protocol:navigate',
+  'app:safeMode',
   ...MENU_EVENT_CHANNELS
 ];
 
