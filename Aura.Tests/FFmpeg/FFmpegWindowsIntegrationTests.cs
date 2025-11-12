@@ -383,4 +383,156 @@ public class FFmpegWindowsIntegrationTests
         Assert.Contains("C:/Videos/input.mp4", command);
         Assert.Contains("C:/Output/result.mp4", command);
     }
+
+    [Fact]
+    public async Task FfmpegLocator_RespectsElectronEnvironmentVariable()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Set mock environment variable
+        var testPath = @"C:\TestApp\resources\ffmpeg\win-x64\bin";
+        Environment.SetEnvironmentVariable("FFMPEG_PATH", testPath);
+
+        try
+        {
+            var logger = LoggerFactory.Create(builder => builder.AddConsole())
+                .CreateLogger<FfmpegLocator>();
+            var locator = new FfmpegLocator(logger);
+
+            var result = await locator.CheckAllCandidatesAsync();
+
+            // Should include the Electron path in attempted paths
+            var attemptedElectronPath = Path.Combine(testPath, "ffmpeg.exe");
+            Assert.Contains(attemptedElectronPath, result.AttemptedPaths);
+        }
+        finally
+        {
+            // Clean up
+            Environment.SetEnvironmentVariable("FFMPEG_PATH", null);
+        }
+    }
+
+    [Fact]
+    public async Task FfmpegLocator_ChecksMultipleElectronEnvironmentVariables()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Set both environment variables
+        var ffmpegPath = @"C:\TestApp\resources\ffmpeg";
+        var binariesPath = @"C:\TestApp\resources\binaries";
+        Environment.SetEnvironmentVariable("FFMPEG_PATH", ffmpegPath);
+        Environment.SetEnvironmentVariable("FFMPEG_BINARIES_PATH", binariesPath);
+
+        try
+        {
+            var logger = LoggerFactory.Create(builder => builder.AddConsole())
+                .CreateLogger<FfmpegLocator>();
+            var locator = new FfmpegLocator(logger);
+
+            var result = await locator.CheckAllCandidatesAsync();
+
+            // Should check both paths
+            var ffmpegExe = Path.Combine(ffmpegPath, "ffmpeg.exe");
+            var binariesExe = Path.Combine(binariesPath, "ffmpeg.exe");
+            
+            Assert.Contains(ffmpegExe, result.AttemptedPaths);
+            Assert.Contains(binariesExe, result.AttemptedPaths);
+        }
+        finally
+        {
+            // Clean up
+            Environment.SetEnvironmentVariable("FFMPEG_PATH", null);
+            Environment.SetEnvironmentVariable("FFMPEG_BINARIES_PATH", null);
+        }
+    }
+
+    [Fact]
+    public void FfmpegLocator_WindowsRegistry_DoesNotThrowException()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Test that registry checking doesn't throw even if keys don't exist
+        var logger = LoggerFactory.Create(builder => builder.AddConsole())
+            .CreateLogger<FfmpegLocator>();
+        var locator = new FfmpegLocator(logger);
+
+        // This should not throw an exception even if registry keys are missing
+        var exception = Record.Exception(async () => 
+        {
+            var result = await locator.CheckAllCandidatesAsync();
+            // We don't care if FFmpeg is found, just that no exception is thrown
+        });
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void EscapePath_HandlesUNCPaths()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        var builder = new FFmpegCommandBuilder();
+        builder.AddInput(@"\\server\share\Videos\input.mp4");
+        builder.SetOutput(@"\\backup\videos\output.mp4");
+
+        var command = builder.Build();
+
+        // UNC paths should be preserved but with forward slashes
+        Assert.Contains("//server/share/Videos/input.mp4", command);
+        Assert.Contains("//backup/videos/output.mp4", command);
+    }
+
+    [Fact(Skip = "Requires actual FFmpeg installation")]
+    public async Task Integration_EndToEnd_FFmpegPathDetectionAndExecution()
+    {
+        // Skip if not on Windows
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // 1. Detect FFmpeg
+        var locatorLogger = LoggerFactory.Create(builder => builder.AddConsole())
+            .CreateLogger<FfmpegLocator>();
+        var locator = new FfmpegLocator(locatorLogger);
+        var result = await locator.GetEffectiveFfmpegPathAsync();
+
+        Assert.NotNull(result);
+        Assert.True(File.Exists(result), $"FFmpeg should exist at: {result}");
+
+        // 2. Execute version command
+        var ffmpegLogger = LoggerFactory.Create(builder => builder.AddConsole())
+            .CreateLogger<FFmpegService>();
+        var ffmpegService = new FFmpegService(locator, ffmpegLogger);
+
+        var version = await ffmpegService.GetVersionAsync();
+        Assert.NotNull(version);
+        Assert.Contains("ffmpeg", version, StringComparison.OrdinalIgnoreCase);
+
+        // 3. Check hardware acceleration
+        var hwLogger = LoggerFactory.Create(builder => builder.AddConsole())
+            .CreateLogger<HardwareAccelerationDetector>();
+        var hwDetector = new HardwareAccelerationDetector(hwLogger);
+        var capabilities = await hwDetector.DetectCapabilitiesAsync(result);
+
+        Assert.NotNull(capabilities);
+        // At minimum, software encoding should be available
+        Assert.True(capabilities.AvailableEncoders.Count > 0);
+    }
 }

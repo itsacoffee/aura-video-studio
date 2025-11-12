@@ -1,9 +1,14 @@
 # Ignore build artifacts
 backend/
-ffmpeg/
+ffmpeg/**/*.exe
+ffmpeg/**/*.dll
+ffmpeg/**/*.7z
+ffmpeg/**/*.zip
 samples/
 
-# Keep the README
+# Keep the README and structure
 !README.md
 !.gitkeep
 !.gitignore
+!ffmpeg/README.md
+!ffmpeg/**/.gitkeep

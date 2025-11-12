@@ -6,7 +6,10 @@ package-lock.json
 dist/
 backend/
 resources/backend/
-resources/ffmpeg/
+resources/ffmpeg/**/*.exe
+resources/ffmpeg/**/*.dll
+resources/ffmpeg/**/*.7z
+resources/ffmpeg/**/*.zip
 resources/samples/
 
 # Electron builder
