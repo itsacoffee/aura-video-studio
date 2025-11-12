@@ -4,60 +4,51 @@ Fast reference for common development tasks.
 
 ## Getting Started
 
+### Desktop App (Electron)
+
 ```bash
 # First time setup
-./scripts/setup-local.sh      # Linux/macOS
-.\scripts\setup-local.ps1     # Windows
+cd Aura.Web && npm install
+cd ../Aura.Desktop && npm install
+cd ../Aura.Api && dotnet restore
 
-# Start development
-make dev
+# Build and run Electron app
+cd Aura.Web && npm run build:prod
+cd ../Aura.Desktop && npm run dev
+```
+
+### Component Development
+
+```bash
+# Terminal 1: Backend
+cd Aura.Api && dotnet watch run
+
+# Terminal 2: Frontend (browser)
+cd Aura.Web && npm run dev
 ```
 
 ## Common Commands
 
-### Service Management
+### Desktop App Development
 
 ```bash
-make dev              # Start all services (attached)
-make dev-detached     # Start in background
-make stop             # Stop services
-make restart          # Restart services
-make clean            # Remove all containers and data
+# Run Electron in dev mode
+cd Aura.Desktop && npm run dev
+
+# Build installer (Windows)
+cd Aura.Desktop && npm run build:win
+
+# Run tests
+cd Aura.Desktop && npm test
 ```
 
-### Logs and Monitoring
+### Component Development
 
 ```bash
-make logs             # View all logs
-make logs-api         # API logs only
-make logs-web         # Web logs only
-make health           # Check health
-make status           # Container status
-```
-
-### Database
-
-```bash
-make db-migrate       # Run migrations
-make db-reset         # Reset database (destroys data!)
-```
-
-### Testing
-
-```bash
-make test             # Run all tests
-cd Aura.Web && npm run test          # Web unit tests
-cd Aura.Web && npm run playwright     # E2E tests
-dotnet test Aura.Tests                # API tests
-```
-
-### Development
-
-```bash
-# Backend (local)
+# Backend (local with auto-reload)
 cd Aura.Api && dotnet watch run
 
-# Frontend (local)
+# Frontend (browser with hot-reload)
 cd Aura.Web && npm run dev
 
 # Type checking
@@ -68,9 +59,29 @@ cd Aura.Web && npm run lint
 cd Aura.Web && npm run lint:fix
 ```
 
+### Testing
+
+```bash
+# Frontend unit tests
+cd Aura.Web && npm test
+cd Aura.Web && npm run test:watch
+
+# E2E tests
+cd Aura.Web && npm run playwright
+
+# Backend tests
+dotnet test Aura.Tests
+```
+
 ## URLs
 
-- **Web UI:** http://localhost:3000
+### Electron App
+- **App:** Runs in native Electron window
+- **Backend:** Random port (e.g., http://localhost:54321)
+- **Dev Tools:** Menu → View → Toggle Developer Tools
+
+### Component Development Mode
+- **Web UI (Vite):** http://localhost:5173
 - **API:** http://localhost:5005
 - **API Swagger:** http://localhost:5005/swagger
 - **API Health:** http://localhost:5005/health/live
@@ -78,26 +89,29 @@ cd Aura.Web && npm run lint:fix
 ## Directory Structure
 
 ```
-aura/
-├── data/              # SQLite database
-├── logs/              # Application logs
-├── temp-media/        # Temporary media files
-├── Aura.Api/          # Backend API
-├── Aura.Web/          # Frontend
+aura-video-studio/
+├── data/              # SQLite database (runtime)
+├── logs/              # Application logs (runtime)
+├── temp-media/        # Temporary media files (runtime)
+├── Aura.Desktop/      # Electron desktop app
+│   ├── electron/      # Main process, IPC handlers
+│   ├── assets/        # Icons, splash screen
+│   └── resources/     # Bundled backend, frontend, FFmpeg
+├── Aura.Web/          # React frontend (builds to dist/)
+├── Aura.Api/          # ASP.NET Core backend
 ├── Aura.Core/         # Domain logic
-├── Aura.Providers/    # Provider integrations
-└── scripts/           # Utility scripts
+├── Aura.Providers/    # Provider integrations (LLM, TTS, etc.)
+└── scripts/           # Build and utility scripts
 ```
 
 ## Environment Variables
 
-Key variables in `.env`:
+Key variables in `.env` (optional, for API keys):
 
 ```bash
-# Core
-AURA_DATABASE_PATH=/app/data/aura.db
-AURA_REDIS_CONNECTION=redis:6379
-AURA_FFMPEG_PATH=/usr/bin/ffmpeg
+# Provider API Keys (optional - enables premium features)
+AURA_OPENAI_API_KEY=       # GPT-4 script generation
+AURA_ELEVENLABS_API_KEY=   # Premium TTS voices
 
 # Providers (optional)
 AURA_OPENAI_API_KEY=
@@ -111,62 +125,76 @@ AURA_ENABLE_ADVANCED_MODE=false
 
 ## Troubleshooting
 
-### Services won't start
+### Electron app won't start
 ```bash
-# Check Docker
-docker ps
+# Check if frontend is built
+ls -la Aura.Web/dist/
 
-# Check ports
-./scripts/setup/check-ports.sh
+# Rebuild frontend
+cd Aura.Web && npm run build:prod
 
-# View logs
-make logs
+# Check backend
+cd Aura.Api && dotnet build
 ```
 
-### Port conflicts
+### Backend fails in Electron
+```bash
+# Check logs in Electron DevTools (Menu → View → Toggle Developer Tools)
+# Or check log files in user data directory:
+# Windows: %APPDATA%/aura-video-studio/logs/
+# macOS: ~/Library/Application Support/aura-video-studio/logs/
+# Linux: ~/.config/aura-video-studio/logs/
+```
+
+### Component mode - Port conflicts
 ```bash
 # Linux/macOS
-lsof -i :5005
-lsof -i :3000
+lsof -i :5005  # Backend
+lsof -i :5173  # Frontend (Vite)
 
 # Windows
 netstat -ano | findstr :5005
+netstat -ano | findstr :5173
 ```
 
-### Database issues
+### Frontend not connecting to backend
 ```bash
-# Reset database
-make db-reset
+# Check CORS configuration in Aura.Api/Program.cs
+# Ensure localhost:5173 is allowed in development
 
-# Check permissions
-ls -la data/aura.db
+# Check backend is running
+curl http://localhost:5005/health/live
 ```
 
 ### Clean slate
 ```bash
-make clean
-docker system prune -af
-make dev
+cd Aura.Web
+rm -rf node_modules dist
+npm install
+
+cd ../Aura.Desktop
+rm -rf node_modules
+npm install
+
+cd ../Aura.Api
+dotnet clean
+dotnet restore
 ```
 
 ## VS Code
 
 ### Debugging
 
+**Electron App:**
+- Use Electron DevTools (Menu → View → Toggle Developer Tools)
+- Renderer process: Standard browser debugging
+- Main process: See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md)
+
+**Component Mode:**
 1. Press `F5` or use Debug panel
 2. Select configuration:
-   - "Full Stack (Docker)" - Debug all services
-   - "Launch API (Local)" - Debug API locally
-   - "Launch Web (Chrome)" - Debug frontend
-
-### Tasks
-
-- `Ctrl+Shift+B` - Start all services
-- `Ctrl+Shift+P` → "Tasks: Run Task"
-  - Start/stop services
-  - View logs
-  - Run tests
-  - Database operations
+   - "Launch API (Local)" - Debug backend
+   - "Launch Web (Chrome)" - Debug frontend in browser
 
 ### Recommended Extensions
 

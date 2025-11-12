@@ -41,12 +41,33 @@ Create high-quality videos fast with an AI-first workflow designed for everyone.
 
 ## Architecture
 
-- **Aura.Desktop** — Electron desktop app with native installers (Windows, macOS, Linux)
-- **Aura.Web** — React + TypeScript + Vite UI
-- **Aura.Api** — ASP.NET Core backend (REST + SSE)
-- **Aura.Core** — Domain, orchestration, models, validation, rendering plan
-- **Aura.Providers** — LLM, TTS, images, video, planner providers
-- **Aura.Cli** — Cross-platform CLI for headless testing and automation
+Aura Video Studio is built as an **Electron desktop application** with an embedded backend:
+
+- **Aura.Desktop** — Electron app (main process, window management, IPC, bundling)
+  - **Main Process**: Orchestrates backend, manages windows, handles IPC
+  - **Renderer Process**: React frontend loaded in Electron window
+  - **Preload Script**: Secure bridge for frontend-Electron communication
+- **Aura.Web** — React + TypeScript + Vite frontend (bundled into Electron)
+- **Aura.Api** — ASP.NET Core backend (embedded as child process, REST + SSE)
+- **Aura.Core** — Domain logic, orchestration, models, validation, rendering
+- **Aura.Providers** — LLM, TTS, images, video provider integrations
+- **Aura.Cli** — Cross-platform CLI for headless automation
+
+**Process Model:**
+```
+┌──────────────────────────────────────┐
+│     Electron Main Process            │
+│  (Node.js, window mgmt, lifecycle)   │
+└────┬─────────────────────┬───────────┘
+     │                     │
+     │ spawns              │ IPC
+     ▼                     ▼
+┌──────────────┐    ┌─────────────────┐
+│  ASP.NET     │◄───┤   Renderer      │
+│  Backend     │ HTTP│   Process       │
+│  (child)     │───►│  (React UI)     │
+└──────────────┘    └─────────────────┘
+```
 
 ## Installation Options
 
@@ -63,65 +84,55 @@ See [INSTALLATION.md](INSTALLATION.md) for detailed instructions.
 
 ### Option 2: Development Setup
 
+See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for comprehensive Electron development instructions.
+
 ## Quick start (Development)
 
-### One-Command Setup
+### Electron Desktop Development
 
-Get a complete local development environment running in minutes:
-
-```bash
-# 1. Run the setup script
-./scripts/setup-local.sh   # Linux/macOS
-# OR
-.\scripts\setup-local.ps1  # Windows PowerShell
-
-# 2. Start all services (API, Web, Redis, FFmpeg)
-make dev
-
-# 3. Open your browser to http://localhost:3000
-```
-
-That's it! The setup script checks prerequisites, installs dependencies, and configures everything automatically.
-
-### What You Get
-
-- ✅ **API** running at `http://localhost:5005` with health checks
-- ✅ **Web UI** at `http://localhost:3000` with hot reload
-- ✅ **Redis** for caching and sessions
-- ✅ **FFmpeg** container for video rendering
-- ✅ **SQLite database** with test data
-- ✅ **Structured logging** to `./logs/`
-
-### Common Commands
+**Recommended approach for desktop app development:**
 
 ```bash
-make help         # Show all available commands
-make logs         # View all service logs
-make health       # Check service health
-make stop         # Stop all services
-make clean        # Remove all containers and data
-make test         # Run all tests
-```
-
-### Manual Setup (Alternative)
-
-If you prefer to run services individually:
-
-```bash
-# Backend API
-cd Aura.Api
-dotnet restore
-dotnet run
-
-# Web UI (in a new terminal)
+# 1. Install dependencies
 cd Aura.Web
-npm ci
-npm run dev
+npm install
+cd ../Aura.Desktop
+npm install
 
-# Open http://localhost:5173
+# 2. Build the frontend
+cd ../Aura.Web
+npm run build:prod
+
+# 3. Build the backend
+cd ../Aura.Api
+dotnet build
+
+# 4. Run in Electron (development mode)
+cd ../Aura.Desktop
+npm run dev
 ```
 
-**Note:** Manual setup requires Redis and FFmpeg installed locally. See [DEVELOPMENT.md](DEVELOPMENT.md) for details.
+The Electron app will start with the embedded backend and frontend. Changes to the backend require a rebuild and restart. Frontend changes require rebuilding and reloading the Electron window.
+
+For detailed Electron development workflows, debugging, and hot-reload setup, see [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md).
+
+### Alternative: Component Development (Web Only)
+
+For rapid frontend iteration without Electron:
+
+```bash
+# Terminal 1: Start backend API
+cd Aura.Api
+dotnet run
+# API available at http://localhost:5005
+
+# Terminal 2: Start Vite dev server (standalone)
+cd Aura.Web
+npm run dev
+# Web UI at http://localhost:5173 with hot reload
+```
+
+**Note:** This runs the frontend standalone in a browser (not in Electron). Use this for quick UI development, but final testing should always be done in the Electron app.
 
 ### Next Steps
 
@@ -131,15 +142,19 @@ npm run dev
   - 🎬 Start creating your first video!
 
 - **For Developers:**
-  - 📖 [DEVELOPMENT.md](DEVELOPMENT.md) - Architecture and workflows
-  - 🖥️ [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) - Desktop app development
+  - 🖥️ [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) - Electron desktop app development
+  - 📖 [DEVELOPMENT.md](DEVELOPMENT.md) - Backend/frontend component development
   - 🔧 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues
 
 ## Quick start (End users)
 
-- Download the portable release ZIP (Windows) from GitHub Releases
-- Extract to a folder (e.g., C:\AuraStudio)
-- Run Aura and follow the Guided Mode onboarding
+Download and install the desktop app:
+
+1. Download the installer for your platform from [Releases](https://github.com/coffee285/aura-video-studio/releases/latest)
+2. Run the installer and follow the setup wizard
+3. Launch Aura Video Studio from your Applications folder or Start Menu
+4. Complete the first-run setup (see [FIRST_RUN_GUIDE.md](FIRST_RUN_GUIDE.md))
+5. Start creating videos with the Guided Mode workflow
 
 ## Advanced Mode
 

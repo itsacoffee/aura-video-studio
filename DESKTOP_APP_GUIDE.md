@@ -23,37 +23,50 @@ The Aura Video Studio desktop app uses **Electron** to wrap the React frontend a
 
 ```
 Aura.Desktop/
-├── electron.js           # Main process (Node.js)
-├── preload.js           # Preload script (sandboxed Node.js + renderer)
-├── package.json         # Electron dependencies and build config
+├── electron/
+│   ├── main.js            # Main process entry point
+│   ├── preload.js         # Preload script (sandboxed bridge)
+│   ├── window-manager.js  # Window lifecycle management
+│   ├── backend-service.js # Backend process management
+│   ├── menu-builder.js    # Application menu
+│   ├── tray-manager.js    # System tray integration
+│   ├── protocol-handler.js # Custom protocol (aura://)
+│   └── ipc-handlers/      # IPC handlers (config, system, video, etc.)
+├── package.json           # Electron dependencies and build config
 ├── assets/
-│   ├── splash.html      # Splash screen
-│   └── icons/           # Platform-specific app icons
-├── build/               # Build configuration
-│   ├── installer.nsh    # Windows NSIS installer script
+│   ├── splash.html        # Splash screen
+│   └── icons/             # Platform-specific app icons
+├── build/                 # Build configuration
+│   ├── installer.nsh      # Windows NSIS installer script
 │   ├── entitlements.mac.plist  # macOS permissions
 │   └── dmg-background.png      # macOS DMG background
-└── backend/             # Bundled .NET backend (generated during build)
+└── resources/             # Bundled resources (generated during build)
+    ├── backend/           # Published .NET backend
+    ├── frontend/          # Built React app
+    └── ffmpeg/            # FFmpeg binaries (optional)
 ```
 
 ### Process Model
 
-1. **Main Process** (`electron.js`)
+1. **Main Process** (`electron/main.js`)
    - Spawns the ASP.NET Core backend on a random port
-   - Creates the main window
-   - Manages system tray
+   - Creates the main window via WindowManager
+   - Manages system tray via TrayManager
    - Handles auto-updates
-   - Manages IPC communication
+   - Manages IPC communication via IPC handlers
+   - Orchestrates all Electron modules
 
 2. **Renderer Process** (React frontend)
-   - Runs in a sandboxed web page
+   - Runs in a sandboxed web page (Electron window)
    - Communicates with main process via IPC (through `preload.js`)
    - Connects to the embedded backend via HTTP
+   - Loaded from bundled frontend files
 
 3. **Backend Process** (ASP.NET Core)
-   - Spawned as a child process
+   - Spawned as a child process by main process
    - Runs on `http://localhost:<random-port>`
-   - Provides REST API for video generation
+   - Provides REST API and Server-Sent Events (SSE)
+   - Fully embedded in the Electron app
 
 ### Security Model
 
@@ -588,30 +601,32 @@ npm install
 
 ### Custom Protocols
 
-Register custom URL protocols (e.g., `aura://open-project/...`):
+Custom URL protocols are registered via the `protocol-handler.js` module:
 
 ```javascript
-// electron.js
-app.setAsDefaultProtocolClient('aura');
+// electron/protocol-handler.js handles:
+// aura://open?path=/path/to/project
+// aura://create?template=basic
+// aura://generate?script=...
+// aura://settings
+// aura://help
+// aura://about
 
-app.on('open-url', (event, url) => {
-  // Handle aura:// URLs
-  console.log('Opening URL:', url);
-});
+// Protocol is registered in electron/main.js before app.ready
+protocol.registerSchemesAsPrivileged([...]);
 ```
 
 ### Deep Linking
 
-Handle opening `.aura` files:
+File associations are handled via electron-builder configuration in `package.json`:
 
 ```javascript
-// electron.js
-app.on('open-file', (event, path) => {
-  event.preventDefault();
-  // Open project file
-  mainWindow.webContents.send('open-project', path);
-});
+// Configured in package.json build.win.fileAssociations
+// Handles .aura and .avsproj files
+// When user opens these files, Electron app receives the file path
 ```
+
+See `electron/protocol-handler.js` for the complete implementation.
 
 ### Performance Monitoring
 
