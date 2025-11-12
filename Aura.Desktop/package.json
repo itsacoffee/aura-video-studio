@@ -16,12 +16,16 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "debug-startup": "electron . --debug-startup",
     "build": "electron-builder build --win",
     "build:win": "electron-builder build --win",
     "build:dir": "electron-builder --dir",
     "postinstall": "electron-builder install-app-deps",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --win",
+    "test": "node test/test-startup-logger.js && node test/test-startup-diagnostics.js",
+    "test:logger": "node test/test-startup-logger.js",
+    "test:diagnostics": "node test/test-startup-diagnostics.js",
     "validate": "node scripts/validate-build-config.js",
     "validate:electron": "node scripts/validate-electron-config.js"
   },
