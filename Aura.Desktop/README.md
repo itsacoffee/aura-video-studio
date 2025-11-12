@@ -126,9 +126,16 @@ Aura.Desktop/
 │   └── installer.nsh          # Windows NSIS installer customization
 │
 ├── scripts/
-│   ├── sign-windows.js        # Custom code signing script
-│   ├── validate-build-config.js        # Build configuration validator
-│   └── validate-electron-config.js     # Electron configuration validator
+│   ├── sign-windows.js                   # Custom code signing script
+│   ├── validate-build-config.js          # Build configuration validator
+│   ├── validate-electron-config.js       # Electron configuration validator
+│   ├── validate-installation.ps1         # Post-installation validation
+│   ├── validate-uninstallation.ps1       # Uninstallation cleanup validation
+│   ├── test-installation-e2e.ps1         # End-to-end installation test
+│   ├── build-backend-windows.ps1         # Backend build automation
+│   ├── build-windows.ps1                 # Windows-specific build script
+│   ├── download-ffmpeg-windows.ps1       # FFmpeg download automation
+│   └── validate-windows-build.ps1        # Windows build validation
 │
 ├── resources/
 │   └── backend/               # Bundled .NET backend (generated during build)
@@ -263,8 +270,42 @@ npm run build:win
 
 See [DESKTOP_APP_GUIDE.md](../DESKTOP_APP_GUIDE.md#troubleshooting) for more.
 
+## 🧪 Testing & Validation
+
+### Build Validation
+
+```bash
+# Validate build configuration
+npm run validate
+
+# Validate Electron configuration
+npm run validate:electron
+```
+
+### Installation Testing
+
+After building the installer, validate it thoroughly:
+
+```powershell
+# Automated installation test (requires clean Windows 11 VM)
+.\scripts\test-installation-e2e.ps1 -InstallerPath "dist\Aura-Video-Studio-Setup-1.0.0.exe" -Silent
+
+# Validate installation after install
+.\scripts\validate-installation.ps1
+
+# Validate uninstallation after uninstall
+.\scripts\validate-uninstallation.ps1
+```
+
+### Testing Documentation
+
+- **[INSTALLATION_TEST_CHECKLIST.md](INSTALLATION_TEST_CHECKLIST.md)** - 200+ point testing checklist
+- **[INSTALLER_VALIDATION_REPORT.md](INSTALLER_VALIDATION_REPORT.md)** - Comprehensive validation report
+- **[WINDOWS_11_TESTING_GUIDE.md](WINDOWS_11_TESTING_GUIDE.md)** - Complete testing guide
+
 ## 📚 Documentation
 
+- **[BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md)** - Comprehensive build guide
 - **[QUICK_START.md](QUICK_START.md)** - Quick start for the new modular architecture
 - **[ELECTRON_CONFIG_VERIFICATION.md](ELECTRON_CONFIG_VERIFICATION.md)** - Configuration verification details
 - **[INSTALLATION.md](../INSTALLATION.md)** - End-user installation guide
