@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { errorHandlingService, type ErrorContext, type ErrorHandlingOptions } from '../services/errorHandlingService';
 import type { ErrorInfo } from '../components/Errors/ErrorDialog';
+import { errorHandlingService, type ErrorContext, type ErrorHandlingOptions } from '../services/errorHandlingService';
 
 /**
  * Hook for handling errors with user feedback

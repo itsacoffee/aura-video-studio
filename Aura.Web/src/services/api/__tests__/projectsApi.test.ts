@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as projectsApi from '../projectsApi';
 import * as apiClient from '../apiClient';
+import * as projectsApi from '../projectsApi';
 
 vi.mock('../apiClient');
 

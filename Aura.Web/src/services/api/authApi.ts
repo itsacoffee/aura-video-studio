@@ -3,8 +3,8 @@
  * Handles login, logout, token refresh, and user profile operations
  */
 
-import { get, post } from './apiClient';
 import { loggingService } from '../loggingService';
+import { get, post } from './apiClient';
 
 export interface LoginRequest {
   email: string;

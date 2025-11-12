@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import { CheckmarkCircle24Filled } from '@fluentui/react-icons';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { celebrationVariants, scaleVariants } from '../../utils/animations';
 

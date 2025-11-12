@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useProjectsStore } from '../projectsStore';
 import type { Project } from '../../services/api/projectsApi';
+import { useProjectsStore } from '../projectsStore';
 
 const createMockProject = (id: string, overrides: Partial<Project> = {}): Project => ({
   id,

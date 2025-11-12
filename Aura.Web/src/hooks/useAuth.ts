@@ -4,8 +4,8 @@
  */
 
 import { useCallback } from 'react';
-import { useAuthStore } from '../stores/authStore';
 import type { LoginRequest } from '../services/api/authApi';
+import { useAuthStore } from '../stores/authStore';
 
 export function useAuth() {
   const {

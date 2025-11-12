@@ -5,10 +5,10 @@
 
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from '@tanstack/react-query';
 import { queryKeys } from '../api/queryClient';
-import * as videoApi from '../services/api/videoGenerationApi';
+import * as adminApi from '../services/api/adminApi';
 import * as projectsApi from '../services/api/projectsApi';
 import * as userApi from '../services/api/userApi';
-import * as adminApi from '../services/api/adminApi';
+import * as videoApi from '../services/api/videoGenerationApi';
 import type { VideoGenerationRequest, VideoJob } from '../services/api/videoGenerationApi';
 
 /**

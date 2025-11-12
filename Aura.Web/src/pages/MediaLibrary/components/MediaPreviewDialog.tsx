@@ -1,4 +1,3 @@
-import React, { useState, useRef, useEffect } from 'react';
 import {
   makeStyles,
   shorthands,
@@ -22,6 +21,7 @@ import {
   Edit24Regular,
   Share24Regular,
 } from '@fluentui/react-icons';
+import React, { useState, useRef, useEffect } from 'react';
 import type { MediaItemResponse, MediaMetadata } from '../../../types/mediaLibrary';
 import { formatFileSize, formatDate, formatDuration } from '../../../utils/format';
 

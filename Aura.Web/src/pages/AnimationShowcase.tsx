@@ -1,4 +1,31 @@
+import {
+  PlayRegular,
+  ChevronRightRegular,
+  CheckmarkRegular,
+  DismissRegular,
+} from '@fluentui/react-icons';
 import { useState } from 'react';
+import {
+  AnimatedList,
+  AnimatedListItem,
+  FadeIn,
+  SlideIn,
+  ScaleIn,
+} from '../components/animations';
+import {
+  SuccessAnimation,
+  ErrorAnimation,
+  ProgressIndicator,
+} from '../components/feedback';
+import {
+  Skeleton,
+  SkeletonText,
+  SkeletonCard,
+  SkeletonList,
+  LoadingSpinner,
+  LoadingDots,
+  LoadingBar,
+} from '../components/Loading';
 import {
   AnimatedButton,
   AnimatedCard,
@@ -10,33 +37,6 @@ import {
   AnimatedModalFooter,
   AnimatedTooltip,
 } from '../components/ui';
-import {
-  AnimatedList,
-  AnimatedListItem,
-  FadeIn,
-  SlideIn,
-  ScaleIn,
-} from '../components/animations';
-import {
-  Skeleton,
-  SkeletonText,
-  SkeletonCard,
-  SkeletonList,
-  LoadingSpinner,
-  LoadingDots,
-  LoadingBar,
-} from '../components/Loading';
-import {
-  SuccessAnimation,
-  ErrorAnimation,
-  ProgressIndicator,
-} from '../components/feedback';
-import {
-  PlayRegular,
-  ChevronRightRegular,
-  CheckmarkRegular,
-  DismissRegular,
-} from '@fluentui/react-icons';
 
 /**
  * Animation Showcase Page

@@ -28,6 +28,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WizardProgress } from '../WizardProgress';
+import { CelebrationEffect } from './CelebrationEffect';
 import { CostEstimator } from './CostEstimator';
 import { DraftManager } from './DraftManager';
 import { BriefInput } from './steps/BriefInput';
@@ -37,7 +38,6 @@ import { ScriptReview } from './steps/ScriptReview';
 import { StyleSelection } from './steps/StyleSelection';
 import type { WizardData, StepValidation, VideoTemplate, WizardDraft } from './types';
 import { VideoTemplates } from './VideoTemplates';
-import { CelebrationEffect } from './CelebrationEffect';
 
 const useStyles = makeStyles({
   container: {

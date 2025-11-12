@@ -1,6 +1,8 @@
 import { makeStyles, tokens, Title1, Body1, Button } from '@fluentui/react-components';
 import { Home24Regular, ArrowLeft24Regular } from '@fluentui/react-icons';
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { loggingService } from '../services/loggingService';
 
 const useStyles = makeStyles({
   container: {
@@ -38,6 +40,21 @@ const useStyles = makeStyles({
 export function NotFoundPage() {
   const styles = useStyles();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    loggingService.warn(
+      `404 Page Not Found: User attempted to access non-existent route`,
+      'NotFoundPage',
+      'mount',
+      {
+        attemptedPath: location.pathname,
+        search: location.search,
+        hash: location.hash,
+        state: location.state,
+      }
+    );
+  }, [location]);
 
   const handleGoHome = () => {
     navigate('/');

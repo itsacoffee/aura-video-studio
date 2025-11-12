@@ -3,7 +3,6 @@
  * Demonstrates full frontend-backend integration with video generation and project management
  */
 
-import { useState, useEffect } from 'react';
 import {
   makeStyles,
   tokens,
@@ -17,11 +16,12 @@ import {
   Spinner,
 } from '@fluentui/react-components';
 import { Play24Regular, Save24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { useVideoGeneration } from '../hooks/useVideoGeneration';
+import { useState, useEffect } from 'react';
 import { useProjects } from '../hooks/useProjects';
-import { useVideoGenerationStore } from '../stores/videoGenerationStore';
-import { useProjectsStore } from '../stores/projectsStore';
+import { useVideoGeneration } from '../hooks/useVideoGeneration';
 import { useAppStore } from '../stores/appStore';
+import { useProjectsStore } from '../stores/projectsStore';
+import { useVideoGenerationStore } from '../stores/videoGenerationStore';
 
 const useStyles = makeStyles({
   container: {

@@ -21,9 +21,9 @@ import { FirstRunDiagnostics } from '../components/FirstRunDiagnostics';
 import { SystemCheckCard } from '../components/SystemCheckCard';
 import { TooltipContent, TooltipWithLink } from '../components/Tooltips';
 import { apiUrl } from '../config/api';
-import { hasCompletedFirstRun } from '../services/firstRunService';
 import { configurationStatusService } from '../services/configurationStatusService';
 import type { ConfigurationStatus } from '../services/configurationStatusService';
+import { hasCompletedFirstRun } from '../services/firstRunService';
 import type { HardwareCapabilities } from '../types';
 
 const useStyles = makeStyles({

@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   makeStyles,
   shorthands,
@@ -23,6 +22,7 @@ import {
   Dismiss24Regular,
 } from '@fluentui/react-icons';
 import { useMutation } from '@tanstack/react-query';
+import React, { useState } from 'react';
 import { mediaLibraryApi } from '../../../api/mediaLibraryApi';
 import type {
   MediaCollectionResponse,

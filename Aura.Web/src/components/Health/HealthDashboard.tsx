@@ -3,7 +3,6 @@
  * Displays system health status with real-time monitoring
  */
 
-import React from 'react';
 import {
   makeStyles,
   tokens,
@@ -30,6 +29,7 @@ import {
   HardDrive24Regular,
   DeveloperBoard24Regular,
 } from '@fluentui/react-icons';
+import React from 'react';
 import { useHealthMonitoring } from '../../hooks/useHealthMonitoring';
 import type { HealthCheckEntry } from '../../services/api/healthApi';
 

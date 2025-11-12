@@ -1,7 +1,5 @@
-import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { projectManagementApi, ProjectDetails, ProjectVersion } from '../../api/projectManagement';
+import { formatDistanceToNow } from 'date-fns';
 import {
   ArrowLeft,
   Edit,
@@ -24,7 +22,9 @@ import {
   Calendar,
   User,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { projectManagementApi, ProjectDetails, ProjectVersion } from '../../api/projectManagement';
 import { Button } from '../../components/ui/Button';
 
 export function ProjectDetailsPage() {

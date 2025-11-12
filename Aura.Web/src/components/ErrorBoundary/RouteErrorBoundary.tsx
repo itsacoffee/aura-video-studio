@@ -5,6 +5,7 @@ import { RouteErrorFallback } from './RouteErrorFallback';
 interface Props {
   children: ReactNode;
   onRetry?: () => void | Promise<void>;
+  routePath?: string;
 }
 
 interface State {
@@ -34,13 +35,18 @@ export class RouteErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    const routePath = this.props.routePath || window.location.hash || window.location.pathname;
+    
     loggingService.error(
-      'RouteErrorBoundary caught an error',
+      `RouteErrorBoundary caught an error in route: ${routePath}`,
       error,
       'RouteErrorBoundary',
       'componentDidCatch',
       {
         componentStack: errorInfo.componentStack,
+        routePath,
+        hash: window.location.hash,
+        pathname: window.location.pathname,
       }
     );
 

@@ -1,8 +1,8 @@
 import { FluentProvider, webLightTheme, webDarkTheme, Spinner } from '@fluentui/react-components';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState, useEffect, createContext, useContext, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect, createContext, useContext, lazy } from 'react';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { queryClient } from './api/queryClient';
 import { KeyboardShortcutsCheatSheet } from './components/Accessibility/KeyboardShortcutsCheatSheet';
 import { CommandPalette } from './components/CommandPalette';
@@ -18,6 +18,7 @@ import { JobProgressDrawer } from './components/JobProgressDrawer';
 import { KeyboardShortcutsPanel } from './components/KeyboardShortcuts/KeyboardShortcutsPanel';
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { Layout } from './components/Layout';
+import { LazyRoute } from './components/LazyRoute';
 import { SuspenseFallback } from './components/Loading/SuspenseFallback';
 import { NotificationsToaster } from './components/Notifications/Toasts';
 import { PlatformDashboard } from './components/Platform';
@@ -200,7 +201,7 @@ function App() {
   });
 
   // Initialize theme preference - default to 'aura' theme
-  const [themeName, setThemeName] = useState(() => {
+  const [, setThemeName] = useState(() => {
     const saved = localStorage.getItem('themeName');
     return saved || 'aura';
   });
@@ -380,8 +381,8 @@ function App() {
       root.classList.remove('dark');
     }
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
-    localStorage.setItem('themeName', themeName);
-  }, [isDarkMode, themeName]);
+    // themeName saved in setThemeName
+  }, [isDarkMode]);
 
   // Optionally sync theme with Windows system theme changes
   useEffect(() => {
@@ -596,12 +597,14 @@ function App() {
 
   // Apply theme background color to document body
   useEffect(() => {
+    const themeName = localStorage.getItem('themeName') || 'aura';
     const theme =
       themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
     document.body.style.backgroundColor = theme.colorNeutralBackground1;
-  }, [isDarkMode, themeName]);
+  }, [isDarkMode]);
 
   // Get current theme
+  const themeName = localStorage.getItem('themeName') || 'aura';
   const currentTheme =
     themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
 
@@ -645,14 +648,14 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
           <FluentProvider theme={currentTheme}>
-            <BrowserRouter>
+            <HashRouter>
               <FirstRunWizard
                 onComplete={async () => {
                   setShouldShowOnboarding(false);
                   await markFirstRunCompleted();
                 }}
               />
-            </BrowserRouter>
+            </HashRouter>
           </FluentProvider>
         </ThemeContext.Provider>
       </QueryClientProvider>
@@ -698,7 +701,7 @@ function App() {
           <AccessibilityProvider>
             <ActivityProvider>
               <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-                <BrowserRouter>
+                <HashRouter>
                   {/* Status bar for job progress */}
                   <JobStatusBar
                     status={status}
@@ -721,17 +724,17 @@ function App() {
                           <Route
                             path="/ideation"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/ideation">
                                 <IdeationDashboard />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/trending"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/trending">
                                 <TrendingTopicsExplorer />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route path="/content-planning" element={<ContentPlanningDashboard />} />
@@ -739,65 +742,65 @@ function App() {
                           <Route
                             path="/create/advanced"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/create/advanced">
                                 <CreateWizard />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/create/legacy"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/create/legacy">
                                 <CreatePage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/templates"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/templates">
                                 <TemplatesLibrary />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/templates/custom"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/templates/custom">
                                 <CustomTemplatesPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/editor/:jobId"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/editor/:jobId">
                                 <TimelineEditor />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/editor"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/editor">
                                 <VideoEditorPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/pacing"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/pacing">
                                 <PacingAnalyzerPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/render"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/render">
                                 <RenderPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route path="/platform" element={<PlatformDashboard />} />
@@ -806,203 +809,203 @@ function App() {
                           <Route
                             path="/projects"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/projects">
                                 <ProjectsPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/export-history"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/export-history">
                                 <ExportHistoryPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/assets"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/assets">
                                 <AssetLibrary />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/jobs"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/jobs">
                                 <RecentJobsPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/jobs/:jobId/telemetry"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/jobs/:jobId/telemetry">
                                 <RunDetailsPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/downloads"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/downloads">
                                 <DownloadsPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/health"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/health">
                                 <SystemHealthDashboard />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/health/providers"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/health/providers">
                                 <ProviderHealthDashboard />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/ai-editing"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/ai-editing">
                                 <AIEditingPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/aesthetics"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/aesthetics">
                                 <AestheticsPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/localization"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/localization">
                                 <TranslationPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/prompt-management"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/prompt-management">
                                 <PromptManagementPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/rag"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/rag">
                                 <RagDocumentManager />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/voice-enhancement"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/voice-enhancement">
                                 <VoiceEnhancementPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/performance-analytics"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/performance-analytics">
                                 <PerformanceAnalyticsPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/usage-analytics"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/usage-analytics">
                                 <UsageAnalyticsPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/ml-lab"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/ml-lab">
                                 <MLLabPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/ab-tests"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/ab-tests">
                                 <ABTestManagementPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/audience"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/audience">
                                 <AudienceManagementPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/learning"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/learning">
                                 <LearningPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/quality-validation"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/quality-validation">
                                 <QualityValidationPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/validation"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/validation">
                                 <ValidationPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/verification"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/verification">
                                 <VerificationPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           {/* Diagnostics and system information */}
                           <Route
                             path="/diagnostics"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/diagnostics">
                                 <DiagnosticDashboardPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           {/* Logs page - always available for diagnostics */}
                           <Route
                             path="/logs"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/logs">
                                 <LogViewerPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           {/* Development-only routes - lazy loaded */}
@@ -1011,33 +1014,33 @@ function App() {
                               <Route
                                 path="/error-handling-demo"
                                 element={
-                                  <Suspense fallback={<Spinner label="Loading..." />}>
+                                  <LazyRoute routePath="/error-handling-demo">
                                     <ErrorHandlingDemoPage />
-                                  </Suspense>
+                                  </LazyRoute>
                                 }
                               />
                               <Route
                                 path="/activity-demo"
                                 element={
-                                  <Suspense fallback={<Spinner label="Loading..." />}>
+                                  <LazyRoute routePath="/activity-demo">
                                     <ActivityDemoPage />
-                                  </Suspense>
+                                  </LazyRoute>
                                 }
                               />
                               <Route
                                 path="/layout-demo"
                                 element={
-                                  <Suspense fallback={<Spinner label="Loading..." />}>
+                                  <LazyRoute routePath="/layout-demo">
                                     <LayoutDemoPage />
-                                  </Suspense>
+                                  </LazyRoute>
                                 }
                               />
                               <Route
                                 path="/windows11-demo"
                                 element={
-                                  <Suspense fallback={<Spinner label="Loading..." />}>
+                                  <LazyRoute routePath="/windows11-demo">
                                     <Windows11DemoPage />
-                                  </Suspense>
+                                  </LazyRoute>
                                 }
                               />
                             </>
@@ -1045,25 +1048,25 @@ function App() {
                           <Route
                             path="/admin"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/admin">
                                 <AdminDashboardPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/settings"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/settings">
                                 <SettingsPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route
                             path="/settings/accessibility"
                             element={
-                              <Suspense fallback={<Spinner label="Loading..." />}>
+                              <LazyRoute routePath="/settings/accessibility">
                                 <AccessibilitySettingsPage />
-                              </Suspense>
+                              </LazyRoute>
                             }
                           />
                           <Route path="/models" element={<Navigate to="/settings" replace />} />
@@ -1106,7 +1109,7 @@ function App() {
                   <footer id="global-footer">
                     <GlobalStatusFooter />
                   </footer>
-                </BrowserRouter>
+                </HashRouter>
               </div>
             </ActivityProvider>
           </AccessibilityProvider>

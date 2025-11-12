@@ -1,6 +1,6 @@
 import axios from 'axios';
-import type { DocumentInfo, IndexStatistics, IndexingResult, Citation } from '../types';
 import { env } from '../config/env';
+import type { DocumentInfo, IndexStatistics, IndexingResult, Citation } from '../types';
 
 const API_BASE_URL = env.apiBaseUrl;
 

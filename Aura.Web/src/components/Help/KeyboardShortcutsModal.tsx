@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { X, Keyboard, Search } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface ShortcutGroup {
   category: string;

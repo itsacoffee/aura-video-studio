@@ -1,9 +1,9 @@
-import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
 import { ArrowLeft, Clock, Folder, Tag, Download, Play, Edit } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
 import { projectManagementApi } from '../api/projectManagement';
 import { Button } from '../components/ui/Button';
-import { formatDistanceToNow } from 'date-fns';
 
 export function ProjectDetailsPage() {
   const { projectId } = useParams<{ projectId: string }>();

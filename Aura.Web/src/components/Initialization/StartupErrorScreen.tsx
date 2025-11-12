@@ -21,8 +21,8 @@ import {
   Info24Regular,
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
-import type { InitializationError } from './InitializationScreen';
 import { env } from '../../config/env';
+import type { InitializationError } from './InitializationScreen';
 
 interface StartupErrorScreenProps {
   error: InitializationError;

@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   makeStyles,
   shorthands,
@@ -25,6 +24,7 @@ import {
   Eye24Regular,
   CloudArrowDown24Regular,
 } from '@fluentui/react-icons';
+import React from 'react';
 import type { MediaItemResponse } from '../../../types/mediaLibrary';
 import { formatFileSize, formatDate } from '../../../utils/format';
 

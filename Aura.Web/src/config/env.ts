@@ -3,8 +3,8 @@
  * Provides type-safe access to environment variables
  */
 
-import { resolveApiBaseUrl } from './apiBaseUrl';
 import { loggingService as logger } from '../services/loggingService';
+import { resolveApiBaseUrl } from './apiBaseUrl';
 
 const apiBaseResolution = resolveApiBaseUrl();
 

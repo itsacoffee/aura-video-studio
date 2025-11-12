@@ -26,8 +26,8 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
-import type { BriefData, AdvancedData, StepValidation } from '../types';
 import { PromptQualityAnalyzer } from '../PromptQualityAnalyzer';
+import type { BriefData, AdvancedData, StepValidation } from '../types';
 
 const useStyles = makeStyles({
   container: {
