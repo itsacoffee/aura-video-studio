@@ -372,6 +372,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthMonitor>();
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthService>();
         
+        // Register LLM provider-specific services
+        services.AddSingleton<Aura.Core.Services.Providers.LlmProviderValidator>();
+        services.AddSingleton<Aura.Core.Services.Providers.LlmProviderCircuitBreaker>();
+        
         // Ollama detection service (for background detection and caching)
         services.AddSingleton<Aura.Core.Services.Providers.OllamaDetectionService>(sp =>
         {
