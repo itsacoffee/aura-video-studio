@@ -309,9 +309,19 @@ export function TopMenuBar({
             >
               Documentation
             </MenuItem>
+            <MenuItem onClick={() => navigate('/learning')}>Tutorials</MenuItem>
             <MenuDivider />
             <MenuItem onClick={() => navigate('/health')}>System Health</MenuItem>
-            <MenuItem>About Aura Studio</MenuItem>
+            <MenuItem onClick={() => navigate('/diagnostics')}>Diagnostics</MenuItem>
+            <MenuItem
+              onClick={() => {
+                alert(
+                  'Aura Video Studio\nVersion 1.0.0\n\nAI-powered video generation suite\n\n© 2024 Aura Studio'
+                );
+              }}
+            >
+              About Aura Studio
+            </MenuItem>
           </MenuList>
         </MenuPopover>
       </Menu>
