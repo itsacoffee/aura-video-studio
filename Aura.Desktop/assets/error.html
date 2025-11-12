@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aura Video Studio - Error</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .error-container {
+      max-width: 800px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .error-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 30px;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.05);
+      }
+    }
+    
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 20px;
+      color: #ff6b6b;
+    }
+    
+    .error-message {
+      font-size: 18px;
+      line-height: 1.6;
+      text-align: center;
+      margin-bottom: 30px;
+      color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .diagnostics-section {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .diagnostics-section h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #4ecdc4;
+    }
+    
+    .diagnostics-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 14px;
+    }
+    
+    .diagnostics-item:last-child {
+      border-bottom: none;
+    }
+    
+    .diagnostics-label {
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .diagnostics-value {
+      font-family: 'Courier New', monospace;
+      color: #4ecdc4;
+      text-align: right;
+      word-break: break-all;
+      max-width: 60%;
+    }
+    
+    .error-details {
+      background: rgba(255, 107, 107, 0.1);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #ff6b6b;
+      word-break: break-word;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .actions {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 30px;
+    }
+    
+    .btn {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+    
+    .logs-section {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      text-align: center;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+    
+    .logs-path {
+      font-family: 'Courier New', monospace;
+      color: #4ecdc4;
+      word-break: break-all;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="error-container">
+    <div class="error-icon">⚠️</div>
+    
+    <h1>Failed to Load Application</h1>
+    
+    <p class="error-message">
+      Aura Video Studio encountered an error while loading the main interface.
+      Please review the diagnostics below and try the suggested actions.
+    </p>
+    
+    <div id="error-details-container"></div>
+    
+    <div class="diagnostics-section">
+      <h2>System Diagnostics</h2>
+      <div class="diagnostics-item">
+        <span class="diagnostics-label">Platform:</span>
+        <span class="diagnostics-value" id="platform">-</span>
+      </div>
+      <div class="diagnostics-item">
+        <span class="diagnostics-label">App Version:</span>
+        <span class="diagnostics-value" id="version">-</span>
+      </div>
+      <div class="diagnostics-item">
+        <span class="diagnostics-label">Backend URL:</span>
+        <span class="diagnostics-value" id="backend-url">-</span>
+      </div>
+      <div class="diagnostics-item">
+        <span class="diagnostics-label">Load Timestamp:</span>
+        <span class="diagnostics-value" id="timestamp">-</span>
+      </div>
+      <div class="diagnostics-item">
+        <span class="diagnostics-label">Attempted Path:</span>
+        <span class="diagnostics-value" id="attempted-path">-</span>
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button class="btn btn-primary" onclick="retryLoad()">Retry Loading</button>
+      <button class="btn btn-secondary" onclick="openDevTools()">Open DevTools</button>
+      <button class="btn btn-secondary" onclick="openLogsFolder()">View Logs</button>
+    </div>
+    
+    <div class="logs-section">
+      <p>Detailed logs are available at:</p>
+      <p class="logs-path" id="logs-path">Loading...</p>
+    </div>
+  </div>
+  
+  <script>
+    // Populate diagnostics information
+    function updateDiagnostics() {
+      try {
+        document.getElementById('platform').textContent = navigator.platform || 'Unknown';
+        document.getElementById('version').textContent = window.AURA_VERSION || 'Unknown';
+        document.getElementById('backend-url').textContent = window.AURA_BACKEND_URL || 'Not configured';
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+        
+        if (window.AURA_ERROR_INFO) {
+          document.getElementById('attempted-path').textContent = window.AURA_ERROR_INFO.attemptedPath || 'Unknown';
+          
+          if (window.AURA_ERROR_INFO.errorCode || window.AURA_ERROR_INFO.errorDescription) {
+            const errorDetailsContainer = document.getElementById('error-details-container');
+            const errorDetailsDiv = document.createElement('div');
+            errorDetailsDiv.className = 'error-details';
+            
+            let errorText = 'Error Details:\n';
+            if (window.AURA_ERROR_INFO.errorCode !== undefined) {
+              errorText += `Code: ${window.AURA_ERROR_INFO.errorCode}\n`;
+            }
+            if (window.AURA_ERROR_INFO.errorDescription) {
+              errorText += `Description: ${window.AURA_ERROR_INFO.errorDescription}\n`;
+            }
+            if (window.AURA_ERROR_INFO.url) {
+              errorText += `URL: ${window.AURA_ERROR_INFO.url}`;
+            }
+            
+            errorDetailsDiv.textContent = errorText;
+            errorDetailsContainer.appendChild(errorDetailsDiv);
+          }
+        }
+        
+        if (window.AURA_LOGS_PATH) {
+          document.getElementById('logs-path').textContent = window.AURA_LOGS_PATH;
+        }
+      } catch (error) {
+        console.error('Error updating diagnostics:', error);
+      }
+    }
+    
+    // Retry loading the main application
+    function retryLoad() {
+      if (window.electronAPI && window.electronAPI.retryMainLoad) {
+        window.electronAPI.retryMainLoad();
+      } else {
+        window.location.reload();
+      }
+    }
+    
+    // Open DevTools for debugging
+    function openDevTools() {
+      if (window.electronAPI && window.electronAPI.openDevTools) {
+        window.electronAPI.openDevTools();
+      }
+    }
+    
+    // Open logs folder
+    function openLogsFolder() {
+      if (window.electronAPI && window.electronAPI.openLogsFolder) {
+        window.electronAPI.openLogsFolder();
+      }
+    }
+    
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', updateDiagnostics);
+  </script>
+</body>
+</html>

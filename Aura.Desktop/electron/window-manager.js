@@ -142,6 +142,16 @@ class WindowManager {
       }
     }
 
+    // Track loading state for diagnostics
+    this.loadingState = {
+      startTime: null,
+      didStartLoading: false,
+      didFinishLoad: false,
+      loadAttempts: 0,
+      lastError: null,
+      loadTimeout: null
+    };
+
     // Create window with saved or default state
     this.mainWindow = new BrowserWindow({
       width: savedState.width,
@@ -220,7 +230,7 @@ class WindowManager {
       // Allow navigation within the app
       if (!url.startsWith('file://') && !url.startsWith('http://localhost')) {
         event.preventDefault();
-        console.warn('Navigation blocked:', url);
+        console.warn('[WindowManager] Navigation blocked:', url);
       }
     });
 
@@ -231,100 +241,103 @@ class WindowManager {
       return { action: 'deny' };
     });
 
-    // Load frontend
-    const frontendPath = this._getFrontendPath();
-    console.log('[WindowManager] Loading frontend from:', frontendPath);
-    console.log('[WindowManager] Frontend path exists:', require('fs').existsSync(frontendPath));
+    // Add detailed loading event handlers for diagnostics
+    this.mainWindow.webContents.on('did-start-loading', () => {
+      this.loadingState.startTime = Date.now();
+      this.loadingState.didStartLoading = true;
+      console.log('[WindowManager] ✓ Loading started at:', new Date(this.loadingState.startTime).toISOString());
+    });
 
-    // Add did-fail-load handler to catch load failures
+    this.mainWindow.webContents.on('did-finish-load', () => {
+      this.loadingState.didFinishLoad = true;
+      const duration = this.loadingState.startTime ? Date.now() - this.loadingState.startTime : 0;
+      console.log('[WindowManager] ✓ Loading finished successfully (duration: ' + duration + 'ms)');
+      
+      // Clear timeout if loading succeeded
+      if (this.loadingState.loadTimeout) {
+        clearTimeout(this.loadingState.loadTimeout);
+        this.loadingState.loadTimeout = null;
+      }
+      
+      // Inject environment variables after successful load
+      this._injectEnvironmentVariables(backendPort);
+    });
+
     this.mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
       console.error('[WindowManager] ✗ Failed to load page!');
-      console.error('[WindowManager] Error code:', errorCode);
-      console.error('[WindowManager] Error description:', errorDescription);
-      console.error('[WindowManager] URL:', validatedURL);
-      console.error('[WindowManager] Is main frame:', isMainFrame);
+      console.error('[WindowManager]   Error code:', errorCode);
+      console.error('[WindowManager]   Error description:', errorDescription);
+      console.error('[WindowManager]   URL:', validatedURL);
+      console.error('[WindowManager]   Is main frame:', isMainFrame);
+      console.error('[WindowManager]   Timestamp:', new Date().toISOString());
       
       if (isMainFrame) {
         console.error('[WindowManager] CRITICAL: Main frame failed to load!');
+        
+        this.loadingState.lastError = {
+          errorCode,
+          errorDescription,
+          validatedURL,
+          timestamp: new Date().toISOString()
+        };
+        
+        // Clear timeout on failure
+        if (this.loadingState.loadTimeout) {
+          clearTimeout(this.loadingState.loadTimeout);
+          this.loadingState.loadTimeout = null;
+        }
+        
+        // Attempt recovery if this was the first attempt
+        if (this.loadingState.loadAttempts < 2) {
+          console.log('[WindowManager] Attempting recovery with fallback error page...');
+          this._loadErrorPage(errorCode, errorDescription, validatedURL);
+        }
       }
     });
 
-    // Add console message handler to see renderer process logs
+    // Add console message handler to forward React console logs to Electron main
     this.mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
       const levels = ['verbose', 'info', 'warning', 'error'];
       const levelName = levels[level] || 'log';
-      console.log(`[Renderer:${levelName}] ${message}`);
+      const timestamp = new Date().toISOString();
+      
+      const logLine = `[Renderer:${levelName}] [${timestamp}] ${message}`;
+      console.log(logLine);
+      
       if (line && sourceId) {
         console.log(`[Renderer:${levelName}]   at ${sourceId}:${line}`);
       }
     });
 
-    this.mainWindow.loadFile(frontendPath).then(() => {
-      console.log('[WindowManager] ✓ Frontend file loaded successfully');
+    // Add crashed event handler with recovery dialog
+    this.mainWindow.webContents.on('crashed', (event, killed) => {
+      console.error('[WindowManager] ✗ Renderer process crashed!');
+      console.error('[WindowManager]   Killed:', killed);
+      console.error('[WindowManager]   Timestamp:', new Date().toISOString());
       
-      // Verify the URL that was loaded
-      const loadedURL = this.mainWindow.webContents.getURL();
-      console.log('[WindowManager] Loaded URL:', loadedURL);
-      console.log('[WindowManager] URL protocol:', new URL(loadedURL).protocol);
+      const { dialog } = require('electron');
       
-      // Inject error handler before anything else
-      console.log('[WindowManager] Injecting global error handler...');
-      this.mainWindow.webContents.executeJavaScript(`
-        (function() {
-          console.log('[Injected] Installing global error handler...');
-          
-          // Capture uncaught errors
-          window.addEventListener('error', function(event) {
-            console.error('[Global Error Handler] Uncaught error:', {
-              message: event.message,
-              filename: event.filename,
-              lineno: event.lineno,
-              colno: event.colno,
-              error: event.error ? {
-                name: event.error.name,
-                message: event.error.message,
-                stack: event.error.stack
-              } : null
-            });
-          }, true);
-          
-          // Capture unhandled promise rejections
-          window.addEventListener('unhandledrejection', function(event) {
-            console.error('[Global Error Handler] Unhandled promise rejection:', {
-              reason: event.reason,
-              promise: 'Promise'
-            });
-          });
-          
-          console.log('[Injected] ✓ Global error handlers installed');
-        })();
-      `).then(() => {
-        console.log('[WindowManager] ✓ Error handler injected');
-        
-        // Now inject backend URL and environment info
-        console.log('[WindowManager] Injecting environment variables...');
-        return this.mainWindow.webContents.executeJavaScript(`
-          window.AURA_BACKEND_URL = 'http://localhost:${backendPort}';
-          window.AURA_IS_ELECTRON = true;
-          window.AURA_IS_DEV = ${this.isDev};
-          window.AURA_VERSION = '${this.app.getVersion()}';
-          console.log('[Injected] Environment variables set:', {
-            AURA_BACKEND_URL: window.AURA_BACKEND_URL,
-            AURA_IS_ELECTRON: window.AURA_IS_ELECTRON,
-            AURA_IS_DEV: window.AURA_IS_DEV,
-            AURA_VERSION: window.AURA_VERSION
-          });
-        `);
-      }).then(() => {
-        console.log('[WindowManager] ✓ Environment variables injected');
-      }).catch(injectionError => {
-        console.error('[WindowManager] ✗ Failed to inject scripts:', injectionError);
+      dialog.showMessageBox(this.mainWindow, {
+        type: 'error',
+        title: 'Renderer Process Crashed',
+        message: 'The application interface has crashed unexpectedly.',
+        detail: `The renderer process ${killed ? 'was killed' : 'crashed'}. Would you like to reload the application?`,
+        buttons: ['Reload', 'Close Application'],
+        defaultId: 0,
+        cancelId: 1
+      }).then(result => {
+        if (result.response === 0) {
+          console.log('[WindowManager] User chose to reload after crash');
+          this._attemptLoad(backendPort);
+        } else {
+          console.log('[WindowManager] User chose to close application after crash');
+          this.app.quit();
+        }
       });
-    }).catch(error => {
-      console.error('[WindowManager] ✗ Failed to load frontend:', error);
-      console.error('[WindowManager] Error stack:', error.stack);
-      throw error;
     });
+
+    // Attempt to load frontend with retry logic
+    this._attemptLoad(backendPort);
 
     // Show window when ready
     this.mainWindow.once('ready-to-show', () => {
@@ -535,6 +548,303 @@ class WindowManager {
     } else {
       return path.join(process.resourcesPath, 'frontend', 'index.html');
     }
+  }
+
+  /**
+   * Attempt to load frontend with retry logic and timeout
+   */
+  _attemptLoad(backendPort) {
+    this.loadingState.loadAttempts++;
+    console.log('[WindowManager] Load attempt #' + this.loadingState.loadAttempts);
+    
+    // Get frontend paths to try
+    const paths = this._getFrontendPaths();
+    const primaryPath = paths[0];
+    
+    console.log('[WindowManager] Loading frontend from:', primaryPath);
+    console.log('[WindowManager] Frontend path exists:', fs.existsSync(primaryPath));
+    console.log('[WindowManager] Fallback paths available:', paths.length - 1);
+    
+    // Set timeout for load (30 seconds)
+    this.loadingState.loadTimeout = setTimeout(() => {
+      if (!this.loadingState.didFinishLoad) {
+        console.error('[WindowManager] ✗ Page load timeout (30 seconds)');
+        console.error('[WindowManager]   Start time:', new Date(this.loadingState.startTime).toISOString());
+        console.error('[WindowManager]   Current time:', new Date().toISOString());
+        
+        const { dialog } = require('electron');
+        
+        const logs = this._collectLoadingLogs();
+        
+        dialog.showMessageBox(this.mainWindow, {
+          type: 'error',
+          title: 'Loading Timeout',
+          message: 'The application failed to load within 30 seconds.',
+          detail: `The page did not finish loading within the timeout period.\n\nLast known state:\n${logs}\n\nWould you like to try loading the error page?`,
+          buttons: ['Load Error Page', 'Close Application'],
+          defaultId: 0,
+          cancelId: 1
+        }).then(result => {
+          if (result.response === 0) {
+            this._loadErrorPage(-7, 'Load timeout (30 seconds)', primaryPath);
+          } else {
+            this.app.quit();
+          }
+        });
+      }
+    }, 30000);
+    
+    // Try loading from primary path
+    this.mainWindow.loadFile(primaryPath)
+      .then(() => {
+        console.log('[WindowManager] ✓ Frontend file load initiated');
+        
+        // Verify the URL that was loaded
+        const loadedURL = this.mainWindow.webContents.getURL();
+        console.log('[WindowManager] Loaded URL:', loadedURL);
+        console.log('[WindowManager] URL protocol:', new URL(loadedURL).protocol);
+        
+        // Inject global error handler early
+        console.log('[WindowManager] Injecting global error handler...');
+        return this.mainWindow.webContents.executeJavaScript(`
+          (function() {
+            console.log('[Injected] Installing global error handler...');
+            
+            // Capture uncaught errors
+            window.addEventListener('error', function(event) {
+              console.error('[Global Error Handler] Uncaught error:', {
+                message: event.message,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                error: event.error ? {
+                  name: event.error.name,
+                  message: event.error.message,
+                  stack: event.error.stack
+                } : null
+              });
+            }, true);
+            
+            // Capture unhandled promise rejections
+            window.addEventListener('unhandledrejection', function(event) {
+              console.error('[Global Error Handler] Unhandled promise rejection:', {
+                reason: event.reason,
+                promise: 'Promise'
+              });
+            });
+            
+            console.log('[Injected] ✓ Global error handlers installed');
+          })();
+        `);
+      })
+      .then(() => {
+        console.log('[WindowManager] ✓ Error handler injected');
+      })
+      .catch(error => {
+        console.error('[WindowManager] ✗ Failed to load frontend:', error);
+        console.error('[WindowManager] Error stack:', error.stack);
+        
+        // Try fallback paths
+        this._tryFallbackPaths(paths.slice(1), backendPort);
+      });
+  }
+
+  /**
+   * Try loading from fallback paths
+   */
+  _tryFallbackPaths(fallbackPaths, backendPort) {
+    if (fallbackPaths.length === 0) {
+      console.error('[WindowManager] All load attempts failed');
+      this._loadErrorPage(-1, 'All load paths failed', 'multiple paths');
+      return;
+    }
+    
+    const nextPath = fallbackPaths[0];
+    console.log('[WindowManager] Trying fallback path:', nextPath);
+    console.log('[WindowManager] Path exists:', fs.existsSync(nextPath));
+    
+    this.mainWindow.loadFile(nextPath)
+      .then(() => {
+        console.log('[WindowManager] ✓ Fallback path loaded successfully');
+      })
+      .catch(error => {
+        console.error('[WindowManager] ✗ Fallback path failed:', error);
+        this._tryFallbackPaths(fallbackPaths.slice(1), backendPort);
+      });
+  }
+
+  /**
+   * Get all possible frontend paths (primary and fallbacks)
+   */
+  _getFrontendPaths() {
+    const paths = [];
+    
+    if (this.isDev) {
+      // Development paths
+      paths.push(path.join(__dirname, '../../Aura.Web/dist/index.html'));
+      paths.push(path.join(process.cwd(), 'Aura.Web/dist/index.html'));
+      paths.push(path.join(__dirname, '../Aura.Web/dist/index.html'));
+    } else {
+      // Production paths
+      paths.push(path.join(process.resourcesPath, 'frontend', 'index.html'));
+      paths.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'frontend', 'index.html'));
+      paths.push(path.join(this.app.getAppPath(), 'frontend', 'index.html'));
+    }
+    
+    return paths;
+  }
+
+  /**
+   * Inject environment variables after successful load
+   */
+  _injectEnvironmentVariables(backendPort) {
+    console.log('[WindowManager] Injecting environment variables...');
+    
+    this.mainWindow.webContents.executeJavaScript(`
+      window.AURA_BACKEND_URL = 'http://localhost:${backendPort}';
+      window.AURA_IS_ELECTRON = true;
+      window.AURA_IS_DEV = ${this.isDev};
+      window.AURA_VERSION = '${this.app.getVersion()}';
+      console.log('[Injected] Environment variables set:', {
+        AURA_BACKEND_URL: window.AURA_BACKEND_URL,
+        AURA_IS_ELECTRON: window.AURA_IS_ELECTRON,
+        AURA_IS_DEV: window.AURA_IS_DEV,
+        AURA_VERSION: window.AURA_VERSION
+      });
+    `).then(() => {
+      console.log('[WindowManager] ✓ Environment variables injected successfully');
+    }).catch(injectionError => {
+      console.error('[WindowManager] ✗ Failed to inject environment variables:', injectionError);
+    });
+  }
+
+  /**
+   * Load error page when main load fails
+   */
+  _loadErrorPage(errorCode, errorDescription, attemptedPath) {
+    console.log('[WindowManager] Loading error page...');
+    
+    const errorPagePath = path.join(__dirname, '../assets/error.html');
+    console.log('[WindowManager] Error page path:', errorPagePath);
+    console.log('[WindowManager] Error page exists:', fs.existsSync(errorPagePath));
+    
+    if (!fs.existsSync(errorPagePath)) {
+      console.error('[WindowManager] ✗ Error page not found, creating inline error page');
+      this._loadInlineErrorPage(errorCode, errorDescription, attemptedPath);
+      return;
+    }
+    
+    this.mainWindow.loadFile(errorPagePath)
+      .then(() => {
+        console.log('[WindowManager] ✓ Error page loaded');
+        
+        // Inject error information
+        return this.mainWindow.webContents.executeJavaScript(`
+          window.AURA_VERSION = '${this.app.getVersion()}';
+          window.AURA_LOGS_PATH = '${path.join(this.app.getPath('userData'), 'logs').replace(/\\/g, '\\\\')}';
+          window.AURA_ERROR_INFO = {
+            errorCode: ${errorCode},
+            errorDescription: '${errorDescription.replace(/'/g, "\\'")}',
+            attemptedPath: '${attemptedPath.replace(/\\/g, '\\\\')}',
+            url: '${this.mainWindow.webContents.getURL()}'
+          };
+        `);
+      })
+      .then(() => {
+        console.log('[WindowManager] ✓ Error information injected');
+      })
+      .catch(error => {
+        console.error('[WindowManager] ✗ Failed to load error page:', error);
+        this._loadInlineErrorPage(errorCode, errorDescription, attemptedPath);
+      });
+  }
+
+  /**
+   * Load inline error page as last resort
+   */
+  _loadInlineErrorPage(errorCode, errorDescription, attemptedPath) {
+    const logsPath = path.join(this.app.getPath('userData'), 'logs');
+    
+    this.mainWindow.loadURL(`data:text/html,
+      <html>
+        <head>
+          <style>
+            body { 
+              background: #1a1a2e; 
+              color: #fff; 
+              font-family: system-ui; 
+              padding: 40px; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+            }
+            .container {
+              max-width: 600px;
+              text-align: center;
+            }
+            h1 { color: #ff6b6b; font-size: 32px; margin-bottom: 20px; }
+            p { line-height: 1.6; margin-bottom: 15px; }
+            .error-box {
+              background: rgba(255,107,107,0.1);
+              border: 1px solid rgba(255,107,107,0.3);
+              border-radius: 8px;
+              padding: 15px;
+              margin: 20px 0;
+              font-family: monospace;
+              font-size: 13px;
+              text-align: left;
+            }
+            button {
+              background: #667eea;
+              color: white;
+              border: none;
+              padding: 12px 30px;
+              border-radius: 8px;
+              font-size: 16px;
+              cursor: pointer;
+              margin: 10px;
+            }
+            button:hover { background: #5568d3; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>⚠️ Failed to Load Application</h1>
+            <p>Aura Video Studio encountered an error while loading.</p>
+            <div class="error-box">
+              Error Code: ${errorCode}<br>
+              Description: ${errorDescription}<br>
+              Path: ${attemptedPath}<br>
+              Logs: ${logsPath}
+            </div>
+            <button onclick="window.location.reload()">Retry</button>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+
+  /**
+   * Collect loading logs for diagnostics
+   */
+  _collectLoadingLogs() {
+    const logs = [];
+    logs.push(`Did start loading: ${this.loadingState.didStartLoading}`);
+    logs.push(`Did finish load: ${this.loadingState.didFinishLoad}`);
+    logs.push(`Load attempts: ${this.loadingState.loadAttempts}`);
+    
+    if (this.loadingState.startTime) {
+      logs.push(`Start time: ${new Date(this.loadingState.startTime).toISOString()}`);
+      logs.push(`Elapsed: ${Date.now() - this.loadingState.startTime}ms`);
+    }
+    
+    if (this.loadingState.lastError) {
+      logs.push(`Last error: Code ${this.loadingState.lastError.errorCode} - ${this.loadingState.lastError.errorDescription}`);
+    }
+    
+    return logs.join('\n');
   }
 }
 
