@@ -7,6 +7,10 @@
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
+const { MENU_EVENT_CHANNELS, isValidMenuEventChannel } = require('./menu-event-types');
+
+// Event listener timeout in milliseconds (5 seconds)
+const EVENT_LISTENER_TIMEOUT = 5000;
 
 // Validate IPC channel names to prevent injection attacks
 const VALID_CHANNELS = {
@@ -47,7 +51,7 @@ const VALID_CHANNELS = {
   UPDATES: ['updates:check']
 };
 
-// Event channels that renderer can listen to
+// Event channels that renderer can listen to (includes menu events from menu-event-types.js)
 const VALID_EVENT_CHANNELS = [
   'video:progress',
   'video:error',
@@ -55,27 +59,7 @@ const VALID_EVENT_CHANNELS = [
   'backend:healthUpdate',
   'backend:providerUpdate',
   'protocol:navigate',
-  'menu:newProject',
-  'menu:openProject',
-  'menu:openRecentProject',
-  'menu:saveProject',
-  'menu:saveProjectAs',
-  'menu:importVideo',
-  'menu:importAudio',
-  'menu:importImages',
-  'menu:importDocument',
-  'menu:exportVideo',
-  'menu:exportTimeline',
-  'menu:find',
-  'menu:openPreferences',
-  'menu:openProviderSettings',
-  'menu:openFFmpegConfig',
-  'menu:clearCache',
-  'menu:viewLogs',
-  'menu:runDiagnostics',
-  'menu:openGettingStarted',
-  'menu:showKeyboardShortcuts',
-  'menu:checkForUpdates'
+  ...MENU_EVENT_CHANNELS
 ];
 
 /**
@@ -103,18 +87,74 @@ async function safeInvoke(channel, ...args) {
 }
 
 /**
- * Safe IPC event listener wrapper
+ * Safe IPC event listener wrapper with validation and timeout
+ * @param {string} channel - The IPC channel to listen to
+ * @param {Function} callback - The callback function to execute
+ * @returns {Function} Unsubscribe function to remove the listener
  */
 function safeOn(channel, callback) {
   if (!isValidEventChannel(channel)) {
     throw new Error(`Invalid event channel: ${channel}`);
   }
   
-  const subscription = (event, ...args) => callback(...args);
+  // Validate callback is a function
+  if (typeof callback !== 'function') {
+    throw new TypeError(`Callback must be a function, received ${typeof callback}`);
+  }
+  
+  // Track active listeners per channel for memory leak prevention
+  if (!safeOn._listenerCounts) {
+    safeOn._listenerCounts = new Map();
+  }
+  
+  const currentCount = safeOn._listenerCounts.get(channel) || 0;
+  safeOn._listenerCounts.set(channel, currentCount + 1);
+  
+  // Warn if too many listeners on same channel
+  if (currentCount >= 2) {
+    console.warn(`[Preload] Multiple listeners (${currentCount + 1}) registered for channel: ${channel}. Possible memory leak.`);
+  }
+  
+  // Wrapper that adds timeout monitoring
+  const subscription = (event, ...args) => {
+    const startTime = Date.now();
+    
+    try {
+      // Execute callback with timeout monitoring
+      const result = callback(...args);
+      
+      // If callback returns a promise, monitor its completion time
+      if (result && typeof result.then === 'function') {
+        const timeoutId = setTimeout(() => {
+          const elapsed = Date.now() - startTime;
+          console.warn(`[Preload] Event listener for '${channel}' did not complete within ${EVENT_LISTENER_TIMEOUT}ms (elapsed: ${elapsed}ms)`);
+        }, EVENT_LISTENER_TIMEOUT);
+        
+        result.finally(() => clearTimeout(timeoutId));
+      } else {
+        // For synchronous callbacks, check if execution took too long
+        const elapsed = Date.now() - startTime;
+        if (elapsed > EVENT_LISTENER_TIMEOUT) {
+          console.warn(`[Preload] Synchronous event listener for '${channel}' took ${elapsed}ms (threshold: ${EVENT_LISTENER_TIMEOUT}ms)`);
+        }
+      }
+    } catch (error) {
+      console.error(`[Preload] Error in event listener for '${channel}':`, error);
+    }
+  };
+  
   ipcRenderer.on(channel, subscription);
   
-  // Return unsubscribe function
-  return () => ipcRenderer.removeListener(channel, subscription);
+  // Return unsubscribe function that properly cleans up
+  return () => {
+    ipcRenderer.removeListener(channel, subscription);
+    
+    // Update listener count
+    const count = safeOn._listenerCounts.get(channel) || 0;
+    if (count > 0) {
+      safeOn._listenerCounts.set(channel, count - 1);
+    }
+  };
 }
 
 /**
@@ -287,3 +327,4 @@ console.log('Node version:', process.versions.node);
 console.log('Chrome version:', process.versions.chrome);
 console.log('Context isolation enabled: true');
 console.log('Node integration disabled: true');
+console.log(`[Preload] Registered ${MENU_EVENT_CHANNELS.length} menu event channels`);

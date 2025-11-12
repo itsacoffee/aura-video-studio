@@ -6,39 +6,20 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loggingService } from '../services/loggingService';
+import type { MenuAPI, OpenRecentProjectData } from '../types/electron-menu';
 
-interface ElectronAPI {
-  menu?: {
-    onNewProject?: (callback: () => void) => () => void;
-    onOpenProject?: (callback: () => void) => () => void;
-    onOpenRecentProject?: (callback: (data: { path: string }) => void) => () => void;
-    onSaveProject?: (callback: () => void) => () => void;
-    onSaveProjectAs?: (callback: () => void) => () => void;
-    onImportVideo?: (callback: () => void) => () => void;
-    onImportAudio?: (callback: () => void) => () => void;
-    onImportImages?: (callback: () => void) => () => void;
-    onImportDocument?: (callback: () => void) => () => void;
-    onExportVideo?: (callback: () => void) => () => void;
-    onExportTimeline?: (callback: () => void) => () => void;
-    onFind?: (callback: () => void) => () => void;
-    onOpenPreferences?: (callback: () => void) => () => void;
-    onOpenProviderSettings?: (callback: () => void) => () => void;
-    onOpenFFmpegConfig?: (callback: () => void) => () => void;
-    onClearCache?: (callback: () => void) => () => void;
-    onViewLogs?: (callback: () => void) => () => void;
-    onRunDiagnostics?: (callback: () => void) => () => void;
-    onOpenGettingStarted?: (callback: () => void) => () => void;
-    onShowKeyboardShortcuts?: (callback: () => void) => () => void;
-    onCheckForUpdates?: (callback: () => void) => () => void;
-  };
-}
-
-declare global {
-  interface Window {
-    electron?: ElectronAPI;
-  }
-}
-
+/**
+ * React hook that sets up listeners for all Electron menu events
+ * Automatically cleans up all listeners when component unmounts
+ * 
+ * Usage:
+ * ```tsx
+ * function App() {
+ *   useElectronMenuEvents();
+ *   return <div>...</div>;
+ * }
+ * ```
+ */
 export function useElectronMenuEvents() {
   const navigate = useNavigate();
 
@@ -48,92 +29,93 @@ export function useElectronMenuEvents() {
       return;
     }
 
+    const menu: MenuAPI = window.electron.menu;
     const unsubscribers: Array<() => void> = [];
 
     try {
       // File Menu
-      if (window.electron.menu.onNewProject) {
-        const unsub = window.electron.menu.onNewProject(() => {
+      if (menu.onNewProject) {
+        const unsub = menu.onNewProject(() => {
           loggingService.info('Menu action: New Project');
           navigate('/create');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onOpenProject) {
-        const unsub = window.electron.menu.onOpenProject(() => {
+      if (menu.onOpenProject) {
+        const unsub = menu.onOpenProject(() => {
           loggingService.info('Menu action: Open Project');
           navigate('/projects');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onOpenRecentProject) {
-        const unsub = window.electron.menu.onOpenRecentProject((data: { path: string }) => {
+      if (menu.onOpenRecentProject) {
+        const unsub = menu.onOpenRecentProject((data: OpenRecentProjectData) => {
           loggingService.info('Menu action: Open Recent Project', { path: data.path });
           navigate('/projects');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onSaveProject) {
-        const unsub = window.electron.menu.onSaveProject(() => {
+      if (menu.onSaveProject) {
+        const unsub = menu.onSaveProject(() => {
           loggingService.info('Menu action: Save Project');
           window.dispatchEvent(new CustomEvent('app:saveProject'));
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onSaveProjectAs) {
-        const unsub = window.electron.menu.onSaveProjectAs(() => {
+      if (menu.onSaveProjectAs) {
+        const unsub = menu.onSaveProjectAs(() => {
           loggingService.info('Menu action: Save Project As');
           window.dispatchEvent(new CustomEvent('app:saveProjectAs'));
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onImportVideo) {
-        const unsub = window.electron.menu.onImportVideo(() => {
+      if (menu.onImportVideo) {
+        const unsub = menu.onImportVideo(() => {
           loggingService.info('Menu action: Import Video');
           navigate('/assets');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onImportAudio) {
-        const unsub = window.electron.menu.onImportAudio(() => {
+      if (menu.onImportAudio) {
+        const unsub = menu.onImportAudio(() => {
           loggingService.info('Menu action: Import Audio');
           navigate('/assets');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onImportImages) {
-        const unsub = window.electron.menu.onImportImages(() => {
+      if (menu.onImportImages) {
+        const unsub = menu.onImportImages(() => {
           loggingService.info('Menu action: Import Images');
           navigate('/assets');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onImportDocument) {
-        const unsub = window.electron.menu.onImportDocument(() => {
+      if (menu.onImportDocument) {
+        const unsub = menu.onImportDocument(() => {
           loggingService.info('Menu action: Import Document');
           navigate('/rag');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onExportVideo) {
-        const unsub = window.electron.menu.onExportVideo(() => {
+      if (menu.onExportVideo) {
+        const unsub = menu.onExportVideo(() => {
           loggingService.info('Menu action: Export Video');
           navigate('/render');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onExportTimeline) {
-        const unsub = window.electron.menu.onExportTimeline(() => {
+      if (menu.onExportTimeline) {
+        const unsub = menu.onExportTimeline(() => {
           loggingService.info('Menu action: Export Timeline');
           navigate('/editor');
         });
@@ -141,16 +123,16 @@ export function useElectronMenuEvents() {
       }
 
       // Edit Menu
-      if (window.electron.menu.onFind) {
-        const unsub = window.electron.menu.onFind(() => {
+      if (menu.onFind) {
+        const unsub = menu.onFind(() => {
           loggingService.info('Menu action: Find');
           window.dispatchEvent(new CustomEvent('app:showFind'));
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onOpenPreferences) {
-        const unsub = window.electron.menu.onOpenPreferences(() => {
+      if (menu.onOpenPreferences) {
+        const unsub = menu.onOpenPreferences(() => {
           loggingService.info('Menu action: Open Preferences');
           navigate('/settings');
         });
@@ -158,40 +140,40 @@ export function useElectronMenuEvents() {
       }
 
       // Tools Menu
-      if (window.electron.menu.onOpenProviderSettings) {
-        const unsub = window.electron.menu.onOpenProviderSettings(() => {
+      if (menu.onOpenProviderSettings) {
+        const unsub = menu.onOpenProviderSettings(() => {
           loggingService.info('Menu action: Open Provider Settings');
           navigate('/settings?tab=providers');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onOpenFFmpegConfig) {
-        const unsub = window.electron.menu.onOpenFFmpegConfig(() => {
+      if (menu.onOpenFFmpegConfig) {
+        const unsub = menu.onOpenFFmpegConfig(() => {
           loggingService.info('Menu action: Open FFmpeg Config');
           navigate('/settings?tab=ffmpeg');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onClearCache) {
-        const unsub = window.electron.menu.onClearCache(() => {
+      if (menu.onClearCache) {
+        const unsub = menu.onClearCache(() => {
           loggingService.info('Menu action: Clear Cache');
           window.dispatchEvent(new CustomEvent('app:clearCache'));
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onViewLogs) {
-        const unsub = window.electron.menu.onViewLogs(() => {
+      if (menu.onViewLogs) {
+        const unsub = menu.onViewLogs(() => {
           loggingService.info('Menu action: View Logs');
           navigate('/logs');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onRunDiagnostics) {
-        const unsub = window.electron.menu.onRunDiagnostics(() => {
+      if (menu.onRunDiagnostics) {
+        const unsub = menu.onRunDiagnostics(() => {
           loggingService.info('Menu action: Run Diagnostics');
           navigate('/health');
         });
@@ -199,24 +181,24 @@ export function useElectronMenuEvents() {
       }
 
       // Help Menu
-      if (window.electron.menu.onOpenGettingStarted) {
-        const unsub = window.electron.menu.onOpenGettingStarted(() => {
+      if (menu.onOpenGettingStarted) {
+        const unsub = menu.onOpenGettingStarted(() => {
           loggingService.info('Menu action: Open Getting Started');
           navigate('/');
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onShowKeyboardShortcuts) {
-        const unsub = window.electron.menu.onShowKeyboardShortcuts(() => {
+      if (menu.onShowKeyboardShortcuts) {
+        const unsub = menu.onShowKeyboardShortcuts(() => {
           loggingService.info('Menu action: Show Keyboard Shortcuts');
           window.dispatchEvent(new CustomEvent('app:showKeyboardShortcuts'));
         });
         unsubscribers.push(unsub);
       }
 
-      if (window.electron.menu.onCheckForUpdates) {
-        const unsub = window.electron.menu.onCheckForUpdates(() => {
+      if (menu.onCheckForUpdates) {
+        const unsub = menu.onCheckForUpdates(() => {
           loggingService.info('Menu action: Check for Updates');
           window.dispatchEvent(new CustomEvent('app:checkForUpdates'));
         });
