@@ -3,7 +3,7 @@
  * Handles custom protocol (aura://) registration and deep linking
  */
 
-const { protocol, app } = require('electron');
+const { app } = require('electron');
 const url = require('url');
 const path = require('path');
 
@@ -15,7 +15,16 @@ class ProtocolHandler {
   }
 
   /**
+   * Get the protocol scheme name
+   */
+  static getProtocolScheme() {
+    return 'aura';
+  }
+
+  /**
    * Register custom protocol handler
+   * Note: protocol.registerSchemesAsPrivileged() must be called before app.ready
+   * and is now handled in main.js
    */
   register() {
     // Set as default protocol client for aura://
@@ -50,18 +59,6 @@ class ProtocolHandler {
         this.handleProtocolUrl(url);
       }
     });
-
-    // Register file protocol for loading local files
-    protocol.registerSchemesAsPrivileged([
-      {
-        scheme: this.protocolScheme,
-        privileges: {
-          standard: true,
-          secure: true,
-          supportFetchAPI: true
-        }
-      }
-    ]);
 
     console.log(`Protocol handler registered for ${this.protocolScheme}://`);
   }
