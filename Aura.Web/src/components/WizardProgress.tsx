@@ -54,9 +54,9 @@ const useStyles = makeStyles({
     },
   },
   stepActive: {
-    backgroundColor: tokens.colorBrandBackground,
+    background: 'linear-gradient(90deg, #00D4FF 0%, #0EA5E9 50%, #FF6B35 100%)',
     height: '6px',
-    boxShadow: `0 0 12px ${tokens.colorBrandBackground}`,
+    boxShadow: `0 0 12px rgba(0, 212, 255, 0.5)`,
   },
   stepCompleted: {
     backgroundColor: tokens.colorPaletteGreenBackground2,

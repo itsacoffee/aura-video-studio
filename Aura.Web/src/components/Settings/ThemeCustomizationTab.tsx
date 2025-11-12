@@ -81,6 +81,12 @@ interface ThemePreset {
 
 const THEME_PRESETS: ThemePreset[] = [
   {
+    name: 'Aura',
+    primaryColor: '#00D4FF',
+    secondaryColor: '#FF6B35',
+    accentColor: '#0EA5E9',
+  },
+  {
     name: 'Default Blue',
     primaryColor: '#0078D4',
     secondaryColor: '#005A9E',

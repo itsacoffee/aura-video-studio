@@ -8,6 +8,7 @@ import { KeyboardShortcutsCheatSheet } from './components/Accessibility/Keyboard
 import { CommandPalette } from './components/CommandPalette';
 import { ConfigurationGate } from './components/ConfigurationGate';
 import { ContentPlanningDashboard } from './components/contentPlanning/ContentPlanningDashboard';
+import { getAuraTheme } from './themes/auraTheme';
 import { QualityDashboard } from './components/dashboard';
 import { ErrorBoundary, CrashRecoveryScreen } from './components/ErrorBoundary';
 import { GlobalStatusFooter } from './components/GlobalStatusFooter';
@@ -195,6 +196,12 @@ function App() {
     return true;
   });
 
+  // Initialize theme preference - default to 'aura' theme
+  const [themeName, setThemeName] = useState(() => {
+    const saved = localStorage.getItem('themeName');
+    return saved || 'aura';
+  });
+
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showShortcutsPanel, setShowShortcutsPanel] = useState(false);
   const [showShortcutsCheatSheet, setShowShortcutsCheatSheet] = useState(false);
@@ -355,7 +362,8 @@ function App() {
       root.classList.remove('dark');
     }
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
-  }, [isDarkMode]);
+    localStorage.setItem('themeName', themeName);
+  }, [isDarkMode, themeName]);
 
   // Optionally sync theme with Windows system theme changes
   useEffect(() => {
@@ -570,15 +578,20 @@ function App() {
 
   // Apply theme background color to document body
   useEffect(() => {
-    const theme = isDarkMode ? webDarkTheme : webLightTheme;
+    const theme =
+      themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
     document.body.style.backgroundColor = theme.colorNeutralBackground1;
-  }, [isDarkMode]);
+  }, [isDarkMode, themeName]);
+
+  // Get current theme
+  const currentTheme =
+    themeName === 'aura' ? getAuraTheme(isDarkMode) : isDarkMode ? webDarkTheme : webLightTheme;
 
   // Show crash recovery screen if multiple crashes detected
   if (showCrashRecovery) {
     return (
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-        <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+        <FluentProvider theme={currentTheme}>
           <CrashRecoveryScreen
             onRecovered={() => {
               setShowCrashRecovery(false);
@@ -593,7 +606,7 @@ function App() {
   if (isCheckingFirstRun) {
     return (
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-        <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+        <FluentProvider theme={currentTheme}>
           <div
             style={{
               height: '100vh',
@@ -613,7 +626,7 @@ function App() {
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-          <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+          <FluentProvider theme={currentTheme}>
             <BrowserRouter>
               <FirstRunWizard
                 onComplete={async () => {
@@ -631,7 +644,7 @@ function App() {
   if (isInitializing && !initializationError) {
     return (
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-        <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+        <FluentProvider theme={currentTheme}>
           <InitializationScreen
             onComplete={() => setIsInitializing(false)}
             onError={(error) => setInitializationError(error)}
@@ -645,7 +658,7 @@ function App() {
   if (initializationError) {
     return (
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-        <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+        <FluentProvider theme={currentTheme}>
           <StartupErrorScreen
             error={initializationError}
             onRetry={() => {
@@ -663,7 +676,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-        <FluentProvider theme={isDarkMode ? webDarkTheme : webLightTheme}>
+        <FluentProvider theme={currentTheme}>
           <AccessibilityProvider>
             <ActivityProvider>
               <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
