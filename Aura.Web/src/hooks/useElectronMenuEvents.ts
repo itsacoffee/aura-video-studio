@@ -193,7 +193,7 @@ export function useElectronMenuEvents() {
       if (window.electron.menu.onRunDiagnostics) {
         const unsub = window.electron.menu.onRunDiagnostics(() => {
           loggingService.info('Menu action: Run Diagnostics');
-          navigate('/health/system');
+          navigate('/health');
         });
         unsubscribers.push(unsub);
       }
@@ -202,7 +202,7 @@ export function useElectronMenuEvents() {
       if (window.electron.menu.onOpenGettingStarted) {
         const unsub = window.electron.menu.onOpenGettingStarted(() => {
           loggingService.info('Menu action: Open Getting Started');
-          navigate('/welcome');
+          navigate('/');
         });
         unsubscribers.push(unsub);
       }
