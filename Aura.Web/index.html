@@ -8,10 +8,11 @@
     <link rel="apple-touch-icon" sizes="256x256" href="/logo256.png" />
     <link rel="apple-touch-icon" sizes="512x512" href="/logo512.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-    <!-- Content Security Policy: Restrict script sources for XSS protection -->
+    <!-- Content Security Policy: Permissive for Electron, restrictive for browser -->
+    <!-- Note: In Electron, window-manager.js will override this CSP -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'none';"
+      content="default-src 'self' file: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' file:; style-src 'self' 'unsafe-inline' file:; img-src 'self' data: blob: https: file:; font-src 'self' data: file:; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; media-src 'self' blob: file:; worker-src 'self' blob:; frame-src 'none';"
     />
     <!-- Windows 11 Snap Layouts Support -->
     <meta name="msapplication-TileColor" content="#0ea5e9" />
