@@ -1,5 +1,6 @@
 import { makeStyles, tokens, Title1, Title3, Text, Card } from '@fluentui/react-components';
 import { VideoClip24Regular, Sparkle24Regular, Clock24Regular } from '@fluentui/react-icons';
+import { Logo } from '../../components/Logo';
 
 const useStyles = makeStyles({
   container: {
@@ -16,7 +17,8 @@ const useStyles = makeStyles({
     marginBottom: tokens.spacingVerticalL,
   },
   logo: {
-    fontSize: '64px',
+    width: '128px',
+    height: '128px',
     animation: 'fadeIn 1s ease-in-out',
   },
   '@keyframes fadeIn': {
@@ -82,7 +84,7 @@ export function WelcomeStep() {
   return (
     <div className={styles.container}>
       <div className={styles.logoContainer}>
-        <div className={styles.logo}>🎬</div>
+        <Logo size={128} className={styles.logo} />
       </div>
 
       <div>

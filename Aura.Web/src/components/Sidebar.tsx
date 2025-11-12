@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { navItems, type NavItem } from '../navigation';
+import { Logo } from './Logo';
 
 const useStyles = makeStyles({
   sidebar: {
@@ -123,6 +124,14 @@ const useStyles = makeStyles({
   divider: {
     marginTop: tokens.spacingVerticalXS,
     marginBottom: tokens.spacingVerticalXS,
+  },
+  brandContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+  },
+  brandLogo: {
+    flexShrink: 0,
   },
 });
 
@@ -252,7 +261,17 @@ export function Sidebar({
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           />
         </Tooltip>
-        {!isCollapsed && <Title3>🎬 Aura Studio</Title3>}
+        {!isCollapsed && (
+          <div className={styles.brandContainer}>
+            <Logo size={32} className={styles.brandLogo} />
+            <Title3>Aura Studio</Title3>
+          </div>
+        )}
+        {isCollapsed && (
+          <Tooltip content="Aura Studio" relationship="label">
+            <Logo size={32} className={styles.brandLogo} />
+          </Tooltip>
+        )}
       </div>
       <div className={styles.nav}>
         {/* Home Section */}
