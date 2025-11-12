@@ -62,7 +62,7 @@ class BackendHandler {
     ipcMain.handle('backend:ping', async () => {
       try {
         const startTime = Date.now();
-        await axios.get(`${this.backendUrl}/health`, {
+        await axios.get(`${this.backendUrl}/health/live`, {
           timeout: 2000
         });
         const responseTime = Date.now() - startTime;

@@ -365,12 +365,13 @@ class BackendService {
 
   /**
    * Check if port is accessible
+   * Uses /health/live endpoint for faster response
    */
   async _checkPortAccessible() {
     if (!this.port) return false;
 
     try {
-      const response = await axios.get(`http://localhost:${this.port}/health`, {
+      const response = await axios.get(`http://localhost:${this.port}/health/live`, {
         timeout: 2000
       });
       return response.status === 200;
@@ -460,13 +461,14 @@ class BackendService {
 
   /**
    * Wait for the backend to become healthy
+   * Uses /health/live endpoint for faster startup detection
    */
   async _waitForBackend() {
     const maxAttempts = this.BACKEND_STARTUP_TIMEOUT / this.HEALTH_CHECK_INTERVAL;
     
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const response = await axios.get(`http://localhost:${this.port}/health`, {
+        const response = await axios.get(`http://localhost:${this.port}/health/live`, {
           timeout: 2000,
           validateStatus: () => true
         });
