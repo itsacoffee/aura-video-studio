@@ -254,6 +254,12 @@ class AppConfig {
     const crashCount = this.getCrashCount();
     const lastCrashTime = this.getLastCrashTime();
     
+    // Reset crash count if last crash was more than 24 hours ago
+    if (lastCrashTime && Date.now() - lastCrashTime > 24 * 60 * 60 * 1000) {
+      this.resetCrashCount();
+      return false;
+    }
+    
     // If already in safe mode, stay in safe mode
     if (this.isSafeMode()) {
       return true;
@@ -262,12 +268,6 @@ class AppConfig {
     // If crash count exceeds threshold, enter safe mode
     if (crashCount >= maxCrashes) {
       return true;
-    }
-    
-    // Reset crash count if last crash was more than 24 hours ago
-    if (lastCrashTime && Date.now() - lastCrashTime > 24 * 60 * 60 * 1000) {
-      this.resetCrashCount();
-      return false;
     }
     
     return false;

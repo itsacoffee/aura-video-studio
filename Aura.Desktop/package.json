@@ -23,7 +23,7 @@
     "postinstall": "electron-builder install-app-deps",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --win",
-    "test": "node test/test-startup-logger.js && node test/test-startup-diagnostics.js && node test/test-initialization-tracker.js && node test/test-early-crash-logger.js && node test/test-integration-corrupted-config.js && node test/test-preload-menu-events.js && node test/test-menu-ipc-integration.js",
+    "test": "node test/test-startup-logger.js && node test/test-startup-diagnostics.js && node test/test-initialization-tracker.js && node test/test-early-crash-logger.js && node test/test-integration-corrupted-config.js && node test/test-preload-menu-events.js && node test/test-menu-ipc-integration.js && node test/test-safe-mode.js",
     "test:logger": "node test/test-startup-logger.js",
     "test:diagnostics": "node test/test-startup-diagnostics.js",
     "test:init-tracker": "node test/test-initialization-tracker.js",
@@ -31,6 +31,7 @@
     "test:integration": "node test/test-integration-corrupted-config.js",
     "test:menu-events": "node test/test-preload-menu-events.js",
     "test:menu-ipc": "node test/test-menu-ipc-integration.js",
+    "test:safe-mode": "node test/test-safe-mode.js",
     "validate": "node scripts/validate-build-config.js",
     "validate:electron": "node scripts/validate-electron-config.js",
     "validate:menu": "node scripts/validate-menu-events.js"
