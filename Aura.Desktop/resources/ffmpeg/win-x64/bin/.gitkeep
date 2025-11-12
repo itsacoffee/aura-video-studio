@@ -1,0 +1,7 @@
+# Placeholder to ensure bin directory exists in git
+# FFmpeg binaries should be downloaded using:
+#   .\scripts\download-ffmpeg-windows.ps1
+# 
+# Or manually placed here:
+#   - ffmpeg.exe
+#   - ffprobe.exe
