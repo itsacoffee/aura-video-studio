@@ -5,17 +5,19 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { RouteErrorBoundary } from '../components/ErrorBoundary/RouteErrorBoundary';
 
-// Mock loggingService
-const mockError = vi.fn();
+// Mock loggingService BEFORE importing component
 vi.mock('../services/loggingService', () => ({
   loggingService: {
-    error: mockError,
+    error: vi.fn(),
     warn: vi.fn(),
     info: vi.fn(),
   },
 }));
+
+import { loggingService } from '../services/loggingService';
 
 // Component that throws an error
 const ThrowError = ({ error }: { error?: string }) => {
@@ -26,7 +28,9 @@ describe('Route Error Boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Suppress console.error for these tests since we expect errors
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {
+      // suppress
+    });
   });
 
   it('should catch errors and log the route path', () => {
@@ -38,7 +42,7 @@ describe('Route Error Boundary', () => {
       </RouteErrorBoundary>
     );
 
-    expect(mockError).toHaveBeenCalledWith(
+    expect(loggingService.error).toHaveBeenCalledWith(
       expect.stringContaining(`RouteErrorBoundary caught an error in route: ${routePath}`),
       expect.any(Error),
       'RouteErrorBoundary',
@@ -59,7 +63,7 @@ describe('Route Error Boundary', () => {
 
     // The RouteErrorFallback should be rendered
     // We're just checking that the error was caught and boundary worked
-    expect(mockError).toHaveBeenCalled();
+    expect(loggingService.error).toHaveBeenCalled();
   });
 
   it('should use hash location when routePath not provided', () => {
@@ -71,7 +75,7 @@ describe('Route Error Boundary', () => {
       </RouteErrorBoundary>
     );
 
-    expect(mockError).toHaveBeenCalledWith(
+    expect(loggingService.error).toHaveBeenCalledWith(
       expect.stringContaining('RouteErrorBoundary caught an error in route:'),
       expect.any(Error),
       'RouteErrorBoundary',
@@ -90,7 +94,7 @@ describe('Route Error Boundary', () => {
     );
 
     expect(screen.getByText('Normal content')).toBeInTheDocument();
-    expect(mockError).not.toHaveBeenCalled();
+    expect(loggingService.error).not.toHaveBeenCalled();
   });
 
   it('should log both pathname and hash for comprehensive debugging', () => {
@@ -102,7 +106,7 @@ describe('Route Error Boundary', () => {
       </RouteErrorBoundary>
     );
 
-    expect(mockError).toHaveBeenCalledWith(
+    expect(loggingService.error).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(Error),
       'RouteErrorBoundary',
@@ -122,7 +126,7 @@ describe('Route Error Boundary', () => {
       </RouteErrorBoundary>
     );
 
-    expect(mockError).toHaveBeenCalledWith(
+    expect(loggingService.error).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(Error),
       'RouteErrorBoundary',

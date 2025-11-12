@@ -3,28 +3,32 @@
  * Requirement 8: Test lazy route loading failure (delete chunk file) and verify error UI shows
  */
 
+import { lazy } from 'react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { render, screen, waitFor } from '@testing-library/react';
-import { lazy } from 'react';
 import { HashRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { LazyRoute } from '../components/LazyRoute';
 
 // Mock loggingService
-const mockError = vi.fn();
 vi.mock('../services/loggingService', () => ({
   loggingService: {
-    error: mockError,
+    error: vi.fn(),
     warn: vi.fn(),
     info: vi.fn(),
   },
 }));
 
+import { loggingService } from '../services/loggingService';
+
 describe('Lazy Route Loading Failures', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Suppress console.error for these tests since we expect errors
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {
+      // suppress
+    });
   });
 
   it('should show error UI when lazy component fails to load', async () => {
@@ -45,7 +49,7 @@ describe('Lazy Route Loading Failures', () => {
     await waitFor(
       () => {
         // The RouteErrorBoundary should have caught the error
-        expect(mockError).toHaveBeenCalled();
+        expect(loggingService.error).toHaveBeenCalled();
       },
       { timeout: 3000 }
     );
@@ -67,7 +71,7 @@ describe('Lazy Route Loading Failures', () => {
 
     await waitFor(
       () => {
-        expect(mockError).toHaveBeenCalledWith(
+        expect(loggingService.error).toHaveBeenCalledWith(
           expect.stringContaining(routePath),
           expect.any(Error),
           'RouteErrorBoundary',
@@ -143,7 +147,7 @@ describe('Lazy Route Loading Failures', () => {
 
     await waitFor(
       () => {
-        expect(mockError).toHaveBeenCalledWith(
+        expect(loggingService.error).toHaveBeenCalledWith(
           expect.stringContaining('/network-error-route'),
           expect.objectContaining({
             message: expect.stringContaining('ChunkLoadError'),

@@ -7,17 +7,18 @@
 import { render, screen } from '@testing-library/react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NotFoundPage } from '../pages/NotFoundPage';
 
-// Mock loggingService
-const mockWarn = vi.fn();
+// Mock loggingService BEFORE importing NotFoundPage
 vi.mock('../services/loggingService', () => ({
   loggingService: {
-    warn: mockWarn,
+    warn: vi.fn(),
     error: vi.fn(),
     info: vi.fn(),
   },
 }));
+
+import { NotFoundPage } from '../pages/NotFoundPage';
+import { loggingService } from '../services/loggingService';
 
 describe('NotFoundPage Logging', () => {
   beforeEach(() => {
@@ -33,7 +34,7 @@ describe('NotFoundPage Logging', () => {
       </HashRouter>
     );
 
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(loggingService.warn).toHaveBeenCalledWith(
       '404 Page Not Found: User attempted to access non-existent route',
       'NotFoundPage',
       'mount',
@@ -54,7 +55,7 @@ describe('NotFoundPage Logging', () => {
       </HashRouter>
     );
 
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(loggingService.warn).toHaveBeenCalledWith(
       '404 Page Not Found: User attempted to access non-existent route',
       'NotFoundPage',
       'mount',
@@ -114,7 +115,7 @@ describe('NotFoundPage Logging', () => {
       </HashRouter>
     );
 
-    expect(mockWarn).toHaveBeenCalledWith(
+    expect(loggingService.warn).toHaveBeenCalledWith(
       '404 Page Not Found: User attempted to access non-existent route',
       'NotFoundPage',
       'mount',
