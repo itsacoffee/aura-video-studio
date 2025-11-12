@@ -335,3 +335,58 @@ console.log('Chrome version:', process.versions.chrome);
 console.log('Context isolation enabled: true');
 console.log('Node integration disabled: true');
 console.log(`[Preload] Registered ${MENU_EVENT_CHANNELS.length} menu event channels`);
+
+// Listen for window.onerror events and log them to the main process
+// This must be done via a script injection since we can't access window in preload directly
+const errorHandlerScript = `
+(function() {
+  console.log('[ErrorHandler] Installing global error handler...');
+  
+  // Capture uncaught errors
+  window.addEventListener('error', function(event) {
+    const errorInfo = {
+      message: event.message || 'Unknown error',
+      filename: event.filename || 'unknown',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      error: event.error ? {
+        name: event.error.name,
+        message: event.error.message,
+        stack: event.error.stack
+      } : null,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.error('[ErrorHandler] Uncaught error:', errorInfo);
+    
+    // Try to send to main process if electron API is available
+    if (window.electron && window.electron.app) {
+      console.log('[ErrorHandler] Error details logged to console');
+    }
+  }, true);
+  
+  // Capture unhandled promise rejections
+  window.addEventListener('unhandledrejection', function(event) {
+    const rejectionInfo = {
+      reason: event.reason,
+      promise: 'Promise',
+      timestamp: new Date().toISOString()
+    };
+    
+    console.error('[ErrorHandler] Unhandled promise rejection:', rejectionInfo);
+    
+    if (window.electron && window.electron.app) {
+      console.log('[ErrorHandler] Promise rejection details logged to console');
+    }
+  });
+  
+  console.log('[ErrorHandler] ✓ Global error handlers installed');
+})();
+`;
+
+// We can't execute this directly in preload, but we can inject it via IPC
+// Store it to be injected by main process after window loads
+if (typeof process !== 'undefined' && process.versions && process.versions.electron) {
+  // Signal to main process that error handler script is ready
+  console.log('[Preload] Error handler script prepared for injection');
+}

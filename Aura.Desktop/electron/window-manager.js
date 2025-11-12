@@ -233,23 +233,102 @@ class WindowManager {
 
     // Load frontend
     const frontendPath = this._getFrontendPath();
-    console.log('Loading frontend from:', frontendPath);
+    console.log('[WindowManager] Loading frontend from:', frontendPath);
+    console.log('[WindowManager] Frontend path exists:', require('fs').existsSync(frontendPath));
+
+    // Add did-fail-load handler to catch load failures
+    this.mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      console.error('[WindowManager] ✗ Failed to load page!');
+      console.error('[WindowManager] Error code:', errorCode);
+      console.error('[WindowManager] Error description:', errorDescription);
+      console.error('[WindowManager] URL:', validatedURL);
+      console.error('[WindowManager] Is main frame:', isMainFrame);
+      
+      if (isMainFrame) {
+        console.error('[WindowManager] CRITICAL: Main frame failed to load!');
+      }
+    });
+
+    // Add console message handler to see renderer process logs
+    this.mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+      const levels = ['verbose', 'info', 'warning', 'error'];
+      const levelName = levels[level] || 'log';
+      console.log(`[Renderer:${levelName}] ${message}`);
+      if (line && sourceId) {
+        console.log(`[Renderer:${levelName}]   at ${sourceId}:${line}`);
+      }
+    });
 
     this.mainWindow.loadFile(frontendPath).then(() => {
-      // Inject backend URL and environment info
+      console.log('[WindowManager] ✓ Frontend file loaded successfully');
+      
+      // Verify the URL that was loaded
+      const loadedURL = this.mainWindow.webContents.getURL();
+      console.log('[WindowManager] Loaded URL:', loadedURL);
+      console.log('[WindowManager] URL protocol:', new URL(loadedURL).protocol);
+      
+      // Inject error handler before anything else
+      console.log('[WindowManager] Injecting global error handler...');
       this.mainWindow.webContents.executeJavaScript(`
-        window.AURA_BACKEND_URL = 'http://localhost:${backendPort}';
-        window.AURA_IS_ELECTRON = true;
-        window.AURA_IS_DEV = ${this.isDev};
-        window.AURA_VERSION = '${this.app.getVersion()}';
-      `);
+        (function() {
+          console.log('[Injected] Installing global error handler...');
+          
+          // Capture uncaught errors
+          window.addEventListener('error', function(event) {
+            console.error('[Global Error Handler] Uncaught error:', {
+              message: event.message,
+              filename: event.filename,
+              lineno: event.lineno,
+              colno: event.colno,
+              error: event.error ? {
+                name: event.error.name,
+                message: event.error.message,
+                stack: event.error.stack
+              } : null
+            });
+          }, true);
+          
+          // Capture unhandled promise rejections
+          window.addEventListener('unhandledrejection', function(event) {
+            console.error('[Global Error Handler] Unhandled promise rejection:', {
+              reason: event.reason,
+              promise: 'Promise'
+            });
+          });
+          
+          console.log('[Injected] ✓ Global error handlers installed');
+        })();
+      `).then(() => {
+        console.log('[WindowManager] ✓ Error handler injected');
+        
+        // Now inject backend URL and environment info
+        console.log('[WindowManager] Injecting environment variables...');
+        return this.mainWindow.webContents.executeJavaScript(`
+          window.AURA_BACKEND_URL = 'http://localhost:${backendPort}';
+          window.AURA_IS_ELECTRON = true;
+          window.AURA_IS_DEV = ${this.isDev};
+          window.AURA_VERSION = '${this.app.getVersion()}';
+          console.log('[Injected] Environment variables set:', {
+            AURA_BACKEND_URL: window.AURA_BACKEND_URL,
+            AURA_IS_ELECTRON: window.AURA_IS_ELECTRON,
+            AURA_IS_DEV: window.AURA_IS_DEV,
+            AURA_VERSION: window.AURA_VERSION
+          });
+        `);
+      }).then(() => {
+        console.log('[WindowManager] ✓ Environment variables injected');
+      }).catch(injectionError => {
+        console.error('[WindowManager] ✗ Failed to inject scripts:', injectionError);
+      });
     }).catch(error => {
-      console.error('Failed to load frontend:', error);
+      console.error('[WindowManager] ✗ Failed to load frontend:', error);
+      console.error('[WindowManager] Error stack:', error.stack);
       throw error;
     });
 
     // Show window when ready
     this.mainWindow.once('ready-to-show', () => {
+      console.log('[WindowManager] Window ready to show');
       this.mainWindow.show();
       
       // Close splash screen
@@ -260,7 +339,10 @@ class WindowManager {
 
       // Open DevTools in development mode
       if (this.isDev) {
+        console.log('[WindowManager] Development mode detected - opening DevTools');
         this.mainWindow.webContents.openDevTools({ mode: 'detach' });
+      } else {
+        console.log('[WindowManager] Production mode - DevTools not auto-opened');
       }
     });
 
@@ -352,30 +434,31 @@ class WindowManager {
   _getCSP() {
     if (this.isDev) {
       // More permissive CSP for development
+      console.log('[WindowManager] Using development CSP');
       return [
-        "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*",
-        "style-src 'self' 'unsafe-inline' http://localhost:*",
-        "img-src 'self' data: blob: http://localhost:*",
-        "font-src 'self' data:",
+        "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:* file: data: blob:",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* file:",
+        "style-src 'self' 'unsafe-inline' http://localhost:* file:",
+        "img-src 'self' data: blob: http://localhost:* file:",
+        "font-src 'self' data: file:",
         "connect-src 'self' http://localhost:* ws://localhost:*",
-        "media-src 'self' blob: http://localhost:*"
+        "media-src 'self' blob: http://localhost:* file:"
       ].join('; ');
     } else {
-      // Strict CSP for production
+      // Strict CSP for production but compatible with file:// protocol
+      console.log('[WindowManager] Using production CSP');
       return [
-        "default-src 'self'",
-        "script-src 'self'",
-        "style-src 'self' 'unsafe-inline'", // Allow inline styles for React
-        "img-src 'self' data: blob:",
-        "font-src 'self' data:",
+        "default-src 'self' file: data: blob:",
+        "script-src 'self' file:",
+        "style-src 'self' 'unsafe-inline' file:", // Allow inline styles for React
+        "img-src 'self' data: blob: file:",
+        "font-src 'self' data: file:",
         "connect-src 'self' http://localhost:*",
-        "media-src 'self' blob:",
+        "media-src 'self' blob: file:",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
-        "frame-ancestors 'none'",
-        "upgrade-insecure-requests"
+        "frame-ancestors 'none'"
       ].join('; ');
     }
   }
