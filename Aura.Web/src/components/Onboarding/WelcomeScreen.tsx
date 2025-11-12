@@ -6,6 +6,7 @@ import {
   Play24Regular,
   FolderOpen24Regular,
 } from '@fluentui/react-icons';
+import { Logo } from '../Logo';
 
 const useStyles = makeStyles({
   container: {
@@ -24,9 +25,10 @@ const useStyles = makeStyles({
     position: 'relative',
   },
   heroGraphic: {
-    fontSize: '120px',
+    width: '180px',
+    height: '180px',
     animation: 'heroAnimation 2s ease-in-out infinite',
-    textShadow: `0 0 40px ${tokens.colorBrandBackground2}`,
+    filter: `drop-shadow(0 0 40px ${tokens.colorBrandBackground2})`,
   },
   '@keyframes heroAnimation': {
     '0%, 100%': { transform: 'scale(1) rotate(0deg)' },
@@ -142,7 +144,7 @@ export function WelcomeScreen({ onGetStarted, onImportProject }: WelcomeScreenPr
     <div className={styles.container}>
       {/* Hero Section */}
       <div className={styles.heroContainer}>
-        <div className={styles.heroGraphic}>🎬</div>
+        <Logo size={180} className={styles.heroGraphic} />
       </div>
 
       {/* Brand & Value Prop */}

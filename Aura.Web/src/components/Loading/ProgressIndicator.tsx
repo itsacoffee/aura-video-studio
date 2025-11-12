@@ -1,4 +1,5 @@
-import { makeStyles, tokens, Text, ProgressBar } from '@fluentui/react-components';
+import { makeStyles, tokens, Text } from '@fluentui/react-components';
+import { GradientProgressBar } from './GradientProgressBar';
 
 const useStyles = makeStyles({
   container: {
@@ -112,7 +113,7 @@ export function ProgressIndicator({
       </div>
 
       <div className={styles.progressBarContainer}>
-        <ProgressBar
+        <GradientProgressBar
           value={progressValue}
           max={100}
           thickness="large"
