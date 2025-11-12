@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Aura.Core.Configuration;
 using Aura.Core.Errors;
 using Aura.Core.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Providers;
@@ -18,6 +19,7 @@ namespace Aura.Core.Providers;
 /// </summary>
 public class ImageProviderFactory
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ImageProviderFactory> _logger;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ProviderSettings _providerSettings;
@@ -26,10 +28,12 @@ public class ImageProviderFactory
     private readonly TimeSpan _healthCheckCacheDuration = TimeSpan.FromMinutes(5);
 
     public ImageProviderFactory(
+        IServiceProvider serviceProvider,
         ILogger<ImageProviderFactory> logger,
         IHttpClientFactory httpClientFactory,
         ProviderSettings providerSettings)
     {
+        _serviceProvider = serviceProvider;
         _logger = logger;
         _httpClientFactory = httpClientFactory;
         _providerSettings = providerSettings;
@@ -42,12 +46,65 @@ public class ImageProviderFactory
 
     /// <summary>
     /// Creates all available image providers based on configuration
+    /// Resolves providers from DI - never throws on failure
     /// </summary>
     public Dictionary<string, IImageProvider> CreateAvailableProviders(ILoggerFactory loggerFactory)
     {
         var providers = new Dictionary<string, IImageProvider>();
+        string correlationId = Guid.NewGuid().ToString("N")[..8];
 
-        // Load API keys
+        _logger.LogInformation("[{CorrelationId}] Creating available image providers from DI container", correlationId);
+
+        // Try to resolve all registered IImageProvider instances from DI
+        try
+        {
+            var registeredProviders = _serviceProvider.GetServices<IImageProvider>();
+            int providerIndex = 0;
+
+            foreach (var provider in registeredProviders)
+            {
+                if (provider == null)
+                {
+                    _logger.LogDebug("[{CorrelationId}] Skipping null provider at index {Index}", correlationId, providerIndex);
+                    providerIndex++;
+                    continue;
+                }
+
+                var providerTypeName = provider.GetType().Name;
+                _logger.LogInformation("[{CorrelationId}] ✓ Resolved image provider: {ProviderName}", 
+                    correlationId, providerTypeName);
+                
+                // Use type name as key if provider doesn't have a Name property
+                var providerKey = providerTypeName.Replace("Provider", "").Replace("Image", "");
+                providers[providerKey] = provider;
+                providerIndex++;
+            }
+
+            _logger.LogInformation("[{CorrelationId}] Image provider factory initialized with {Count} providers from DI", 
+                correlationId, providers.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to resolve image providers from DI", correlationId);
+        }
+
+        // If no providers were resolved from DI, try legacy reflection-based approach as fallback
+        if (providers.Count == 0)
+        {
+            _logger.LogWarning("[{CorrelationId}] No image providers resolved from DI, attempting legacy reflection-based instantiation", 
+                correlationId);
+            providers = CreateProvidersViaReflection(loggerFactory, correlationId);
+        }
+
+        return providers;
+    }
+
+    /// <summary>
+    /// Legacy method: Creates providers via reflection (fallback when DI registration fails)
+    /// </summary>
+    private Dictionary<string, IImageProvider> CreateProvidersViaReflection(ILoggerFactory loggerFactory, string correlationId)
+    {
+        var providers = new Dictionary<string, IImageProvider>();
         var apiKeys = LoadApiKeys();
 
         // Try to create Stability AI provider (if API key is available)
@@ -55,26 +112,26 @@ public class ImageProviderFactory
         {
             if (apiKeys.TryGetValue("stability", out var stabilityKey) && !string.IsNullOrWhiteSpace(stabilityKey))
             {
-                _logger.LogInformation("Attempting to register Stability AI image provider...");
+                _logger.LogInformation("[{CorrelationId}] Attempting to register Stability AI image provider via reflection...", correlationId);
                 var stabilityProvider = CreateStabilityProvider(loggerFactory, stabilityKey);
                 if (stabilityProvider != null && CheckProviderHealth(stabilityProvider, "Stability"))
                 {
                     providers["Stability"] = stabilityProvider;
-                    _logger.LogInformation("✓ Stability AI image provider registered successfully");
+                    _logger.LogInformation("[{CorrelationId}] ✓ Stability AI image provider registered successfully", correlationId);
                 }
                 else
                 {
-                    _logger.LogWarning("✗ Stability AI provider health check failed");
+                    _logger.LogWarning("[{CorrelationId}] ✗ Stability AI provider health check failed", correlationId);
                 }
             }
             else
             {
-                _logger.LogDebug("✗ Stability AI provider skipped (no API key configured)");
+                _logger.LogDebug("[{CorrelationId}] ✗ Stability AI provider skipped (no API key configured)", correlationId);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "✗ Stability AI provider registration failed");
+            _logger.LogWarning(ex, "[{CorrelationId}] ✗ Stability AI provider registration failed", correlationId);
         }
 
         // Try to create Runway provider (if API key is available)
@@ -82,29 +139,30 @@ public class ImageProviderFactory
         {
             if (apiKeys.TryGetValue("runway", out var runwayKey) && !string.IsNullOrWhiteSpace(runwayKey))
             {
-                _logger.LogInformation("Attempting to register Runway image provider...");
+                _logger.LogInformation("[{CorrelationId}] Attempting to register Runway image provider via reflection...", correlationId);
                 var runwayProvider = CreateRunwayProvider(loggerFactory, runwayKey);
                 if (runwayProvider != null && CheckProviderHealth(runwayProvider, "Runway"))
                 {
                     providers["Runway"] = runwayProvider;
-                    _logger.LogInformation("✓ Runway image provider registered successfully");
+                    _logger.LogInformation("[{CorrelationId}] ✓ Runway image provider registered successfully", correlationId);
                 }
                 else
                 {
-                    _logger.LogWarning("✗ Runway provider health check failed");
+                    _logger.LogWarning("[{CorrelationId}] ✗ Runway provider health check failed", correlationId);
                 }
             }
             else
             {
-                _logger.LogDebug("✗ Runway provider skipped (no API key configured)");
+                _logger.LogDebug("[{CorrelationId}] ✗ Runway provider skipped (no API key configured)", correlationId);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "✗ Runway provider registration failed");
+            _logger.LogWarning(ex, "[{CorrelationId}] ✗ Runway provider registration failed", correlationId);
         }
 
-        _logger.LogInformation("Image provider factory initialized with {Count} providers", providers.Count);
+        _logger.LogInformation("[{CorrelationId}] Image provider factory initialized with {Count} providers via reflection", 
+            correlationId, providers.Count);
         return providers;
     }
 
