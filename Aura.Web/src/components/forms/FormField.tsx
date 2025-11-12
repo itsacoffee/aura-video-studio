@@ -3,7 +3,7 @@
  */
 
 import { Field, Label, makeStyles, tokens } from '@fluentui/react-components';
-import { ReactNode } from 'react';
+import { ReactElement, ReactNode, cloneElement, useId } from 'react';
 import { FieldError } from 'react-hook-form';
 
 interface FormFieldProps {
@@ -11,7 +11,7 @@ interface FormFieldProps {
   error?: FieldError | string;
   required?: boolean;
   helpText?: string;
-  children: ReactNode;
+  children: ReactElement;
 }
 
 const useStyles = makeStyles({
@@ -41,16 +41,20 @@ const useStyles = makeStyles({
 export function FormField({ label, error, required, helpText, children }: FormFieldProps) {
   const styles = useStyles();
   const errorMessage = typeof error === 'string' ? error : error?.message;
+  const inputId = useId('form-field');
+
+  // Clone the child element and add the id if it's an input-like component
+  const childWithId = cloneElement(children, { id: inputId } as Record<string, unknown>);
 
   return (
     <Field className={styles.field}>
       {label && (
-        <Label className={styles.label}>
+        <Label className={styles.label} htmlFor={inputId}>
           {label}
           {required && <span className={styles.required}>*</span>}
         </Label>
       )}
-      {children}
+      {childWithId}
       {errorMessage && <div className={styles.error}>{errorMessage}</div>}
       {!errorMessage && helpText && <div className={styles.helpText}>{helpText}</div>}
     </Field>

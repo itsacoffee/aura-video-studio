@@ -9,3 +9,14 @@ export { CrashRecoveryScreen } from './CrashRecoveryScreen';
 export { ApiErrorDisplay, parseApiError } from './ApiErrorDisplay';
 export type { ApiError } from './ApiErrorDisplay';
 export { EnhancedErrorFallback } from './EnhancedErrorFallback';
+export {
+  ErrorDisplay,
+  createNetworkErrorDisplay,
+  createAuthErrorDisplay,
+  createValidationErrorDisplay,
+  createGenericErrorDisplay,
+} from './ErrorDisplay';
+export type { ErrorDisplayProps } from './ErrorDisplay';
+
+// Default export for convenience - uses GlobalErrorBoundary
+export { GlobalErrorBoundary as ErrorBoundary } from './GlobalErrorBoundary';

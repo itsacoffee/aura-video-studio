@@ -159,6 +159,9 @@ const LayoutDemoPage = lazy(() =>
 const Windows11DemoPage = lazy(() =>
   import('./pages/Windows11DemoPage').then((m) => ({ default: m.Windows11DemoPage }))
 );
+const ErrorHandlingDemoPage = lazy(() =>
+  import('./pages/ErrorHandlingDemoPage').then((m) => ({ default: m.ErrorHandlingDemoPage }))
+);
 
 interface ThemeContextType {
   isDarkMode: boolean;
@@ -974,6 +977,14 @@ function App() {
                           {/* Development-only routes - lazy loaded */}
                           {env.enableDevTools && (
                             <>
+                              <Route
+                                path="/error-handling-demo"
+                                element={
+                                  <Suspense fallback={<Spinner label="Loading..." />}>
+                                    <ErrorHandlingDemoPage />
+                                  </Suspense>
+                                }
+                              />
                               <Route
                                 path="/activity-demo"
                                 element={
