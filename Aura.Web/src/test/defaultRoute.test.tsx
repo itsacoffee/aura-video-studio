@@ -8,7 +8,6 @@ import { QueryClient, QueryClientProvider } from '@tantml:react-query';
 import { render, waitFor } from '@testing-library/react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
-
 import { WelcomePage } from '../pages/WelcomePage';
 
 const queryClient = new QueryClient({
@@ -99,7 +98,7 @@ describe('Default Route Validation', () => {
     await waitFor(() => {
       // Should be at root route
       expect(window.location.hash).toBe('#/');
-      
+
       // And should have content rendered
       const body = document.body;
       expect(body.textContent).not.toBe('');

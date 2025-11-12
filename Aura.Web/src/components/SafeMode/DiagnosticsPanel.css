@@ -1,0 +1,67 @@
+.diagnostics-panel {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.diagnostics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.diagnostics-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 16px;
+}
+
+.diagnostic-check-card {
+  border: 1px solid var(--colorNeutralStroke1);
+  border-radius: 8px;
+}
+
+.check-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.check-details {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.check-path,
+.check-url,
+.check-fix-action {
+  color: var(--colorNeutralForeground2);
+  font-family: monospace;
+}
+
+.check-actions {
+  padding: 0 16px 16px;
+}
+
+.status-icon-ok {
+  color: var(--colorPaletteGreenForeground1);
+}
+
+.status-icon-warning {
+  color: var(--colorPaletteYellowForeground1);
+}
+
+.status-icon-error {
+  color: var(--colorPaletteRedForeground1);
+}

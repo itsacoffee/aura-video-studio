@@ -5,7 +5,6 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
 import { RouteErrorBoundary } from '../components/ErrorBoundary/RouteErrorBoundary';
 
 // Mock loggingService BEFORE importing component

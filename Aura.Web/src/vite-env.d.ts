@@ -22,7 +22,6 @@ interface ImportMeta {
 // Extend Window interface for Electron and browser APIs
 interface Window {
   electron?: ElectronAPI;
-  // Global variables set by Electron
   AURA_BACKEND_URL?: string;
   AURA_IS_ELECTRON?: boolean;
   AURA_IS_DEV?: boolean;

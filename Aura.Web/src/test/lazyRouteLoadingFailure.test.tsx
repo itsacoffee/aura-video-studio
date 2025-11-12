@@ -3,12 +3,11 @@
  * Requirement 8: Test lazy route loading failure (delete chunk file) and verify error UI shows
  */
 
-import { lazy } from 'react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { render, screen, waitFor } from '@testing-library/react';
+import { lazy } from 'react';
 import { HashRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
 import { LazyRoute } from '../components/LazyRoute';
 
 // Mock loggingService
