@@ -4,19 +4,26 @@ Thank you for your interest in contributing to Aura Video Studio! This guide out
 
 ## Platform Requirements
 
-**Aura Video Studio targets Windows 11 (x64) exclusively.**
+**Aura Video Studio is an Electron desktop application targeting Windows 11 (x64) primarily, with cross-platform capability.**
 
-While some backend components (.NET API) can be developed on any platform with .NET 8 SDK, the complete application—including WinUI 3 components, final packaging, and distribution—requires Windows 11 (64-bit).
+While the application is designed to support Windows, macOS, and Linux through Electron, the current primary focus is Windows 11 (64-bit).
 
 **Development Prerequisites:**
-- Windows 11 (64-bit) - **Required for full-stack development**
-- .NET 8 SDK
-- Node.js 18.0.0 or higher (18.18.0 recommended, specified in `.nvmrc`)
-- npm 9.0.0 or higher
-- PowerShell 5.1 or later
-- Git for Windows
+- **Node.js 20.0.0 or higher** for Aura.Web frontend
+- **Node.js 18.0.0 or higher** for Aura.Desktop Electron app
+- **.NET 8 SDK** for backend components
+- **npm 9.0.0 or higher**
+- **Git** with long paths enabled (Windows)
+- **FFmpeg 4.0+** for video rendering
+- **Windows 11** recommended for Windows-specific builds
 
-**See the complete setup guide:** [docs/developer/BUILD_GUIDE.md](docs/developer/BUILD_GUIDE.md)
+**Cross-Platform Development:**
+- **Backend (.NET)**: Fully cross-platform (Windows, macOS, Linux)
+- **Frontend (React)**: Fully cross-platform
+- **Electron**: Cross-platform framework
+- **Installers**: Platform-specific builds (electron-builder)
+
+**See the complete setup guide:** [BUILD_GUIDE.md](BUILD_GUIDE.md)
 
 ## Development Standards
 
@@ -104,54 +111,48 @@ Instead of adding placeholder text:
 
 ## Building and Testing
 
-See [BUILD_AND_RUN.md](BUILD_AND_RUN.md) for detailed build and test instructions.
+See [BUILD_GUIDE.md](BUILD_GUIDE.md) for detailed build instructions.
 
-### Quick Start (Windows)
+### Quick Start
 
-```powershell
-# Restore dependencies
-dotnet restore
-
-# Build the solution
-dotnet build --configuration Release
-
-# Run tests
-dotnet test --configuration Release
-
-# Run audit scripts
-pwsh scripts/audit/no_future_text.ps1
-pwsh scripts/audit/scan.ps1
-```
-
-### Contract Testing
-
-The project uses OpenAPI-based contract testing to ensure API stability and prevent breaking changes.
-
-#### Running Contract Tests Locally
-
+**Desktop App Build:**
 ```bash
-# Generate current OpenAPI schema
-bash scripts/contract/generate-openapi-schema.sh
+# Install dependencies
+cd Aura.Web && npm install
+cd ../Aura.Desktop && npm install
 
-# Or on Windows
-pwsh scripts/contract/generate-openapi-schema.ps1
+# Build frontend
+cd ../Aura.Web && npm run build:prod
 
-# Verify contracts haven't changed
-bash tests/contracts/verify-contracts.sh
+# Build backend
+cd ../Aura.Api && dotnet build -c Release
+
+# Run Electron app
+cd ../Aura.Desktop && npm run dev
 ```
 
-**What contract tests check**:
-- All API endpoints match the baseline schema
-- Request/response schemas haven't changed unexpectedly
-- New endpoints are documented
-- Correlation IDs are present in all responses
+**Component Development:**
+```bash
+# Terminal 1: Backend
+cd Aura.Api && dotnet watch run
 
-**If contract tests fail**:
-1. Review the schema diff in the test output
-2. If changes are intentional:
-   - Document breaking changes in CHANGELOG.md
-   - Update the baseline: `cp tests/contracts/schemas/openapi-v1.json tests/contracts/schemas/openapi-v1-baseline.json`
-3. If changes are unintentional, fix the code to maintain compatibility
+# Terminal 2: Frontend
+cd Aura.Web && npm run dev
+```
+
+**Testing:**
+```bash
+# Frontend tests
+cd Aura.Web
+npm test
+
+# Backend tests
+dotnet test
+
+# E2E tests
+cd Aura.Web
+npm run playwright
+```
 
 ### End-to-End Testing
 
@@ -169,27 +170,11 @@ npm run playwright:install
 npm run playwright
 
 # Run specific test suites
-npx playwright test tests/e2e/contract-smoke.spec.ts
-npx playwright test tests/e2e/circuit-breaker-fallback.spec.ts
-npx playwright test tests/e2e/memory-regression.spec.ts
+npx playwright test tests/e2e/full-pipeline.spec.ts
 
 # Run with UI mode for debugging
 npm run playwright:ui
 ```
-
-#### E2E Test Categories
-
-1. **Contract Smoke Tests** (`contract-smoke.spec.ts`):
-   - Health endpoint validation
-   - Diagnostics endpoint validation
-   - Correlation ID presence verification
-   - OpenAPI schema accessibility
-
-2. **Circuit Breaker Tests** (`circuit-breaker-fallback.spec.ts`):
-   - Provider fallback scenarios
-   - Circuit breaker triggering and recovery
-   - Degraded status handling
-   - Error message clarity
 
 3. **Memory Regression Tests** (`memory-regression.spec.ts`):
    - Memory leak detection during pagination
