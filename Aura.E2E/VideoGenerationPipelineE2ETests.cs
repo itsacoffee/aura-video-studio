@@ -86,9 +86,9 @@ public class VideoGenerationPipelineE2ETests : IDisposable
 
         var voiceSpec = new VoiceSpec(
             VoiceName: "en-US-AriaNeural",
-            Speed: 1.0,
+            Rate: 1.0,
             Pitch: 1.0,
-            PauseStyle: PauseStyle.Natural
+            Pause: PauseStyle.Natural
         );
 
         var renderSpec = new RenderSpec(
@@ -381,7 +381,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
         {
             var jobStatus = jobService.GetJobStatus(jobId);
             Assert.NotNull(jobStatus);
-            Assert.Equal(Models.Jobs.JobStatus.Completed, jobStatus.Status);
+            Assert.Equal(Aura.Core.Models.Jobs.JobStatus.Completed, jobStatus.Status);
             Assert.NotNull(jobStatus.OutputPath);
             _output.WriteLine($"Job {jobId}: {jobStatus.Status} - {jobStatus.OutputPath}");
         }
@@ -620,7 +620,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             hardwareDetector
         );
 
-        var scriptValidator = new ScriptValidator(_loggerFactory.CreateLogger<ScriptValidator>());
+        var scriptValidator = new ScriptValidator();
         var retryWrapper = new ProviderRetryWrapper(_loggerFactory.CreateLogger<ProviderRetryWrapper>());
         var ttsValidator = new TtsOutputValidator(_loggerFactory.CreateLogger<TtsOutputValidator>());
         var imageValidator = new ImageOutputValidator(_loggerFactory.CreateLogger<ImageOutputValidator>());
@@ -816,7 +816,7 @@ public class VideoGenerationPipelineE2ETests : IDisposable
             _tempFiles = tempFiles;
         }
 
-        public async Task<string> RenderAsync(Providers.Timeline timeline, RenderSpec spec, IProgress<RenderProgress> progress, CancellationToken ct)
+        public async Task<string> RenderAsync(Timeline timeline, RenderSpec spec, IProgress<RenderProgress> progress, CancellationToken ct)
         {
             progress?.Report(new RenderProgress(25, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), "Preparing"));
             await Task.Delay(100, ct);
