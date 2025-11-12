@@ -5,7 +5,7 @@
  * It orchestrates all modules and manages the application lifecycle.
  */
 
-const { app, dialog } = require('electron');
+const { app, dialog, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
@@ -62,6 +62,23 @@ const APP_NAME = 'Aura Video Studio';
 if (process.env.DISABLE_HARDWARE_ACCELERATION === 'true') {
   app.disableHardwareAcceleration();
 }
+
+// ========================================
+// Protocol Registration (MUST BE BEFORE app.ready)
+// ========================================
+
+// Register custom protocol scheme as privileged
+// This MUST be called before the app is ready according to Electron API
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: ProtocolHandler.getProtocolScheme(),
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true
+    }
+  }
+]);
 
 // ========================================
 // Single Instance Lock
