@@ -905,21 +905,9 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     return new FfmpegVideoComposer(logger, ffmpegLocator, configuredFfmpegPath, outputDirectory);
 });
 
-// Register IImageProvider with factory-based resolution (lazy initialization)
-builder.Services.AddSingleton<IImageProvider>(sp =>
-{
-    var factory = sp.GetRequiredService<Aura.Core.Providers.ImageProviderFactory>();
-    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-    var provider = factory.GetDefaultProvider(loggerFactory);
-    
-    if (provider == null)
-    {
-        var logger = loggerFactory.CreateLogger("ImageProvider");
-        logger.LogWarning("No image providers configured, returning null placeholder");
-    }
-    
-    return provider!; // Will be null if no providers are configured - consumers should handle null
-});
+// IImageProvider is NOT registered as a singleton to avoid circular DI dependency
+// ImageProviderFactory should be used directly when image generation is needed
+// VisualsStage accepts IImageProvider? as optional and handles null gracefully
 
 // Register IStockProvider with factory-based resolution for stock media
 builder.Services.AddSingleton<IStockProvider>(sp =>
