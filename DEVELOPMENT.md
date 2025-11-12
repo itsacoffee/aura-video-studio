@@ -1,92 +1,120 @@
 # Aura Video Studio - Development Guide
 
-This guide covers the local development environment setup, architecture overview, and development workflows for Aura Video Studio.
+This guide covers local development for Aura Video Studio's **backend and frontend components**. For Electron desktop app development, see [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md).
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
+- [Overview](#overview)
+- [Desktop App vs Component Development](#desktop-app-vs-component-development)
 - [Architecture](#architecture)
 - [Development Environment](#development-environment)
-- [Running Services](#running-services)
-- [Development Workflows](#development-workflows)
+- [Component Development Workflows](#component-development-workflows)
 - [Testing](#testing)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
-## Quick Start
+## Overview
 
-Get up and running in 3 commands:
+Aura Video Studio is an **Electron desktop application** that bundles:
+- **React frontend** (Aura.Web) - UI components built with React + TypeScript + Vite
+- **ASP.NET Core backend** (Aura.Api) - REST API with Server-Sent Events
+- **Electron shell** (Aura.Desktop) - Native desktop wrapper, IPC, window management
 
-```bash
-# 1. Run the setup script
-./scripts/setup-local.sh   # Linux/macOS
-# OR
-./scripts/setup-local.ps1  # Windows
+This guide focuses on developing the backend and frontend **components** in isolation for rapid iteration. For full desktop app development (Electron main process, IPC, packaging), see [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md).
 
-# 2. Start all services
-make dev
+## Desktop App vs Component Development
 
-# 3. Open your browser
-# Navigate to http://localhost:3000
-```
+### Desktop App Development (Production-like)
+**When to use:** Final testing, Electron-specific features, IPC development, packaging
 
-**That's it!** The setup script handles all prerequisites checking, directory creation, and dependency installation.
+**See:** [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for:
+- Electron main process development
+- IPC handlers and preload scripts
+- Native desktop features (menus, tray, dialogs)
+- Building installers and distribution
+
+### Component Development (Rapid Iteration)
+**When to use:** Backend API development, frontend UI development, quick testing
+
+**This guide covers:**
+- Running backend API standalone
+- Running frontend in browser with Vite hot-reload
+- API endpoint development
+- UI component development
 
 ## Architecture
 
-### High-Level Overview
+### High-Level Overview (Electron Desktop App)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         Aura.Web                            │
-│                  (React + TypeScript + Vite)                │
-│                      Port: 3000/5173                        │
-└─────────────────────────┬───────────────────────────────────┘
-                          │ HTTP/REST + SSE
-┌─────────────────────────▼───────────────────────────────────┐
-│                        Aura.Api                             │
-│                   (ASP.NET Core 8.0)                        │
-│                        Port: 5005                           │
-└──┬────────────────┬──────────────────┬──────────────────┬───┘
-   │                │                  │                  │
-   ▼                ▼                  ▼                  ▼
-┌──────┐      ┌──────────┐      ┌──────────┐      ┌──────────┐
-│SQLite│      │  Redis   │      │  FFmpeg  │      │Providers │
-│  DB  │      │  Cache   │      │Container │      │ (LLM/TTS)│
-└──────┘      └──────────┘      └──────────┘      └──────────┘
-Port:None      Port:6379        Port:None         External APIs
+┌──────────────────────────────────────────────────────────────┐
+│              Electron Main Process                           │
+│         (Node.js, Window Mgmt, IPC, Lifecycle)              │
+└────┬──────────────────────────────┬──────────────────────────┘
+     │ spawns child process         │ IPC communication
+     ▼                              ▼
+┌────────────────┐         ┌─────────────────────────────────┐
+│   ASP.NET      │ HTTP    │    Electron Renderer Process    │
+│   Backend      │◄────────┤      (React + Vite UI)          │
+│   (Aura.Api)   │────────►│      Sandboxed Browser          │
+└────────────────┘         └─────────────────────────────────┘
+     │
+     ▼
+┌────────────────────────────────────────────────────────┐
+│  Aura.Core (Domain Logic)                              │
+│  Aura.Providers (LLM, TTS, Images, Video)              │
+│  FFmpeg (Video Rendering)                              │
+└────────────────────────────────────────────────────────┘
 ```
+
+**In Production (Electron App):**
+- Electron main process spawns the .NET backend as a child process
+- Backend runs on random available port (e.g., http://localhost:54321)
+- React frontend is loaded from bundled files into Electron window
+- Frontend communicates with backend via HTTP/REST and SSE
+- Frontend communicates with Electron main process via IPC (through preload script)
+
+**In Development (Component Mode):**
+- Backend runs standalone on http://localhost:5005
+- Frontend runs in browser with Vite dev server on http://localhost:5173
+- Hot reload enabled for fast iteration
+- No Electron process (browser-only)
 
 ### Project Structure
 
 ```
 Aura/
-├── Aura.Api/           # REST API + SSE endpoints
-│   ├── Controllers/    # API controllers
-│   ├── HealthChecks/   # Health check implementations
-│   ├── Data/           # Database context and seed data
-│   ├── Middleware/     # Custom middleware
-│   └── Services/       # Application services
-├── Aura.Core/          # Domain logic and orchestration
-│   ├── Models/         # Domain models
-│   ├── Orchestrator/   # Video generation orchestration
-│   ├── Planner/        # Content planning
-│   └── Data/           # Data access layer
-├── Aura.Providers/     # External provider integrations
-│   ├── Llm/            # Language model providers
-│   ├── Tts/            # Text-to-speech providers
-│   ├── Images/         # Image providers
-│   └── Video/          # Video processing
-├── Aura.Web/           # React frontend
+├── Aura.Desktop/        # Electron desktop application
+│   ├── electron/        # Main process, IPC handlers, window management
+│   ├── assets/          # Icons, splash screen
+│   ├── build/           # Build configuration (NSIS, DMG)
+│   └── package.json     # Electron dependencies and build scripts
+├── Aura.Api/            # REST API + SSE endpoints
+│   ├── Controllers/     # API controllers
+│   ├── HealthChecks/    # Health check implementations
+│   ├── Data/            # Database context and seed data
+│   ├── Middleware/      # Custom middleware
+│   └── Services/        # Application services
+├── Aura.Core/           # Domain logic and orchestration
+│   ├── Models/          # Domain models
+│   ├── Orchestrator/    # Video generation orchestration
+│   ├── Planner/         # Content planning
+│   └── Data/            # Data access layer
+├── Aura.Providers/      # External provider integrations
+│   ├── Llm/             # Language model providers
+│   ├── Tts/             # Text-to-speech providers
+│   ├── Images/          # Image providers
+│   └── Video/           # Video processing
+├── Aura.Web/            # React frontend (bundled into Electron)
 │   ├── src/
-│   │   ├── api/        # API client
-│   │   ├── components/ # React components
-│   │   ├── pages/      # Page components
-│   │   ├── services/   # Frontend services
-│   │   └── state/      # State management
-│   └── public/         # Static assets
-├── Aura.Tests/         # Unit and integration tests
-└── Aura.E2E/           # End-to-end tests
+│   │   ├── api/         # API client
+│   │   ├── components/  # React components
+│   │   ├── pages/       # Page components
+│   │   ├── services/    # Frontend services
+│   │   └── state/       # State management (Zustand)
+│   └── public/          # Static assets
+├── Aura.Tests/          # Unit and integration tests
+└── Aura.E2E/            # End-to-end tests (Playwright)
 ```
 
 ## Development Environment
@@ -95,214 +123,218 @@ Aura/
 
 | Tool | Minimum Version | Required For | Notes |
 |------|----------------|--------------|-------|
-| **Docker Desktop** | 20.0+ | All development | Required |
-| **Docker Compose** | 2.0+ | All development | Usually included with Docker Desktop |
-| **.NET SDK** | 8.0+ | Local API development | Optional if using Docker only |
-| **Node.js** | 20.0+ | Local Web development | Optional if using Docker only |
-| **FFmpeg** | 4.0+ | Video rendering | Optional - container version available |
+| **Node.js** | 20.0+ | Frontend (Aura.Web) | Use version from .nvmrc if available |
+| **npm** | 9.0+ | Frontend dependencies | Comes with Node.js |
+| **.NET SDK** | 8.0+ | Backend (Aura.Api, Aura.Core) | Required |
+| **Electron** | 32.0+ | Desktop app | Installed via npm in Aura.Desktop |
+| **FFmpeg** | 4.0+ | Video rendering | Required at runtime |
+
+**Optional:**
+- **Git** - Version control
+- **Visual Studio Code** - Recommended editor
+- **Docker** - For containerized dependencies (alternative approach)
 
 ### First-Time Setup
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-org/aura.git
-   cd aura
+   git clone https://github.com/your-org/aura-video-studio.git
+   cd aura-video-studio
    ```
 
-2. **Run the setup script:**
+2. **Install frontend dependencies:**
    ```bash
-   # Linux/macOS
-   ./scripts/setup-local.sh
+   cd Aura.Web
+   npm install
+   ```
+
+3. **Install Electron dependencies:**
+   ```bash
+   cd ../Aura.Desktop
+   npm install
+   ```
+
+4. **Restore .NET dependencies:**
+   ```bash
+   cd ../Aura.Api
+   dotnet restore
+   ```
+
+5. **Configure environment (optional):**
+   ```bash
+   # Copy example config
+   cp .env.example .env
    
-   # Windows (PowerShell)
-   .\scripts\setup-local.ps1
-   ```
-
-3. **Configure environment (optional):**
-   ```bash
-   # Edit .env to add API keys for premium features
-   nano .env  # or use your favorite editor
-   ```
-
-4. **Start services:**
-   ```bash
-   make dev
+   # Edit .env to add API keys for premium features (optional)
+   nano .env
    ```
 
 ### Environment Variables
 
-The `.env.example` file documents all available configuration options. Key variables:
+Create a `.env` file in the repository root (copy from `.env.example`):
 
 ```bash
 # Core API
-AURA_DATABASE_PATH=/app/data/aura.db
-AURA_REDIS_CONNECTION=redis:6379
-AURA_FFMPEG_PATH=/usr/bin/ffmpeg
+AURA_DATABASE_PATH=./data/aura.db
+AURA_FFMPEG_PATH=/path/to/ffmpeg  # Leave empty for auto-detection
 
-# Provider API Keys (optional)
+# Provider API Keys (optional - enables premium features)
 AURA_OPENAI_API_KEY=      # For GPT-4 script generation
-AURA_STABILITY_API_KEY=   # For Stable Diffusion images
-AURA_RUNWAY_API_KEY=      # For AI video generation
-
-# Stock Media (free tiers available)
-AURA_PIXABAY_API_KEY=
-AURA_PEXELS_API_KEY=
-AURA_UNSPLASH_API_KEY=
+AURA_ELEVENLABS_API_KEY=  # For premium TTS voices
 
 # Feature Flags
 AURA_OFFLINE_MODE=false
 AURA_ENABLE_ADVANCED_MODE=false
 ```
 
-**Note:** Aura works without any API keys using free/local providers. API keys unlock premium features.
+**Note:** Aura works without any API keys using free/local providers.
 
-## Running Services
+## Component Development Workflows
 
-### Using Make (Recommended)
+### Quick Start: Component Development Mode
 
-The `Makefile` provides convenient commands for all common operations:
-
-```bash
-# Show all available commands
-make help
-
-# Development
-make dev              # Start all services (attached)
-make dev-detached     # Start in background
-make stop             # Stop services
-make restart          # Restart services
-make clean            # Stop and remove all data
-
-# Logs
-make logs             # View all logs
-make logs-api         # View API logs only
-make logs-web         # View Web logs only
-
-# Database
-make db-migrate       # Run migrations
-make db-reset         # Reset database (WARNING: destroys data)
-
-# Health & Status
-make health           # Check service health
-make status           # Show container status
-
-# Testing
-make test             # Run all tests
-```
-
-### Using Docker Compose Directly
-
-If you prefer or `make` is not available:
+**For rapid backend/frontend iteration without Electron:**
 
 ```bash
-# Start services
-docker-compose up --build
-
-# Start in background
-docker-compose up --build -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-
-# Clean up everything
-docker-compose down -v
-```
-
-### Running Services Locally (Without Docker)
-
-For faster iteration when developing:
-
-**Backend:**
-```bash
+# Terminal 1: Start backend API
 cd Aura.Api
-dotnet restore
 dotnet run
-# API available at http://localhost:5005
-```
+# API runs at http://localhost:5005
 
-**Frontend:**
-```bash
+# Terminal 2: Start frontend dev server
 cd Aura.Web
-npm ci
 npm run dev
-# Web available at http://localhost:5173
+# Frontend runs at http://localhost:5173 with hot reload
+
+# Open browser to http://localhost:5173
 ```
 
-**Dependencies:**
-- Start Redis: `docker run -p 6379:6379 redis:7-alpine`
-- Ensure FFmpeg is installed locally
+**Benefits:**
+- ✅ Frontend hot-reload for instant UI updates
+- ✅ Backend watch mode available via `dotnet watch run`
+- ✅ Browser DevTools for debugging
+- ✅ Fast iteration cycle
 
-## Development Workflows
+**Limitations:**
+- ❌ No Electron-specific features (IPC, native dialogs, menus)
+- ❌ Not testing final desktop app behavior
+- ❌ Browser environment differs from Electron renderer
+
+**When to use:** Backend API development, frontend UI components, quick prototyping
+
+**When to switch to Electron:** Testing IPC, native features, final integration testing
+
+### Desktop App Development Mode
+
+**For full Electron app development (recommended for final testing):**
+
+See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for complete instructions.
+
+```bash
+# Build frontend
+cd Aura.Web
+npm run build:prod
+
+# Run Electron in dev mode
+cd ../Aura.Desktop
+npm run dev
+```
 
 ### Typical Development Session
 
 ```bash
-# Start of day
-make dev-detached     # Start services in background
-make logs-api         # Monitor API logs in one terminal
-# Work on code in your editor
-# Changes are hot-reloaded automatically
+# Morning: Start component development mode
+cd Aura.Api && dotnet watch run &  # Backend with auto-reload
+cd Aura.Web && npm run dev         # Frontend with hot reload
 
-# Check service health
-make health
+# Work on features in your editor
+# Changes auto-reload in browser
+
+# Before committing: Test in Electron
+cd Aura.Web && npm run build:prod
+cd ../Aura.Desktop && npm run dev
 
 # Run tests
-make test
+cd Aura.Web && npm test
+dotnet test
 
-# End of day
-make stop
+# Commit changes
+git add .
+git commit -m "feat: your feature"
 ```
 
 ### Backend Development
 
+**Running with auto-reload:**
 ```bash
-# Make changes to .cs files in Aura.Api or Aura.Core
-
-# Rebuild and restart API
-docker-compose up --build -d api
-
-# Or run locally for faster iteration
 cd Aura.Api
 dotnet watch run
+# Backend auto-reloads on .cs file changes
+```
+
+**Making changes:**
+1. Edit .cs files in Aura.Api, Aura.Core, or Aura.Providers
+2. Save file - backend automatically rebuilds and restarts
+3. Test API endpoint via browser, Postman, or frontend
+
+**Testing endpoints:**
+```bash
+# Health check
+curl http://localhost:5005/health/live
+
+# API endpoint example
+curl http://localhost:5005/api/v1/jobs
 ```
 
 ### Frontend Development
 
+**Running with hot reload:**
 ```bash
-# Make changes to .tsx/.ts files in Aura.Web/src
-
-# Changes are automatically hot-reloaded by Vite
-# No restart needed!
-
-# Run type checking
 cd Aura.Web
-npm run type-check
-
-# Run linting
-npm run lint
-
-# Run tests
-npm run test
+npm run dev
+# Vite dev server with instant hot module replacement (HMR)
 ```
 
-### Database Changes
+**Making changes:**
+1. Edit .tsx/.ts files in Aura.Web/src
+2. Save file - browser automatically updates (no page reload)
+3. Changes reflect instantly in browser
+
+**Code quality checks:**
+```bash
+cd Aura.Web
+
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
+
+# Format checking
+npm run format:check
+
+# All checks at once
+npm run quality-check
+```
+
+### Building for Electron
+
+**When you need to test in the Electron app:**
 
 ```bash
-# Add a new migration (local .NET required)
-cd Aura.Api
-dotnet ef migrations add YourMigrationName
+# 1. Build frontend production bundle
+cd Aura.Web
+npm run build:prod
+# Creates dist/ folder with optimized bundle
 
-# Apply migrations
-make db-migrate
+# 2. Build backend (if changed)
+cd ../Aura.Api
+dotnet build -c Release
 
-# Or via Docker
-docker-compose exec api dotnet ef database update
-
-# Reset database (WARNING: destroys all data)
-make db-reset
+# 3. Run Electron
+cd ../Aura.Desktop
+npm run dev
+# Or build full installer: npm run build:win
 ```
 
 ### Adding a New API Endpoint
@@ -319,16 +351,24 @@ make db-reset
    }
    ```
 
-2. **Update API client (frontend):**
+2. **Test the endpoint:**
    ```bash
-   cd Aura.Web
-   npm run generate:api-types
-   ```
-
-3. **Test the endpoint:**
-   ```bash
+   # With backend running on localhost:5005
    curl http://localhost:5005/api/v1/your-endpoint
    ```
+
+3. **Update frontend API client (if needed):**
+   ```typescript
+   // Aura.Web/src/services/api/apiClient.ts
+   export async function getYourData() {
+     const response = await apiClient.get('/api/v1/your-endpoint');
+     return response.data;
+   }
+   ```
+
+4. **Test in both modes:**
+   - Component mode: Browser at http://localhost:5173
+   - Electron mode: `cd Aura.Desktop && npm run dev`
 
 ## Testing
 
@@ -389,134 +429,128 @@ make clean
 
 ## Troubleshooting
 
-### Services won't start
+### Backend won't start
 
-**Check port conflicts:**
+**Check .NET SDK:**
 ```bash
-make status
-./scripts/setup/check-ports.sh
+dotnet --version
+# Should be 8.0.x or higher
 ```
 
-**Check Docker is running:**
+**Check port availability:**
 ```bash
-docker ps
+# Windows
+netstat -ano | findstr :5005
+
+# Linux/macOS
+lsof -i :5005
 ```
 
-**View detailed logs:**
+**Check logs:**
 ```bash
-make logs
+cd Aura.Api
+dotnet run --verbosity detailed
 ```
 
-### API returns 502 Bad Gateway
+### Frontend dev server fails
 
-The API might still be starting up. Wait 30-60 seconds and check:
+**Check Node.js version:**
 ```bash
-make health
+node --version
+# Should be 20.0.0 or higher
 ```
 
-### Database errors
-
-**Reset the database:**
+**Clear cache and reinstall:**
 ```bash
-make db-reset
-make dev
+cd Aura.Web
+rm -rf node_modules .vite dist
+npm install
+npm run dev
 ```
 
-**Check database file permissions:**
+### Frontend can't connect to backend
+
+**Verify backend is running:**
 ```bash
-ls -la data/aura.db
+curl http://localhost:5005/health/live
+```
+
+**Check CORS configuration:**
+- Backend should allow http://localhost:5173 in development
+- Check Aura.Api/Program.cs for CORS policy
+
+**Check frontend API base URL:**
+```typescript
+// Aura.Web/src/services/api/apiClient.ts
+// Should point to http://localhost:5005 in development
 ```
 
 ### FFmpeg not found
 
-**Check FFmpeg in container:**
+**Install FFmpeg:**
 ```bash
-docker-compose exec api which ffmpeg
-docker-compose exec api ffmpeg -version
-```
-
-**Install FFmpeg locally (optional):**
-```bash
-# Ubuntu/Debian
-sudo apt install ffmpeg
+# Windows (winget)
+winget install ffmpeg
 
 # macOS
 brew install ffmpeg
 
-# Windows
-# See scripts/ffmpeg/install-ffmpeg-windows.ps1
+# Linux (Ubuntu/Debian)
+sudo apt-get install ffmpeg
 ```
 
-### Redis connection failed
-
-**Check Redis is running:**
+**Verify installation:**
 ```bash
-docker-compose ps redis
-docker-compose exec redis redis-cli ping
+ffmpeg -version
 ```
 
-**Restart Redis:**
-```bash
-docker-compose restart redis
-```
+### Electron app issues
 
-### Hot reload not working (Web)
-
-**Check Vite dev server:**
-```bash
-make logs-web
-```
-
-**Restart web container:**
-```bash
-docker-compose restart web
-```
-
-### Port already in use
-
-**Find and kill process using port:**
-```bash
-# Linux/macOS
-lsof -ti:5005 | xargs kill -9
-lsof -ti:3000 | xargs kill -9
-
-# Windows
-netstat -ano | findstr :5005
-taskkill /PID <PID> /F
-```
-
-**Or change ports in `docker-compose.yml`**
+For Electron-specific issues, see [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) troubleshooting section.
 
 ### Clean slate reset
 
-If all else fails:
 ```bash
-make clean
-docker system prune -af
-make dev
+# Remove all build artifacts
+cd Aura.Web
+rm -rf node_modules dist .vite
+npm install
+
+cd ../Aura.Desktop
+rm -rf node_modules
+npm install
+
+cd ../Aura.Api
+dotnet clean
+dotnet restore
 ```
 
 ## Performance Optimization
 
-### Development Performance Tips
+### Component Development Performance
 
-1. **Use local services when possible:**
-   - Run API and Web locally for faster iteration
-   - Only use Docker for dependencies (Redis, FFmpeg)
+1. **Backend watch mode:**
+   - Use `dotnet watch run` for auto-reload
+   - Only rebuilds changed projects
+   - Faster than full rebuild
 
-2. **Optimize Docker:**
-   - Use volumes for node_modules
-   - Enable BuildKit: `export DOCKER_BUILDKIT=1`
-   - Use `.dockerignore` to exclude unnecessary files
+2. **Frontend hot reload:**
+   - Vite HMR is near-instant
+   - Keep dev server running
+   - Use `npm run dev` (not `npm run build`)
 
-3. **Database optimization:**
-   - Keep SQLite file on SSD
-   - Enable WAL mode (already configured)
-   - Run `VACUUM` periodically
+3. **Selective testing:**
+   ```bash
+   # Test specific file
+   npm test -- path/to/file.test.ts
+   
+   # Test specific .NET project
+   dotnet test Aura.Tests/Aura.Tests.csproj
+   ```
 
-4. **Frontend optimization:**
-   - Use `npm ci` instead of `npm install`
-   - Clear Vite cache: `rm -rf Aura.Web/node_modules/.vite`
+### Electron Build Performance
+
+See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for Electron-specific optimizations.
 
 ## Contributing
 
@@ -576,19 +610,25 @@ Closes #123
 ## Additional Resources
 
 - **[README.md](README.md)** - Project overview and quick start
+- **[DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md)** - Electron desktop app development (CRITICAL for production)
+- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Building installers and packaging
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
-- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Build from source
-- **[docs/](docs/)** - Comprehensive documentation
-- **[API Reference](docs/api/)** - REST API documentation
-- **[Architecture Docs](docs/architecture/)** - System design details
+- **[docs/architecture/](docs/architecture/)** - System design and architecture details
+- **[docs/api/](docs/api/)** - REST API documentation
+- **[Electron README](Aura.Desktop/electron/README.md)** - Electron main process architecture
 
 ## Getting Help
 
 - **Issues:** GitHub Issues for bug reports and feature requests
 - **Discussions:** GitHub Discussions for questions and ideas
 - **Documentation:** Check `docs/troubleshooting/` for common issues
-- **Logs:** Always include logs when reporting issues: `make logs > debug.log`
+- **Logs:** 
+  - Backend: Console output from `dotnet run`
+  - Frontend: Browser console (F12)
+  - Electron: See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md)
 
 ---
+
+**For Electron/Desktop Development:** See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md)
 
 **Happy coding!** 🚀
