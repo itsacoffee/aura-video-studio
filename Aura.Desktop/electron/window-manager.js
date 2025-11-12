@@ -3,10 +3,11 @@
  * Handles window creation, state persistence, and lifecycle management
  */
 
-const { BrowserWindow, screen } = require('electron');
+const { BrowserWindow, screen, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
+const { getFallbackIcon } = require('./icon-fallbacks');
 
 class WindowManager {
   constructor(app, isDev) {
@@ -380,13 +381,66 @@ class WindowManager {
   }
 
   /**
-   * Get the path to the app icon
+   * Get the path to the app icon with comprehensive logging and fallback
    */
   _getAppIcon() {
     const iconName = process.platform === 'win32' ? 'icon.ico' : 
                      process.platform === 'darwin' ? 'icon.icns' : 
                      'icon.png';
-    return path.join(__dirname, '../assets', 'icons', iconName);
+    
+    // Log environment info for debugging
+    console.log('=== Icon Resolution Debug Info ===');
+    console.log('Platform:', process.platform);
+    console.log('Is packaged:', this.app.isPackaged);
+    console.log('__dirname:', __dirname);
+    console.log('app.getAppPath():', this.app.getAppPath());
+    console.log('process.resourcesPath:', process.resourcesPath);
+    console.log('Icon name:', iconName);
+    
+    // Try multiple paths in order of preference
+    const iconPaths = [];
+    
+    if (this.app.isPackaged) {
+      // Production: Try resources path first (ASAR or unpacked)
+      iconPaths.push(path.join(process.resourcesPath, 'assets', 'icons', iconName));
+      iconPaths.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'icons', iconName));
+      iconPaths.push(path.join(this.app.getAppPath(), 'assets', 'icons', iconName));
+    } else {
+      // Development: Try relative to electron directory
+      iconPaths.push(path.join(__dirname, '../assets', 'icons', iconName));
+      iconPaths.push(path.join(process.cwd(), 'Aura.Desktop', 'assets', 'icons', iconName));
+      iconPaths.push(path.join(process.cwd(), 'assets', 'icons', iconName));
+    }
+    
+    // Try each path and return first that exists
+    for (const iconPath of iconPaths) {
+      console.log('Trying icon path:', iconPath);
+      
+      if (fs.existsSync(iconPath)) {
+        console.log('✓ Found icon at:', iconPath);
+        
+        try {
+          const icon = nativeImage.createFromPath(iconPath);
+          
+          if (!icon.isEmpty()) {
+            console.log('✓ Icon loaded successfully');
+            return icon;
+          } else {
+            console.warn('⚠ Icon file exists but loaded as empty image:', iconPath);
+          }
+        } catch (error) {
+          console.error('✗ Error loading icon from path:', iconPath, error.message);
+        }
+      } else {
+        console.log('✗ Icon not found at:', iconPath);
+      }
+    }
+    
+    // If no icon found, use base64 fallback
+    console.warn('⚠ Using fallback icon - no icon files found');
+    console.log('Searched paths:', iconPaths);
+    
+    return getFallbackIcon(nativeImage, '256');
   }
 
   /**

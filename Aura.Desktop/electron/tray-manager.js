@@ -6,6 +6,7 @@
 const { Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { getFallbackIcon } = require('./icon-fallbacks');
 
 class TrayManager {
   constructor(app, windowManager, isDev) {
@@ -23,26 +24,50 @@ class TrayManager {
   create() {
     const trayIconPath = this._getTrayIconPath();
     
-    if (!trayIconPath || !fs.existsSync(trayIconPath)) {
-      console.warn('Tray icon not found at path:', trayIconPath);
-      console.warn('Tray will not be created. This is optional and the app will continue.');
-      return null;
-    }
-
-    try {
-      // Create tray with icon
-      const icon = nativeImage.createFromPath(trayIconPath);
+    console.log('=== Tray Icon Resolution ===');
+    console.log('Resolved tray icon path:', trayIconPath);
+    
+    let icon = null;
+    
+    // Try to load icon from file path
+    if (trayIconPath && fs.existsSync(trayIconPath)) {
+      console.log('✓ Tray icon file exists at:', trayIconPath);
       
-      // Verify icon was loaded successfully
+      try {
+        icon = nativeImage.createFromPath(trayIconPath);
+        
+        if (icon.isEmpty()) {
+          console.warn('⚠ Tray icon loaded but is empty, will use fallback');
+          icon = null;
+        } else {
+          console.log('✓ Tray icon loaded successfully from file');
+        }
+      } catch (error) {
+        console.error('✗ Failed to load tray icon from file:', error.message);
+        console.error('Error stack:', error.stack);
+        icon = null;
+      }
+    } else {
+      console.warn('⚠ Tray icon file not found at:', trayIconPath);
+    }
+    
+    // Use fallback icon if file loading failed
+    if (!icon) {
+      console.log('Using base64 fallback icon for tray');
+      icon = getFallbackIcon(nativeImage, '32');
+      
       if (icon.isEmpty()) {
-        console.warn('Tray icon is empty after loading from:', trayIconPath);
+        console.error('✗ Even fallback icon is empty, tray creation will fail');
         console.warn('Tray will not be created. This is optional and the app will continue.');
         return null;
       }
-      
+    }
+
+    try {
       this.tray = new Tray(icon);
+      console.log('✓ System tray created successfully');
     } catch (error) {
-      console.error('Failed to create system tray:', error.message);
+      console.error('✗ Failed to create system tray:', error.message);
       console.warn('Tray will not be created. This is optional and the app will continue.');
       return null;
     }
@@ -70,7 +95,7 @@ class TrayManager {
       });
     }
 
-    console.log('System tray created');
+    console.log('System tray configured successfully');
     return this.tray;
   }
 
@@ -253,28 +278,57 @@ class TrayManager {
   }
 
   /**
-   * Get tray icon path
+   * Get tray icon path with comprehensive path resolution
    */
   _getTrayIconPath() {
-    // Try to find tray-specific icon first
-    let iconPath = path.join(__dirname, '../assets', 'icons', 'tray.png');
-    if (fs.existsSync(iconPath)) {
-      return iconPath;
-    }
-
-    // Fallback to main icon
+    console.log('=== Tray Icon Path Resolution Debug ===');
+    console.log('Platform:', process.platform);
+    console.log('Is packaged:', this.app.isPackaged);
+    console.log('__dirname:', __dirname);
+    console.log('app.getAppPath():', this.app.getAppPath());
+    
+    const iconPaths = [];
+    
+    // Tray-specific icon name (small, optimized for tray)
+    const trayIconName = 'tray.png';
+    
+    // Fallback icon names by platform
+    let fallbackIconName;
     if (process.platform === 'win32') {
-      iconPath = path.join(__dirname, '../assets', 'icons', 'icon.ico');
+      fallbackIconName = 'icon.ico';
     } else if (process.platform === 'darwin') {
-      iconPath = path.join(__dirname, '../assets', 'icons', 'icon.icns');
+      fallbackIconName = 'icon.icns';
     } else {
-      iconPath = path.join(__dirname, '../assets', 'icons', 'icon.png');
+      fallbackIconName = 'icon.png';
     }
-
-    if (fs.existsSync(iconPath)) {
-      return iconPath;
+    
+    if (this.app.isPackaged) {
+      // Production: Try resources path
+      iconPaths.push(path.join(process.resourcesPath, 'assets', 'icons', trayIconName));
+      iconPaths.push(path.join(process.resourcesPath, 'assets', 'icons', fallbackIconName));
+      iconPaths.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'icons', trayIconName));
+      iconPaths.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'assets', 'icons', fallbackIconName));
+    } else {
+      // Development: Try relative paths
+      iconPaths.push(path.join(__dirname, '../assets', 'icons', trayIconName));
+      iconPaths.push(path.join(__dirname, '../assets', 'icons', fallbackIconName));
+      iconPaths.push(path.join(process.cwd(), 'Aura.Desktop', 'assets', 'icons', trayIconName));
+      iconPaths.push(path.join(process.cwd(), 'Aura.Desktop', 'assets', 'icons', fallbackIconName));
     }
-
+    
+    // Try each path
+    for (const iconPath of iconPaths) {
+      console.log('Checking tray icon path:', iconPath);
+      
+      if (fs.existsSync(iconPath)) {
+        console.log('✓ Found tray icon at:', iconPath);
+        return iconPath;
+      }
+    }
+    
+    console.warn('⚠ No tray icon file found, will use base64 fallback');
+    console.log('Searched paths:', iconPaths);
+    
     return null;
   }
 
