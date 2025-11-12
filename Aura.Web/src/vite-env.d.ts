@@ -23,7 +23,15 @@ interface Window {
     selectFolder: () => Promise<string | null>;
     openPath: (path: string) => Promise<void>;
     openExternal: (url: string) => Promise<void>;
+    backend?: {
+      getUrl(): Promise<string>;
+    };
   };
+  // Global variables set by Electron
+  AURA_BACKEND_URL?: string;
+  AURA_IS_ELECTRON?: boolean;
+  AURA_IS_DEV?: boolean;
+  AURA_VERSION?: string;
 }
 
 // Extend HTMLInputElement for webkitdirectory attribute

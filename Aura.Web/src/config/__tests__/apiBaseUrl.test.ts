@@ -1,0 +1,271 @@
+/**
+ * Tests for API Base URL Resolution
+ */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  resolveApiBaseUrl,
+  resolveApiBaseUrlAsync,
+  isElectronEnvironment,
+  getElectronBackendUrl,
+  type ApiBaseUrlResolution,
+} from '../apiBaseUrl';
+
+describe('apiBaseUrl', () => {
+  // Store original values
+  const originalWindow = global.window;
+  const originalImportMeta = import.meta.env;
+
+  beforeEach(() => {
+    // Reset window object
+    global.window = {
+      location: { origin: 'http://localhost:3000' },
+    } as unknown as Window & typeof globalThis;
+
+    // Clear all environment variable stubs
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    // Restore original values
+    global.window = originalWindow;
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  describe('isElectronEnvironment', () => {
+    it('should return false when not in Electron', () => {
+      expect(isElectronEnvironment()).toBe(false);
+    });
+
+    it('should return true when AURA_IS_ELECTRON is set', () => {
+      (global.window as Window).AURA_IS_ELECTRON = true;
+      expect(isElectronEnvironment()).toBe(true);
+    });
+
+    it('should return true when electron object exists', () => {
+      (global.window as Window).electron = {
+        selectFolder: vi.fn(),
+        openPath: vi.fn(),
+        openExternal: vi.fn(),
+      };
+      expect(isElectronEnvironment()).toBe(true);
+    });
+
+    it('should return false when window is undefined', () => {
+      const temp = global.window;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (global as any).window;
+      expect(isElectronEnvironment()).toBe(false);
+      global.window = temp;
+    });
+  });
+
+  describe('getElectronBackendUrl', () => {
+    it('should return null when not in Electron', async () => {
+      const result = await getElectronBackendUrl();
+      expect(result).toBeNull();
+    });
+
+    it('should return URL from AURA_BACKEND_URL global variable', async () => {
+      (global.window as Window).AURA_BACKEND_URL = 'http://localhost:5005';
+      const result = await getElectronBackendUrl();
+      expect(result).toBe('http://localhost:5005');
+    });
+
+    it('should trim whitespace from AURA_BACKEND_URL', async () => {
+      (global.window as Window).AURA_BACKEND_URL = '  http://localhost:5005  ';
+      const result = await getElectronBackendUrl();
+      expect(result).toBe('http://localhost:5005');
+    });
+
+    it('should return null for empty AURA_BACKEND_URL', async () => {
+      (global.window as Window).AURA_BACKEND_URL = '   ';
+      const result = await getElectronBackendUrl();
+      expect(result).toBeNull();
+    });
+
+    it('should call electron.backend.getUrl() when available', async () => {
+      const mockGetUrl = vi.fn().mockResolvedValue('http://electron-backend:5005');
+      (global.window as Window).electron = {
+        selectFolder: vi.fn(),
+        openPath: vi.fn(),
+        openExternal: vi.fn(),
+        backend: {
+          getUrl: mockGetUrl,
+        },
+      };
+
+      const result = await getElectronBackendUrl();
+      expect(mockGetUrl).toHaveBeenCalled();
+      expect(result).toBe('http://electron-backend:5005');
+    });
+
+    it('should handle errors from electron.backend.getUrl()', async () => {
+      const mockGetUrl = vi.fn().mockRejectedValue(new Error('Backend not ready'));
+      (global.window as Window).electron = {
+        selectFolder: vi.fn(),
+        openPath: vi.fn(),
+        openExternal: vi.fn(),
+        backend: {
+          getUrl: mockGetUrl,
+        },
+      };
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const result = await getElectronBackendUrl();
+
+      expect(mockGetUrl).toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Failed to get backend URL from Electron API:',
+        expect.any(Error)
+      );
+      expect(result).toBeNull();
+    });
+
+    it('should return null when window is undefined', async () => {
+      const temp = global.window;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (global as any).window;
+      const result = await getElectronBackendUrl();
+      expect(result).toBeNull();
+      global.window = temp;
+    });
+  });
+
+  describe('resolveApiBaseUrl (synchronous)', () => {
+    it('should use Electron global variable when available', () => {
+      (global.window as Window).AURA_IS_ELECTRON = true;
+      (global.window as Window).AURA_BACKEND_URL = 'http://electron:5005';
+
+      const result = resolveApiBaseUrl();
+
+      expect(result.value).toBe('http://electron:5005');
+      expect(result.source).toBe('electron');
+      expect(result.isElectron).toBe(true);
+    });
+
+    it('should use environment variable when available', () => {
+      vi.stubEnv('VITE_API_BASE_URL', 'http://api.example.com');
+
+      const result = resolveApiBaseUrl();
+
+      expect(result.value).toBe('http://api.example.com');
+      expect(result.source).toBe('env');
+    });
+
+    it('should use window.location.origin as fallback', () => {
+      const result = resolveApiBaseUrl();
+
+      expect(result.value).toBe('http://localhost:3000');
+      expect(result.source).toBe('origin');
+    });
+
+    it('should use default fallback when nothing else available', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (global.window as any).location;
+
+      const result = resolveApiBaseUrl();
+
+      expect(result.value).toBe('http://127.0.0.1:5005');
+      expect(result.source).toBe('fallback');
+    });
+
+    it('should prioritize Electron over env variable', () => {
+      (global.window as Window).AURA_BACKEND_URL = 'http://electron:5005';
+      (global.window as Window).AURA_IS_ELECTRON = true;
+      vi.stubEnv('VITE_API_BASE_URL', 'http://env.example.com');
+
+      const result = resolveApiBaseUrl();
+
+      expect(result.value).toBe('http://electron:5005');
+      expect(result.source).toBe('electron');
+    });
+
+    it('should prioritize env over origin', () => {
+      vi.stubEnv('VITE_API_BASE_URL', 'http://env.example.com');
+
+      const result = resolveApiBaseUrl();
+
+      expect(result.value).toBe('http://env.example.com');
+      expect(result.source).toBe('env');
+    });
+  });
+
+  describe('resolveApiBaseUrlAsync', () => {
+    it('should resolve from Electron API asynchronously', async () => {
+      const mockGetUrl = vi.fn().mockResolvedValue('http://electron-async:5005');
+      (global.window as Window).AURA_IS_ELECTRON = true;
+      (global.window as Window).electron = {
+        selectFolder: vi.fn(),
+        openPath: vi.fn(),
+        openExternal: vi.fn(),
+        backend: {
+          getUrl: mockGetUrl,
+        },
+      };
+
+      const result = await resolveApiBaseUrlAsync();
+
+      expect(mockGetUrl).toHaveBeenCalled();
+      expect(result.value).toBe('http://electron-async:5005');
+      expect(result.source).toBe('electron');
+      expect(result.isElectron).toBe(true);
+    });
+
+    it('should fall back to synchronous resolution on Electron error', async () => {
+      const mockGetUrl = vi.fn().mockRejectedValue(new Error('Backend not ready'));
+      (global.window as Window).AURA_IS_ELECTRON = true;
+      (global.window as Window).electron = {
+        selectFolder: vi.fn(),
+        openPath: vi.fn(),
+        openExternal: vi.fn(),
+        backend: {
+          getUrl: mockGetUrl,
+        },
+      };
+      vi.stubEnv('VITE_API_BASE_URL', 'http://fallback.example.com');
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const result = await resolveApiBaseUrlAsync();
+
+      expect(result.value).toBe('http://fallback.example.com');
+      expect(result.source).toBe('env');
+    });
+
+    it('should use synchronous resolution when not in Electron', async () => {
+      vi.stubEnv('VITE_API_BASE_URL', 'http://web.example.com');
+
+      const result = await resolveApiBaseUrlAsync();
+
+      expect(result.value).toBe('http://web.example.com');
+      expect(result.source).toBe('env');
+      expect(result.isElectron).toBe(false);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle empty string from Electron', async () => {
+      (global.window as Window).AURA_BACKEND_URL = '';
+      const result = resolveApiBaseUrl();
+
+      expect(result.source).not.toBe('electron');
+    });
+
+    it('should handle whitespace-only strings', () => {
+      (global.window as Window).AURA_BACKEND_URL = '   ';
+      const result = resolveApiBaseUrl();
+
+      expect(result.source).not.toBe('electron');
+    });
+
+    it('should mark isElectron correctly in all scenarios', () => {
+      (global.window as Window).AURA_IS_ELECTRON = true;
+      vi.stubEnv('VITE_API_BASE_URL', 'http://example.com');
+
+      const result = resolveApiBaseUrl();
+
+      expect(result.isElectron).toBe(true);
+    });
+  });
+});
