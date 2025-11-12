@@ -163,8 +163,9 @@ export default defineConfig(({ mode }) => {
       // Asset verification plugin
       assetVerificationPlugin(),
     ],
-    // Use relative base path for production to work when served from Aura.Api
-    base: '/',
+    // Use relative base path for Electron compatibility (file:// protocol)
+    // This ensures all paths in index.html are relative (./assets/...) instead of absolute (/assets/...)
+    base: './',
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -188,6 +189,12 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 600,
       emptyOutDir: true,
       assetsDir: 'assets',
+      // Target Electron's Chrome version (Electron 32 uses Chrome 128)
+      target: 'chrome128',
+      // Explicitly ensure assets are copied from public directory
+      copyPublicDir: true,
+      // Disable CSS code splitting for simpler Electron loading
+      cssCodeSplit: false,
       // Enable minification with terser for better compression
       minify: 'terser',
       terserOptions: {
@@ -203,6 +210,8 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         output: {
+          // Use ES module format for better Electron compatibility
+          format: 'es',
           entryFileNames: 'assets/[name]-[hash].js',
           chunkFileNames: 'assets/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash].[ext]',
@@ -251,7 +260,6 @@ export default defineConfig(({ mode }) => {
       },
       // Asset optimization
       assetsInlineLimit: 4096, // Inline assets smaller than 4KB as base64
-      cssCodeSplit: true, // Split CSS into separate files per chunk
       // Optimize dependencies
       commonjsOptions: {
         include: [/node_modules/],

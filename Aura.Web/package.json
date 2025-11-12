@@ -15,7 +15,7 @@
     "build:clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && npm run build",
     "build:analyze": "npm run build:prod && open dist/stats.html",
     "prebuild": "node ../scripts/build/validate-environment.js",
-    "postbuild": "node ../scripts/build/verify-build.js",
+    "postbuild": "node ../scripts/build/verify-build.js && node scripts/validate-relative-paths.js",
     "validate": "npm run type-check && npm run lint",
     "validate:clean-install": "npm ci && node ../scripts/build/validate-environment.js",
     "validate:dependencies": "npm audit && npm outdated",
