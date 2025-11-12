@@ -24,13 +24,28 @@ class TrayManager {
     const trayIconPath = this._getTrayIconPath();
     
     if (!trayIconPath || !fs.existsSync(trayIconPath)) {
-      console.warn('Tray icon not found, tray will not be created');
+      console.warn('Tray icon not found at path:', trayIconPath);
+      console.warn('Tray will not be created. This is optional and the app will continue.');
       return null;
     }
 
-    // Create tray with icon
-    const icon = nativeImage.createFromPath(trayIconPath);
-    this.tray = new Tray(icon);
+    try {
+      // Create tray with icon
+      const icon = nativeImage.createFromPath(trayIconPath);
+      
+      // Verify icon was loaded successfully
+      if (icon.isEmpty()) {
+        console.warn('Tray icon is empty after loading from:', trayIconPath);
+        console.warn('Tray will not be created. This is optional and the app will continue.');
+        return null;
+      }
+      
+      this.tray = new Tray(icon);
+    } catch (error) {
+      console.error('Failed to create system tray:', error.message);
+      console.warn('Tray will not be created. This is optional and the app will continue.');
+      return null;
+    }
     
     // Set tooltip
     this.tray.setToolTip('Aura Video Studio');

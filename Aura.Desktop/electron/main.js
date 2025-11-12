@@ -535,11 +535,14 @@ async function startApplication() {
       }
     });
 
-    // Create system tray
+    // Create system tray (optional, non-critical)
     trayManager = new TrayManager(app, windowManager, IS_DEV);
-    trayManager.create();
-    trayManager.setBackendUrl(backendService.getUrl());
-    console.log('✓ System tray created');
+    const trayCreated = trayManager.create();
+    if (trayCreated) {
+      trayManager.setBackendUrl(backendService.getUrl());
+      console.log('✓ System tray created');
+    } else {
+      console.log('⚠ System tray not created (icon not found, but app will continue)');
 
     // Build application menu
     menuBuilder = new MenuBuilder(app, windowManager, appConfig, IS_DEV);

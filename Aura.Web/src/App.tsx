@@ -26,6 +26,7 @@ import { ActionHistoryPanel } from './components/UndoRedo/ActionHistoryPanel';
 import { VideoCreationWizard } from './components/VideoWizard/VideoCreationWizard';
 import { env } from './config/env';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
+import { useElectronMenuEvents } from './hooks/useElectronMenuEvents';
 import { useGlobalUndoShortcuts } from './hooks/useGlobalUndoShortcuts';
 import { useWindowsNativeUI } from './hooks/useWindowsNativeUI';
 // Import critical pages for initial render
@@ -209,6 +210,9 @@ function App() {
   const toasterId = 'notifications-toaster';
 
   useGlobalUndoShortcuts();
+
+  // Register Electron menu event handlers (wires File, Edit, View, Tools, Help menus)
+  useElectronMenuEvents();
 
   const [isCheckingFirstRun, setIsCheckingFirstRun] = useState(true);
   const [shouldShowOnboarding, setShouldShowOnboarding] = useState(false);
