@@ -2,11 +2,74 @@
 
 ## Introduction
 
-Aura Video Studio is a Windows 11 desktop application for creating AI-powered videos. The application follows a **web-based UI architecture** hosted inside native Windows shells, allowing cross-platform development while delivering a native Windows experience.
+Aura Video Studio is an **Electron desktop application** for creating AI-powered videos. The application bundles a React frontend and ASP.NET Core backend into a native cross-platform desktop app.
+
+**Note:** For information about the architectural migration from web-based to Electron, see [ARCHITECTURE_MIGRATION_NOTE.md](./ARCHITECTURE_MIGRATION_NOTE.md).
+
+## High-Level Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│              Electron Main Process                       │
+│         (Node.js, Window Mgmt, IPC, Lifecycle)          │
+└────┬──────────────────────────────┬────────────────────┘
+     │ spawns child process         │ IPC communication
+     ▼                              ▼
+┌────────────────┐         ┌─────────────────────────────┐
+│   ASP.NET      │ HTTP    │    Electron Renderer        │
+│   Backend      │◄────────┤      (React UI)             │
+│   (Aura.Api)   │────────►│      Sandboxed Browser      │
+└────────────────┘         └─────────────────────────────┘
+     │
+     ▼
+┌────────────────────────────────────────────────────────┐
+│  Aura.Core (Domain Logic)                              │
+│  Aura.Providers (LLM, TTS, Images, Video)              │
+│  FFmpeg (Video Rendering)                              │
+└────────────────────────────────────────────────────────┘
+```
+
+**Distribution:**
+- Windows: NSIS installer + portable executable
+- macOS: DMG installer (future)
+- Linux: AppImage (future)
 
 ## Architecture Components
 
-### 1. Aura.Core (Business Logic)
+### 1. Aura.Desktop (Electron Application)
+**Technology**: Electron 32.2.5 + Node.js  
+**Purpose**: Desktop application shell, process management, native OS integration
+
+**Key Components**:
+- `electron/main.js` - Main process entry point, orchestration
+- `electron/window-manager.js` - Window lifecycle and state persistence
+- `electron/backend-service.js` - Backend process spawning and management
+- `electron/menu-builder.js` - Application menu system
+- `electron/tray-manager.js` - System tray integration
+- `electron/protocol-handler.js` - Custom protocol (aura://) support
+- `electron/ipc-handlers/` - IPC handlers (config, system, video, diagnostics)
+- `electron/preload.js` - Security bridge for renderer ↔ main IPC
+
+**Features**:
+- Single instance lock (prevents multiple instances)
+- Auto-updater (electron-updater)
+- Native dialogs (file pickers, save dialogs)
+- System tray with quick actions
+- Custom protocol handling (aura:// URLs)
+- Window state persistence
+- Crash recovery and logging
+
+**Security**:
+- Context isolation enabled
+- Node integration disabled (renderer sandboxed)
+- Web security enabled
+- IPC channel whitelisting
+- Input validation and sanitization
+- Content Security Policy (CSP)
+
+**See:** [Aura.Desktop/electron/README.md](../../Aura.Desktop/electron/README.md) for detailed architecture
+
+### 2. Aura.Core (Business Logic)
 **Technology**: .NET 8 Class Library  
 **Purpose**: Platform-agnostic business logic, models, and orchestration
 
@@ -15,127 +78,285 @@ Aura Video Studio is a Windows 11 desktop application for creating AI-powered vi
 - `Hardware/` - Hardware detection and capability tiering
 - `Orchestrator/` - Video generation pipeline orchestration
 - `Rendering/` - FFmpeg plan building
-- `Providers/` - Provider interfaces (LLM, TTS, Image, Video)
+- `VideoOptimization/` - Frame analysis, transitions, optimization
 - `Dependencies/` - Dependency manager with SHA-256 verification
 
-**Platforms**: Linux (dev/CI), Windows (production)
+**Hardware Tiers:**
+- Tier S: High-end (32GB+ RAM, RTX 3080+)
+- Tier A: Upper mid (16GB+ RAM, RTX 3060+)
+- Tier B: Mid-range (16GB RAM, GTX 1660+)
+- Tier C: Lower mid (8GB RAM, integrated GPU)
+- Tier D: Minimum (8GB RAM, CPU only)
 
-### 2. Aura.Providers (Provider Implementations)
+**Platforms**: Cross-platform (.NET 8)
+
+### 3. Aura.Providers (Provider Implementations)
 **Technology**: .NET 8 Class Library  
 **Purpose**: Concrete implementations of provider interfaces
 
-**Free Providers** (no API keys):
-- `RuleBasedLlmProvider` - Template-based script generation
-- `WindowsTtsProvider` - Windows SAPI text-to-speech
-- `FfmpegVideoComposer` - Local FFmpeg rendering
-- Stock providers (Pexels, Pixabay, Unsplash)
+**LLM Providers:**
+- `OpenAiLlmProvider` - GPT-4/GPT-3.5 via OpenAI API
+- `AnthropicProvider` - Claude models
+- `GoogleGeminiProvider` - Google Gemini
+- `OllamaProvider` - Local models via Ollama
+- `RuleBasedLlmProvider` - Template-based (offline fallback)
 
-**Pro Providers** (require API keys):
-- `OpenAiLlmProvider` - GPT-4/3.5 via OpenAI API
-- ElevenLabs/PlayHT TTS (planned)
-- Azure OpenAI, Gemini (planned)
+**TTS Providers:**
+- `ElevenLabsProvider` - Premium realistic voices
+- `PlayHtProvider` - Premium with voice cloning
+- `WindowsSapiProvider` - Windows native TTS
+- `PiperTtsProvider` - Free offline neural TTS
+- `Mimic3Provider` - Free offline TTS
 
-**Platforms**: Linux (dev/CI with mocks), Windows (full functionality)
+**Image Providers:**
+- Stable Diffusion WebUI (local GPU)
+- Stock image APIs (Pexels, Pixabay, Unsplash)
+- Replicate (cloud-based models)
 
-### 3. Aura.Api (Backend API)
-**Technology**: ASP.NET Core 8 Minimal API  
-**Purpose**: RESTful API backend for the web UI
+**Video Rendering:**
+- FFmpeg 4.0+ with hardware acceleration (NVENC, AMF, QuickSync)
+- Multi-pass encoding support
 
-**Endpoints**:
-- `GET /healthz` - Health check
-- `GET /capabilities` - Hardware detection results
-- `POST /plan` - Create timeline plan
-- `POST /script` - Generate script from brief
-- `POST /tts` - Synthesize narration
-- `GET /downloads/manifest` - Dependency manifest
-- `POST /settings/save`, `GET /settings/load` - Settings persistence
+**Platforms**: Cross-platform (.NET 8)
 
-**Additional Planned**:
-- `/assets/search`, `/assets/generate` - Asset management
-- `/compose`, `/render` - Video composition and rendering
-- `/queue` - Render queue management
-- `/logs/stream` - Live log streaming (SSE)
+### 4. Aura.Api (Backend API)
+**Technology**: ASP.NET Core 8 (Minimal API + Controllers)  
+**Purpose**: RESTful API backend embedded in Electron app
 
-**Configuration**:
-- Runs on `http://127.0.0.1:5005` by default
+**Key Endpoints**:
+- `GET /health/live`, `/health/ready` - Health checks
+- `GET /api/jobs`, `POST /api/jobs` - Job management
+- `GET /api/jobs/{id}/events` - Server-Sent Events (SSE) for progress
+- `POST /api/quick/demo` - Quick demo generation
+- `GET /api/settings`, `POST /api/settings` - Settings persistence
+- `GET /api/system/capabilities` - Hardware detection
+- `GET /api/providers/status` - Provider health checks
+
+**Configuration:**
+- Runs on random available port in Electron (spawned by main process)
 - Uses Serilog for structured logging
 - Integrates with Aura.Core and Aura.Providers
+- SQLite database for persistence
+- Server-Sent Events (SSE) for real-time progress
 
-**Platforms**: Linux (dev/CI), Windows (production)
+**Platforms**: Cross-platform (ASP.NET Core 8)
 
-### 4. Aura.Web (Frontend UI)
-**Technology**: React 18 + Vite + TypeScript + Fluent UI React  
-**Purpose**: Modern web-based user interface
+### 5. Aura.Web (Frontend UI)
+**Technology**: React 18.2 + TypeScript + Vite 6.4 + Fluent UI 9.47  
+**Purpose**: Modern user interface bundled into Electron
 
 **Key Features**:
-- Fluent UI React components for Windows 11 look and feel
-- TypeScript for type safety
-- Vite for fast development and optimized builds
-- Proxy configuration to forward API calls to Aura.Api
+- Fluent UI React components for modern UI
+- TypeScript strict mode for type safety
+- Vite for fast development builds
+- Zustand for state management
+- React Router for navigation
+- Axios with circuit breaker for API calls
 
-**Planned Views**:
-- Create Wizard (6 steps)
-- Storyboard & Timeline Editor
-- Render Queue
-- Publish/Upload
-- Settings & Hardware Profile
-- Download Center
+**Views:**
+- Dashboard (quick actions, recent projects)
+- Create Wizard (Brief → Plan → Voice → Generate)
+- Job Queue (monitoring, cancellation)
+- Settings (providers, hardware, preferences)
+- Advanced Mode (ML Lab, deep customization)
 
-**Development**:
-- `npm run dev` - Development server on port 5173
-- `npm run build` - Production build to `dist/`
+**Development:**
+- `npm run dev` - Vite dev server on port 5173 (component mode)
+- `npm run build:prod` - Production build to `dist/` (bundled into Electron)
 
-**Platforms**: Linux (dev/CI), Windows (production)
+**In Electron:**
+- Loaded from bundled files (not via network)
+- Communicates with backend via HTTP (localhost on random port)
+- Communicates with Electron main process via IPC (through preload script)
 
-### 5. Aura.Host.Win (Windows Shells) - **Future Consideration**
-**Technology**: Native Windows shells (concept only)
-**Purpose**: Would provide native Windows shells that host the web UI via WebView2
+**Platforms**: Cross-platform (bundled in Electron)
 
-**Note**: These are concepts for future exploration. Current distribution follows a portable-only model using the web browser as the primary interface. Native shell variants would need to align with the portable-only distribution policy.
+### 6. Aura.Cli (Command Line Interface)
+**Technology**: .NET 8 Console Application  
+**Purpose**: Headless automation and scripting
 
-**Platforms**: Windows only (if implemented)
+**Key Features:**
+- Complete video generation pipeline without UI
+- Batch processing support
+- JSON configuration files
+- Progress reporting to console or file
+- CI/CD integration support
 
-### 6. Aura.App (Legacy WinUI 3 App)
-**Technology**: WinUI 3 + XAML  
-**Purpose**: Original standalone WinUI 3 application (legacy)
-
-**Status**: This was the original desktop application. The project has transitioned to a web-based architecture with portable distribution. The web-based approach provides better cross-platform development and simpler deployment.
+**Platforms**: Cross-platform (.NET 8)
 
 ## Data Flow
+
+### User Interaction Flow
 
 ```
 User Interaction
     ↓
-Aura.Web (React UI)
-    ↓ HTTP
-Aura.Api (ASP.NET Core)
+Electron Window (React UI)
+    ↓ HTTP (localhost)
+Backend API (ASP.NET Core child process)
     ↓ In-process calls
 Aura.Core (Business Logic)
     ↓
-Aura.Providers (LLM, TTS, Video, etc.)
+Aura.Providers (LLM, TTS, Images, Video)
     ↓
-External Services / Local Tools
+External Services / Local Tools (FFmpeg, APIs)
 ```
+
+### IPC Flow (Electron)
+
+```
+React Component
+    ↓ window.electron.* API
+Preload Script (contextBridge)
+    ↓ IPC
+Main Process IPC Handler
+    ↓
+Native OS APIs / Backend Control
+```
+
+## Development Workflows
+
+### Desktop App Development (Recommended for Production Testing)
+
+```bash
+# 1. Build frontend
+cd Aura.Web
+npm run build:prod
+
+# 2. Run Electron app
+cd ../Aura.Desktop
+npm run dev
+```
+
+**Characteristics:**
+- Complete desktop app experience
+- Backend spawned automatically
+- Native OS integration (dialogs, menus, tray)
+- IPC communication available
+- Production-like environment
+
+### Component Development (Rapid Iteration)
+
+```bash
+# Terminal 1: Backend
+cd Aura.Api
+dotnet watch run
+# Runs at http://localhost:5005
+
+# Terminal 2: Frontend
+cd Aura.Web
+npm run dev
+# Runs at http://localhost:5173 with HMR
+```
+
+**Characteristics:**
+- Fast iteration with hot reload
+- Browser-based (not Electron)
+- No Electron features (IPC, native APIs)
+- Quick testing of API and UI components
 
 ## Deployment Scenarios
 
-### Development (Linux/Windows)
-```
-Developer runs:
-1. dotnet run --project Aura.Api  (Terminal 1)
-2. npm run dev  (Terminal 2, in Aura.Web/)
-3. Opens browser to http://localhost:5173
+### Production (Desktop Application)
+
+**Windows:**
+- NSIS installer: `Aura Video Studio-Setup-1.0.0.exe`
+- Portable executable: `Aura Video Studio-1.0.0.exe`
+- Installed to: `C:\Program Files\Aura Video Studio`
+- User data: `%APPDATA%\aura-video-studio`
+
+**macOS (planned):**
+- DMG installer
+- Installed to: `/Applications/Aura Video Studio.app`
+- User data: `~/Library/Application Support/aura-video-studio`
+
+**Linux (planned):**
+- AppImage: `Aura-Video-Studio-1.0.0.AppImage`
+- User data: `~/.config/aura-video-studio`
+
+### Development Environments
+
+**Electron Development:**
+```bash
+cd Aura.Desktop
+npm run dev
+# Electron app with dev tools enabled
 ```
 
-### Production - Portable ZIP (Only Supported Format)
+**Component Development:**
+```bash
+# Backend: http://localhost:5005
+# Frontend: http://localhost:5173 (browser)
 ```
-User extracts:
-- AuraVideoStudio_Portable_x64.zip to any folder
 
-User runs:
-- Launch.bat to start the API and open browser
-- Self-contained, no installation needed
-- No system changes or registry modifications
+## Technology Stack Summary
+
+### Frontend
+- **React**: 18.2.0
+- **TypeScript**: 5.3.3 (strict mode)
+- **Vite**: 6.4.1
+- **Fluent UI**: 9.47.0
+- **State**: Zustand 5.0.8
+- **Router**: React Router 6.21.0
+- **HTTP**: Axios 1.6.5
+
+### Backend
+- **.NET**: 8.0
+- **ASP.NET Core**: 8.0 (Minimal API + Controllers)
+- **Logging**: Serilog
+- **Database**: SQLite
+
+### Desktop
+- **Electron**: 32.2.5
+- **Node.js**: 18.0.0+ (Desktop), 20.0.0+ (Web)
+- **electron-builder**: 25.1.8
+- **electron-updater**: 6.3.9
+
+### Video Processing
+- **FFmpeg**: 4.0+
+- **Hardware Acceleration**: NVENC, AMF, QuickSync
+
+## Key Design Principles
+
+### Security
+- Context isolation in Electron renderer
+- Node integration disabled (sandboxed renderer)
+- IPC channel whitelisting
+- Input validation and sanitization
+- Content Security Policy (CSP)
+- Secrets encryption at rest
+
+### Performance
+- Hardware-accelerated video rendering
+- Frame analysis and optimization
+- Proxy media support
+- Cached waveforms and thumbnails
+- Efficient state management (Zustand)
+
+### Reliability
+- Provider fallback chains
+- Circuit breaker pattern for API calls
+- Automatic retry with exponential backoff
+- Crash recovery and logging
+- Health checks and diagnostics
+
+### User Experience
+- Guided Mode for beginners
+- Advanced Mode for power users
+- Real-time progress via SSE
+- Offline mode support
+- Native OS integration
+
+## References
+
+- [ARCHITECTURE_MIGRATION_NOTE.md](./ARCHITECTURE_MIGRATION_NOTE.md) - Migration from web to Electron
+- [Electron README](../../Aura.Desktop/electron/README.md) - Electron architecture details
+- [DESKTOP_APP_GUIDE.md](../../DESKTOP_APP_GUIDE.md) - Desktop app development
+- [DEVELOPMENT.md](../../DEVELOPMENT.md) - Component development workflows
+
+---
+
+**Last Updated:** November 2025 (Electron migration complete)
 ```
 
 **Distribution Policy**: Aura Video Studio follows a portable-only distribution model. MSIX/APPX packages and traditional installers are not supported.
