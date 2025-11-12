@@ -24,7 +24,10 @@ class AppConfig {
         crashReporting: false,
         minimizeToTray: true,
         startMinimized: false,
-        hardwareAcceleration: true
+        hardwareAcceleration: true,
+        crashCount: 0,
+        lastCrashTime: null,
+        safeMode: false
       }
     });
 
@@ -204,6 +207,91 @@ class AppConfig {
     const os = require('os');
     const machineId = os.hostname() + os.platform() + os.arch();
     return crypto.createHash('sha256').update(machineId).digest('hex');
+  }
+
+  /**
+   * Crash counter management
+   */
+  getCrashCount() {
+    return this.get('crashCount', 0);
+  }
+
+  incrementCrashCount() {
+    const count = this.getCrashCount() + 1;
+    this.set('crashCount', count);
+    this.set('lastCrashTime', Date.now());
+    return count;
+  }
+
+  resetCrashCount() {
+    this.set('crashCount', 0);
+    this.set('lastCrashTime', null);
+  }
+
+  getLastCrashTime() {
+    return this.get('lastCrashTime');
+  }
+
+  /**
+   * Safe mode management
+   */
+  isSafeMode() {
+    return this.get('safeMode', false);
+  }
+
+  enableSafeMode() {
+    this.set('safeMode', true);
+  }
+
+  disableSafeMode() {
+    this.set('safeMode', false);
+  }
+
+  /**
+   * Check if app should enter safe mode based on crash history
+   */
+  shouldEnterSafeMode(maxCrashes = 3) {
+    const crashCount = this.getCrashCount();
+    const lastCrashTime = this.getLastCrashTime();
+    
+    // Reset crash count if last crash was more than 24 hours ago
+    if (lastCrashTime && Date.now() - lastCrashTime > 24 * 60 * 60 * 1000) {
+      this.resetCrashCount();
+      return false;
+    }
+    
+    // If already in safe mode, stay in safe mode
+    if (this.isSafeMode()) {
+      return true;
+    }
+    
+    // If crash count exceeds threshold, enter safe mode
+    if (crashCount >= maxCrashes) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Complete config reset - deletes config file
+   */
+  deleteConfigFile() {
+    const fs = require('fs');
+    const configPath = this.store.path;
+    
+    if (fs.existsSync(configPath)) {
+      fs.unlinkSync(configPath);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Get config file path
+   */
+  getConfigPath() {
+    return this.store.path;
   }
 }
 

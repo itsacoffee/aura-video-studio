@@ -262,7 +262,8 @@ function initializeIpcHandlers(app, windowManager, appConfig, backendService, st
     video: null,
     backend: null,
     ffmpeg: null,
-    startupLogs: null
+    startupLogs: null,
+    diagnostics: null
   };
 
   const failedHandlers = [];
@@ -341,6 +342,18 @@ function initializeIpcHandlers(app, windowManager, appConfig, backendService, st
     } catch (error) {
       failedHandlers.push({ name: 'startupLogs', error: error.message });
       if (logger) logger.warn('IPC', 'Startup logs handler failed to initialize', { error: error.message });
+    }
+
+    // Diagnostics handler
+    try {
+      const DiagnosticsHandler = require('./ipc-handlers/diagnostics-handler');
+      const backendUrl = backendService.getUrl();
+      handlers.diagnostics = new DiagnosticsHandler(app, backendUrl, windowManager);
+      handlers.diagnostics.register();
+      succeededHandlers.push('diagnostics');
+    } catch (error) {
+      failedHandlers.push({ name: 'diagnostics', error: error.message });
+      if (logger) logger.warn('IPC', 'Diagnostics handler failed to initialize', { error: error.message });
     }
 
     // Determine if this is a critical failure

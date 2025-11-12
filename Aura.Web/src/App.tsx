@@ -8,7 +8,6 @@ import { KeyboardShortcutsCheatSheet } from './components/Accessibility/Keyboard
 import { CommandPalette } from './components/CommandPalette';
 import { ConfigurationGate } from './components/ConfigurationGate';
 import { ContentPlanningDashboard } from './components/contentPlanning/ContentPlanningDashboard';
-import { getAuraTheme } from './themes/auraTheme';
 import { QualityDashboard } from './components/dashboard';
 import { ErrorBoundary, CrashRecoveryScreen } from './components/ErrorBoundary';
 import { GlobalStatusFooter } from './components/GlobalStatusFooter';
@@ -19,9 +18,9 @@ import { KeyboardShortcutsPanel } from './components/KeyboardShortcuts/KeyboardS
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal';
 import { Layout } from './components/Layout';
 import { LazyRoute } from './components/LazyRoute';
-import { SuspenseFallback } from './components/Loading/SuspenseFallback';
 import { NotificationsToaster } from './components/Notifications/Toasts';
 import { PlatformDashboard } from './components/Platform';
+import { SafeModeBanner } from './components/SafeMode';
 import { JobStatusBar } from './components/StatusBar/JobStatusBar';
 import { ActionHistoryPanel } from './components/UndoRedo/ActionHistoryPanel';
 import { VideoCreationWizard } from './components/VideoWizard/VideoCreationWizard';
@@ -30,11 +29,11 @@ import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { useElectronMenuEvents } from './hooks/useElectronMenuEvents';
 import { useGlobalUndoShortcuts } from './hooks/useGlobalUndoShortcuts';
 import { useWindowsNativeUI } from './hooks/useWindowsNativeUI';
-// Import critical pages for initial render
 import { DashboardPage } from './pages/DashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
 import { WelcomePage } from './pages/WelcomePage';
+import { getAuraTheme } from './themes/auraTheme';
 
 // Lazy load non-critical pages to reduce initial bundle size
 const AdminDashboardPage = lazy(() => import('./pages/Admin/AdminDashboardPage'));
@@ -201,7 +200,7 @@ function App() {
   });
 
   // Initialize theme preference - default to 'aura' theme
-  const [, setThemeName] = useState(() => {
+  const [_themeName, _setThemeName] = useState(() => {
     const saved = localStorage.getItem('themeName');
     return saved || 'aura';
   });
@@ -223,6 +222,8 @@ function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [initializationError, setInitializationError] = useState<InitializationError | null>(null);
   const [showCrashRecovery, setShowCrashRecovery] = useState(false);
+
+  const [_showDiagnostics, _setShowDiagnostics] = useState(false);
 
   const { currentJobId, status, progress, message } = useJobState();
   const [showDrawer, setShowDrawer] = useState(false);
@@ -702,6 +703,7 @@ function App() {
             <ActivityProvider>
               <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
                 <HashRouter>
+                  <SafeModeBanner onOpenDiagnostics={() => _setShowDiagnostics(true)} />
                   {/* Status bar for job progress */}
                   <JobStatusBar
                     status={status}

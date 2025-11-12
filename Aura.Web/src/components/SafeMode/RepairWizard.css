@@ -1,0 +1,91 @@
+.repair-wizard {
+  min-width: 600px;
+  max-width: 800px;
+}
+
+.repair-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 0;
+}
+
+.repair-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.repair-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--colorNeutralStroke1);
+  border-radius: 8px;
+  background-color: var(--colorNeutralBackground2);
+}
+
+.repair-step {
+  padding: 12px;
+  border-radius: 6px;
+  background-color: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  transition: all 0.2s;
+}
+
+.repair-step.current {
+  border-color: var(--colorBrandStroke1);
+  background-color: var(--colorBrandBackground2);
+}
+
+.repair-step.success {
+  border-color: var(--colorPaletteGreenBorder1);
+  background-color: var(--colorPaletteGreenBackground1);
+}
+
+.repair-step.error {
+  border-color: var(--colorPaletteRedBorder1);
+  background-color: var(--colorPaletteRedBackground1);
+}
+
+.repair-step.skipped {
+  opacity: 0.6;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.step-icon-success {
+  color: var(--colorPaletteGreenForeground1);
+}
+
+.step-icon-error {
+  color: var(--colorPaletteRedForeground1);
+}
+
+.step-icon-warning {
+  color: var(--colorPaletteYellowForeground1);
+}
+
+.step-error {
+  color: var(--colorPaletteRedForeground1);
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.repair-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background-color: var(--colorPaletteYellowBackground1);
+  border: 1px solid var(--colorPaletteYellowBorder1);
+  border-radius: 8px;
+}
