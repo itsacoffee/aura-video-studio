@@ -53,6 +53,11 @@
         "from": "../Aura.Web/dist",
         "to": "frontend",
         "filter": ["**/*"]
+      },
+      {
+        "from": "resources/ffmpeg",
+        "to": "ffmpeg",
+        "filter": ["**/*"]
       }
     ],
     "mac": null,
