@@ -41,6 +41,7 @@
     "test:unit": "vitest run --coverage",
     "test:integration": "vitest run tests/integration --coverage",
     "test:smoke": "vitest run tests/smoke --coverage",
+    "test:electron-build": "node scripts/test-electron-build.js",
     "playwright": "playwright test",
     "playwright:ui": "playwright test --ui",
     "playwright:install": "playwright install --with-deps chromium",
