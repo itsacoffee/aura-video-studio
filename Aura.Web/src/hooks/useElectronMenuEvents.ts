@@ -1,17 +1,20 @@
 /**
  * Hook to register Electron menu event listeners
  * Wires up menu items (File, Edit, View, Tools, Help) to React app actions
+ *
+ * REQUIREMENT 2: Compile-time type safety between menu routes and Router paths
  */
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loggingService } from '../services/loggingService';
+import { MENU_EVENT_ROUTES } from '../services/routeRegistry';
 import type { MenuAPI, OpenRecentProjectData } from '../types/electron-menu';
 
 /**
  * React hook that sets up listeners for all Electron menu events
  * Automatically cleans up all listeners when component unmounts
- * 
+ *
  * Usage:
  * ```tsx
  * function App() {
@@ -37,7 +40,7 @@ export function useElectronMenuEvents() {
       if (menu.onNewProject) {
         const unsub = menu.onNewProject(() => {
           loggingService.info('Menu action: New Project');
-          navigate('/create');
+          navigate(MENU_EVENT_ROUTES.onNewProject);
         });
         unsubscribers.push(unsub);
       }
@@ -45,7 +48,7 @@ export function useElectronMenuEvents() {
       if (menu.onOpenProject) {
         const unsub = menu.onOpenProject(() => {
           loggingService.info('Menu action: Open Project');
-          navigate('/projects');
+          navigate(MENU_EVENT_ROUTES.onOpenProject);
         });
         unsubscribers.push(unsub);
       }
@@ -53,7 +56,7 @@ export function useElectronMenuEvents() {
       if (menu.onOpenRecentProject) {
         const unsub = menu.onOpenRecentProject((data: OpenRecentProjectData) => {
           loggingService.info('Menu action: Open Recent Project', { path: data.path });
-          navigate('/projects');
+          navigate(MENU_EVENT_ROUTES.onOpenRecentProject);
         });
         unsubscribers.push(unsub);
       }
@@ -77,7 +80,7 @@ export function useElectronMenuEvents() {
       if (menu.onImportVideo) {
         const unsub = menu.onImportVideo(() => {
           loggingService.info('Menu action: Import Video');
-          navigate('/assets');
+          navigate(MENU_EVENT_ROUTES.onImportVideo);
         });
         unsubscribers.push(unsub);
       }
@@ -85,7 +88,7 @@ export function useElectronMenuEvents() {
       if (menu.onImportAudio) {
         const unsub = menu.onImportAudio(() => {
           loggingService.info('Menu action: Import Audio');
-          navigate('/assets');
+          navigate(MENU_EVENT_ROUTES.onImportAudio);
         });
         unsubscribers.push(unsub);
       }
@@ -93,7 +96,7 @@ export function useElectronMenuEvents() {
       if (menu.onImportImages) {
         const unsub = menu.onImportImages(() => {
           loggingService.info('Menu action: Import Images');
-          navigate('/assets');
+          navigate(MENU_EVENT_ROUTES.onImportImages);
         });
         unsubscribers.push(unsub);
       }
@@ -101,7 +104,7 @@ export function useElectronMenuEvents() {
       if (menu.onImportDocument) {
         const unsub = menu.onImportDocument(() => {
           loggingService.info('Menu action: Import Document');
-          navigate('/rag');
+          navigate(MENU_EVENT_ROUTES.onImportDocument);
         });
         unsubscribers.push(unsub);
       }
@@ -109,7 +112,7 @@ export function useElectronMenuEvents() {
       if (menu.onExportVideo) {
         const unsub = menu.onExportVideo(() => {
           loggingService.info('Menu action: Export Video');
-          navigate('/render');
+          navigate(MENU_EVENT_ROUTES.onExportVideo);
         });
         unsubscribers.push(unsub);
       }
@@ -117,7 +120,7 @@ export function useElectronMenuEvents() {
       if (menu.onExportTimeline) {
         const unsub = menu.onExportTimeline(() => {
           loggingService.info('Menu action: Export Timeline');
-          navigate('/editor');
+          navigate(MENU_EVENT_ROUTES.onExportTimeline);
         });
         unsubscribers.push(unsub);
       }
@@ -134,7 +137,7 @@ export function useElectronMenuEvents() {
       if (menu.onOpenPreferences) {
         const unsub = menu.onOpenPreferences(() => {
           loggingService.info('Menu action: Open Preferences');
-          navigate('/settings');
+          navigate(MENU_EVENT_ROUTES.onOpenPreferences);
         });
         unsubscribers.push(unsub);
       }
@@ -143,7 +146,7 @@ export function useElectronMenuEvents() {
       if (menu.onOpenProviderSettings) {
         const unsub = menu.onOpenProviderSettings(() => {
           loggingService.info('Menu action: Open Provider Settings');
-          navigate('/settings?tab=providers');
+          navigate(`${MENU_EVENT_ROUTES.onOpenProviderSettings}?tab=providers`);
         });
         unsubscribers.push(unsub);
       }
@@ -151,7 +154,7 @@ export function useElectronMenuEvents() {
       if (menu.onOpenFFmpegConfig) {
         const unsub = menu.onOpenFFmpegConfig(() => {
           loggingService.info('Menu action: Open FFmpeg Config');
-          navigate('/settings?tab=ffmpeg');
+          navigate(`${MENU_EVENT_ROUTES.onOpenFFmpegConfig}?tab=ffmpeg`);
         });
         unsubscribers.push(unsub);
       }
@@ -167,7 +170,7 @@ export function useElectronMenuEvents() {
       if (menu.onViewLogs) {
         const unsub = menu.onViewLogs(() => {
           loggingService.info('Menu action: View Logs');
-          navigate('/logs');
+          navigate(MENU_EVENT_ROUTES.onViewLogs);
         });
         unsubscribers.push(unsub);
       }
@@ -175,7 +178,7 @@ export function useElectronMenuEvents() {
       if (menu.onRunDiagnostics) {
         const unsub = menu.onRunDiagnostics(() => {
           loggingService.info('Menu action: Run Diagnostics');
-          navigate('/health');
+          navigate(MENU_EVENT_ROUTES.onRunDiagnostics);
         });
         unsubscribers.push(unsub);
       }
@@ -184,7 +187,7 @@ export function useElectronMenuEvents() {
       if (menu.onOpenGettingStarted) {
         const unsub = menu.onOpenGettingStarted(() => {
           loggingService.info('Menu action: Open Getting Started');
-          navigate('/');
+          navigate(MENU_EVENT_ROUTES.onOpenGettingStarted);
         });
         unsubscribers.push(unsub);
       }

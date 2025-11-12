@@ -132,6 +132,7 @@ const CreateWizard = lazy(() =>
 );
 import { setupApi } from './services/api/setupApi';
 import { crashRecoveryService } from './services/crashRecoveryService';
+import { registerCustomEventHandlers } from './services/customEventHandlers';
 import { errorReportingService } from './services/errorReportingService';
 import {
   hasCompletedFirstRun,
@@ -141,6 +142,7 @@ import {
 import { healthMonitorService } from './services/healthMonitorService';
 import { keyboardShortcutManager } from './services/keyboardShortcutManager';
 import { loggingService } from './services/loggingService';
+import { initializeRouteRegistry } from './services/routeRegistry';
 import { migrateSettingsIfNeeded } from './services/settingsValidationService';
 import { ActivityProvider } from './state/activityContext';
 import { useJobState } from './state/jobState';
@@ -246,6 +248,18 @@ function App() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
+  }, []);
+
+  // Initialize route registry and custom event handlers on app mount
+  // REQUIREMENT 6: Route registry validates all menu paths exist at app startup
+  useEffect(() => {
+    try {
+      initializeRouteRegistry();
+      registerCustomEventHandlers();
+    } catch (error) {
+      loggingService.error('Failed to initialize route registry', { error });
+      console.error('[App] Route registry initialization failed:', error);
+    }
   }, []);
 
   // Check first-run status on app mount
