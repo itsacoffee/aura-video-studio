@@ -3,6 +3,65 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
 import viteCompression from 'vite-plugin-compression';
+import fs from 'fs';
+
+/**
+ * Asset Verification Plugin
+ * Verifies that critical assets are copied to dist and logs their status
+ */
+function assetVerificationPlugin(): Plugin {
+  return {
+    name: 'asset-verification',
+    enforce: 'post',
+    closeBundle() {
+      console.log('\n📁 Asset Verification Report:\n');
+
+      const distPath = path.resolve(__dirname, 'dist');
+      const criticalAssets = [
+        'favicon.ico',
+        'favicon-16x16.png',
+        'favicon-32x32.png',
+        'logo256.png',
+        'logo512.png',
+        'vite.svg',
+      ];
+
+      const criticalDirs = ['assets', 'workspaces'];
+
+      let hasErrors = false;
+
+      // Check critical files
+      for (const asset of criticalAssets) {
+        const assetPath = path.join(distPath, asset);
+        if (fs.existsSync(assetPath)) {
+          const stats = fs.statSync(assetPath);
+          console.log(`✓ ${asset} (${(stats.size / 1024).toFixed(2)} KB)`);
+        } else {
+          console.error(`✗ Missing: ${asset}`);
+          hasErrors = true;
+        }
+      }
+
+      // Check critical directories
+      for (const dir of criticalDirs) {
+        const dirPath = path.join(distPath, dir);
+        if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
+          const files = fs.readdirSync(dirPath);
+          console.log(`✓ ${dir}/ (${files.length} items)`);
+        } else {
+          console.error(`✗ Missing directory: ${dir}/`);
+          hasErrors = true;
+        }
+      }
+
+      if (hasErrors) {
+        console.error('\n⚠️  Some critical assets are missing!\n');
+      } else {
+        console.log('\n✓ All critical assets verified\n');
+      }
+    },
+  };
+}
 
 /**
  * Performance Budget Plugin
@@ -101,6 +160,8 @@ export default defineConfig(({ mode }) => {
       }),
       // Performance budget plugin
       performanceBudgetPlugin(),
+      // Asset verification plugin
+      assetVerificationPlugin(),
     ],
     // Use relative base path for production to work when served from Aura.Api
     base: '/',

@@ -175,6 +175,30 @@ function verifyFrontendBuild() {
   checkFileExists(join(distPath, 'index.html'), 'index.html');
   checkDirectoryExists(join(distPath, 'assets'), 'Assets directory');
   
+  // Verify critical static assets from public folder
+  const criticalAssets = [
+    'favicon.ico',
+    'favicon-16x16.png', 
+    'favicon-32x32.png',
+    'logo256.png',
+    'logo512.png',
+    'vite.svg'
+  ];
+  
+  console.log('\n--- Verifying Critical Assets ---\n');
+  for (const asset of criticalAssets) {
+    checkFileExists(join(distPath, asset), asset);
+  }
+  
+  // Verify workspace templates directory
+  checkDirectoryExists(join(distPath, 'workspaces'), 'Workspaces directory');
+  if (existsSync(join(distPath, 'workspaces', 'templates'))) {
+    log('Workspace templates directory exists', 'success');
+  } else {
+    log('Workspace templates directory not found', 'warning');
+    hasWarnings = true;
+  }
+  
   checkNoSourceFilesInDist(distPath);
   checkNoNodeModulesInDist(distPath);
   
