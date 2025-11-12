@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using Aura.Core.Configuration;
 using Aura.Core.Orchestrator;
@@ -301,10 +302,120 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddImageProviders(this IServiceCollection services)
     {
-        // Note: Image providers are created dynamically by ImageProviderFactory
-        // based on API keys available in ProviderSettings
-        // No direct registration needed here - factory handles instantiation
+        // Register Stable Diffusion WebUI provider (local GPU-based generation)
+        services.AddSingleton<IImageProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Images.StableDiffusionWebUiProvider>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+            
+            var sdUrl = settings.GetStableDiffusionUrl();
+            
+            // Check if SD WebUI is configured
+            if (string.IsNullOrWhiteSpace(sdUrl))
+            {
+                logger.LogDebug("Stable Diffusion WebUI URL not configured, skipping provider registration");
+                return null!;
+            }
+            
+            // Try to get hardware info for optimization, but don't require it
+            bool isNvidiaGpu = false;
+            int vramGB = 0;
+            try
+            {
+                var hardwareDetector = sp.GetService<Aura.Core.Hardware.HardwareDetector>();
+                if (hardwareDetector != null)
+                {
+                    var systemProfile = hardwareDetector.DetectSystemAsync().GetAwaiter().GetResult();
+                    isNvidiaGpu = systemProfile.Gpu?.Vendor?.ToUpperInvariant() == "NVIDIA";
+                    vramGB = systemProfile.Gpu?.VramGB ?? 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not detect hardware, using defaults for SD WebUI provider");
+            }
+            
+            return new Images.StableDiffusionWebUiProvider(
+                logger,
+                httpClient,
+                sdUrl,
+                isNvidiaGpu,
+                vramGB,
+                defaultParams: null,
+                bypassHardwareChecks: false);
+        });
+
+        // Register stock image providers (Unsplash, Pexels, Pixabay) as IEnhancedStockProvider
+        // These serve as fallback options when generation fails or for cost optimization
         
+        // Unsplash provider (requires API key)
+        services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Images.EnhancedUnsplashProvider>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var keyStore = sp.GetRequiredService<IKeyStore>();
+            
+            var apiKeys = keyStore.GetAllKeys();
+            apiKeys.TryGetValue("unsplash", out var apiKey);
+            
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                logger.LogDebug("Unsplash API key not configured, skipping provider registration");
+                return null!;
+            }
+            
+            return new Images.EnhancedUnsplashProvider(logger, httpClient, apiKey);
+        });
+
+        // Pexels provider (requires API key)
+        services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Images.EnhancedPexelsProvider>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var keyStore = sp.GetRequiredService<IKeyStore>();
+            
+            var apiKeys = keyStore.GetAllKeys();
+            apiKeys.TryGetValue("pexels", out var apiKey);
+            
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                logger.LogDebug("Pexels API key not configured, skipping provider registration");
+                return null!;
+            }
+            
+            return new Images.EnhancedPexelsProvider(logger, httpClient, apiKey);
+        });
+
+        // Pixabay provider (requires API key)
+        services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Images.EnhancedPixabayProvider>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var keyStore = sp.GetRequiredService<IKeyStore>();
+            
+            var apiKeys = keyStore.GetAllKeys();
+            apiKeys.TryGetValue("pixabay", out var apiKey);
+            
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                logger.LogDebug("Pixabay API key not configured, skipping provider registration");
+                return null!;
+            }
+            
+            return new Images.EnhancedPixabayProvider(logger, httpClient, apiKey);
+        });
+
+        // Register placeholder provider as final fallback (always available)
+        services.AddSingleton<IStockProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Images.PlaceholderImageProvider>>();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+            var outputDirectory = Path.Combine(settings.GetAuraDataDirectory(), "placeholders");
+            
+            return new Images.PlaceholderImageProvider(logger, outputDirectory);
+        });
+
         return services;
     }
 
