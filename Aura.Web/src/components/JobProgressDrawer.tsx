@@ -15,8 +15,10 @@ import {
   DialogContent,
 } from '@fluentui/react-components';
 import { Dismiss24Regular, Stop20Regular } from '@fluentui/react-icons';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiUrl } from '../config/api';
+import { useSSEConnection } from '../hooks/useSSEConnection';
+import { loggingService } from '../services/loggingService';
 
 const useStyles = makeStyles({
   drawer: {
@@ -78,108 +80,109 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
-  // Format duration from ISO string or seconds
-  const formatDuration = (value: string | number | null | undefined): string => {
-    if (!value) return '';
+  // SSE connection for real-time updates
+  const { connect, disconnect } = useSSEConnection({
+    onMessage: (message) => {
+      loggingService.debug('SSE message received', 'JobProgressDrawer', 'onMessage', {
+        type: message.type,
+      });
 
-    let totalSeconds = 0;
-    if (typeof value === 'string') {
-      // Parse ISO 8601 duration format like "PT1H2M3S" or timestamp
-      if (value.startsWith('PT')) {
-        // eslint-disable-next-line security/detect-unsafe-regex
-        const match = value.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
-        if (match) {
-          const hours = parseInt(match[1] || '0', 10);
-          const minutes = parseInt(match[2] || '0', 10);
-          const seconds = parseFloat(match[3] || '0');
-          totalSeconds = hours * 3600 + minutes * 60 + seconds;
+      switch (message.type) {
+        case 'job-status': {
+          const data = message.data as { status: string; stage: string; percent: number };
+          setProgress(data.percent);
+          setStatus(data.status.toLowerCase());
+          setStage(data.stage);
+          break;
         }
-      } else {
-        // Try parsing as timestamp
-        const date = new Date(value);
-        if (!isNaN(date.getTime())) {
-          totalSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+
+        case 'step-progress': {
+          const data = message.data as {
+            step: string;
+            progressPct: number;
+            message: string;
+            elapsedTime?: string;
+            estimatedTimeRemaining?: string;
+          };
+          setProgress(data.progressPct);
+          setStage(data.step);
+          if (data.message) {
+            setLogs((prev) => [...prev.slice(-49), data.message]);
+          }
+          if (data.elapsedTime) {
+            setElapsed(data.elapsedTime);
+          }
+          if (data.estimatedTimeRemaining) {
+            setEta(data.estimatedTimeRemaining);
+          }
+          break;
+        }
+
+        case 'job-completed': {
+          setStatus('completed');
+          setProgress(100);
+          disconnect();
+          break;
+        }
+
+        case 'job-failed': {
+          const data = message.data as { errorMessage?: string; logs?: string[] };
+          setStatus('failed');
+          if (data.errorMessage) {
+            setLogs((prev) => [...prev, `ERROR: ${data.errorMessage}`]);
+          }
+          if (data.logs && Array.isArray(data.logs)) {
+            setLogs((prev) => [...prev, ...data.logs]);
+          }
+          disconnect();
+          break;
+        }
+
+        case 'job-cancelled': {
+          setStatus('cancelled');
+          disconnect();
+          break;
+        }
+
+        case 'warning': {
+          const data = message.data as { message: string };
+          setLogs((prev) => [...prev.slice(-49), `WARNING: ${data.message}`]);
+          break;
+        }
+
+        case 'error': {
+          const data = message.data as { message: string };
+          loggingService.error(
+            'SSE error event',
+            new Error(data.message),
+            'JobProgressDrawer',
+            'error'
+          );
+          break;
         }
       }
-    } else {
-      totalSeconds = value;
-    }
-
-    if (totalSeconds <= 0) return '';
-
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = Math.floor(totalSeconds % 60);
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${seconds}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    } else {
-      return `${seconds}s`;
-    }
-  };
+    },
+    onError: (error) => {
+      loggingService.error('SSE connection error', error, 'JobProgressDrawer', 'onError');
+    },
+  });
 
   useEffect(() => {
     if (!isOpen || !jobId) {
       return;
     }
 
-    const pollProgress = async () => {
-      try {
-        // Fetch job progress with ETA
-        const progressResponse = await fetch(apiUrl(`/api/jobs/${jobId}/progress`));
-        if (progressResponse.ok) {
-          const progressData = await progressResponse.json();
-          setProgress(progressData.progress || 0);
-          setStatus(progressData.status || 'running');
-          setStage(progressData.currentStage || 'Processing');
+    loggingService.info('Connecting to SSE for job progress', 'JobProgressDrawer', 'useEffect', {
+      jobId,
+    });
+    connect(`/api/jobs/${jobId}/events`);
 
-          // Calculate elapsed time
-          if (progressData.startedAt) {
-            const start = new Date(progressData.startedAt);
-            const elapsedMs = Date.now() - start.getTime();
-            setElapsed(formatDuration(Math.floor(elapsedMs / 1000)));
-          }
-        }
-
-        // Fetch full job details for logs and ETA
-        const jobResponse = await fetch(apiUrl(`/api/jobs/${jobId}`));
-        if (jobResponse.ok) {
-          const jobData = await jobResponse.json();
-          if (jobData.Logs && Array.isArray(jobData.Logs)) {
-            setLogs(jobData.Logs.slice(-50)); // Show last 50 logs
-          }
-
-          // Set ETA if available
-          if (jobData.Eta) {
-            setEta(formatDuration(jobData.Eta));
-          } else {
-            setEta(null);
-          }
-        }
-      } catch (error) {
-        console.error('Error polling job progress:', error);
-      }
+    return () => {
+      disconnect();
     };
+  }, [isOpen, jobId, connect, disconnect]);
 
-    // Poll immediately
-    pollProgress();
-
-    // Set up polling interval
-    const interval = setInterval(() => {
-      pollProgress();
-
-      // Stop polling if completed or failed
-      if (status === 'completed' || status === 'failed') {
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isOpen, jobId, status]);
-
-  const handleCancelJob = async () => {
+  const handleCancelJob = useCallback(async () => {
     setIsCancelling(true);
     setShowCancelDialog(false);
 
@@ -190,15 +193,26 @@ export function JobProgressDrawer({ isOpen, onClose, jobId }: JobProgressDrawerP
 
       if (response.ok) {
         setStatus('cancelled');
+        loggingService.info('Job cancelled successfully', 'JobProgressDrawer', 'handleCancelJob');
       } else {
-        console.error('Failed to cancel job');
+        loggingService.error(
+          'Failed to cancel job',
+          new Error('API returned non-OK status'),
+          'JobProgressDrawer',
+          'handleCancelJob'
+        );
       }
     } catch (error) {
-      console.error('Error cancelling job:', error);
+      loggingService.error(
+        'Error cancelling job',
+        error instanceof Error ? error : new Error(String(error)),
+        'JobProgressDrawer',
+        'handleCancelJob'
+      );
     } finally {
       setIsCancelling(false);
     }
-  };
+  }, [jobId]);
 
   const isRunning = status === 'running';
   const canCancel = isRunning && !isCancelling;
