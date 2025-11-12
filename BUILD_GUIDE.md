@@ -1,46 +1,26 @@
 # Aura Video Studio - Build Guide
 
-This guide provides complete instructions for setting up your development environment and building Aura Video Studio from source.
+This guide provides complete instructions for building Aura Video Studio **desktop application** and its components from source.
 
-## ⚠️ CRITICAL: Frontend Build Required
+## Build Paths
 
-**The frontend MUST be built before running the backend API.** Without this step, the application will display an empty page.
+Aura Video Studio is an Electron desktop application. There are two build approaches:
 
-### Quick Start (Automated)
-```bash
-# Build and deploy frontend (recommended)
-./scripts/build-frontend.sh
+1. **Desktop App Build (Recommended for Users)** - Build the complete Electron installer
+2. **Component Build (For Development)** - Build individual components for testing
 
-# Then start the backend
-cd Aura.Api && dotnet run
-```
+**For most users:** Use the [Desktop App Build](#desktop-app-build) section.
 
-### Manual Build Steps
-```bash
-# 1. Build frontend
-cd Aura.Web
-npm install
-npm run build:prod
-
-# 2. Deploy to backend
-mkdir -p ../Aura.Api/wwwroot
-cp -r dist/* ../Aura.Api/wwwroot/
-
-# 3. Start backend
-cd ../Aura.Api
-dotnet run
-```
-
-**Access the application at:** http://127.0.0.1:5005/
+**For developers:** See [DEVELOPMENT.md](DEVELOPMENT.md) for component development and [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for Electron development.
 
 ---
 
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
+- [Desktop App Build](#desktop-app-build)
+- [Component Build (Development)](#component-build-development)
 - [Environment Setup](#environment-setup)
-- [First-Time Setup](#first-time-setup)
-- [Building the Application](#building-the-application)
 - [Validation Scripts](#validation-scripts)
 - [Git Hooks](#git-hooks)
 - [Troubleshooting](#troubleshooting)
@@ -49,11 +29,10 @@ dotnet run
 
 ### Required Software
 
-1. **Node.js 18.0.0 or higher** (18.18.0 recommended for consistency)
+1. **Node.js 20.0.0 or higher**
    - Download from [nodejs.org](https://nodejs.org/)
    - Or use [nvm](https://github.com/nvm-sh/nvm) (Linux/Mac) / [nvm-windows](https://github.com/coreybutler/nvm-windows) (Windows)
-   - **Supported versions:** 18.x, 20.x, 22.x, and newer
-   - **Recommended:** Use version specified in `.nvmrc` (18.18.0) for consistency
+   - **Note:** Aura.Web requires Node 20+, Aura.Desktop requires Node 18+
 
 2. **npm 9.x or higher**
    - Comes with Node.js
@@ -69,6 +48,10 @@ dotnet run
    - **Windows**: Download from [ffmpeg.org](https://ffmpeg.org/download.html) or use `winget install ffmpeg`
    - **macOS**: `brew install ffmpeg`
    - **Linux**: `sudo apt-get install ffmpeg` (Ubuntu/Debian)
+
+6. **Electron Builder dependencies** (Windows only for Windows builds)
+   - Automatically installed via npm
+   - NSIS installer tools (bundled with electron-builder)
 
 ### Optional (Recommended)
 
@@ -200,41 +183,198 @@ git config core.hooksPath .husky
 dotnet restore Aura.sln
 ```
 
-## Building the Application
+## Desktop App Build
 
-### Frontend Build
+### Complete Build Process (Windows Installer)
+
+This creates a production-ready Windows installer with all components bundled.
 
 ```bash
+# 1. Install all dependencies
 cd Aura.Web
+npm install
 
-# Development build
-npm run build:dev
+cd ../Aura.Desktop
+npm install
 
-# Production build (with optimization)
+# 2. Build frontend production bundle
+cd ../Aura.Web
+npm run build:prod
+# Creates optimized bundle in Aura.Web/dist/
+
+# 3. Build backend (Release configuration)
+cd ../Aura.Api
+dotnet publish -c Release -o ../Aura.Desktop/resources/backend
+# Publishes backend to Aura.Desktop/resources/backend/
+
+# 4. Ensure FFmpeg is available (optional, for bundling)
+# Download FFmpeg binaries and place in Aura.Desktop/resources/ffmpeg/
+# Or skip this step - app will use system FFmpeg
+
+# 5. Build Electron installer
+cd ../Aura.Desktop
+npm run build:win
+# Creates installer in Aura.Desktop/dist/
+# Output: Aura Video Studio-Setup-1.0.0.exe
+```
+
+**Build outputs:**
+- `Aura.Desktop/dist/` - Contains the Windows installer (.exe)
+- Built installer includes:
+  - Electron app
+  - React frontend (from Aura.Web/dist)
+  - .NET backend (from publish output)
+  - FFmpeg binaries (if provided)
+
+**For other platforms:**
+- macOS: `npm run build:mac` (requires macOS to build)
+- Linux: `npm run build:linux`
+
+See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for platform-specific build instructions and code signing.
+
+### Quick Build (No Installer)
+
+For testing without creating an installer:
+
+```bash
+# Build frontend
+cd Aura.Web
 npm run build:prod
 
-# Clean build (removes dist folder first)
-npm run build:clean
+# Build backend
+cd ../Aura.Api
+dotnet build -c Release
+
+# Run Electron in production mode
+cd ../Aura.Desktop
+npm start
 ```
 
-The build process automatically:
-1. **Pre-build**: Runs environment validation (`validate-environment.js`)
-2. **Build**: Compiles TypeScript and bundles assets
-3. **Post-build**: Verifies build artifacts (`verify-build.js`)
+## Component Build (Development)
 
-### Backend Build
+For component development without Electron, see [DEVELOPMENT.md](DEVELOPMENT.md).
+
+**Quick component build:**
 
 ```bash
-# From repository root
+# Frontend only
+cd Aura.Web
+npm install
+npm run build:prod
+# Output: dist/
 
-# Debug build
-dotnet build Aura.sln
-
-# Release build
-dotnet build Aura.sln --configuration Release
+# Backend only
+cd Aura.Api
+dotnet build -c Release
+# Output: bin/Release/net8.0/
 ```
 
-### Run Tests
+## Environment Setup
+
+### Windows 11 Specific Setup
+
+1. **Enable Git Long Paths**
+   ```powershell
+   git config --global core.longpaths true
+   ```
+
+2. **Configure Git Line Endings**
+   ```powershell
+   git config --global core.autocrlf true
+   ```
+
+3. **Set PowerShell Execution Policy** (if you plan to run PowerShell scripts)
+   ```powershell
+   # Run PowerShell as Administrator
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+   ```
+
+### Linux/macOS Setup
+
+1. **Configure Git Line Endings**
+   ```bash
+   git config --global core.autocrlf input
+   ```
+
+2. **Set Script Permissions**
+   ```bash
+   chmod +x scripts/**/*.sh
+   ```
+
+### Node.js Version Management
+
+**Using nvm (Linux/macOS):**
+```bash
+# Install nvm from: https://github.com/nvm-sh/nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# Install Node.js 20
+nvm install 20
+nvm use 20
+```
+
+**Windows:**
+```powershell
+# Download and install nvm-windows from:
+# https://github.com/coreybutler/nvm-windows/releases
+
+# Then run:
+nvm install 20
+nvm use 20
+```
+
+## First-Time Setup
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Coffee285/aura-video-studio.git
+cd aura-video-studio
+```
+
+### 2. Verify Node.js Version
+
+```bash
+node --version
+# Should output: v20.x.x or higher
+```
+
+### 3. Install Dependencies
+
+```bash
+# Frontend dependencies
+cd Aura.Web
+npm ci
+
+# Electron dependencies
+cd ../Aura.Desktop
+npm ci
+
+# .NET dependencies (from repository root)
+cd ..
+dotnet restore Aura.sln
+```
+
+### 4. Verify Husky Installation
+
+Check that git hooks are installed:
+```bash
+# From repository root
+ls -la .husky
+# You should see: pre-commit, commit-msg
+
+# Verify git hooks path is configured
+git config core.hooksPath
+# Should output: .husky
+```
+
+If Husky hooks are not installed:
+```bash
+cd Aura.Web
+npm run prepare
+```
+
+## Run Tests
 
 **Frontend Tests:**
 ```bash
@@ -514,22 +654,20 @@ git reset HEAD~1
 
 ### Node.js Version Compatibility
 
-**Note:** 
-If you see a warning about Node.js version not matching `.nvmrc`, you can safely proceed with any version 18.0.0 or higher. The warning is informational only.
+**Requirement:** Node.js 20.0.0+ for Aura.Web, 18.0.0+ for Aura.Desktop
 
-**Recommended:** Use the version specified in `.nvmrc` (18.18.0) for maximum consistency:
-
+**Using different versions for different components:**
 ```bash
-# Using nvm
-nvm install 18.18.0
-nvm use 18.18.0
+# For Aura.Web (requires 20+)
+cd Aura.Web
+nvm use 20
 
-# Or simply
-nvm use
+# For Aura.Desktop (requires 18+, 20+ also works)
+cd ../Aura.Desktop
+nvm use 20  # or 18
 ```
 
-**If you prefer a newer version:** Any Node.js version 18.x, 20.x, 22.x or higher is supported.
-```
+**If you prefer a single version:** Use Node.js 20.x which satisfies all requirements.
 
 ### npm ci Fails
 
@@ -549,6 +687,38 @@ nvm use
    ```
 
 3. Check Node.js version is correct
+
+### Electron Build Fails
+
+**Error:** Electron build fails during installer creation
+
+**Solutions:**
+
+1. **Ensure all dependencies are built:**
+   ```bash
+   # Frontend must be built first
+   cd Aura.Web
+   npm run build:prod
+   
+   # Backend must be published
+   cd ../Aura.Api
+   dotnet publish -c Release -o ../Aura.Desktop/resources/backend
+   ```
+
+2. **Check electron-builder dependencies (Windows):**
+   - NSIS is bundled with electron-builder
+   - If build fails, try cleaning:
+     ```bash
+     cd Aura.Desktop
+     rm -rf dist node_modules
+     npm install
+     npm run build:win
+     ```
+
+3. **Check disk space:**
+   - Electron builds require significant disk space (1GB+)
+
+See [DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md) for more Electron troubleshooting.
 
 ### Husky Hooks Not Working
 
@@ -665,7 +835,7 @@ npm run type-check
 ```bash
 # Verify Node version
 node --version
-# Should be v18.x.x or higher (v18.18.0 recommended)
+# Should be v20.x.x or higher
 
 # Clean install
 cd Aura.Web
@@ -676,7 +846,51 @@ npm install
 npm run validate:full
 ```
 
+### Frontend Bundle Issues
+
+**Error:** Frontend not loading in Electron app
+
+**Solution:**
+```bash
+# Rebuild frontend with correct base path
+cd Aura.Web
+npm run build:prod
+
+# Verify dist/ folder exists and contains index.html
+ls -la dist/
+
+# Verify assets are present
+ls -la dist/assets/
+```
+
 ## Additional Resources
+
+- **[DESKTOP_APP_GUIDE.md](DESKTOP_APP_GUIDE.md)** - Complete Electron desktop app development guide
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Component development workflows
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
+- **[docs/architecture/](docs/architecture/)** - System architecture documentation
+
+## Build Checklist
+
+Before creating a release build:
+
+- [ ] All tests passing (`npm test` and `dotnet test`)
+- [ ] No linting errors (`npm run lint`)
+- [ ] No type errors (`npm run type-check`)
+- [ ] No placeholder comments (`node scripts/audit/find-placeholders.js`)
+- [ ] Frontend builds successfully (`npm run build:prod`)
+- [ ] Backend builds successfully (`dotnet build -c Release`)
+- [ ] Electron app runs correctly (`cd Aura.Desktop && npm start`)
+- [ ] Version numbers updated in package.json files
+- [ ] CHANGELOG.md updated
+- [ ] Code signing certificates configured (for production builds)
+
+---
+
+**Ready to build?** Follow the [Desktop App Build](#desktop-app-build) section above.
+
+**Need help?** See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) or open an issue on GitHub.
 
 - [Project README](README.md) - Project overview and features
 - [Contributing Guide](CONTRIBUTING.md) - Contribution guidelines
