@@ -288,14 +288,15 @@ public class FFmpegResolver
     }
 
     /// <summary>
-    /// Check PATH environment variable
+    /// Check PATH environment variable and common installation directories
     /// </summary>
     private async Task<FfmpegResolutionResult> CheckPathEnvironmentAsync(CancellationToken ct)
     {
-        _logger.LogDebug("Checking PATH environment for FFmpeg");
+        _logger.LogDebug("Checking PATH environment and common directories for FFmpeg");
 
         var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
 
+        // First, try PATH
         var validation = await ValidateFFmpegBinaryAsync(exeName, ct);
         if (validation.success)
         {
@@ -309,15 +310,59 @@ public class FFmpegResolver
                 ValidationOutput = validation.output
             };
         }
-        else
+
+        // If not found on PATH, check common installation directories (Windows only)
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            return new FfmpegResolutionResult
+            var commonPaths = new List<string>
             {
-                Found = false,
-                Source = "PATH",
-                Error = "FFmpeg not found on PATH"
+                @"C:\ffmpeg\bin\ffmpeg.exe",
+                @"C:\ffmpeg\ffmpeg.exe",
+                @"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
+                @"C:\Program Files\ffmpeg\ffmpeg.exe",
+                @"C:\Program Files (x86)\ffmpeg\bin\ffmpeg.exe",
+                @"C:\Program Files (x86)\ffmpeg\ffmpeg.exe",
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "ffmpeg", "bin", "ffmpeg.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "ffmpeg", "bin", "ffmpeg.exe"),
             };
+
+            // Also check Chocolatey install location
+            var chocolateyPath = Environment.GetEnvironmentVariable("ChocolateyInstall");
+            if (!string.IsNullOrEmpty(chocolateyPath))
+            {
+                commonPaths.Add(Path.Combine(chocolateyPath, "bin", "ffmpeg.exe"));
+            }
+
+            // Check each common path
+            foreach (var path in commonPaths.Distinct())
+            {
+                if (!File.Exists(path))
+                    continue;
+
+                _logger.LogDebug("Checking common path: {Path}", path);
+                var pathValidation = await ValidateFFmpegBinaryAsync(path, ct);
+                if (pathValidation.success)
+                {
+                    _logger.LogInformation("Found FFmpeg at common installation path: {Path}", path);
+                    return new FfmpegResolutionResult
+                    {
+                        Found = true,
+                        IsValid = true,
+                        Path = path,
+                        Version = ExtractVersionString(pathValidation.output),
+                        Source = "Common Directory",
+                        ValidationOutput = pathValidation.output
+                    };
+                }
+            }
         }
+
+        return new FfmpegResolutionResult
+        {
+            Found = false,
+            Source = "PATH",
+            Error = "FFmpeg not found on PATH or common installation directories"
+        };
     }
 
     /// <summary>
