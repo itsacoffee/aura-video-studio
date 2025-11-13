@@ -802,8 +802,21 @@ builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.ProsodyAdjustm
 builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.EmotionDetectionService>();
 builder.Services.AddSingleton<Aura.Core.Services.VoiceEnhancement.VoiceProcessingService>();
 
-// Register HTTP client factory (required by providers)
-builder.Services.AddHttpClient();
+// Register HTTP client factory with proxy support (required by providers)
+builder.Services.AddHttpClient()
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var handler = new HttpClientHandler();
+        
+        // Enable automatic proxy detection for Windows and environment variables (HTTP_PROXY, HTTPS_PROXY)
+        handler.UseProxy = true;
+        handler.UseDefaultCredentials = true;
+        
+        // Allow automatic decompression
+        handler.AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate;
+        
+        return handler;
+    });
 
 // Register SignalR for real-time updates (progress notifications, status updates, etc.)
 builder.Services.AddSignalR(options =>

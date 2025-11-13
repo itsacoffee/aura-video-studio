@@ -56,7 +56,8 @@ public record ValidationDetails(
     bool? NetworkCheckPassed = null,
     int? HttpStatusCode = null,
     string? ErrorType = null,
-    long? ResponseTimeMs = null);
+    long? ResponseTimeMs = null,
+    string? DiagnosticInfo = null);
 
 /// <summary>
 /// Provider status information for validation

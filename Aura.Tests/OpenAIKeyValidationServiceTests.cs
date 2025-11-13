@@ -414,4 +414,180 @@ public class OpenAIKeyValidationServiceTests : IDisposable
         Assert.False(result.NetworkCheckPassed);
         Assert.False(httpCallMade); // Network call should not be made for invalid format
     }
+
+    [Fact]
+    public async Task ValidateKeyAsync_WithServiceError_RetriesAndReturnsServiceIssue()
+    {
+        // Arrange
+        var validKey = "sk-1234567890abcdefghijklmnopqrstuvwxyz";
+        var attemptCount = 0;
+        
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Returns(() =>
+            {
+                attemptCount++;
+                if (attemptCount <= 2)
+                {
+                    // Return 503 for first two attempts to trigger retry
+                    return Task.FromResult(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.ServiceUnavailable,
+                        Content = new StringContent("{\"error\": {\"message\": \"Service temporarily unavailable\"}}")
+                    });
+                }
+                // Third attempt also fails
+                return Task.FromResult(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.ServiceUnavailable,
+                    Content = new StringContent("{\"error\": {\"message\": \"Service temporarily unavailable\"}}")
+                });
+            });
+
+        // Act
+        var result = await _service.ValidateKeyAsync(validKey);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Equal("ServiceIssue", result.Status);
+        Assert.Contains("can continue anyway", result.Message);
+        Assert.True(result.FormatValid);
+        Assert.True(result.NetworkCheckPassed);
+        Assert.Equal(503, result.HttpStatusCode);
+        Assert.NotNull(result.DiagnosticInfo);
+        Assert.Contains("attempts", result.DiagnosticInfo);
+        Assert.Equal(3, attemptCount); // Should have made 3 attempts (initial + 2 retries)
+    }
+
+    [Fact]
+    public async Task ValidateKeyAsync_WithTimeoutError_ReturnsTimeout()
+    {
+        // Arrange
+        var validKey = "sk-1234567890abcdefghijklmnopqrstuvwxyz";
+        
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new TaskCanceledException("Request timeout"));
+
+        // Act
+        var result = await _service.ValidateKeyAsync(validKey, cancellationToken: CancellationToken.None);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Equal("Timeout", result.Status);
+        Assert.Contains("can continue anyway", result.Message);
+        Assert.Contains("validated on first use", result.Message);
+        Assert.True(result.FormatValid);
+        Assert.False(result.NetworkCheckPassed);
+        Assert.Equal("Timeout", result.ErrorType);
+        Assert.NotNull(result.DiagnosticInfo);
+    }
+
+    [Fact]
+    public async Task ValidateKeyAsync_WithNetworkError_IncludesDiagnosticInfo()
+    {
+        // Arrange
+        var validKey = "sk-1234567890abcdefghijklmnopqrstuvwxyz";
+        
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("DNS resolution failed"));
+
+        // Act
+        var result = await _service.ValidateKeyAsync(validKey);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Equal("NetworkError", result.Status);
+        Assert.Contains("DNS", result.Message);
+        Assert.Contains("can continue anyway", result.Message);
+        Assert.True(result.FormatValid);
+        Assert.False(result.NetworkCheckPassed);
+        Assert.NotNull(result.DiagnosticInfo);
+        Assert.Contains("DNS", result.DiagnosticInfo);
+    }
+
+    [Fact]
+    public async Task ValidateKeyAsync_WithValidResponse_IncludesElapsedTime()
+    {
+        // Arrange
+        var validKey = "sk-1234567890abcdefghijklmnopqrstuvwxyz";
+        
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"data\": []}")
+            });
+
+        // Act
+        var result = await _service.ValidateKeyAsync(validKey);
+
+        // Assert
+        Assert.True(result.IsValid);
+        Assert.Equal("Valid", result.Status);
+        Assert.True(result.ResponseTimeMs > 0);
+        Assert.NotNull(result.DiagnosticInfo);
+        Assert.Contains("attempts", result.DiagnosticInfo);
+    }
+
+    [Fact]
+    public async Task ValidateKeyAsync_WithRateLimitOnRetry_EventuallySucceeds()
+    {
+        // Arrange
+        var validKey = "sk-1234567890abcdefghijklmnopqrstuvwxyz";
+        var attemptCount = 0;
+        
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Returns(() =>
+            {
+                attemptCount++;
+                if (attemptCount == 1)
+                {
+                    // First attempt gets rate limited
+                    return Task.FromResult(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.TooManyRequests,
+                        Content = new StringContent("{\"error\": {\"message\": \"Rate limit exceeded\"}}")
+                    });
+                }
+                // But rate limit is valid, so no retry - return immediately
+                return Task.FromResult(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent("{\"data\": []}")
+                });
+            });
+
+        // Act
+        var result = await _service.ValidateKeyAsync(validKey);
+
+        // Assert
+        Assert.True(result.IsValid); // Rate limited is considered valid
+        Assert.Equal("RateLimited", result.Status);
+        Assert.Contains("can continue", result.Message);
+        Assert.Equal(1, attemptCount); // No retry for rate limit (key is valid)
+    }
 }
