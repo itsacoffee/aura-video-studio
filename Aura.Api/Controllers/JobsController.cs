@@ -1,6 +1,8 @@
 using Aura.Core.Artifacts;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
+using Aura.Core.Services;
+using Aura.Api.Models.ApiModels.V1;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.Text;
@@ -17,11 +19,19 @@ public class JobsController : ControllerBase
 {
     private readonly JobRunner _jobRunner;
     private readonly ArtifactManager _artifactManager;
+    private readonly ProgressAggregatorService? _progressAggregator;
+    private readonly CancellationOrchestrator? _cancellationOrchestrator;
 
-    public JobsController(JobRunner jobRunner, ArtifactManager artifactManager)
+    public JobsController(
+        JobRunner jobRunner, 
+        ArtifactManager artifactManager,
+        ProgressAggregatorService? progressAggregator = null,
+        CancellationOrchestrator? cancellationOrchestrator = null)
     {
         _jobRunner = jobRunner;
         _artifactManager = artifactManager;
+        _progressAggregator = progressAggregator;
+        _cancellationOrchestrator = cancellationOrchestrator;
     }
 
     /// <summary>
@@ -487,7 +497,7 @@ public class JobsController : ControllerBase
             var lastProgressMessage = "";
             var lastLogCount = job.Logs.Count;
             var lastPingTime = DateTime.UtcNow;
-            var pingIntervalSeconds = 10;
+            var pingIntervalSeconds = 5; // 5-second heartbeat as per requirements
             var pollIntervalMs = 500; // Poll every 500ms for responsiveness
             var eventIdCounter = 0;
             
@@ -498,10 +508,14 @@ public class JobsController : ControllerBase
                 job = _jobRunner.GetJob(jobId);
                 if (job == null) break;
                 
-                // Send keep-alive ping every 10 seconds
+                // Send keep-alive heartbeat every 5 seconds with structured data
                 if ((DateTime.UtcNow - lastPingTime).TotalSeconds >= pingIntervalSeconds)
                 {
-                    await SendSseComment($"keepalive: {DateTime.UtcNow:o}");
+                    var heartbeat = new HeartbeatEventDto(
+                        Timestamp: DateTime.UtcNow,
+                        Status: "alive"
+                    );
+                    await SendSseEventWithId("heartbeat", heartbeat, GenerateEventId(++eventIdCounter));
                     lastPingTime = DateTime.UtcNow;
                 }
                 
@@ -529,25 +543,31 @@ public class JobsController : ControllerBase
                     lastStage = job.Stage;
                 }
                 
-                // Send progress updates
+                // Send progress updates with unified ProgressEventDto
                 if (job.Percent != lastPercent)
                 {
                     var latestLog = job.Logs.LastOrDefault() ?? "";
-                    var progressData = new { 
-                        step = job.Stage, 
-                        phase = MapStageToPhase(job.Stage),
-                        progressPct = job.Percent,
-                        message = latestLog,
-                        correlationId,
-                        // Include detailed progress fields if available
-                        substageDetail = job.CurrentProgress?.SubstageDetail,
-                        currentItem = job.CurrentProgress?.CurrentItem,
-                        totalItems = job.CurrentProgress?.TotalItems,
-                        elapsedTime = job.CurrentProgress?.ElapsedTime?.ToString(@"hh\:mm\:ss"),
-                        estimatedTimeRemaining = job.CurrentProgress?.EstimatedTimeRemaining?.ToString(@"hh\:mm\:ss")
-                    };
                     
-                    await SendSseEventWithId("step-progress", progressData, GenerateEventId(++eventIdCounter));
+                    // Get aggregated progress if available
+                    var aggregatedProgress = _progressAggregator?.GetProgress(jobId);
+                    
+                    var progressEvent = new ProgressEventDto(
+                        JobId: jobId,
+                        Stage: job.Stage,
+                        Percent: job.Percent,
+                        EtaSeconds: aggregatedProgress?.Eta.HasValue == true 
+                            ? (int)aggregatedProgress.Eta.Value.TotalSeconds 
+                            : job.Eta.HasValue ? (int)job.Eta.Value.TotalSeconds : null,
+                        Message: aggregatedProgress?.Message ?? latestLog,
+                        Warnings: aggregatedProgress?.Warnings ?? new List<string>(),
+                        CorrelationId: correlationId,
+                        SubstageDetail: aggregatedProgress?.SubstageDetail ?? job.CurrentProgress?.SubstageDetail,
+                        CurrentItem: aggregatedProgress?.CurrentItem ?? job.CurrentProgress?.CurrentItem,
+                        TotalItems: aggregatedProgress?.TotalItems ?? job.CurrentProgress?.TotalItems,
+                        Timestamp: DateTime.UtcNow
+                    );
+                    
+                    await SendSseEventWithId("step-progress", progressEvent, GenerateEventId(++eventIdCounter));
                     lastPercent = job.Percent;
                     lastProgressMessage = latestLog;
                 }
@@ -641,10 +661,10 @@ public class JobsController : ControllerBase
     }
     
     /// <summary>
-    /// Cancel a running job
+    /// Cancel a running job with orchestrated provider cancellation
     /// </summary>
     [HttpPost("{jobId}/cancel")]
-    public IActionResult CancelJob(string jobId)
+    public async Task<IActionResult> CancelJob(string jobId, CancellationToken ct = default)
     {
         try
         {
@@ -678,8 +698,51 @@ public class JobsController : ControllerBase
                 });
             }
             
-            // Attempt to cancel the job
+            // Attempt to cancel the job with orchestration
             bool cancelled = _jobRunner.CancelJob(jobId);
+            
+            // If cancellation orchestrator is available, use it for detailed provider cancellation
+            CancellationResult? orchestratorResult = null;
+            if (_cancellationOrchestrator != null && cancelled)
+            {
+                try
+                {
+                    orchestratorResult = await _cancellationOrchestrator.CancelJobAsync(jobId, ct);
+                    
+                    // Convert to DTOs for API response
+                    var providerStatuses = orchestratorResult.ProviderStatuses
+                        .Select(ps => new ProviderCancellationStatusDto(
+                            ProviderName: ps.ProviderName,
+                            ProviderType: ps.ProviderType,
+                            SupportsCancellation: ps.SupportsCancellation,
+                            Status: ps.Status,
+                            Warning: ps.Warning
+                        ))
+                        .ToList();
+
+                    Log.Information(
+                        "[{CorrelationId}] Job {JobId} cancellation orchestrated: {SuccessCount}/{TotalCount} providers",
+                        correlationId, jobId, 
+                        providerStatuses.Count(s => s.Status == "Cancelled"), 
+                        providerStatuses.Count);
+
+                    return Accepted(new
+                    {
+                        jobId,
+                        message = orchestratorResult.Message,
+                        currentStatus = job.Status,
+                        cleanupScheduled = true,
+                        providerStatuses,
+                        warnings = orchestratorResult.Warnings,
+                        correlationId
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "[{CorrelationId}] Error during cancellation orchestration for job {JobId}, cancellation still triggered",
+                        correlationId, jobId);
+                }
+            }
             
             if (cancelled)
             {
