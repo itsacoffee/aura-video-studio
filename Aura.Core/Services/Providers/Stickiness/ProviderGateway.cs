@@ -15,6 +15,7 @@ public sealed class ProviderGateway
 {
     private readonly ILogger<ProviderGateway> _logger;
     private readonly StallDetector _stallDetector;
+    private readonly ProviderProfileLockService? _profileLockService;
     private readonly ConcurrentDictionary<string, PrimaryProviderLock> _activeLocks;
     private readonly ConcurrentDictionary<string, List<FallbackDecision>> _fallbackHistory;
     private readonly ConcurrentDictionary<string, ProviderState> _activeStates;
@@ -32,10 +33,14 @@ public sealed class ProviderGateway
     /// <summary>
     /// Initializes a new provider gateway
     /// </summary>
-    public ProviderGateway(ILogger<ProviderGateway> logger, StallDetector stallDetector)
+    public ProviderGateway(
+        ILogger<ProviderGateway> logger, 
+        StallDetector stallDetector,
+        ProviderProfileLockService? profileLockService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _stallDetector = stallDetector ?? throw new ArgumentNullException(nameof(stallDetector));
+        _profileLockService = profileLockService;
         _activeLocks = new ConcurrentDictionary<string, PrimaryProviderLock>();
         _fallbackHistory = new ConcurrentDictionary<string, List<FallbackDecision>>();
         _activeStates = new ConcurrentDictionary<string, ProviderState>();
@@ -90,7 +95,7 @@ public sealed class ProviderGateway
     }
 
     /// <summary>
-    /// Validates that a provider request matches the locked provider
+    /// Validates that a provider request matches the locked provider and ProfileLock
     /// </summary>
     public bool ValidateProviderRequest(
         string jobId,
@@ -100,19 +105,62 @@ public sealed class ProviderGateway
     {
         validationError = null;
 
+        // First check ProfileLock if service is available
+        if (_profileLockService != null)
+        {
+            var providerRequiresNetwork = !IsOfflineProvider(providerName);
+            var isProfileLockValid = _profileLockService.ValidateProviderRequest(
+                jobId,
+                providerName,
+                stageName,
+                providerRequiresNetwork,
+                out var profileLockError);
+
+            if (!isProfileLockValid)
+            {
+                validationError = profileLockError;
+                
+                _logger.LogWarning(
+                    "PROFILE_LOCK_VIOLATION Job: {JobId}, Provider: {Provider}, Stage: {Stage}, Error: {Error}",
+                    jobId,
+                    providerName,
+                    stageName,
+                    profileLockError);
+                
+                return false;
+            }
+        }
+
+        // Then check PrimaryProviderLock (legacy)
         if (!_activeLocks.TryGetValue(jobId, out var lock_))
         {
-            validationError = $"No provider lock found for job {jobId}";
-            return false;
+            return true; // No legacy lock, validation passes
         }
 
         if (!lock_.ValidateProvider(providerName, stageName))
         {
             validationError = $"Provider {providerName} does not match locked provider {lock_.ProviderName} for stage {stageName}";
+            
+            _logger.LogWarning(
+                "PRIMARY_LOCK_VIOLATION Job: {JobId}, Provider: {Provider}, Stage: {Stage}",
+                jobId,
+                providerName,
+                stageName);
+            
             return false;
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Checks if a provider is offline-compatible
+    /// </summary>
+    private static bool IsOfflineProvider(string providerName)
+    {
+        var offlineProviders = new[] { "RuleBased", "Ollama", "Windows", "Piper", "Mimic3", "LocalSD", "Stock" };
+        return Array.Exists(offlineProviders, p => 
+            string.Equals(p, providerName, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

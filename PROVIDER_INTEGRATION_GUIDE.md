@@ -1938,3 +1938,249 @@ public class VideoOrchestrator
    - Links to documentation
 
 See [BUILD_GUIDE.md](BUILD_GUIDE.md) for hardware acceleration setup and troubleshooting.
+
+## Provider Profile Lock (Sticky Provider Alignment)
+
+Provider Profile Lock ensures your chosen provider remains active throughout the entire pipeline, preventing automatic provider switching unless explicitly requested by the user.
+
+### Overview
+
+**ProfileLock** guarantees provider continuity across:
+- Planning
+- Script generation
+- Refinement
+- TTS synthesis
+- Visual prompt generation
+- Rendering
+
+### Key Features
+
+1. **Session-Level Locks**: Persist across app restarts
+2. **Project-Level Locks**: Embedded in project metadata
+3. **Offline Mode Enforcement**: Restrict to offline-compatible providers
+4. **Manual Fallback Control**: User explicitly triggers provider switches
+5. **Extended Wait Patience**: Surface status during slow provider responses
+
+### Enabling ProfileLock
+
+#### Via API
+
+```typescript
+import { setProfileLock } from './api/profileLockClient';
+
+// Lock Ollama for entire pipeline
+await setProfileLock({
+  jobId: 'video-123',
+  providerName: 'Ollama',
+  providerType: 'local_llm',
+  isEnabled: true,
+  offlineModeEnabled: true, // Only allow offline providers
+  isSessionLevel: true
+});
+```
+
+#### Via Settings
+
+Navigate to **Settings** → **Providers** → **Profile Lock**:
+1. Select primary provider (e.g., Ollama, OpenAI, RuleBased)
+2. Enable "Lock provider for entire pipeline"
+3. Optionally enable "Offline mode" to restrict network access
+4. Choose applicable stages or leave empty for all stages
+
+### Offline Mode
+
+When `offlineModeEnabled: true`, only these providers are allowed:
+
+**LLM Providers:**
+- RuleBased (always available, offline)
+- Ollama (local AI, requires installation)
+
+**TTS Providers:**
+- Windows SAPI (Windows only, always available)
+- Piper (local neural TTS, requires installation)
+- Mimic3 (local neural TTS, requires installation)
+
+**Image Providers:**
+- Stock (curated stock images, bundled)
+- LocalSD (Stable Diffusion WebUI, requires NVIDIA GPU)
+
+Attempting to use network-only providers (OpenAI, ElevenLabs, etc.) with offline mode enabled will result in a clear error message.
+
+### Provider Status States
+
+ProfileLock tracks provider status and displays appropriate UI:
+
+| State | Duration | UI Display |
+|-------|----------|------------|
+| **Active** | 0-30s | Spinner + "Processing..." |
+| **Waiting** | 30-180s | Elapsed time + "Still working..." |
+| **Extended Wait** | 180s+ | Elapsed time + progress (if available) + "Manual Fallback" button |
+| **Stall Suspected** | No heartbeat | Warning + "Provider may be stalled" + "Manual Fallback" button |
+| **Error** | Fatal error | Error message + "Manual Fallback" or "Retry" options |
+
+### Manual Fallback
+
+ProfileLock **never** automatically switches providers. User must explicitly choose:
+
+1. **Provider Status Drawer** appears during extended waits
+2. Shows elapsed time, heartbeat count, progress (tokens/chunks if available)
+3. User clicks **"Switch Provider"** button
+4. Confirmation dialog: "Switch from Ollama to OpenAI?"
+5. User confirms
+6. ProfileLock is unlocked, new provider selected
+7. Operation continues with new provider
+
+### API Endpoints
+
+**Get Status:**
+```typescript
+GET /api/provider-lock/status?jobId=video-123
+
+Response:
+{
+  "jobId": "video-123",
+  "hasActiveLock": true,
+  "activeLock": {
+    "jobId": "video-123",
+    "providerName": "Ollama",
+    "providerType": "local_llm",
+    "isEnabled": true,
+    "offlineModeEnabled": true,
+    "applicableStages": [],
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  "statistics": {
+    "totalSessionLocks": 1,
+    "enabledSessionLocks": 1,
+    "offlineModeLocksCount": 1
+  }
+}
+```
+
+**Set Lock:**
+```typescript
+POST /api/provider-lock/set
+
+Request:
+{
+  "jobId": "video-123",
+  "providerName": "Ollama",
+  "providerType": "local_llm",
+  "isEnabled": true,
+  "offlineModeEnabled": true,
+  "isSessionLevel": true
+}
+```
+
+**Unlock:**
+```typescript
+POST /api/provider-lock/unlock
+
+Request:
+{
+  "jobId": "video-123",
+  "reason": "USER_REQUEST"
+}
+```
+
+**Check Offline Compatibility:**
+```typescript
+GET /api/provider-lock/offline-compatible?providerName=OpenAI
+
+Response:
+{
+  "providerName": "OpenAI",
+  "isCompatible": false,
+  "message": "Provider OpenAI requires network access...",
+  "offlineCompatibleProviders": ["RuleBased", "Ollama", "Windows", "Piper", "Mimic3", "LocalSD", "Stock"]
+}
+```
+
+### Troubleshooting
+
+#### Issue: Provider seems stuck
+
+**Symptoms:** No progress for 3+ minutes, no heartbeat detected
+
+**Solutions:**
+1. Check **Provider Status Drawer** for elapsed time and heartbeat count
+2. If heartbeats are updating → Provider is working, be patient
+3. If no heartbeats for 2+ minutes → Stall suspected:
+   - Click **"Switch Provider"** for manual fallback
+   - Or **"Cancel Job"** and retry
+4. Check provider logs in Settings → Diagnostics
+
+#### Issue: Offline mode blocks my preferred provider
+
+**Symptoms:** Error: "Provider OpenAI requires network access but offline mode is enforced"
+
+**Solutions:**
+1. Disable offline mode in ProfileLock settings
+2. Or switch to offline-compatible provider (Ollama, RuleBased)
+3. Verify network connectivity if you intended to use cloud providers
+
+#### Issue: ProfileLock prevents automatic fallback
+
+**Symptoms:** Job waiting indefinitely, no automatic switch to fallback provider
+
+**Explanation:** This is intentional! ProfileLock ensures your chosen provider remains active.
+
+**Solutions:**
+1. Use **Provider Status Drawer** to monitor progress
+2. If provider is slow but working → Be patient, progress will complete
+3. If truly stuck → Manually switch via "Switch Provider" button
+4. To restore automatic fallback → Disable ProfileLock in settings
+
+#### Issue: How long should I wait?
+
+**General Guidelines:**
+- **Script Generation (LLM):**
+  - Fast (GPT-4, Claude): 10-30 seconds
+  - Medium (Ollama 7B): 30-120 seconds
+  - Slow (Ollama 70B, CPU): 2-5 minutes
+  
+- **TTS Synthesis:**
+  - Fast (ElevenLabs, Windows SAPI): 5-15 seconds per minute of audio
+  - Medium (Piper): 10-30 seconds per minute
+  - Slow (Mimic3): 30-60 seconds per minute
+  
+- **Image Generation:**
+  - Fast (Stock): instant
+  - Medium (Local SD, 6GB VRAM): 5-15 seconds per image
+  - Slow (Local SD, CPU): 30-120 seconds per image
+
+If elapsed time exceeds 2× expected time and no heartbeats → Consider manual fallback.
+
+### Best Practices
+
+1. **Choose Provider Wisely**: Match provider to your use case and hardware
+   - Development/testing: Use free providers (RuleBased, Ollama)
+   - Production: Use premium providers (GPT-4, ElevenLabs)
+   - Offline: Enable offline mode and choose compatible providers
+
+2. **Enable ProfileLock for Consistency**: Especially important for:
+   - Multi-stage pipelines where provider consistency matters
+   - Offline environments where network access is restricted
+   - Scenarios where automatic fallback would degrade quality
+
+3. **Monitor Provider Status**: Use the Provider Status Drawer during long operations
+   - Check heartbeat count to confirm provider is responsive
+   - View progress indicators (tokens, chunks, percentage) when available
+   - Be patient during legitimate extended waits
+
+4. **Manual Fallback as Last Resort**: Only switch providers when:
+   - Stall is confirmed (no heartbeat for 2+ minutes)
+   - Provider error is fatal and unrecoverable
+   - You explicitly want to try a different provider
+
+5. **Test Offline Mode**: Before relying on offline capabilities:
+   - Verify offline providers are installed (Ollama, Piper, etc.)
+   - Test full pipeline with `offlineModeEnabled: true`
+   - Ensure quality meets your requirements
+
+### Related Documentation
+
+- [LLM_INTEGRATION_AUDIT.md](LLM_INTEGRATION_AUDIT.md) - LLM provider details
+- [TTS_PROVIDER_IMPLEMENTATION_SUMMARY.md](TTS_PROVIDER_IMPLEMENTATION_SUMMARY.md) - TTS provider details
+- [LATENCY_PATIENCE_POLICY.md](LATENCY_PATIENCE_POLICY.md) - Provider patience thresholds
+- [PROVIDER_STICKINESS_IMPLEMENTATION_SUMMARY.md](PROVIDER_STICKINESS_IMPLEMENTATION_SUMMARY.md) - Technical implementation details
