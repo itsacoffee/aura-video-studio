@@ -223,6 +223,21 @@ public class AuraDbContext : DbContext
     /// </summary>
     public DbSet<AnalyticsSummaryEntity> AnalyticsSummaries { get; set; } = null!;
 
+    /// <summary>
+    /// User settings stored in database
+    /// </summary>
+    public DbSet<SettingsEntity> Settings { get; set; } = null!;
+
+    /// <summary>
+    /// Provider configuration with encrypted API keys
+    /// </summary>
+    public DbSet<ProviderConfigurationEntity> ProviderConfigurations { get; set; } = null!;
+
+    /// <summary>
+    /// Hardware performance settings
+    /// </summary>
+    public DbSet<HardwareSettingsEntity> HardwareSettings { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -683,6 +698,30 @@ public class AuraDbContext : DbContext
             entity.HasIndex(e => new { e.PeriodType, e.PeriodId }).IsUnique();
             entity.HasIndex(e => e.PeriodStart);
             entity.HasIndex(e => new { e.PeriodType, e.PeriodStart });
+        });
+
+        // Configure SettingsEntity
+        modelBuilder.Entity<SettingsEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UpdatedAt);
+            entity.HasIndex(e => e.Version);
+        });
+
+        // Configure ProviderConfigurationEntity
+        modelBuilder.Entity<ProviderConfigurationEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UpdatedAt);
+            entity.HasIndex(e => e.Version);
+        });
+
+        // Configure HardwareSettingsEntity
+        modelBuilder.Entity<HardwareSettingsEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UpdatedAt);
+            entity.HasIndex(e => e.Version);
         });
 
         // Apply global query filters for soft delete
