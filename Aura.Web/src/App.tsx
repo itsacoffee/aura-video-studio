@@ -9,6 +9,7 @@ import { CrashRecoveryScreen } from './components/ErrorBoundary';
 import { InitializationScreen, StartupErrorScreen } from './components/Initialization';
 import type { InitializationError } from './components/Initialization';
 import { env } from './config/env';
+import { ROUTE_METADATA_ENHANCED } from './config/routesWithGuards';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { useGlobalUndoShortcuts } from './hooks/useGlobalUndoShortcuts';
 import { useWindowsNativeUI } from './hooks/useWindowsNativeUI';
@@ -25,6 +26,7 @@ import {
 import { healthMonitorService } from './services/healthMonitorService';
 import { keyboardShortcutManager } from './services/keyboardShortcutManager';
 import { loggingService } from './services/loggingService';
+import { navigationService } from './services/navigationService';
 import { initializeRouteRegistry } from './services/routeRegistry';
 import { migrateSettingsIfNeeded } from './services/settingsValidationService';
 import { ActivityProvider } from './state/activityContext';
@@ -116,11 +118,12 @@ function App() {
     };
   }, []);
 
-  // Initialize route registry and custom event handlers on app mount
+  // Initialize route registry, navigation service, and custom event handlers on app mount
   // REQUIREMENT 6: Route registry validates all menu paths exist at app startup
   useEffect(() => {
     try {
       initializeRouteRegistry();
+      navigationService.registerRoutes(ROUTE_METADATA_ENHANCED);
       registerCustomEventHandlers();
     } catch (error) {
       loggingService.error('Failed to initialize route registry', { error });
@@ -270,7 +273,7 @@ function App() {
         description: 'Open Settings',
         context: 'global',
         handler: () => {
-          window.location.href = '/settings';
+          navigationService.push('/settings');
         },
       },
       {
@@ -279,7 +282,7 @@ function App() {
         description: 'New Project',
         context: 'global',
         handler: () => {
-          window.location.href = '/create';
+          navigationService.push('/create');
         },
       },
       {
@@ -288,7 +291,7 @@ function App() {
         description: 'Open Project',
         context: 'global',
         handler: () => {
-          window.location.href = '/projects';
+          navigationService.push('/projects');
         },
       },
       {
@@ -297,7 +300,7 @@ function App() {
         description: 'Open Ideation',
         context: 'global',
         handler: () => {
-          window.location.href = '/ideation';
+          navigationService.push('/ideation');
         },
       },
       {
@@ -306,7 +309,7 @@ function App() {
         description: 'Open Video Editor',
         context: 'global',
         handler: () => {
-          window.location.href = '/editor';
+          navigationService.push('/editor');
         },
       },
       {
@@ -326,9 +329,9 @@ function App() {
         context: 'global',
         handler: () => {
           // Navigate to the create/wizard page to generate video
-          const currentPath = window.location.pathname;
+          const currentPath = navigationService.getCurrentPath();
           if (!currentPath.includes('/create')) {
-            window.location.href = '/create';
+            navigationService.push('/create');
           }
         },
       },
@@ -398,7 +401,7 @@ function App() {
       // Ctrl+Shift+L for log viewer
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'L') {
         e.preventDefault();
-        window.location.href = '/logs';
+        navigationService.push('/logs');
       }
       // Ctrl+K or Cmd+K for command palette
       else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -559,6 +562,9 @@ function App() {
     );
   }
 
+  // Get initial route from navigation service (considers safe mode and persistence)
+  const initialRoute = navigationService.getInitialRoute();
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
@@ -566,7 +572,7 @@ function App() {
           <AccessibilityProvider>
             <ActivityProvider>
               <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-                <MemoryRouter initialEntries={['/']}>
+                <MemoryRouter initialEntries={[initialRoute]}>
                   <AppRouterContent
                     showShortcuts={showShortcuts}
                     showShortcutsPanel={showShortcutsPanel}

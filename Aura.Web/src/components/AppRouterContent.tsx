@@ -7,6 +7,7 @@
 import { lazy, useState, type FC } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { env } from '../config/env';
+import { NavigationProvider } from '../contexts/NavigationContext';
 import { useElectronMenuEvents } from '../hooks/useElectronMenuEvents';
 import { DashboardPage } from '../pages/DashboardPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -16,21 +17,21 @@ import { useJobState } from '../state/jobState';
 import { KeyboardShortcutsCheatSheet } from './Accessibility/KeyboardShortcutsCheatSheet';
 import { CommandPalette } from './CommandPalette';
 import { ConfigurationGate } from './ConfigurationGate';
+import { ContentPlanningDashboard } from './contentPlanning/ContentPlanningDashboard';
+import { QualityDashboard } from './dashboard';
 import { ErrorBoundary } from './ErrorBoundary';
-import { SafeModeBanner } from './SafeMode';
-import { JobStatusBar } from './StatusBar/JobStatusBar';
+import { GlobalStatusFooter } from './GlobalStatusFooter';
+import { JobProgressDrawer } from './JobProgressDrawer';
+import { KeyboardShortcutsPanel } from './KeyboardShortcuts/KeyboardShortcutsPanel';
+import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { Layout } from './Layout';
 import { LazyRoute } from './LazyRoute';
-import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
-import { KeyboardShortcutsPanel } from './KeyboardShortcuts/KeyboardShortcutsPanel';
 import { NotificationsToaster } from './Notifications/Toasts';
-import { JobProgressDrawer } from './JobProgressDrawer';
-import { ActionHistoryPanel } from './UndoRedo/ActionHistoryPanel';
-import { GlobalStatusFooter } from './GlobalStatusFooter';
-import { VideoCreationWizard } from './VideoWizard/VideoCreationWizard';
-import { ContentPlanningDashboard } from './contentPlanning/ContentPlanningDashboard';
 import { PlatformDashboard } from './Platform';
-import { QualityDashboard } from './dashboard';
+import { SafeModeBanner } from './SafeMode';
+import { JobStatusBar } from './StatusBar/JobStatusBar';
+import { ActionHistoryPanel } from './UndoRedo/ActionHistoryPanel';
+import { VideoCreationWizard } from './VideoWizard/VideoCreationWizard';
 
 // Lazy load non-critical pages
 const AdminDashboardPage = lazy(() => import('../pages/Admin/AdminDashboardPage'));
@@ -181,12 +182,65 @@ export const AppRouterContent: FC<AppRouterContentProps> = ({
   showDiagnostics,
   setShowDiagnostics,
 }) => {
+  const { currentJobId, status, progress, message } = useJobState();
+  const [showDrawer, setShowDrawer] = useState(false);
+
+  return (
+    <NavigationProvider>
+      <AppRouterContentInner
+        showShortcuts={showShortcuts}
+        showShortcutsPanel={showShortcutsPanel}
+        showShortcutsCheatSheet={showShortcutsCheatSheet}
+        showCommandPalette={showCommandPalette}
+        setShowShortcuts={setShowShortcuts}
+        setShowShortcutsPanel={setShowShortcutsPanel}
+        setShowShortcutsCheatSheet={setShowShortcutsCheatSheet}
+        setShowCommandPalette={setShowCommandPalette}
+        toasterId={toasterId}
+        showDiagnostics={showDiagnostics}
+        setShowDiagnostics={setShowDiagnostics}
+        currentJobId={currentJobId}
+        status={status}
+        progress={progress}
+        message={message}
+        showDrawer={showDrawer}
+        setShowDrawer={setShowDrawer}
+      />
+    </NavigationProvider>
+  );
+};
+
+const AppRouterContentInner: FC<
+  AppRouterContentProps & {
+    currentJobId: string | null;
+    status: string;
+    progress: number;
+    message: string;
+    showDrawer: boolean;
+    setShowDrawer: (show: boolean) => void;
+  }
+> = ({
+  showShortcuts,
+  showShortcutsPanel,
+  showShortcutsCheatSheet,
+  showCommandPalette,
+  setShowShortcuts,
+  setShowShortcutsPanel,
+  setShowShortcutsCheatSheet,
+  setShowCommandPalette,
+  toasterId,
+  showDiagnostics,
+  setShowDiagnostics,
+  currentJobId,
+  status,
+  progress,
+  message,
+  showDrawer,
+  setShowDrawer,
+}) => {
   // Register Electron menu event handlers (wires File, Edit, View, Tools, Help menus)
   // This MUST be inside Router context because it uses useNavigate()
   useElectronMenuEvents();
-
-  const { currentJobId, status, progress, message } = useJobState();
-  const [showDrawer, setShowDrawer] = useState(false);
 
   return (
     <>
