@@ -8,14 +8,17 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Configuration;
+using Aura.Core.Data;
 using Aura.Core.Hardware;
 using Aura.Core.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Settings;
 
 /// <summary>
 /// Centralized service for managing all application settings
+/// Now using database storage with optional encryption
 /// </summary>
 public class SettingsService : ISettingsService
 {
@@ -24,6 +27,7 @@ public class SettingsService : ISettingsService
     private readonly IKeyStore _keyStore;
     private readonly ISecureStorageService _secureStorage;
     private readonly IHardwareDetector _hardwareDetector;
+    private readonly AuraDbContext _dbContext;
     private readonly string _settingsFilePath;
     private readonly object _lock = new();
     private UserSettings? _cachedSettings;
@@ -33,15 +37,17 @@ public class SettingsService : ISettingsService
         ProviderSettings providerSettings,
         IKeyStore keyStore,
         ISecureStorageService secureStorage,
-        IHardwareDetector hardwareDetector)
+        IHardwareDetector hardwareDetector,
+        AuraDbContext dbContext)
     {
         _logger = logger;
         _providerSettings = providerSettings;
         _keyStore = keyStore;
         _secureStorage = secureStorage;
         _hardwareDetector = hardwareDetector;
+        _dbContext = dbContext;
 
-        // Settings stored in AuraData/user-settings.json
+        // Settings stored in AuraData/user-settings.json (legacy, for migration)
         var auraDataDir = _providerSettings.GetAuraDataDirectory();
         _settingsFilePath = Path.Combine(auraDataDir, "user-settings.json");
     }
@@ -58,25 +64,47 @@ public class SettingsService : ISettingsService
 
         try
         {
-            if (File.Exists(_settingsFilePath))
+            // Try loading from database first
+            var settingsEntity = await _dbContext.Settings
+                .FirstOrDefaultAsync(s => s.Id == "user-settings", ct);
+
+            if (settingsEntity != null)
             {
-                var json = await File.ReadAllTextAsync(_settingsFilePath, ct);
-                var settings = JsonSerializer.Deserialize<UserSettings>(json) ?? CreateDefaultSettings();
-                
+                // Settings are stored as plain JSON (API keys are handled separately via KeyStore)
+                var settings = JsonSerializer.Deserialize<UserSettings>(settingsEntity.SettingsJson) 
+                    ?? CreateDefaultSettings();
+
                 lock (_lock)
                 {
                     _cachedSettings = settings;
                 }
-                
-                _logger.LogInformation("Loaded user settings from {Path}", _settingsFilePath);
+
+                _logger.LogInformation("Loaded user settings from database");
                 return CloneSettings(settings);
             }
-            else
+
+            // Fallback to JSON file (for migration from old versions)
+            if (File.Exists(_settingsFilePath))
             {
-                var settings = CreateDefaultSettings();
-                await SaveSettingsAsync(settings, ct);
+                var json = await File.ReadAllTextAsync(_settingsFilePath, ct);
+                var settings = JsonSerializer.Deserialize<UserSettings>(json) ?? CreateDefaultSettings();
+
+                // Migrate to database
+                await MigrateJsonToDatabase(settings, ct);
+
+                lock (_lock)
+                {
+                    _cachedSettings = settings;
+                }
+
+                _logger.LogInformation("Loaded user settings from JSON file and migrated to database");
                 return CloneSettings(settings);
             }
+
+            // No settings found, create defaults
+            var defaultSettings = CreateDefaultSettings();
+            await SaveSettingsToDatabaseAsync(defaultSettings, ct);
+            return CloneSettings(defaultSettings);
         }
         catch (Exception ex)
         {
@@ -109,7 +137,7 @@ public class SettingsService : ISettingsService
             }
 
             settings.LastUpdated = DateTime.UtcNow;
-            await SaveSettingsAsync(settings, ct);
+            await SaveSettingsToDatabaseAsync(settings, ct);
 
             lock (_lock)
             {
@@ -144,7 +172,7 @@ public class SettingsService : ISettingsService
         try
         {
             var settings = CreateDefaultSettings();
-            await SaveSettingsAsync(settings, ct);
+            await SaveSettingsToDatabaseAsync(settings, ct);
 
             lock (_lock)
             {
@@ -635,20 +663,66 @@ public class SettingsService : ISettingsService
 
     // Private helper methods
 
-    private async Task SaveSettingsAsync(UserSettings settings, CancellationToken ct)
+    private async Task SaveSettingsToDatabaseAsync(UserSettings settings, CancellationToken ct)
     {
-        var directory = Path.GetDirectoryName(_settingsFilePath);
-        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
         var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
         {
             WriteIndented = true
         });
 
-        await File.WriteAllTextAsync(_settingsFilePath, json, ct);
+        var settingsEntity = await _dbContext.Settings
+            .FirstOrDefaultAsync(s => s.Id == "user-settings", ct);
+
+        if (settingsEntity == null)
+        {
+            settingsEntity = new SettingsEntity
+            {
+                Id = "user-settings",
+                SettingsJson = json,
+                IsEncrypted = false,
+                Version = settings.Version,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _dbContext.Settings.Add(settingsEntity);
+        }
+        else
+        {
+            settingsEntity.SettingsJson = json;
+            settingsEntity.Version = settings.Version;
+            settingsEntity.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+        _logger.LogInformation("Saved settings to database");
+    }
+
+    private async Task MigrateJsonToDatabase(UserSettings settings, CancellationToken ct)
+    {
+        try
+        {
+            await SaveSettingsToDatabaseAsync(settings, ct);
+            _logger.LogInformation("Successfully migrated settings from JSON to database");
+
+            // Optionally rename the old JSON file instead of deleting it
+            if (File.Exists(_settingsFilePath))
+            {
+                var backupPath = _settingsFilePath + ".backup";
+                File.Move(_settingsFilePath, backupPath, overwrite: true);
+                _logger.LogInformation("Backed up old settings file to {BackupPath}", backupPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to migrate settings from JSON to database");
+            throw;
+        }
+    }
+
+    private async Task SaveSettingsAsync(UserSettings settings, CancellationToken ct)
+    {
+        // Legacy method - now just calls the database method
+        await SaveSettingsToDatabaseAsync(settings, ct);
     }
 
     private UserSettings CreateDefaultSettings()
