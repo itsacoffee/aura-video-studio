@@ -108,3 +108,51 @@ public class KeyVaultDiagnosticsResponse
     public List<string> Checks { get; set; } = new();
     public string? Message { get; set; }
 }
+
+/// <summary>
+/// Request model for getting key status
+/// </summary>
+public class KeyStatusRequest
+{
+    public string Provider { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request model for revalidating API key
+/// </summary>
+public class RevalidateKeyRequest
+{
+    public string Provider { get; set; } = string.Empty;
+    public string? ApiKey { get; set; }
+}
+
+/// <summary>
+/// Response model for key validation status
+/// </summary>
+public class KeyStatusResponse
+{
+    public bool Success { get; set; }
+    public string Provider { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public DateTime? LastValidated { get; set; }
+    public DateTime? ValidationStarted { get; set; }
+    public int ElapsedMs { get; set; }
+    public int RemainingTimeoutMs { get; set; }
+    public Dictionary<string, string> Details { get; set; } = new();
+    public bool CanRetry { get; set; }
+    public bool CanManuallyRevalidate { get; set; }
+}
+
+/// <summary>
+/// Response model for all keys validation status
+/// </summary>
+public class AllKeysStatusResponse
+{
+    public bool Success { get; set; }
+    public Dictionary<string, KeyStatusResponse> Statuses { get; set; } = new();
+    public int TotalKeys { get; set; }
+    public int ValidKeys { get; set; }
+    public int InvalidKeys { get; set; }
+    public int PendingValidation { get; set; }
+}
