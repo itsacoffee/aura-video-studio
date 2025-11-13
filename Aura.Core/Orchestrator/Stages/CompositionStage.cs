@@ -1,8 +1,10 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Providers;
+using Aura.Core.Services.Orchestration;
 using Microsoft.Extensions.Logging;
 using TimelineRecord = Aura.Core.Providers.Timeline;
 
@@ -15,12 +17,15 @@ namespace Aura.Core.Orchestrator.Stages;
 public class CompositionStage : PipelineStage
 {
     private readonly IVideoComposer _videoComposer;
+    private readonly CompositionValidator? _compositionValidator;
 
     public CompositionStage(
         ILogger<CompositionStage> logger,
-        IVideoComposer videoComposer) : base(logger)
+        IVideoComposer videoComposer,
+        CompositionValidator? compositionValidator = null) : base(logger)
     {
         _videoComposer = videoComposer ?? throw new ArgumentNullException(nameof(videoComposer));
+        _compositionValidator = compositionValidator;
     }
 
     public override string StageName => "Composition";
@@ -63,6 +68,61 @@ public class CompositionStage : PipelineStage
             MusicPath: context.MusicPath ?? string.Empty,
             SubtitlesPath: context.SubtitlesPath
         );
+
+        // Validate composition if validator available
+        if (_compositionValidator != null)
+        {
+            ReportProgress(progress, 15, "Validating composition...");
+
+            var validationResult = _compositionValidator.ValidateComposition(
+                context.ParsedScenes,
+                context.SceneAssets,
+                context.NarrationPath,
+                context.MusicPath);
+
+            if (validationResult.HasCriticalErrors)
+            {
+                var criticalErrors = string.Join(", ", 
+                    validationResult.Errors
+                        .Where(e => e.Severity == Services.Orchestration.ErrorSeverity.Critical)
+                        .Select(e => e.Message));
+
+                throw new InvalidOperationException(
+                    $"Composition validation failed with critical errors: {criticalErrors}");
+            }
+
+            if (validationResult.HasErrors)
+            {
+                var errors = string.Join(", ",
+                    validationResult.Errors
+                        .Where(e => e.Severity == Services.Orchestration.ErrorSeverity.Error)
+                        .Select(e => e.Message));
+
+                Logger.LogWarning(
+                    "[{CorrelationId}] Composition validation found errors: {Errors}",
+                    context.CorrelationId,
+                    errors);
+            }
+
+            if (validationResult.HasWarnings)
+            {
+                var warnings = string.Join(", ",
+                    validationResult.Errors
+                        .Where(e => e.Severity == Services.Orchestration.ErrorSeverity.Warning)
+                        .Select(e => e.Message));
+
+                Logger.LogInformation(
+                    "[{CorrelationId}] Composition validation warnings: {Warnings}",
+                    context.CorrelationId,
+                    warnings);
+            }
+
+            Logger.LogInformation(
+                "[{CorrelationId}] Composition validation passed: {ErrorCount} errors, {WarningCount} warnings",
+                context.CorrelationId,
+                validationResult.ErrorCount,
+                validationResult.WarningCount);
+        }
 
         ReportProgress(progress, 20, "Rendering video...");
 

@@ -7,6 +7,7 @@ using Aura.Core.Models;
 using Aura.Core.Models.Audio;
 using Aura.Core.Providers;
 using Aura.Core.Services;
+using Aura.Core.Services.Orchestration;
 using Aura.Core.Validation;
 using Microsoft.Extensions.Logging;
 
@@ -22,18 +23,21 @@ public class VoiceStage : PipelineStage
     private readonly TtsOutputValidator _ttsValidator;
     private readonly ProviderRetryWrapper _retryWrapper;
     private readonly ResourceCleanupManager _cleanupManager;
+    private readonly TimingResolver? _timingResolver;
 
     public VoiceStage(
         ILogger<VoiceStage> logger,
         ITtsProvider ttsProvider,
         TtsOutputValidator ttsValidator,
         ProviderRetryWrapper retryWrapper,
-        ResourceCleanupManager cleanupManager) : base(logger)
+        ResourceCleanupManager cleanupManager,
+        TimingResolver? timingResolver = null) : base(logger)
     {
         _ttsProvider = ttsProvider ?? throw new ArgumentNullException(nameof(ttsProvider));
         _ttsValidator = ttsValidator ?? throw new ArgumentNullException(nameof(ttsValidator));
         _retryWrapper = retryWrapper ?? throw new ArgumentNullException(nameof(retryWrapper));
         _cleanupManager = cleanupManager ?? throw new ArgumentNullException(nameof(cleanupManager));
+        _timingResolver = timingResolver;
     }
 
     public override string StageName => "Voice";
@@ -113,6 +117,36 @@ public class VoiceStage : PipelineStage
             "[{CorrelationId}] Narration generated and validated at: {Path}",
             context.CorrelationId,
             narrationPath);
+
+        // Resolve accurate timings from audio if TimingResolver available
+        if (_timingResolver != null)
+        {
+            ReportProgress(progress, 95, "Resolving scene timings from audio...");
+
+            try
+            {
+                var timingResult = await _timingResolver.ResolveFromConcatenatedAudioAsync(
+                    scenes,
+                    narrationPath,
+                    ct).ConfigureAwait(false);
+
+                // Update context with accurately timed scenes
+                context.ParsedScenes = timingResult.ResolvedScenes;
+
+                Logger.LogInformation(
+                    "[{CorrelationId}] Resolved scene timings: {Accuracy:F1}% accuracy, total duration: {Duration:F2}s",
+                    context.CorrelationId,
+                    timingResult.AccuracyPercentage,
+                    timingResult.TotalDuration.TotalSeconds);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex,
+                    "[{CorrelationId}] Failed to resolve timing from audio, using estimated timings",
+                    context.CorrelationId);
+                // Continue with estimated timings
+            }
+        }
 
         // Store narration path in context
         context.NarrationPath = narrationPath;
